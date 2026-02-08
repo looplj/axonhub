@@ -279,5 +279,9 @@
   "auth.signIn.form.signingIn": "登录中...",
   "auth.signIn.validation.emailRequired": "邮箱不能为空",
   "auth.signIn.links.forgotPassword": "忘记密码？",
-  "auth.signIn.footer.agreement": "登录即表示您同意我们的服务条款和隐私政策"
+  "auth.signIn.footer.agreement": "登录即表示您同意我们的服务条款和隐私政策",
+  "dashboard.confidence.high": "高可信度",
+  "dashboard.confidence.medium": "中可信度",
+  "dashboard.confidence.low": "低可信度",
+  "dashboard.confidence.default": "可信度"
 }

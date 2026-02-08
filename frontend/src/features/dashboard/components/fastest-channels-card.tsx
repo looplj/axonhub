@@ -12,7 +12,7 @@ export function FastestChannelsCard() {
   return (
     <FastestPerformersCard<FastestChannel>
       title={t('dashboard.cards.fastestPerformers.channels')}
-      description={(totalRequests) => `Fastest channels by throughput · ${formatNumber(totalRequests)} total requests`}
+      description={(totalRequests) => t('dashboard.cards.fastestPerformers.channelsDescription', { total: formatNumber(totalRequests) })}
       noDataLabel={t('dashboard.cards.fastestPerformers.noData')}
       useData={useFastestChannels}
       getName={(item) => item.channelName}

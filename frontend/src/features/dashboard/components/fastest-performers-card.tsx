@@ -2,11 +2,10 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, Activity } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
@@ -79,7 +78,7 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
           tickLine={false}
           axisLine={false}
         />
-        <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
+        <RechartsTooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
         <Bar dataKey='throughput' radius={[0, 4, 4, 0]}>
           {safeData.map((_, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -91,6 +90,8 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
 }
 
 function ChartLegend({ items }: { items: LegendItem[] }) {
+  const { t } = useTranslation();
+
   const getConfidenceColor = (level?: string) => {
     switch (level) {
       case 'high':
@@ -107,13 +108,13 @@ function ChartLegend({ items }: { items: LegendItem[] }) {
   const getConfidenceTooltip = (level?: string) => {
     switch (level) {
       case 'high':
-        return 'High confidence';
+        return t('dashboard.confidence.high');
       case 'medium':
-        return 'Medium confidence';
+        return t('dashboard.confidence.medium');
       case 'low':
-        return 'Low confidence';
+        return t('dashboard.confidence.low');
       default:
-        return 'Confidence';
+        return t('dashboard.confidence.default');
     }
   };
 

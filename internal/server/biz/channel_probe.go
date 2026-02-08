@@ -178,7 +178,7 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 SELECT 
     se.channel_id,
     COUNT(*) as total_count,
-    COUNT(*) as success_count,
+    COUNT(*) FILTER (WHERE se.status = 'completed') as success_count,
     SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
     SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL 
          THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms 
@@ -187,14 +187,14 @@ SELECT
     COUNT(DISTINCT se.request_id) as request_count
 FROM request_executions se
 JOIN usage_logs ul ON se.request_id = ul.request_id
-WHERE se.status = 'completed' 
-    AND se.metrics_latency_ms > 0
+WHERE se.metrics_latency_ms > 0
     AND se.created_at >= $1 
     AND se.created_at < $2
     AND se.id = (
         SELECT MAX(re2.id)
         FROM request_executions re2
         WHERE re2.request_id = se.request_id
+        AND re2.status = 'completed'
     )
     %s
 GROUP BY se.channel_id
@@ -204,7 +204,7 @@ ORDER BY se.channel_id`, channelIDFilter)
 SELECT 
     se.channel_id,
     COUNT(*) as total_count,
-    COUNT(*) as success_count,
+    COUNT(*) FILTER (WHERE se.status = 'completed') as success_count,
     SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
     SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL 
          THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms 
@@ -213,14 +213,14 @@ SELECT
     COUNT(DISTINCT se.request_id) as request_count
 FROM request_executions se
 JOIN usage_logs ul ON se.request_id = ul.request_id
-WHERE se.status = 'completed' 
-    AND se.metrics_latency_ms > 0
+WHERE se.metrics_latency_ms > 0
     AND se.created_at >= ? 
     AND se.created_at < ?
     AND se.id = (
         SELECT MAX(re2.id)
         FROM request_executions re2
         WHERE re2.request_id = se.request_id
+        AND re2.status = 'completed'
     )
     %s
 GROUP BY se.channel_id

@@ -7,21 +7,21 @@ export const fastestChannelSchema = z.object({
   channelId: z.string(),
   channelName: z.string(),
   channelType: z.string(),
-  throughput: z.number().nullable().default(0),
-  tokensCount: z.number().nullable().default(0),
-  latencyMs: z.number().nullable().default(0),
-  requestCount: z.number().nullable().default(0),
-  confidenceLevel: z.enum(['high', 'medium', 'low']).nullable().default('medium'),
+  throughput: z.number().nullable().transform(v => v ?? 0).default(0),
+  tokensCount: z.number().nullable().transform(v => v ?? 0).default(0),
+  latencyMs: z.number().nullable().transform(v => v ?? 0).default(0),
+  requestCount: z.number().nullable().transform(v => v ?? 0).default(0),
+  confidenceLevel: z.enum(['high', 'medium', 'low']).nullable().transform(v => v ?? 'medium').default('medium'),
 });
 
 export const fastestModelSchema = z.object({
   modelId: z.string(),
   modelName: z.string(),
-  throughput: z.number().nullable().default(0),
-  tokensCount: z.number().nullable().default(0),
-  latencyMs: z.number().nullable().default(0),
-  requestCount: z.number().nullable().default(0),
-  confidenceLevel: z.enum(['high', 'medium', 'low']).nullable().default('medium'),
+  throughput: z.number().nullable().transform(v => v ?? 0).default(0),
+  tokensCount: z.number().nullable().transform(v => v ?? 0).default(0),
+  latencyMs: z.number().nullable().transform(v => v ?? 0).default(0),
+  requestCount: z.number().nullable().transform(v => v ?? 0).default(0),
+  confidenceLevel: z.enum(['high', 'medium', 'low']).nullable().transform(v => v ?? 'medium').default('medium'),
 });
 
 export const fastestChannelsInputSchema = z.object({

@@ -12,7 +12,7 @@ export function FastestModelsCard() {
   return (
     <FastestPerformersCard<FastestModel>
       title={t('dashboard.cards.fastestPerformers.models')}
-      description={(totalRequests) => `Fastest models by throughput · ${formatNumber(totalRequests)} total requests`}
+      description={(totalRequests) => t('dashboard.cards.fastestPerformers.modelsDescription', { total: formatNumber(totalRequests) })}
       noDataLabel={t('dashboard.cards.fastestPerformers.noData')}
       useData={useFastestModels}
       getName={(item) => item.modelName}

@@ -270,5 +270,9 @@
   "auth.signIn.form.signingIn": "Signing in...",
   "auth.signIn.validation.emailRequired": "Email is required",
   "auth.signIn.links.forgotPassword": "Forgot password?",
-  "auth.signIn.footer.agreement": "By signing in, you agree to our Terms of Service and Privacy Policy"
+  "auth.signIn.footer.agreement": "By signing in, you agree to our Terms of Service and Privacy Policy",
+  "dashboard.confidence.high": "High confidence",
+  "dashboard.confidence.medium": "Medium confidence",
+  "dashboard.confidence.low": "Low confidence",
+  "dashboard.confidence.default": "Confidence"
 }
