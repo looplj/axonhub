@@ -33,6 +33,7 @@ interface HorizontalBarChartProps {
 }
 
 function HorizontalBarChart({ data, total, height = 280, noDataLabel }: HorizontalBarChartProps) {
+  const { t } = useTranslation();
   const safeData = sanitizeChartData(data);
   const safeTotal = safeNumber(total);
 
