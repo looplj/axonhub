@@ -154,6 +154,7 @@ type FastestChannelForModel struct {
 
 type FastestChannelsInput struct {
 	TimeWindow string `json:"timeWindow"`
+	Limit      *int   `json:"limit,omitempty"`
 }
 
 type FastestModel struct {

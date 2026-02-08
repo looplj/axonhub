@@ -123,6 +123,7 @@ type FastestChannelForModel {
 
 input FastestChannelsInput {
   timeWindow: String!
+  limit: Int = 5
 }
 
 extend type Query {

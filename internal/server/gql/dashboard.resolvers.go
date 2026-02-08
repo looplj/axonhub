@@ -753,6 +753,15 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSucc
 func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
+	// Validate and set default limit
+	if input.Limit == nil || *input.Limit <= 0 {
+		input.Limit = new(int)
+		*input.Limit = 5
+	}
+	if *input.Limit > 100 {
+		*input.Limit = 100
+	}
+
 	// Parse time window using calendar periods (like Token Statistics)
 	loc := r.systemService.TimeLocation(ctx)
 	period := xtime.GetCalendarPeriods(loc)
@@ -793,83 +802,14 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	dialectName := db.Dialect()
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
-	// Build query with dialect-aware timestamp placeholder
-	var query string
-	if useDollarPlaceholders {
-		query = `
-WITH successful_execs AS (
-    SELECT
-        request_id,
-        channel_id,
-        metrics_latency_ms,
-        metrics_first_token_latency_ms,
-        stream,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
-    FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= $1
-)
-SELECT
-    se.channel_id,
-    c.name as channel_name,
-    c.type as channel_type,
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-    SUM(se.metrics_latency_ms) as latency_ms,
-    COUNT(DISTINCT se.request_id) as request_count,
-    CASE
-        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                 ELSE se.metrics_latency_ms END) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                   THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                   ELSE se.metrics_latency_ms END)
-        ELSE 0
-    END as throughput
-FROM successful_execs se
-JOIN usage_logs ul ON se.request_id = ul.request_id
-JOIN channels c ON se.channel_id = c.id
-WHERE se.rn = 1
-GROUP BY se.channel_id, c.name, c.type
-ORDER BY throughput DESC
-LIMIT 5`
-	} else {
-		query = `
-WITH successful_execs AS (
-    SELECT
-        request_id,
-        channel_id,
-        metrics_latency_ms,
-        metrics_first_token_latency_ms,
-        stream,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
-    FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ?
-)
-SELECT
-    se.channel_id,
-    c.name as channel_name,
-    c.type as channel_type,
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-    SUM(se.metrics_latency_ms) as latency_ms,
-    COUNT(DISTINCT se.request_id) as request_count,
-    CASE
-        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                 ELSE se.metrics_latency_ms END) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                   THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                   ELSE se.metrics_latency_ms END)
-        ELSE 0
-    END as throughput
-FROM successful_execs se
-JOIN usage_logs ul ON se.request_id = ul.request_id
-JOIN channels c ON se.channel_id = c.id
-WHERE se.rn = 1
-GROUP BY se.channel_id, c.name, c.type
-ORDER BY throughput DESC
-LIMIT 5`
-	}
+	// Build query using shared helper function
+	query := buildThroughputQuery(
+		useDollarPlaceholders,
+		"se.channel_id,\n    c.name as channel_name,\n    c.type as channel_type,",
+		"JOIN channels c ON se.channel_id = c.id",
+		"se.channel_id, c.name, c.type",
+		*input.Limit,
+	)
 
 	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
 	if err != nil {
@@ -921,6 +861,15 @@ LIMIT 5`
 func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error) {
 	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
 
+	// Validate and set default limit
+	if input.Limit == nil || *input.Limit <= 0 {
+		input.Limit = new(int)
+		*input.Limit = 5
+	}
+	if *input.Limit > 100 {
+		*input.Limit = 100
+	}
+
 	// Parse time window using calendar periods (like Token Statistics)
 	loc := r.systemService.TimeLocation(ctx)
 	period := xtime.GetCalendarPeriods(loc)
@@ -962,82 +911,13 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
 	// Build query with dialect-aware timestamp placeholder
-	var query string
-	if useDollarPlaceholders {
-		query = `
-WITH successful_execs AS (
-    SELECT
-        request_id,
-        channel_id,
-        metrics_latency_ms,
-        metrics_first_token_latency_ms,
-        stream,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
-    FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= $1
-)
-SELECT
-    r.model_id,
-    m.name as model_name,
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-    SUM(se.metrics_latency_ms) as latency_ms,
-    COUNT(DISTINCT se.request_id) as request_count,
-    CASE
-        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                 ELSE se.metrics_latency_ms END) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                   THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                   ELSE se.metrics_latency_ms END)
-        ELSE 0
-    END as throughput
-FROM successful_execs se
-JOIN usage_logs ul ON se.request_id = ul.request_id
-JOIN requests r ON se.request_id = r.id
-JOIN models m ON r.model_id = m.model_id
-WHERE se.rn = 1
-GROUP BY r.model_id, m.name
-ORDER BY throughput DESC
-LIMIT 5`
-	} else {
-		query = `
-WITH successful_execs AS (
-    SELECT
-        request_id,
-        channel_id,
-        metrics_latency_ms,
-        metrics_first_token_latency_ms,
-        stream,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
-    FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ?
-)
-SELECT
-    r.model_id,
-    m.name as model_name,
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-    SUM(se.metrics_latency_ms) as latency_ms,
-    COUNT(DISTINCT se.request_id) as request_count,
-    CASE
-        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                 ELSE se.metrics_latency_ms END) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                   THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                   ELSE se.metrics_latency_ms END)
-        ELSE 0
-    END as throughput
-FROM successful_execs se
-JOIN usage_logs ul ON se.request_id = ul.request_id
-JOIN requests r ON se.request_id = r.id
-JOIN models m ON r.model_id = m.model_id
-WHERE se.rn = 1
-GROUP BY r.model_id, m.name
-ORDER BY throughput DESC
-LIMIT 5`
-	}
+	query := buildThroughputQuery(
+		useDollarPlaceholders,
+		"r.model_id,\n    m.name as model_name,",
+		"JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
+		"r.model_id, m.name",
+		*input.Limit,
+	)
 
 	rows, err := db.DB().QueryContext(ctx, query, since.UTC())
 	if err != nil {
@@ -1079,4 +959,55 @@ LIMIT 5`
 			RequestCount: int(item.RequestCount),
 		}
 	}), nil
+}
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+
+// buildThroughputQuery creates a SQL query for calculating throughput statistics.
+// This helper reduces duplication between FastestChannels and FastestModels queries.
+func buildThroughputQuery(useDollarPlaceholders bool, selectColumns, joinClause, groupBy string, limit int) string {
+	placeholder := "$1"
+	if !useDollarPlaceholders {
+		placeholder = "?"
+	}
+
+	return `
+WITH successful_execs AS (
+    SELECT
+        request_id,
+        channel_id,
+        metrics_latency_ms,
+        metrics_first_token_latency_ms,
+        stream,
+        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
+    FROM request_executions
+    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + `
+)
+SELECT
+    ` + selectColumns + `
+    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
+    SUM(se.metrics_latency_ms) as latency_ms,
+    COUNT(DISTINCT se.request_id) as request_count,
+    CASE
+        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
+                 ELSE se.metrics_latency_ms END) > 0
+        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
+             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                   THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
+                   ELSE se.metrics_latency_ms END)
+        ELSE 0
+    END as throughput
+FROM successful_execs se
+JOIN usage_logs ul ON se.request_id = ul.request_id
+` + joinClause + `
+WHERE se.rn = 1
+GROUP BY ` + groupBy + `
+ORDER BY throughput DESC
+LIMIT ` + fmt.Sprintf("%d", limit)
 }

@@ -24,6 +24,7 @@ export const fastestModelSchema = z.object({
 
 export const fastestChannelsInputSchema = z.object({
   timeWindow: z.string(),
+  limit: z.number().optional().default(5),
 });
 
 // Type exports
@@ -60,13 +61,13 @@ const FASTEST_MODELS_QUERY = `
 `;
 
 // Query hooks
-export function useFastestChannels(timeWindow: string = '24h') {
+export function useFastestChannels(timeWindow: string = 'day', limit: number = 5) {
   return useQuery({
-    queryKey: ['fastestChannels', timeWindow],
+    queryKey: ['fastestChannels', timeWindow, limit],
     queryFn: async () => {
       const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(
         FASTEST_CHANNELS_QUERY,
-        { input: { timeWindow } }
+        { input: { timeWindow, limit } }
       );
       return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
     },
@@ -75,13 +76,13 @@ export function useFastestChannels(timeWindow: string = '24h') {
   });
 }
 
-export function useFastestModels(timeWindow: string = '24h') {
+export function useFastestModels(timeWindow: string = 'day', limit: number = 5) {
   return useQuery({
-    queryKey: ['fastestModels', timeWindow],
+    queryKey: ['fastestModels', timeWindow, limit],
     queryFn: async () => {
       const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(
         FASTEST_MODELS_QUERY,
-        { input: { timeWindow } }
+        { input: { timeWindow, limit } }
       );
       return data.fastestModels.map((item) => fastestModelSchema.parse(item));
     },

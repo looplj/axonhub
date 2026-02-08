@@ -107,7 +107,12 @@ function ChartLegend({ items }: { items: LegendItem[] }) {
   );
 }
 
-interface FastestPerformersCardProps<T> {
+interface ThroughputData {
+  throughput?: number;
+  requestCount?: number;
+}
+
+interface FastestPerformersCardProps<T extends ThroughputData> {
   title: string;
   description: (totalRequests: number) => string;
   noDataLabel: string;
@@ -162,8 +167,8 @@ export function FastestPerformersCard<T>({
       .filter((item) => item != null)
       .map((item) => ({
         name: getName(item) ?? 'Unknown',
-        throughput: safeNumber((item as { throughput?: number }).throughput ?? 0),
-        requestCount: safeNumber((item as { requestCount?: number }).requestCount ?? 0),
+        throughput: safeNumber(item.throughput ?? 0),
+        requestCount: safeNumber(item.requestCount ?? 0),
       }))
   ).sort((a, b) => b.throughput - a.throughput);
 

@@ -51918,7 +51918,11 @@ func (ec *executionContext) unmarshalInputFastestChannelsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"timeWindow"}
+	if _, present := asMap["limit"]; !present {
+		asMap["limit"] = 5
+	}
+
+	fieldsInOrder := [...]string{"timeWindow", "limit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -51932,6 +51936,13 @@ func (ec *executionContext) unmarshalInputFastestChannelsInput(ctx context.Conte
 				return it, err
 			}
 			it.TimeWindow = data
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
 		}
 	}
 
