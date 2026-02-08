@@ -164,6 +164,9 @@ func (t *OutboundTransformer) TransformRequest(
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
 
+	// Apply cache_control breakpoint policy before serialization.
+	ensureCacheControl(anthropicReq)
+
 	// Determine endpoint based on platform
 	url, err := t.buildFullRequestURL(llmReq)
 	if err != nil {
