@@ -316,6 +316,36 @@ docker-compose up -d
 docker-compose ps
 ```
 
+#### Helm Kubernetes 部署 | Helm Kubernetes Deployment
+
+使用官方 Helm Chart 在 Kubernetes 上部署 AxonHub：
+
+```bash
+# Quick installation
+git clone https://github.com/looplj/axonhub.git
+cd axonhub
+helm install axonhub ./deploy/helm
+
+# Production deployment
+helm install axonhub ./deploy/helm -f ./deploy/helm/values-production.yaml
+
+# Access AxonHub
+kubectl port-forward svc/axonhub 8090:8090
+# Visit http://localhost:8090
+```
+
+**关键配置选项：**
+
+| 参数 | 描述 | 默认 |
+|-----------|-------------|---------|
+| `axonhub.replicaCount` | 副本数 | `1` |
+| `axonhub.dbPassword` | 数据库密码 | `axonhub_password` |
+| `postgresql.enabled` | 是否启用内嵌 PostgreSQL | `true` |
+| `ingress.enabled` | 是否启用 Ingress | `false` |
+| `persistence.enabled` | 是否启用持久化存储 | `false` |
+
+有关详细配置和故障排查，请参阅 [Helm Chart 文档](deploy/helm/README.md)。
+
 #### 虚拟机部署 | Virtual Machine Deployment
 
 下载最新版本从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
