@@ -94,15 +94,6 @@ type FastestChannel {
   confidenceLevel: String!
 }
 
-type FastestModelInChannel {
-  modelId: String!
-  modelName: String!
-  throughput: Float!
-  tokensCount: Int!
-  latencyMs: Int!
-  requestCount: Int!
-}
-
 type FastestModel {
   modelId: String!
   modelName: String!
@@ -111,16 +102,6 @@ type FastestModel {
   latencyMs: Int!
   requestCount: Int!
   confidenceLevel: String!
-}
-
-type FastestChannelForModel {
-  channelId: ID!
-  channelName: String!
-  channelType: String!
-  throughput: Float!
-  tokensCount: Int!
-  latencyMs: Int!
-  requestCount: Int!
 }
 
 input FastestChannelsInput {

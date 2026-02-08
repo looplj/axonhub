@@ -33,7 +33,6 @@ export const fastestChannelsInputSchema = z.object({
 export type FastestChannel = z.infer<typeof fastestChannelSchema>;
 export type FastestModel = z.infer<typeof fastestModelSchema>;
 export type FastestChannelsInput = z.infer<typeof fastestChannelsInputSchema>;
-export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
 // GraphQL queries
 const FASTEST_CHANNELS_QUERY = `
@@ -95,5 +94,4 @@ export function useFastestModels(timeWindow: string = 'day', limit: number = 5) 
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }
-
 

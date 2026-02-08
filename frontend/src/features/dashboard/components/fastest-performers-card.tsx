@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, Activity } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
 import type { UseQueryResult } from '@tanstack/react-query';
@@ -90,53 +91,67 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
 }
 
 function ChartLegend({ items }: { items: LegendItem[] }) {
-  const getBadgeVariant = (level?: string) => {
+  const getConfidenceColor = (level?: string) => {
     switch (level) {
       case 'high':
-        return 'default';
+        return 'text-green-500';
       case 'medium':
-        return 'secondary';
+        return 'text-yellow-500';
       case 'low':
-        return 'outline';
+        return 'text-red-500';
       default:
-        return 'secondary';
+        return 'text-muted-foreground';
     }
   };
 
-  const getConfidenceLabel = (level?: string) => {
+  const getConfidenceTooltip = (level?: string) => {
     switch (level) {
       case 'high':
-        return 'High';
+        return 'High confidence';
       case 'medium':
-        return 'Med';
+        return 'Medium confidence';
       case 'low':
-        return 'Low';
+        return 'Low confidence';
       default:
-        return '';
+        return 'Confidence';
     }
   };
 
   return (
-    <div className='grid gap-3'>
-      {items.map((item, index) => (
-        <div key={`${item.name}-${index}`} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3'>
-          <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
-            {item.index.toString().padStart(2, '0')}.
-          </span>
-          <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
-          <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-          <div className='flex items-center gap-2'>
-            <Badge variant={getBadgeVariant(item.confidenceLevel)} className='text-[10px] px-1.5 py-0 h-5'>
-              {getConfidenceLabel(item.confidenceLevel)}
-            </Badge>
-            <div className='text-right leading-tight'>
-              <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
-              <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
+    <TooltipProvider>
+      <div className='grid gap-3'>
+        {items.map((item, index) => {
+          const colorClass = getConfidenceColor(item.confidenceLevel);
+          const tooltip = getConfidenceTooltip(item.confidenceLevel);
+
+          return (
+            <div key={`${item.name}-${index}`} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3'>
+              <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
+                {item.index.toString().padStart(2, '0')}.
+              </span>
+              <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
+              <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
+              <div className='flex items-center gap-2'>
+                {item.confidenceLevel === 'low' || item.confidenceLevel === 'medium' ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Activity className={`h-4 w-4 ${colorClass}`} />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{tooltip}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null}
+                <div className='text-right leading-tight'>
+                  <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
+                  <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      ))}
-    </div>
+          );
+        })}
+      </div>
+    </TooltipProvider>
   );
 }
 

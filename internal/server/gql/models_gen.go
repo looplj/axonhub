@@ -143,16 +143,6 @@ type FastestChannel struct {
 	ConfidenceLevel string       `json:"confidenceLevel"`
 }
 
-type FastestChannelForModel struct {
-	ChannelID    objects.GUID `json:"channelId"`
-	ChannelName  string       `json:"channelName"`
-	ChannelType  string       `json:"channelType"`
-	Throughput   float64      `json:"throughput"`
-	TokensCount  int          `json:"tokensCount"`
-	LatencyMs    int          `json:"latencyMs"`
-	RequestCount int          `json:"requestCount"`
-}
-
 type FastestChannelsInput struct {
 	TimeWindow string `json:"timeWindow"`
 	Limit      *int   `json:"limit,omitempty"`
@@ -166,15 +156,6 @@ type FastestModel struct {
 	LatencyMs       int     `json:"latencyMs"`
 	RequestCount    int     `json:"requestCount"`
 	ConfidenceLevel string  `json:"confidenceLevel"`
-}
-
-type FastestModelInChannel struct {
-	ModelID      string  `json:"modelId"`
-	ModelName    string  `json:"modelName"`
-	Throughput   float64 `json:"throughput"`
-	TokensCount  int     `json:"tokensCount"`
-	LatencyMs    int     `json:"latencyMs"`
-	RequestCount int     `json:"requestCount"`
 }
 
 type FetchModelsPayload struct {

@@ -747,86 +747,6 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSucc
 	return response, nil
 }
 
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-
-func buildThroughputQuery(useDollarPlaceholders bool, selectColumns, joinClause, groupBy string, limit int) string {
-	placeholder := "$1"
-	if !useDollarPlaceholders {
-		placeholder = "?"
-	}
-
-	return `
-WITH successful_execs AS (
-    SELECT
-        request_id,
-        channel_id,
-        metrics_latency_ms,
-        metrics_first_token_latency_ms,
-        stream,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
-    FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + `
-)
-SELECT
-    ` + selectColumns + `
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-    SUM(se.metrics_latency_ms) as latency_ms,
-    COUNT(DISTINCT se.request_id) as request_count,
-    CASE
-        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                 ELSE se.metrics_latency_ms END) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                   THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
-                   ELSE se.metrics_latency_ms END)
-        ELSE 0
-    END as throughput
-FROM successful_execs se
-JOIN usage_logs ul ON se.request_id = ul.request_id
-` + joinClause + `
-WHERE se.rn = 1
-GROUP BY ` + groupBy + `
-ORDER BY throughput DESC
-LIMIT ` + fmt.Sprintf("%d", limit)
-}
-func calculateMinRequests(totalItems int, avgRequests float64) int {
-	if totalItems <= 5 {
-		return 1 // Show everything for small datasets
-	}
-	if totalItems <= 10 {
-		return 5 // Minimum 5 requests
-	}
-	minReq := int(avgRequests * 0.10) // 10% of average
-	if minReq < 10 {
-		return 10
-	}
-	if minReq > 100 {
-		return 100
-	}
-	return minReq
-}
-func calculateConfidenceLevel(requestCount int, median float64) string {
-	// When median is 0, we cannot calculate a meaningful ratio (requestCount/median),
-	// so we default to low confidence since we lack sufficient data for reliable inference.
-	if median == 0 {
-		return "low"
-	}
-	ratio := float64(requestCount) / median
-	if ratio >= 2.0 {
-		return "high"
-	}
-	if ratio >= 0.5 {
-		return "medium"
-	}
-	return "low"
-}
-
 // FastestChannels is the resolver for the fastestChannels field.
 // Returns the fastest channels by throughput (tokens per second) based on completed request executions.
 // Groups by channel_id and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
@@ -1115,4 +1035,83 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	}
 
 	return []*FastestModel{}, nil
+}
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+func buildThroughputQuery(useDollarPlaceholders bool, selectColumns, joinClause, groupBy string, limit int) string {
+	placeholder := "$1"
+	if !useDollarPlaceholders {
+		placeholder = "?"
+	}
+
+	return `
+WITH successful_execs AS (
+    SELECT
+        request_id,
+        channel_id,
+        metrics_latency_ms,
+        metrics_first_token_latency_ms,
+        stream,
+        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
+    FROM request_executions
+    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + `
+)
+SELECT
+    ` + selectColumns + `
+    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
+    SUM(se.metrics_latency_ms) as latency_ms,
+    COUNT(DISTINCT se.request_id) as request_count,
+    CASE
+        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
+                 ELSE se.metrics_latency_ms END) > 0
+        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
+             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                   THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
+                   ELSE se.metrics_latency_ms END)
+        ELSE 0
+    END as throughput
+FROM successful_execs se
+JOIN usage_logs ul ON se.request_id = ul.request_id
+` + joinClause + `
+WHERE se.rn = 1
+GROUP BY ` + groupBy + `
+ORDER BY throughput DESC
+LIMIT ` + fmt.Sprintf("%d", limit)
+}
+func calculateMinRequests(totalItems int, avgRequests float64) int {
+	if totalItems <= 5 {
+		return 1 // Show everything for small datasets
+	}
+	if totalItems <= 10 {
+		return 5 // Minimum 5 requests
+	}
+	minReq := int(avgRequests * 0.10) // 10% of average
+	if minReq < 10 {
+		return 10
+	}
+	if minReq > 100 {
+		return 100
+	}
+	return minReq
+}
+func calculateConfidenceLevel(requestCount int, median float64) string {
+	// When median is 0, we cannot calculate a meaningful ratio (requestCount/median),
+	// so we default to low confidence since we lack sufficient data for reliable inference.
+	if median == 0 {
+		return "low"
+	}
+	ratio := float64(requestCount) / median
+	if ratio >= 2.0 {
+		return "high"
+	}
+	if ratio >= 0.5 {
+		return "medium"
+	}
+	return "low"
 }
