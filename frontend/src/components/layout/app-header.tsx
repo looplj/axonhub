@@ -46,42 +46,45 @@ export function AppHeader() {
     <header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 fixed top-0 z-50 w-full backdrop-blur'>
       <div className='flex h-14 items-center justify-between'>
         {/* Logo + Project Switcher - 左侧对齐 */}
-        <div className='flex items-center gap-2 pl-6'>
+        <div className='flex items-center gap-1 sm:gap-2 pl-2 sm:pl-6'>
           {/* Sidebar Toggle - 与侧边栏图标垂直对齐 */}
-          <SidebarTrigger className='-ml-4 size-8' />
+          <SidebarTrigger className='-ml-2 size-8' />
 
           {/* Logo */}
-          <div className='flex items-center gap-2'>
-            <div className='flex size-8 shrink-0 items-center justify-center overflow-hidden rounded'>
+          <div className='flex items-center gap-1 sm:gap-2'>
+            <div className='flex size-6 sm:size-8 shrink-0 items-center justify-center overflow-hidden rounded'>
               {brandSettings?.brandLogo ? (
                 <img
                   src={brandSettings.brandLogo}
                   alt='Brand Logo'
-                  width={24}
-                  height={24}
-                  className='size-8 object-cover'
+                  className='size-6 sm:size-8 object-cover'
                   onError={(e) => {
                     e.currentTarget.src = '/logo.jpg';
                   }}
                 />
               ) : (
-                <img src='/logo.jpg' alt='Default Logo' width={24} height={24} className='size-8 object-cover' />
+                <img src='/logo.jpg' alt='Default Logo' className='size-6 sm:size-8 object-cover' />
               )}
             </div>
-            <span className='text-sm leading-none font-semibold'>{displayName}</span>
+            {/* Hide brand name on mobile */}
+            <span className='text-sm leading-none font-semibold hidden sm:block'>{displayName}</span>
           </div>
 
-          {/* Separator */}
-          <div className='bg-border mx-0.5 h-3.5 w-px' />
+          {/* Separator - hide on mobile */}
+          <div className='bg-border mx-0.5 h-3.5 w-px hidden sm:block' />
 
-          {/* Project Switcher */}
-          <ProjectSwitcher />
+          {/* Project Switcher - show only icon on mobile */}
+          <div className='hidden sm:block'>
+            <ProjectSwitcher />
+          </div>
         </div>
 
         {/* 右侧控件 */}
-        <div className='flex items-center gap-2 pr-6'>
-          {/* Quota Badges */}
-          <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+        <div className='flex items-center gap-0.5 sm:gap-2 pr-2 sm:pr-6'>
+          {/* Quota Badges - hide on mobile, show only icon */}
+          <div className='hidden sm:block'>
+            <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
+          </div>
 
           <PermissionGuard requiredSystemScope='read_system'>
             <Link to='/system'>
@@ -90,8 +93,14 @@ export function AppHeader() {
               </Button>
             </Link>
           </PermissionGuard>
-          <LanguageSwitch />
-          <ThemeSwitch />
+
+          {/* Hide language/theme on mobile */}
+          <div className='hidden sm:block'>
+            <LanguageSwitch />
+          </div>
+          <div className='hidden sm:block'>
+            <ThemeSwitch />
+          </div>
           <ProfileDropdown />
         </div>
       </div>
