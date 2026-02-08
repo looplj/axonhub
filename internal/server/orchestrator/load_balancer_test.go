@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -248,7 +248,7 @@ func TestLoadBalancer_Sort_NegativeScores(t *testing.T) {
 // with recent errors are ranked lower in the load balancer.
 func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -339,7 +339,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 // recent errors are penalized but recover after the cooldown period.
 func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -408,7 +408,7 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 // exists, the channel that last succeeded for that trace is prioritized.
 func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -496,7 +496,7 @@ func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 // error-aware and trace-aware strategies.
 func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

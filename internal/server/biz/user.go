@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -44,7 +43,6 @@ func NewUserService(params UserServiceParams) *UserService {
 
 // CreateUser creates a new user with hashed password.
 func (s *UserService) CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	// Hash the password
@@ -95,7 +93,6 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 		}
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	mut := client.User.UpdateOneID(id).
@@ -157,7 +154,6 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 
 // UpdateUserStatus updates the status of a user.
 func (s *UserService) UpdateUserStatus(ctx context.Context, id int, status user.Status) (*ent.User, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	user, err := client.User.UpdateOneID(id).
@@ -175,8 +171,6 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, id int, status user.
 
 // GetUserByID gets a user by ID with caching.
 func (s *UserService) GetUserByID(ctx context.Context, id int) (*ent.User, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	// Try cache first
 	cacheKey := buildUserCacheKey(id)
 	if user, err := s.UserCache.Get(ctx, cacheKey); err == nil {
@@ -302,7 +296,6 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 
 // AddUserToProject adds a user to a project with optional owner status, scopes, and roles.
 func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID int, isOwner *bool, scopes []string, roleIDs []int) (*ent.UserProject, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	// Create the project user relationship
@@ -344,7 +337,6 @@ func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID in
 
 // RemoveUserFromProject removes a user from a project.
 func (s *UserService) RemoveUserFromProject(ctx context.Context, userID, projectID int) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	// Delete the relationship (soft delete if enabled)
@@ -405,7 +397,6 @@ func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID i
 		}
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	// Find the UserProject relationship

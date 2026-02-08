@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
@@ -127,6 +128,9 @@ type ChatCompletionResult struct {
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
+	// The context is system bypassed to allow the orchestrator to access the system settings.
+	ctx = authz.WithSystemBypass(ctx, "process-chat-completion")
+
 	apiKey, _ := contexts.GetAPIKey(ctx)
 
 	// Get retry policy from system settings

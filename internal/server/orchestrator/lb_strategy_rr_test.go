@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -316,7 +316,7 @@ func TestRoundRobinStrategy_ScoreConsistency(t *testing.T) {
 
 func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

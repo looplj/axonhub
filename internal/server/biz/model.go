@@ -9,12 +9,14 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type ModelServiceParams struct {
@@ -394,6 +396,8 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		channels = svc.channelService.GetEnabledChannels()
 		profile  *objects.APIKeyProfile
 	)
+
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadChannels)
 
 	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
 		profile = apiKey.GetActiveProfile()

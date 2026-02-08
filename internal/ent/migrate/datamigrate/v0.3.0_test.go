@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
 )
@@ -20,7 +20,7 @@ func TestV0_3_0_NoOwnerUser(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Run migration when no owner user exists
 	err := datamigrate.NewMigrator(client).Run(ctx)
@@ -38,7 +38,7 @@ func TestV0_3_0_MultipleProjectsExist(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create multiple existing projects
 	_, err := client.Project.Create().
@@ -67,7 +67,7 @@ func TestV0_3_0_WithOwnerUser(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create an owner user
 	owner, err := client.User.Create().
@@ -126,7 +126,7 @@ func TestV0_3_0_ProjectAlreadyExists(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create an owner user
 	owner, err := client.User.Create().
@@ -175,7 +175,7 @@ func TestV0_3_0_MultipleOwnerUsers(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create first owner user
 	owner1, err := client.User.Create().
@@ -234,7 +234,7 @@ func TestV0_3_0_Idempotency(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create an owner user
 	_, err := client.User.Create().
@@ -277,7 +277,7 @@ func TestV0_3_0_OwnerWithoutIsOwnerFlag(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a regular user (not marked as owner)
 	_, err := client.User.Create().
@@ -306,7 +306,7 @@ func TestV0_3_0_VerifyRoleScopes(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create an owner user
 	_, err := client.User.Create().
@@ -360,7 +360,7 @@ func TestV0_3_0_AssignUsersToDefaultProject(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create an owner user
 	owner, err := client.User.Create().
@@ -446,7 +446,7 @@ func TestV0_3_0_AssignUsersToDefaultProject_ConstraintError(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a regular user
 	user1, err := client.User.Create().

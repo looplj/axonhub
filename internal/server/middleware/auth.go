@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -44,6 +46,12 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
 		}
 
+		ctx, err = withAPIKeyPrincipal(ctx, apiKey)
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
+			return
+		}
+
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -73,6 +81,13 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 		}
 
 		ctx := contexts.WithUser(c.Request.Context(), user)
+
+		ctx, err = withUserPrincipal(ctx, user)
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
+			return
+		}
+
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -114,6 +129,12 @@ func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
 		}
 
+		ctx, err = withAPIKeyPrincipal(ctx, apiKey)
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
+			return
+		}
+
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
@@ -152,6 +173,12 @@ func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
 		}
 
+		ctx, err = withAPIKeyPrincipal(ctx, apiKey)
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
+			return
+		}
+
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
@@ -165,4 +192,19 @@ func WithSource(source request.Source) gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
+}
+
+func withUserPrincipal(ctx context.Context, user *ent.User) (context.Context, error) {
+	principal := authz.Principal{Type: authz.PrincipalTypeUser, UserID: &user.ID}
+	return authz.WithPrincipal(ctx, principal)
+}
+
+func withAPIKeyPrincipal(ctx context.Context, key *ent.APIKey) (context.Context, error) {
+	principal := authz.Principal{Type: authz.PrincipalTypeAPIKey, APIKeyID: &key.ID}
+	if key.Edges.Project != nil {
+		projectID := key.Edges.Project.ID
+		principal.ProjectID = &projectID
+	}
+
+	return authz.WithPrincipal(ctx, principal)
 }

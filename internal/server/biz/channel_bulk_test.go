@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -18,7 +18,7 @@ func TestChannelService_BulkEnableChannels(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create test channels with disabled status
 	ch1, err := client.Channel.Create().
@@ -115,7 +115,7 @@ func TestChannelService_BulkDisableChannels(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create test channels
 	ch1, err := client.Channel.Create().
@@ -211,7 +211,7 @@ func TestChannelService_BulkArchiveChannels(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(context.Background(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create test channels
 	ch1, err := client.Channel.Create().

@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -85,7 +85,7 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 	// Set up a test secret key in the system service
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create system entry for secret key
 	secretKey, err := GenerateSecretKey()
@@ -134,7 +134,7 @@ func TestAuthService_GenerateJWTToken(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test user
 	hashedPassword, err := HashPassword("test-password")
@@ -194,7 +194,7 @@ func TestAuthService_AuthenticateUser(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test user
 	password := "test-password-123"
@@ -253,7 +253,7 @@ func TestAuthService_AuthenticateJWTToken(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test user
 	hashedPassword, err := HashPassword("test-password")
@@ -328,7 +328,7 @@ func TestAuthService_AnthenticateAPIKey(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test user
 	hashedPassword, err := HashPassword("test-password")
@@ -468,7 +468,7 @@ func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {
 
 			ctx := context.Background()
 			ctx = ent.NewContext(ctx, client)
-			ctx = privacy.DecisionContext(ctx, privacy.Allow)
+			ctx = authz.WithTestBypass(ctx)
 
 			// Create a test user
 			hashedPassword, err := HashPassword("test-password")
@@ -517,7 +517,7 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test user
 	hashedPassword, err := HashPassword("test-password")

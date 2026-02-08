@@ -9,12 +9,12 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/model"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -28,7 +28,7 @@ func setupBackupTest(t *testing.T) (*ent.Client, *BackupService, context.Context
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	user, err := client.User.Create().
 		SetEmail("test@example.com").

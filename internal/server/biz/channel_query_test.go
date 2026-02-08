@@ -8,9 +8,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -20,7 +20,7 @@ func TestChannelService_QueryChannels_WithModelFilter(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create test channels with different models
 	channels := []*ent.Channel{
@@ -139,7 +139,7 @@ func TestChannelService_QueryChannels_ModelFilterNoPagination(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create channels for testing
 	for i := 1; i <= 10; i++ {
@@ -182,7 +182,7 @@ func TestChannelService_QueryChannels_WithModelMapping(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create channels with model mappings
 	settings := &objects.ChannelSettings{
@@ -257,7 +257,7 @@ func TestChannelService_QueryChannels_WithExtraModelPrefix(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create channels with extra model prefix
 	settings := &objects.ChannelSettings{
@@ -328,7 +328,7 @@ func TestChannelService_QueryChannels_WithoutModelFilter(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create test channels
 	channels := []*ent.Channel{

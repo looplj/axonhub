@@ -6,9 +6,9 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -31,7 +31,7 @@ func (v *V0_3_0) Version() string {
 
 // Migrate performs the version 0.3.0 data migration.
 func (v *V0_3_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(context.Background(), "database-migrate")
 	// Check if a project already exists
 	_, err = client.Project.Query().Limit(1).First(ctx)
 	if err == nil {

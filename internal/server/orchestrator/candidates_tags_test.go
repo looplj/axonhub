@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -21,7 +21,7 @@ func setupTagsTest(t *testing.T) (context.Context, *ent.Client, []*biz.Channel) 
 	t.Helper()
 
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	t.Cleanup(func() { client.Close() })
 
@@ -380,7 +380,7 @@ func TestTagsFilterSelector_ErrorPropagation(t *testing.T) {
 // TestTagsFilterSelector_CaseSensitive 测试标签是否大小写敏感.
 func TestTagsFilterSelector_CaseSensitive(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// 创建一个带有大写标签的渠道
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")

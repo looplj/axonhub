@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 )
@@ -14,8 +13,6 @@ import (
 func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, errorStatusCode int) {
 	ctx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 	defer cancel()
-
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	_, err := svc.db.Channel.UpdateOneID(channelID).
 		SetStatus(channel.StatusDisabled).
@@ -73,8 +70,6 @@ func (svc *ChannelService) checkAndHandleChannelError(ctx context.Context, perf 
 // checkAndHandleAPIKeyError checks if the API key should be disabled based on the error status code.
 // Returns true if the API key was disabled.
 func (svc *ChannelService) checkAndHandleAPIKeyError(ctx context.Context, perf *PerformanceRecord, policy *RetryPolicy) bool {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	for _, statusConfig := range policy.AutoDisableChannel.Statuses {
 		if statusConfig.Status != perf.ErrorStatusCode {
 			continue

@@ -13,7 +13,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
@@ -1050,19 +1049,6 @@ func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context,
 	return []objects.JSONRawMessage{}, nil
 }
 
-func (s *RequestService) getDataStorage(ctx context.Context, dataStorageID int) (*ent.DataStorage, error) {
-	if dataStorageID == 0 {
-		return s.DataStorageService.GetPrimaryDataStorage(ctx)
-	}
-
-	dataStorage, err := s.DataStorageService.GetDataStorageByID(ctx, dataStorageID)
-	if err != nil {
-		return nil, err
-	}
-
-	return dataStorage, nil
-}
-
 func (s *RequestService) GetTraceFirstRequest(ctx context.Context, traceID int) (*ent.Request, error) {
 	client := s.entFromContext(ctx)
 	if client == nil {
@@ -1114,22 +1100,13 @@ func (s *RequestService) GetTraceFirstSegment(ctx context.Context, traceID int) 
 // GetLastSuccessfulChannelID retrieves the last successful channel ID from a trace.
 // Returns 0 if no successful channel is found.
 func (s *RequestService) GetLastSuccessfulChannelID(ctx context.Context, traceID int) (int, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	// Try cache first
 	cacheKey := buildLastChannelCacheKey(traceID)
 	if channelID, err := s.channelCache.Get(ctx, cacheKey); err == nil {
 		return channelID, nil
 	}
 
-	// Query database
-	client := s.entFromContext(ctx)
-	if client == nil {
-		return 0, fmt.Errorf("ent client not found in context")
-	}
-
-	// Query the most recent successful request in this trace
-	req, err := client.Request.Query().
+	req, err := s.entFromContext(ctx).Request.Query().
 		Where(
 			request.TraceIDEQ(traceID),
 			// Only successful requests

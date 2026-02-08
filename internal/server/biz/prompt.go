@@ -8,9 +8,9 @@ import (
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -43,7 +43,7 @@ func NewPromptService(params PromptServiceParams) *PromptService {
 }
 
 func (svc *PromptService) Initialize(ctx context.Context) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(ctx, "prompt-initialize")
 
 	projects, err := svc.entFromContext(ctx).Project.Query().All(ctx)
 	if err != nil {
@@ -322,7 +322,7 @@ func (svc *PromptService) BulkDisablePrompts(ctx context.Context, ids []int) err
 }
 
 func (svc *PromptService) loadPrompts(ctx context.Context, projectID int) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(ctx, "prompt-load-cache")
 	// Check if there are updates for this project
 	latestUpdatedPrompt, err := svc.entFromContext(ctx).Prompt.Query().
 		Where(prompt.ProjectID(projectID)).

@@ -7,6 +7,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/entql"
+	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -113,11 +114,6 @@ func TestProjectMemberQueryRule(t *testing.T) {
 	}
 }
 
-// Helper function to create int pointer.
-func intPtr(i int) *int {
-	return &i
-}
-
 func TestProjectMemberQueryRuleWithProjectID(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -194,7 +190,7 @@ func TestProjectMemberQueryRuleWithProjectID(t *testing.T) {
 						Roles: []*ent.Role{
 							{
 								ID:        1,
-								ProjectID: intPtr(100),
+								ProjectID: lo.ToPtr(100),
 								Scopes:    []string{"read_requests"},
 							},
 						},
@@ -215,7 +211,7 @@ func TestProjectMemberQueryRuleWithProjectID(t *testing.T) {
 						Roles: []*ent.Role{
 							{
 								ID:        1,
-								ProjectID: intPtr(100),
+								ProjectID: lo.ToPtr(100),
 								Scopes:    []string{"read_requests"},
 							},
 						},

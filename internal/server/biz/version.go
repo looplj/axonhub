@@ -11,7 +11,28 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/looplj/axonhub/internal/build"
+	"github.com/looplj/axonhub/internal/ent"
 )
+
+// Version retrieves the system version from system settings.
+// Returns empty string if not set.
+func (s *SystemService) Version(ctx context.Context) (string, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyVersion)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", nil
+		}
+
+		return "", fmt.Errorf("failed to get system version: %w", err)
+	}
+
+	return value, nil
+}
+
+// SetVersion sets the system version.
+func (s *SystemService) SetVersion(ctx context.Context, version string) error {
+	return s.setSystemValue(ctx, SystemKeyVersion, version)
+}
 
 // VersionCheckResult contains the result of a version check.
 type VersionCheckResult struct {

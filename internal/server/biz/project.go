@@ -9,7 +9,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/log"
@@ -176,17 +175,16 @@ func (s *ProjectService) UpdateProject(ctx context.Context, id int, input ent.Up
 	return project, nil
 }
 
-// GetProjectByID retrieves a project by its ID with caching.
 func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Project, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	return s.getProjectByIDWithBypass(ctx, id)
+}
 
-	// Try cache first
+func (s *ProjectService) getProjectByID(ctx context.Context, id int) (*ent.Project, error) {
 	cacheKey := buildProjectCacheKey(id)
 	if proj, err := s.ProjectCache.Get(ctx, cacheKey); err == nil {
 		return &proj, nil
 	}
 
-	// Query database
 	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
@@ -197,7 +195,6 @@ func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Proje
 		return nil, fmt.Errorf("failed to get project: %w", err)
 	}
 
-	// Cache the project
 	err = s.ProjectCache.Set(ctx, cacheKey, *proj)
 	if err != nil {
 		log.Warn(ctx, "failed to cache project", zap.Error(err))

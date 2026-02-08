@@ -27,6 +27,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/db"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -131,7 +132,7 @@ func calculateConfidenceAndSort[T any](
 // Note: This resolver provides high-level dashboard metrics.
 // For detailed request statistics, see RequestStats resolver documentation.
 func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOverview, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// Initialize response with defaults to handle partial failures gracefully
 	stats := &DashboardOverview{
@@ -184,7 +185,7 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 // For process tracking (e.g., failed requests), use request/request_execution tables.
 // For channel-level statistics, use request_execution table.
 func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// Initialize response with defaults to handle partial failures gracefully
 	stats := &RequestStats{
@@ -236,7 +237,7 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 // Note: Uses usage_logs table for result-only statistics aggregated by channel.
 // For channel-level process tracking (e.g., success/failure rates), use request_execution table.
 func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// Use efficient aggregation query with JOIN to get channel details and filter out deleted channels
 	type channelStats struct {
@@ -288,7 +289,7 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 // Note: Uses usage_logs table for result-only statistics aggregated by model.
 // This provides successful request counts per model.
 func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	type modelStats struct {
 		ModelID string `json:"model_id"`
@@ -328,7 +329,7 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 // Note: Uses usage_logs table for result-only statistics aggregated by API key.
 // This provides successful request counts per API key.
 func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	type apiKeyStats struct {
 		APIKeyID int `json:"api_key_id"`
@@ -398,7 +399,7 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 // Note: Uses usage_logs table for token consumption statistics aggregated by API key.
 // This provides actual token usage (input, output, cached, reasoning) per API key.
 func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	type tokenStats struct {
 		APIKeyID        int   `json:"api_key_id"`
@@ -503,7 +504,7 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 // Note: Uses usage_logs table for daily aggregated statistics (count, tokens, cost).
 // Provides result-only daily metrics for the last 30 days.
 func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	daysCount := 30
 
@@ -600,7 +601,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 // Note: Uses usage_logs table for project-level request statistics.
 // Provides result-only request counts per project.
 func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequestsProjects, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	limitCount := 10
 
@@ -668,7 +669,7 @@ func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequests
 // Note: Uses usage_logs table for token consumption statistics (today, this week, this month).
 // Provides result-only token metrics aggregated by calendar periods.
 func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// Initialize response with defaults to handle partial failures gracefully
 	stats := &TokenStats{
@@ -752,7 +753,7 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 // This provides success/failure rates per channel, suitable for monitoring channel health.
 // For result-only channel statistics, use RequestStatsByChannel instead.
 func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSuccessRate, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	limitCount := 5
 
@@ -849,7 +850,7 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSucc
 // Returns the fastest channels by throughput (tokens per second) based on completed request executions.
 // Groups by channel_id and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
 func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// Validate and set default limit
 	if input.Limit == nil || *input.Limit <= 0 {
@@ -983,7 +984,7 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 // Returns the fastest models by throughput (tokens per second) based on completed request executions.
 // Groups by request.model_id (AxonHub model) and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
 func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error) {
-	ctx = scopes.WithUserScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// Validate and set default limit
 	if input.Limit == nil || *input.Limit <= 0 {

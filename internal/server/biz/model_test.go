@@ -7,12 +7,12 @@ import (
 	"entgo.io/ent/dialect"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/model"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
@@ -23,7 +23,7 @@ func TestModelService_QueryModelChannelConnections(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 	svc := &ModelService{
 		AbstractService: &AbstractService{
 			db: client,
@@ -444,7 +444,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create channels with different configurations
 	_, err := client.Channel.Create().
@@ -880,7 +880,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		// Context without API key
 		ctxNoAPIKey := context.Background()
 		ctxNoAPIKey = ent.NewContext(ctxNoAPIKey, client)
-		ctxNoAPIKey = privacy.DecisionContext(ctxNoAPIKey, privacy.Allow)
+		ctxNoAPIKey = authz.WithTestBypass(ctxNoAPIKey)
 
 		result, err := modelSvc.ListEnabledModels(ctxNoAPIKey)
 		require.NoError(t, err)

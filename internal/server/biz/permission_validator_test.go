@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
@@ -34,7 +34,7 @@ func TestCanGrantScopes(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	t.Run("owner can grant any scopes", func(t *testing.T) {
 		// Create owner user
@@ -148,7 +148,7 @@ func TestCanEditUserPermissions(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	t.Run("owner can edit any user", func(t *testing.T) {
 		// Create owner
@@ -287,7 +287,7 @@ func TestCanEditRole(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	t.Run("user can edit role with scopes they possess", func(t *testing.T) {
 		// Create user with specific scopes
@@ -359,7 +359,7 @@ func TestProjectLevelPermissions(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	t.Run("project owner can grant any project scopes", func(t *testing.T) {
 		// Create project
@@ -486,7 +486,7 @@ func TestIntegrationWithRoleService(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	t.Run("creating role validates permissions", func(t *testing.T) {
 		// Create user with limited scopes

@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zhenzou/executors"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xfile"
@@ -75,7 +75,7 @@ func TestTraceService_GetOrCreateTrace(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -116,7 +116,7 @@ func TestTraceService_GetOrCreateTrace_WithThread(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -149,7 +149,7 @@ func TestTraceService_GetOrCreateTrace_DifferentProjects(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create two test projects
 	project1, err := client.Project.Create().
@@ -188,7 +188,7 @@ func TestTraceService_GetTraceByID(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -225,7 +225,7 @@ func TestTraceService_GetRequestTrace(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -315,7 +315,7 @@ func TestTraceService_GetRequestTrace_WithToolCalls(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -411,7 +411,7 @@ func TestTraceService_GetRequestTrace_AnthropicResponseTransformation(t *testing
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	projectEntity, err := client.Project.Create().
 		SetName("anthropic-project").
@@ -502,7 +502,7 @@ func TestTraceService_GetRequestTrace_WithReasoningContent(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -579,7 +579,7 @@ func TestTraceService_GetRequestTrace_EmptyTrace(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -608,7 +608,7 @@ func TestTraceService_GetRequestTrace_MultipleRequestsWithToolResults(t *testing
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	projectEntity, err := client.Project.Create().
 		SetName("multi-request-project").
@@ -766,7 +766,7 @@ func TestTraceService_GetRequestTrace_integration(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Test GetRequestTrace
 	traceRoot, err := traceService.GetRootSegment(ctx, 153)

@@ -7,10 +7,10 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -41,7 +41,7 @@ func TestCreateRole(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner, err := client.User.Create().
@@ -114,7 +114,7 @@ func TestUpdateRole(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner, err := client.User.Create().
@@ -177,7 +177,7 @@ func TestDeleteRole(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	t.Run("delete role without users successfully", func(t *testing.T) {
 		// Create a role
@@ -287,7 +287,7 @@ func TestBulkDeleteRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	t.Run("bulk delete roles without users successfully", func(t *testing.T) {
 		// Create multiple roles
@@ -438,7 +438,7 @@ func TestUpdateRole_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner, err := client.User.Create().
@@ -498,7 +498,7 @@ func TestDeleteRole_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a role
 	testRole, err := client.Role.Create().
@@ -555,7 +555,7 @@ func TestBulkDeleteRoles_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create multiple roles
 	role1, err := client.Role.Create().

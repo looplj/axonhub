@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"entgo.io/ent/privacy"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -131,7 +130,6 @@ func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error
 		return false, fmt.Errorf("provider quota service is not available")
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	r.providerQuotaService.ManualCheck(ctx)
 
 	return true, nil
@@ -151,8 +149,6 @@ func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error)
 
 // BrandSettings is the resolver for the brandSettings field.
 func (r *queryResolver) BrandSettings(ctx context.Context) (*BrandSettings, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	brandName, err := r.systemService.BrandName(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get brand name: %w", err)

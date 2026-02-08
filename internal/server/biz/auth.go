@@ -11,9 +11,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
@@ -81,9 +81,9 @@ func GenerateSecretKey() (string, error) {
 
 // GenerateJWTToken generates a JWT token for a user.
 func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (string, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	secretKey, err := s.SystemService.SecretKey(ctx)
+	secretKey, err := authz.RunWithSystemBypass(ctx, "auth-get-secret-key", func(bypassCtx context.Context) (string, error) {
+		return s.SystemService.SecretKey(bypassCtx)
+	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret key: %w", err)
 	}
@@ -106,15 +106,15 @@ func (s *AuthService) AuthenticateUser(
 	ctx context.Context,
 	email, password string,
 ) (*ent.User, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	u, err := authz.RunWithSystemBypass(ctx, "auth-lookup", func(bypassCtx context.Context) (*ent.User, error) {
+		client := s.entFromContext(bypassCtx)
 
-	client := s.entFromContext(ctx)
-
-	user, err := client.User.Query().
-		Where(user.EmailEQ(email)).
-		Where(user.StatusEQ(user.StatusActivated)).
-		WithRoles().
-		Only(ctx)
+		return client.User.Query().
+			Where(user.EmailEQ(email)).
+			Where(user.StatusEQ(user.StatusActivated)).
+			WithRoles().
+			Only(bypassCtx)
+	})
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, fmt.Errorf("invalid email or password: %w", ErrInvalidPassword)
@@ -125,22 +125,21 @@ func (s *AuthService) AuthenticateUser(
 		return nil, ErrInternal
 	}
 
-	// Verify password
-	err = VerifyPassword(user.Password, password)
+	err = VerifyPassword(u.Password, password)
 	if err != nil {
 		return nil, fmt.Errorf("invalid email or password %w", ErrInvalidPassword)
 	}
 
-	log.Debug(ctx, "user authenticated", log.Int("user_id", user.ID))
+	log.Debug(ctx, "user authenticated", log.Int("user_id", u.ID))
 
-	return user, nil
+	return u, nil
 }
 
 // AuthenticateJWTToken validates a JWT token and returns the user.
 func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString string) (*ent.User, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	secretKey, err := s.SystemService.SecretKey(ctx)
+	secretKey, err := authz.RunWithSystemBypass(ctx, "auth-get-secret-key", func(bypassCtx context.Context) (string, error) {
+		return s.SystemService.SecretKey(bypassCtx)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret key: %w", err)
 	}
@@ -166,7 +165,9 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 		return nil, fmt.Errorf("%w: invalid token claims", ErrInvalidJWT)
 	}
 
-	u, err := s.UserService.GetUserByID(ctx, int(userID))
+	u, err := authz.RunWithSystemBypass(ctx, "auth-lookup", func(bypassCtx context.Context) (*ent.User, error) {
+		return s.UserService.GetUserByID(bypassCtx, int(userID))
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to get user: %w", ErrInvalidJWT, err)
 	}
@@ -179,7 +180,9 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 }
 
 func (s *AuthService) AnthenticateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
-	apiKey, err := s.APIKeyService.GetAPIKey(ctx, key)
+	apiKey, err := authz.RunWithSystemBypass(ctx, "auth-lookup", func(bypassCtx context.Context) (*ent.APIKey, error) {
+		return s.APIKeyService.GetAPIKey(bypassCtx, key)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get api key: %w", err)
 	}

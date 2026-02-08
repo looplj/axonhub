@@ -9,10 +9,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/oauth"
@@ -35,7 +35,7 @@ func TestCodexRefreshPersistsChannelCredentials(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	ctx := ent.NewContext(context.Background(), db)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	created, err := db.Channel.Create().
 		SetType(channel.TypeCodex).

@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -85,8 +84,8 @@ func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
 		KeyFunc:         func(v *ent.APIKey) string { return buildAPIKeyCacheKey(v.Key) },
 		DeletedFunc:     func(v *ent.APIKey) bool { return v.DeletedAt != 0 },
 		Watcher:         notifier,
-		LoadOneFunc:     svc.loadAPIKeyByKey,
-		LoadSinceFunc:   svc.loadAPIKeysSince,
+		LoadOneFunc:     svc.onLoadOneKey,
+		LoadSinceFunc:   svc.onLoadAPIKeysSince,
 	})
 
 	if err := svc.APIKeyCache.Load(context.Background()); err != nil {
@@ -106,7 +105,6 @@ func (s *APIKeyService) loadAPIKeyByKey(ctx context.Context, cacheKey string) (*
 		return nil, live.ErrKeyNotFound
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	client := s.entFromContext(ctx)
 
 	item, err := client.APIKey.Query().Where(apikey.KeyEQ(originalKey), apikey.DeletedAtEQ(0)).First(ctx)
@@ -126,7 +124,6 @@ func (s *APIKeyService) loadAPIKeyByKey(ctx context.Context, cacheKey string) (*
 }
 
 func (s *APIKeyService) loadAPIKeysSince(ctx context.Context, since time.Time) ([]*ent.APIKey, time.Time, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	ctx = schematype.SkipSoftDelete(ctx)
 	client := s.entFromContext(ctx)
 
@@ -439,9 +436,8 @@ func buildAPIKeyCacheKeys(keys []string) []string {
 	return cacheKeys
 }
 
-// GetAPIKey authenticates an API key and returns the API key entity.
 func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	// Add API key to context for cache.
 	ctx = context.WithValue(ctx, apiKeyCtxKey{}, key)
 	cacheKey := buildAPIKeyCacheKey(key)
 

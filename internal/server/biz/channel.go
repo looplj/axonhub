@@ -12,7 +12,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -91,11 +90,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
 
-	// Load channel performance metrics after channels are loaded
-	if err := svc.LoadChannelPerformances(context.Background()); err != nil {
-		log.Error(context.Background(), "failed to load channel performances", log.Cause(err))
-		// Continue loading channels even if metrics loading fails
-	}
+	svc.initChannelPerformances(context.Background())
 
 	watcherMode := params.CacheConfig.Mode
 	if watcherMode == "" {
@@ -123,19 +118,14 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		Name:            "axonhub:enabled_channels",
 		InitialValue:    []*Channel{},
 		RefreshInterval: time.Minute,
-		RefreshFunc:     svc.refreshEnabledChannels,
+		RefreshFunc:     svc.onCacheRefreshed,
 		OnSwap:          svc.onEnabledChannelsSwap,
 		Watcher:         svc.channelNotifier,
 	})
 	xerrors.NoErr(svc.enabledChannelsCache.Load(context.Background(), true))
 
 	// Schedule model sync every hour
-	xerrors.NoErr2(
-		svc.Executors.ScheduleFuncAtCronRate(
-			svc.syncChannelModels,
-			executors.CRONRule{Expr: "11 * * * *"},
-		),
-	)
+	xerrors.NoErr2(svc.Executors.ScheduleFuncAtCronRate(svc.runSyncChannelModelsPeriodically, executors.CRONRule{Expr: "11 * * * *"}))
 
 	// Start performance metrics background flush
 	go svc.startPerformanceProcess()
@@ -179,9 +169,7 @@ type ChannelService struct {
 	perfCh chan *PerformanceRecord
 }
 
-func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
+func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
 	// Query latest updated channel including soft-deleted ones to detect deletions
 	latestUpdatedChannel, err := svc.entFromContext(ctx).Channel.Query().
 		Order(ent.Desc(channel.FieldUpdatedAt)).
@@ -443,11 +431,6 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	channel, err := createBuilder.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create channel: %w", err)
-	}
-
-	// Initialize ChannelPerformance record for the new channel
-	if err := svc.InitializeChannelPerformance(ctx, channel.ID); err != nil {
-		return nil, fmt.Errorf("failed to initialize channel performance record: %w", err)
 	}
 
 	return channel, nil
