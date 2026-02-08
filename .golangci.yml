@@ -369,6 +369,7 @@ formatters:
       - "axonhub.resolvers.go"
       - "ent.resolvers.go"
       - "internal/ent"
+      - "internal/server/gql/ent.resolvers.go"
   
 
 issues:

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/model"
@@ -133,6 +134,116 @@ func TestBackupService_Restore_ModelPricesOnly(t *testing.T) {
 		First(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "ref-gpt-4", restoredPrice.ReferenceID)
+}
+
+func TestBackupService_Restore_RemapChannelIDsInModelSettingsAndAPIKeyProfiles(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	createBackupTestProject(t, client, ctx, "Default", "Default Project")
+
+	oldChannelID := 123
+	backupData := BackupData{
+		Version: BackupVersion,
+		Channels: []*BackupChannel{
+			{
+				Channel: ent.Channel{
+					ID:      oldChannelID,
+					Type:    channel.TypeOpenai,
+					Name:    "Channel From Backup",
+					BaseURL: "https://api.example.com",
+					Status:  channel.StatusEnabled,
+				},
+				Credentials: objects.ChannelCredentials{APIKey: "backup-api-key"},
+			},
+		},
+		Models: []*BackupModel{
+			{
+				Model: ent.Model{
+					Developer: "openai",
+					ModelID:   "gpt-4",
+					Type:      model.TypeChat,
+					Name:      "GPT-4",
+					Icon:      "test-icon",
+					Group:     "test",
+					Settings: &objects.ModelSettings{
+						Associations: []*objects.ModelAssociation{
+							{
+								Type:     "channel_model",
+								Priority: 0,
+								ChannelModel: &objects.ChannelModelAssociation{
+									ChannelID: oldChannelID,
+									ModelID:   "gpt-4",
+								},
+								Regex: &objects.RegexAssociation{
+									Pattern: ".*",
+									Exclude: []*objects.ExcludeAssociation{
+										{ChannelIds: []int{oldChannelID}},
+									},
+								},
+							},
+						},
+					},
+					Status: model.StatusEnabled,
+				},
+			},
+		},
+		APIKeys: []*BackupAPIKey{
+			{
+				APIKey: ent.APIKey{
+					Key:    "sk-backup-key",
+					Name:   "Backup API Key",
+					Type:   "user",
+					Status: "enabled",
+					Scopes: []string{"chat"},
+					Profiles: &objects.APIKeyProfiles{
+						ActiveProfile: "default",
+						Profiles: []objects.APIKeyProfile{
+							{
+								Name:       "default",
+								ChannelIDs: []int{oldChannelID},
+								ModelIDs:   []string{"gpt-4"},
+							},
+						},
+					},
+				},
+				ProjectName: "Default",
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(backupData, "", "  ")
+	require.NoError(t, err)
+
+	err = service.Restore(ctx, data, RestoreOptions{
+		IncludeChannels:         true,
+		IncludeModels:           true,
+		IncludeAPIKeys:          true,
+		ChannelConflictStrategy: ConflictStrategyOverwrite,
+		ModelConflictStrategy:   ConflictStrategyOverwrite,
+		APIKeyConflictStrategy:  ConflictStrategyOverwrite,
+	})
+	require.NoError(t, err)
+
+	restoredChannel, err := client.Channel.Query().Where(channel.Name("Channel From Backup")).First(ctx)
+	require.NoError(t, err)
+	require.NotEqual(t, oldChannelID, restoredChannel.ID)
+
+	restoredModel, err := client.Model.Query().Where(model.ModelID("gpt-4")).First(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, restoredModel.Settings)
+	require.Len(t, restoredModel.Settings.Associations, 1)
+	require.NotNil(t, restoredModel.Settings.Associations[0].ChannelModel)
+	require.Equal(t, restoredChannel.ID, restoredModel.Settings.Associations[0].ChannelModel.ChannelID)
+	require.NotNil(t, restoredModel.Settings.Associations[0].Regex)
+	require.Len(t, restoredModel.Settings.Associations[0].Regex.Exclude, 1)
+	require.Equal(t, []int{restoredChannel.ID}, restoredModel.Settings.Associations[0].Regex.Exclude[0].ChannelIds)
+
+	restoredKey, err := client.APIKey.Query().Where(apikey.Key("sk-backup-key")).First(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, restoredKey.Profiles)
+	require.Len(t, restoredKey.Profiles.Profiles, 1)
+	require.Equal(t, []int{restoredChannel.ID}, restoredKey.Profiles.Profiles[0].ChannelIDs)
 }
 
 func TestBackupService_Restore_NewData(t *testing.T) {

@@ -49,6 +49,7 @@ type ModelAssociation struct {
 	// channel_tags_regex: the specified pattern in channels with specified tags (OR logic)
 	Type             string                       `json:"type"`
 	Priority         int                          `json:"priority"` // Lower value = higher priority, default 0
+	Disabled         bool                         `json:"disabled"`
 	ChannelModel     *ChannelModelAssociation     `json:"channelModel"`
 	ChannelRegex     *ChannelRegexAssociation     `json:"channelRegex"`
 	Regex            *RegexAssociation            `json:"regex"`

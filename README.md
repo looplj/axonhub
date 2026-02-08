@@ -20,6 +20,15 @@
 
 ---
 
+## 💖 Support Me
+
+| Provider | Plan | Description | Links |
+|----------|------|-------------|-------|
+| Zhipu AI | GLM CODING PLAN | You've been invited to join the GLM Coding Plan! Enjoy full support for Claude Code, Cline, and 10+ top coding tools — starting at just $3/month. Subscribe now and grab the limited-time deal! | [English](https://z.ai/subscribe?ic=OKAF5UFZOM) / [中文](https://www.bigmodel.cn/glm-coding?ic=WIDLV0OOTJ) |
+| Volcengine | CODING PLAN | Ark Coding Plan supports Doubao, GLM, DeepSeek, Kimi and other models. Compatible with unlimited tools. Subscribe now for an extra 10% off — as low as $1.2/month. The more you subscribe, the more you save! | [Link](https://volcengine.com/L/1Q-HZr5Uvk8/) / Code: LXKDZK3W |
+
+---
+
 ## 📖 Project Introduction
 
 ### All-in-one AI Development Platform

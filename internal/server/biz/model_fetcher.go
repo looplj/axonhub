@@ -57,6 +57,17 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}, nil
 	}
 
+	if input.ChannelType == channel.TypeAntigravity.String() {
+		models := lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify {
+			return ModelIdentify{ID: id}
+		})
+
+		return &FetchModelsResult{
+			Models: models,
+			Error:  nil,
+		}, nil
+	}
+
 	var (
 		apiKey      string
 		proxyConfig *httpclient.ProxyConfig
@@ -77,30 +88,31 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			}, nil
 		}
 
+		if ch.Credentials.IsOAuth() {
+			//nolint:exhaustive // only support codex and claudecode for now.
+			switch ch.Type {
+			case channel.TypeCodex:
+				models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+
+				return &FetchModelsResult{
+					Models: models,
+					Error:  nil,
+				}, nil
+			case channel.TypeClaudecode:
+				models := lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+
+				return &FetchModelsResult{
+					Models: models,
+					Error:  nil,
+				}, nil
+			}
+		}
+
 		if apiKey == "" {
 			apiKey = ch.Credentials.APIKey
-		}
-
-		if ch.Type == channel.TypeCodex {
-			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
-				return ModelIdentify{ID: id}
-			})
-
-			return &FetchModelsResult{
-				Models: models,
-				Error:  nil,
-			}, nil
-		}
-
-		if ch.Type == channel.TypeAntigravity {
-			models := lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify {
-				return ModelIdentify{ID: id}
-			})
-
-			return &FetchModelsResult{
-				Models: models,
-				Error:  nil,
-			}, nil
+			if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
+				apiKey = ch.Credentials.APIKeys[0]
+			}
 		}
 
 		if ch.Settings != nil {
@@ -109,50 +121,28 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	if apiKey == "" {
-		if channel.Type(input.ChannelType) == channel.TypeCodex {
-			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
-				return ModelIdentify{ID: id}
-			})
-
-			return &FetchModelsResult{
-				Models: models,
-				Error:  nil,
-			}, nil
-		}
-
-		if channel.Type(input.ChannelType) == channel.TypeAntigravity {
-			models := lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify {
-				return ModelIdentify{ID: id}
-			})
-
-			return &FetchModelsResult{
-				Models: models,
-				Error:  nil,
-			}, nil
-		}
-
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 			Error:  lo.ToPtr("API key is required"),
 		}, nil
 	}
 
-	if channel.Type(input.ChannelType) == channel.TypeCodex {
-		return &FetchModelsResult{
-			Models: lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify {
-				return ModelIdentify{ID: id}
-			}),
-			Error: nil,
-		}, nil
-	}
-
-	if channel.Type(input.ChannelType) == channel.TypeClaudecode {
-		return &FetchModelsResult{
-			Models: lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify {
-				return ModelIdentify{ID: id}
-			}),
-			Error: nil,
-		}, nil
+	if isOAuthJSON(apiKey) {
+		//nolint:exhaustive // only support codex and claudecode for now.
+		switch input.ChannelType {
+		case channel.TypeCodex.String():
+			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+			return &FetchModelsResult{
+				Models: models,
+				Error:  nil,
+			}, nil
+		case channel.TypeClaudecode.String():
+			models := lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+			return &FetchModelsResult{
+				Models: models,
+				Error:  nil,
+			}, nil
+		}
 	}
 
 	// Validate channel type

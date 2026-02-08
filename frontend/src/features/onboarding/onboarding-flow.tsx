@@ -123,6 +123,27 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               },
             },
             {
+              popover: {
+                title: t('system.onboarding.steps.autoDisableIntro.title'),
+                description: t('system.onboarding.steps.autoDisableIntro.description'),
+              },
+            },
+            {
+              element: '#auto-disable-channel',
+              popover: {
+                title: t('system.onboarding.steps.autoDisableToggle.title'),
+                description: t('system.onboarding.steps.autoDisableToggle.description'),
+                side: 'right',
+                align: 'start',
+              },
+            },
+            {
+              popover: {
+                title: t('system.onboarding.steps.autoDisableComplete.title'),
+                description: t('system.onboarding.steps.autoDisableComplete.description'),
+              },
+            },
+            {
               element: '[data-value="storage"]',
               popover: {
                 title: t('system.onboarding.steps.dataStorage.title'),

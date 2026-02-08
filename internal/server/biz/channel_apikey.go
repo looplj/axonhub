@@ -4,17 +4,19 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"math/rand/v2"
 	"slices"
 	"time"
 
 	"github.com/samber/lo"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/llm/auth"
 )
 
 // DisableAPIKey 禁用指定 key；若所有 key 都不可用则禁用 channel.
@@ -333,24 +335,35 @@ func (svc *ChannelService) IsAPIKeyDisabled(ctx context.Context, channelID int, 
 	return disabled, nil
 }
 
+// traceStickyLRUSize is the default LRU cache size for trace-to-key mappings.
+const traceStickyLRUSize = 1024
+
 // TraceStickyKeyProvider selects an API key deterministically per traceID (if present),
 // using cached enabled keys from the channel snapshot.
 //
-// It can not guarantee the stability of the selected key when the enabled keys change.
+// An LRU cache remembers previous traceID→key selections so that, as long as
+// the previously chosen key is still enabled, the same key is returned even when
+// the enabled-key set changes (e.g. a new key is added). This improves sticky
+// stability compared to pure rendezvous hashing alone.
 //
 //nolint:revive // exported for use in transformers via interface.
 type TraceStickyKeyProvider struct {
 	channel *Channel
+	cache   *lru.Cache[string, string]
 }
 
 func NewTraceStickyKeyProvider(channel *Channel) *TraceStickyKeyProvider {
-	return &TraceStickyKeyProvider{channel: channel}
+	cache, _ := lru.New[string, string](traceStickyLRUSize)
+
+	return &TraceStickyKeyProvider{
+		channel: channel,
+		cache:   cache,
+	}
 }
 
 func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 	enabled := p.channel.cachedEnabledAPIKeys
 	if len(enabled) == 0 {
-		// Fallback: return the first key if no enabled keys.
 		return p.channel.Credentials.APIKeys[0]
 	}
 
@@ -358,27 +371,30 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 		return enabled[0]
 	}
 
-	// Trace 粘性：使用 traceID 做一致性选择。
 	var selectedKey string
 	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
-		selectedKey = rendezvousSelect(enabled, trace.TraceID)
+		if cached, ok := p.cache.Get(trace.TraceID); ok {
+			selectedKey = cached
+		} else {
+			selectedKey = rendezvousSelect(enabled, trace.TraceID)
+			p.cache.Add(trace.TraceID, selectedKey)
+		}
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "Trace sticky key selected",
 				log.String("trace_id", trace.TraceID),
-				log.String("key_prefix", safeKeyPrefix(selectedKey)),
+				log.String("key_prefix", safeAPIKeyPrefix(selectedKey)),
 			)
 		}
 	} else {
-		// Fallback: keep existing behavior when no traceID hint.
-		selectedKey = auth.NewRandomKeyProvider(enabled).Get(ctx)
+		//nolint:gosec // not a security issue, just a random selection.
+		selectedKey = enabled[rand.IntN(len(enabled))]
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "Random key selected",
-				log.String("key_prefix", safeKeyPrefix(selectedKey)),
+				log.String("key_prefix", safeAPIKeyPrefix(selectedKey)),
 			)
 		}
 	}
 
-	// Store the selected key in context for performance tracking
 	contexts.WithChannelAPIKey(ctx, selectedKey)
 
 	return selectedKey
@@ -388,12 +404,12 @@ func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 // This is stable when the key set changes (minimal remapping compared to modulo).
 func rendezvousSelect(keys []string, seed string) string {
 	bestKey := keys[0]
-	bestScore := hash64(seed + "|" + bestKey)
+	bestScore := hashAPIKey(seed + "|" + bestKey)
 
 	for i := 1; i < len(keys); i++ {
 		k := keys[i]
 
-		s := hash64(seed + "|" + k)
+		s := hashAPIKey(seed + "|" + k)
 		if s > bestScore {
 			bestScore = s
 			bestKey = k
@@ -403,14 +419,14 @@ func rendezvousSelect(keys []string, seed string) string {
 	return bestKey
 }
 
-func hash64(s string) uint64 {
+func hashAPIKey(s string) uint64 {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(s))
 
 	return h.Sum64()
 }
 
-func safeKeyPrefix(key string) string {
+func safeAPIKeyPrefix(key string) string {
 	if len(key) >= 2 {
 		return key[:2]
 	}

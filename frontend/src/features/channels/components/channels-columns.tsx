@@ -257,11 +257,14 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
   const channel = row.original;
   const hasError = !!channel.errorMessage;
+  const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
+  const hasDisabledKeys = disabledKeysCount > 0;
 
   const content = (
     <div className='flex justify-center'>
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
+        {!hasError && hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
         <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
       </div>
     </div>
@@ -279,6 +282,19 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
               })}
             </p>
           </div>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (hasDisabledKeys) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent>
+          <p className='text-sm text-amber-500'>
+            {t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}
+          </p>
         </TooltipContent>
       </Tooltip>
     );
