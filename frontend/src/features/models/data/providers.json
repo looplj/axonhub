@@ -45,8 +45,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Kimi K2.5",
-          "type": "chat"
+          "display_name": "Kimi K2.5"
         },
         {
           "id": "kimi-k2-thinking",
@@ -83,8 +82,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Kimi K2 Thinking",
-          "type": "chat"
+          "display_name": "Kimi K2 Thinking"
         },
         {
           "id": "kimi-k2-thinking-turbo",
@@ -121,8 +119,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Kimi K2 Thinking Turbo",
-          "type": "chat"
+          "display_name": "Kimi K2 Thinking Turbo"
         },
         {
           "id": "kimi-k2-0905-preview",
@@ -155,8 +152,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Kimi K2 0905",
-          "type": "chat"
+          "display_name": "Kimi K2 0905"
         },
         {
           "id": "kimi-k2-turbo-preview",
@@ -189,8 +185,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Kimi K2 Turbo",
-          "type": "chat"
+          "display_name": "Kimi K2 Turbo"
         },
         {
           "id": "kimi-k2-0711-preview",
@@ -223,8 +218,7 @@
             "context": 131072,
             "output": 16384
           },
-          "display_name": "Kimi K2 0711",
-          "type": "chat"
+          "display_name": "Kimi K2 0711"
         }
       ]
     },
@@ -269,8 +263,7 @@
             "context": 256000,
             "output": 32000
           },
-          "display_name": "MiMo-V2-Flash",
-          "type": "chat"
+          "display_name": "MiMo-V2-Flash"
         }
       ]
     },
@@ -319,8 +312,7 @@
             "context": 262144,
             "output": 32768
           },
-          "display_name": "Qwen3 VL Plus",
-          "type": "chat"
+          "display_name": "Qwen3 VL Plus"
         },
         {
           "id": "qwen3-max",
@@ -352,8 +344,7 @@
             "context": 262144,
             "output": 65536
           },
-          "display_name": "Qwen3 Max",
-          "type": "chat"
+          "display_name": "Qwen3 Max"
         },
         {
           "id": "qwen3-livetranslate-flash-realtime",
@@ -391,8 +382,7 @@
             "context": 53248,
             "output": 4096
           },
-          "display_name": "Qwen3-LiveTranslate Flash Realtime",
-          "type": "chat"
+          "display_name": "Qwen3-LiveTranslate Flash Realtime"
         },
         {
           "id": "qwen3-omni-flash",
@@ -431,8 +421,7 @@
             "context": 65536,
             "output": 16384
           },
-          "display_name": "Qwen3-Omni Flash",
-          "type": "chat"
+          "display_name": "Qwen3-Omni Flash"
         },
         {
           "id": "qwen3-omni-flash-realtime",
@@ -470,8 +459,7 @@
             "context": 65536,
             "output": 16384
           },
-          "display_name": "Qwen3-Omni Flash Realtime",
-          "type": "chat"
+          "display_name": "Qwen3-Omni Flash Realtime"
         },
         {
           "id": "qwen3-asr-flash",
@@ -503,8 +491,7 @@
             "context": 53248,
             "output": 4096
           },
-          "display_name": "Qwen3-ASR Flash",
-          "type": "chat"
+          "display_name": "Qwen3-ASR Flash"
         },
         {
           "id": "qwen3-next-80b-a3b-instruct",
@@ -536,8 +523,7 @@
             "context": 131072,
             "output": 32768
           },
-          "display_name": "Qwen3 Next 80B A3B Instruct",
-          "type": "chat"
+          "display_name": "Qwen3 Next 80B A3B Instruct"
         },
         {
           "id": "qwen3-next-80b-a3b-thinking",
@@ -575,8 +561,7 @@
             "context": 131072,
             "output": 32768
           },
-          "display_name": "Qwen3 Next 80B A3B Thinking",
-          "type": "chat"
+          "display_name": "Qwen3 Next 80B A3B Thinking"
         },
         {
           "id": "qwen3-coder-flash",
@@ -608,8 +593,7 @@
             "context": 1000000,
             "output": 65536
           },
-          "display_name": "Qwen3 Coder Flash",
-          "type": "chat"
+          "display_name": "Qwen3 Coder Flash"
         },
         {
           "id": "qwen-flash",
@@ -653,8 +637,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-coder-plus",
@@ -686,8 +669,7 @@
             "context": 1000000,
             "output": 65536
           },
-          "display_name": "Qwen3 Coder Plus",
-          "type": "chat"
+          "display_name": "Qwen3 Coder Plus"
         },
         {
           "id": "qwen-omni-turbo-realtime",
@@ -724,8 +706,7 @@
             "context": 32768,
             "output": 2048
           },
-          "display_name": "Qwen-Omni Turbo Realtime",
-          "type": "chat"
+          "display_name": "Qwen-Omni Turbo Realtime"
         },
         {
           "id": "qwen3-vl-235b-a22b",
@@ -760,8 +741,7 @@
             "context": 131072,
             "output": 32768
           },
-          "display_name": "Qwen3-VL 235B-A22B",
-          "type": "chat"
+          "display_name": "Qwen3-VL 235B-A22B"
         },
         {
           "id": "qwen3-vl-30b-a3b",
@@ -796,8 +776,7 @@
             "context": 131072,
             "output": 32768
           },
-          "display_name": "Qwen3-VL 30B-A3B",
-          "type": "chat"
+          "display_name": "Qwen3-VL 30B-A3B"
         },
         {
           "id": "qwen3-14b",
@@ -836,8 +815,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen3 14B",
-          "type": "chat"
+          "display_name": "Qwen3 14B"
         },
         {
           "id": "qwen3-coder-30b-a3b-instruct",
@@ -869,8 +847,7 @@
             "context": 262144,
             "output": 65536
           },
-          "display_name": "Qwen3-Coder 30B-A3B Instruct",
-          "type": "chat"
+          "display_name": "Qwen3-Coder 30B-A3B Instruct"
         },
         {
           "id": "qwen3-8b",
@@ -909,8 +886,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen3 8B",
-          "type": "chat"
+          "display_name": "Qwen3 8B"
         },
         {
           "id": "qwen3-235b-a22b",
@@ -949,8 +925,7 @@
             "context": 131072,
             "output": 32768
           },
-          "display_name": "Qwen3 235B A22B",
-          "type": "chat"
+          "display_name": "Qwen3 235B A22B"
         },
         {
           "id": "qwen3-coder-480b-a35b-instruct",
@@ -982,8 +957,7 @@
             "context": 262144,
             "output": 65536
           },
-          "display_name": "Qwen3-Coder 480B-A35B Instruct",
-          "type": "chat"
+          "display_name": "Qwen3-Coder 480B-A35B Instruct"
         },
         {
           "id": "qwen3-32b",
@@ -1022,8 +996,7 @@
             "context": 131072,
             "output": 16384
           },
-          "display_name": "Qwen3 32B",
-          "type": "chat"
+          "display_name": "Qwen3 32B"
         },
         {
           "id": "qvq-max",
@@ -1057,8 +1030,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "QVQ Max",
-          "type": "chat"
+          "display_name": "QVQ Max"
         },
         {
           "id": "qwq-plus",
@@ -1102,8 +1074,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-omni-turbo",
@@ -1141,8 +1112,7 @@
             "context": 32768,
             "output": 2048
           },
-          "display_name": "Qwen-Omni Turbo",
-          "type": "chat"
+          "display_name": "Qwen-Omni Turbo"
         },
         {
           "id": "qwen-mt-turbo",
@@ -1174,8 +1144,7 @@
             "context": 16384,
             "output": 8192
           },
-          "display_name": "Qwen Mt Turbo",
-          "type": "chat"
+          "display_name": "Qwen Mt Turbo"
         },
         {
           "id": "qwen-mt-plus",
@@ -1207,8 +1176,7 @@
             "context": 16384,
             "output": 8192
           },
-          "display_name": "Qwen Mt Plus",
-          "type": "chat"
+          "display_name": "Qwen Mt Plus"
         },
         {
           "id": "qwen2-5-omni-7b",
@@ -1245,8 +1213,7 @@
             "context": 32768,
             "output": 2048
           },
-          "display_name": "Qwen2.5-Omni 7B",
-          "type": "chat"
+          "display_name": "Qwen2.5-Omni 7B"
         },
         {
           "id": "qwen-turbo",
@@ -1291,8 +1258,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-vl-ocr",
@@ -1325,8 +1291,7 @@
             "context": 34096,
             "output": 4096
           },
-          "display_name": "Qwen Vl Ocr",
-          "type": "chat"
+          "display_name": "Qwen Vl Ocr"
         },
         {
           "id": "qwen2-5-14b-instruct",
@@ -1358,8 +1323,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen2.5 14B Instruct",
-          "type": "chat"
+          "display_name": "Qwen2.5 14B Instruct"
         },
         {
           "id": "qwen2-5-72b-instruct",
@@ -1391,8 +1355,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen2.5 72B Instruct",
-          "type": "chat"
+          "display_name": "Qwen2.5 72B Instruct"
         },
         {
           "id": "qwen2-5-vl-72b-instruct",
@@ -1425,8 +1388,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen2.5-VL 72B Instruct",
-          "type": "chat"
+          "display_name": "Qwen2.5-VL 72B Instruct"
         },
         {
           "id": "qwen2-5-32b-instruct",
@@ -1458,8 +1420,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen2.5 32B Instruct",
-          "type": "chat"
+          "display_name": "Qwen2.5 32B Instruct"
         },
         {
           "id": "qwen2-5-7b-instruct",
@@ -1491,8 +1452,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen2.5 7B Instruct",
-          "type": "chat"
+          "display_name": "Qwen2.5 7B Instruct"
         },
         {
           "id": "qwen2-5-vl-7b-instruct",
@@ -1525,8 +1485,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen2.5-VL 7B Instruct",
-          "type": "chat"
+          "display_name": "Qwen2.5-VL 7B Instruct"
         },
         {
           "id": "qwen-vl-max",
@@ -1559,8 +1518,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen-VL Max",
-          "type": "chat"
+          "display_name": "Qwen-VL Max"
         },
         {
           "id": "qwen-max",
@@ -1598,8 +1556,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-plus",
@@ -1644,8 +1601,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-vl-plus",
@@ -1678,8 +1634,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen-VL Plus",
-          "type": "chat"
+          "display_name": "Qwen-VL Plus"
         },
         {
           "id": "qwen-plus-character-ja",
@@ -1711,8 +1666,7 @@
             "context": 8192,
             "output": 512
           },
-          "display_name": "Qwen Plus Character (Japanese)",
-          "type": "chat"
+          "display_name": "Qwen Plus Character (Japanese)"
         },
         {
           "id": "qwen3-coder-plus-2025-09-23",
@@ -1735,8 +1689,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-coder-plus-2025-07-22",
@@ -1759,8 +1712,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-vl-ocr-latest",
@@ -1784,8 +1736,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qvq-max-2025-05-15",
@@ -1815,8 +1766,7 @@
               "max": 16384,
               "default": 16384
             }
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-long",
@@ -1839,8 +1789,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-turbo-latest",
@@ -1875,8 +1824,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-turbo-2024-09-19",
@@ -1899,8 +1847,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-flash-2025-07-28",
@@ -1935,8 +1882,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-plus-latest",
@@ -1971,8 +1917,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-plus-2024-09-19",
@@ -1995,8 +1940,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-plus-2025-07-14",
@@ -2031,8 +1975,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-plus-2025-09-11",
@@ -2067,8 +2010,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-max-latest",
@@ -2097,8 +2039,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-max-2024-09-19",
@@ -2127,8 +2068,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-max-2024-04-28",
@@ -2151,8 +2091,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-max-2024-04-03",
@@ -2175,8 +2114,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen-max-2025-01-25",
@@ -2205,8 +2143,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-max-2025-09-23",
@@ -2235,8 +2172,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-max-preview",
@@ -2265,8 +2201,7 @@
             "default": false,
             "forced_search": false,
             "search_strategy": "turbo"
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-235b-a22b-thinking-2507",
@@ -2295,8 +2230,7 @@
               "max": 81920,
               "default": 81920
             }
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-235b-a22b-instruct-2507",
@@ -2319,8 +2253,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-30b-a3b-instruct-2507",
@@ -2343,8 +2276,7 @@
           },
           "reasoning": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-30b-a3b-thinking-2507",
@@ -2373,8 +2305,7 @@
               "max": 81920,
               "default": 81920
             }
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-30b-a3b",
@@ -2403,8 +2334,7 @@
               "max": 81920,
               "default": 81920
             }
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-4b",
@@ -2433,8 +2363,7 @@
               "max": 38912,
               "default": 38912
             }
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-1.7b",
@@ -2463,8 +2392,7 @@
               "max": 30720,
               "default": 30720
             }
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-0.6b",
@@ -2493,8 +2421,7 @@
               "max": 30720,
               "default": 30720
             }
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwen3-vl-plus-2025-09-23",
@@ -2524,8 +2451,7 @@
               "max": 81920,
               "default": 81920
             }
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "qwq-plus-latest",
@@ -2557,8 +2483,7 @@
           },
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         }
       ]
     },
@@ -2601,8 +2526,7 @@
             "context": 2000000,
             "output": 30000
           },
-          "display_name": "Grok 4.1 Fast",
-          "type": "chat"
+          "display_name": "Grok 4.1 Fast"
         },
         {
           "id": "grok-4-1-fast-non-reasoning",
@@ -2636,8 +2560,7 @@
             "context": 2000000,
             "output": 30000
           },
-          "display_name": "Grok 4.1 Fast (Non-Reasoning)",
-          "type": "chat"
+          "display_name": "Grok 4.1 Fast (Non-Reasoning)"
         },
         {
           "id": "grok-4-fast-non-reasoning",
@@ -2671,8 +2594,7 @@
             "context": 2000000,
             "output": 30000
           },
-          "display_name": "Grok 4 Fast (Non-Reasoning)",
-          "type": "chat"
+          "display_name": "Grok 4 Fast (Non-Reasoning)"
         },
         {
           "id": "grok-4-fast",
@@ -2707,8 +2629,7 @@
             "context": 2000000,
             "output": 30000
           },
-          "display_name": "Grok 4 Fast",
-          "type": "chat"
+          "display_name": "Grok 4 Fast"
         },
         {
           "id": "grok-code-fast-1",
@@ -2742,8 +2663,7 @@
             "context": 256000,
             "output": 10000
           },
-          "display_name": "Grok Code Fast 1",
-          "type": "chat"
+          "display_name": "Grok Code Fast 1"
         },
         {
           "id": "grok-4",
@@ -2778,8 +2698,7 @@
             "context": 256000,
             "output": 64000
           },
-          "display_name": "Grok 4",
-          "type": "chat"
+          "display_name": "Grok 4"
         },
         {
           "id": "grok-3-fast",
@@ -2812,8 +2731,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 3 Fast",
-          "type": "chat"
+          "display_name": "Grok 3 Fast"
         },
         {
           "id": "grok-3-mini-fast-latest",
@@ -2848,8 +2766,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 3 Mini Fast Latest",
-          "type": "chat"
+          "display_name": "Grok 3 Mini Fast Latest"
         },
         {
           "id": "grok-3",
@@ -2882,8 +2799,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 3",
-          "type": "chat"
+          "display_name": "Grok 3"
         },
         {
           "id": "grok-3-fast-latest",
@@ -2916,8 +2832,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 3 Fast Latest",
-          "type": "chat"
+          "display_name": "Grok 3 Fast Latest"
         },
         {
           "id": "grok-3-latest",
@@ -2950,8 +2865,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 3 Latest",
-          "type": "chat"
+          "display_name": "Grok 3 Latest"
         },
         {
           "id": "grok-3-mini",
@@ -2986,8 +2900,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 3 Mini",
-          "type": "chat"
+          "display_name": "Grok 3 Mini"
         },
         {
           "id": "grok-3-mini-latest",
@@ -3022,8 +2935,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 3 Mini Latest",
-          "type": "chat"
+          "display_name": "Grok 3 Mini Latest"
         },
         {
           "id": "grok-3-mini-fast",
@@ -3058,8 +2970,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 3 Mini Fast",
-          "type": "chat"
+          "display_name": "Grok 3 Mini Fast"
         },
         {
           "id": "grok-2-1212",
@@ -3095,8 +3006,7 @@
           "display_name": "Grok 2 1212",
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "grok-vision-beta",
@@ -3130,8 +3040,7 @@
             "context": 8192,
             "output": 4096
           },
-          "display_name": "Grok Vision Beta",
-          "type": "chat"
+          "display_name": "Grok Vision Beta"
         },
         {
           "id": "grok-beta",
@@ -3164,8 +3073,7 @@
             "context": 131072,
             "output": 4096
           },
-          "display_name": "Grok Beta",
-          "type": "chat"
+          "display_name": "Grok Beta"
         },
         {
           "id": "grok-2-vision",
@@ -3199,8 +3107,7 @@
             "context": 8192,
             "output": 4096
           },
-          "display_name": "Grok 2 Vision",
-          "type": "chat"
+          "display_name": "Grok 2 Vision"
         },
         {
           "id": "grok-2",
@@ -3233,8 +3140,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 2",
-          "type": "chat"
+          "display_name": "Grok 2"
         },
         {
           "id": "grok-2-vision-1212",
@@ -3271,8 +3177,7 @@
           "display_name": "Grok 2 Vision 1212",
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "grok-2-latest",
@@ -3305,8 +3210,7 @@
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Grok 2 Latest",
-          "type": "chat"
+          "display_name": "Grok 2 Latest"
         },
         {
           "id": "grok-2-vision-latest",
@@ -3340,8 +3244,7 @@
             "context": 8192,
             "output": 4096
           },
-          "display_name": "Grok 2 Vision Latest",
-          "type": "chat"
+          "display_name": "Grok 2 Vision Latest"
         },
         {
           "id": "grok-3-mini-fast-beta",
@@ -3369,8 +3272,7 @@
           },
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "grok-3-mini-beta",
@@ -3398,8 +3300,7 @@
           },
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "grok-3-fast-beta",
@@ -3425,8 +3326,7 @@
           },
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "grok-2-image-1212",
@@ -3453,8 +3353,7 @@
           },
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "grok-3-beta",
@@ -3480,8 +3379,7 @@
           },
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         }
       ]
     },
@@ -3521,8 +3419,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Devstral 2",
-          "type": "chat"
+          "display_name": "Devstral 2"
         },
         {
           "id": "labs-devstral-small-2512",
@@ -3555,8 +3452,7 @@
             "context": 256000,
             "output": 256000
           },
-          "display_name": "Devstral Small 2",
-          "type": "chat"
+          "display_name": "Devstral Small 2"
         },
         {
           "id": "devstral-medium-latest",
@@ -3588,8 +3484,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Devstral 2",
-          "type": "chat"
+          "display_name": "Devstral 2"
         },
         {
           "id": "mistral-medium-2508",
@@ -3622,8 +3517,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Mistral Medium 3.1",
-          "type": "chat"
+          "display_name": "Mistral Medium 3.1"
         },
         {
           "id": "devstral-medium-2507",
@@ -3655,8 +3549,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Devstral Medium",
-          "type": "chat"
+          "display_name": "Devstral Medium"
         },
         {
           "id": "devstral-small-2507",
@@ -3688,8 +3581,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Devstral Small",
-          "type": "chat"
+          "display_name": "Devstral Small"
         },
         {
           "id": "mistral-small-2506",
@@ -3722,8 +3614,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "Mistral Small 3.2",
-          "type": "chat"
+          "display_name": "Mistral Small 3.2"
         },
         {
           "id": "mistral-medium-2505",
@@ -3756,8 +3647,7 @@
             "context": 131072,
             "output": 131072
           },
-          "display_name": "Mistral Medium 3",
-          "type": "chat"
+          "display_name": "Mistral Medium 3"
         },
         {
           "id": "devstral-small-2505",
@@ -3789,8 +3679,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Devstral Small 2505",
-          "type": "chat"
+          "display_name": "Devstral Small 2505"
         },
         {
           "id": "mistral-medium-latest",
@@ -3823,8 +3712,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "Mistral Medium",
-          "type": "chat"
+          "display_name": "Mistral Medium"
         },
         {
           "id": "magistral-small",
@@ -3857,8 +3745,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Magistral Small",
-          "type": "chat"
+          "display_name": "Magistral Small"
         },
         {
           "id": "magistral-medium-latest",
@@ -3891,8 +3778,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "Magistral Medium",
-          "type": "chat"
+          "display_name": "Magistral Medium"
         },
         {
           "id": "mistral-large-2512",
@@ -3925,8 +3811,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Mistral Large 3",
-          "type": "chat"
+          "display_name": "Mistral Large 3"
         },
         {
           "id": "pixtral-large-latest",
@@ -3959,8 +3844,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Pixtral Large",
-          "type": "chat"
+          "display_name": "Pixtral Large"
         },
         {
           "id": "mistral-large-latest",
@@ -3993,8 +3877,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Mistral Large",
-          "type": "chat"
+          "display_name": "Mistral Large"
         },
         {
           "id": "mistral-large-2411",
@@ -4026,8 +3909,7 @@
             "context": 131072,
             "output": 16384
           },
-          "display_name": "Mistral Large 2.1",
-          "type": "chat"
+          "display_name": "Mistral Large 2.1"
         },
         {
           "id": "ministral-8b-latest",
@@ -4059,8 +3941,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Ministral 8B",
-          "type": "chat"
+          "display_name": "Ministral 8B"
         },
         {
           "id": "ministral-3b-latest",
@@ -4092,8 +3973,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Ministral 3B",
-          "type": "chat"
+          "display_name": "Ministral 3B"
         },
         {
           "id": "pixtral-12b",
@@ -4126,8 +4006,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Pixtral 12B",
-          "type": "chat"
+          "display_name": "Pixtral 12B"
         },
         {
           "id": "mistral-small-latest",
@@ -4160,8 +4039,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "Mistral Small",
-          "type": "chat"
+          "display_name": "Mistral Small"
         },
         {
           "id": "mistral-nemo",
@@ -4193,8 +4071,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Mistral Nemo",
-          "type": "chat"
+          "display_name": "Mistral Nemo"
         },
         {
           "id": "codestral-latest",
@@ -4226,8 +4103,7 @@
             "context": 256000,
             "output": 4096
           },
-          "display_name": "Codestral",
-          "type": "chat"
+          "display_name": "Codestral"
         },
         {
           "id": "open-mixtral-8x22b",
@@ -4259,8 +4135,7 @@
             "context": 64000,
             "output": 64000
           },
-          "display_name": "Mixtral 8x22B",
-          "type": "chat"
+          "display_name": "Mixtral 8x22B"
         },
         {
           "id": "mistral-embed",
@@ -4291,8 +4166,7 @@
             "context": 8000,
             "output": 3072
           },
-          "display_name": "Mistral Embed",
-          "type": "chat"
+          "display_name": "Mistral Embed"
         },
         {
           "id": "open-mixtral-8x7b",
@@ -4324,8 +4198,7 @@
             "context": 32000,
             "output": 32000
           },
-          "display_name": "Mixtral 8x7B",
-          "type": "chat"
+          "display_name": "Mixtral 8x7B"
         },
         {
           "id": "open-mistral-7b",
@@ -4357,8 +4230,7 @@
             "context": 8000,
             "output": 8000
           },
-          "display_name": "Mistral 7B",
-          "type": "chat"
+          "display_name": "Mistral 7B"
         }
       ]
     },
@@ -4404,8 +4276,7 @@
             "context": 128000,
             "output": 64000
           },
-          "display_name": "DeepSeek Reasoner",
-          "type": "chat"
+          "display_name": "DeepSeek Reasoner"
         },
         {
           "id": "deepseek-chat",
@@ -4438,8 +4309,7 @@
             "context": 128000,
             "output": 8192
           },
-          "display_name": "DeepSeek Chat",
-          "type": "chat"
+          "display_name": "DeepSeek Chat"
         }
       ]
     },
@@ -4480,8 +4350,7 @@
             "context": 204800,
             "output": 131072
           },
-          "display_name": "MiniMax-M2.1",
-          "type": "chat"
+          "display_name": "MiniMax-M2.1"
         },
         {
           "id": "MiniMax-M2",
@@ -4513,8 +4382,7 @@
             "context": 196608,
             "output": 128000
           },
-          "display_name": "MiniMax-M2",
-          "type": "chat"
+          "display_name": "MiniMax-M2"
         }
       ]
     },
@@ -4566,8 +4434,7 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini 3 Flash Preview",
-          "type": "chat"
+          "display_name": "Gemini 3 Flash Preview"
         },
         {
           "id": "gemini-3-pro-preview",
@@ -4611,8 +4478,7 @@
             "context": 1000000,
             "output": 64000
           },
-          "display_name": "Gemini 3 Pro Preview",
-          "type": "chat"
+          "display_name": "Gemini 3 Pro Preview"
         },
         {
           "id": "gemini-flash-lite-latest",
@@ -4651,8 +4517,7 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini Flash-Lite Latest",
-          "type": "chat"
+          "display_name": "Gemini Flash-Lite Latest"
         },
         {
           "id": "gemini-flash-latest",
@@ -4692,8 +4557,7 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini Flash Latest",
-          "type": "chat"
+          "display_name": "Gemini Flash Latest"
         },
         {
           "id": "gemini-2.5-flash-preview-09-2025",
@@ -4739,8 +4603,7 @@
           "search": {
             "supported": true,
             "default": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "gemini-2.5-flash-lite-preview-09-2025",
@@ -4785,8 +4648,7 @@
           "search": {
             "supported": true,
             "default": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "gemini-live-2.5-flash",
@@ -4825,8 +4687,7 @@
             "context": 128000,
             "output": 8000
           },
-          "display_name": "Gemini Live 2.5 Flash",
-          "type": "chat"
+          "display_name": "Gemini Live 2.5 Flash"
         },
         {
           "id": "gemini-2.5-flash-image",
@@ -4861,8 +4722,7 @@
             "context": 32768,
             "output": 32768
           },
-          "display_name": "Gemini 2.5 Flash Image",
-          "type": "image-generation"
+          "display_name": "Gemini 2.5 Flash Image"
         },
         {
           "id": "gemini-2.5-flash-image-preview",
@@ -4897,8 +4757,7 @@
             "context": 32768,
             "output": 32768
           },
-          "display_name": "Gemini 2.5 Flash Image Preview",
-          "type": "image-generation"
+          "display_name": "Gemini 2.5 Flash Image Preview"
         },
         {
           "id": "gemini-live-2.5-flash-preview-native-audio",
@@ -4936,8 +4795,7 @@
             "context": 131072,
             "output": 65536
           },
-          "display_name": "Gemini Live 2.5 Flash Preview Native Audio",
-          "type": "chat"
+          "display_name": "Gemini Live 2.5 Flash Preview Native Audio"
         },
         {
           "id": "gemini-2.5-flash-lite",
@@ -4982,8 +4840,7 @@
           "search": {
             "supported": true,
             "default": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "gemini-2.5-flash-lite-preview-06-17",
@@ -5022,8 +4879,7 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini 2.5 Flash Lite Preview 06-17",
-          "type": "chat"
+          "display_name": "Gemini 2.5 Flash Lite Preview 06-17"
         },
         {
           "id": "gemini-2.5-pro-preview-06-05",
@@ -5062,8 +4918,7 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini 2.5 Pro Preview 06-05",
-          "type": "chat"
+          "display_name": "Gemini 2.5 Pro Preview 06-05"
         },
         {
           "id": "gemini-embedding-001",
@@ -5095,8 +4950,7 @@
             "context": 2048,
             "output": 3072
           },
-          "display_name": "Gemini Embedding 001",
-          "type": "embedding"
+          "display_name": "Gemini Embedding 001"
         },
         {
           "id": "gemini-2.5-flash-preview-05-20",
@@ -5135,8 +4989,7 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini 2.5 Flash Preview 05-20",
-          "type": "chat"
+          "display_name": "Gemini 2.5 Flash Preview 05-20"
         },
         {
           "id": "gemini-2.5-pro-preview-05-06",
@@ -5175,8 +5028,7 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini 2.5 Pro Preview 05-06",
-          "type": "chat"
+          "display_name": "Gemini 2.5 Pro Preview 05-06"
         },
         {
           "id": "gemini-2.5-flash-preview-tts",
@@ -5208,8 +5060,7 @@
             "context": 8000,
             "output": 16000
           },
-          "display_name": "Gemini 2.5 Flash Preview TTS",
-          "type": "chat"
+          "display_name": "Gemini 2.5 Flash Preview TTS"
         },
         {
           "id": "gemini-2.5-pro-preview-tts",
@@ -5241,8 +5092,7 @@
             "context": 8000,
             "output": 16000
           },
-          "display_name": "Gemini 2.5 Pro Preview TTS",
-          "type": "chat"
+          "display_name": "Gemini 2.5 Pro Preview TTS"
         },
         {
           "id": "gemini-2.5-flash-preview-04-17",
@@ -5280,8 +5130,7 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini 2.5 Flash Preview 04-17",
-          "type": "chat"
+          "display_name": "Gemini 2.5 Flash Preview 04-17"
         },
         {
           "id": "gemini-2.5-flash",
@@ -5327,8 +5176,7 @@
           "search": {
             "supported": true,
             "default": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "gemini-2.5-pro",
@@ -5373,8 +5221,7 @@
           "search": {
             "supported": true,
             "default": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "gemini-2.0-flash-lite",
@@ -5411,8 +5258,7 @@
           "display_name": "Gemini 2.0 Flash Lite",
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "gemini-2.0-flash",
@@ -5452,8 +5298,7 @@
           "search": {
             "supported": true,
             "default": false
-          },
-          "type": "chat"
+          }
         },
         {
           "id": "gemini-1.5-flash-8b",
@@ -5489,8 +5334,7 @@
             "context": 1000000,
             "output": 8192
           },
-          "display_name": "Gemini 1.5 Flash-8B",
-          "type": "chat"
+          "display_name": "Gemini 1.5 Flash-8B"
         },
         {
           "id": "gemini-1.5-flash",
@@ -5526,8 +5370,7 @@
             "context": 1000000,
             "output": 8192
           },
-          "display_name": "Gemini 1.5 Flash",
-          "type": "chat"
+          "display_name": "Gemini 1.5 Flash"
         },
         {
           "id": "gemini-1.5-pro",
@@ -5563,8 +5406,7 @@
             "context": 1000000,
             "output": 8192
           },
-          "display_name": "Gemini 1.5 Pro",
-          "type": "chat"
+          "display_name": "Gemini 1.5 Pro"
         },
         {
           "id": "gemini-2.0-flash-preview-image-generation",
@@ -5592,8 +5434,7 @@
           },
           "search": {
             "supported": false
-          },
-          "type": "chat"
+          }
         }
       ]
     },
@@ -5639,8 +5480,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.3 Codex",
-          "type": "chat"
+          "display_name": "GPT-5.3 Codex"
         },
         {
           "id": "gpt-5.2-codex",
@@ -5678,8 +5518,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.2 Codex",
-          "type": "chat"
+          "display_name": "GPT-5.2 Codex"
         },
         {
           "id": "gpt-5.2-pro",
@@ -5715,8 +5554,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.2 Pro",
-          "type": "chat"
+          "display_name": "GPT-5.2 Pro"
         },
         {
           "id": "gpt-5.2-chat-latest",
@@ -5752,8 +5590,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "GPT-5.2 Chat",
-          "type": "chat"
+          "display_name": "GPT-5.2 Chat"
         },
         {
           "id": "gpt-5.2",
@@ -5790,8 +5627,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.2",
-          "type": "chat"
+          "display_name": "GPT-5.2"
         },
         {
           "id": "gpt-5.1-codex",
@@ -5828,8 +5664,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.1 Codex",
-          "type": "chat"
+          "display_name": "GPT-5.1 Codex"
         },
         {
           "id": "gpt-5.1-codex-mini",
@@ -5866,8 +5701,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.1 Codex mini",
-          "type": "chat"
+          "display_name": "GPT-5.1 Codex mini"
         },
         {
           "id": "gpt-5.1",
@@ -5904,8 +5738,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.1",
-          "type": "chat"
+          "display_name": "GPT-5.1"
         },
         {
           "id": "gpt-5.1-codex-max",
@@ -5942,8 +5775,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.1 Codex Max",
-          "type": "chat"
+          "display_name": "GPT-5.1 Codex Max"
         },
         {
           "id": "gpt-5.1-chat-latest",
@@ -5979,8 +5811,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "GPT-5.1 Chat",
-          "type": "chat"
+          "display_name": "GPT-5.1 Chat"
         },
         {
           "id": "gpt-5-pro",
@@ -6016,8 +5847,7 @@
             "input": 272000,
             "output": 272000
           },
-          "display_name": "GPT-5 Pro",
-          "type": "chat"
+          "display_name": "GPT-5 Pro"
         },
         {
           "id": "gpt-5-codex",
@@ -6054,8 +5884,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5-Codex",
-          "type": "chat"
+          "display_name": "GPT-5-Codex"
         },
         {
           "id": "gpt-5-nano",
@@ -6092,8 +5921,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5 Nano",
-          "type": "chat"
+          "display_name": "GPT-5 Nano"
         },
         {
           "id": "gpt-5-mini",
@@ -6130,8 +5958,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5 Mini",
-          "type": "chat"
+          "display_name": "GPT-5 Mini"
         },
         {
           "id": "gpt-5-chat-latest",
@@ -6167,8 +5994,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5 Chat (latest)",
-          "type": "chat"
+          "display_name": "GPT-5 Chat (latest)"
         },
         {
           "id": "gpt-5",
@@ -6205,8 +6031,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5",
-          "type": "chat"
+          "display_name": "GPT-5"
         },
         {
           "id": "gpt-oss-120b",
@@ -6295,8 +6120,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "o3-pro",
-          "type": "chat"
+          "display_name": "o3-pro"
         },
         {
           "id": "codex-mini-latest",
@@ -6330,8 +6154,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "Codex Mini",
-          "type": "chat"
+          "display_name": "Codex Mini"
         },
         {
           "id": "o4-mini",
@@ -6367,8 +6190,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "o4-mini",
-          "type": "chat"
+          "display_name": "o4-mini"
         },
         {
           "id": "o3",
@@ -6404,8 +6226,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "o3",
-          "type": "chat"
+          "display_name": "o3"
         },
         {
           "id": "gpt-4.1-nano",
@@ -6440,8 +6261,7 @@
             "context": 1047576,
             "output": 32768
           },
-          "display_name": "GPT-4.1 nano",
-          "type": "chat"
+          "display_name": "GPT-4.1 nano"
         },
         {
           "id": "gpt-4.1-mini",
@@ -6476,8 +6296,7 @@
             "context": 1047576,
             "output": 32768
           },
-          "display_name": "GPT-4.1 mini",
-          "type": "chat"
+          "display_name": "GPT-4.1 mini"
         },
         {
           "id": "gpt-4.1",
@@ -6512,8 +6331,7 @@
             "context": 1047576,
             "output": 32768
           },
-          "display_name": "GPT-4.1",
-          "type": "chat"
+          "display_name": "GPT-4.1"
         },
         {
           "id": "o1-pro",
@@ -6548,8 +6366,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "o1-pro",
-          "type": "chat"
+          "display_name": "o1-pro"
         },
         {
           "id": "o3-mini",
@@ -6584,8 +6401,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "o3-mini",
-          "type": "chat"
+          "display_name": "o3-mini"
         },
         {
           "id": "o1",
@@ -6621,8 +6437,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "o1",
-          "type": "chat"
+          "display_name": "o1"
         },
         {
           "id": "gpt-4o-2024-11-20",
@@ -6657,8 +6472,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "GPT-4o (2024-11-20)",
-          "type": "chat"
+          "display_name": "GPT-4o (2024-11-20)"
         },
         {
           "id": "o1-preview",
@@ -6692,8 +6506,7 @@
             "context": 128000,
             "output": 32768
           },
-          "display_name": "o1-preview",
-          "type": "chat"
+          "display_name": "o1-preview"
         },
         {
           "id": "o1-mini",
@@ -6728,8 +6541,7 @@
             "context": 128000,
             "output": 65536
           },
-          "display_name": "o1-mini",
-          "type": "chat"
+          "display_name": "o1-mini"
         },
         {
           "id": "gpt-4o-2024-08-06",
@@ -6764,8 +6576,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "GPT-4o (2024-08-06)",
-          "type": "chat"
+          "display_name": "GPT-4o (2024-08-06)"
         },
         {
           "id": "gpt-4o-mini",
@@ -6800,8 +6611,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "GPT-4o mini",
-          "type": "chat"
+          "display_name": "GPT-4o mini"
         },
         {
           "id": "o3-deep-research",
@@ -6836,8 +6646,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "o3-deep-research",
-          "type": "chat"
+          "display_name": "o3-deep-research"
         },
         {
           "id": "o4-mini-deep-research",
@@ -6872,8 +6681,7 @@
             "context": 200000,
             "output": 100000
           },
-          "display_name": "o4-mini-deep-research",
-          "type": "chat"
+          "display_name": "o4-mini-deep-research"
         },
         {
           "id": "gpt-4o-2024-05-13",
@@ -6907,8 +6715,7 @@
             "context": 128000,
             "output": 4096
           },
-          "display_name": "GPT-4o (2024-05-13)",
-          "type": "chat"
+          "display_name": "GPT-4o (2024-05-13)"
         },
         {
           "id": "gpt-4o",
@@ -6943,8 +6750,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "GPT-4o",
-          "type": "chat"
+          "display_name": "GPT-4o"
         },
         {
           "id": "text-embedding-3-small",
@@ -6976,8 +6782,7 @@
             "context": 8191,
             "output": 1536
           },
-          "display_name": "text-embedding-3-small",
-          "type": "embedding"
+          "display_name": "text-embedding-3-small"
         },
         {
           "id": "text-embedding-3-large",
@@ -7009,8 +6814,7 @@
             "context": 8191,
             "output": 3072
           },
-          "display_name": "text-embedding-3-large",
-          "type": "embedding"
+          "display_name": "text-embedding-3-large"
         },
         {
           "id": "gpt-4",
@@ -7043,8 +6847,7 @@
             "context": 8192,
             "output": 8192
           },
-          "display_name": "GPT-4",
-          "type": "chat"
+          "display_name": "GPT-4"
         },
         {
           "id": "gpt-4-turbo",
@@ -7078,8 +6881,7 @@
             "context": 128000,
             "output": 4096
           },
-          "display_name": "GPT-4 Turbo",
-          "type": "chat"
+          "display_name": "GPT-4 Turbo"
         },
         {
           "id": "gpt-3.5-turbo",
@@ -7113,8 +6915,7 @@
             "context": 16385,
             "output": 4096
           },
-          "display_name": "GPT-3.5-turbo",
-          "type": "chat"
+          "display_name": "GPT-3.5-turbo"
         },
         {
           "id": "text-embedding-ada-002",
@@ -7146,8 +6947,7 @@
             "context": 8192,
             "output": 1536
           },
-          "display_name": "text-embedding-ada-002",
-          "type": "embedding"
+          "display_name": "text-embedding-ada-002"
         }
       ]
     },
@@ -7191,8 +6991,7 @@
             "context": 200000,
             "output": 131072
           },
-          "display_name": "GLM-4.7-Flash",
-          "type": "chat"
+          "display_name": "GLM-4.7-Flash"
         },
         {
           "id": "glm-4.7",
@@ -7230,8 +7029,7 @@
             "context": 204800,
             "output": 131072
           },
-          "display_name": "GLM-4.7",
-          "type": "chat"
+          "display_name": "GLM-4.7"
         },
         {
           "id": "glm-4.6v",
@@ -7266,8 +7064,7 @@
             "context": 128000,
             "output": 32768
           },
-          "display_name": "GLM-4.6V",
-          "type": "chat"
+          "display_name": "GLM-4.6V"
         },
         {
           "id": "glm-4.6",
@@ -7302,8 +7099,7 @@
             "context": 204800,
             "output": 131072
           },
-          "display_name": "GLM-4.6",
-          "type": "chat"
+          "display_name": "GLM-4.6"
         },
         {
           "id": "glm-4.5v",
@@ -7338,8 +7134,7 @@
             "context": 64000,
             "output": 16384
           },
-          "display_name": "GLM-4.5V",
-          "type": "chat"
+          "display_name": "GLM-4.5V"
         },
         {
           "id": "glm-4.5-flash",
@@ -7374,8 +7169,7 @@
             "context": 131072,
             "output": 98304
           },
-          "display_name": "GLM-4.5-Flash",
-          "type": "chat"
+          "display_name": "GLM-4.5-Flash"
         },
         {
           "id": "glm-4.5",
@@ -7410,8 +7204,7 @@
             "context": 131072,
             "output": 98304
           },
-          "display_name": "GLM-4.5",
-          "type": "chat"
+          "display_name": "GLM-4.5"
         },
         {
           "id": "glm-4.5-air",
@@ -7446,8 +7239,7 @@
             "context": 131072,
             "output": 98304
           },
-          "display_name": "GLM-4.5-Air",
-          "type": "chat"
+          "display_name": "GLM-4.5-Air"
         }
       ]
     },
@@ -7498,8 +7290,7 @@
             "context": 1000000,
             "output": 128000
           },
-          "display_name": "Claude Opus 4.6",
-          "type": "chat"
+          "display_name": "Claude Opus 4.6"
         },
         {
           "id": "claude-opus-4-5",
@@ -7536,8 +7327,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Opus 4.5 (latest)",
-          "type": "chat"
+          "display_name": "Claude Opus 4.5 (latest)"
         },
         {
           "id": "claude-opus-4-5-20251101",
@@ -7574,8 +7364,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Opus 4.5",
-          "type": "chat"
+          "display_name": "Claude Opus 4.5"
         },
         {
           "id": "claude-haiku-4-5",
@@ -7612,8 +7401,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Haiku 4.5 (latest)",
-          "type": "chat"
+          "display_name": "Claude Haiku 4.5 (latest)"
         },
         {
           "id": "claude-haiku-4-5-20251001",
@@ -7650,8 +7438,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Haiku 4.5",
-          "type": "chat"
+          "display_name": "Claude Haiku 4.5"
         },
         {
           "id": "claude-sonnet-4-5",
@@ -7688,8 +7475,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Sonnet 4.5 (latest)",
-          "type": "chat"
+          "display_name": "Claude Sonnet 4.5 (latest)"
         },
         {
           "id": "claude-sonnet-4-5-20250929",
@@ -7726,8 +7512,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Sonnet 4.5",
-          "type": "chat"
+          "display_name": "Claude Sonnet 4.5"
         },
         {
           "id": "claude-opus-4-1",
@@ -7764,8 +7549,7 @@
             "context": 200000,
             "output": 32000
           },
-          "display_name": "Claude Opus 4.1 (latest)",
-          "type": "chat"
+          "display_name": "Claude Opus 4.1 (latest)"
         },
         {
           "id": "claude-opus-4-1-20250805",
@@ -7802,8 +7586,7 @@
             "context": 200000,
             "output": 32000
           },
-          "display_name": "Claude Opus 4.1",
-          "type": "chat"
+          "display_name": "Claude Opus 4.1"
         },
         {
           "id": "claude-opus-4-0",
@@ -7840,8 +7623,7 @@
             "context": 200000,
             "output": 32000
           },
-          "display_name": "Claude Opus 4 (latest)",
-          "type": "chat"
+          "display_name": "Claude Opus 4 (latest)"
         },
         {
           "id": "claude-sonnet-4-20250514",
@@ -7878,8 +7660,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Sonnet 4",
-          "type": "chat"
+          "display_name": "Claude Sonnet 4"
         },
         {
           "id": "claude-opus-4-20250514",
@@ -7916,8 +7697,7 @@
             "context": 200000,
             "output": 32000
           },
-          "display_name": "Claude Opus 4",
-          "type": "chat"
+          "display_name": "Claude Opus 4"
         },
         {
           "id": "claude-sonnet-4-0",
@@ -7954,8 +7734,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Sonnet 4 (latest)",
-          "type": "chat"
+          "display_name": "Claude Sonnet 4 (latest)"
         },
         {
           "id": "claude-3-7-sonnet-20250219",
@@ -7992,8 +7771,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Sonnet 3.7",
-          "type": "chat"
+          "display_name": "Claude Sonnet 3.7"
         },
         {
           "id": "claude-3-7-sonnet-latest",
@@ -8030,8 +7808,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Sonnet 3.7 (latest)",
-          "type": "chat"
+          "display_name": "Claude Sonnet 3.7 (latest)"
         },
         {
           "id": "claude-3-5-sonnet-20241022",
@@ -8067,8 +7844,7 @@
             "context": 200000,
             "output": 8192
           },
-          "display_name": "Claude Sonnet 3.5 v2",
-          "type": "chat"
+          "display_name": "Claude Sonnet 3.5 v2"
         },
         {
           "id": "claude-3-5-haiku-latest",
@@ -8104,8 +7880,7 @@
             "context": 200000,
             "output": 8192
           },
-          "display_name": "Claude Haiku 3.5 (latest)",
-          "type": "chat"
+          "display_name": "Claude Haiku 3.5 (latest)"
         },
         {
           "id": "claude-3-5-haiku-20241022",
@@ -8141,8 +7916,7 @@
             "context": 200000,
             "output": 8192
           },
-          "display_name": "Claude Haiku 3.5",
-          "type": "chat"
+          "display_name": "Claude Haiku 3.5"
         },
         {
           "id": "claude-3-5-sonnet-20240620",
@@ -8178,8 +7952,7 @@
             "context": 200000,
             "output": 8192
           },
-          "display_name": "Claude Sonnet 3.5",
-          "type": "chat"
+          "display_name": "Claude Sonnet 3.5"
         },
         {
           "id": "claude-3-haiku-20240307",
@@ -8215,8 +7988,7 @@
             "context": 200000,
             "output": 4096
           },
-          "display_name": "Claude Haiku 3",
-          "type": "chat"
+          "display_name": "Claude Haiku 3"
         },
         {
           "id": "claude-3-sonnet-20240229",
@@ -8252,8 +8024,7 @@
             "context": 200000,
             "output": 4096
           },
-          "display_name": "Claude Sonnet 3",
-          "type": "chat"
+          "display_name": "Claude Sonnet 3"
         },
         {
           "id": "claude-3-opus-20240229",
@@ -8289,8 +8060,7 @@
             "context": 200000,
             "output": 4096
           },
-          "display_name": "Claude Opus 3",
-          "type": "chat"
+          "display_name": "Claude Opus 3"
         }
       ]
     }
