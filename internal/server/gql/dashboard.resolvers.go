@@ -13,6 +13,8 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -25,7 +27,6 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
-	"github.com/samber/lo"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -172,7 +173,6 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 			s.OrderBy(sql.Desc("count")).Limit(10)
 		}).
 		Scan(ctx, &results)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by channel: %w", err)
 	}
@@ -822,7 +822,6 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	defer rows.Close()
 
 	for rows.Next() {
-		// Check for context cancellation to allow early exit
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("context cancelled: %w", err)
 		}
@@ -1002,6 +1001,9 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	defer rows.Close()
 
 	for rows.Next() {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("context canceled: %w", err)
+		}
 
 		var stat modelStats
 		if err := rows.Scan(
@@ -1210,6 +1212,7 @@ GROUP BY ` + config.groupBy + `
 ORDER BY throughput DESC
 LIMIT ` + fmt.Sprintf("%d", limit)
 }
+
 func calculateConfidenceLevel(requestCount int, median float64) string {
 	// When median is 0, we cannot calculate a meaningful ratio (requestCount/median),
 	// so we default to low confidence since we lack sufficient data for reliable inference.
