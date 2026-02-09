@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
@@ -25,6 +25,32 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
   const permissions = useRequestPermissions();
   const { data: settings } = useGeneralSettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
+
+  const [displayMode, setDisplayMode] = useState<'latency' | 'tokensPerSecond'>(() => {
+    if (typeof window === 'undefined') return 'latency';
+    return (localStorage.getItem('requests-table-latency-display-mode') as 'latency' | 'tokensPerSecond') || 'latency';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('requests-table-latency-display-mode', displayMode);
+  }, [displayMode]);
+
+  const calculateTokensPerSecond = (request: Request): string => {
+    const usageLog = request.usageLogs?.edges?.[0]?.node;
+    if (!usageLog || request.metricsLatencyMs == null || request.metricsLatencyMs <= 0) {
+      return '-';
+    }
+
+    const totalTokens = (usageLog.promptTokens || 0) + (usageLog.completionTokens || 0);
+    if (totalTokens === 0) {
+      return '-';
+    }
+
+    const latencySeconds = request.metricsLatencyMs / 1000;
+    const tokensPerSecond = totalTokens / latencySeconds;
+
+    return `${Math.round(tokensPerSecond)} tok/s`;
+  };
 
   // Define all columns
   const columns: ColumnDef<Request>[] = [
@@ -413,15 +439,37 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       id: 'latency',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.latency')} />,
+      header: ({ column }) => (
+        <div
+          onClick={() => setDisplayMode(prev => prev === 'latency' ? 'tokensPerSecond' : 'latency')}
+          className="cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
+          title={displayMode === 'latency' ? 'Click to show tokens/s' : 'Click to show latency'}
+        >
+          <DataTableColumnHeader
+            column={column}
+            title={displayMode === 'latency' ? t('requests.columns.latency') : t('requests.columns.tokensPerSecond')}
+          />
+          <span className="text-[10px] text-muted-foreground">
+            ({displayMode === 'latency' ? 'click for tok/s' : 'click for latency'})
+          </span>
+        </div>
+      ),
       cell: ({ row }) => {
         const request = row.original;
         const latencyParts = [];
 
         if (request.status === 'completed') {
-          if (request.metricsLatencyMs != null) {
-            latencyParts.push(formatDuration(request.metricsLatencyMs));
+          if (displayMode === 'latency') {
+            if (request.metricsLatencyMs != null) {
+              latencyParts.push(formatDuration(request.metricsLatencyMs));
+            }
+          } else {
+            const tokensPerSecond = calculateTokensPerSecond(request);
+            if (tokensPerSecond !== '-') {
+              latencyParts.push(tokensPerSecond);
+            }
           }
+
           if (request.stream && request.metricsFirstTokenLatencyMs != null) {
             latencyParts.push(`TTFT: ${formatDuration(request.metricsFirstTokenLatencyMs)}`);
           }
