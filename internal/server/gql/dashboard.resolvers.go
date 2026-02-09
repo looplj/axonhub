@@ -902,7 +902,8 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	if err != nil {
 		return nil, fmt.Errorf("failed to query fastest channels: %w", err)
 	}
-	defer rows.Close()
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
@@ -1026,7 +1027,8 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	if err != nil {
 		return nil, fmt.Errorf("failed to query fastest models: %w", err)
 	}
-	defer rows.Close()
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
