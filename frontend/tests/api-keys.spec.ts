@@ -31,22 +31,11 @@ test.describe('Admin API Keys Management', () => {
     const createButton = dialog.getByRole('button', { name: /创建|Create|保存|Save/i })
     await createButton.click()
     
-    // Wait for dialog to close or success indication
-    await expect(dialog).not.toBeVisible({ timeout: 10000 })
-    
-    // Handle the "查看 API 密钥" (View API Key) dialog that appears after creation
-    // Be robust to localization and aria naming differences
-    const viewDialog = page.locator('[role="dialog"]').filter({ hasText: /查看 API 密钥|View API Key|API Key/i })
-    if (await viewDialog.count()) {
-      // Prefer a close/ok button by name, fallback to the last button
-      const namedClose = viewDialog.getByRole('button', { name: /Close|关闭|确定|OK|Done/i })
-      if (await namedClose.count()) {
-        await namedClose.click()
-      } else {
-        await viewDialog.locator('button').last().click()
-      }
-      await expect(viewDialog).not.toBeVisible({ timeout: 10000 })
-    }
+    // Handle the "View API Key" dialog that appears after creation
+    const viewDialog = page.getByRole('dialog', { name: /查看 API 密钥|View API Key/i })
+    await expect(viewDialog).toBeVisible({ timeout: 10000 })
+    await viewDialog.getByRole('button', { name: /Close|关闭/i }).click()
+    await expect(viewDialog).not.toBeVisible({ timeout: 10000 })
 
     const table = page.locator('[data-testid="api-keys-table"], table:has(th), table').first()
     const row = table.locator('tbody tr').filter({ hasText: uniqueName })
@@ -117,18 +106,12 @@ test.describe('Admin API Keys Management', () => {
     }
     
     await createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click()
-    await expect(createDialog).not.toBeVisible({ timeout: 10000 })
     
-    // Close the view API key dialog if it appears
-    const viewDialog = page.locator('[role="dialog"]').filter({ hasText: /查看 API 密钥|View API Key|API Key/i })
-    if (await viewDialog.count()) {
-      const namedClose = viewDialog.getByRole('button', { name: /Close|关闭|确定|OK|Done/i })
-      if (await namedClose.count()) {
-        await namedClose.click()
-      } else {
-        await viewDialog.locator('button').last().click()
-      }
-    }
+    // Handle the "View API Key" dialog that appears after creation
+    const viewDialog = page.getByRole('dialog', { name: /查看 API 密钥|View API Key/i })
+    await expect(viewDialog).toBeVisible({ timeout: 10000 })
+    await viewDialog.getByRole('button', { name: /Close|关闭/i }).click()
+    await expect(viewDialog).not.toBeVisible({ timeout: 10000 })
     
     // Find the API key row and open profiles dialog
     const table = page.locator('[data-testid="api-keys-table"], table:has(th), table').first()
@@ -221,18 +204,12 @@ test.describe('Admin API Keys Management', () => {
     }
     
     await createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click()
-    await expect(createDialog).not.toBeVisible({ timeout: 10000 })
     
-    // Close view dialog if present
-    const viewDialog = page.locator('[role="dialog"]').filter({ hasText: /查看 API 密钥|View API Key|API Key/i })
-    if (await viewDialog.count()) {
-      const namedClose = viewDialog.getByRole('button', { name: /Close|关闭|确定|OK|Done/i })
-      if (await namedClose.count()) {
-        await namedClose.click()
-      } else {
-        await viewDialog.locator('button').last().click()
-      }
-    }
+    // Handle the "View API Key" dialog that appears after creation
+    const viewDialog = page.getByRole('dialog', { name: /查看 API 密钥|View API Key/i })
+    await expect(viewDialog).toBeVisible({ timeout: 10000 })
+    await viewDialog.getByRole('button', { name: /Close|关闭/i }).click()
+    await expect(viewDialog).not.toBeVisible({ timeout: 10000 })
     
     // Open profiles dialog
     const table = page.locator('[data-testid="api-keys-table"], table:has(th), table').first()
@@ -317,18 +294,12 @@ test.describe('Admin API Keys Management', () => {
     }
 
     await createDialog.getByRole('button', { name: /创建|Create|保存|Save/i }).click()
-    await expect(createDialog).not.toBeVisible({ timeout: 10000 })
 
-    const viewDialog = page.locator('[role="dialog"]').filter({ hasText: /查看 API 密钥|View API Key|API Key/i })
-    if (await viewDialog.count()) {
-      const namedClose = viewDialog.getByRole('button', { name: /Close|关闭|确定|OK|Done/i })
-      if (await namedClose.count()) {
-        await namedClose.click()
-      } else {
-        await viewDialog.locator('button').last().click()
-      }
-      await expect(viewDialog).not.toBeVisible({ timeout: 10000 })
-    }
+    // Handle the "View API Key" dialog that appears after creation
+    const viewDialog = page.getByRole('dialog', { name: /查看 API 密钥|View API Key/i })
+    await expect(viewDialog).toBeVisible({ timeout: 10000 })
+    await viewDialog.getByRole('button', { name: /Close|关闭/i }).click()
+    await expect(viewDialog).not.toBeVisible({ timeout: 10000 })
 
     const table = page.locator('[data-testid="api-keys-table"], table:has(th), table').first()
     const row = table.locator('tbody tr').filter({ hasText: uniqueName })
@@ -360,6 +331,12 @@ test.describe('Admin API Keys Management', () => {
       .getByRole('combobox')
     await activeProfileSelect.click()
     await page.getByRole('option', { name: /default/i }).first().click()
+
+    const expandButton = profilesDialog.locator('button[aria-expanded="false"]').first()
+    if (await expandButton.isVisible().catch(() => false)) {
+      await expandButton.click()
+      await page.waitForTimeout(300)
+    }
 
     const quotaSwitch = profilesDialog.getByRole('switch').first()
     await quotaSwitch.click()

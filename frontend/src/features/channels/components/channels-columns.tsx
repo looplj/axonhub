@@ -115,7 +115,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size='sm' variant='outline' className='h-8 w-8 p-0'>
+          <Button size='sm' variant='outline' className='h-8 w-8 p-0' data-testid='row-actions'>
             <DotsHorizontalIcon className='h-3 w-3' />
           </Button>
         </DropdownMenuTrigger>

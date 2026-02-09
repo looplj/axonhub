@@ -12,7 +12,7 @@ test.describe('Users Management', () => {
     await page.waitForLoadState('networkidle');
     
     // Check if the users table is visible
-    await expect(page.locator('[data-testid="users-table"]')).toBeVisible();
+    await expect(page.locator('table[data-testid="users-table"]')).toBeVisible();
     
     // Check if the header is present
     await expect(page.locator('h1, h2').filter({ hasText: /用户管理|Users|User Management/i })).toBeVisible();
@@ -68,7 +68,7 @@ test.describe('Roles Management', () => {
     await page.waitForLoadState('networkidle');
     
     // Check if the roles table is visible
-    await expect(page.locator('[data-testid="roles-table"]')).toBeVisible();
+    await expect(page.locator('table[data-testid="roles-table"]')).toBeVisible();
     
     // Check if the header is present
     await expect(page.locator('h1, h2').filter({ hasText: /角色管理|Roles|Role Management/i })).toBeVisible();
@@ -126,24 +126,24 @@ test.describe('Roles Management', () => {
     await page.waitForLoadState('networkidle');
     
     // Check if table has data or shows empty state
-    const table = page.locator('[data-testid="roles-table"]');
+    const table = page.locator('table[data-testid="roles-table"]');
     await expect(table).toBeVisible();
     
-    // If there are rows, test row interactions
-    const firstRow = table.locator('tbody tr').first();
-    if (await firstRow.isVisible()) {
-      // Test that row actions are available
-      const actionButton = firstRow.locator('[data-testid="row-actions"], button:has(svg), .dropdown-trigger, .action-button');
-      if (await actionButton.count() > 0 && await actionButton.first().isVisible()) {
-        await actionButton.first().click();
-        // Check if dropdown menu appears
-        const actionMenu = page.locator('[data-testid="action-menu"], [role="menu"], .dropdown-menu');
-        if (await actionMenu.count() > 0) {
-          await expect(actionMenu).toBeVisible();
-        }
-        // Close the menu
-        await page.keyboard.press('Escape');
+    const dataRows = table.locator('tbody tr').filter({ hasNotText: /No data available|暂无数据/i });
+    const rowCount = await dataRows.count();
+    if (rowCount === 0) {
+      return;
+    }
+    
+    const firstRow = dataRows.first();
+    const actionButton = firstRow.locator('[data-testid="row-actions"], button:has(svg)').first();
+    if (await actionButton.count() > 0 && await actionButton.isVisible()) {
+      await actionButton.click();
+      const actionMenu = page.locator('[role="menu"]');
+      if (await actionMenu.count() > 0) {
+        await expect(actionMenu).toBeVisible();
       }
+      await page.keyboard.press('Escape');
     }
   });
 });

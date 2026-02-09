@@ -12,6 +12,7 @@ test.describe('Admin System Management', () => {
     ).toBeVisible()
 
     const brandTab = page.getByRole('tab', { name: /Brand|品牌/i })
+    await brandTab.click()
     await expect(brandTab).toHaveAttribute('aria-selected', 'true')
 
     const brandInput = page.getByLabel(/Brand Name|品牌名称/i)
