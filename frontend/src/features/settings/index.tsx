@@ -1,5 +1,5 @@
 import { Outlet } from '@tanstack/react-router';
-import { IconBrowserCheck, IconNotification, IconPalette, IconTool } from '@tabler/icons-react';
+import { IconBrowserCheck, IconNotification, IconPalette } from '@tabler/icons-react';
 import { Main } from '@/components/layout/main';
 
 export default function Settings() {
