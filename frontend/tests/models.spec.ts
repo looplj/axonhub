@@ -8,6 +8,26 @@ test.describe('Admin Models Management', () => {
 
     const modelsTable = page.getByTestId('models-table')
     await modelsTable.waitFor({ state: 'visible', timeout: 20000 })
+
+    // Handle driver.js onboarding overlay (it has allowClose: false, so Escape won't work)
+    const driverOverlay = page.locator('#driver-popover-content')
+    if (await driverOverlay.isVisible().catch(() => false)) {
+      // Click the highlighted settings button to dismiss the onboarding
+      const settingsButton = page.locator('[data-settings-button]')
+      if (await settingsButton.isVisible().catch(() => false)) {
+        await settingsButton.click()
+        await page.waitForTimeout(500)
+      }
+      // Wait for driver overlay to disappear
+      await expect(driverOverlay).not.toBeVisible({ timeout: 5000 }).catch(() => {})
+    }
+
+    // Close any dialog that may have opened (e.g., settings dialog from clicking the button)
+    const settingsDialog = page.getByRole('dialog').filter({ hasText: /Model Settings|模型设置/i })
+    if (await settingsDialog.isVisible().catch(() => false)) {
+      await page.keyboard.press('Escape')
+      await expect(settingsDialog).not.toBeVisible({ timeout: 5000 })
+    }
   })
 
   test('can create, edit, filter, toggle status, and delete a model', async ({ page }) => {
@@ -22,7 +42,7 @@ test.describe('Admin Models Management', () => {
     await expect(createButton).toBeVisible()
     await createButton.click()
 
-    const dialog = page.getByRole('dialog')
+    const dialog = page.locator('[data-slot="dialog-content"]')
     await expect(dialog).toBeVisible()
 
     // Select developer

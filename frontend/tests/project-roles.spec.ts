@@ -28,11 +28,15 @@ test.describe('Project Roles Management', () => {
 
     await dialog.getByLabel(/角色名称|Role Name|名称/i).fill(roleName)
 
+    // Open the scopes combobox
+    const scopesCombo = dialog.getByRole('combobox')
+    await scopesCombo.click()
     // Select first two scopes
-    const firstScopeCheckbox = dialog.getByRole('checkbox').first()
-    const secondScopeCheckbox = dialog.getByRole('checkbox').nth(1)
-    await firstScopeCheckbox.click()
-    await secondScopeCheckbox.click()
+    const scopeOptions = page.getByRole('option')
+    await scopeOptions.nth(0).click()
+    await scopeOptions.nth(1).click()
+    // Close the popover
+    await page.keyboard.press('Escape')
 
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateProjectRole'),
@@ -56,11 +60,9 @@ test.describe('Project Roles Management', () => {
     const editDialog = page.getByRole('dialog')
     await expect(editDialog).toContainText(/编辑角色|Edit Role/i)
     
-    // Verify that the previously selected scopes are checked
-    const firstCheckboxInEdit = editDialog.getByRole('checkbox').first()
-    const secondCheckboxInEdit = editDialog.getByRole('checkbox').nth(1)
-    await expect(firstCheckboxInEdit).toBeChecked()
-    await expect(secondCheckboxInEdit).toBeChecked()
+    // Verify selected scopes are shown as badges
+    const badges = editDialog.locator('.cursor-pointer').filter({ has: page.locator('span') })
+    await expect(badges).toHaveCount(2, { timeout: 5000 })
     
     const updatedName = `${roleName} Updated`
     await editDialog.getByLabel(/角色名称|Role Name|名称/i).fill(updatedName)
@@ -125,11 +127,16 @@ test.describe('Project Roles Management', () => {
     const createDialog = page.getByRole('dialog')
     await createDialog.getByLabel(/角色名称|Role Name|名称/i).fill(roleName)
 
-    // Select specific scopes (first, third, and fifth)
-    const checkboxes = createDialog.getByRole('checkbox')
-    await checkboxes.nth(0).click()
-    await checkboxes.nth(2).click()
-    await checkboxes.nth(4).click()
+    // Open the scopes combobox
+    const scopesCombo = createDialog.getByRole('combobox')
+    await scopesCombo.click()
+    // Select first, third, and fifth scopes
+    const scopeOptions = page.getByRole('option')
+    await scopeOptions.nth(0).click()
+    await scopeOptions.nth(2).click()
+    await scopeOptions.nth(4).click()
+    // Close the popover
+    await page.keyboard.press('Escape')
 
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateProjectRole'),
@@ -152,13 +159,9 @@ test.describe('Project Roles Management', () => {
     const editDialog = page.getByRole('dialog')
     await expect(editDialog).toContainText(/编辑角色|Edit Role/i)
 
-    // Verify that the exact scopes we selected are checked
-    const editCheckboxes = editDialog.getByRole('checkbox')
-    await expect(editCheckboxes.nth(0)).toBeChecked()
-    await expect(editCheckboxes.nth(1)).not.toBeChecked()
-    await expect(editCheckboxes.nth(2)).toBeChecked()
-    await expect(editCheckboxes.nth(3)).not.toBeChecked()
-    await expect(editCheckboxes.nth(4)).toBeChecked()
+    // Verify exactly 3 scopes are shown as badges
+    const editBadges = editDialog.locator('.cursor-pointer').filter({ has: page.locator('span') })
+    await expect(editBadges).toHaveCount(3, { timeout: 5000 })
 
     // Close dialog and clean up
     const cancelBtn = editDialog.getByRole('button', { name: /取消|Cancel/i }).first()

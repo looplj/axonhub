@@ -57,21 +57,7 @@ test.describe('Usage Logs Management', () => {
   });
 
   test('should navigate to usage logs page from sidebar', async ({ page }) => {
-    // Navigate to home page first with authentication
-    await gotoAndEnsureAuth(page, '/');
-    
-    // Click on the usage logs link in the sidebar
-    const usageLogsLink = page.locator('a:has-text("Usage Logs"), a:has-text("用量日志")');
-    await expect(usageLogsLink).toBeVisible();
-    await usageLogsLink.click();
-    
-    // Check if we're on the usage logs page
-    await expect(page).toHaveURL(/.*usage-logs/);
-    await expect(
-      page
-        .getByRole('main')
-        .getByRole('heading', { name: /Usage Logs|用量日志/i })
-        .first()
-    ).toBeVisible();
+    // Usage Logs link has been removed from the sidebar navigation
+    test.skip(true, 'Usage Logs link removed from sidebar');
   });
 });

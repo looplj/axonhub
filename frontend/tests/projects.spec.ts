@@ -33,7 +33,7 @@ test.describe('Admin Projects Management', () => {
     ])
 
     // Verify project appears in the table
-    const projectsTable = page.locator('[data-testid="projects-table"]')
+    const projectsTable = page.locator('table[data-testid="projects-table"]')
     await expect(projectsTable).toBeVisible()
     
     const projectRow = projectsTable.locator('tbody tr').filter({ hasText: name })
@@ -140,7 +140,7 @@ test.describe('Admin Projects Management', () => {
     await page.waitForTimeout(500)
 
     // Verify the searched project appears
-    const projectsTable = page.locator('[data-testid="projects-table"]')
+    const projectsTable = page.locator('table[data-testid="projects-table"]')
     const searchedRow = projectsTable.locator('tbody tr').filter({ hasText: searchTerm })
     await expect(searchedRow).toBeVisible()
   })
@@ -197,54 +197,33 @@ test.describe('Admin Projects Management', () => {
   })
 
   test('can navigate between pages', async ({ page }) => {
-    // This test assumes there are enough projects to paginate
-    const projectsTable = page.locator('[data-testid="projects-table"]')
+    const projectsTable = page.locator('table[data-testid="projects-table"]')
     await expect(projectsTable).toBeVisible()
 
-    // Look for pagination controls
-    const pagination = page.locator('[data-testid="pagination"]').or(
-      page.locator('nav').filter({ hasText: /页|Page|Previous|Next/i })
-    )
+    const nextButton = page.getByRole('button', { name: /下一页|Next|Go to next page/i })
 
-    // Check if pagination exists
-    const paginationCount = await pagination.count()
-    if (paginationCount === 0) {
-      // No pagination, skip test
-      test.skip()
+    if (await nextButton.count() === 0) {
+      test.skip(true, 'No pagination controls found')
       return
     }
 
-    // Check if Next button exists and is enabled
-    const nextButton = pagination.getByRole('button', { name: /下一页|Next/i })
-    const nextButtonCount = await nextButton.count()
-    
-    if (nextButtonCount === 0) {
-      // No next button, skip test
-      test.skip()
-      return
-    }
-    
-    // Only test pagination if there are multiple pages
     const isEnabled = await nextButton.isEnabled().catch(() => false)
-    if (isEnabled) {
-      const firstPageContent = await projectsTable.locator('tbody tr').first().textContent()
-      
-      await nextButton.click()
-      await page.waitForTimeout(500)
-      
-      const secondPageContent = await projectsTable.locator('tbody tr').first().textContent()
-      
-      // Content should be different on the second page
-      expect(firstPageContent).not.toBe(secondPageContent)
-      
-      // Go back to previous page
-      const prevButton = pagination.getByRole('button', { name: /上一页|Previous/i })
-      await expect(prevButton).toBeEnabled()
-      await prevButton.click()
-      await page.waitForTimeout(500)
-    } else {
-      // Not enough data to test pagination
-      test.skip()
+    if (!isEnabled) {
+      test.skip(true, 'Not enough data for pagination')
+      return
     }
+
+    const firstPageContent = await projectsTable.locator('tbody tr').first().textContent()
+
+    await nextButton.click()
+    await page.waitForTimeout(500)
+
+    const secondPageContent = await projectsTable.locator('tbody tr').first().textContent()
+    expect(firstPageContent).not.toBe(secondPageContent)
+
+    const prevButton = page.getByRole('button', { name: /上一页|Previous|Go to previous page/i })
+    await expect(prevButton).toBeEnabled()
+    await prevButton.click()
+    await page.waitForTimeout(500)
   })
 })
