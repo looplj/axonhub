@@ -1,4 +1,8 @@
 {
+  "dashboard.sections.overview": "Overview",
+  "dashboard.sections.channels": "Channel Analytics",
+  "dashboard.sections.apiKeys": "API Key Analytics",
+  "dashboard.sections.performance": "Performance Analytics",
   "dashboard.cards.overview": "Overview",
   "dashboard.cards.requestsByTime": "Requests by Time",
   "dashboard.cards.successRate": "Success Rate",

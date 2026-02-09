@@ -1,4 +1,8 @@
 {
+  "dashboard.sections.overview": "概览",
+  "dashboard.sections.channels": "渠道分析",
+  "dashboard.sections.apiKeys": "API密钥分析",
+  "dashboard.sections.performance": "性能分析",
   "dashboard.cards.overview": "概览",
   "dashboard.cards.requestsByTime": "请求数统计",
   "dashboard.cards.successRate": "成功率",
