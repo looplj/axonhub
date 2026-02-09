@@ -1,7 +1,7 @@
 import {
   IconLayoutDashboard,
   IconPackages,
-  IconUserCog,
+  IconSettings,
   IconUsers,
   IconRobot,
   IconShield,
@@ -160,9 +160,9 @@ export function useSidebarData(): SidebarData {
       title: t('sidebar.groups.settings'),
       items: [
         {
-          title: t('sidebar.items.profile'),
-          url: '/settings',
-          icon: IconUserCog,
+          title: t('sidebar.items.system'),
+          url: '/system',
+          icon: IconSettings,
         } as NavLink,
         // {
         //   title: 'Account',

@@ -1,13 +1,9 @@
 import { useState, useCallback } from 'react';
-import { Link } from '@tanstack/react-router';
-import { IconSettings } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { LanguageSwitch } from '@/components/language-switch';
-import { PermissionGuard } from '@/components/permission-guard';
-import { ProfileDropdown } from '@/components/profile-dropdown';
 import { ThemeSwitch } from '@/components/theme-switch';
 import { QuotaBadges } from '@/components/quota-badges';
 import { checkProviderQuotas } from '@/features/system/data/quotas';
@@ -85,18 +81,10 @@ export function AppHeader() {
           <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
           {/* Desktop-only controls - hidden on mobile */}
-          {!isMobile && (
+            {!isMobile && (
             <>
-              <PermissionGuard requiredSystemScope='read_system'>
-                <Link to='/system'>
-                  <Button variant='ghost' size='icon' className='size-8'>
-                    <IconSettings className='h-4 w-4' />
-                  </Button>
-                </Link>
-              </PermissionGuard>
               <LanguageSwitch />
               <ThemeSwitch />
-              <ProfileDropdown />
             </>
           )}
         </div>
