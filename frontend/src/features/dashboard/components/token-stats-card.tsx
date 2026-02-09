@@ -22,21 +22,21 @@ export function TokenStatsCard() {
           <Skeleton className='h-4 w-4' />
         </CardHeader>
         <CardContent>
-          <div className='flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-2'>
-            <div className='flex flex-col items-center text-center w-full sm:min-w-0 sm:flex-1'>
-              <Skeleton className='h-4 w-[40px] mb-0.5' />
+          <div className='flex items-end justify-between gap-2 sm:flex-col sm:gap-2 xl:flex-row xl:items-end xl:justify-between'>
+            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
+              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
               <Skeleton className='h-6 w-[60px]' />
             </div>
-            <div className='bg-border h-px w-full shrink-0 sm:hidden'></div>
-            <div className='bg-border h-8 w-px shrink-0 hidden sm:block'></div>
-            <div className='flex flex-col items-center text-center w-full sm:min-w-0 sm:flex-1'>
-              <Skeleton className='h-4 w-[40px] mb-0.5' />
+            <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
+            <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
+            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
+              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
               <Skeleton className='h-6 w-[60px]' />
             </div>
-            <div className='bg-border h-px w-full shrink-0 sm:hidden'></div>
-            <div className='bg-border h-8 w-px shrink-0 hidden sm:block'></div>
-            <div className='flex flex-col items-center text-center w-full sm:min-w-0 sm:flex-1'>
-              <Skeleton className='h-4 w-[40px] mb-0.5' />
+            <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
+            <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
+            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
+              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
               <Skeleton className='h-6 w-[60px]' />
             </div>
           </div>
@@ -117,21 +117,21 @@ export function TokenStatsCard() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className='flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between xl:gap-2'>
-          <div className='flex items-center justify-between w-full xl:min-w-0 xl:flex-1 xl:block xl:text-center'>
-            <div className='text-muted-foreground text-xs xl:mb-1'>{t('dashboard.stats.input')}</div>
+        <div className='flex items-end justify-between gap-2 sm:flex-col sm:gap-2 xl:flex-row xl:items-end xl:justify-between'>
+          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
+            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.input')}</div>
             <div className='font-mono text-lg font-bold'>{formatNumber(tokens.input)}</div>
           </div>
-          <div className='bg-border h-px w-full shrink-0 xl:hidden'></div>
-          <div className='bg-border h-8 w-px shrink-0 hidden xl:block'></div>
-          <div className='flex items-center justify-between w-full xl:min-w-0 xl:flex-1 xl:block xl:text-center'>
-            <div className='text-muted-foreground text-xs xl:mb-1'>{t('dashboard.stats.output')}</div>
+          <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
+          <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
+          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
+            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.output')}</div>
             <div className='font-mono text-lg font-bold'>{formatNumber(tokens.output)}</div>
           </div>
-          <div className='bg-border h-px w-full shrink-0 xl:hidden'></div>
-          <div className='bg-border h-8 w-px shrink-0 hidden xl:block'></div>
-          <div className='flex items-center justify-between w-full xl:min-w-0 xl:flex-1 xl:block xl:text-center'>
-            <div className='text-muted-foreground text-xs xl:mb-1'>{t('dashboard.stats.cached')}</div>
+          <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
+          <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
+          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
+            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.cached')}</div>
             <div className='text-muted-foreground font-mono text-lg font-bold'>{formatNumber(tokens.cached)}</div>
           </div>
         </div>
