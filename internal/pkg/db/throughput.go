@@ -123,11 +123,15 @@ SELECT
     COUNT(DISTINCT se.request_id) as request_count,
     CASE
         WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
+                 THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                      THEN 0
+                      ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
                  ELSE se.metrics_latency_ms END) > 0
         THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
              / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                   THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
+                   THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                        THEN 0
+                        ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
                    ELSE se.metrics_latency_ms END)
         ELSE 0
     END as throughput

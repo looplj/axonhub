@@ -11,8 +11,8 @@ export const fastestChannelSchema = z.object({
   channelName: z.string(),
   channelType: z.string(),
   throughput: z.number(),
-  tokensCount: z.number().transform((v) => v ?? 0),
-  latencyMs: z.number().transform((v) => v ?? 0),
+  tokensCount: z.number(),
+  latencyMs: z.number(),
   requestCount: z.number(),
 });
 
@@ -20,8 +20,8 @@ export const fastestModelSchema = z.object({
   modelId: z.string(),
   modelName: z.string(),
   throughput: z.number(),
-  tokensCount: z.number().transform((v) => v ?? 0),
-  latencyMs: z.number().transform((v) => v ?? 0),
+  tokensCount: z.number(),
+  latencyMs: z.number(),
   requestCount: z.number(),
 });
 
