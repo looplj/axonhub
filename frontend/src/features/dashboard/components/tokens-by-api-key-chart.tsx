@@ -106,7 +106,7 @@ export function TokensByAPIKeyChart() {
   return (
     <div className='space-y-6'>
       <ResponsiveContainer width='100%' height={320}>
-        <BarChart data={chartData}>
+        <BarChart data={chartData} isAnimationActive={false}>
           <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
           <XAxis
             dataKey='name'
@@ -131,24 +131,28 @@ export function TokensByAPIKeyChart() {
             fill={TOKEN_COLORS.input}
             name={t('dashboard.stats.inputTokens')}
             radius={[6, 6, 0, 0]}
+            isAnimationActive={false}
           />
           <Bar
             dataKey='outputTokens'
             fill={TOKEN_COLORS.output}
             name={t('dashboard.stats.outputTokens')}
             radius={[6, 6, 0, 0]}
+            isAnimationActive={false}
           />
           <Bar
             dataKey='cachedTokens'
             fill={TOKEN_COLORS.cached}
             name={t('dashboard.stats.cachedTokens')}
             radius={[6, 6, 0, 0]}
+            isAnimationActive={false}
           />
           <Bar
             dataKey='reasoningTokens'
             fill={TOKEN_COLORS.reasoning}
             name={t('dashboard.stats.reasoningTokens')}
             radius={[6, 6, 0, 0]}
+            isAnimationActive={false}
           />
         </BarChart>
       </ResponsiveContainer>

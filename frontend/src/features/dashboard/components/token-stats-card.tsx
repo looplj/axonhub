@@ -12,7 +12,7 @@ type TimeRange = 'thisMonth' | 'thisWeek' | 'thisDay';
 export function TokenStatsCard() {
   const { t } = useTranslation();
   const { data: stats, isLoading, error } = useTokenStats();
-  const [timeRange, setTimeRange] = useState<TimeRange>('thisMonth');
+  const [timeRange, setTimeRange] = useState<TimeRange>('thisDay');
 
   if (isLoading) {
     return (

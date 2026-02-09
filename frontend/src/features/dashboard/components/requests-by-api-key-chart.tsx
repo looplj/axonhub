@@ -85,12 +85,12 @@ export function RequestsByAPIKeyChart() {
   return (
     <div className='space-y-6'>
       <ResponsiveContainer width='100%' height={320}>
-        <BarChart data={chartData} barSize={32}>
+        <BarChart data={chartData} barSize={32} isAnimationActive={false}>
           <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
           <XAxis dataKey='name' hide />
           <YAxis tickLine={false} axisLine={false} width={60} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
           <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
-          <Bar dataKey='value' radius={[6, 6, 0, 0]}>
+          <Bar dataKey='value' radius={[6, 6, 0, 0]} isAnimationActive={false}>
             {chartData.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
