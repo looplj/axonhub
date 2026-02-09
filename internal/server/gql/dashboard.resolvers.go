@@ -30,6 +30,93 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
+// statsItem is an interface constraint for types that have request count and throughput.
+type statsItem interface {
+	comparable
+	~struct {
+		RequestCount int64
+		Throughput   float64
+	}
+}
+
+// scoredItem represents an item with its confidence level and score.
+type scoredItem[T any] struct {
+	stats      T
+	confidence string
+	score      int
+}
+
+// calculateConfidenceAndSort applies confidence scoring, filtering, and sorting logic.
+// It calculates median request count, assigns confidence levels, filters to high/medium when possible,
+// sorts by confidence score then throughput, and returns top N results.
+func calculateConfidenceAndSort[T any](
+	results []T,
+	getRequestCount func(T) int64,
+	getThroughput func(T) float64,
+	limit int,
+) []scoredItem[T] {
+	if len(results) == 0 {
+		return nil
+	}
+
+	requestCounts := lo.Map(results, func(item T, _ int) int {
+		return int(getRequestCount(item))
+	})
+	sort.Ints(requestCounts)
+
+	var median float64
+
+	mid := len(requestCounts) / 2
+	if len(requestCounts)%2 == 0 {
+		median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
+	} else {
+		median = float64(requestCounts[mid])
+	}
+
+	scoredResults := lo.Map(results, func(item T, _ int) scoredItem[T] {
+		conf := db.CalculateConfidenceLevel(int(getRequestCount(item)), median)
+		score := 0
+
+		switch conf {
+		case "high":
+			score = 3
+		case "medium":
+			score = 2
+		case "low":
+			score = 1
+		}
+
+		return scoredItem[T]{
+			stats:      item,
+			confidence: conf,
+			score:      score,
+		}
+	})
+
+	filtered := lo.Filter(scoredResults, func(item scoredItem[T], _ int) bool {
+		return item.confidence == "high" || item.confidence == "medium"
+	})
+
+	resultsToShow := scoredResults
+	if len(filtered) >= limit {
+		resultsToShow = filtered
+	}
+
+	sort.Slice(resultsToShow, func(i, j int) bool {
+		if resultsToShow[i].score != resultsToShow[j].score {
+			return resultsToShow[i].score > resultsToShow[j].score
+		}
+
+		return getThroughput(resultsToShow[i].stats) > getThroughput(resultsToShow[j].stats)
+	})
+
+	if len(resultsToShow) > limit {
+		resultsToShow = resultsToShow[:limit]
+	}
+
+	return resultsToShow
+}
+
 // DashboardOverview is the resolver for the dashboardOverview field.
 // Note: This resolver provides high-level dashboard metrics.
 // For detailed request statistics, see RequestStats resolver documentation.
@@ -825,7 +912,7 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
-			return nil, fmt.Errorf("context cancelled: %w", err)
+			return nil, fmt.Errorf("context canceled: %w", err)
 		}
 
 		var stat channelStats
@@ -851,73 +938,14 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 		return []*FastestChannel{}, nil
 	}
 
-	// Calculate confidence for ALL results using global median
-	requestCounts := lo.Map(results, func(item channelStats, _ int) int {
-		return int(item.RequestCount)
-	})
-	sort.Ints(requestCounts)
-
-	var median float64
-	mid := len(requestCounts) / 2
-	if len(requestCounts)%2 == 0 {
-		median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
-	} else {
-		median = float64(requestCounts[mid])
-	}
-
-	// Assign confidence levels to all results
-	type scoredChannelItem struct {
-		stats      channelStats
-		confidence string
-		score      int
-	}
-
-	scoredResults := lo.Map(results, func(item channelStats, _ int) scoredChannelItem {
-		conf := db.CalculateConfidenceLevel(int(item.RequestCount), median)
-		score := 0
-		switch conf {
-		case "high":
-			score = 3
-		case "medium":
-			score = 2
-		case "low":
-			score = 1
-		}
-		return scoredChannelItem{
-			stats:      item,
-			confidence: conf,
-			score:      score,
-		}
-	})
-
-	// Filter: show only high/medium confidence items when possible
-	filtered := lo.Filter(scoredResults, func(item scoredChannelItem, _ int) bool {
-		return item.confidence == "high" || item.confidence == "medium"
-	})
-
-	// If we have enough high/medium confidence items, use only those
-	// Otherwise fall back to include low confidence to maintain item count
-	resultsToShow := scoredResults
-	if len(filtered) >= int(*input.Limit) {
-		resultsToShow = filtered
-	}
-
-	// Sort by confidence score first (high > medium > low), then by throughput
-	sort.Slice(resultsToShow, func(i, j int) bool {
-		if resultsToShow[i].score != resultsToShow[j].score {
-			return resultsToShow[i].score > resultsToShow[j].score
-		}
-		return resultsToShow[i].stats.Throughput > resultsToShow[j].stats.Throughput
-	})
-
-	// Take top N based on limit
-	limit := int(*input.Limit)
-	if len(resultsToShow) > limit {
-		resultsToShow = resultsToShow[:limit]
-	}
+	resultsToShow := calculateConfidenceAndSort(results,
+		func(item channelStats) int64 { return item.RequestCount },
+		func(item channelStats) float64 { return item.Throughput },
+		*input.Limit,
+	)
 
 	// Build response with confidence levels
-	return lo.Map(resultsToShow, func(item scoredChannelItem, _ int) *FastestChannel {
+	return lo.Map(resultsToShow, func(item scoredItem[channelStats], _ int) *FastestChannel {
 		return &FastestChannel{
 			ChannelID:       objects.GUID{Type: "Channel", ID: item.stats.ChannelID},
 			ChannelName:     item.stats.ChannelName,
@@ -1030,73 +1058,14 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 		return []*FastestModel{}, nil
 	}
 
-	// Calculate confidence for ALL results using global median
-	requestCounts := lo.Map(results, func(item modelStats, _ int) int {
-		return int(item.RequestCount)
-	})
-	sort.Ints(requestCounts)
-
-	var median float64
-	mid := len(requestCounts) / 2
-	if len(requestCounts)%2 == 0 {
-		median = float64(requestCounts[mid-1]+requestCounts[mid]) / 2
-	} else {
-		median = float64(requestCounts[mid])
-	}
-
-	// Assign confidence levels to all results
-	type scoredModelItem struct {
-		stats      modelStats
-		confidence string
-		score      int
-	}
-
-	scoredResults := lo.Map(results, func(item modelStats, _ int) scoredModelItem {
-		conf := db.CalculateConfidenceLevel(int(item.RequestCount), median)
-		score := 0
-		switch conf {
-		case "high":
-			score = 3
-		case "medium":
-			score = 2
-		case "low":
-			score = 1
-		}
-		return scoredModelItem{
-			stats:      item,
-			confidence: conf,
-			score:      score,
-		}
-	})
-
-	// Filter: show only high/medium confidence items when possible
-	filtered := lo.Filter(scoredResults, func(item scoredModelItem, _ int) bool {
-		return item.confidence == "high" || item.confidence == "medium"
-	})
-
-	// If we have enough high/medium confidence items, use only those
-	// Otherwise fall back to include low confidence to maintain item count
-	resultsToShow := scoredResults
-	if len(filtered) >= int(*input.Limit) {
-		resultsToShow = filtered
-	}
-
-	// Sort by confidence score first (high > medium > low), then by throughput
-	sort.Slice(resultsToShow, func(i, j int) bool {
-		if resultsToShow[i].score != resultsToShow[j].score {
-			return resultsToShow[i].score > resultsToShow[j].score
-		}
-		return resultsToShow[i].stats.Throughput > resultsToShow[j].stats.Throughput
-	})
-
-	// Take top N based on limit
-	limit := int(*input.Limit)
-	if len(resultsToShow) > limit {
-		resultsToShow = resultsToShow[:limit]
-	}
+	resultsToShow := calculateConfidenceAndSort(results,
+		func(item modelStats) int64 { return item.RequestCount },
+		func(item modelStats) float64 { return item.Throughput },
+		*input.Limit,
+	)
 
 	// Build response with confidence levels
-	return lo.Map(resultsToShow, func(item scoredModelItem, _ int) *FastestModel {
+	return lo.Map(resultsToShow, func(item scoredItem[modelStats], _ int) *FastestModel {
 		return &FastestModel{
 			ModelID:         item.stats.ModelID,
 			ModelName:       item.stats.ModelName,

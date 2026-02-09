@@ -156,12 +156,15 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 	args = append(args, startTime.UTC(), endTime.UTC())
 
 	// Build channel ID filter with dialect-aware parameterized placeholders
+	// Note: Placeholders start at $3 because $1 and $2 are reserved for startTime and endTime timestamps.
+	// The args slice is constructed with timestamps first (lines 155-156), then channel IDs appended,
+	// so placeholder numbering must match this ordering to bind values correctly.
 	channelIDFilter := ""
 	if len(channelIDs) > 0 {
 		placeholders := make([]string, len(channelIDs))
 		for i, id := range channelIDs {
 			if useDollarPlaceholders {
-				placeholders[i] = fmt.Sprintf("$%d", i+3) // $3, $4, etc. for PostgreSQL
+				placeholders[i] = fmt.Sprintf("$%d", i+3) // $3, $4, etc. for PostgreSQL (offset by 2 for timestamps)
 			} else {
 				placeholders[i] = "?" // ? for SQLite
 			}
