@@ -524,6 +524,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{RequestExecutionsColumns[16]},
 			},
+			{
+				Name:    "request_executions_request_status_created_idx",
+				Unique:  false,
+				Columns: []*schema.Column{RequestExecutionsColumns[18], RequestExecutionsColumns[11], RequestExecutionsColumns[1]},
+			},
 		},
 	}
 	// RolesColumns holds the columns for the "roles" table.

@@ -13,6 +13,8 @@ import { SuccessRateCard } from './components/success-rate-card';
 import { TodayRequestsCard } from './components/today-requests-card';
 import { TokenStatsCard } from './components/token-stats-card';
 import { TotalRequestsCard } from './components/total-requests-card';
+import { FastestChannelsCard } from './components/fastest-channels-card';
+import { FastestModelsCard } from './components/fastest-models-card';
 import { useDashboardStats } from './data/dashboard';
 
 export default function DashboardPage() {
@@ -127,6 +129,10 @@ export default function DashboardPage() {
                 <TokensByAPIKeyChart />
               </CardContent>
             </Card>
+          </div>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <FastestChannelsCard />
+            <FastestModelsCard />
           </div>
         </TabsContent>
       </Tabs>

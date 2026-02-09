@@ -48,5 +48,12 @@
   "dashboard.stats.cached": "缓存",
   "dashboard.stats.vsLastWeek": "较上周",
   "dashboard.stats.average": "平均值",
-  "dashboard.stats.todayRequests": "今日请求"
+  "dashboard.stats.todayRequests": "今日请求",
+  "dashboard.cards.fastestPerformers.channels": "最快通道",
+  "dashboard.cards.fastestPerformers.models": "最快模型",
+  "dashboard.cards.fastestPerformers.noData": "暂无数据",
+  "dashboard.cards.fastestPerformers.description": "最快的{{type}} by tokens/second · {{count}} 次请求",
+  "dashboard.fastestPerformers.loadError": "无法加载最快执行者数据，请重试。",
+  "dashboard.cards.fastestPerformers.channelType": "通道",
+  "dashboard.cards.fastestPerformers.modelType": "模型"
 }

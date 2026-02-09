@@ -141,6 +141,32 @@ type DashboardOverview struct {
 	AverageResponseTime *float64      `json:"averageResponseTime,omitempty"`
 }
 
+type FastestChannel struct {
+	ChannelID       objects.GUID `json:"channelId"`
+	ChannelName     string       `json:"channelName"`
+	ChannelType     string       `json:"channelType"`
+	Throughput      float64      `json:"throughput"`
+	TokensCount     int          `json:"tokensCount"`
+	LatencyMs       int          `json:"latencyMs"`
+	RequestCount    int          `json:"requestCount"`
+	ConfidenceLevel string       `json:"confidenceLevel"`
+}
+
+type FastestChannelsInput struct {
+	TimeWindow string `json:"timeWindow"`
+	Limit      *int   `json:"limit,omitempty"`
+}
+
+type FastestModel struct {
+	ModelID         string  `json:"modelId"`
+	ModelName       string  `json:"modelName"`
+	Throughput      float64 `json:"throughput"`
+	TokensCount     int     `json:"tokensCount"`
+	LatencyMs       int     `json:"latencyMs"`
+	RequestCount    int     `json:"requestCount"`
+	ConfidenceLevel string  `json:"confidenceLevel"`
+}
+
 type FetchModelsPayload struct {
 	Models []*biz.ModelIdentify `json:"models"`
 	Error  *string              `json:"error,omitempty"`

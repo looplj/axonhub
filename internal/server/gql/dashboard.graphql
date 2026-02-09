@@ -83,6 +83,32 @@ type ChannelSuccessRate {
   successRate: Float!
 }
 
+type FastestChannel {
+  channelId: ID!
+  channelName: String!
+  channelType: String!
+  throughput: Float!
+  tokensCount: Int!
+  latencyMs: Int!
+  requestCount: Int!
+  confidenceLevel: String!
+}
+
+type FastestModel {
+  modelId: String!
+  modelName: String!
+  throughput: Float!
+  tokensCount: Int!
+  latencyMs: Int!
+  requestCount: Int!
+  confidenceLevel: String!
+}
+
+input FastestChannelsInput {
+  timeWindow: String!
+  limit: Int = 5
+}
+
 extend type Query {
   dashboardOverview: DashboardOverview!
   requestStats: RequestStats!
@@ -94,4 +120,6 @@ extend type Query {
   topRequestsProjects: [TopRequestsProjects!]!
   tokenStats: TokenStats!
   channelSuccessRates: [ChannelSuccessRate!]!
+  fastestChannels(input: FastestChannelsInput!): [FastestChannel!]!
+  fastestModels(input: FastestChannelsInput!): [FastestModel!]!
 }
