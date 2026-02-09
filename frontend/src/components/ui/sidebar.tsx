@@ -317,13 +317,51 @@ function SidebarSeparator({ className, ...props }: React.ComponentProps<typeof S
 }
 
 function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [showGradient, setShowGradient] = React.useState(false);
+
+  const checkScrollState = React.useCallback(() => {
+    const element = contentRef.current;
+    if (!element) return;
+    const isScrollable = element.scrollHeight > element.clientHeight;
+    const isAtBottom = element.scrollTop + element.clientHeight >= element.scrollHeight - 10;
+    setShowGradient(isScrollable && !isAtBottom);
+  }, []);
+
+  React.useEffect(() => {
+    const element = contentRef.current;
+    if (!element) return;
+
+    checkScrollState();
+    const resizeObserver = new ResizeObserver(checkScrollState);
+    resizeObserver.observe(element);
+    element.addEventListener('scroll', checkScrollState);
+
+    return () => {
+      resizeObserver.disconnect();
+      element.removeEventListener('scroll', checkScrollState);
+    };
+  }, [checkScrollState]);
+
   return (
-    <div
-      data-slot='sidebar-content'
-      data-sidebar='content'
-      className={cn('flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden', className)}
-      {...props}
-    />
+    <div className='relative flex min-h-0 flex-1 flex-col'>
+      <div
+        ref={contentRef}
+        data-slot='sidebar-content'
+        data-sidebar='content'
+        className={cn(
+          'flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden',
+          className
+        )}
+        {...props}
+      />
+      <div
+        className={cn(
+          'absolute bottom-0 left-0 right-0 h-8 pointer-events-none transition-opacity duration-300 bg-gradient-to-t from-sidebar to-transparent',
+          showGradient ? 'opacity-100' : 'opacity-0'
+        )}
+      />
+    </div>
   );
 }
 
@@ -382,7 +420,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:font-medium data-[active=true]:text-primary-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
+  'flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:font-medium data-[active=true]:text-primary-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -463,18 +501,15 @@ function SidebarMenuAction({
     <Comp
       data-slot='sidebar-menu-action'
       data-sidebar='menu-action'
-      className={cn(
-        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer-hover/menu-button:text-sidebar-accent-foreground absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
-        // Increases the hit area of the button on mobile.
-        'after:absolute after:-inset-2 md:after:hidden',
-        'peer-data-[size=sm]/menu-button:top-1',
-        'peer-data-[size=default]/menu-button:top-1.5',
-        'peer-data-[size=lg]/menu-button:top-2.5',
-        'group-data-[collapsible=icon]:hidden',
-        showOnHover &&
-          'peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0',
-        className
-      )}
+        className={cn(
+          'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+          // Increases the hit area of the button on mobile.
+          'after:absolute after:-inset-2 md:after:hidden',
+          'group-data-[collapsible=icon]:hidden',
+          showOnHover &&
+            'group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0',
+          className
+        )}
       {...props}
     />
   );
@@ -487,10 +522,6 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<'div'>) 
       data-sidebar='menu-badge'
       className={cn(
         'text-sidebar-foreground pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums select-none',
-        'peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[active=true]/menu-button:text-sidebar-accent-foreground',
-        'peer-data-[size=sm]/menu-button:top-1',
-        'peer-data-[size=default]/menu-button:top-1.5',
-        'peer-data-[size=lg]/menu-button:top-2.5',
         'group-data-[collapsible=icon]:hidden',
         className
       )}

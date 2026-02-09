@@ -1,6 +1,7 @@
-import { Sidebar, SidebarContent, SidebarFooter, SidebarRail } from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarRail, useSidebar } from '@/components/ui/sidebar';
 import { NavGroup } from '@/components/layout/nav-group';
 import { NavUser } from '@/components/layout/nav-user';
+import { MobileHeaderControls } from './mobile-header-controls';
 import { SidebarData } from './types';
 
 type IProps = React.ComponentProps<typeof Sidebar> & {
@@ -8,6 +9,8 @@ type IProps = React.ComponentProps<typeof Sidebar> & {
 };
 
 export function AppSidebar({ sidebarData, ...props }: IProps) {
+  const { isMobile } = useSidebar();
+
   return (
     <Sidebar collapsible='icon' variant='floating' {...props}>
       <SidebarContent>
@@ -16,6 +19,7 @@ export function AppSidebar({ sidebarData, ...props }: IProps) {
         ))}
       </SidebarContent>
       <SidebarFooter>
+        {isMobile && <MobileHeaderControls />}
         <NavUser user={sidebarData.user} />
       </SidebarFooter>
       <SidebarRail />
