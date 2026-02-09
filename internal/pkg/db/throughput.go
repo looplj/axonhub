@@ -270,7 +270,7 @@ SELECT
                   ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
              ELSE se.metrics_latency_ms END
         ELSE 0 END) as effective_latency_ms,
-    SUM(CASE WHEN se.status = 'completed' THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
+    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
     COUNT(DISTINCT se.request_id) as request_count,
     SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
 FROM request_executions se
@@ -316,7 +316,7 @@ SELECT
                   ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
              ELSE se.metrics_latency_ms END
         ELSE 0 END) as effective_latency_ms,
-    SUM(CASE WHEN se.status = 'completed' THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
+    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
     COUNT(DISTINCT se.request_id) as request_count,
     SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
 FROM latest_execs se
