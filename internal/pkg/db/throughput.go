@@ -230,8 +230,16 @@ func CalculateConfidenceLevel(requestCount int, median float64) string {
 // raw metrics needed for probe calculations rather than throughput rankings.
 //
 // Parameters:
+//
 //   - useDollarPlaceholders: if true, uses $1, $2, etc. for PostgreSQL
+//
 //   - channelIDFilter: SQL fragment for channel ID filtering (e.g., "AND se.channel_id IN ($3, $4)")
+//
+//     SECURITY WARNING: channelIDFilter is directly concatenated into the SQL query.
+//     The caller MUST ensure this parameter uses parameterized placeholders ($1, $2, etc.)
+//     or validated values only. NEVER pass unsanitized user input directly.
+//     Example safe usage: fmt.Sprintf("AND se.channel_id IN ($%d, $%d)", placeholderIndex+1, placeholderIndex+2)
+//
 //   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
 //
 // Returns: SQL query string

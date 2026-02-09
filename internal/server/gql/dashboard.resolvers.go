@@ -30,15 +30,6 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
-// statsItem is an interface constraint for types that have request count and throughput.
-type statsItem interface {
-	comparable
-	~struct {
-		RequestCount int64
-		Throughput   float64
-	}
-}
-
 // scoredItem represents an item with its confidence level and score.
 type scoredItem[T any] struct {
 	stats      T
@@ -904,6 +895,9 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 
 	// Use UTC for the time parameter to match the timezone of the created_at column.
 	// This assumes created_at is stored in UTC, which is consistent with the application's timezone handling.
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("context canceled: %w", err)
+	}
 	rows, err := sqlDB.DB().QueryContext(ctx, query, since.UTC())
 	if err != nil {
 		return nil, fmt.Errorf("failed to query fastest channels: %w", err)
@@ -1025,6 +1019,9 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 		db.ThroughputModeROW_NUMBER,
 	)
 
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("context canceled: %w", err)
+	}
 	rows, err := sqlDB.DB().QueryContext(ctx, query, since.UTC())
 	if err != nil {
 		return nil, fmt.Errorf("failed to query fastest models: %w", err)

@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
-import type { UseQueryResult } from '@tanstack/react-query';
 
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
@@ -167,16 +166,15 @@ export function FastestPerformersCard<T extends ThroughputData>({
     );
   }
 
-  const chartData: ChartData[] = sanitizeChartData(
-    (items || [])
-      .slice(0, 5)
-      .filter((item) => item != null)
-      .map((item) => ({
-        name: getName(item) ?? 'Unknown',
-        throughput: safeNumber(item.throughput ?? 0),
-        requestCount: safeNumber(item.requestCount ?? 0),
-      }))
-  ).sort((a, b) => b.throughput - a.throughput);
+  const chartData: ChartData[] = (items || [])
+    .slice(0, 5)
+    .filter((item) => item != null)
+    .map((item) => ({
+      name: getName(item) ?? 'Unknown',
+      throughput: safeNumber(item.throughput ?? 0),
+      requestCount: safeNumber(item.requestCount ?? 0),
+    }))
+    .sort((a, b) => b.throughput - a.throughput);
 
   const total = chartData.reduce((sum, item) => sum + safeNumber(item.throughput), 0);
   const totalRequests = chartData.reduce((sum, item) => sum + item.requestCount, 0);
