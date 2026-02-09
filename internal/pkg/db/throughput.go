@@ -266,7 +266,8 @@ SELECT
               ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
          ELSE se.metrics_latency_ms END) as effective_latency_ms,
     SUM(se.metrics_first_token_latency_ms) as total_first_token_latency,
-    COUNT(DISTINCT se.request_id) as request_count
+    COUNT(DISTINCT se.request_id) as request_count,
+    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
 FROM request_executions se
 JOIN usage_logs ul ON se.request_id = ul.request_id
 WHERE se.status = 'completed'
@@ -307,7 +308,8 @@ SELECT
               ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
          ELSE se.metrics_latency_ms END) as effective_latency_ms,
     SUM(se.metrics_first_token_latency_ms) as total_first_token_latency,
-    COUNT(DISTINCT se.request_id) as request_count
+    COUNT(DISTINCT se.request_id) as request_count,
+    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
 FROM successful_execs se
 JOIN usage_logs ul ON se.request_id = ul.request_id
 WHERE se.rn = 1

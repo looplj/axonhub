@@ -139,6 +139,7 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 		EffectiveLatencyMs     int64 `json:"effective_latency_ms"`
 		TotalFirstTokenLatency int64 `json:"total_first_token_latency"`
 		RequestCount           int   `json:"request_count"`
+		StreamingRequestCount  int   `json:"streaming_request_count"`
 	}
 
 	dbDriver := svc.db.Driver()
@@ -198,6 +199,7 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 			&r.EffectiveLatencyMs,
 			&r.TotalFirstTokenLatency,
 			&r.RequestCount,
+			&r.StreamingRequestCount,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan probe result: %w", err)
 		}
@@ -216,8 +218,8 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 		}
 
 		// Calculate avg time to first token (only for streaming requests)
-		if r.TotalFirstTokenLatency > 0 && r.RequestCount > 0 {
-			avgTTFT := float64(r.TotalFirstTokenLatency) / float64(r.RequestCount)
+		if r.TotalFirstTokenLatency > 0 && r.StreamingRequestCount > 0 {
+			avgTTFT := float64(r.TotalFirstTokenLatency) / float64(r.StreamingRequestCount)
 			stats.avgTimeToFirstTokenMs = &avgTTFT
 		}
 

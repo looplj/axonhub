@@ -103,13 +103,13 @@ func TestCalculateConfidenceLevel(t *testing.T) {
 
 		// Below high threshold but with high ratio
 		{
-			name:         "not enough requests for high despite ratio 1.5",
+			name:         "not enough requests for high despite ratio 2.0",
 			requestCount: 400,
 			median:       200,
 			want:         "medium",
 		},
 		{
-			name:         "not enough requests for high despite ratio 2.0",
+			name:         "not enough requests for high despite ratio 2.25",
 			requestCount: 450,
 			median:       200,
 			want:         "medium",

@@ -19,7 +19,7 @@ import (
 
 // TestTPSCalculation_RetryScenario tests that only successful executions are counted
 func TestTPSCalculation_RetryScenario(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -143,7 +143,7 @@ func TestTPSCalculation_RetryScenario(t *testing.T) {
 
 // TestTPSCalculation_AllTokenTypes tests that all token types are included
 func TestTPSCalculation_AllTokenTypes(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -221,7 +221,7 @@ func TestTPSCalculation_AllTokenTypes(t *testing.T) {
 
 // TestTPSCalculation_StreamingVsNonStreaming tests streaming vs non-streaming formulas
 func TestTPSCalculation_StreamingVsNonStreaming(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -333,7 +333,7 @@ func TestTPSCalculation_StreamingVsNonStreaming(t *testing.T) {
 
 // TestTPSCalculation_EdgeCases tests edge cases
 func TestTPSCalculation_EdgeCases(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -400,7 +400,7 @@ func TestTPSCalculation_EdgeCases(t *testing.T) {
 
 // TestTPSCalculation_EmptyResults tests empty results
 func TestTPSCalculation_EmptyResults(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -435,7 +435,7 @@ func TestTPSCalculation_EmptyResults(t *testing.T) {
 // TestComputeAllChannelProbeStats_Integration tests the actual computeAllChannelProbeStats function
 // with real database query and result scanning.
 func TestComputeAllChannelProbeStats_Integration(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -530,7 +530,7 @@ func TestComputeAllChannelProbeStats_Integration(t *testing.T) {
 
 // TestComputeAllChannelProbeStats_MultipleRequests tests with multiple requests
 func TestComputeAllChannelProbeStats_MultipleRequests(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -628,14 +628,14 @@ func TestComputeAllChannelProbeStats_MultipleRequests(t *testing.T) {
 	require.NotNil(t, channelStats.avgTokensPerSecond)
 	assert.InDelta(t, 58.64, *channelStats.avgTokensPerSecond, 0.1)
 
-	// TTFT: (500 + 400 + 0) / 3 = 300ms
+	// TTFT: (500 + 400 + 0) / 2 = 450ms (only streaming requests count: 2 out of 3 requests are streaming)
 	require.NotNil(t, channelStats.avgTimeToFirstTokenMs)
-	assert.InDelta(t, 300.0, *channelStats.avgTimeToFirstTokenMs, 0.01)
+	assert.InDelta(t, 450.0, *channelStats.avgTimeToFirstTokenMs, 0.01)
 }
 
 // TestComputeAllChannelProbeStats_EmptyChannel tests with a channel that has no data
 func TestComputeAllChannelProbeStats_EmptyChannel(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -668,7 +668,7 @@ func TestComputeAllChannelProbeStats_EmptyChannel(t *testing.T) {
 
 // TestComputeAllChannelProbeStats_MultipleChannels tests with multiple channels
 func TestComputeAllChannelProbeStats_MultipleChannels(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
@@ -812,7 +812,7 @@ func TestComputeAllChannelProbeStats_MultipleChannels(t *testing.T) {
 
 // TestComputeAllChannelProbeStats_FailedExecutions tests that failed executions are excluded
 func TestComputeAllChannelProbeStats_FailedExecutions(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)

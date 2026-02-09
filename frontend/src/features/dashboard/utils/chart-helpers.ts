@@ -15,10 +15,10 @@ export function safeToFixed(value: unknown, decimals: number = 1): string {
 
 export function sanitizeChartData(items: ChartData[]): ChartData[] {
   return items
+    .filter((item) => Number.isFinite(item.throughput) || Number.isFinite(Number(item.throughput)))
     .map((item) => ({
       name: String(item.name ?? 'Unknown'),
       throughput: safeNumber(item.throughput),
       requestCount: safeNumber(item.requestCount),
-    }))
-    .filter((item) => Number.isFinite(item.throughput));
+    }));
 }

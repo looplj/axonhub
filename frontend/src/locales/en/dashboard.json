@@ -53,6 +53,7 @@
   "dashboard.cards.fastestPerformers.models": "Fastest Models",
   "dashboard.cards.fastestPerformers.noData": "No data available",
   "dashboard.cards.fastestPerformers.description": "Fastest {{type}} by tokens/second · {{count}} requests across top performers",
+  "dashboard.fastestPerformers.loadError": "Unable to load fastest performers. Please try again later.",
   "dashboard.cards.fastestPerformers.channelType": "channels",
   "dashboard.cards.fastestPerformers.modelType": "models"
 }
