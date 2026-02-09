@@ -22,21 +22,17 @@ test.describe('Mobile Header Layout', () => {
         return;
       }
 
-      // Settings button should be visible in header - it's a link with settings icon button
-      const settingsButton = page.locator('header a[href="/system"]').first();
-      await expect(settingsButton).toBeVisible();
+      const sidebarTrigger = page.locator('button[data-sidebar="trigger"]');
+      await expect(sidebarTrigger).toBeVisible();
 
-      // Language switch should be visible in header - button with language icon (SVG)
+      const quotaBadges = page.locator('header button').filter({ has: page.locator('svg[data-lucide="battery-full"], svg[data-lucide="battery"], svg[data-lucide="battery-medium"], svg[data-lucide="battery-low"], svg[data-lucide="battery-warning"]') }).first();
+      await expect(quotaBadges).toBeVisible();
+
       const languageSwitch = page.locator('header button').filter({ has: page.locator('svg').first() }).first();
       await expect(languageSwitch).toBeVisible();
 
-      // Theme switch should be visible in header - button with sun/moon icons (SVG)
       const themeSwitch = page.locator('header button').filter({ has: page.locator('svg').first() }).nth(1);
       await expect(themeSwitch).toBeVisible();
-
-      // Profile dropdown should be visible in header - button with avatar
-      const profileDropdown = page.locator('header button').filter({ has: page.locator('[data-testid="profile-avatar"]') }).first();
-      await expect(profileDropdown).toBeVisible();
     });
   });
 
@@ -57,13 +53,17 @@ test.describe('Mobile Header Layout', () => {
         return;
       }
 
-      // Settings button should NOT be visible in header on mobile
-      const headerSettingsButton = page.locator('header a[href="/system"]').first();
-      await expect(headerSettingsButton).toBeHidden();
+      const sidebarTrigger = page.locator('button[data-sidebar="trigger"]');
+      await expect(sidebarTrigger).toBeVisible();
 
-      // Profile dropdown should NOT be visible in header on mobile
-      const headerProfileDropdown = page.locator('header button').filter({ has: page.locator('[data-testid="profile-avatar"]') }).first();
-      await expect(headerProfileDropdown).toBeHidden();
+      const quotaBadges = page.locator('header button').filter({ has: page.locator('svg[data-lucide="battery-full"], svg[data-lucide="battery"], svg[data-lucide="battery-medium"], svg[data-lucide="battery-low"], svg[data-lucide="battery-warning"]') }).first();
+      await expect(quotaBadges).toBeVisible();
+
+      const languageSwitch = page.locator('header button').filter({ has: page.locator('svg').first() }).first();
+      await expect(languageSwitch).toBeHidden();
+
+      const themeSwitch = page.locator('header button').filter({ has: page.locator('svg').first() }).nth(1);
+      await expect(themeSwitch).toBeHidden();
     });
 
     test('shows controls in sidebar', async ({ page }) => {
@@ -82,7 +82,7 @@ test.describe('Mobile Header Layout', () => {
       }
 
       // MobileHeaderControls should be visible in sidebar footer
-      const sidebarSettings = page.getByRole('link', { name: /settings/i }).first();
+      const sidebarSettings = page.getByRole('link', { name: /system/i }).first();
       await expect(sidebarSettings).toBeVisible();
 
       // Language switch should be visible in sidebar
@@ -120,7 +120,7 @@ test.describe('Mobile Header Layout', () => {
       }
 
       // Click settings link
-      const settingsLink = page.getByRole('link', { name: /settings/i }).first();
+      const settingsLink = page.getByRole('link', { name: /system/i }).first();
       await settingsLink.click();
 
       // Wait for navigation to complete
@@ -210,7 +210,7 @@ test.describe('Mobile Header Layout', () => {
       }
 
       // Verify MobileHeaderControls has toolbar role
-      const mobileHeaderControls = page.getByRole('toolbar', { name: 'Settings controls' });
+      const mobileHeaderControls = page.getByRole('toolbar', { name: /settings controls/i });
       await expect(mobileHeaderControls).toBeVisible();
     });
 
@@ -223,7 +223,7 @@ test.describe('Mobile Header Layout', () => {
       }
 
       // Get all buttons in the toolbar
-      const toolbar = page.getByRole('toolbar', { name: 'Settings controls' });
+      const toolbar = page.getByRole('toolbar', { name: /settings controls/i });
       const buttons = toolbar.getByRole('button');
 
       // Verify buttons exist and are focusable
