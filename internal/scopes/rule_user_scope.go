@@ -63,19 +63,6 @@ func UserScopeQueryMutationRule(requiredScope ScopeSlug) privacy.QueryMutationRu
 	})
 }
 
-func WithUserScopeDecision(ctx context.Context, requiredScope ScopeSlug) context.Context {
-	user, ok := contexts.GetUser(ctx)
-	if !ok || user == nil {
-		return privacy.DecisionContext(ctx, privacy.Deny)
-	}
-
-	if userHasSystemScope(user, requiredScope) {
-		return privacy.DecisionContext(ctx, privacy.Allow)
-	}
-
-	return privacy.DecisionContext(ctx, privacy.Deny)
-}
-
 func UserHasScope(ctx context.Context, requiredScope ScopeSlug) bool {
 	user, ok := contexts.GetUser(ctx)
 	if !ok || user == nil {

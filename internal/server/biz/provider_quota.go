@@ -13,7 +13,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
@@ -193,13 +192,6 @@ func (svc *ProviderQuotaService) ManualCheck(ctx context.Context) {
 	svc.runQuotaCheckForce(ctx)
 }
 
-func (svc *ProviderQuotaService) runQuotaCheckScheduled(ctx context.Context) {
-	svc.mu.Lock()
-	defer svc.mu.Unlock()
-
-	svc.runQuotaCheck(ctx, false)
-}
-
 func (svc *ProviderQuotaService) runQuotaCheckForce(ctx context.Context) {
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
@@ -209,7 +201,6 @@ func (svc *ProviderQuotaService) runQuotaCheckForce(ctx context.Context) {
 
 func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) {
 	ctx = ent.NewContext(ctx, svc.db)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	now := time.Now()
 	log.Debug(ctx, "Checking for channels to poll",

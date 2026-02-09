@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -17,7 +17,7 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
+	ctx := authz.WithTestBypass(context.Background())
 
 	// Create test user
 	user := client.User.Create().
@@ -131,7 +131,7 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
+	ctx := authz.WithTestBypass(context.Background())
 
 	user := client.User.Create().
 		SetEmail("test@example.com").
@@ -202,7 +202,7 @@ func TestChannelOverrideTemplateService_ApplyTemplate(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
+	ctx := authz.WithTestBypass(context.Background())
 
 	user := client.User.Create().
 		SetEmail("test@example.com").
@@ -367,7 +367,7 @@ func TestChannelOverrideTemplateService_DeleteTemplate(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
+	ctx := authz.WithTestBypass(context.Background())
 
 	user := client.User.Create().
 		SetEmail("test@example.com").
@@ -396,7 +396,7 @@ func TestChannelOverrideTemplateService_QueryTemplates(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
+	ctx := authz.WithTestBypass(context.Background())
 
 	user := client.User.Create().
 		SetEmail("test@example.com").

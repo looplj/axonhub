@@ -9,7 +9,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/ringbuffer"
@@ -32,11 +31,10 @@ type channelMetrics struct {
 	aggregatedMetrics *AggregatedMetrics
 }
 
-// LoadChannelPerformances loads channel performance metrics from request_execution table.
+// loadChannelPerformances loads channel performance metrics from request_execution table.
 // It queries the last 6 hours of data to initialize in-memory metrics for load balancing.
 // Uses a single GROUP BY query to fetch all channel metrics at once for better performance.
-func (svc *ChannelService) LoadChannelPerformances(ctx context.Context) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+func (svc *ChannelService) loadChannelPerformances(ctx context.Context) error {
 	client := svc.entFromContext(ctx)
 
 	// Query last 6 hours of request execution data
@@ -143,25 +141,6 @@ func (svc *ChannelService) populateChannelMetrics(cm *channelMetrics, m *channel
 
 	// Note: ConsecutiveFailures is not loaded from historical data.
 	// It will be tracked in real-time as requests are processed.
-}
-
-// InitializeChannelPerformance initializes in-memory performance metrics for a newly created channel.
-// Note: Performance metrics are no longer persisted to database, only kept in memory.
-func (svc *ChannelService) InitializeChannelPerformance(ctx context.Context, channelID int) error {
-	log.Info(ctx, "initializing in-memory channel performance metrics", log.Int("channel_id", channelID))
-
-	svc.channelPerfMetricsLock.Lock()
-	defer svc.channelPerfMetricsLock.Unlock()
-
-	if svc.channelPerfMetrics == nil {
-		svc.channelPerfMetrics = make(map[int]*channelMetrics)
-	}
-
-	if _, exists := svc.channelPerfMetrics[channelID]; !exists {
-		svc.channelPerfMetrics[channelID] = newChannelMetrics(channelID)
-	}
-
-	return nil
 }
 
 // timeSlotMetrics holds metrics for a specific second.
@@ -385,13 +364,6 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 
 	// Cleanup old entries from ringbuffer
 	cm.window.CleanupBefore(cutoffTs)
-}
-
-// startPerformanceProcess starts the background goroutine to flush metrics to database.
-func (svc *ChannelService) startPerformanceProcess() {
-	for perf := range svc.perfCh {
-		svc.RecordPerformance(context.Background(), perf)
-	}
 }
 
 // GetChannelMetrics returns performance metrics for the channel.

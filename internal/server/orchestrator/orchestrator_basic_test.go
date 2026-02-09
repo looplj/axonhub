@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -29,7 +29,7 @@ import (
 // TestChatCompletionOrchestrator_Process_NonStreaming tests the complete non-streaming flow.
 func TestChatCompletionOrchestrator_Process_NonStreaming(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -133,7 +133,7 @@ func TestChatCompletionOrchestrator_Process_NonStreaming(t *testing.T) {
 // TestChatCompletionOrchestrator_Process_WithModelMapping tests model mapping from API key.
 func TestChatCompletionOrchestrator_Process_WithModelMapping(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -238,7 +238,7 @@ func TestChatCompletionOrchestrator_Process_WithModelMapping(t *testing.T) {
 // TestChatCompletionOrchestrator_Process_WithOverrideParameters tests channel override parameters.
 func TestChatCompletionOrchestrator_Process_WithOverrideParameters(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -332,7 +332,7 @@ func TestChatCompletionOrchestrator_Process_WithOverrideParameters(t *testing.T)
 // TestChatCompletionOrchestrator_Process_MultipleRequests tests multiple sequential requests.
 func TestChatCompletionOrchestrator_Process_MultipleRequests(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -449,7 +449,7 @@ func (e *sequenceExecutor) DoStream(ctx context.Context, request *httpclient.Req
 
 func TestChatCompletionOrchestrator_Process_SameChannelRetryNextModel(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

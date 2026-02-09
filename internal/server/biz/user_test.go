@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -52,7 +52,7 @@ func TestConvertUserToUserInfo_BasicUser(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a basic user without roles or projects
 	testUser, err := client.User.Create().
@@ -103,7 +103,7 @@ func TestConvertUserToUserInfo_WithGlobalRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create global roles
 	adminRole, err := client.Role.Create().
@@ -162,7 +162,7 @@ func TestConvertUserToUserInfo_WithProjectRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a project
 	testProject, err := client.Project.Create().
@@ -250,7 +250,7 @@ func TestConvertUserToUserInfo_MixedRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create global role
 	globalRole, err := client.Role.Create().
@@ -343,7 +343,7 @@ func TestConvertUserToUserInfo_MultipleProjects(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create multiple projects
 	project1, err := client.Project.Create().
@@ -413,7 +413,7 @@ func TestAddUserToProject_Success(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -451,7 +451,7 @@ func TestAddUserToProject_WithRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -518,7 +518,7 @@ func TestAddUserToProject_WithNilOwner(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -554,7 +554,7 @@ func TestAddUserToProject_DuplicateRelationship(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -589,7 +589,7 @@ func TestRemoveUserFromProject_Success(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -634,7 +634,7 @@ func TestRemoveUserFromProject_NotFound(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -664,7 +664,7 @@ func TestRemoveUserFromProject_WithRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -786,7 +786,7 @@ func TestUpdateProjectUser_UpdateScopes(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -830,7 +830,7 @@ func TestUpdateProjectUser_AddRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -896,7 +896,7 @@ func TestUpdateProjectUser_RemoveRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -963,7 +963,7 @@ func TestUpdateProjectUser_AddAndRemoveRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -1041,7 +1041,7 @@ func TestUpdateProjectUser_NotFound(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -1077,7 +1077,7 @@ func TestUpdateProjectUser_UpdateScopesAndRoles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -1140,7 +1140,7 @@ func TestUpdateUser_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -1185,7 +1185,7 @@ func TestUpdateUserStatus_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -1219,7 +1219,7 @@ func TestAddUserToProject_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -1260,7 +1260,7 @@ func TestRemoveUserFromProject_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -1305,7 +1305,7 @@ func TestUpdateProjectUser_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -1356,7 +1356,7 @@ func TestUpdateProjectUser_UpdateIsOwner_Success(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create owner user for permission checks
 	owner := createOwnerUser(t, ctx, client)
@@ -1418,7 +1418,7 @@ func TestUpdateProjectUser_UpdateIsOwner_PermissionDenied(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a regular user who will try to update isOwner
 	regularUser, err := client.User.Create().

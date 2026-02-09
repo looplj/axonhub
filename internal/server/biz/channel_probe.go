@@ -13,13 +13,14 @@ import (
 
 	entsql "entgo.io/ent/dialect/sql"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/db"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // ChannelProbePoint represents a single probe data point for a channel.
@@ -72,7 +73,7 @@ func NewChannelProbeService(params ChannelProbeServiceParams) *ChannelProbeServi
 // Start starts the channel probe service with scheduled task.
 func (svc *ChannelProbeService) Start(ctx context.Context) error {
 	_, err := svc.Executor.ScheduleFuncAtCronRate(
-		svc.runProbe,
+		svc.runProbePeriodically,
 		executors.CRONRule{Expr: "* * * * *"},
 	)
 
@@ -266,7 +267,6 @@ func (svc *ChannelProbeService) runProbe(ctx context.Context) {
 	svc.mu.Unlock()
 
 	ctx = ent.NewContext(ctx, svc.db)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	log.Debug(ctx, "Starting channel probe",
 		log.Int("interval_minutes", intervalMinutes),
@@ -358,9 +358,12 @@ func generateTimestamps(setting ChannelProbeSetting, currentTime time.Time) []in
 
 // QueryChannelProbes queries probe data for multiple channels with time range alignment.
 func (svc *ChannelProbeService) QueryChannelProbes(ctx context.Context, channelIDs []int) ([]*ChannelProbeData, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	setting := svc.SystemService.ChannelSettingOrDefault(ctx)
+	setting, err := authz.RunWithScopeDecision(ctx, scopes.ScopeReadChannels, func(ctx context.Context) (*SystemChannelSettings, error) {
+		return svc.SystemService.ChannelSettingOrDefault(ctx), nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	rangeMinutes := setting.Probe.GetQueryRangeMinutes()
 	intervalMinutes := setting.Probe.GetIntervalMinutes()
 	now := xtime.UTCNow()

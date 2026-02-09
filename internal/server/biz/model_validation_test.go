@@ -8,10 +8,10 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/model"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -21,7 +21,7 @@ func TestModelService_ValidateModelSettings(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 	svc := &ModelService{
 		AbstractService: &AbstractService{
 			db: client,
@@ -200,7 +200,7 @@ func TestModelService_CreateModel_WithRegexValidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 	svc := &ModelService{
 		AbstractService: &AbstractService{
 			db: client,
@@ -264,7 +264,7 @@ func TestModelService_UpdateModel_WithRegexValidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 	svc := &ModelService{
 		AbstractService: &AbstractService{
 			db: client,

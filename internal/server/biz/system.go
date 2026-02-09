@@ -14,10 +14,10 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -251,22 +251,6 @@ func (c *ChannelProbeSetting) GetIntervalMinutes() int {
 	}
 }
 
-// GetCronExpr returns the cron expression based on the probe frequency.
-func (c *ChannelProbeSetting) GetCronExpr() string {
-	switch c.Frequency {
-	case ProbeFrequency1Min:
-		return "* * * * *"
-	case ProbeFrequency5Min:
-		return "*/5 * * * *"
-	case ProbeFrequency30Min:
-		return "*/30 * * * *"
-	case ProbeFrequency1Hour:
-		return "0 * * * *"
-	default:
-		return "* * * * *"
-	}
-}
-
 // MarshalGQL implements the graphql.Marshaler interface for ProbeFrequency.
 func (p ProbeFrequency) MarshalGQL(w io.Writer) {
 	var s string
@@ -338,7 +322,7 @@ type SystemService struct {
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(ctx, "system-is-initialized")
 	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
@@ -363,7 +347,7 @@ type InitializeSystemParams struct {
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
 func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystemParams) (err error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(ctx, "system-initialize")
 	// Check if system is already initialized
 	isInitialized, err := s.IsInitialized(ctx)
 	if err != nil {
@@ -514,7 +498,7 @@ func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
 
 // BrandName retrieves the brand name.
 func (s *SystemService) BrandName(ctx context.Context) (string, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(ctx, "system-brand-name")
 	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandName)).Only(ctx)
@@ -536,7 +520,7 @@ func (s *SystemService) SetBrandName(ctx context.Context, brandName string) erro
 
 // BrandLogo retrieves the brand logo (base64 encoded).
 func (s *SystemService) BrandLogo(ctx context.Context) (string, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(ctx, "system-brand-logo")
 	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandLogo)).Only(ctx)
@@ -575,10 +559,7 @@ func (s *SystemService) getSystemValue(ctx context.Context, key string) (string,
 }
 
 // setSystemValue sets or updates a system key-value pair.
-func (s *SystemService) setSystemValue(
-	ctx context.Context,
-	key, value string,
-) error {
+func (s *SystemService) setSystemValue(ctx context.Context, key, value string) error {
 	client := s.entFromContext(ctx)
 
 	err := client.System.Create().
@@ -599,63 +580,8 @@ func (s *SystemService) setSystemValue(
 	return nil
 }
 
-var defaultStoragePolicy = StoragePolicy{
-	StoreChunks:       false,
-	StoreRequestBody:  true,
-	StoreResponseBody: true,
-	CleanupOptions: []CleanupOption{
-		{
-			ResourceType: "requests",
-			Enabled:      false,
-			CleanupDays:  3,
-		},
-		{
-			ResourceType: "usage_logs",
-			Enabled:      false,
-			CleanupDays:  30,
-		},
-	},
-}
-
-var defaultRetryPolicy = RetryPolicy{
-	MaxChannelRetries:       3,
-	MaxSingleChannelRetries: 2,
-	RetryDelayMs:            1000,
-	LoadBalancerStrategy:    "adaptive",
-	Enabled:                 true,
-}
-
-var defaultModelSettings = SystemModelSettings{
-	FallbackToChannelsOnModelNotFound: true,
-	QueryAllChannelModels:             true,
-}
-
-var defaultChannelSetting = SystemChannelSettings{
-	Probe: ChannelProbeSetting{
-		Enabled:   true,
-		Frequency: ProbeFrequency5Min,
-	},
-}
-
-var defaultGeneralSettings = SystemGeneralSettings{
-	CurrencyCode: "USD",
-	Timezone:     "UTC",
-}
-
-var defaultAutoBackupSettings = AutoBackupSettings{
-	Enabled:            false,
-	Frequency:          BackupFrequencyDaily,
-	IncludeChannels:    true,
-	IncludeModels:      true,
-	IncludeAPIKeys:     false,
-	IncludeModelPrices: true,
-	RetentionDays:      30,
-}
-
 // StoragePolicy retrieves the storage policy configuration.
 func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	value, err := s.getSystemValue(ctx, SystemKeyStoragePolicy)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -694,8 +620,6 @@ func (s *SystemService) SetStoragePolicy(ctx context.Context, policy *StoragePol
 
 // RetryPolicy retrieves the retry policy configuration.
 func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	value, err := s.getSystemValue(ctx, SystemKeyRetryPolicy)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -722,8 +646,6 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 }
 
 func (s *SystemService) RetryPolicyOrDefault(ctx context.Context) *RetryPolicy {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	policy, err := s.RetryPolicy(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -754,9 +676,9 @@ func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy)
 
 // ModelSettings retrieves the model settings configuration.
 func (s *SystemService) ModelSettings(ctx context.Context) (*SystemModelSettings, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	value, err := s.getSystemValue(ctx, SystemKeyModelSettings)
+	value, err := authz.RunWithSystemBypass(ctx, "system-model-settings", func(bypassCtx context.Context) (string, error) {
+		return s.getSystemValue(bypassCtx, SystemKeyModelSettings)
+	})
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return lo.ToPtr(defaultModelSettings), nil
@@ -775,8 +697,6 @@ func (s *SystemService) ModelSettings(ctx context.Context) (*SystemModelSettings
 
 // ModelSettingsOrDefault retrieves the model settings or returns the default if not available.
 func (s *SystemService) ModelSettingsOrDefault(ctx context.Context) *SystemModelSettings {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	settings, err := s.ModelSettings(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -803,8 +723,6 @@ func (s *SystemService) SetModelSettings(ctx context.Context, settings SystemMod
 
 // ChannelSetting retrieves the channel setting configuration.
 func (s *SystemService) ChannelSetting(ctx context.Context) (*SystemChannelSettings, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	value, err := s.getSystemValue(ctx, SystemKeyChannelSettings)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -824,8 +742,6 @@ func (s *SystemService) ChannelSetting(ctx context.Context) (*SystemChannelSetti
 
 // ChannelSettingOrDefault retrieves the channel setting or returns the default if not available.
 func (s *SystemService) ChannelSettingOrDefault(ctx context.Context) *SystemChannelSettings {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	setting, err := s.ChannelSetting(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -868,8 +784,6 @@ func (s *SystemService) TimeLocation(ctx context.Context) *time.Location {
 		return s.timeLocation
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	settings, err := s.GeneralSettings(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -899,8 +813,6 @@ func (s *SystemService) TimeLocation(ctx context.Context) *time.Location {
 
 // GeneralSettings retrieves the general settings configuration.
 func (s *SystemService) GeneralSettings(ctx context.Context) (*SystemGeneralSettings, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	value, err := s.getSystemValue(ctx, SystemKeyGeneralSettings)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -948,8 +860,6 @@ func (s *SystemService) SetGeneralSettings(ctx context.Context, settings SystemG
 // DefaultDataStorageID retrieves the default data storage ID from system settings.
 // Returns 0 if not set.
 func (s *SystemService) DefaultDataStorageID(ctx context.Context) (int, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	value, err := s.getSystemValue(ctx, SystemKeyDefaultDataStorage)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -970,28 +880,6 @@ func (s *SystemService) DefaultDataStorageID(ctx context.Context) (int, error) {
 // SetDefaultDataStorageID sets the default data storage ID.
 func (s *SystemService) SetDefaultDataStorageID(ctx context.Context, id int) error {
 	return s.setSystemValue(ctx, SystemKeyDefaultDataStorage, fmt.Sprintf("%d", id))
-}
-
-// Version retrieves the system version from system settings.
-// Returns empty string if not set.
-func (s *SystemService) Version(ctx context.Context) (string, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	value, err := s.getSystemValue(ctx, SystemKeyVersion)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return "", nil
-		}
-
-		return "", fmt.Errorf("failed to get system version: %w", err)
-	}
-
-	return value, nil
-}
-
-// SetVersion sets the system version.
-func (s *SystemService) SetVersion(ctx context.Context, version string) error {
-	return s.setSystemValue(ctx, SystemKeyVersion, version)
 }
 
 // AutoBackupSettings retrieves the auto backup settings configuration.

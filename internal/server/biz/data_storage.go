@@ -30,7 +30,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -71,7 +70,7 @@ func NewDataStorageService(params DataStorageServiceParams) *DataStorageService 
 		Executors:     params.Executor,
 		fsCache:       make(map[int]afero.Fs),
 	}
-
+	// TODO： migrate to live refresh
 	if err := svc.refreshFileSystems(context.Background()); err != nil {
 		log.Error(context.Background(), "failed to preload data storage filesystems", log.Cause(err))
 	}
@@ -86,15 +85,7 @@ func NewDataStorageService(params DataStorageServiceParams) *DataStorageService 
 	return svc
 }
 
-func (s *DataStorageService) refreshFileSystemsPeriodic(ctx context.Context) {
-	if err := s.refreshFileSystems(ctx); err != nil {
-		log.Error(ctx, "failed to refresh data storage filesystems", log.Cause(err))
-	}
-}
-
 func (s *DataStorageService) refreshFileSystems(ctx context.Context) error {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	latestUpdatedStorage, err := s.entFromContext(ctx).DataStorage.Query().
 		Order(ent.Desc(datastorage.FieldUpdatedAt)).
 		First(ctx)
@@ -113,6 +104,7 @@ func (s *DataStorageService) refreshFileSystems(ctx context.Context) error {
 		s.latestUpdate = time.Time{}
 	}
 
+	// TODO: fix should close fs.
 	storages, err := s.entFromContext(ctx).DataStorage.Query().
 		Where(datastorage.StatusEQ(datastorage.StatusActive)).
 		All(ctx)
@@ -268,10 +260,7 @@ func (s *DataStorageService) GetDataStorageByID(ctx context.Context, id int) (*e
 		return &cached, nil
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
-
-	ds, err := client.DataStorage.Get(ctx, id)
+	ds, err := ent.FromContext(ctx).DataStorage.Get(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data storage by ID %d: %w", id, err)
 	}
@@ -294,10 +283,7 @@ func (s *DataStorageService) GetPrimaryDataStorage(ctx context.Context) (*ent.Da
 		return &cached, nil
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	client := ent.FromContext(ctx)
-
-	ds, err := client.DataStorage.Query().
+	ds, err := ent.FromContext(ctx).DataStorage.Query().
 		Where(datastorage.Primary(true)).
 		First(ctx)
 	if err != nil {
@@ -478,27 +464,6 @@ func (s *DataStorageService) GetFileSystem(ctx context.Context, ds *ent.DataStor
 	s.fsCacheMu.Unlock()
 
 	return fs, nil
-}
-
-// GetFileSystemByID returns an afero.Fs for the given data storage ID.
-// It first checks the cache, then fetches the data storage from the database if not found.
-func (s *DataStorageService) GetFileSystemByID(ctx context.Context, dataStorageID int) (afero.Fs, error) {
-	s.fsCacheMu.RLock()
-	fs, ok := s.fsCache[dataStorageID]
-	s.fsCacheMu.RUnlock()
-
-	if ok {
-		return fs, nil
-	}
-
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
-	ds, err := s.entFromContext(ctx).DataStorage.Get(ctx, dataStorageID)
-	if err != nil {
-		return nil, fmt.Errorf("data storage not found: %w", err)
-	}
-
-	return s.buildFileSystem(ctx, ds)
 }
 
 // SaveData saves data to the specified data storage.

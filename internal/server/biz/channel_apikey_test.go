@@ -9,10 +9,10 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -509,7 +509,7 @@ func TestChannelService_DeleteDisabledAPIKeys_SingleKey(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test channel with multiple keys, one disabled
 	ch, err := client.Channel.Create().
@@ -550,7 +550,7 @@ func TestChannelService_DeleteDisabledAPIKeys_MultipleKeys(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test channel with multiple keys, some disabled
 	ch, err := client.Channel.Create().
@@ -592,7 +592,7 @@ func TestChannelService_DeleteDisabledAPIKeys_OAuthChannel(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create an OAuth channel
 	ch, err := client.Channel.Create().
@@ -622,7 +622,7 @@ func TestChannelService_DeleteDisabledAPIKeys_PreserveAtLeastOneKey(t *testing.T
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test channel with only one key (disabled)
 	ch, err := client.Channel.Create().
@@ -662,7 +662,7 @@ func TestChannelService_DeleteDisabledAPIKeys_WithLegacyAPIKey(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test channel with legacy APIKey field
 	ch, err := client.Channel.Create().
@@ -700,7 +700,7 @@ func TestChannelService_DeleteDisabledAPIKeys_PartialKeysNotInDisabledList(t *te
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test channel with some disabled keys
 	ch, err := client.Channel.Create().
@@ -740,7 +740,7 @@ func TestChannelService_DeleteDisabledAPIKeys_NoDisabledKeys(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test channel with no disabled keys
 	ch, err := client.Channel.Create().

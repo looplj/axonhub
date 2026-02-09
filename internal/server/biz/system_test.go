@@ -9,9 +9,9 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
@@ -26,7 +26,7 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 
 	// Getting secret key before initialization should return error
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 	secretKey, err := service.SecretKey(ctx)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "secret key not found, system may not be initialized")
@@ -52,7 +52,7 @@ func TestSystemService_WithMemoryCache(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Test setting and getting system values with cache
 	testKey := "test_key"
@@ -98,7 +98,7 @@ func TestSystemService_WithRedisCache(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Test brand name functionality with Redis cache
 	brandName := "Test Brand"
@@ -135,7 +135,7 @@ func TestSystemService_WithTwoLevelCache(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Test secret key functionality with two-level cache
 	secretKey := "test-secret-key-123456789012345678901234567890123456789012345678901234567890123456789012"
@@ -155,7 +155,7 @@ func TestSystemService_WithNoopCache(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Test that system service works even with noop cache
 	testKey := "noop_test_key"
@@ -180,7 +180,7 @@ func TestSystemService_StoragePolicy(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// First set a default storage policy to avoid JSON unmarshaling error
 	defaultPolicy := &StoragePolicy{
@@ -278,7 +278,7 @@ func TestSystemService_Initialize_WithCache(t *testing.T) {
 	require.True(t, isInitialized)
 
 	// Verify secret key is cached
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 	secretKey, err := service.SecretKey(ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, secretKey)
@@ -316,7 +316,7 @@ func TestSystemService_CacheExpiration(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Set a test value
 	testKey := "expiration_test"
@@ -347,7 +347,7 @@ func TestSystemService_InvalidStoragePolicyJSON(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Manually insert invalid JSON for storage policy
 	_, err := client.System.Create().
@@ -370,7 +370,7 @@ func TestSystemService_BackwardCompatibility(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create old-style storage policy without new fields
 	oldPolicy := map[string]any{
@@ -410,7 +410,7 @@ func TestSystemService_GetSystemValue_NotFound(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Try to get non-existent key
 	value, err := service.getSystemValue(ctx, "non-existent-key")
@@ -427,7 +427,7 @@ func TestSystemService_BrandName_NotSet(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Brand name not set should return empty string
 	brandName, err := service.BrandName(ctx)
@@ -458,7 +458,7 @@ func TestSystemService_Version(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Test getting version when not set
 	version, err := service.Version(ctx)
@@ -501,7 +501,7 @@ func TestSystemService_Version_WithCache(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Set version
 	testVersion := "v0.4.0"
@@ -547,7 +547,7 @@ func TestSystemService_Initialize_DataMigrationIdempotency(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Get initial data storage ID
 	initialID, err := service.DefaultDataStorageID(ctx)
@@ -592,7 +592,7 @@ func TestSystemService_Initialize_CreatesDefaultProject(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Verify default project was created
 	project, err := client.Project.Query().First(ctx)
@@ -628,7 +628,7 @@ func TestSystemService_Initialize_SetsAllSystemKeys(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Verify all system keys are set
 	systemKeys := []string{
@@ -663,7 +663,7 @@ func TestSystemService_DefaultDataStorageID(t *testing.T) {
 	service := NewSystemService(SystemServiceParams{})
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Test getting default data storage ID when not set (should return 0)
 	defaultID, err := service.DefaultDataStorageID(ctx)
@@ -698,7 +698,7 @@ func TestSystemService_Initialize_TransactionRollback(t *testing.T) {
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// First, create a user with the same email to cause a constraint violation
 	_, err := client.User.Create().

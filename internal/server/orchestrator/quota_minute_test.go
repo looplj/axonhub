@@ -8,10 +8,10 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -23,7 +23,7 @@ import (
 
 func TestChatCompletionOrchestrator_Process_MinuteQuotaExceeded(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -121,4 +121,3 @@ func TestChatCompletionOrchestrator_Process_MinuteQuotaExceeded(t *testing.T) {
 	require.Equal(t, "quota_exceeded", respErr.Detail.Code)
 	require.Equal(t, "quota_exceeded_error", respErr.Detail.Type)
 }
-

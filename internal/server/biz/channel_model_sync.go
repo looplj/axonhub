@@ -8,7 +8,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -16,8 +15,6 @@ import (
 // syncChannelModels syncs supported models for all channels with auto_sync_supported_models enabled.
 // This function is called periodically (every hour) to keep model lists up to date.
 func (svc *ChannelService) syncChannelModels(ctx context.Context) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	// Query all enabled channels with auto_sync_supported_models = true
 	channels, err := svc.entFromContext(ctx).Channel.
 		Query().
@@ -92,11 +89,11 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	}
 
 	// Update channel's supported models
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-	if err := svc.entFromContext(ctx).Channel.
+	err = svc.entFromContext(ctx).Channel.
 		UpdateOneID(ch.ID).
 		SetSupportedModels(modelIDs).
-		Exec(ctx); err != nil {
+		Exec(ctx)
+	if err != nil {
 		return fmt.Errorf("failed to update channel supported models: %w", err)
 	}
 

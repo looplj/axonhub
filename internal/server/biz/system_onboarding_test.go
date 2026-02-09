@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 )
 
 func TestSystemService_OnboardingInfo_NotSet(t *testing.T) {
@@ -18,7 +18,7 @@ func TestSystemService_OnboardingInfo_NotSet(t *testing.T) {
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Onboarding info not set should return nil
 	info, err := service.OnboardingInfo(ctx)
@@ -33,7 +33,7 @@ func TestSystemService_OnboardingInfo_InvalidJSON(t *testing.T) {
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Manually insert invalid JSON
 	_, err := client.System.Create().
@@ -55,7 +55,7 @@ func TestSystemService_SetOnboardingInfo(t *testing.T) {
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Set onboarding info
 	info := &OnboardingRecord{
@@ -79,7 +79,7 @@ func TestSystemService_CompleteOnboarding_FirstTime(t *testing.T) {
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Complete onboarding for the first time
 	err := service.CompleteOnboarding(ctx)
@@ -105,7 +105,7 @@ func TestSystemService_CompleteOnboarding_PreservesExistingModules(t *testing.T)
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// First, complete system model setting onboarding
 	err := service.CompleteSystemModelSettingOnboarding(ctx)
@@ -133,7 +133,7 @@ func TestSystemService_CompleteOnboarding_DoesNotOverwriteAutoDisableChannel(t *
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// First complete main onboarding (this sets AutoDisableChannel)
 	err := service.CompleteOnboarding(ctx)
@@ -162,7 +162,7 @@ func TestSystemService_CompleteSystemModelSettingOnboarding_FirstTime(t *testing
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Complete system model setting onboarding
 	err := service.CompleteSystemModelSettingOnboarding(ctx)
@@ -184,7 +184,7 @@ func TestSystemService_CompleteSystemModelSettingOnboarding_PreservesOtherFields
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// First complete main onboarding
 	err := service.CompleteOnboarding(ctx)
@@ -211,7 +211,7 @@ func TestSystemService_CompleteAutoDisableChannelOnboarding_FirstTime(t *testing
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Complete auto-disable channel onboarding
 	err := service.CompleteAutoDisableChannelOnboarding(ctx)
@@ -233,7 +233,7 @@ func TestSystemService_CompleteAutoDisableChannelOnboarding_PreservesOtherFields
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// First complete main onboarding
 	err := service.CompleteOnboarding(ctx)
@@ -266,7 +266,7 @@ func TestSystemService_OnboardingInfo_FullWorkflow(t *testing.T) {
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Step 1: Initially no onboarding info
 	info, err := service.OnboardingInfo(ctx)
@@ -317,7 +317,7 @@ func TestSystemService_OnboardingInfo_JSONSerialization(t *testing.T) {
 	service := NewSystemService(SystemServiceParams{})
 	ctx := t.Context()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Manually create a record with all fields set
 	record := &OnboardingRecord{

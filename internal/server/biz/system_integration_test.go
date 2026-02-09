@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -40,7 +40,7 @@ func TestSystemService_Initialize(t *testing.T) {
 	require.True(t, isInitialized)
 
 	// Verify secret key is set
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 	secretKey, err := service.SecretKey(ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, secretKey)

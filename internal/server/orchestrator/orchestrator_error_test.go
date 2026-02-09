@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -23,7 +23,7 @@ import (
 // TestChatCompletionOrchestrator_Process_ErrorHandling tests error handling.
 func TestChatCompletionOrchestrator_Process_ErrorHandling(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -103,7 +103,7 @@ func TestChatCompletionOrchestrator_Process_ErrorHandling(t *testing.T) {
 // TestChatCompletionOrchestrator_Process_NoChannelsAvailable tests error when no channels are available.
 func TestChatCompletionOrchestrator_Process_NoChannelsAvailable(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -147,7 +147,7 @@ func TestChatCompletionOrchestrator_Process_NoChannelsAvailable(t *testing.T) {
 // TestChatCompletionOrchestrator_Process_InvalidRequest tests invalid request handling.
 func TestChatCompletionOrchestrator_Process_InvalidRequest(t *testing.T) {
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

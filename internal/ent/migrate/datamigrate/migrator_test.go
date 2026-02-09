@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -37,7 +37,7 @@ func TestMigrator_Run_SystemNotInitialized(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create migrator with mock migrations
 	migrator := datamigrate.NewMigratorWithoutRegistrations(client)
@@ -58,7 +58,7 @@ func TestMigrator_Run_WithInitializedSystem(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
@@ -94,7 +94,7 @@ func TestMigrator_Run_WithEmptyVersionValue(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Manually create an initialized system with an empty version value
 	_, err := client.System.Create().
@@ -133,7 +133,7 @@ func TestMigrator_Run_SkipNewerVersion(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
@@ -169,7 +169,7 @@ func TestMigrator_Run_SkipEqualVersion(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
@@ -205,7 +205,7 @@ func TestMigrator_Run_MultipleMigrations(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
@@ -245,7 +245,7 @@ func TestMigrator_Run_PartialMigrations(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
@@ -285,7 +285,7 @@ func TestMigrator_Run_EmptySystemVersion(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Manually create an initialized system without version (simulating old system)
 	_, err := client.System.Create().
@@ -341,7 +341,7 @@ func TestMigrator_IntegrationTest(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Initialize system
 	systemService := biz.NewSystemService(biz.SystemServiceParams{})
@@ -375,7 +375,7 @@ func TestMigrator_UpgradeFromV0_3_0(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Simulate an already initialized system on v0.3.0 without primary data storage
 	_, err := client.System.Create().

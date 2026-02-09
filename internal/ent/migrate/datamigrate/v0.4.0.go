@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -28,7 +28,7 @@ func (v *V0_4_0) Version() string {
 // Migrate performs the version 0.4.0 data migration.
 // Creates a primary data storage if it doesn't exist.
 func (v *V0_4_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(context.Background(), "database-migrate")
 
 	// Check if a primary data storage already exists
 	exists, err := client.DataStorage.Query().

@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -23,7 +23,7 @@ func TestTPSCalculation_RetryScenario(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -147,7 +147,7 @@ func TestTPSCalculation_AllTokenTypes(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -225,7 +225,7 @@ func TestTPSCalculation_StreamingVsNonStreaming(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -337,7 +337,7 @@ func TestTPSCalculation_EdgeCases(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -404,7 +404,7 @@ func TestTPSCalculation_EmptyResults(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -439,7 +439,7 @@ func TestComputeAllChannelProbeStats_Integration(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a channel
 	ch, err := client.Channel.Create().
@@ -534,7 +534,7 @@ func TestComputeAllChannelProbeStats_MultipleRequests(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -639,7 +639,7 @@ func TestComputeAllChannelProbeStats_EmptyChannel(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -672,7 +672,7 @@ func TestComputeAllChannelProbeStats_MultipleChannels(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create two channels
 	ch1, err := client.Channel.Create().
@@ -816,7 +816,7 @@ func TestComputeAllChannelProbeStats_FailedExecutions(t *testing.T) {
 	defer client.Close()
 
 	ctx := ent.NewContext(t.Context(), client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).

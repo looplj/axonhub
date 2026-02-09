@@ -8,8 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/shopspring/decimal"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
@@ -51,8 +51,6 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 		return QuotaCheckResult{Allowed: true}, nil
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	loc := s.system.TimeLocation(ctx)
 
 	window, err := quotaWindow(xtime.UTCNow(), quota.Period, loc)
@@ -61,7 +59,9 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 	}
 
 	if quota.Requests != nil {
-		reqCount, err := s.requestCount(ctx, apiKeyID, window)
+		reqCount, err := authz.RunWithSystemBypass(ctx, "quota-request-count", func(bypassCtx context.Context) (int64, error) {
+			return s.requestCount(bypassCtx, apiKeyID, window)
+		})
 		if err != nil {
 			return QuotaCheckResult{}, err
 		}
@@ -82,7 +82,9 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 		}, nil
 	}
 
-	usageAgg, err := s.usageAgg(ctx, apiKeyID, window, quota.TotalTokens != nil, quota.Cost != nil)
+	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
+		return s.usageAgg(bypassCtx, apiKeyID, window, quota.TotalTokens != nil, quota.Cost != nil)
+	})
 	if err != nil {
 		return QuotaCheckResult{}, err
 	}
@@ -114,8 +116,6 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 		return QuotaResult{}, nil
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	loc := s.system.TimeLocation(ctx)
 
 	window, err := quotaWindow(xtime.UTCNow(), quota.Period, loc)
@@ -123,12 +123,16 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 		return QuotaResult{}, err
 	}
 
-	reqCount, err := s.requestCount(ctx, apiKeyID, window)
+	reqCount, err := authz.RunWithSystemBypass(ctx, "quota-request-count", func(bypassCtx context.Context) (int64, error) {
+		return s.requestCount(bypassCtx, apiKeyID, window)
+	})
 	if err != nil {
 		return QuotaResult{}, err
 	}
 
-	usageAgg, err := s.usageAgg(ctx, apiKeyID, window, true, true)
+	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
+		return s.usageAgg(bypassCtx, apiKeyID, window, true, true)
+	})
 	if err != nil {
 		return QuotaResult{}, err
 	}

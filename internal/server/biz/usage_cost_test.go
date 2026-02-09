@@ -8,10 +8,10 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 )
@@ -49,7 +49,7 @@ func TestUsageCost_PerUnitPromptAndCompletion(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -123,7 +123,7 @@ func TestUsageCost_TieredPrompt(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -199,7 +199,7 @@ func TestUsageCost_NoPriceConfigured(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -248,7 +248,7 @@ func TestUsageCost_CacheVariant5Min(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -339,7 +339,7 @@ func TestUsageCost_CacheVariant1Hour(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -430,7 +430,7 @@ func TestUsageCost_CacheVariantBoth5MinAnd1Hour(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).
@@ -528,7 +528,7 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	ch, err := client.Channel.Create().
 		SetType(channel.TypeOpenaiFake).

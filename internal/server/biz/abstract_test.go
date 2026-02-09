@@ -8,16 +8,16 @@ import (
 	"entgo.io/ent/dialect"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 )
 
 func TestAbstractService_RunInTransaction(t *testing.T) {
 	newSvc := func(t *testing.T) (*ent.Client, *AbstractService, context.Context) {
 		client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
 		svc := &AbstractService{db: client}
-		ctx := privacy.DecisionContext(context.Background(), privacy.Allow)
+		ctx := authz.WithTestBypass(context.Background())
 
 		return client, svc, ctx
 	}

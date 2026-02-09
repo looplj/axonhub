@@ -1,7 +1,8 @@
 .PHONY: generate build backend frontend cleanup-db \
 	e2e-test e2e-backend-start e2e-backend-stop e2e-backend-status e2e-backend-restart e2e-backend-clean \
 	migration-test migration-test-all migration-test-all-dbs \
-	sync-faq sync-models filter-logs
+	sync-faq sync-models filter-logs \
+	lint lint-privacy
 
 # Generate GraphQL and Ent code
 generate:
@@ -121,3 +122,14 @@ sync-models:
 filter-logs:
 	@echo "Filtering load balance logs..."
 	@./scripts/utils/filter-load-balance-logs.sh
+
+# --- Linting ---
+
+# Run all lint checks
+lint: lint-privacy
+	@echo "All lint checks passed!"
+
+# Check for illegal privacy.DecisionContext(...Allow) usage
+lint-privacy:
+	@echo "Checking for illegal privacy.DecisionContext(...Allow) usage..."
+	@./scripts/lint/check-privacy-allow.sh

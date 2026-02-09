@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zhenzou/executors"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
@@ -51,7 +51,7 @@ func TestThreadService_GetOrCreateThread(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -92,7 +92,7 @@ func TestThreadService_GetOrCreateThread_DifferentProjects(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create two test projects
 	project1, err := client.Project.Create().
@@ -131,7 +131,7 @@ func TestThreadService_GetThreadByID(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	testProject, err := client.Project.Create().
@@ -166,7 +166,7 @@ func TestThreadService_GetOrCreateThread_NoClient(t *testing.T) {
 	threadService, client := setupTestThreadService(t)
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client) // Add client to context
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Test with ent client in context - should work
 	thread, err := threadService.GetOrCreateThread(ctx, 1, "thread-123")

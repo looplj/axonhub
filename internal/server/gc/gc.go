@@ -10,7 +10,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
@@ -62,7 +61,6 @@ func NewWorker(params Params) *Worker {
 // deleteInBatches deletes records in batches to avoid memory issues
 // This function repeatedly executes the delete query until no more records are deleted.
 func (w *Worker) deleteInBatches(ctx context.Context, deleteFunc func() (int, error)) (int, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	totalDeleted := 0
 
 	for {
@@ -96,7 +94,7 @@ func (w *Worker) getBatchSize() int {
 
 func (w *Worker) Start(ctx context.Context) error {
 	cancelFunc, err := w.Executor.ScheduleFuncAtCronRate(
-		w.runCleanup,
+		w.runCleanupWithSystemContext,
 		executors.CRONRule{Expr: w.Config.CRON},
 	)
 	if err != nil {
@@ -129,7 +127,6 @@ func (w *Worker) runCleanup(ctx context.Context) {
 
 	ctx = ent.NewContext(ctx, w.Ent)
 	ctx = schematype.SkipSoftDelete(ctx)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Get storage policy
 	policy, err := w.SystemService.StoragePolicy(ctx)
@@ -215,7 +212,6 @@ func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int) error {
 		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
 
 	execResult, err := w.cleanupOldRequestExecutions(ctx, cutoffTime)
@@ -416,7 +412,6 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int) error {
 		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
 
 	// Delete usage logs in batches
@@ -441,7 +436,6 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int) error {
 		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
 
 	// Delete threads in batches
@@ -466,7 +460,6 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int) error {
 		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
 
 	// Delete traces in batches
@@ -491,7 +484,6 @@ func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int) erro
 		return nil
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {

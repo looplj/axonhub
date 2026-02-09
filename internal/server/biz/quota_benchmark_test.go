@@ -8,9 +8,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -23,7 +23,7 @@ func BenchmarkQuotaService_CheckAPIKeyQuota_PastDurationMinute_RequestsOnly(b *t
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	p, err := client.Project.Create().
 		SetName("p").
@@ -98,7 +98,7 @@ func BenchmarkQuotaService_CheckAPIKeyQuota_PastDurationMinute_TokensAndCost(b *
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	p, err := client.Project.Create().
 		SetName("p").
@@ -167,4 +167,3 @@ func BenchmarkQuotaService_CheckAPIKeyQuota_PastDurationMinute_TokensAndCost(b *
 		}
 	}
 }
-
