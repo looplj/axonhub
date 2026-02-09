@@ -16,15 +16,29 @@ export function TokenStatsCard() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className='min-w-0'>
         <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
           <Skeleton className='h-4 w-[120px]' />
           <Skeleton className='h-4 w-4' />
         </CardHeader>
         <CardContent>
-          <div className='space-y-2'>
-            <Skeleton className='h-8 w-[80px]' />
-            <Skeleton className='mt-1 h-4 w-[140px]' />
+          <div className='flex items-end justify-between gap-2 sm:flex-col sm:gap-2 xl:flex-row xl:items-end xl:justify-between'>
+            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
+              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
+              <Skeleton className='h-6 w-[60px]' />
+            </div>
+            <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
+            <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
+            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
+              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
+              <Skeleton className='h-6 w-[60px]' />
+            </div>
+            <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
+            <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
+            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
+              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
+              <Skeleton className='h-6 w-[60px]' />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -33,16 +47,15 @@ export function TokenStatsCard() {
 
   if (error) {
     return (
-      <Card>
-        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-          <div className='flex items-center gap-2'>
-            <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
+      <Card className='hover-card min-w-0'>
+        <CardHeader className='flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2'>
+          <div className='flex items-center gap-2 min-w-0'>
+            <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5 shrink-0'>
               <BarChart4 className='h-4 w-4' />
             </div>
-            <CardTitle className='text-sm font-medium'>{t('dashboard.cards.tokenStats')}</CardTitle>
+            <CardTitle className='text-sm font-medium truncate'>{t('dashboard.cards.tokenStats')}</CardTitle>
           </div>
-          <div className='flex items-center gap-1'>
-            {/* <span className='text-xs text-muted-foreground'>{t('dashboard.stats.this')}</span> */}
+          <div className='flex items-center gap-1 shrink-0'>
             <span className='bg-primary/10 text-primary dark:bg-primary/20 rounded-md px-2 py-1 text-xs'>{t('dashboard.stats.month')}</span>
           </div>
         </CardHeader>
@@ -78,15 +91,15 @@ export function TokenStatsCard() {
   const tokens = getTokens(timeRange);
 
   return (
-    <Card className='hover-card'>
-      <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+    <Card className='hover-card min-w-0'>
+      <CardHeader className='flex flex-wrap items-start sm:items-center justify-between gap-2 pb-2'>
         <div className='flex items-center gap-2'>
-          <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
+          <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5 shrink-0'>
             <BarChart4 className='h-4 w-4' />
           </div>
-          <CardTitle className='text-sm font-medium'>{t('dashboard.cards.tokenStats')}</CardTitle>
+          <CardTitle className='text-sm font-medium whitespace-normal leading-tight'>{t('dashboard.cards.tokenStats')}</CardTitle>
         </div>
-        <div className='flex items-center gap-1'>
+        <div className='flex items-center gap-1 shrink-0'>
           {/* <span className='text-xs text-muted-foreground'>{t('dashboard.stats.this')}</span> */}
           <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
             <TabsList className='h-6 p-0.5'>
@@ -104,19 +117,21 @@ export function TokenStatsCard() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className='flex items-end justify-between'>
-          <div className='text-center'>
-            <div className='text-muted-foreground mb-1 text-xs'>{t('dashboard.stats.input')}</div>
+        <div className='flex items-end justify-between gap-2 sm:flex-col sm:gap-2 xl:flex-row xl:items-end xl:justify-between'>
+          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
+            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.input')}</div>
             <div className='font-mono text-lg font-bold'>{formatNumber(tokens.input)}</div>
           </div>
-          <div className='bg-border h-8 w-px'></div>
-          <div className='text-center'>
-            <div className='text-muted-foreground mb-1 text-xs'>{t('dashboard.stats.output')}</div>
+          <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
+          <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
+          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
+            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.output')}</div>
             <div className='font-mono text-lg font-bold'>{formatNumber(tokens.output)}</div>
           </div>
-          <div className='bg-border h-8 w-px'></div>
-          <div className='text-center'>
-            <div className='text-muted-foreground mb-1 text-xs'>{t('dashboard.stats.cached')}</div>
+          <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
+          <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
+          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
+            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.cached')}</div>
             <div className='text-muted-foreground font-mono text-lg font-bold'>{formatNumber(tokens.cached)}</div>
           </div>
         </div>

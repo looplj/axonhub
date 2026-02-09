@@ -41,8 +41,8 @@ export default function DashboardPage() {
               <Skeleton className='h-[180px]' />
             </div>
             <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
-              <Skeleton className='col-span-4 h-[300px]' />
-              <Skeleton className='col-span-3 h-[300px]' />
+              <Skeleton className='col-span-1 h-[300px] lg:col-span-4' />
+              <Skeleton className='col-span-1 h-[300px] lg:col-span-3' />
             </div>
           </div>
         </Tabs>
@@ -72,7 +72,7 @@ export default function DashboardPage() {
             <TodayRequestsCard />
           </div>
           <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
-            <Card className='hover-card col-span-4'>
+            <Card className='hover-card col-span-1 lg:col-span-4'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.dailyRequestOverview')}</CardTitle>
               </CardHeader>
@@ -80,7 +80,7 @@ export default function DashboardPage() {
                 <DailyRequestStats />
               </CardContent>
             </Card>
-            <Card className='hover-card col-span-3'>
+            <Card className='hover-card col-span-1 lg:col-span-3'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.channelSuccessRate')}</CardTitle>
                 <CardDescription>{t('dashboard.charts.channelSuccessRateDescription')}</CardDescription>
