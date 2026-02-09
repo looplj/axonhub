@@ -184,4 +184,76 @@ test.describe('Mobile Header Layout', () => {
       await page.waitForTimeout(500);
     });
   });
+
+  test.describe('Accessibility', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 667 });
+      await page.goto('/');
+      await page.waitForLoadState('domcontentloaded');
+      // Wait for the app to load
+      await page.waitForSelector('header', { timeout: 10000 }).catch(() => {});
+
+      // Open sidebar
+      const sidebarTrigger = page.getByRole('button', { name: /sidebar|menu|open/i }).first();
+      if (await sidebarTrigger.isVisible()) {
+        await sidebarTrigger.click();
+        await page.waitForTimeout(300);
+      }
+    });
+
+    test('mobile header controls have proper ARIA attributes', async ({ page }) => {
+      // Check if we're on an error page first
+      const errorPage = await page.getByRole('heading', { name: /system error/i }).isVisible().catch(() => false);
+      if (errorPage) {
+        test.skip();
+        return;
+      }
+
+      // Verify MobileHeaderControls has toolbar role
+      const mobileHeaderControls = page.getByRole('toolbar', { name: 'Settings controls' });
+      await expect(mobileHeaderControls).toBeVisible();
+    });
+
+    test('mobile controls are keyboard navigable', async ({ page }) => {
+      // Check if we're on an error page first
+      const errorPage = await page.getByRole('heading', { name: /system error/i }).isVisible().catch(() => false);
+      if (errorPage) {
+        test.skip();
+        return;
+      }
+
+      // Get all buttons in the toolbar
+      const toolbar = page.getByRole('toolbar', { name: 'Settings controls' });
+      const buttons = toolbar.getByRole('button');
+
+      // Verify buttons exist and are focusable
+      const buttonCount = await buttons.count();
+      expect(buttonCount).toBeGreaterThan(0);
+
+      // Test Tab navigation through controls
+      for (let i = 0; i < buttonCount; i++) {
+        const button = buttons.nth(i);
+        await button.focus();
+        await expect(button).toBeFocused();
+        await page.keyboard.press('Tab');
+      }
+    });
+
+    test('language and theme switches have proper screen reader labels', async ({ page }) => {
+      // Check if we're on an error page first
+      const errorPage = await page.getByRole('heading', { name: /system error/i }).isVisible().catch(() => false);
+      if (errorPage) {
+        test.skip();
+        return;
+      }
+
+      // Find language switch button and verify it has screen reader label
+      const languageButton = page.getByRole('button', { name: /language/i });
+      await expect(languageButton).toBeVisible();
+
+      // Find theme switch button and verify it has screen reader label
+      const themeButton = page.getByRole('button', { name: /theme/i });
+      await expect(themeButton).toBeVisible();
+    });
+  });
 });

@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { LanguageSwitch } from '@/components/language-switch';
 import { ThemeSwitch } from '@/components/theme-switch';
@@ -81,7 +80,7 @@ export function AppHeader() {
           <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
           {/* Desktop-only controls - hidden on mobile */}
-            {!isMobile && (
+          {!isMobile && (
             <>
               <LanguageSwitch />
               <ThemeSwitch />
