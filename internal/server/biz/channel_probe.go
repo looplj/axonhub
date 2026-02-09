@@ -18,9 +18,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/db"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
 
 // ChannelProbePoint represents a single probe data point for a channel.
@@ -176,11 +176,12 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 		channelIDFilter = fmt.Sprintf("AND se.channel_id IN (%s)", strings.Join(placeholders, ","))
 	}
 
-	queryMode := db.ThroughputModeROW_NUMBER
+	queryMode := qb.ThroughputModeRowNumber
 	if !useDollarPlaceholders {
-		queryMode = db.ThroughputModeMaxID
+		queryMode = qb.ThroughputModeMaxID
 	}
-	query := db.BuildProbeStatsQuery(useDollarPlaceholders, channelIDFilter, queryMode)
+
+	query := qb.BuildProbeStatsQuery(useDollarPlaceholders, channelIDFilter, queryMode)
 
 	rows, err := sqlDB.DB().QueryContext(ctx, query, args...)
 	if err != nil {

@@ -1,4 +1,4 @@
-package db
+package qb
 
 import (
 	"strings"
@@ -193,7 +193,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			useDollarPlaceholders: true,
 			queryType:             ThroughputQueryByChannel,
 			limit:                 10,
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains:          []string{"$1", "JOIN channels c ON", "se.channel_id", "channel_name", "channel_type", "ROW_NUMBER()", "LIMIT 10"},
 			wantNotContains:       []string{},
 		},
@@ -202,7 +202,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			useDollarPlaceholders: false,
 			queryType:             ThroughputQueryByChannel,
 			limit:                 10,
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains:          []string{"?", "JOIN channels c ON", "se.channel_id", "channel_name", "channel_type", "ROW_NUMBER()", "LIMIT 10"},
 			wantNotContains:       []string{"$1"},
 		},
@@ -231,7 +231,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			useDollarPlaceholders: true,
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains:          []string{"$1", "JOIN requests r ON", "JOIN models m ON", "r.model_id", "model_name", "ROW_NUMBER()", "LIMIT 10"},
 			wantNotContains:       []string{},
 		},
@@ -240,7 +240,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			useDollarPlaceholders: false,
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains:          []string{"?", "JOIN requests r ON", "JOIN models m ON", "r.model_id", "model_name", "ROW_NUMBER()", "LIMIT 10"},
 			wantNotContains:       []string{"$1"},
 		},
@@ -269,7 +269,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			useDollarPlaceholders: true,
 			queryType:             ThroughputQueryByChannel,
 			limit:                 0,
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains:          []string{"LIMIT 20"},
 			wantNotContains:       []string{},
 		},
@@ -278,7 +278,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			useDollarPlaceholders: true,
 			queryType:             ThroughputQueryByChannel,
 			limit:                 -5,
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains:          []string{"LIMIT 20"},
 			wantNotContains:       []string{},
 		},
@@ -287,7 +287,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			useDollarPlaceholders: true,
 			queryType:             ThroughputQueryByChannel,
 			limit:                 50,
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains:          []string{"LIMIT 50"},
 			wantNotContains:       []string{"LIMIT 20"},
 		},
@@ -298,7 +298,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			useDollarPlaceholders: true,
 			queryType:             ThroughputQueryType(999),
 			limit:                 10,
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains:          []string{"JOIN channels c ON", "se.channel_id", "channel_name"},
 			wantNotContains:       []string{},
 		},
@@ -328,7 +328,7 @@ func TestBuildThroughputQuery_SQLStructure(t *testing.T) {
 	}{
 		{
 			name:    "ROW_NUMBER mode includes CTE",
-			mode:    ThroughputModeROW_NUMBER,
+			mode:    ThroughputModeRowNumber,
 			wantCTE: true,
 		},
 		{
@@ -372,7 +372,7 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 			name:                  "ROW_NUMBER with dollar placeholders",
 			useDollarPlaceholders: true,
 			channelIDFilter:       "AND se.channel_id IN ($3, $4)",
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains: []string{
 				"$1", "$2",
 				"AND se.channel_id IN ($3, $4)",
@@ -390,7 +390,7 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 			name:                  "ROW_NUMBER with question mark placeholders",
 			useDollarPlaceholders: false,
 			channelIDFilter:       "AND se.channel_id IN (?, ?)",
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains: []string{
 				"?", "?",
 				"AND se.channel_id IN (?, ?)",
@@ -436,7 +436,7 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 			name:                  "empty channel filter",
 			useDollarPlaceholders: true,
 			channelIDFilter:       "",
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains: []string{
 				"$1", "$2",
 				"se.channel_id",
@@ -450,7 +450,7 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 			name:                  "complex channel filter with multiple conditions",
 			useDollarPlaceholders: true,
 			channelIDFilter:       "AND se.channel_id = $3 AND se.created_at > $4",
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			wantContains: []string{
 				"AND se.channel_id = $3 AND se.created_at > $4",
 			},
@@ -482,7 +482,7 @@ func TestBuildProbeStatsQuery_SQLStructure(t *testing.T) {
 	}{
 		{
 			name:    "ROW_NUMBER mode includes CTE",
-			mode:    ThroughputModeROW_NUMBER,
+			mode:    ThroughputModeRowNumber,
 			wantCTE: true,
 		},
 		{
@@ -525,7 +525,7 @@ func TestBuildProbeStatsQuery_PlaceholderCount(t *testing.T) {
 			name:                  "dollar placeholders count",
 			useDollarPlaceholders: true,
 			channelIDFilter:       "AND se.channel_id IN ($3, $4)",
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			expectedDollarCount:   4,
 			expectedQuestionCount: 0,
 		},
@@ -533,7 +533,7 @@ func TestBuildProbeStatsQuery_PlaceholderCount(t *testing.T) {
 			name:                  "question mark placeholders count",
 			useDollarPlaceholders: false,
 			channelIDFilter:       "AND se.channel_id IN (?, ?)",
-			mode:                  ThroughputModeROW_NUMBER,
+			mode:                  ThroughputModeRowNumber,
 			expectedDollarCount:   0,
 			expectedQuestionCount: 4,
 		},
@@ -560,7 +560,7 @@ func TestThroughputQueryTypeEnum(t *testing.T) {
 
 // TestThroughputQueryModeEnum tests that the enum values are correct.
 func TestThroughputQueryModeEnum(t *testing.T) {
-	assert.Equal(t, ThroughputQueryMode(0), ThroughputModeROW_NUMBER, "ThroughputModeROW_NUMBER should be 0")
+	assert.Equal(t, ThroughputQueryMode(0), ThroughputModeRowNumber, "ThroughputModeRowNumber should be 0")
 	assert.Equal(t, ThroughputQueryMode(1), ThroughputModeMaxID, "ThroughputModeMaxID should be 1")
 }
 

@@ -1,8 +1,8 @@
-// Package db provides database utilities and query builders for AxonHub.
+// Package qb provides database utilities and query builders for AxonHub.
 //
 // This package contains shared database logic that can be used across the
 // codebase without depending on generated code or GraphQL types.
-package db
+package qb
 
 import (
 	"fmt"
@@ -25,9 +25,10 @@ const (
 type ThroughputQueryMode int
 
 const (
-	// ThroughputModeROW_NUMBER uses ROW_NUMBER() window function (preferred).
+	// ThroughputModeRowNumber uses ROW_NUMBER() window function (preferred).
 	// Requires SQLite 3.25+ (released 2018-09-15), PostgreSQL, MySQL 8.0+, TiDB.
-	ThroughputModeROW_NUMBER ThroughputQueryMode = iota
+	ThroughputModeRowNumber ThroughputQueryMode = iota
+
 	// ThroughputModeMaxID uses MAX(id) subquery approach for older SQLite compatibility.
 	ThroughputModeMaxID
 )

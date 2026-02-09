@@ -70,13 +70,10 @@ func NewDataStorageService(params DataStorageServiceParams) *DataStorageService 
 		Executors:     params.Executor,
 		fsCache:       make(map[int]afero.Fs),
 	}
-	// TODO： migrate to live refresh
-	if err := svc.refreshFileSystems(context.Background()); err != nil {
-		log.Error(context.Background(), "failed to preload data storage filesystems", log.Cause(err))
-	}
+	svc.reloadFileSystemsPeriodically(context.Background())
 
 	if _, err := svc.Executors.ScheduleFuncAtCronRate(
-		svc.refreshFileSystemsPeriodic,
+		svc.reloadFileSystemsPeriodically,
 		executors.CRONRule{Expr: "*/1 * * * *"},
 	); err != nil {
 		log.Error(context.Background(), "failed to schedule data storage filesystem refresh", log.Cause(err))
@@ -104,7 +101,6 @@ func (s *DataStorageService) refreshFileSystems(ctx context.Context) error {
 		s.latestUpdate = time.Time{}
 	}
 
-	// TODO: fix should close fs.
 	storages, err := s.entFromContext(ctx).DataStorage.Query().
 		Where(datastorage.StatusEQ(datastorage.StatusActive)).
 		All(ctx)

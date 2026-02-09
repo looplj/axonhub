@@ -16,8 +16,13 @@ func WithSystemBypass(ctx context.Context, reason string) context.Context {
 }
 
 func RunWithSystemBypass[T any](ctx context.Context, reason string, fn func(ctx context.Context) (T, error)) (T, error) {
-	bypassCtx := WithSystemBypass(ctx, reason)
+	bypassCtx := NewSystemContext(ctx)
 	return RunWithBypass(bypassCtx, reason, fn)
+}
+
+func RunWithSystemBypassVoid(ctx context.Context, reason string, fn func(ctx context.Context) error) error {
+	bypassCtx := NewSystemContext(ctx)
+	return RunWithBypassVoid(bypassCtx, reason, fn)
 }
 
 // RequireSystemPrincipal checks if current principal is System, otherwise returns error.

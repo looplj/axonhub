@@ -38,6 +38,6 @@ func (svc *ChannelService) onTokenRefreshed(ch *ent.Channel) func(ctx context.Co
 func (svc *ChannelService) initChannelPerformances(ctx context.Context) {
 	ctx = authz.WithSystemBypass(ctx, "int-channel-load-performances")
 	if err := svc.loadChannelPerformances(ctx); err != nil {
-		log.Error(context.Background(), "failed to load channel performances", log.Cause(err))
+		log.Warn(ctx, "failed to load channel performances", log.Cause(err))
 	}
 }
