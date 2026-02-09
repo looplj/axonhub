@@ -377,7 +377,7 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 				"$1", "$2",
 				"AND se.channel_id IN ($3, $4)",
 				"ROW_NUMBER()",
-				"WITH successful_execs AS",
+				"WITH latest_execs AS",
 				"se.channel_id",
 				"total_count",
 				"effective_latency_ms",
@@ -395,7 +395,7 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 				"?", "?",
 				"AND se.channel_id IN (?, ?)",
 				"ROW_NUMBER()",
-				"WITH successful_execs AS",
+				"WITH latest_execs AS",
 			},
 			wantNotContains: []string{"$1", "$2", "MAX(re2.id)"},
 		},
@@ -416,7 +416,7 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 				"total_first_token_latency",
 				"request_count",
 			},
-			wantNotContains: []string{"ROW_NUMBER()", "WITH successful_execs AS"},
+			wantNotContains: []string{"ROW_NUMBER()", "WITH latest_execs AS"},
 		},
 		{
 			name:                  "MAX_ID with question mark placeholders",
@@ -428,7 +428,7 @@ func TestBuildProbeStatsQuery(t *testing.T) {
 				"AND se.channel_id IN (?, ?)",
 				"MAX(re2.id)",
 			},
-			wantNotContains: []string{"$1", "$2", "ROW_NUMBER()", "WITH successful_execs AS"},
+			wantNotContains: []string{"$1", "$2", "ROW_NUMBER()", "WITH latest_execs AS"},
 		},
 
 		// Empty filter test
@@ -497,9 +497,9 @@ func TestBuildProbeStatsQuery_SQLStructure(t *testing.T) {
 			got := BuildProbeStatsQuery(true, "AND se.channel_id = $1", tt.mode)
 
 			if tt.wantCTE {
-				assert.Contains(t, got, "WITH successful_execs AS", "ROW_NUMBER mode should use CTE")
+				assert.Contains(t, got, "WITH latest_execs AS", "ROW_NUMBER mode should use CTE")
 			} else {
-				assert.NotContains(t, got, "WITH successful_execs AS", "MAX_ID mode should not use CTE")
+				assert.NotContains(t, got, "WITH latest_execs AS", "MAX_ID mode should not use CTE")
 			}
 
 			// Both modes should have these common elements

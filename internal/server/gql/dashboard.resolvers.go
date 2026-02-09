@@ -37,6 +37,25 @@ type scoredItem[T any] struct {
 	score      int
 }
 
+// safeIntFromInt64 converts int64 to int with clamping to prevent overflow on 32-bit builds.
+// Values outside the int range are clamped to MaxInt or MinInt respectively.
+func safeIntFromInt64(v int64) int {
+	const (
+		maxInt = int(^uint(0) >> 1)
+		minInt = -maxInt - 1
+	)
+
+	if v > int64(maxInt) {
+		return maxInt
+	}
+
+	if v < int64(minInt) {
+		return minInt
+	}
+
+	return int(v)
+}
+
 // calculateConfidenceAndSort applies confidence scoring, filtering, and sorting logic.
 // It calculates median request count, assigns confidence levels, filters to high/medium when possible,
 // sorts by confidence score then throughput, and returns top N results.
@@ -880,6 +899,12 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	dialectName := sqlDB.Dialect()
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
+	// Select throughput mode based on dialect: ROW_NUMBER for PostgreSQL, MaxID for older SQLite
+	queryMode := db.ThroughputModeROW_NUMBER
+	if !useDollarPlaceholders {
+		queryMode = db.ThroughputModeMaxID
+	}
+
 	// Build query using shared helper function
 	// Fetch more items than needed to allow confidence-based filtering
 	sqlLimit := *input.Limit * 4
@@ -890,7 +915,7 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 		useDollarPlaceholders,
 		db.ThroughputQueryByChannel,
 		sqlLimit,
-		db.ThroughputModeROW_NUMBER,
+		queryMode,
 	)
 
 	// Use UTC for the time parameter to match the timezone of the created_at column.
@@ -946,8 +971,8 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 			ChannelName:     item.stats.ChannelName,
 			ChannelType:     item.stats.ChannelType,
 			Throughput:      item.stats.Throughput,
-			TokensCount:     int(item.stats.TokensCount),
-			LatencyMs:       int(item.stats.LatencyMs),
+			TokensCount:     safeIntFromInt64(item.stats.TokensCount),
+			LatencyMs:       safeIntFromInt64(item.stats.LatencyMs),
 			RequestCount:    int(item.stats.RequestCount),
 			ConfidenceLevel: item.confidence,
 		}
@@ -1007,6 +1032,12 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	dialectName := sqlDB.Dialect()
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
+	// Select throughput mode based on dialect: ROW_NUMBER for PostgreSQL, MaxID for older SQLite
+	queryMode := db.ThroughputModeROW_NUMBER
+	if !useDollarPlaceholders {
+		queryMode = db.ThroughputModeMaxID
+	}
+
 	// Build query with dialect-aware timestamp placeholder
 	// Fetch more items than needed to allow confidence-based filtering
 	sqlLimit := *input.Limit * 4
@@ -1017,7 +1048,7 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 		useDollarPlaceholders,
 		db.ThroughputQueryByModel,
 		sqlLimit,
-		db.ThroughputModeROW_NUMBER,
+		queryMode,
 	)
 
 	if err := ctx.Err(); err != nil {
@@ -1069,8 +1100,8 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 			ModelID:         item.stats.ModelID,
 			ModelName:       item.stats.ModelName,
 			Throughput:      item.stats.Throughput,
-			TokensCount:     int(item.stats.TokensCount),
-			LatencyMs:       int(item.stats.LatencyMs),
+			TokensCount:     safeIntFromInt64(item.stats.TokensCount),
+			LatencyMs:       safeIntFromInt64(item.stats.LatencyMs),
 			RequestCount:    int(item.stats.RequestCount),
 			ConfidenceLevel: item.confidence,
 		}

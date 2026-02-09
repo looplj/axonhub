@@ -180,6 +180,9 @@ WHERE se.status = 'completed'
         SELECT MAX(re2.id)
         FROM request_executions re2
         WHERE re2.request_id = se.request_id
+            AND re2.status = 'completed'
+            AND re2.metrics_latency_ms > 0
+            AND re2.created_at >= ` + placeholder + `
     )
 GROUP BY ` + config.GroupBy + `
 ORDER BY throughput DESC
@@ -258,59 +261,66 @@ func BuildProbeStatsQuery(useDollarPlaceholders bool, channelIDFilter string, mo
 SELECT
     se.channel_id,
     COUNT(*) as total_count,
-    COUNT(*) as success_count,
+    SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) as success_count,
     SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
-    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-         THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
-              THEN 0
-              ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
-         ELSE se.metrics_latency_ms END) as effective_latency_ms,
-    SUM(se.metrics_first_token_latency_ms) as total_first_token_latency,
+    SUM(CASE WHEN se.status = 'completed' THEN
+        CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+             THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                  THEN 0
+                  ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
+             ELSE se.metrics_latency_ms END
+        ELSE 0 END) as effective_latency_ms,
+    SUM(CASE WHEN se.status = 'completed' THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
     COUNT(DISTINCT se.request_id) as request_count,
-    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
+    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
 FROM request_executions se
 JOIN usage_logs ul ON se.request_id = ul.request_id
-WHERE se.status = 'completed'
-    AND se.metrics_latency_ms > 0
+WHERE se.metrics_latency_ms > 0
     AND se.created_at >= %s
     AND se.created_at < %s
     AND se.id = (
         SELECT MAX(re2.id)
         FROM request_executions re2
         WHERE re2.request_id = se.request_id
+            AND re2.status = 'completed'
+            AND re2.metrics_latency_ms > 0
+            AND re2.created_at >= %s
     )
     %s
 GROUP BY se.channel_id
-ORDER BY se.channel_id`, placeholder1, placeholder2, channelIDFilter)
+ORDER BY se.channel_id`, placeholder1, placeholder2, placeholder1, channelIDFilter)
 	}
 
 	// ROW_NUMBER mode
 	return fmt.Sprintf(`
-WITH successful_execs AS (
+WITH latest_execs AS (
     SELECT
         request_id,
         channel_id,
         metrics_latency_ms,
         metrics_first_token_latency_ms,
         stream,
+        status,
         ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
     FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= %s AND created_at < %s
+    WHERE metrics_latency_ms > 0 AND created_at >= %s AND created_at < %s
 )
 SELECT
     se.channel_id,
     COUNT(*) as total_count,
-    COUNT(*) as success_count,
+    SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) as success_count,
     SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as total_tokens,
-    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-         THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
-              THEN 0
-              ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
-         ELSE se.metrics_latency_ms END) as effective_latency_ms,
-    SUM(se.metrics_first_token_latency_ms) as total_first_token_latency,
+    SUM(CASE WHEN se.status = 'completed' THEN
+        CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+             THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                  THEN 0
+                  ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
+             ELSE se.metrics_latency_ms END
+        ELSE 0 END) as effective_latency_ms,
+    SUM(CASE WHEN se.status = 'completed' THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
     COUNT(DISTINCT se.request_id) as request_count,
-    SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
-FROM successful_execs se
+    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
+FROM latest_execs se
 JOIN usage_logs ul ON se.request_id = ul.request_id
 WHERE se.rn = 1
     %s
