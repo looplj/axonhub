@@ -176,10 +176,6 @@ func (s *ProjectService) UpdateProject(ctx context.Context, id int, input ent.Up
 }
 
 func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Project, error) {
-	return s.getProjectByIDWithBypass(ctx, id)
-}
-
-func (s *ProjectService) getProjectByID(ctx context.Context, id int) (*ent.Project, error) {
 	cacheKey := buildProjectCacheKey(id)
 	if proj, err := s.ProjectCache.Get(ctx, cacheKey); err == nil {
 		return &proj, nil

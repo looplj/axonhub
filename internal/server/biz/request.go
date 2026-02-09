@@ -169,7 +169,7 @@ func (s *RequestService) CreateRequest(
 		SetStream(isStream).
 		SetRequestHeaders(requestHeadersBytes)
 
-	if httpRequest != nil && httpRequest.ClientIP != "" {
+	if httpRequest != nil {
 		mut = mut.SetClientIP(httpRequest.ClientIP)
 	}
 

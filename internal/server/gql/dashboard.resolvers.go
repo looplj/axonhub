@@ -15,6 +15,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -25,10 +26,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/db"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
 
 // scoredItem represents an item with its confidence level and score.
@@ -85,7 +85,7 @@ func calculateConfidenceAndSort[T any](
 	}
 
 	scoredResults := lo.Map(results, func(item T, _ int) scoredItem[T] {
-		conf := db.CalculateConfidenceLevel(int(getRequestCount(item)), median)
+		conf := qb.CalculateConfidenceLevel(int(getRequestCount(item)), median)
 		score := 0
 
 		switch conf {
@@ -901,20 +901,17 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
 	// Select throughput mode based on dialect: ROW_NUMBER for PostgreSQL, MaxID for older SQLite
-	queryMode := db.ThroughputModeROW_NUMBER
+	queryMode := qb.ThroughputModeRowNumber
 	if !useDollarPlaceholders {
-		queryMode = db.ThroughputModeMaxID
+		queryMode = qb.ThroughputModeMaxID
 	}
 
 	// Build query using shared helper function
 	// Fetch more items than needed to allow confidence-based filtering
-	sqlLimit := *input.Limit * 4
-	if sqlLimit < 20 {
-		sqlLimit = 20
-	}
-	query := db.BuildThroughputQuery(
+	sqlLimit := max(*input.Limit*4, 20)
+	query := qb.BuildThroughputQuery(
 		useDollarPlaceholders,
-		db.ThroughputQueryByChannel,
+		qb.ThroughputQueryByChannel,
 		sqlLimit,
 		queryMode,
 	)
@@ -924,7 +921,16 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
-	rows, err := sqlDB.DB().QueryContext(ctx, query, since.UTC())
+	// MaxID mode requires the timestamp twice (outer WHERE and subquery WHERE)
+	// ROW_NUMBER mode only needs it once (in the CTE)
+	var queryArgs []any
+	if queryMode == qb.ThroughputModeMaxID {
+		queryArgs = []any{since.UTC(), since.UTC()}
+	} else {
+		queryArgs = []any{since.UTC()}
+	}
+
+	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query fastest channels: %w", err)
 	}
@@ -1034,9 +1040,9 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
 	// Select throughput mode based on dialect: ROW_NUMBER for PostgreSQL, MaxID for older SQLite
-	queryMode := db.ThroughputModeROW_NUMBER
+	queryMode := qb.ThroughputModeRowNumber
 	if !useDollarPlaceholders {
-		queryMode = db.ThroughputModeMaxID
+		queryMode = qb.ThroughputModeMaxID
 	}
 
 	// Build query with dialect-aware timestamp placeholder
@@ -1045,9 +1051,10 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	if sqlLimit < 20 {
 		sqlLimit = 20
 	}
-	query := db.BuildThroughputQuery(
+
+	query := qb.BuildThroughputQuery(
 		useDollarPlaceholders,
-		db.ThroughputQueryByModel,
+		qb.ThroughputQueryByModel,
 		sqlLimit,
 		queryMode,
 	)
@@ -1055,7 +1062,16 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
-	rows, err := sqlDB.DB().QueryContext(ctx, query, since.UTC())
+	// MaxID mode requires the timestamp twice (outer WHERE and subquery WHERE)
+	// ROW_NUMBER mode only needs it once (in the CTE)
+	var queryArgs []any
+	if queryMode == qb.ThroughputModeMaxID {
+		queryArgs = []any{since.UTC(), since.UTC()}
+	} else {
+		queryArgs = []any{since.UTC()}
+	}
+
+	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query fastest models: %w", err)
 	}

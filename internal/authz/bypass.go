@@ -64,6 +64,23 @@ func RunWithBypass[T any](ctx context.Context, reason string, fn func(ctx contex
 	return fn(bypassCtx)
 }
 
+// RunWithBypassVoid executes bypass operation within a closure, limiting bypass scope.
+// Recommended to use this method to prevent bypass context from spreading along the call chain.
+//
+// Example usage:
+//
+//	err := authz.RunWithBypassVoid(ctx, "quota-request-count", func(ctx context.Context) error {
+//	    return client.Request.Query().Where(...).Count(ctx)
+//	})
+func RunWithBypassVoid(ctx context.Context, reason string, fn func(ctx context.Context) error) error {
+	bypassCtx, err := WithBypassPrivacy(ctx, reason)
+	if err != nil {
+		return err
+	}
+
+	return fn(bypassCtx)
+}
+
 // GetBypassInfo retrieves current bypass information.
 // Used for audit and debugging.
 func GetBypassInfo(ctx context.Context) (bypassInfo, bool) {

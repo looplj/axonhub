@@ -76,7 +76,6 @@ models:
   Node:
     model:
       - github.com/looplj/axonhub/internal/ent.Noder
-
   Cursor:
     model:
       - github.com/looplj/axonhub/internal/server/gql.Cursor
