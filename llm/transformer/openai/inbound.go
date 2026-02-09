@@ -150,10 +150,11 @@ func (t *InboundTransformer) TransformStreamChunk(
 	}, nil
 }
 
-// isReasoningSignatureEvent checks if the response contains ReasoningSignature.
+// isReasoningSignatureEvent checks if the response contains ONLY ReasoningSignature.
 // This is a help func to adapt the Anthropic thinking signature to OpenAI format.
 // In the real world, the signature will use a separate event, so if the response contains
-// ReasoningSignature, it means the event is for signature_delta, we should ignore it.
+// ONLY ReasoningSignature (without any other content), it means the event is for signature_delta,
+// we should ignore it.
 func isReasoningSignatureEvent(resp *llm.Response) bool {
 	if len(resp.Choices) != 1 {
 		return false
@@ -165,11 +166,19 @@ func isReasoningSignatureEvent(resp *llm.Response) bool {
 	}
 
 	// Check if ReasoningSignature is set
-	if delta.ReasoningSignature != nil && *delta.ReasoningSignature != "" {
-		return true
+	if delta.ReasoningSignature == nil || *delta.ReasoningSignature == "" {
+		return false
 	}
 
-	return false
+	// If ReasoningSignature is set, check if there's any other content
+	// If there is other content, this is NOT a pure signature event and should NOT be skipped
+	hasContent := delta.Content.Content != nil || len(delta.Content.MultipleContent) > 0
+	hasReasoningContent := delta.ReasoningContent != nil && *delta.ReasoningContent != ""
+	hasToolCalls := len(delta.ToolCalls) > 0
+	hasRefusal := delta.Refusal != ""
+
+	// Only skip if ONLY ReasoningSignature is present (pure signature event)
+	return !hasContent && !hasReasoningContent && !hasToolCalls && !hasRefusal
 }
 
 func (t *InboundTransformer) AggregateStreamChunks(
