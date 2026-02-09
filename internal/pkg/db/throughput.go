@@ -284,11 +284,10 @@ WHERE se.metrics_latency_ms > 0
         WHERE re2.request_id = se.request_id
             AND re2.status = 'completed'
             AND re2.metrics_latency_ms > 0
-            AND re2.created_at >= %s
     )
     %s
 GROUP BY se.channel_id
-ORDER BY se.channel_id`, placeholder1, placeholder2, placeholder1, channelIDFilter)
+ORDER BY se.channel_id`, placeholder1, placeholder2, channelIDFilter)
 	}
 
 	// ROW_NUMBER mode
