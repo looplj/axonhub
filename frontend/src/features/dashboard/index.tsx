@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, Key, Zap, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,11 +23,27 @@ interface CollapsibleSectionProps {
   title: string;
   icon: React.ReactNode;
   children: React.ReactNode;
+  storageKey: string;
   defaultOpen?: boolean;
 }
 
-function CollapsibleSection({ title, icon, children, defaultOpen = false }: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = false }: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`dashboard-section-${storageKey}`);
+      return stored !== null ? stored === 'true' : defaultOpen;
+    } catch {
+      return defaultOpen;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`dashboard-section-${storageKey}`, isOpen.toString());
+    } catch {
+      // Silently fail - persistence is a nice-to-have, not critical
+    }
+  }, [isOpen, storageKey]);
 
   return (
     <div className='space-y-4'>
@@ -140,6 +156,7 @@ export default function DashboardPage() {
       <CollapsibleSection
         title={t('dashboard.sections.channels')}
         icon={<BarChart3 className='h-4 w-4 text-primary' />}
+        storageKey='channels'
       >
         <div className='grid gap-4 md:grid-cols-2'>
           <Card className='hover-card'>
@@ -167,6 +184,7 @@ export default function DashboardPage() {
       <CollapsibleSection
         title={t('dashboard.sections.apiKeys')}
         icon={<Key className='h-4 w-4 text-primary' />}
+        storageKey='apiKeys'
       >
         <div className='grid gap-4 md:grid-cols-2'>
           <Card className='hover-card'>
@@ -194,6 +212,7 @@ export default function DashboardPage() {
       <CollapsibleSection
         title={t('dashboard.sections.performance')}
         icon={<Zap className='h-4 w-4 text-primary' />}
+        storageKey='performance'
       >
         <div className='grid gap-4 md:grid-cols-2'>
           <FastestChannelsCard />
