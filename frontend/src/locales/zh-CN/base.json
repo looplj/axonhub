@@ -25,6 +25,7 @@
   "sidebar.profile.dropdown.defaultEmail": "user@example.com",
   "sidebar.profile.dropdown.settings": "设置",
   "sidebar.profile.dropdown.logOut": "退出登录",
+  "sidebar.settings": "设置",
   "sidebar.teamSwitcher.teams": "团队",
   "sidebar.projectSwitcher.projects": "项目",
   "sidebar.projectSwitcher.selectProject": "选择项目",
