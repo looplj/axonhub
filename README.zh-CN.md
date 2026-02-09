@@ -440,7 +440,7 @@ AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模
 
 ## 🛠️ 开发指南
 
-详细的开发说明、架构设计和贡献指南，请查看 [docs/zh/guides/development.md](docs/zh/guides/development.md)。
+详细的开发说明、架构设计和贡献指南，请查看 [docs/zh/development/development.md](docs/zh/development/development.md)。
 
 ---
 
