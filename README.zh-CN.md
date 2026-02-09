@@ -167,6 +167,7 @@
 | **ZAI**                | ✅ 已完成   | -                            | Image Generation |
 | **AWS Bedrock**        | 🔄 测试中  | Claude on AWS                | OpenAI, Anthropic, Gemini |
 | **Google Cloud**       | 🔄 测试中  | Claude on GCP                | OpenAI, Anthropic, Gemini |
+| **NanoGPT**            | ✅ 已完成  | 多种模型、图像生成             | OpenAI, Anthropic, Gemini, Image Generation |
 
 ---
 
