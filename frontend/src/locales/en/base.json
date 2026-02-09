@@ -26,6 +26,7 @@
   "sidebar.userMenu.account": "Account",
   "sidebar.userMenu.logOut": "Log out",
   "sidebar.settings": "Settings",
+  "sidebar.settingsControls": "Settings controls",
   "theme.toggle": "Toggle theme",
   "theme.light": "Light",
   "theme.dark": "Dark",
