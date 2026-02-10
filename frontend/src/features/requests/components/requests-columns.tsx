@@ -41,13 +41,14 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       return '-';
     }
 
-    const totalTokens = (usageLog.promptTokens || 0) + (usageLog.completionTokens || 0);
-    if (totalTokens === 0) {
+    // Only count completion tokens for generation speed calculation
+    const completionTokens = usageLog.completionTokens || 0;
+    if (completionTokens === 0) {
       return '-';
     }
 
     const latencySeconds = request.metricsLatencyMs / 1000;
-    const tokensPerSecond = totalTokens / latencySeconds;
+    const tokensPerSecond = completionTokens / latencySeconds;
 
     return `${Math.round(tokensPerSecond)} tok/s`;
   };
