@@ -258,6 +258,7 @@ type ComplexityRoot struct {
 		ErrorMessage            func(childComplexity int) int
 		Executions              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
 		ID                      func(childComplexity int) int
+		ManualModels            func(childComplexity int) int
 		Name                    func(childComplexity int) int
 		OrderingWeight          func(childComplexity int) int
 		Policies                func(childComplexity int) int
@@ -2437,6 +2438,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.ID(childComplexity), true
+	case "Channel.manualModels":
+		if e.complexity.Channel.ManualModels == nil {
+			break
+		}
+
+		return e.complexity.Channel.ManualModels(childComplexity), true
 	case "Channel.name":
 		if e.complexity.Channel.Name == nil {
 			break
@@ -12504,6 +12511,8 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -13438,6 +13447,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -13577,6 +13588,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -13838,6 +13851,35 @@ func (ec *executionContext) _Channel_supportedModels(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_Channel_supportedModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Channel_manualModels(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Channel_manualModels,
+		func(ctx context.Context) (any, error) {
+			return obj.ManualModels, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Channel_manualModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Channel",
 		Field:      field,
@@ -14798,6 +14840,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -15260,6 +15304,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_channel(_ context.Con
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -16942,6 +16988,8 @@ func (ec *executionContext) fieldContext_ChannelProbe_channel(_ context.Context,
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -21703,6 +21751,8 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -22442,6 +22492,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -22535,6 +22587,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -22628,6 +22682,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -22721,6 +22777,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -29188,6 +29246,8 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_channel(_ context.C
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -32751,6 +32811,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -33738,6 +33800,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -39809,6 +39873,8 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.C
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -40802,6 +40868,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_status(ctx, field)
 			case "supportedModels":
 				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
 			case "tags":
@@ -50020,7 +50088,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "baseURL", "name", "credentials", "supportedModels", "autoSyncSupportedModels", "tags", "defaultTestModel", "policies", "settings", "orderingWeight", "remark"}
+	fieldsInOrder := [...]string{"type", "baseURL", "name", "credentials", "supportedModels", "manualModels", "autoSyncSupportedModels", "tags", "defaultTestModel", "policies", "settings", "orderingWeight", "remark"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -50062,6 +50130,13 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.SupportedModels = data
+		case "manualModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualModels"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ManualModels = data
 		case "autoSyncSupportedModels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncSupportedModels"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -60741,7 +60816,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "autoSyncSupportedModels", "tags", "appendTags", "clearTags", "defaultTestModel", "policies", "clearPolicies", "settings", "clearSettings", "orderingWeight", "errorMessage", "clearErrorMessage", "remark", "clearRemark"}
+	fieldsInOrder := [...]string{"baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "manualModels", "appendManualModels", "clearManualModels", "autoSyncSupportedModels", "tags", "appendTags", "clearTags", "defaultTestModel", "policies", "clearPolicies", "settings", "clearSettings", "orderingWeight", "errorMessage", "clearErrorMessage", "remark", "clearRemark"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60797,6 +60872,27 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.AppendSupportedModels = data
+		case "manualModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualModels"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ManualModels = data
+		case "appendManualModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("appendManualModels"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AppendManualModels = data
+		case "clearManualModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearManualModels"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearManualModels = data
 		case "autoSyncSupportedModels":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncSupportedModels"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -67111,6 +67207,8 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "manualModels":
+			out.Values[i] = ec._Channel_manualModels(ctx, field, obj)
 		case "autoSyncSupportedModels":
 			out.Values[i] = ec._Channel_autoSyncSupportedModels(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

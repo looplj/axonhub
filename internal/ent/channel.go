@@ -40,6 +40,8 @@ type Channel struct {
 	DisabledAPIKeys []objects.DisabledAPIKey `json:"-"`
 	// SupportedModels holds the value of the "supported_models" field.
 	SupportedModels []string `json:"supported_models,omitempty"`
+	// ManualModels holds the value of the "manual_models" field.
+	ManualModels []string `json:"manual_models,omitempty"`
 	// AutoSyncSupportedModels holds the value of the "auto_sync_supported_models" field.
 	AutoSyncSupportedModels bool `json:"auto_sync_supported_models,omitempty"`
 	// Tags holds the value of the "tags" field.
@@ -150,7 +152,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channel.FieldCredentials, channel.FieldDisabledAPIKeys, channel.FieldSupportedModels, channel.FieldTags, channel.FieldPolicies, channel.FieldSettings:
+		case channel.FieldCredentials, channel.FieldDisabledAPIKeys, channel.FieldSupportedModels, channel.FieldManualModels, channel.FieldTags, channel.FieldPolicies, channel.FieldSettings:
 			values[i] = new([]byte)
 		case channel.FieldAutoSyncSupportedModels:
 			values[i] = new(sql.NullBool)
@@ -245,6 +247,14 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &_m.SupportedModels); err != nil {
 					return fmt.Errorf("unmarshal field supported_models: %w", err)
+				}
+			}
+		case channel.FieldManualModels:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field manual_models", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.ManualModels); err != nil {
+					return fmt.Errorf("unmarshal field manual_models: %w", err)
 				}
 			}
 		case channel.FieldAutoSyncSupportedModels:
@@ -396,6 +406,9 @@ func (_m *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("supported_models=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SupportedModels))
+	builder.WriteString(", ")
+	builder.WriteString("manual_models=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ManualModels))
 	builder.WriteString(", ")
 	builder.WriteString("auto_sync_supported_models=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AutoSyncSupportedModels))
