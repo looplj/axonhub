@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
-import { FileText } from 'lucide-react';
+import { FileText, ArrowLeftRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
@@ -18,6 +18,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { getStatusColor } from './help';
+import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
 
 export function useRequestsColumns(): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
@@ -25,6 +26,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
   const permissions = useRequestPermissions();
   const { data: settings } = useGeneralSettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
+  const [displayMode, setDisplayMode] = useDisplayMode();
 
   // Define all columns
   const columns: ColumnDef<Request>[] = [
@@ -413,15 +415,41 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       id: 'latency',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.latency')} />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader
+            column={column}
+            title={displayMode === 'latency' ? t('requests.columns.latency') : t('requests.columns.tokensPerSecond')}
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDisplayMode(prev => prev === 'latency' ? 'tokensPerSecond' : 'latency');
+            }}
+            className="cursor-pointer hover:text-primary transition-colors"
+            title={displayMode === 'latency' ? t('requests.columns.showTokensPerSecond') : t('requests.columns.showLatency')}
+            type="button"
+          >
+            <ArrowLeftRight className="h-3 w-3 text-muted-foreground" />
+          </button>
+        </div>
+      ),
       cell: ({ row }) => {
         const request = row.original;
         const latencyParts = [];
 
         if (request.status === 'completed') {
-          if (request.metricsLatencyMs != null) {
-            latencyParts.push(formatDuration(request.metricsLatencyMs));
+          if (displayMode === 'latency') {
+            if (request.metricsLatencyMs != null) {
+              latencyParts.push(formatDuration(request.metricsLatencyMs));
+            }
+          } else {
+            const tokensPerSecond = calculateTokensPerSecond(request);
+            if (tokensPerSecond !== '-') {
+              latencyParts.push(tokensPerSecond);
+            }
           }
+
           if (request.stream && request.metricsFirstTokenLatencyMs != null) {
             latencyParts.push(`TTFT: ${formatDuration(request.metricsFirstTokenLatencyMs)}`);
           }
