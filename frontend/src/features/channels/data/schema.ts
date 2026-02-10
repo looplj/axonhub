@@ -212,6 +212,7 @@ export const channelSchema = z.object({
   disabledAPIKeys: z.array(disabledAPIKeySchema).optional().nullable(),
   supportedModels: z.array(z.string()),
   autoSyncSupportedModels: z.boolean().default(false),
+  manualModels: z.array(z.string()).optional().default([]).nullable(),
   tags: z.array(z.string()).optional().default([]).nullable(),
   defaultTestModel: z.string(),
   settings: channelSettingsSchema.optional().nullable(),

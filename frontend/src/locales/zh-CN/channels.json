@@ -17,6 +17,7 @@
   "channels.columns.tags": "标签",
   "channels.columns.baseURL": "Base URL",
   "channels.columns.supportedModels": "支持的模型",
+  "channels.models.manual": "手动",
   "channels.columns.channelPerformance": "性能",
   "channels.columns.firstTokenLatency": "TTFT",
   "channels.columns.tokensPerSecond": "TPS",
