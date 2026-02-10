@@ -59,16 +59,15 @@ export function calculateTokensPerSecond(request: Request): string {
  * @returns Tuple of [displayMode, setDisplayMode] similar to useState
  */
 export function useDisplayMode(): [DisplayMode, React.Dispatch<React.SetStateAction<DisplayMode>>] {
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('latency');
-
-  useEffect(() => {
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('requests-table-latency-display-mode');
       if (stored && VALID_DISPLAY_MODES.includes(stored as DisplayMode)) {
-        setDisplayMode(stored as DisplayMode);
+        return stored as DisplayMode;
       }
     }
-  }, []);
+    return 'latency';
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

@@ -821,7 +821,7 @@ describe('calculateTokensPerSecond', () => {
       expect(result).toBe('100 tok/s');
     });
 
-    it('should return "-" when effective latency becomes zero or negative', () => {
+    it('should calculate tokens/sec when TTFT equals total latency', () => {
       const request: Request = {
         id: '1',
         createdAt: new Date(),
@@ -861,23 +861,7 @@ describe('calculateTokensPerSecond', () => {
       };
 
       const result = calculateTokensPerSecond(request);
-      // TTFT = 2000, total latency = 2000, so effective latency = 2000 (no subtraction since TTFT is not < latency)
-      // But if we set metricsLatencyMs to 1000 and metricsFirstTokenLatencyMs to 2000, the condition metricsFirstTokenLatencyMs < metricsLatencyMs is false
-      // So effectiveLatencyMs remains 1000, and the result is '500 tok/s'
-      // To test the effectiveLatencyMs <= 0 case, we need to set metricsLatencyMs to 2000 and metricsFirstTokenLatencyMs to 3000
-      // But then metricsFirstTokenLatencyMs (3000) < metricsLatencyMs (2000) is false, so no subtraction
-      // Actually, the condition checks if metricsFirstTokenLatencyMs < metricsLatencyMs, which is false when TTFT > latency
-      // So effectiveLatencyMs remains the original value
-      // To test the <= 0 case, we need to manually set effectiveLatencyMs to 0 or negative, but we can't do that through the function parameters
-      // The only way to get effectiveLatencyMs <= 0 is if metricsLatencyMs - metricsFirstTokenLatencyMs <= 0
-      // Which means metricsFirstTokenLatencyMs >= metricsLatencyMs
-      // But the condition only subtracts if metricsFirstTokenLatencyMs < metricsLatencyMs
-      // So effectiveLatencyMs will never be <= 0 through the subtraction logic
-      // The only way to get effectiveLatencyMs <= 0 is if metricsLatencyMs <= 0 initially
-      // But that's already tested in the "edge cases - latency issues" section
-      // So this test case is actually not reachable through the normal logic
-      // Let me change the test to use a case where metricsFirstTokenLatencyMs < metricsLatencyMs but the result is still positive
-      expect(result).toBe('250 tok/s'); // 500 tokens / 2 seconds = 250 tok/s
+      expect(result).toBe('250 tok/s');
     });
   });
 
@@ -1014,7 +998,10 @@ describe('calculateTokensPerSecond', () => {
 });
 
 describe('useDisplayMode', () => {
-  // Test the hook logic without React rendering by testing the initialization and side effects
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('initialization logic', () => {
     it('should return "latency" when localStorage returns null', () => {
       localStorageMock.getItem.mockReturnValue(null);
@@ -1023,7 +1010,10 @@ describe('useDisplayMode', () => {
       const displayMode = (() => {
         if (typeof window === 'undefined') return 'latency';
         const stored = localStorage.getItem('requests-table-latency-display-mode');
-        return (stored as 'latency' | 'tokensPerSecond') || 'latency';
+        if (stored && ['latency', 'tokensPerSecond'].includes(stored)) {
+          return stored;
+        }
+        return 'latency';
       })();
 
       expect(displayMode).toBe('latency');
@@ -1036,33 +1026,41 @@ describe('useDisplayMode', () => {
       const displayMode = (() => {
         if (typeof window === 'undefined') return 'latency';
         const stored = localStorage.getItem('requests-table-latency-display-mode');
-        return (stored as 'latency' | 'tokensPerSecond') || 'latency';
+        if (stored && ['latency', 'tokensPerSecond'].includes(stored)) {
+          return stored;
+        }
+        return 'latency';
       })();
 
       expect(displayMode).toBe('tokensPerSecond');
     });
 
-    it('should pass through invalid stored value (no runtime validation)', () => {
+    it('should default to "latency" for invalid stored value', () => {
       localStorageMock.getItem.mockReturnValue('invalid-value');
 
+      // Simulate the initialization logic from the hook
       const displayMode = (() => {
         if (typeof window === 'undefined') return 'latency';
         const stored = localStorage.getItem('requests-table-latency-display-mode');
-        return (stored as 'latency' | 'tokensPerSecond') || 'latency';
+        if (stored && ['latency', 'tokensPerSecond'].includes(stored)) {
+          return stored;
+        }
+        return 'latency';
       })();
 
-      expect(displayMode).toBe('invalid-value');
+      expect(displayMode).toBe('latency');
     });
   });
 
   describe('localStorage side effects', () => {
-    it('should call localStorage.setItem with correct key and value', () => {
+    it('should persist display mode changes to localStorage', () => {
       localStorageMock.getItem.mockReturnValue(null);
       localStorageMock.setItem.mockReturnValue(undefined);
 
-      // Simulate the useEffect logic from the hook
       const displayMode = 'tokensPerSecond';
-      localStorage.setItem('requests-table-latency-display-mode', displayMode);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('requests-table-latency-display-mode', displayMode);
+      }
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'requests-table-latency-display-mode',
@@ -1070,13 +1068,14 @@ describe('useDisplayMode', () => {
       );
     });
 
-    it('should call localStorage.setItem with latency value', () => {
+    it('should persist latency value to localStorage', () => {
       localStorageMock.getItem.mockReturnValue(null);
       localStorageMock.setItem.mockReturnValue(undefined);
 
-      // Simulate the useEffect logic from the hook
       const displayMode = 'latency';
-      localStorage.setItem('requests-table-latency-display-mode', displayMode);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('requests-table-latency-display-mode', displayMode);
+      }
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'requests-table-latency-display-mode',
@@ -1087,26 +1086,23 @@ describe('useDisplayMode', () => {
 
   describe('SSR safety', () => {
     it('should not access localStorage during SSR', () => {
-      // Simulate SSR environment
       const originalWindow = global.window;
       (global as unknown as Record<string, unknown>).window = undefined;
 
-      // Reset mock to ensure no calls
       localStorageMock.getItem.mockClear();
 
-      // Simulate the initialization logic from the hook
       const displayMode = (() => {
         if (typeof window === 'undefined') return 'latency';
         const stored = localStorage.getItem('requests-table-latency-display-mode');
-        return (stored as 'latency' | 'tokensPerSecond') || 'latency';
+        if (stored && ['latency', 'tokensPerSecond'].includes(stored)) {
+          return stored;
+        }
+        return 'latency';
       })();
 
       expect(displayMode).toBe('latency');
-      // Since window is undefined, the function should return 'latency' early
-      // and never call localStorage.getItem
-      expect(localStorageMock.getItem).toHaveBeenCalledTimes(0);
+      expect(localStorageMock.getItem).not.toHaveBeenCalled();
 
-      // Restore window
       global.window = originalWindow;
     });
   });

@@ -416,16 +416,22 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     {
       id: 'latency',
       header: ({ column }) => (
-        <div
-          onClick={() => setDisplayMode(prev => prev === 'latency' ? 'tokensPerSecond' : 'latency')}
-          className="cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
-          title={displayMode === 'latency' ? 'Click to show tokens/s' : 'Click to show latency'}
-        >
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader
             column={column}
             title={displayMode === 'latency' ? t('requests.columns.latency') : t('requests.columns.tokensPerSecond')}
           />
-          <ArrowLeftRight className="h-3 w-3 text-muted-foreground" />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDisplayMode(prev => prev === 'latency' ? 'tokensPerSecond' : 'latency');
+            }}
+            className="cursor-pointer hover:text-primary transition-colors"
+            title={displayMode === 'latency' ? t('requests.columns.showTokensPerSecond') : t('requests.columns.showLatency')}
+            type="button"
+          >
+            <ArrowLeftRight className="h-3 w-3 text-muted-foreground" />
+          </button>
         </div>
       ),
       cell: ({ row }) => {
