@@ -179,6 +179,8 @@ func setDefaults(v *viper.Viper) {
 
 	// GC defaults
 	v.SetDefault("gc.cron", "0 2 * * *") // Daily at 2:00 AM
+	v.SetDefault("gc.vacuum_enabled", false)
+	v.SetDefault("gc.vacuum_full", false)
 
 	// Provider quota defaults
 	v.SetDefault("provider_quota.check_interval", "20m") // Check every 20 minutes
