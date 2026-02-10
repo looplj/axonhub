@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
@@ -18,6 +18,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { getStatusColor } from './help';
+import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
 
 export function useRequestsColumns(): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
@@ -25,51 +26,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
   const permissions = useRequestPermissions();
   const { data: settings } = useGeneralSettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
-
-  const [displayMode, setDisplayMode] = useState<'latency' | 'tokensPerSecond'>(() => {
-    if (typeof window === 'undefined') return 'latency';
-    return (localStorage.getItem('requests-table-latency-display-mode') as 'latency' | 'tokensPerSecond') || 'latency';
-  });
-
-  useEffect(() => {
-    localStorage.setItem('requests-table-latency-display-mode', displayMode);
-  }, [displayMode]);
-
-  const calculateTokensPerSecond = (request: Request): string => {
-    const usageLog = request.usageLogs?.edges?.[0]?.node;
-    if (!usageLog || request.metricsLatencyMs == null || request.metricsLatencyMs <= 0) {
-      return '-';
-    }
-
-    // Sum all completion token types (matching fastest performers logic)
-    const completionTokens = 
-      (usageLog.completionTokens || 0) + 
-      (usageLog.completionReasoningTokens || 0) + 
-      (usageLog.completionAudioTokens || 0);
-    
-    if (completionTokens === 0) {
-      return '-';
-    }
-
-    // Calculate effective latency:
-    // For streaming: subtract TTFT (time to first token) to get actual generation time
-    // For non-streaming: use full latency
-    let effectiveLatencyMs = request.metricsLatencyMs;
-    if (request.stream && request.metricsFirstTokenLatencyMs != null) {
-      if (request.metricsFirstTokenLatencyMs < request.metricsLatencyMs) {
-        effectiveLatencyMs = request.metricsLatencyMs - request.metricsFirstTokenLatencyMs;
-      }
-    }
-
-    if (effectiveLatencyMs <= 0) {
-      return '-';
-    }
-
-    const latencySeconds = effectiveLatencyMs / 1000;
-    const tokensPerSecond = completionTokens / latencySeconds;
-
-    return `${Math.round(tokensPerSecond)} tok/s`;
-  };
+  const [displayMode, setDisplayMode] = useDisplayMode();
 
   // Define all columns
   const columns: ColumnDef<Request>[] = [
