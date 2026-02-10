@@ -5,6 +5,8 @@ import { Request } from '../data/schema';
 
 export type DisplayMode = 'latency' | 'tokensPerSecond';
 
+const VALID_DISPLAY_MODES: DisplayMode[] = ['latency', 'tokensPerSecond'];
+
 /**
  * Calculate tokens per second for a given request.
  * Handles all edge cases including no usage log, zero latency, zero completion tokens,
@@ -52,18 +54,26 @@ export function calculateTokensPerSecond(request: Request): string {
 /**
  * Hook to manage display mode state with localStorage persistence.
  * SSR-safe: defaults to 'latency' during server-side rendering.
+ * Uses two-phase initialization to avoid hydration mismatches.
  *
  * @returns Tuple of [displayMode, setDisplayMode] similar to useState
  */
 export function useDisplayMode(): [DisplayMode, React.Dispatch<React.SetStateAction<DisplayMode>>] {
-  const [displayMode, setDisplayMode] = useState<DisplayMode>(() => {
-    if (typeof window === 'undefined') return 'latency';
-    const stored = localStorage.getItem('requests-table-latency-display-mode');
-    return (stored as DisplayMode) || 'latency';
-  });
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('latency');
 
   useEffect(() => {
-    localStorage.setItem('requests-table-latency-display-mode', displayMode);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('requests-table-latency-display-mode');
+      if (stored && VALID_DISPLAY_MODES.includes(stored as DisplayMode)) {
+        setDisplayMode(stored as DisplayMode);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('requests-table-latency-display-mode', displayMode);
+    }
   }, [displayMode]);
 
   return [displayMode, setDisplayMode];
