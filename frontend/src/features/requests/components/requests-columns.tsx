@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
-import { FileText, RefreshCw } from 'lucide-react';
+import { FileText, ArrowLeftRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
@@ -41,13 +41,31 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       return '-';
     }
 
-    // Only count completion tokens for generation speed calculation
-    const completionTokens = usageLog.completionTokens || 0;
+    // Sum all completion token types (matching fastest performers logic)
+    const completionTokens = 
+      (usageLog.completionTokens || 0) + 
+      (usageLog.completionReasoningTokens || 0) + 
+      (usageLog.completionAudioTokens || 0);
+    
     if (completionTokens === 0) {
       return '-';
     }
 
-    const latencySeconds = request.metricsLatencyMs / 1000;
+    // Calculate effective latency:
+    // For streaming: subtract TTFT (time to first token) to get actual generation time
+    // For non-streaming: use full latency
+    let effectiveLatencyMs = request.metricsLatencyMs;
+    if (request.stream && request.metricsFirstTokenLatencyMs != null) {
+      if (request.metricsFirstTokenLatencyMs < request.metricsLatencyMs) {
+        effectiveLatencyMs = request.metricsLatencyMs - request.metricsFirstTokenLatencyMs;
+      }
+    }
+
+    if (effectiveLatencyMs <= 0) {
+      return '-';
+    }
+
+    const latencySeconds = effectiveLatencyMs / 1000;
     const tokensPerSecond = completionTokens / latencySeconds;
 
     return `${Math.round(tokensPerSecond)} tok/s`;
@@ -450,7 +468,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
             column={column}
             title={displayMode === 'latency' ? t('requests.columns.latency') : t('requests.columns.tokensPerSecond')}
           />
-          <RefreshCw className="h-3 w-3 text-muted-foreground" />
+          <ArrowLeftRight className="h-3 w-3 text-muted-foreground" />
         </div>
       ),
       cell: ({ row }) => {
