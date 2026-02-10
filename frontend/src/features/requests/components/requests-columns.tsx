@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
-import { FileText } from 'lucide-react';
+import { FileText, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
@@ -449,9 +449,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
             column={column}
             title={displayMode === 'latency' ? t('requests.columns.latency') : t('requests.columns.tokensPerSecond')}
           />
-          <span className="text-[10px] text-muted-foreground">
-            ({displayMode === 'latency' ? 'click for tok/s' : 'click for latency'})
-          </span>
+          <RefreshCw className="h-3 w-3 text-muted-foreground" />
         </div>
       ),
       cell: ({ row }) => {
