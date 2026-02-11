@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
+
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
@@ -25,7 +28,9 @@ import (
 var defaultBatchSize = 500
 
 type Config struct {
-	CRON string `json:"cron" yaml:"cron" conf:"cron" validate:"required"`
+	CRON          string `json:"cron" yaml:"cron" conf:"cron" validate:"required"`
+	VacuumEnabled bool   `json:"vacuum_enabled" yaml:"vacuum_enabled" conf:"vacuum_enabled"`
+	VacuumFull    bool   `json:"vacuum_full" yaml:"vacuum_full" conf:"vacuum_full"`
 }
 
 // Worker handles garbage collection and cleanup operations.
@@ -200,6 +205,14 @@ func (w *Worker) runCleanup(ctx context.Context) {
 	} else {
 		log.Info(ctx, "Successfully cleaned up channel probes",
 			log.Int("cleanup_days", 3))
+	}
+
+// Run VACUUM after cleanup to reclaim storage space (SQLite and PostgreSQL)
+	if w.Config.VacuumEnabled {
+		if err := w.runVacuum(ctx); err != nil {
+			log.Error(ctx, "Failed to run VACUUM after cleanup",
+				log.Cause(err))
+		}
 	}
 
 	log.Info(ctx, "Automatic cleanup process completed")
@@ -498,6 +511,68 @@ func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int) erro
 		log.Time("cutoff_time", cutoffTime))
 
 	return nil
+}
+
+// runVacuum executes VACUUM command on SQLite/PostgreSQL database to reclaim storage space.
+// This should be called after cleanup operations to defragment the database file.
+func (w *Worker) runVacuum(ctx context.Context) error {
+	if !w.Config.VacuumEnabled {
+		log.Debug(ctx, "VACUUM is disabled, skipping")
+		return nil
+	}
+
+	// Get the underlying SQL driver to check if it's SQLite
+	dbDriver := w.Ent.Driver()
+	if dbDriver == nil {
+		return fmt.Errorf("failed to get database driver")
+	}
+
+	// Try to cast to *entsql.Driver to access underlying *sql.DB
+	sqlDriver, ok := dbDriver.(*entsql.Driver)
+	if !ok {
+		log.Debug(ctx, "Database driver is not *entsql.Driver, skipping VACUUM")
+		return nil
+	}
+
+	// Check if this is SQLite or PostgreSQL
+	if sqlDriver.Dialect() != dialect.SQLite && sqlDriver.Dialect() != dialect.Postgres {
+		log.Debug(ctx, "Database does not support VACUUM, skipping",
+			log.String("dialect", sqlDriver.Dialect()))
+
+		return nil
+	}
+
+	log.Info(ctx, "Starting database VACUUM operation",
+		log.String("dialect", sqlDriver.Dialect()),
+		log.Bool("vacuum_full", w.Config.VacuumFull))
+
+	startTime := time.Now()
+
+	// Execute VACUUM using raw SQL
+	var vacuumSQL string
+	if sqlDriver.Dialect() == dialect.Postgres && w.Config.VacuumFull {
+		vacuumSQL = "VACUUM FULL"
+	} else {
+		vacuumSQL = "VACUUM"
+	}
+
+	_, err := sqlDriver.ExecContext(ctx, vacuumSQL, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to execute %s: %w", vacuumSQL, err)
+	}
+
+	duration := time.Since(startTime)
+	log.Info(ctx, "Database VACUUM completed successfully",
+		log.Duration("duration", duration),
+		log.String("command", vacuumSQL))
+
+	return nil
+}
+
+// RunVacuumNow manually triggers the VACUUM operation.
+// This can be useful for testing or manual execution.
+func (w *Worker) RunVacuumNow(ctx context.Context) error {
+	return w.runVacuum(ctx)
 }
 
 // RunCleanupNow manually triggers the cleanup process.

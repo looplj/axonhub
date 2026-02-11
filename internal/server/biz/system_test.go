@@ -29,7 +29,8 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 	ctx = authz.WithTestBypass(ctx)
 	secretKey, err := service.SecretKey(ctx)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "secret key not found, system may not be initialized")
+	require.ErrorIs(t, err, ErrSystemNotInitialized)
+	require.Contains(t, err.Error(), "secret key not found")
 	require.Empty(t, secretKey) // Should be empty when error occurs
 }
 

@@ -318,6 +318,7 @@ var (
 		{Name: "role", Type: field.TypeString},
 		{Name: "content", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "disabled"},
+		{Name: "order", Type: field.TypeInt, Default: 0},
 		{Name: "settings", Type: field.TypeJSON},
 	}
 	// PromptsTable holds the schema information for the "prompts" table.

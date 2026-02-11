@@ -182,7 +182,7 @@ cd axonhub_*
 ./axonhub
 
 # Open http://localhost:8090
-# Default login: admin@axonhub.com / admin
+# First run: Follow the setup wizard to initialize the system (create admin account, password must be at least 6 characters)
 ```
 
 That's it! Now configure your first AI channel and start calling models through AxonHub.

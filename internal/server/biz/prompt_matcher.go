@@ -1,6 +1,8 @@
 package biz
 
 import (
+	"sort"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -99,10 +101,19 @@ func (m *PromptMatcher) FilterMatchingPrompts(prompts []*ent.Prompt, model strin
 // ApplyPrompts applies matching prompts to the llm.Request based on their action settings.
 // Prompts with action type "prepend" are added before existing messages.
 // Prompts with action type "append" are added after existing messages.
+// Prompts are sorted by their Order field (ascending), with CreatedAt as tiebreaker.
 func (m *PromptMatcher) ApplyPrompts(request *llm.Request, prompts []*ent.Prompt) *llm.Request {
 	if len(prompts) == 0 {
 		return request
 	}
+
+	sort.SliceStable(prompts, func(i, j int) bool {
+		if prompts[i].Order != prompts[j].Order {
+			return prompts[i].Order < prompts[j].Order
+		}
+
+		return prompts[i].CreatedAt.Before(prompts[j].CreatedAt)
+	})
 
 	var (
 		prependMessages []llm.Message

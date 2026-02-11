@@ -3206,6 +3206,20 @@ var (
 			}
 		},
 	}
+	// PromptOrderFieldOrder orders Prompt by order.
+	PromptOrderFieldOrder = &PromptOrderField{
+		Value: func(_m *Prompt) (ent.Value, error) {
+			return _m.Order, nil
+		},
+		column: prompt.FieldOrder,
+		toTerm: prompt.ByOrder,
+		toCursor: func(_m *Prompt) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.Order,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -3216,6 +3230,8 @@ func (f PromptOrderField) String() string {
 		str = "CREATED_AT"
 	case PromptOrderFieldUpdatedAt.column:
 		str = "UPDATED_AT"
+	case PromptOrderFieldOrder.column:
+		str = "ORDER"
 	}
 	return str
 }
@@ -3236,6 +3252,8 @@ func (f *PromptOrderField) UnmarshalGQL(v interface{}) error {
 		*f = *PromptOrderFieldCreatedAt
 	case "UPDATED_AT":
 		*f = *PromptOrderFieldUpdatedAt
+	case "ORDER":
+		*f = *PromptOrderFieldOrder
 	default:
 		return fmt.Errorf("%s is not a valid PromptOrderField", str)
 	}

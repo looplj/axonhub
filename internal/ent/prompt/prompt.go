@@ -36,6 +36,8 @@ const (
 	FieldContent = "content"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldOrder holds the string denoting the order field in the database.
+	FieldOrder = "order"
 	// FieldSettings holds the string denoting the settings field in the database.
 	FieldSettings = "settings"
 	// EdgeProjects holds the string denoting the projects edge name in mutations.
@@ -61,6 +63,7 @@ var Columns = []string{
 	FieldRole,
 	FieldContent,
 	FieldStatus,
+	FieldOrder,
 	FieldSettings,
 }
 
@@ -99,6 +102,8 @@ var (
 	DefaultDeletedAt int
 	// DefaultDescription holds the default value on creation for the "description" field.
 	DefaultDescription string
+	// DefaultOrder holds the default value on creation for the "order" field.
+	DefaultOrder int
 )
 
 // Status defines the type for the "status" enum field.
@@ -178,6 +183,11 @@ func ByContent(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByOrder orders the results by the order field.
+func ByOrder(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOrder, opts...).ToFunc()
 }
 
 // ByProjectsCount orders the results by projects count.

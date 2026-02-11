@@ -54,6 +54,10 @@ func (Prompt) Fields() []ent.Field {
 		field.Enum("status").
 			Values("enabled", "disabled").
 			Default("disabled"),
+		field.Int("order").
+			Default(0).
+			Comment("prompt insertion order, smaller values are inserted first").
+			Annotations(entgql.OrderField("ORDER")),
 		field.JSON("settings", objects.PromptSettings{}).
 			Comment("prompt settings in JSON format"),
 	}

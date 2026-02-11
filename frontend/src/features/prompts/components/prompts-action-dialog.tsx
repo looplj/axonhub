@@ -32,6 +32,7 @@ const createPromptSchema = z.object({
   role: z.string().min(1, 'Role is required'),
   content: z.string().min(1, 'Content is required'),
   actionType: z.enum(['prepend', 'append']),
+  order: z.coerce.number().int().default(0),
   conditionGroups: z.array(conditionGroupSchema).optional(),
 });
 
@@ -41,6 +42,7 @@ const updatePromptSchema = z.object({
   role: z.string().optional(),
   content: z.string().optional(),
   actionType: z.enum(['prepend', 'append']).optional(),
+  order: z.coerce.number().int().optional(),
   conditionGroups: z.array(conditionGroupSchema).optional(),
 });
 
@@ -230,6 +232,7 @@ export function PromptsActionDialog() {
       role: 'system',
       content: '',
       actionType: 'prepend',
+      order: 0,
       conditionGroups: [],
     },
   });
@@ -263,6 +266,7 @@ export function PromptsActionDialog() {
         role: currentRow.role,
         content: currentRow.content,
         actionType: currentRow.settings?.action?.type || 'prepend',
+        order: currentRow.order ?? 0,
         conditionGroups,
       });
     } else if (!isEdit) {
@@ -272,6 +276,7 @@ export function PromptsActionDialog() {
         role: 'system',
         content: '',
         actionType: 'prepend',
+        order: 0,
         conditionGroups: [],
       });
     }
@@ -294,6 +299,7 @@ export function PromptsActionDialog() {
           description: data.description,
           role: data.role,
           content: data.content,
+          order: data.order,
           settings: {
             action: { type: data.actionType },
             conditions,
@@ -306,6 +312,7 @@ export function PromptsActionDialog() {
           description: data.description,
           role: data.role!,
           content: data.content!,
+          order: data.order,
           settings: {
             action: { type: data.actionType! },
             conditions,
@@ -371,6 +378,23 @@ export function PromptsActionDialog() {
               )}
             />
 
+                <FormField
+                  control={form.control}
+                  name='order'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('prompts.fields.order')}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type='number' />
+                      </FormControl>
+                      <FormDescription>
+                        {t('prompts.fields.orderHelp')}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
             <FormField
               control={form.control}
               name='role'
@@ -412,8 +436,8 @@ export function PromptsActionDialog() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        {field.value === 'prepend' 
-                          ? t('prompts.fields.actionTypeHelpPrepend') 
+                        {field.value === 'prepend'
+                          ? t('prompts.fields.actionTypeHelpPrepend')
                           : t('prompts.fields.actionTypeHelpAppend')}
                       </FormDescription>
                       <FormMessage />

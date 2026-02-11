@@ -472,7 +472,7 @@ func (s *SystemService) SecretKey(ctx context.Context) (string, error) {
 	value, err := s.getSystemValue(ctx, SystemKeySecretKey)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return "", fmt.Errorf("secret key not found, system may not be initialized")
+			return "", fmt.Errorf("%w: secret key not found", ErrSystemNotInitialized)
 		}
 
 		return "", fmt.Errorf("failed to get secret key: %w", err)

@@ -2814,6 +2814,11 @@ func (_q *PromptQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 				selectedFields = append(selectedFields, prompt.FieldStatus)
 				fieldSeen[prompt.FieldStatus] = struct{}{}
 			}
+		case "order":
+			if _, ok := fieldSeen[prompt.FieldOrder]; !ok {
+				selectedFields = append(selectedFields, prompt.FieldOrder)
+				fieldSeen[prompt.FieldOrder] = struct{}{}
+			}
 		case "settings":
 			if _, ok := fieldSeen[prompt.FieldSettings]; !ok {
 				selectedFields = append(selectedFields, prompt.FieldSettings)

@@ -16,19 +16,18 @@ import {
 import { useSidebarData } from '../sidebar';
 import { ScrollArea } from './ui/scroll-area';
 
-export function CommandMenu() {
-  const router = useRouter();
+// Inner component that uses sidebar data
+function CommandMenuContent({
+  open,
+  setOpen,
+}: {
+  open: boolean;
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
+  const navigate = useNavigate();
   const { setTheme } = useTheme();
-  const { open, setOpen } = useSearch();
   const sidebarData = useSidebarData();
   const { t } = useTranslation();
-
-  // Don't render if router is not available
-  if (!router) {
-    return null;
-  }
-
-  const navigate = useNavigate();
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
@@ -98,4 +97,28 @@ export function CommandMenu() {
       </CommandList>
     </CommandDialog>
   );
+}
+
+export function CommandMenu() {
+  const router = useRouter();
+  const { open, setOpen } = useSearch();
+
+  // Don't render if router is not available
+  if (!router) {
+    return null;
+  }
+
+  // Don't render on auth pages (sign-in, sign-up, initialization, etc.)
+  const currentPath = window.location.pathname;
+  if (
+    currentPath.startsWith('/sign-in') ||
+    currentPath.startsWith('/sign-up') ||
+    currentPath.startsWith('/initialization') ||
+    currentPath.startsWith('/forgot-password') ||
+    currentPath.startsWith('/otp')
+  ) {
+    return null;
+  }
+
+  return <CommandMenuContent open={open} setOpen={setOpen} />;
 }

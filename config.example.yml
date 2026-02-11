@@ -119,6 +119,14 @@ gc:
                                  # "0 2 * * *"     - Daily at 2:00 AM
                                  # "0 3 * * 0"     - Weekly on Sunday at 3:00 AM
                                  # "0 4 1 * *"     - Monthly on 1st day at 4:00 AM
+  vacuum_enabled: false          # Enable VACUUM after cleanup (env: AXONHUB_GC_VACUUM_ENABLED)
+                                 # Supported for SQLite and PostgreSQL
+                                 # SQLite: Rebuilds database file to reclaim space
+                                 # PostgreSQL: Reclaims space from dead tuples
+  vacuum_full: false             # Use VACUUM FULL for PostgreSQL (env: AXONHUB_GC_VACUUM_FULL)
+                                 # true = VACUUM FULL (reclaims more space but locks tables)
+                                 # false = VACUUM (allows concurrent operations)
+                                 # Note: SQLite always uses plain VACUUM
 
 # Provider Quota configuration
 provider_quota:

@@ -185,7 +185,7 @@ cd axonhub_*
 ./axonhub
 
 # 打开 http://localhost:8090
-# 默认登录：admin@axonhub.com / admin
+# 首次运行：按照初始化向导设置系统（创建管理员账号，密码至少需要 6 位）
 ```
 
 就这样！现在配置你的第一个 AI 渠道，开始通过 AxonHub 调用模型。

@@ -118,6 +118,20 @@ func (_c *PromptCreate) SetNillableStatus(v *prompt.Status) *PromptCreate {
 	return _c
 }
 
+// SetOrder sets the "order" field.
+func (_c *PromptCreate) SetOrder(v int) *PromptCreate {
+	_c.mutation.SetOrder(v)
+	return _c
+}
+
+// SetNillableOrder sets the "order" field if the given value is not nil.
+func (_c *PromptCreate) SetNillableOrder(v *int) *PromptCreate {
+	if v != nil {
+		_c.SetOrder(*v)
+	}
+	return _c
+}
+
 // SetSettings sets the "settings" field.
 func (_c *PromptCreate) SetSettings(v objects.PromptSettings) *PromptCreate {
 	_c.mutation.SetSettings(v)
@@ -202,6 +216,10 @@ func (_c *PromptCreate) defaults() error {
 		v := prompt.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.Order(); !ok {
+		v := prompt.DefaultOrder
+		_c.mutation.SetOrder(v)
+	}
 	return nil
 }
 
@@ -238,6 +256,9 @@ func (_c *PromptCreate) check() error {
 		if err := prompt.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Prompt.status": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Order(); !ok {
+		return &ValidationError{Name: "order", err: errors.New(`ent: missing required field "Prompt.order"`)}
 	}
 	if _, ok := _c.mutation.Settings(); !ok {
 		return &ValidationError{Name: "settings", err: errors.New(`ent: missing required field "Prompt.settings"`)}
@@ -304,6 +325,10 @@ func (_c *PromptCreate) createSpec() (*Prompt, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(prompt.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.Order(); ok {
+		_spec.SetField(prompt.FieldOrder, field.TypeInt, value)
+		_node.Order = value
 	}
 	if value, ok := _c.mutation.Settings(); ok {
 		_spec.SetField(prompt.FieldSettings, field.TypeJSON, value)
@@ -464,6 +489,24 @@ func (u *PromptUpsert) SetStatus(v prompt.Status) *PromptUpsert {
 // UpdateStatus sets the "status" field to the value that was provided on create.
 func (u *PromptUpsert) UpdateStatus() *PromptUpsert {
 	u.SetExcluded(prompt.FieldStatus)
+	return u
+}
+
+// SetOrder sets the "order" field.
+func (u *PromptUpsert) SetOrder(v int) *PromptUpsert {
+	u.Set(prompt.FieldOrder, v)
+	return u
+}
+
+// UpdateOrder sets the "order" field to the value that was provided on create.
+func (u *PromptUpsert) UpdateOrder() *PromptUpsert {
+	u.SetExcluded(prompt.FieldOrder)
+	return u
+}
+
+// AddOrder adds v to the "order" field.
+func (u *PromptUpsert) AddOrder(v int) *PromptUpsert {
+	u.Add(prompt.FieldOrder, v)
 	return u
 }
 
@@ -629,6 +672,27 @@ func (u *PromptUpsertOne) SetStatus(v prompt.Status) *PromptUpsertOne {
 func (u *PromptUpsertOne) UpdateStatus() *PromptUpsertOne {
 	return u.Update(func(s *PromptUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetOrder sets the "order" field.
+func (u *PromptUpsertOne) SetOrder(v int) *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.SetOrder(v)
+	})
+}
+
+// AddOrder adds v to the "order" field.
+func (u *PromptUpsertOne) AddOrder(v int) *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.AddOrder(v)
+	})
+}
+
+// UpdateOrder sets the "order" field to the value that was provided on create.
+func (u *PromptUpsertOne) UpdateOrder() *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.UpdateOrder()
 	})
 }
 
@@ -962,6 +1026,27 @@ func (u *PromptUpsertBulk) SetStatus(v prompt.Status) *PromptUpsertBulk {
 func (u *PromptUpsertBulk) UpdateStatus() *PromptUpsertBulk {
 	return u.Update(func(s *PromptUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetOrder sets the "order" field.
+func (u *PromptUpsertBulk) SetOrder(v int) *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.SetOrder(v)
+	})
+}
+
+// AddOrder adds v to the "order" field.
+func (u *PromptUpsertBulk) AddOrder(v int) *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.AddOrder(v)
+	})
+}
+
+// UpdateOrder sets the "order" field to the value that was provided on create.
+func (u *PromptUpsertBulk) UpdateOrder() *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.UpdateOrder()
 	})
 }
 

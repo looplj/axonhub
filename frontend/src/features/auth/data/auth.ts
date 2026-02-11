@@ -18,7 +18,7 @@ interface MeResponse {
   me: AuthUser;
 }
 
-export function useMe() {
+export function useMe(enabled = true) {
   const { setUser } = useAuthStore((state) => state.auth);
 
   const query = useQuery({
@@ -27,7 +27,7 @@ export function useMe() {
       const data = await graphqlRequest<MeResponse>(ME_QUERY);
       return data.me;
     },
-    enabled: !!useAuthStore.getState().auth.accessToken,
+    enabled: enabled && !!useAuthStore.getState().auth.accessToken,
     retry: false,
   });
 
