@@ -932,9 +932,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   // Add or remove selected fetched models to supported models
   const addSelectedFetchedModels = useCallback(() => {
+    const modelsToRemove: string[] = [];
+
     setSupportedModels((prev) => {
       const modelsToAdd: string[] = [];
-      const modelsToRemove: string[] = [];
 
       selectedFetchedModels.forEach((model) => {
         if (prev.includes(model)) {
@@ -947,6 +948,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const afterRemoval = prev.filter((m) => !modelsToRemove.includes(m));
       return [...afterRemoval, ...modelsToAdd];
     });
+
+    // Remove toggled-off models from manualModels
+    if (modelsToRemove.length > 0) {
+      setManualModels((prev) => prev.filter((m) => !modelsToRemove.includes(m)));
+    }
 
     setSelectedFetchedModels([]);
   }, [selectedFetchedModels]);
@@ -994,8 +1000,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   // Remove deprecated models (models in supportedModels but not in fetchedModels)
   const removeDeprecatedModels = useCallback(() => {
     const fetchedModelsSet = new Set(fetchedModels);
+    const deprecatedModels = supportedModels.filter((model) => !fetchedModelsSet.has(model));
     setSupportedModels((prev) => prev.filter((model) => fetchedModelsSet.has(model)));
-  }, [fetchedModels]);
+    setManualModels((prev) => prev.filter((model) => !deprecatedModels.includes(model)));
+  }, [fetchedModels, supportedModels]);
 
   // Count of deprecated models
   const deprecatedModelsCount = useMemo(() => {
