@@ -997,19 +997,31 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     [form, t]
   );
 
-  // Remove deprecated models (models in supportedModels but not in fetchedModels)
+  // Remove deprecated models (models in supportedModels but not in fetchedModels and not manual)
   const removeDeprecatedModels = useCallback(() => {
     const fetchedModelsSet = new Set(fetchedModels);
-    const deprecatedModels = supportedModels.filter((model) => !fetchedModelsSet.has(model));
-    setSupportedModels((prev) => prev.filter((model) => fetchedModelsSet.has(model)));
+    const manualModelsSet = new Set(manualModels);
+    // Deprecated = not fetched AND not manual
+    const deprecatedModels = supportedModels.filter(
+      (model) => !fetchedModelsSet.has(model) && !manualModelsSet.has(model)
+    );
+    // Keep fetched models and manual models in supportedModels
+    setSupportedModels((prev) =>
+      prev.filter((model) => fetchedModelsSet.has(model) || manualModelsSet.has(model))
+    );
+    // Remove deprecated models from manualModels (should be none, but for consistency)
     setManualModels((prev) => prev.filter((model) => !deprecatedModels.includes(model)));
-  }, [fetchedModels, supportedModels]);
+  }, [fetchedModels, supportedModels, manualModels]);
 
   // Count of deprecated models
   const deprecatedModelsCount = useMemo(() => {
     const fetchedModelsSet = new Set(fetchedModels);
-    return supportedModels.filter((model) => !fetchedModelsSet.has(model)).length;
-  }, [supportedModels, fetchedModels]);
+    const manualModelsSet = new Set(manualModels);
+    // Count only models that are neither fetched nor manual
+    return supportedModels.filter(
+      (model) => !fetchedModelsSet.has(model) && !manualModelsSet.has(model)
+    ).length;
+  }, [supportedModels, fetchedModels, manualModels]);
 
   // Models to display (limited to MAX_MODELS_DISPLAY unless expanded)
   const displayedSupportedModels = useMemo(() => {
