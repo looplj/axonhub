@@ -37,6 +37,8 @@ type Prompt struct {
 	Content string `json:"content,omitempty"`
 	// Status holds the value of the "status" field.
 	Status prompt.Status `json:"status,omitempty"`
+	// prompt insertion order, smaller values are inserted first
+	Order int `json:"order,omitempty"`
 	// prompt settings in JSON format
 	Settings objects.PromptSettings `json:"settings,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -74,7 +76,7 @@ func (*Prompt) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case prompt.FieldSettings:
 			values[i] = new([]byte)
-		case prompt.FieldID, prompt.FieldDeletedAt, prompt.FieldProjectID:
+		case prompt.FieldID, prompt.FieldDeletedAt, prompt.FieldProjectID, prompt.FieldOrder:
 			values[i] = new(sql.NullInt64)
 		case prompt.FieldName, prompt.FieldDescription, prompt.FieldRole, prompt.FieldContent, prompt.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -155,6 +157,12 @@ func (_m *Prompt) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = prompt.Status(value.String)
 			}
+		case prompt.FieldOrder:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field order", values[i])
+			} else if value.Valid {
+				_m.Order = int(value.Int64)
+			}
 		case prompt.FieldSettings:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field settings", values[i])
@@ -230,6 +238,9 @@ func (_m *Prompt) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	builder.WriteString("order=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Order))
 	builder.WriteString(", ")
 	builder.WriteString("settings=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Settings))

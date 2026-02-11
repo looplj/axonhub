@@ -555,6 +555,7 @@ type CreatePromptInput struct {
 	Role        string
 	Content     string
 	Status      *prompt.Status
+	Order       *int
 	Settings    objects.PromptSettings
 	ProjectIDs  []int
 }
@@ -569,6 +570,9 @@ func (i *CreatePromptInput) Mutate(m *PromptMutation) {
 	m.SetContent(i.Content)
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
+	}
+	if v := i.Order; v != nil {
+		m.SetOrder(*v)
 	}
 	m.SetSettings(i.Settings)
 	if v := i.ProjectIDs; len(v) > 0 {
@@ -589,6 +593,7 @@ type UpdatePromptInput struct {
 	Role             *string
 	Content          *string
 	Status           *prompt.Status
+	Order            *int
 	Settings         *objects.PromptSettings
 	ClearProjects    bool
 	AddProjectIDs    []int
@@ -611,6 +616,9 @@ func (i *UpdatePromptInput) Mutate(m *PromptMutation) {
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
+	}
+	if v := i.Order; v != nil {
+		m.SetOrder(*v)
 	}
 	if v := i.Settings; v != nil {
 		m.SetSettings(*v)

@@ -29,6 +29,7 @@ export const promptSchema = z.object({
   role: z.string(),
   content: z.string(),
   status: z.enum(['enabled', 'disabled']),
+  order: z.number(),
   settings: promptSettingsSchema,
 });
 
@@ -65,6 +66,7 @@ export interface CreatePromptInput {
   role: string;
   content: string;
   status?: 'enabled' | 'disabled';
+  order?: number;
   settings: {
     action: {
       type: 'prepend' | 'append';
@@ -85,6 +87,7 @@ export interface UpdatePromptInput {
   role?: string;
   content?: string;
   status?: 'enabled' | 'disabled';
+  order?: number;
   settings?: {
     action: {
       type: 'prepend' | 'append';

@@ -409,6 +409,10 @@ func init() {
 	promptDescDescription := promptFields[2].Descriptor()
 	// prompt.DefaultDescription holds the default value on creation for the description field.
 	prompt.DefaultDescription = promptDescDescription.Default.(string)
+	// promptDescOrder is the schema descriptor for order field.
+	promptDescOrder := promptFields[6].Descriptor()
+	// prompt.DefaultOrder holds the default value on creation for the order field.
+	prompt.DefaultOrder = promptDescOrder.Default.(int)
 	providerquotastatusMixin := schema.ProviderQuotaStatus{}.Mixin()
 	providerquotastatusMixinHooks1 := providerquotastatusMixin[1].Hooks()
 	providerquotastatus.Hooks[0] = providerquotastatusMixinHooks1[0]

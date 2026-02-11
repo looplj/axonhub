@@ -95,6 +95,11 @@ func Content(v string) predicate.Prompt {
 	return predicate.Prompt(sql.FieldEQ(FieldContent, v))
 }
 
+// Order applies equality check predicate on the "order" field. It's identical to OrderEQ.
+func Order(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldEQ(FieldOrder, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Prompt {
 	return predicate.Prompt(sql.FieldEQ(FieldCreatedAt, v))
@@ -533,6 +538,46 @@ func StatusIn(vs ...Status) predicate.Prompt {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Prompt {
 	return predicate.Prompt(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// OrderEQ applies the EQ predicate on the "order" field.
+func OrderEQ(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldEQ(FieldOrder, v))
+}
+
+// OrderNEQ applies the NEQ predicate on the "order" field.
+func OrderNEQ(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldNEQ(FieldOrder, v))
+}
+
+// OrderIn applies the In predicate on the "order" field.
+func OrderIn(vs ...int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldIn(FieldOrder, vs...))
+}
+
+// OrderNotIn applies the NotIn predicate on the "order" field.
+func OrderNotIn(vs ...int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldNotIn(FieldOrder, vs...))
+}
+
+// OrderGT applies the GT predicate on the "order" field.
+func OrderGT(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldGT(FieldOrder, v))
+}
+
+// OrderGTE applies the GTE predicate on the "order" field.
+func OrderGTE(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldGTE(FieldOrder, v))
+}
+
+// OrderLT applies the LT predicate on the "order" field.
+func OrderLT(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldLT(FieldOrder, v))
+}
+
+// OrderLTE applies the LTE predicate on the "order" field.
+func OrderLTE(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldLTE(FieldOrder, v))
 }
 
 // HasProjects applies the HasEdge predicate on the "projects" edge.

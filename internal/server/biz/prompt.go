@@ -124,15 +124,10 @@ func (svc *PromptService) CreatePrompt(ctx context.Context, input ent.CreateProm
 		SetName(input.Name).
 		SetRole(input.Role).
 		SetContent(input.Content).
+		SetNillableOrder(input.Order).
+		SetNillableDescription(input.Description).
+		SetNillableStatus(input.Status).
 		SetSettings(input.Settings)
-
-	if input.Description != nil {
-		createBuilder.SetDescription(*input.Description)
-	}
-
-	if input.Status != nil {
-		createBuilder.SetStatus(*input.Status)
-	}
 
 	prompt, err := createBuilder.Save(ctx)
 	if err != nil {
@@ -165,6 +160,7 @@ func (svc *PromptService) UpdatePrompt(ctx context.Context, id int, input *ent.U
 		SetNillableDescription(input.Description).
 		SetNillableRole(input.Role).
 		SetNillableContent(input.Content).
+		SetNillableOrder(input.Order).
 		SetNillableStatus(input.Status)
 
 	if input.Settings != nil {
