@@ -205,7 +205,5 @@ func TestCaseSensitivity(t *testing.T) {
 }
 
 func mergeModelsForTest(manualModels, fetchedModels []string) []string {
-	// RED phase: simulates current broken behavior (replaces instead of merges)
-	// This causes tests to fail as expected in RED phase
-	return fetchedModels
+	return lo.Uniq(append(manualModels, fetchedModels...))
 }

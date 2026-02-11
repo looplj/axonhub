@@ -52,6 +52,7 @@ import {
 } from '../data/config_providers';
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
 import { useOAuthFlow } from '../hooks/use-oauth-flow';
+import { ManualModelBadge } from './manual-model-badge';
 
 interface Props {
   currentRow?: Channel;
@@ -98,6 +99,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
   const selectedProjectId = useSelectedProjectId();
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
+  const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
@@ -699,6 +701,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const dataWithModels = {
         ...valuesForSubmit,
         supportedModels,
+        manualModels,
       };
 
       if ((isCodexType || isClaudeCodeType) && authMode === 'official' && !isDuplicate) {
@@ -751,6 +754,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
       form.reset();
       setSupportedModels([]);
+      setManualModels([]);
       onOpenChange(false);
     } catch (_error) {
       void _error;
@@ -788,6 +792,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const removeModel = (model: string) => {
     setSupportedModels(supportedModels.filter((m) => m !== model));
+  };
+
+  const isModelManual = (model: string): boolean => {
+    return manualModels.includes(model);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1003,6 +1011,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           if (!state) {
             form.reset();
             setSupportedModels(initialRow?.supportedModels || []);
+            setManualModels(initialRow?.manualModels || []);
             setSelectedDefaultModels([]);
             setFetchedModels([]);
             setUseFetchedModels(false);
@@ -1557,6 +1566,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {displayedSupportedModels.map((model) => (
                               <Badge key={model} variant='secondary' className='text-xs'>
                                 {model}
+                                <ManualModelBadge isManual={isModelManual(model)} className='ml-1' />
                                 <button type='button' onClick={() => removeModel(model)} className='hover:text-destructive ml-1'>
                                   <X size={12} />
                                 </button>
@@ -2028,7 +2038,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       <PanelLeft className='h-4 w-4' />
                     </Button>
                     <h3 className='text-sm font-semibold'>
-                      {t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
+                      {manualModels.length > 0
+                        ? t('channels.dialogs.fields.supportedModels.allModelsWithManual', {
+                            autoCount: supportedModels.length - manualModels.length,
+                            manualCount: manualModels.length,
+                          })
+                        : t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
                     </h3>
                   </div>
                   <Popover open={showClearAllPopover} onOpenChange={setShowClearAllPopover}>
@@ -2090,6 +2105,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             <p className='max-w-xs break-all'>{model}</p>
                           </TooltipContent>
                         </Tooltip>
+                        <ManualModelBadge isManual={isModelManual(model)} />
                         <Button
                           type='button'
                           variant='ghost'

@@ -323,6 +323,7 @@
   "channels.dialogs.fields.supportedModels.showNotAddedOnly": "Show not added only",
   "channels.dialogs.fields.supportedModels.added": "Added",
   "channels.dialogs.fields.supportedModels.allModels": "All Models ({{count}})",
+  "channels.dialogs.fields.supportedModels.allModelsWithManual": "{{autoCount}} auto + {{manualCount}} manual models",
   "channels.dialogs.fields.supportedModels.clearAllTitle": "Clear all supported models?",
   "channels.dialogs.fields.supportedModels.clearAllDescription": "Are you sure you want to clear all {{count}} models?",
   "channels.dialogs.fields.supportedModels.willRemove": "Will remove",
