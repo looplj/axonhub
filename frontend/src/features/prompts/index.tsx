@@ -52,16 +52,18 @@ function PromptsContent() {
 
   const currentOrderBy = (() => {
     if (sorting.length === 0) {
-      return { field: 'CREATED_AT', direction: 'DESC' } as const;
+      return { field: 'ORDER', direction: 'ASC' } as const;
     }
     const [primary] = sorting;
     switch (primary.id) {
+      case 'order':
+        return { field: 'ORDER', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       case 'name':
         return { field: 'CREATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       case 'createdAt':
         return { field: 'CREATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
       default:
-        return { field: 'CREATED_AT', direction: 'DESC' } as const;
+        return { field: 'ORDER', direction: 'ASC' } as const;
     }
   })();
 

@@ -262,6 +262,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			prompt.FieldRole:        {Type: field.TypeString, Column: prompt.FieldRole},
 			prompt.FieldContent:     {Type: field.TypeString, Column: prompt.FieldContent},
 			prompt.FieldStatus:      {Type: field.TypeEnum, Column: prompt.FieldStatus},
+			prompt.FieldOrder:       {Type: field.TypeInt, Column: prompt.FieldOrder},
 			prompt.FieldSettings:    {Type: field.TypeJSON, Column: prompt.FieldSettings},
 		},
 	}
@@ -2471,6 +2472,11 @@ func (f *PromptFilter) WhereContent(p entql.StringP) {
 // WhereStatus applies the entql string predicate on the status field.
 func (f *PromptFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(prompt.FieldStatus))
+}
+
+// WhereOrder applies the entql int predicate on the order field.
+func (f *PromptFilter) WhereOrder(p entql.IntP) {
+	f.Where(p.Field(prompt.FieldOrder))
 }
 
 // WhereSettings applies the entql json.RawMessage predicate on the settings field.

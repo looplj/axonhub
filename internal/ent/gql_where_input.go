@@ -4328,6 +4328,16 @@ type PromptWhereInput struct {
 	StatusIn    []prompt.Status `json:"statusIn,omitempty"`
 	StatusNotIn []prompt.Status `json:"statusNotIn,omitempty"`
 
+	// "order" field predicates.
+	Order      *int  `json:"order,omitempty"`
+	OrderNEQ   *int  `json:"orderNEQ,omitempty"`
+	OrderIn    []int `json:"orderIn,omitempty"`
+	OrderNotIn []int `json:"orderNotIn,omitempty"`
+	OrderGT    *int  `json:"orderGT,omitempty"`
+	OrderGTE   *int  `json:"orderGTE,omitempty"`
+	OrderLT    *int  `json:"orderLT,omitempty"`
+	OrderLTE   *int  `json:"orderLTE,omitempty"`
+
 	// "projects" edge predicates.
 	HasProjects     *bool                `json:"hasProjects,omitempty"`
 	HasProjectsWith []*ProjectWhereInput `json:"hasProjectsWith,omitempty"`
@@ -4667,6 +4677,30 @@ func (i *PromptWhereInput) P() (predicate.Prompt, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, prompt.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.Order != nil {
+		predicates = append(predicates, prompt.OrderEQ(*i.Order))
+	}
+	if i.OrderNEQ != nil {
+		predicates = append(predicates, prompt.OrderNEQ(*i.OrderNEQ))
+	}
+	if len(i.OrderIn) > 0 {
+		predicates = append(predicates, prompt.OrderIn(i.OrderIn...))
+	}
+	if len(i.OrderNotIn) > 0 {
+		predicates = append(predicates, prompt.OrderNotIn(i.OrderNotIn...))
+	}
+	if i.OrderGT != nil {
+		predicates = append(predicates, prompt.OrderGT(*i.OrderGT))
+	}
+	if i.OrderGTE != nil {
+		predicates = append(predicates, prompt.OrderGTE(*i.OrderGTE))
+	}
+	if i.OrderLT != nil {
+		predicates = append(predicates, prompt.OrderLT(*i.OrderLT))
+	}
+	if i.OrderLTE != nil {
+		predicates = append(predicates, prompt.OrderLTE(*i.OrderLTE))
 	}
 
 	if i.HasProjects != nil {

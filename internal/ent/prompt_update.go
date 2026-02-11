@@ -128,6 +128,27 @@ func (_u *PromptUpdate) SetNillableStatus(v *prompt.Status) *PromptUpdate {
 	return _u
 }
 
+// SetOrder sets the "order" field.
+func (_u *PromptUpdate) SetOrder(v int) *PromptUpdate {
+	_u.mutation.ResetOrder()
+	_u.mutation.SetOrder(v)
+	return _u
+}
+
+// SetNillableOrder sets the "order" field if the given value is not nil.
+func (_u *PromptUpdate) SetNillableOrder(v *int) *PromptUpdate {
+	if v != nil {
+		_u.SetOrder(*v)
+	}
+	return _u
+}
+
+// AddOrder adds value to the "order" field.
+func (_u *PromptUpdate) AddOrder(v int) *PromptUpdate {
+	_u.mutation.AddOrder(v)
+	return _u
+}
+
 // SetSettings sets the "settings" field.
 func (_u *PromptUpdate) SetSettings(v objects.PromptSettings) *PromptUpdate {
 	_u.mutation.SetSettings(v)
@@ -276,6 +297,12 @@ func (_u *PromptUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(prompt.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Order(); ok {
+		_spec.SetField(prompt.FieldOrder, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedOrder(); ok {
+		_spec.AddField(prompt.FieldOrder, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Settings(); ok {
 		_spec.SetField(prompt.FieldSettings, field.TypeJSON, value)
@@ -441,6 +468,27 @@ func (_u *PromptUpdateOne) SetNillableStatus(v *prompt.Status) *PromptUpdateOne 
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetOrder sets the "order" field.
+func (_u *PromptUpdateOne) SetOrder(v int) *PromptUpdateOne {
+	_u.mutation.ResetOrder()
+	_u.mutation.SetOrder(v)
+	return _u
+}
+
+// SetNillableOrder sets the "order" field if the given value is not nil.
+func (_u *PromptUpdateOne) SetNillableOrder(v *int) *PromptUpdateOne {
+	if v != nil {
+		_u.SetOrder(*v)
+	}
+	return _u
+}
+
+// AddOrder adds value to the "order" field.
+func (_u *PromptUpdateOne) AddOrder(v int) *PromptUpdateOne {
+	_u.mutation.AddOrder(v)
 	return _u
 }
 
@@ -622,6 +670,12 @@ func (_u *PromptUpdateOne) sqlSave(ctx context.Context) (_node *Prompt, err erro
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(prompt.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Order(); ok {
+		_spec.SetField(prompt.FieldOrder, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedOrder(); ok {
+		_spec.AddField(prompt.FieldOrder, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Settings(); ok {
 		_spec.SetField(prompt.FieldSettings, field.TypeJSON, value)

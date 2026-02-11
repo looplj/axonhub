@@ -26,6 +26,7 @@ const PROMPTS_QUERY = `
           role
           content
           status
+          order
           settings {
             action {
               type
@@ -64,6 +65,7 @@ const CREATE_PROMPT_MUTATION = `
       role
       content
       status
+      order
       settings {
         action {
           type
@@ -92,6 +94,7 @@ const UPDATE_PROMPT_MUTATION = `
       role
       content
       status
+      order
       settings {
         action {
           type
@@ -145,7 +148,7 @@ interface QueryPromptsArgs {
   before?: string;
   where?: Record<string, any>;
   orderBy?: {
-    field: 'CREATED_AT' | 'UPDATED_AT';
+    field: 'CREATED_AT' | 'UPDATED_AT' | 'ORDER';
     direction: 'ASC' | 'DESC';
   };
 }

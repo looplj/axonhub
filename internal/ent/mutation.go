@@ -10226,6 +10226,8 @@ type PromptMutation struct {
 	role            *string
 	content         *string
 	status          *prompt.Status
+	_order          *int
+	add_order       *int
 	settings        *objects.PromptSettings
 	clearedFields   map[string]struct{}
 	projects        map[int]struct{}
@@ -10698,6 +10700,62 @@ func (m *PromptMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetOrder sets the "order" field.
+func (m *PromptMutation) SetOrder(i int) {
+	m._order = &i
+	m.add_order = nil
+}
+
+// Order returns the value of the "order" field in the mutation.
+func (m *PromptMutation) Order() (r int, exists bool) {
+	v := m._order
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrder returns the old "order" field's value of the Prompt entity.
+// If the Prompt object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PromptMutation) OldOrder(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOrder is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOrder requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrder: %w", err)
+	}
+	return oldValue.Order, nil
+}
+
+// AddOrder adds i to the "order" field.
+func (m *PromptMutation) AddOrder(i int) {
+	if m.add_order != nil {
+		*m.add_order += i
+	} else {
+		m.add_order = &i
+	}
+}
+
+// AddedOrder returns the value that was added to the "order" field in this mutation.
+func (m *PromptMutation) AddedOrder() (r int, exists bool) {
+	v := m.add_order
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOrder resets all changes to the "order" field.
+func (m *PromptMutation) ResetOrder() {
+	m._order = nil
+	m.add_order = nil
+}
+
 // SetSettings sets the "settings" field.
 func (m *PromptMutation) SetSettings(os objects.PromptSettings) {
 	m.settings = &os
@@ -10822,7 +10880,7 @@ func (m *PromptMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PromptMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, prompt.FieldCreatedAt)
 	}
@@ -10849,6 +10907,9 @@ func (m *PromptMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, prompt.FieldStatus)
+	}
+	if m._order != nil {
+		fields = append(fields, prompt.FieldOrder)
 	}
 	if m.settings != nil {
 		fields = append(fields, prompt.FieldSettings)
@@ -10879,6 +10940,8 @@ func (m *PromptMutation) Field(name string) (ent.Value, bool) {
 		return m.Content()
 	case prompt.FieldStatus:
 		return m.Status()
+	case prompt.FieldOrder:
+		return m.Order()
 	case prompt.FieldSettings:
 		return m.Settings()
 	}
@@ -10908,6 +10971,8 @@ func (m *PromptMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldContent(ctx)
 	case prompt.FieldStatus:
 		return m.OldStatus(ctx)
+	case prompt.FieldOrder:
+		return m.OldOrder(ctx)
 	case prompt.FieldSettings:
 		return m.OldSettings(ctx)
 	}
@@ -10982,6 +11047,13 @@ func (m *PromptMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
+	case prompt.FieldOrder:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrder(v)
+		return nil
 	case prompt.FieldSettings:
 		v, ok := value.(objects.PromptSettings)
 		if !ok {
@@ -11003,6 +11075,9 @@ func (m *PromptMutation) AddedFields() []string {
 	if m.addproject_id != nil {
 		fields = append(fields, prompt.FieldProjectID)
 	}
+	if m.add_order != nil {
+		fields = append(fields, prompt.FieldOrder)
+	}
 	return fields
 }
 
@@ -11015,6 +11090,8 @@ func (m *PromptMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedDeletedAt()
 	case prompt.FieldProjectID:
 		return m.AddedProjectID()
+	case prompt.FieldOrder:
+		return m.AddedOrder()
 	}
 	return nil, false
 }
@@ -11037,6 +11114,13 @@ func (m *PromptMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddProjectID(v)
+		return nil
+	case prompt.FieldOrder:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOrder(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Prompt numeric field %s", name)
@@ -11091,6 +11175,9 @@ func (m *PromptMutation) ResetField(name string) error {
 		return nil
 	case prompt.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case prompt.FieldOrder:
+		m.ResetOrder()
 		return nil
 	case prompt.FieldSettings:
 		m.ResetSettings()

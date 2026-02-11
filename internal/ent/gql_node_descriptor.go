@@ -1076,7 +1076,7 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Prompt",
-		Fields: make([]*Field, 9),
+		Fields: make([]*Field, 10),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -1144,10 +1144,18 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "status",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Settings); err != nil {
+	if buf, err = json.Marshal(_m.Order); err != nil {
 		return nil, err
 	}
 	node.Fields[8] = &Field{
+		Type:  "int",
+		Name:  "order",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Settings); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
 		Type:  "objects.PromptSettings",
 		Name:  "settings",
 		Value: string(buf),

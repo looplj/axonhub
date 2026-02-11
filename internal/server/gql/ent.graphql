@@ -1482,6 +1482,10 @@ input CreatePromptInput {
   content: String!
   status: PromptStatus
   """
+  prompt insertion order, smaller values are inserted first
+  """
+  order: Int
+  """
   prompt settings in JSON format
   """
   settings: PromptSettingsInput!
@@ -2717,6 +2721,10 @@ type Prompt implements Node {
   content: String!
   status: PromptStatus!
   """
+  prompt insertion order, smaller values are inserted first
+  """
+  order: Int!
+  """
   prompt settings in JSON format
   """
   settings: PromptSettings!
@@ -2801,6 +2809,7 @@ Properties by which Prompt connections can be ordered.
 enum PromptOrderField {
   CREATED_AT
   UPDATED_AT
+  ORDER
 }
 """
 PromptStatus is enum for the field status
@@ -2932,6 +2941,17 @@ input PromptWhereInput {
   statusNEQ: PromptStatus
   statusIn: [PromptStatus!]
   statusNotIn: [PromptStatus!]
+  """
+  order field predicates
+  """
+  order: Int
+  orderNEQ: Int
+  orderIn: [Int!]
+  orderNotIn: [Int!]
+  orderGT: Int
+  orderGTE: Int
+  orderLT: Int
+  orderLTE: Int
   """
   projects edge predicates
   """
@@ -5101,6 +5121,10 @@ input UpdatePromptInput {
   """
   content: String
   status: PromptStatus
+  """
+  prompt insertion order, smaller values are inserted first
+  """
+  order: Int
   """
   prompt settings in JSON format
   """
