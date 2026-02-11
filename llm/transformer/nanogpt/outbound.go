@@ -86,6 +86,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
+	// Route to embedded OpenAI transformer for embedding responses
+	if httpResp.Request != nil && httpResp.Request.APIFormat == string(llm.APIFormatOpenAIEmbedding) {
+		return t.Outbound.TransformResponse(ctx, httpResp)
+	}
+
 	var nanoResp Response
 
 	err := json.Unmarshal(httpResp.Body, &nanoResp)
