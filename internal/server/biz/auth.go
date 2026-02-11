@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -141,6 +142,9 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 		return s.SystemService.SecretKey(bypassCtx)
 	})
 	if err != nil {
+		if errors.Is(err, ErrSystemNotInitialized) {
+			return nil, fmt.Errorf("%w: system not initialized", ErrInvalidJWT)
+		}
 		return nil, fmt.Errorf("failed to get secret key: %w", err)
 	}
 
