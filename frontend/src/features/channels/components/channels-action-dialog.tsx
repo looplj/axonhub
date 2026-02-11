@@ -803,7 +803,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return [...combinedModels];
     });
     setNewModel('');
-  }, [newModel]);
+  }, [newModel, supportedModels]);
 
   const removeModel = (model: string) => {
     setSupportedModels(supportedModels.filter((m) => m !== model));
@@ -2057,7 +2057,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     <h3 className='text-sm font-semibold'>
                       {manualModels.length > 0
                         ? t('channels.dialogs.fields.supportedModels.allModelsWithManual', {
-                            autoCount: supportedModels.length - manualModels.length,
+                            autoCount: Math.max(0, supportedModels.length - manualModels.length),
                             manualCount: manualModels.length,
                           })
                         : t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
