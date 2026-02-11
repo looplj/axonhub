@@ -62,7 +62,20 @@ func (m *persistRequestMiddleware) OnOutboundLlmResponse(ctx context.Context, ll
 	persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
 	defer cancel()
 
-	_, err := state.UsageLogService.CreateUsageLogFromRequest(persistCtx, state.Request, state.RequestExec, llmResp.Usage)
+	// Determine usage to log - handle both regular and embedding responses
+	var usageToLog *llm.Usage
+	if llmResp.Embedding != nil && llmResp.Embedding.Usage != nil {
+		// Convert embedding usage to regular usage format
+		usageToLog = &llm.Usage{
+			PromptTokens:     llmResp.Embedding.Usage.PromptTokens,
+			CompletionTokens: 0, // Embeddings don't have completion tokens
+			TotalTokens:      llmResp.Embedding.Usage.TotalTokens,
+		}
+	} else if llmResp.Usage != nil {
+		usageToLog = llmResp.Usage
+	}
+
+	_, err := state.UsageLogService.CreateUsageLogFromRequest(persistCtx, state.Request, state.RequestExec, usageToLog)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to create usage log from request", log.Cause(err))
 	}
