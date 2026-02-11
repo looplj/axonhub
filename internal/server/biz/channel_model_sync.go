@@ -102,7 +102,6 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	err = svc.entFromContext(ctx).Channel.
 		UpdateOneID(ch.ID).
 		SetSupportedModels(mergedModels).
-		SetManualModels(manualModels).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update channel supported models: %w", err)

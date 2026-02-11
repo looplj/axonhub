@@ -796,7 +796,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return [...combinedModels];
     });
     setManualModels((prev) => {
-      const combinedModels = new Set([...prev, ...models]);
+      // Only add models that are NOT already in supportedModels
+      const newModels = models.filter((m) => !supportedModels.includes(m));
+      const combinedModels = new Set([...prev, ...newModels]);
       if (combinedModels.size === prev.length) return prev;
       return [...combinedModels];
     });
