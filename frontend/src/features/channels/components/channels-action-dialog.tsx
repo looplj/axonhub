@@ -764,6 +764,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const addModel = () => {
     if (newModel.trim() && !supportedModels.includes(newModel.trim())) {
       setSupportedModels([...supportedModels, newModel.trim()]);
+      setManualModels([...manualModels, newModel.trim()]);
       setNewModel('');
     }
   };
@@ -787,11 +788,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (combinedModels.size === prev.length) return prev;
       return [...combinedModels];
     });
+    setManualModels((prev) => {
+      const combinedModels = new Set([...prev, ...models]);
+      if (combinedModels.size === prev.length) return prev;
+      return [...combinedModels];
+    });
     setNewModel('');
   }, [newModel]);
 
   const removeModel = (model: string) => {
     setSupportedModels(supportedModels.filter((m) => m !== model));
+    setManualModels(manualModels.filter((m) => m !== model));
   };
 
   const isModelManual = (model: string): boolean => {
@@ -819,6 +826,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const handleClearAllSupportedModels = () => {
     setSupportedModels([]);
+    setManualModels([]);
   };
 
   const handleFetchModels = useCallback(async () => {
