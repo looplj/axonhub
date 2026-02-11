@@ -267,6 +267,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
   }, [open, showModelsPanel, initialRow]);
 
+  // Sync manualModels when dialog opens with new initialRow
+  useEffect(() => {
+    if (open && initialRow) {
+      setManualModels(initialRow.manualModels || []);
+    }
+  }, [open, initialRow]);
+
   // Get available providers (excluding fake types)
   const availableProviders = useMemo(
     () =>
