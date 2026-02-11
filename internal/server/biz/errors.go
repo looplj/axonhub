@@ -16,4 +16,5 @@ var (
 	ErrServiceAccountRequired = errors.New("service account api key required")
 	ErrAPIKeyScopeRequired    = errors.New("api key missing required scope")
 	ErrAPIKeyNameRequired     = errors.New("api key name is required")
+	ErrSystemNotInitialized   = errors.New("system not initialized")
 )

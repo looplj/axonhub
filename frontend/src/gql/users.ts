@@ -24,6 +24,8 @@ export const ME_QUERY = `
   }
 `;
 
+export const ME_QUERY_OPERATION_NAME = 'Me';
+
 export const USERS_QUERY = `
   query Users($first: Int, $after: Cursor, $orderBy: UserOrder, $where: UserWhereInput) {
     users(first: $first, after: $after, orderBy: $orderBy, where: $where) {
