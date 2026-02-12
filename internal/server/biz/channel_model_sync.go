@@ -75,23 +75,33 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		return fmt.Errorf("model fetch returned error: %s", *result.Error)
 	}
 
-	// Extract model IDs
-	modelIDs := lo.Map(result.Models, func(m ModelIdentify, _ int) string {
+	// Extract model IDs from fetched models
+	fetchedModelIDs := lo.Map(result.Models, func(m ModelIdentify, _ int) string {
 		return m.ID
 	})
 
-	if len(modelIDs) == 0 {
-		log.Warn(ctx, "no models fetched for channel",
+	// Read existing manual models from the channel
+	manualModels := ch.ManualModels
+	if manualModels == nil {
+		manualModels = []string{}
+	}
+
+	// Merge fetched models with manual models, removing duplicates
+	mergedModels := lo.Uniq(append(manualModels, fetchedModelIDs...))
+
+	if len(mergedModels) == 0 {
+		log.Warn(ctx, "no models to sync for channel (both fetched and manual are empty)",
 			log.Int("channel_id", ch.ID),
 			log.String("channel_name", ch.Name))
 
 		return nil
 	}
 
-	// Update channel's supported models
+	// Update channel's supported models with merged list
+	// Keep manual_models unchanged (preserve user's manually added models)
 	err = svc.entFromContext(ctx).Channel.
 		UpdateOneID(ch.ID).
-		SetSupportedModels(modelIDs).
+		SetSupportedModels(mergedModels).
 		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update channel supported models: %w", err)
@@ -100,7 +110,9 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	log.Info(ctx, "successfully synced models for channel",
 		log.Int("channel_id", ch.ID),
 		log.String("channel_name", ch.Name),
-		log.Int("model_count", len(modelIDs)))
+		log.Int("fetched_count", len(fetchedModelIDs)),
+		log.Int("manual_count", len(manualModels)),
+		log.Int("total_count", len(mergedModels)))
 
 	return nil
 }

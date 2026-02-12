@@ -129,6 +129,12 @@ func (_c *ChannelCreate) SetSupportedModels(v []string) *ChannelCreate {
 	return _c
 }
 
+// SetManualModels sets the "manual_models" field.
+func (_c *ChannelCreate) SetManualModels(v []string) *ChannelCreate {
+	_c.mutation.SetManualModels(v)
+	return _c
+}
+
 // SetAutoSyncSupportedModels sets the "auto_sync_supported_models" field.
 func (_c *ChannelCreate) SetAutoSyncSupportedModels(v bool) *ChannelCreate {
 	_c.mutation.SetAutoSyncSupportedModels(v)
@@ -374,6 +380,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultDisabledAPIKeys
 		_c.mutation.SetDisabledAPIKeys(v)
 	}
+	if _, ok := _c.mutation.ManualModels(); !ok {
+		v := channel.DefaultManualModels
+		_c.mutation.SetManualModels(v)
+	}
 	if _, ok := _c.mutation.AutoSyncSupportedModels(); !ok {
 		v := channel.DefaultAutoSyncSupportedModels
 		_c.mutation.SetAutoSyncSupportedModels(v)
@@ -508,6 +518,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.SupportedModels(); ok {
 		_spec.SetField(channel.FieldSupportedModels, field.TypeJSON, value)
 		_node.SupportedModels = value
+	}
+	if value, ok := _c.mutation.ManualModels(); ok {
+		_spec.SetField(channel.FieldManualModels, field.TypeJSON, value)
+		_node.ManualModels = value
 	}
 	if value, ok := _c.mutation.AutoSyncSupportedModels(); ok {
 		_spec.SetField(channel.FieldAutoSyncSupportedModels, field.TypeBool, value)
@@ -800,6 +814,24 @@ func (u *ChannelUpsert) SetSupportedModels(v []string) *ChannelUpsert {
 // UpdateSupportedModels sets the "supported_models" field to the value that was provided on create.
 func (u *ChannelUpsert) UpdateSupportedModels() *ChannelUpsert {
 	u.SetExcluded(channel.FieldSupportedModels)
+	return u
+}
+
+// SetManualModels sets the "manual_models" field.
+func (u *ChannelUpsert) SetManualModels(v []string) *ChannelUpsert {
+	u.Set(channel.FieldManualModels, v)
+	return u
+}
+
+// UpdateManualModels sets the "manual_models" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateManualModels() *ChannelUpsert {
+	u.SetExcluded(channel.FieldManualModels)
+	return u
+}
+
+// ClearManualModels clears the value of the "manual_models" field.
+func (u *ChannelUpsert) ClearManualModels() *ChannelUpsert {
+	u.SetNull(channel.FieldManualModels)
 	return u
 }
 
@@ -1113,6 +1145,27 @@ func (u *ChannelUpsertOne) SetSupportedModels(v []string) *ChannelUpsertOne {
 func (u *ChannelUpsertOne) UpdateSupportedModels() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSupportedModels()
+	})
+}
+
+// SetManualModels sets the "manual_models" field.
+func (u *ChannelUpsertOne) SetManualModels(v []string) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetManualModels(v)
+	})
+}
+
+// UpdateManualModels sets the "manual_models" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateManualModels() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateManualModels()
+	})
+}
+
+// ClearManualModels clears the value of the "manual_models" field.
+func (u *ChannelUpsertOne) ClearManualModels() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearManualModels()
 	})
 }
 
@@ -1614,6 +1667,27 @@ func (u *ChannelUpsertBulk) SetSupportedModels(v []string) *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) UpdateSupportedModels() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateSupportedModels()
+	})
+}
+
+// SetManualModels sets the "manual_models" field.
+func (u *ChannelUpsertBulk) SetManualModels(v []string) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetManualModels(v)
+	})
+}
+
+// UpdateManualModels sets the "manual_models" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateManualModels() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateManualModels()
+	})
+}
+
+// ClearManualModels clears the value of the "manual_models" field.
+func (u *ChannelUpsertBulk) ClearManualModels() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearManualModels()
 	})
 }
 

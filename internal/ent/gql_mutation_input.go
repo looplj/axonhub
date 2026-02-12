@@ -85,6 +85,7 @@ type CreateChannelInput struct {
 	Name                    string
 	Credentials             objects.ChannelCredentials
 	SupportedModels         []string
+	ManualModels            []string
 	AutoSyncSupportedModels *bool
 	Tags                    []string
 	DefaultTestModel        string
@@ -104,6 +105,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	m.SetCredentials(i.Credentials)
 	if v := i.SupportedModels; v != nil {
 		m.SetSupportedModels(v)
+	}
+	if v := i.ManualModels; v != nil {
+		m.SetManualModels(v)
 	}
 	if v := i.AutoSyncSupportedModels; v != nil {
 		m.SetAutoSyncSupportedModels(*v)
@@ -141,6 +145,9 @@ type UpdateChannelInput struct {
 	Credentials             *objects.ChannelCredentials
 	SupportedModels         []string
 	AppendSupportedModels   []string
+	ClearManualModels       bool
+	ManualModels            []string
+	AppendManualModels      []string
 	AutoSyncSupportedModels *bool
 	ClearTags               bool
 	Tags                    []string
@@ -179,6 +186,15 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if i.AppendSupportedModels != nil {
 		m.AppendSupportedModels(i.SupportedModels)
+	}
+	if i.ClearManualModels {
+		m.ClearManualModels()
+	}
+	if v := i.ManualModels; v != nil {
+		m.SetManualModels(v)
+	}
+	if i.AppendManualModels != nil {
+		m.AppendManualModels(i.AppendManualModels)
 	}
 	if v := i.AutoSyncSupportedModels; v != nil {
 		m.SetAutoSyncSupportedModels(*v)

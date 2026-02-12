@@ -104,6 +104,7 @@ func (Channel) Fields() []ent.Field {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
 		field.Strings("supported_models"),
+		field.Strings("manual_models").Optional().Default([]string{}),
 		field.Bool("auto_sync_supported_models").Default(false),
 		field.Strings("tags").Optional().Default([]string{}),
 		field.String("default_test_model"),

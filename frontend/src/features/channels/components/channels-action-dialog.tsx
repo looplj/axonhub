@@ -52,6 +52,7 @@ import {
 } from '../data/config_providers';
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
 import { useOAuthFlow } from '../hooks/use-oauth-flow';
+import { ManualModelBadge } from './manual-model-badge';
 
 interface Props {
   currentRow?: Channel;
@@ -98,6 +99,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
   const selectedProjectId = useSelectedProjectId();
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
+  const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
@@ -264,6 +266,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       setShowApiKeysPanel(false);
     }
   }, [open, showModelsPanel, initialRow]);
+
+  // Sync manualModels when dialog opens with new initialRow
+  useEffect(() => {
+    if (open && initialRow) {
+      setManualModels(initialRow.manualModels || []);
+    }
+  }, [open, initialRow]);
 
   // Get available providers (excluding fake types)
   const availableProviders = useMemo(
@@ -699,6 +708,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const dataWithModels = {
         ...valuesForSubmit,
         supportedModels,
+        manualModels,
       };
 
       if ((isCodexType || isClaudeCodeType) && authMode === 'official' && !isDuplicate) {
@@ -751,6 +761,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
       form.reset();
       setSupportedModels([]);
+      setManualModels([]);
       onOpenChange(false);
     } catch (_error) {
       void _error;
@@ -760,6 +771,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const addModel = () => {
     if (newModel.trim() && !supportedModels.includes(newModel.trim())) {
       setSupportedModels([...supportedModels, newModel.trim()]);
+      setManualModels([...manualModels, newModel.trim()]);
       setNewModel('');
     }
   };
@@ -783,11 +795,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (combinedModels.size === prev.length) return prev;
       return [...combinedModels];
     });
+    setManualModels((prev) => {
+      // Only add models that are NOT already in supportedModels
+      const newModels = models.filter((m) => !supportedModels.includes(m));
+      const combinedModels = new Set([...prev, ...newModels]);
+      if (combinedModels.size === prev.length) return prev;
+      return [...combinedModels];
+    });
     setNewModel('');
-  }, [newModel]);
+  }, [newModel, supportedModels]);
 
   const removeModel = (model: string) => {
     setSupportedModels(supportedModels.filter((m) => m !== model));
+    setManualModels(manualModels.filter((m) => m !== model));
+  };
+
+  const isModelManual = (model: string): boolean => {
+    return manualModels.includes(model);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -811,6 +835,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const handleClearAllSupportedModels = () => {
     setSupportedModels([]);
+    setManualModels([]);
   };
 
   const handleFetchModels = useCallback(async () => {
@@ -907,9 +932,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   // Add or remove selected fetched models to supported models
   const addSelectedFetchedModels = useCallback(() => {
+    const modelsToRemove: string[] = [];
+
     setSupportedModels((prev) => {
       const modelsToAdd: string[] = [];
-      const modelsToRemove: string[] = [];
 
       selectedFetchedModels.forEach((model) => {
         if (prev.includes(model)) {
@@ -922,6 +948,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const afterRemoval = prev.filter((m) => !modelsToRemove.includes(m));
       return [...afterRemoval, ...modelsToAdd];
     });
+
+    // Remove toggled-off models from manualModels
+    if (modelsToRemove.length > 0) {
+      setManualModels((prev) => prev.filter((m) => !modelsToRemove.includes(m)));
+    }
 
     setSelectedFetchedModels([]);
   }, [selectedFetchedModels]);
@@ -966,17 +997,31 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     [form, t]
   );
 
-  // Remove deprecated models (models in supportedModels but not in fetchedModels)
+  // Remove deprecated models (models in supportedModels but not in fetchedModels and not manual)
   const removeDeprecatedModels = useCallback(() => {
     const fetchedModelsSet = new Set(fetchedModels);
-    setSupportedModels((prev) => prev.filter((model) => fetchedModelsSet.has(model)));
-  }, [fetchedModels]);
+    const manualModelsSet = new Set(manualModels);
+    // Deprecated = not fetched AND not manual
+    const deprecatedModels = supportedModels.filter(
+      (model) => !fetchedModelsSet.has(model) && !manualModelsSet.has(model)
+    );
+    // Keep fetched models and manual models in supportedModels
+    setSupportedModels((prev) =>
+      prev.filter((model) => fetchedModelsSet.has(model) || manualModelsSet.has(model))
+    );
+    // Remove deprecated models from manualModels (should be none, but for consistency)
+    setManualModels((prev) => prev.filter((model) => !deprecatedModels.includes(model)));
+  }, [fetchedModels, supportedModels, manualModels]);
 
   // Count of deprecated models
   const deprecatedModelsCount = useMemo(() => {
     const fetchedModelsSet = new Set(fetchedModels);
-    return supportedModels.filter((model) => !fetchedModelsSet.has(model)).length;
-  }, [supportedModels, fetchedModels]);
+    const manualModelsSet = new Set(manualModels);
+    // Count only models that are neither fetched nor manual
+    return supportedModels.filter(
+      (model) => !fetchedModelsSet.has(model) && !manualModelsSet.has(model)
+    ).length;
+  }, [supportedModels, fetchedModels, manualModels]);
 
   // Models to display (limited to MAX_MODELS_DISPLAY unless expanded)
   const displayedSupportedModels = useMemo(() => {
@@ -1003,6 +1048,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           if (!state) {
             form.reset();
             setSupportedModels(initialRow?.supportedModels || []);
+            setManualModels(initialRow?.manualModels || []);
             setSelectedDefaultModels([]);
             setFetchedModels([]);
             setUseFetchedModels(false);
@@ -1557,6 +1603,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {displayedSupportedModels.map((model) => (
                               <Badge key={model} variant='secondary' className='text-xs'>
                                 {model}
+                                <ManualModelBadge isManual={isModelManual(model)} className='ml-1' />
                                 <button type='button' onClick={() => removeModel(model)} className='hover:text-destructive ml-1'>
                                   <X size={12} />
                                 </button>
@@ -2028,7 +2075,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       <PanelLeft className='h-4 w-4' />
                     </Button>
                     <h3 className='text-sm font-semibold'>
-                      {t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
+                      {manualModels.length > 0
+                        ? t('channels.dialogs.fields.supportedModels.allModelsWithManual', {
+                            autoCount: Math.max(0, supportedModels.length - manualModels.length),
+                            manualCount: manualModels.length,
+                          })
+                        : t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
                     </h3>
                   </div>
                   <Popover open={showClearAllPopover} onOpenChange={setShowClearAllPopover}>
@@ -2090,6 +2142,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             <p className='max-w-xs break-all'>{model}</p>
                           </TooltipContent>
                         </Tooltip>
+                        <ManualModelBadge isManual={isModelManual(model)} />
                         <Button
                           type='button'
                           variant='ghost'

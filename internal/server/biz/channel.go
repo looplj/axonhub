@@ -492,6 +492,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		mut.SetSupportedModels(input.SupportedModels)
 	}
 
+	if input.ManualModels != nil {
+		mut.SetManualModels(input.ManualModels)
+	}
+
 	if input.Tags != nil {
 		mut.SetTags(input.Tags)
 	}

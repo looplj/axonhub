@@ -74,6 +74,7 @@ const CREATE_CHANNEL_MUTATION = `
       }
       supportedModels
       autoSyncSupportedModels
+      manualModels
       tags
       defaultTestModel
         settings {
@@ -118,6 +119,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       }
       supportedModels
       autoSyncSupportedModels
+      manualModels
       tags
       defaultTestModel
         settings {
@@ -162,6 +164,7 @@ const UPDATE_CHANNEL_MUTATION = `
       }
       supportedModels
       autoSyncSupportedModels
+      manualModels
       tags
       defaultTestModel
         settings {
@@ -259,6 +262,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         status
         supportedModels
         autoSyncSupportedModels
+        manualModels
         tags
         defaultTestModel
         settings {
@@ -423,6 +427,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
         status
         supportedModels
         autoSyncSupportedModels
+        manualModels
         defaultTestModel
         orderingWeight
         settings {
@@ -467,6 +472,7 @@ const ALL_CHANNELS_QUERY = `
           tags
           supportedModels
           autoSyncSupportedModels
+          manualModels
           allModelEntries {
             requestModel
             actualModel
@@ -530,6 +536,7 @@ const QUERY_CHANNELS_QUERY = `
           }
           supportedModels
           autoSyncSupportedModels
+          manualModels
           tags
           defaultTestModel
           settings {

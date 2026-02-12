@@ -249,6 +249,7 @@ type Channel implements Node {
   name: String!
   status: ChannelStatus!
   supportedModels: [String!]!
+  manualModels: [String!]
   autoSyncSupportedModels: Boolean!
   tags: [String!]
   defaultTestModel: String!
@@ -1342,6 +1343,7 @@ input CreateChannelInput {
   name: String!
   credentials: ChannelCredentialsInput!
   supportedModels: [String!]!
+  manualModels: [String!]
   autoSyncSupportedModels: Boolean
   tags: [String!]
   defaultTestModel: String!
@@ -4982,6 +4984,9 @@ input UpdateChannelInput {
   credentials: ChannelCredentialsInput
   supportedModels: [String!]
   appendSupportedModels: [String!]
+  manualModels: [String!]
+  appendManualModels: [String!]
+  clearManualModels: Boolean
   autoSyncSupportedModels: Boolean
   tags: [String!]
   appendTags: [String!]

@@ -1232,6 +1232,8 @@ type ChannelMutation struct {
 	appenddisabled_api_keys      []objects.DisabledAPIKey
 	supported_models             *[]string
 	appendsupported_models       []string
+	manual_models                *[]string
+	appendmanual_models          []string
 	auto_sync_supported_models   *bool
 	tags                         *[]string
 	appendtags                   []string
@@ -1798,6 +1800,71 @@ func (m *ChannelMutation) AppendedSupportedModels() ([]string, bool) {
 func (m *ChannelMutation) ResetSupportedModels() {
 	m.supported_models = nil
 	m.appendsupported_models = nil
+}
+
+// SetManualModels sets the "manual_models" field.
+func (m *ChannelMutation) SetManualModels(s []string) {
+	m.manual_models = &s
+	m.appendmanual_models = nil
+}
+
+// ManualModels returns the value of the "manual_models" field in the mutation.
+func (m *ChannelMutation) ManualModels() (r []string, exists bool) {
+	v := m.manual_models
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldManualModels returns the old "manual_models" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldManualModels(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldManualModels is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldManualModels requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldManualModels: %w", err)
+	}
+	return oldValue.ManualModels, nil
+}
+
+// AppendManualModels adds s to the "manual_models" field.
+func (m *ChannelMutation) AppendManualModels(s []string) {
+	m.appendmanual_models = append(m.appendmanual_models, s...)
+}
+
+// AppendedManualModels returns the list of values that were appended to the "manual_models" field in this mutation.
+func (m *ChannelMutation) AppendedManualModels() ([]string, bool) {
+	if len(m.appendmanual_models) == 0 {
+		return nil, false
+	}
+	return m.appendmanual_models, true
+}
+
+// ClearManualModels clears the value of the "manual_models" field.
+func (m *ChannelMutation) ClearManualModels() {
+	m.manual_models = nil
+	m.appendmanual_models = nil
+	m.clearedFields[channel.FieldManualModels] = struct{}{}
+}
+
+// ManualModelsCleared returns if the "manual_models" field was cleared in this mutation.
+func (m *ChannelMutation) ManualModelsCleared() bool {
+	_, ok := m.clearedFields[channel.FieldManualModels]
+	return ok
+}
+
+// ResetManualModels resets all changes to the "manual_models" field.
+func (m *ChannelMutation) ResetManualModels() {
+	m.manual_models = nil
+	m.appendmanual_models = nil
+	delete(m.clearedFields, channel.FieldManualModels)
 }
 
 // SetAutoSyncSupportedModels sets the "auto_sync_supported_models" field.
@@ -2532,7 +2599,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 19)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -2562,6 +2629,9 @@ func (m *ChannelMutation) Fields() []string {
 	}
 	if m.supported_models != nil {
 		fields = append(fields, channel.FieldSupportedModels)
+	}
+	if m.manual_models != nil {
+		fields = append(fields, channel.FieldManualModels)
 	}
 	if m.auto_sync_supported_models != nil {
 		fields = append(fields, channel.FieldAutoSyncSupportedModels)
@@ -2615,6 +2685,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.DisabledAPIKeys()
 	case channel.FieldSupportedModels:
 		return m.SupportedModels()
+	case channel.FieldManualModels:
+		return m.ManualModels()
 	case channel.FieldAutoSyncSupportedModels:
 		return m.AutoSyncSupportedModels()
 	case channel.FieldTags:
@@ -2660,6 +2732,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldDisabledAPIKeys(ctx)
 	case channel.FieldSupportedModels:
 		return m.OldSupportedModels(ctx)
+	case channel.FieldManualModels:
+		return m.OldManualModels(ctx)
 	case channel.FieldAutoSyncSupportedModels:
 		return m.OldAutoSyncSupportedModels(ctx)
 	case channel.FieldTags:
@@ -2754,6 +2828,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSupportedModels(v)
+		return nil
+	case channel.FieldManualModels:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetManualModels(v)
 		return nil
 	case channel.FieldAutoSyncSupportedModels:
 		v, ok := value.(bool)
@@ -2874,6 +2955,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldDisabledAPIKeys) {
 		fields = append(fields, channel.FieldDisabledAPIKeys)
 	}
+	if m.FieldCleared(channel.FieldManualModels) {
+		fields = append(fields, channel.FieldManualModels)
+	}
 	if m.FieldCleared(channel.FieldTags) {
 		fields = append(fields, channel.FieldTags)
 	}
@@ -2908,6 +2992,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 		return nil
 	case channel.FieldDisabledAPIKeys:
 		m.ClearDisabledAPIKeys()
+		return nil
+	case channel.FieldManualModels:
+		m.ClearManualModels()
 		return nil
 	case channel.FieldTags:
 		m.ClearTags()
@@ -2961,6 +3048,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldSupportedModels:
 		m.ResetSupportedModels()
+		return nil
+	case channel.FieldManualModels:
+		m.ResetManualModels()
 		return nil
 	case channel.FieldAutoSyncSupportedModels:
 		m.ResetAutoSyncSupportedModels()
