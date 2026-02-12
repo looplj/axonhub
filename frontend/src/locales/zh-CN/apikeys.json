@@ -1,6 +1,6 @@
 {
-  "apikeys.title": "API 密钥管理",
-  "apikeys.description": "管理系统 API 密钥和访问权限。",
+  "apikeys.title": "API 密钥",
+  "apikeys.description": "创建和管理用于 API 认证的访问密钥。",
   "apikeys.createApiKey": "创建 API Key",
   "apikeys.columns.key": "API Key",
   "apikeys.columns.type": "类型",

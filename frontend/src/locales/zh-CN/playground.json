@@ -1,6 +1,6 @@
 {
   "playground.title": "测试场",
-  "playground.description": "在交互式环境中测试和体验 AI 模型。",
+  "playground.description": "用于测试 AI 模型的交互式环境。",
   "playground.settings.model": "模型",
   "playground.settings.selectModel": "选择模型",
   "playground.settings.temperature": "温度",

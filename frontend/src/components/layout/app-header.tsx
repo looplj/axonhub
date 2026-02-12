@@ -1,10 +1,14 @@
 import { useState, useCallback } from 'react';
+import { Link } from '@tanstack/react-router';
+import { IconSettings } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
 import { LanguageSwitch } from '@/components/language-switch';
 import { ThemeSwitch } from '@/components/theme-switch';
 import { QuotaBadges } from '@/components/quota-badges';
+import { PermissionGuard } from '@/components/permission-guard';
 import { checkProviderQuotas } from '@/features/system/data/quotas';
 import { useBrandSettings } from '@/features/system/data/system';
 import { ProjectSwitcher } from './project-switcher';
@@ -82,6 +86,13 @@ export function AppHeader() {
           {/* Desktop-only controls - hidden on mobile */}
           {!isMobile && (
             <>
+              <PermissionGuard requiredSystemScope='read_system'>
+                <Link to='/system'>
+                  <Button variant='ghost' size='icon' className='size-8'>
+                    <IconSettings className='h-4 w-4' />
+                  </Button>
+                </Link>
+              </PermissionGuard>
               <LanguageSwitch />
               <ThemeSwitch />
             </>

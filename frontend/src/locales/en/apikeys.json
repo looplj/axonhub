@@ -1,6 +1,6 @@
 {
-  "apikeys.title": "API Key Management",
-  "apikeys.description": "Manage system API keys and access permissions.",
+  "apikeys.title": "API Keys",
+  "apikeys.description": "Create and manage access keys for API authentication.",
   "apikeys.createApiKey": "Create API Key",
   "apikeys.columns.key": "API Key",
   "apikeys.columns.type": "Type",

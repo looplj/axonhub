@@ -1,6 +1,6 @@
 {
-  "threads.title": "Thread Management",
-  "threads.description": "View and manage AI conversation threads and related traces",
+  "threads.title": "Threads",
+  "threads.description": "Browse conversation threads and their associated traces.",
   "threads.filters.filterThreadId": "Filter by thread ID...",
   "threads.columns.threadId": "Thread ID",
   "threads.columns.project": "Project",

@@ -1,6 +1,6 @@
 {
-  "users.title": "用户管理",
-  "users.description": "管理系统用户和权限配置。",
+  "users.title": "用户",
+  "users.description": "管理用户账户、角色和项目成员资格。",
   "users.addUser": "添加用户",
   "users.filterUsers": "筛选用户...",
   "users.columns.firstName": "名",

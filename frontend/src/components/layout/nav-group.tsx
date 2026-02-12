@@ -28,14 +28,13 @@ export function NavGroup({ title, items }: NavGroup) {
   const { state, isMobile } = useSidebar();
   const href = useLocation({ select: (location) => location.href });
 
-  // 过滤掉被禁用的菜单项
   const visibleItems = items.filter((item) => {
-    // 如果是简单链接，直接检查 isDisabled
     if (!item.items) {
-      return !item.isDisabled;
+      if (item.isDisabled) return false;
+      if ((item as NavLink).mobileOnly && !isMobile) return false;
+      return true;
     }
 
-    // 如果是可折叠菜单，检查是否有至少一个可见的子项
     const hasVisibleSubItems = item.items.some((subItem) => !subItem.isDisabled);
     return hasVisibleSubItems && !item.isDisabled;
   });

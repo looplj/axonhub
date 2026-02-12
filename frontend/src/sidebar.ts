@@ -163,6 +163,7 @@ export function useSidebarData(): SidebarData {
           title: t('sidebar.items.system'),
           url: '/system',
           icon: IconSettings,
+          mobileOnly: true,
         } as NavLink,
         // {
         //   title: 'Account',

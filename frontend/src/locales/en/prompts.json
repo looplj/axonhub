@@ -1,6 +1,6 @@
 {
   "prompts.title": "Prompts",
-  "prompts.description": "Manage prompts for AI models",
+  "prompts.description": "Configure system prompts with conditional injection rules.",
   "prompts.columns.role": "Role",
   "prompts.columns.actionType": "Action Type",
   "prompts.columns.conditions": "Conditions",

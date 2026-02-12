@@ -1,6 +1,6 @@
 {
-  "threads.title": "线程管理",
-  "threads.description": "查看和管理 AI 会话线程及相关追踪",
+  "threads.title": "线程",
+  "threads.description": "浏览会话线程及其关联的追踪。",
   "threads.filters.filterThreadId": "按线程 ID 筛选...",
   "threads.columns.threadId": "线程 ID",
   "threads.columns.project": "项目",

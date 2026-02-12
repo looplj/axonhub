@@ -1,6 +1,6 @@
 {
   "system.title": "System Settings",
-  "system.description": "Manage system configurations and options.",
+  "system.description": "Configure global system behavior, retry policies, and storage.",
   "system.tabs.general": "General",
   "system.tabs.brand": "Brand",
   "system.tabs.storage": "Storage",

@@ -1,6 +1,6 @@
 {
-  "channels.title": "Channel Management",
-  "channels.description": "Manage your AI model channels and configurations.",
+  "channels.title": "Channels",
+  "channels.description": "Manage AI model channels, configure providers, and monitor health status.",
   "channels.addChannel": "Add Channel",
   "channels.loadBalancingStrategy": "Load Balancing Strategy",
   "channels.importChannels": "Bulk Import",

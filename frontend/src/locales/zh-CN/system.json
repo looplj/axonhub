@@ -1,6 +1,6 @@
 {
   "system.title": "系统设置",
-  "system.description": "管理系统配置和选项。",
+  "system.description": "配置全局系统行为、重试策略和存储。",
   "system.tabs.general": "常规",
   "system.tabs.brand": "品牌",
   "system.tabs.storage": "存储",

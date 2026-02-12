@@ -1,6 +1,6 @@
 {
   "models.title": "模型",
-  "models.description": "管理 AI 模型及其配置",
+  "models.description": "配置 AI 模型关联、能力和回退规则。",
   "models.columns.icon": "图标",
   "models.columns.modelId": "模型 ID",
   "models.columns.developer": "开发者",
