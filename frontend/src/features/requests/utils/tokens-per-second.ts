@@ -27,7 +27,13 @@ export function calculateTokensPerSecond(request: Request): string {
     (usageLog.completionReasoningTokens || 0) +
     (usageLog.completionAudioTokens || 0);
 
-  if (completionTokens === 0) {
+  // For embeddings or other requests with no completion tokens,
+  // fall back to total tokens
+  const tokens = completionTokens > 0
+    ? completionTokens
+    : (usageLog.totalTokens || 0);
+
+  if (tokens === 0) {
     return '-';
   }
 
@@ -46,7 +52,7 @@ export function calculateTokensPerSecond(request: Request): string {
   }
 
   const latencySeconds = effectiveLatencyMs / 1000;
-  const tokensPerSecond = completionTokens / latencySeconds;
+  const tokensPerSecond = tokens / latencySeconds;
 
   return `${Math.round(tokensPerSecond)} tok/s`;
 }
