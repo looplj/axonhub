@@ -271,16 +271,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	if len(anthropicReq.Tools) > 0 {
 		tools := make([]llm.Tool, 0, len(anthropicReq.Tools))
 		for _, tool := range anthropicReq.Tools {
-			llmTool := llm.Tool{
-				Type: "function",
-				Function: llm.Function{
-					Name:        tool.Name,
-					Description: tool.Description,
-					Parameters:  tool.InputSchema,
-				},
-				CacheControl: convertToLLMCacheControl(tool.CacheControl),
+			llmTool, ok := convertToolToLLM(tool)
+			if ok {
+				tools = append(tools, llmTool)
 			}
-			tools = append(tools, llmTool)
 		}
 
 		chatReq.Tools = tools
@@ -444,4 +438,43 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 	}
 
 	return resp
+}
+
+// convertToolToLLM converts an Anthropic Tool to llm.Tool.
+// For web_search_20250305 native tools, it converts to llm.ToolTypeWebSearch type.
+// For regular function tools, it converts to llm.ToolTypeFunction type.
+func convertToolToLLM(tool Tool) (llm.Tool, bool) {
+	switch tool.Type {
+	case ToolTypeWebSearch20250305, WebSearchFunctionName:
+		return llm.Tool{
+			Type:         llm.ToolTypeWebSearch,
+			CacheControl: convertToLLMCacheControl(tool.CacheControl),
+			WebSearch: &llm.WebSearch{
+				MaxUses:        tool.MaxUses,
+				Strict:         tool.Strict,
+				AllowedDomains: tool.AllowedDomains,
+				BlockedDomains: tool.BlockedDomains,
+				UserLocation: llm.WebSearchToolUserLocation{
+					City:     tool.UserLocation.City,
+					Country:  tool.UserLocation.Country,
+					Region:   tool.UserLocation.Region,
+					Timezone: tool.UserLocation.Timezone,
+					Type:     tool.UserLocation.Type,
+				},
+			},
+		}, true
+	case "", "custom":
+		return llm.Tool{
+			Type: llm.ToolTypeFunction,
+			Function: llm.Function{
+				Name:        tool.Name,
+				Description: tool.Description,
+				Parameters:  tool.InputSchema,
+			},
+			CacheControl: convertToLLMCacheControl(tool.CacheControl),
+		}, true
+	default:
+		// Ignore other native tools (image_generation, google_*, etc.)
+		return llm.Tool{}, false
+	}
 }

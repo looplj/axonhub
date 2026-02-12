@@ -25,26 +25,24 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 		selector := inbound.state.CandidateSelector
 
 		if profile := inbound.state.APIKey.GetActiveProfile(); profile != nil {
-			// 先应用 ChannelIDs 过滤
 			if len(profile.ChannelIDs) > 0 {
 				selector = WithSelectedChannelsSelector(selector, profile.ChannelIDs)
 			}
 
-			// 再应用 ChannelTags 过滤（链式装饰器，与 IDs 取交集）
 			if len(profile.ChannelTags) > 0 {
 				selector = WithTagsFilterSelector(selector, profile.ChannelTags)
 			}
 		}
 
-		// 应用 Google 原生工具过滤（仅对 Gemini 原生 API 格式生效）
+		// Apply Google native tools filter (only for Gemini native API format)
 		if inbound.APIFormat() == llm.APIFormatGeminiContents {
 			selector = WithGoogleNativeToolsSelector(selector)
 		}
 
-		// 应用 Anthropic 原生工具过滤（对所有 API 格式生效）
-		// 无论通过 OpenAI 还是 Anthropic 格式入口，只要包含 web_search 工具，
-		// 都需要优先路由到支持 Anthropic 原生工具的渠道
-		selector = WithAnthropicNativeToolsSelector(selector)
+		// Apply Anthropic native tools filter (only for Anthropic message API format)
+		if inbound.APIFormat() == llm.APIFormatAnthropicMessage {
+			selector = WithAnthropicNativeToolsSelector(selector)
+		}
 
 		selector = WithStreamPolicySelector(selector)
 

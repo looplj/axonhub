@@ -35,5 +35,5 @@ func (t Type) SupportsGoogleNativeTools() bool {
 // Channels using Anthropic format but not native Anthropic API (e.g., deepseek_anthropic,
 // moonshot_anthropic) also do NOT support these tools.
 func (t Type) SupportsAnthropicNativeTools() bool {
-	return t == TypeAnthropic
+	return t == TypeAnthropic || t == TypeAnthropicAWS || t == TypeAnthropicGcp || t == TypeClaudecode
 }

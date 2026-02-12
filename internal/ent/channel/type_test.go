@@ -116,11 +116,11 @@ func TestType_SupportsAnthropicNativeTools(t *testing.T) {
 		},
 		{
 			name: "anthropic_aws",
-			want: false, // Bedrock does not support web search beta
+			want: true,
 		},
 		{
 			name: "anthropic_gcp",
-			want: false, // Vertex does not support web search beta
+			want: true,
 		},
 		{
 			name: "deepseek_anthropic",
