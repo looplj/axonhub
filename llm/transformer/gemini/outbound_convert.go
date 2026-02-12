@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm"
 	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
@@ -303,17 +302,6 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	return req
-}
-
-// Handle both parameter formats
-// Priority: if ParametersJsonSchema is present, use it; otherwise use Parameters.
-func cleanSchema(schema json.RawMessage) json.RawMessage {
-	cleaned, err := xjson.CleanSchema(schema, "$schema", "additionalProperties", "")
-	if err != nil {
-		return schema // ignore error and use original
-	}
-
-	return cleaned
 }
 
 // convertLLMMessageToGeminiContent converts an LLM Message to Gemini Content.

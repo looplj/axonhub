@@ -164,6 +164,37 @@ type Tool struct {
 	Description  string          `json:"description,omitempty"`
 	InputSchema  json.RawMessage `json:"input_schema,omitempty"`
 	CacheControl *CacheControl   `json:"cache_control,omitempty"`
+
+	// Params for web_search_20250305 tool.
+
+	// MaxUses Maximum number of times the tool can be used in the API request.
+	MaxUses *int64 `json:"max_uses,omitempty"`
+	// When true, guarantees schema validation on tool names and inputs
+	Strict *bool `json:"strict,omitempty"`
+	// AllowedDomains If provided, only these domains will be included in results. Cannot be used
+	// alongside `blocked_domains`.
+	AllowedDomains []string `json:"allowed_domains,omitempty"`
+	// BlockedDomains If provided, these domains will never appear in results. Cannot be used
+	// alongside `allowed_domains`.
+	BlockedDomains []string `json:"blocked_domains,omitzero"`
+	// UserLocation Parameters for the user's location. Used to provide more relevant search
+	// results.
+	UserLocation WebSearchToolUserLocation `json:"user_location,omitzero"`
+}
+
+type WebSearchToolUserLocation struct {
+	// The city of the user.
+	City string `json:"city,omitempty"`
+	// The two letter
+	// [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) of the
+	// user.
+	Country string `json:"country,omitempty"`
+	// The region of the user.
+	Region string `json:"region,omitempty"`
+	// The [IANA timezone](https://nodatime.org/TimeZones) of the user.
+	Timezone string `json:"timezone,omitempty"`
+	// This field can be elided, and will marshal its zero value as "approximate".
+	Type string `json:"type"`
 }
 
 type CacheControl struct {

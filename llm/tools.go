@@ -10,10 +10,17 @@ import (
 // Tool represents a function tool.
 type Tool struct {
 	// Type is the type of the tool.
-	// Any of "function", "image_generation", or "google" (for Google-specific tools).
-	Type            string           `json:"type"`
-	Function        Function         `json:"function"`
+	// Any of "function", "image_generation", "web_search", or "google" (for Google-specific tools).
+	Type string `json:"type"`
+
+	// Function is the function definition, will be used when Type is "function".
+	Function Function `json:"function"`
+
+	// ImageGeneration is the image generation definition, will be used when Type is "image_generation".
 	ImageGeneration *ImageGeneration `json:"image_generation,omitempty"`
+
+	// WebSearch is the web search definition, will be used when Type is "web_search".
+	WebSearch *WebSearch `json:"web_search,omitempty"`
 
 	// Google contains Google/Gemini-specific grounding tools.
 	// This namespace isolates Google's tools from other providers.
@@ -202,44 +209,25 @@ func FilterGoogleNativeTools(tools []Tool) []Tool {
 	return filtered
 }
 
-// ContainsAnthropicNativeTools checks if the tools slice contains any Anthropic native tools.
-// Currently, this checks for the web_search function which maps to Anthropic's native
-// web_search_20250305 tool type.
-func ContainsAnthropicNativeTools(tools []Tool) bool {
-	return slices.ContainsFunc(tools, IsAnthropicNativeTool)
+type WebSearch struct {
+	MaxUses        *int64                    `json:"max_uses,omitempty"`
+	Strict         *bool                     `json:"strict,omitempty"`
+	AllowedDomains []string                  `json:"allowed_domains,omitzero"`
+	BlockedDomains []string                  `json:"blocked_domains,omitzero"`
+	UserLocation   WebSearchToolUserLocation `json:"user_location,omitzero"`
 }
 
-// IsAnthropicNativeTool checks if a single tool is an Anthropic native tool.
-// A tool is considered Anthropic native if:
-// 1. It's a function tool with name "web_search" (OpenAI format input), OR
-// 2. It's already transformed to type "web_search_20250305" (Anthropic native format).
-func IsAnthropicNativeTool(tool Tool) bool {
-	// Match function tool with web_search name (OpenAI format input)
-	if tool.Type == ToolTypeFunction && tool.Function.Name == AnthropicWebSearchFunctionName {
-		return true
-	}
-	// Match already-transformed Anthropic native tool type
-	if tool.Type == ToolTypeAnthropicWebSearch {
-		return true
-	}
-
-	return false
-}
-
-// FilterAnthropicNativeTools removes Anthropic native tools from the tools slice.
-// This is useful as a fallback when routing to channels that don't support native tools.
-func FilterAnthropicNativeTools(tools []Tool) []Tool {
-	if len(tools) == 0 {
-		return tools
-	}
-
-	filtered := make([]Tool, 0, len(tools))
-
-	for _, tool := range tools {
-		if !IsAnthropicNativeTool(tool) {
-			filtered = append(filtered, tool)
-		}
-	}
-
-	return filtered
+type WebSearchToolUserLocation struct {
+	// The city of the user.
+	City string `json:"city,omitempty"`
+	// The two letter
+	// [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) of the
+	// user.
+	Country string `json:"country,omitempty"`
+	// The region of the user.
+	Region string `json:"region,omitempty"`
+	// The [IANA timezone](https://nodatime.org/TimeZones) of the user.
+	Timezone string `json:"timezone,omitempty"`
+	// This field can be elided, and will marshal its zero value as "approximate".
+	Type string `json:"type"`
 }
