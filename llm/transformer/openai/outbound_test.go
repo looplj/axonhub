@@ -609,7 +609,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 					},
 				},
 			},
-			expectedURL:    "https://custom.api.com/v1/chat/completions",
+			expectedURL:    "https://custom.api.com/v1",
 			expectedRawURL: true,
 		},
 		{
@@ -631,7 +631,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 				},
 			},
 			expectedURL:    "https://custom.api.com/v100/chat/completions",
-			expectedRawURL: true,
+			expectedRawURL: false,
 		},
 		{
 			name: "raw URL with full path",
@@ -652,7 +652,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 				},
 			},
 			expectedURL:    "https://custom.api.com/v1/chat/completions/chat/completions",
-			expectedRawURL: true,
+			expectedRawURL: false,
 		},
 		{
 			name: "raw URL false with standard URL",
@@ -699,7 +699,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			expectedRawURL: false,
 		},
 		{
-			name: "raw URL with custom endpoint without version",
+			name: "raw base URL with custom endpoint without version",
 			config: &Config{
 				PlatformType:   PlatformOpenAI,
 				BaseURL:        "https://custom-endpoint.com/api/llm#",
@@ -717,6 +717,27 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 				},
 			},
 			expectedURL:    "https://custom-endpoint.com/api/llm/chat/completions",
+			expectedRawURL: false,
+		},
+		{
+			name: "raw URL with custom endpoint without version",
+			config: &Config{
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom-endpoint.com/api/llm##",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom-endpoint.com/api/llm",
 			expectedRawURL: true,
 		},
 	}

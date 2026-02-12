@@ -232,6 +232,109 @@ settings:
 - 查看禁用原因和错误代码
 - 考虑增加 API Key 数量以分散负载
 
+## Base URL 配置
+
+### 概述
+
+`base_url` 是渠道配置中的必需字段，用于指定 AI 提供商的 API 端点地址。AxonHub 支持灵活的 URL 配置方式，以适应不同的部署场景。
+
+### 默认 Base URL
+
+每种渠道类型都有预设的默认 Base URL，当您创建渠道时会自动填充：
+
+| 渠道类型 | 默认 Base URL |
+|---------|--------------|
+| openai | `https://api.openai.com/v1` |
+| anthropic | `https://api.anthropic.com` |
+| gemini | `https://generativelanguage.googleapis.com/v1beta` |
+| deepseek | `https://api.deepseek.com/v1` |
+| moonshot | `https://api.moonshot.cn/v1` |
+| ... | 其他类型详见配置界面 |
+
+### 自定义 Base URL
+
+您可以配置自定义 Base URL 以支持：
+
+- **第三方代理服务**：通过兼容 OpenAI/Anthropic 协议的代理服务访问模型
+- **私有化部署**：连接企业内部部署的 AI 服务
+- **多区域部署**：使用不同区域的 API 端点
+
+### 特殊后缀
+
+AxonHub 支持在 Base URL 末尾添加特殊后缀来控制 URL 标准化行为：
+
+#### `#` 后缀 - 禁用版本自动追加
+
+在 Base URL 末尾添加 `#`，系统将**不会**自动追加 API 版本号：
+
+```yaml
+# Anthropic 渠道示例 - 使用原始 URL，不自动追加 /v1
+base_url: "https://custom-api.example.com/anthropic#"
+
+# 实际请求 URL: https://custom-api.example.com/anthropic/messages
+# 而不是: https://custom-api.example.com/anthropic/v1/messages
+```
+
+**适用场景**：
+- 使用自定义代理服务，URL 路径已包含版本信息
+- 提供商使用非标准的 URL 结构
+- 需要完全控制请求路径
+
+#### `##` 后缀 - 完全原始模式（OpenAI 格式）
+
+在 Base URL 末尾添加 `##`，系统将：
+1. 禁用版本自动追加
+2. 禁用端点自动追加（如 `/chat/completions`）
+
+```yaml
+# OpenAI 渠道示例 - 完全原始模式
+base_url: "https://custom-gateway.example.com/api/v2##"
+
+# 实际请求 URL: https://custom-gateway.example.com/api/v2
+# 而不是: https://custom-gateway.example.com/api/v2/v1/chat/completions
+```
+
+**适用场景**：
+- 使用完全自定义的 API 网关
+- 需要精确控制完整的请求 URL
+- 兼容特殊的代理服务或中转服务
+
+### 自动版本追加规则
+
+当不使用 `#` 或 `##` 后缀时，系统会根据渠道类型自动追加 API 版本：
+
+| 渠道类型 | 自动追加的版本 |
+|---------|--------------|
+| openai, deepseek, moonshot, xai 等 | `/v1` |
+| gemini | `/v1beta` |
+| doubao | `/v3` |
+| zai, zhipu | `/v4` |
+| anthropic | `/v1` |
+| anthropic_aws (Bedrock) | 不追加 |
+| anthropic_gcp (Vertex) | 不追加 |
+
+### 配置示例
+
+```yaml
+# 标准配置 - 使用默认行为
+name: "openai-standard"
+type: "openai"
+base_url: "https://api.openai.com"
+# 实际请求: https://api.openai.com/v1/chat/completions
+
+# 禁用版本追加 - Anthropic
+name: "anthropic-custom"
+type: "anthropic"
+base_url: "https://api.anthropic.com#"
+# 实际请求: https://api.anthropic.com/messages
+
+# 完全原始模式 - OpenAI
+name: "openai-raw"
+type: "openai"
+base_url: "https://gateway.example.com/proxy##"
+# 实际请求: https://gateway.example.com/proxy
+```
+
 ## 相关文档
 
 - [请求重写指南](request-override.md) - 使用模板进行高级请求修改

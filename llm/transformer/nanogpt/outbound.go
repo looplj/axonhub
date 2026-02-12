@@ -98,17 +98,22 @@ func (t *OutboundTransformer) TransformResponse(
 
 // TransformStream transforms a stream of HTTP events to a stream of llm.Response.
 func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	// Filter out upstream DONE events
+	filteredStream := streams.Filter(stream, func(event *httpclient.StreamEvent) bool {
+		return !bytes.HasPrefix(event.Data, []byte("[DONE]"))
+	})
+
+	// Transform remaining events
+	transformedStream := streams.MapErr(filteredStream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	}), nil
+	})
+
+	// Always append our own DONE event at the end
+	return streams.AppendStream(transformedStream, llm.DoneResponse), nil
 }
 
 // TransformStreamChunk transforms a single stream event to llm.Response.
 func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
-	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
-		return llm.DoneResponse, nil
-	}
-
 	ep := gjson.GetBytes(event.Data, "error")
 	if ep.Exists() {
 		return nil, &llm.ResponseError{

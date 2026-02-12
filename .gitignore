@@ -133,6 +133,8 @@ config.yml
 internal/server/static/dist
 *.b64
 coverage.out
+*.test
+*.backup
 
 # E2E testing artifacts
 scripts/e2e/.e2e-backend.pid

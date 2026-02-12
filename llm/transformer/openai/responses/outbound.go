@@ -25,7 +25,7 @@ type Config struct {
 	BaseURL string `json:"base_url,omitempty"`
 
 	// RawURL is whether to use raw URL for requests, default is false.
-	// If true, the base URL will be used as is, without appending the version.
+	// If true, the request URL will be used as is, without appending the response endpoint.
 	RawURL bool `json:"raw_url,omitempty"`
 
 	// APIKeyProvider provides API keys for authentication, required.
@@ -54,11 +54,12 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 		return nil, fmt.Errorf("API key provider is required")
 	}
 
-	if strings.HasSuffix(config.BaseURL, "#") {
+	if strings.HasSuffix(config.BaseURL, "##") {
 		config.RawURL = true
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
+	} else {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 	}
-
-	config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 
 	return &OutboundTransformer{
 		config: config,
@@ -210,7 +211,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
-	// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+	if t.config.RawURL {
+		return t.config.BaseURL, nil
+	}
 	return t.config.BaseURL + "/responses", nil
 }
 
