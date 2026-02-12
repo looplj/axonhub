@@ -125,9 +125,16 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
 
+	settings := s.SystemService.ModelSettingsOrDefault(ctx)
+	allowFallback := settings.FallbackToChannelsOnModelNotFound
+
 	if model.Settings == nil || len(model.Settings.Associations) == 0 {
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "model has no associations", log.String("model", req.Model))
+		}
+
+		if allowFallback {
+			return s.selectChannelCadidates(ctx, req)
 		}
 
 		return []*ChannelModelsCandidate{}, nil
@@ -144,6 +151,10 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 	candidates, err := s.resolveAssociations(ctx, model, model.Settings.Associations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve associations: %w", err)
+	}
+
+	if len(candidates) == 0 && allowFallback {
+		return s.selectChannelCadidates(ctx, req)
 	}
 
 	if log.DebugEnabled(ctx) {

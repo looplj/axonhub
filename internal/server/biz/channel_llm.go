@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -912,18 +911,19 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 
 	// 4. Model mappings
 	for _, mapping := range ch.Settings.ModelMappings {
-		// Only add if the target model is supported
-		if slices.Contains(ch.SupportedModels, mapping.To) {
-			if _, exists := entries[mapping.From]; !exists {
-				entries[mapping.From] = ChannelModelEntry{
-					RequestModel: mapping.From,
-					ActualModel:  mapping.To,
-					Source:       "mapping",
-				}
-				// When hideMappedModels is enabled, remove mapped models from the entries
-				if ch.Settings.HideMappedModels {
-					delete(entries, mapping.To)
-				}
+		if strings.TrimSpace(mapping.From) == "" || strings.TrimSpace(mapping.To) == "" {
+			continue
+		}
+
+		if _, exists := entries[mapping.From]; !exists {
+			entries[mapping.From] = ChannelModelEntry{
+				RequestModel: mapping.From,
+				ActualModel:  mapping.To,
+				Source:       "mapping",
+			}
+			// When hideMappedModels is enabled, remove mapped models from the entries
+			if ch.Settings.HideMappedModels {
+				delete(entries, mapping.To)
 			}
 		}
 	}

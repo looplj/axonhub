@@ -601,7 +601,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		require.False(t, resultMap["gpt-4-disabled"], "Disabled channel model should not be included")
 	})
 
-	t.Run("mapping to unsupported model should be ignored", func(t *testing.T) {
+	t.Run("mapping to model outside supported_models should still be available", func(t *testing.T) {
 		// Create channel with invalid mapping
 		_, err := client.Channel.Create().
 			SetType(channel.TypeOpenai).
@@ -645,7 +645,7 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 
 		require.True(t, resultMap["gpt-4"], "Valid model should be included")
 		require.True(t, resultMap["gpt-4-latest"], "Valid mapping should be included")
-		require.False(t, resultMap["invalid-mapping"], "Invalid mapping should not be included")
+		require.True(t, resultMap["invalid-mapping"], "Mapping target outside supported_models should still be included")
 	})
 
 	t.Run("auto-trimmed models", func(t *testing.T) {
@@ -1306,6 +1306,10 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		// (ChannelIDs filter is applied first, then ChannelTags filter)
 		if len(result) > 0 {
 			for _, model := range result {
+				if model.OwnedBy == "configured" {
+					continue
+				}
+
 				require.Equal(t, channels[0].Channel.Type.String(), model.OwnedBy,
 					"Model %s should be from the first channel", model.ID)
 			}
