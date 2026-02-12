@@ -1,6 +1,6 @@
 {
-  "users.title": "User Management",
-  "users.description": "Manage system users and permission configurations.",
+  "users.title": "Users",
+  "users.description": "Manage user accounts, roles, and project memberships.",
   "users.addUser": "Add User",
   "users.filterUsers": "Filter users...",
   "users.columns.firstName": "First Name",

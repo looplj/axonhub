@@ -4,7 +4,7 @@ import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { useUsageLogPermissions } from '../../../gql/useUsageLogPermissions';
-import { UsageLog, UsageLogConnection, usageLogConnectionSchema, usageLogSchema } from './schema';
+import { UsageLog, UsageLogConnection, usageLogConnectionSchema, usageLogSchema } from './usage-logs-schema';
 
 // Dynamic GraphQL query builder
 function buildUsageLogsQuery(permissions: { canViewChannels: boolean }) {
@@ -113,6 +113,7 @@ export function useUsageLogs(variables?: {
     modelID?: string;
     channelID?: string;
     projectID?: string;
+    requestID?: string;
     [key: string]: any;
   };
 }) {

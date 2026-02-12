@@ -1,7 +1,7 @@
 {
-  "channels.title": "渠道管理",
+  "channels.title": "渠道",
   "channels.toggleColumns": "切换列",
-  "channels.description": "管理您的 AI 模型渠道和配置。",
+  "channels.description": "管理 AI 模型渠道、配置提供商并监控健康状态。",
   "channels.addChannel": "添加渠道",
   "channels.loadBalancingStrategy": "负载均衡策略",
   "channels.importChannels": "批量导入",

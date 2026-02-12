@@ -1,6 +1,6 @@
 {
-  "traces.title": "Trace Management",
-  "traces.description": "View and manage AI request traces and execution flows",
+  "traces.title": "Traces",
+  "traces.description": "Debug AI request execution flows and span details.",
   "traces.common.badges.request": "Request",
   "traces.common.badges.response": "Response",
   "traces.common.badges.trace": "Trace",

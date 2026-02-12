@@ -1,6 +1,6 @@
 {
   "prompts.title": "提示词",
-  "prompts.description": "管理 AI 模型的提示词",
+  "prompts.description": "配置带有条件注入规则的系统提示词。",
   "prompts.columns.role": "角色",
   "prompts.columns.actionType": "操作类型",
   "prompts.columns.conditions": "条件",

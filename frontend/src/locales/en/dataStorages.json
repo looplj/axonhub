@@ -1,6 +1,6 @@
 {
-  "dataStorages.title": "Data Storage Management",
-  "dataStorages.description": "Manage your data storage configurations and settings.",
+  "dataStorages.title": "Data Storages",
+  "dataStorages.description": "Configure storage backends for request/response data.",
   "dataStorages.columns.primary": "Primary",
   "dataStorages.columns.type": "Type",
   "dataStorages.columns.settings": "Settings",

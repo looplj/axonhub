@@ -1,6 +1,6 @@
 {
   "models.title": "Models",
-  "models.description": "Manage AI models and their configurations",
+  "models.description": "Configure AI model associations, capabilities, and fallback rules.",
   "models.columns.icon": "Icon",
   "models.columns.modelId": "Model ID",
   "models.columns.developer": "Developer",

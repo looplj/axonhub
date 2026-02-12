@@ -1,6 +1,6 @@
 {
-  "dataStorages.title": "数据存储管理",
-  "dataStorages.description": "管理数据存储配置和设置。",
+  "dataStorages.title": "数据存储",
+  "dataStorages.description": "配置请求/响应数据的存储后端。",
   "dataStorages.columns.primary": "主存储",
   "dataStorages.columns.type": "类型",
   "dataStorages.columns.settings": "配置",

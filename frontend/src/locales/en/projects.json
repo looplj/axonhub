@@ -1,6 +1,6 @@
 {
-  "projects.title": "Project Management",
-  "projects.description": "Manage system projects and configurations.",
+  "projects.title": "Projects",
+  "projects.description": "Organize resources and manage access control by project.",
   "projects.createProject": "Create Project",
   "projects.searchProjects": "Search projects by name",
   "projects.status.active": "Active",

@@ -17,7 +17,7 @@ import { JsonViewer } from '@/components/json-tree-view';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { useGeneralSettings } from '@/features/system/data/system';
-import { useUsageLogs } from '../../usage-logs/data/usage-logs';
+import { useUsageLogs } from '../data/usage-logs';
 import { useRequest, useRequestExecutions } from '../data';
 import { ChunksDialog } from './chunks-dialog';
 import { CurlPreviewDialog } from './curl-preview-dialog';

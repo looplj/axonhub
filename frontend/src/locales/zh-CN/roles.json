@@ -1,6 +1,6 @@
 {
-  "roles.title": "角色管理",
-  "roles.description": "管理系统角色和权限配置。",
+  "roles.title": "角色",
+  "roles.description": "定义权限范围并分配给用户。",
   "roles.createRole": "新建角色",
   "roles.searchRoles": "按名称搜索角色...",
   "roles.columns.scopes": "权限范围",

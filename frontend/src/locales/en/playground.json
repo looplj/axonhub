@@ -1,6 +1,6 @@
 {
   "playground.title": "Playground",
-  "playground.description": "Test and experiment with AI models in an interactive environment.",
+  "playground.description": "Interactive environment for testing AI models.",
   "playground.settings.model": "Model",
   "playground.settings.selectModel": "Select a model",
   "playground.settings.temperature": "Temperature",

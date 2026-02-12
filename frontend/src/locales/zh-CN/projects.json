@@ -1,6 +1,6 @@
 {
-  "projects.title": "项目管理",
-  "projects.description": "管理系统项目和配置。",
+  "projects.title": "项目",
+  "projects.description": "按项目组织资源并管理访问控制。",
   "projects.createProject": "新建项目",
   "projects.searchProjects": "按名称搜索项目...",
   "projects.status.active": "活跃",

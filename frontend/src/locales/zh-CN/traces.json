@@ -1,6 +1,6 @@
 {
-  "traces.title": "追踪管理",
-  "traces.description": "查看和管理AI请求追踪和执行流程",
+  "traces.title": "追踪",
+  "traces.description": "调试 AI 请求执行流程和 Span 详情。",
   "traces.refresh": "刷新",
   "traces.common.badges.request": "请求",
   "traces.common.badges.response": "响应",
