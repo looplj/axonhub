@@ -1,6 +1,14 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { ProxyType } from '../components/channels-proxy-dialog';
+
+export interface ProxyConfig {
+  type: ProxyType;
+  url?: string;
+  username?: string;
+  password?: string;
+}
 
 export interface OAuthStartResult {
   session_id: string;
@@ -10,6 +18,7 @@ export interface OAuthStartResult {
 export interface OAuthExchangeInput {
   session_id: string;
   callback_url: string;
+  proxy?: ProxyConfig;
 }
 
 export interface OAuthExchangeResult {
@@ -31,6 +40,11 @@ export interface OAuthFlowOptions {
    * Optional project ID to include in headers
    */
   projectId?: string | null;
+
+  /**
+   * Optional proxy configuration for exchange token request
+   */
+  proxyConfig?: ProxyConfig;
 
   /**
    * Callback when credentials are successfully obtained
@@ -73,7 +87,7 @@ export interface OAuthFlowActions {
  * ```
  */
 export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthFlowActions {
-  const { startFn, exchangeFn, projectId, onSuccess } = options;
+  const { startFn, exchangeFn, projectId, proxyConfig, onSuccess } = options;
   const { t } = useTranslation();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -118,13 +132,22 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
 
     setIsExchanging(true);
     try {
-      const result = await exchangeFn(
-        {
-          session_id: sessionId,
-          callback_url: callbackUrl.trim(),
-        },
-        { 'X-Project-ID': projectId }
-      );
+      const exchangeInput: OAuthExchangeInput = {
+        session_id: sessionId,
+        callback_url: callbackUrl.trim(),
+      };
+
+      // Add proxy config if provided and type is not disabled/environment
+      if (proxyConfig && proxyConfig.type === ProxyType.URL) {
+        exchangeInput.proxy = {
+          type: proxyConfig.type,
+          url: proxyConfig.url,
+          ...(proxyConfig.username && { username: proxyConfig.username }),
+          ...(proxyConfig.password && { password: proxyConfig.password }),
+        };
+      }
+
+      const result = await exchangeFn(exchangeInput, { 'X-Project-ID': projectId });
 
       if (onSuccess) {
         onSuccess(result.credentials);
@@ -136,7 +159,7 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
     } finally {
       setIsExchanging(false);
     }
-  }, [projectId, sessionId, callbackUrl, exchangeFn, onSuccess, t]);
+  }, [projectId, sessionId, callbackUrl, exchangeFn, onSuccess, t, proxyConfig]);
 
   const reset = useCallback(() => {
     setSessionId(null);
