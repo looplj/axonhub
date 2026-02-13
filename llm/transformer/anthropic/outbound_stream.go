@@ -19,9 +19,8 @@ func (t *OutboundTransformer) TransformStream(
 	// Filter out unnecessary stream events to optimize performance
 	filteredStream := streams.Filter(stream, filterStreamEvent)
 
-	doneEvent := lo.ToPtr(llm.DoneStreamEvent)
 	// Append the DONE event to the filtered stream
-	streamWithDone := streams.AppendStream(filteredStream, doneEvent)
+	streamWithDone := streams.AppendStream(filteredStream, lo.ToPtr(llm.DoneStreamEvent))
 
 	return streams.NoNil(newOutboundStream(streamWithDone, t.config.Type)), nil
 }

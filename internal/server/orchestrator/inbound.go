@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/looplj/axonhub/internal/dumper"
@@ -27,6 +28,7 @@ type InboundPersistentStream struct {
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
 	closed         bool
+	state          *PersistenceState
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*InboundPersistentStream)(nil)
@@ -39,6 +41,7 @@ func NewInboundPersistentStream(
 	requestService *biz.RequestService,
 	transformer transformer.Inbound,
 	perf *biz.PerformanceRecord,
+	state *PersistenceState,
 ) *InboundPersistentStream {
 	return &InboundPersistentStream{
 		ctx:            ctx,
@@ -50,6 +53,7 @@ func NewInboundPersistentStream(
 		perf:           perf,
 		responseChunks: make([]*httpclient.StreamEvent, 0),
 		closed:         false,
+		state:          state,
 	}
 }
 
@@ -61,9 +65,23 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
 		ts.responseChunks = append(ts.responseChunks, event)
+		if isTerminalStreamEvent(event) {
+			ts.state.StreamCompleted = true
+		}
 	}
 
 	return event
+}
+
+// isTerminalStreamEvent checks if the event represents the end of a successfully completed stream.
+// For Chat Completions API this is the raw [DONE] event; for Responses API this is response.completed.
+func isTerminalStreamEvent(event *httpclient.StreamEvent) bool {
+	// For chat completions, check for [DONE] event
+	return bytes.Equal(event.Data, llm.DoneStreamEvent.Data) ||
+		// For Responses API, check for response.completed event
+		event.Type == "response.completed" ||
+		// For Anthropic Messages API, check for message_stop event
+		event.Type == "message_stop"
 }
 
 func (ts *InboundPersistentStream) Err() error {
@@ -78,17 +96,35 @@ func (ts *InboundPersistentStream) Close() error {
 	ts.closed = true
 	ctx := ts.ctx
 
-	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)))
+	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
 
 	streamErr := ts.stream.Err()
-	if streamErr != nil {
-		// Stream had an error - update both request execution and main request
-		log.Warn(ctx, "Stream completed with error", log.Cause(streamErr))
+	ctxErr := ctx.Err()
 
+	// If we received the [DONE] event, treat the stream as successfully completed
+	// even if there's a context cancellation error. This handles the case where
+	// the client disconnects immediately after receiving the last chunk.
+	if ts.state.StreamCompleted {
+		// Stream completed successfully - perform final persistence
+		log.Debug(ctx, "Stream completed successfully (received [DONE]), performing final persistence")
+		ts.persistResponseChunks(ctx)
+
+		return ts.stream.Close()
+	}
+
+	// Check if context was canceled (client disconnected before [DONE])
+	if ctxErr != nil || streamErr != nil {
 		// Use context without cancellation to ensure persistence even if client canceled
 		if ts.request != nil {
 			persistCtx := context.WithoutCancel(ctx)
-			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, streamErr); err != nil {
+
+			// Determine the actual error to report
+			errToReport := streamErr
+			if errToReport == nil {
+				errToReport = ctxErr
+			}
+
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
 			}
 		}
@@ -194,6 +230,7 @@ func (p *PersistentInboundTransformer) TransformStream(ctx context.Context, stre
 		p.state.RequestService,
 		p, // Use the PersistentInboundTransformer as the transformer
 		p.state.Perf,
+		p.state,
 	)
 
 	return persistentStream, nil

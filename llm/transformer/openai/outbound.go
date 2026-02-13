@@ -37,7 +37,7 @@ type Config struct {
 	BaseURL string `json:"base_url,omitempty"`
 
 	// RawURL is whether to use raw URL for requests, default is false.
-	// If true, the base URL will be used as is, without appending the version.
+	// If true, the request URL will be used as is, without appending the chat completions endpoint.
 	RawURL bool `json:"raw_url,omitempty"`
 
 	// APIKeyProvider provides API keys for authentication, required.
@@ -75,15 +75,16 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("invalid OpenAI transformer configuration: %w", err)
 	}
 
-	if strings.HasSuffix(config.BaseURL, "#") {
+	if strings.HasSuffix(config.BaseURL, "##") {
 		config.RawURL = true
-	}
-
-	// For Azure, don't normalize with version - it has special URL format
-	if config.PlatformType == PlatformAzure {
-		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
-	} else {
-		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
+	} else if !config.RawURL {
+		// For Azure, don't normalize with version - it has special URL format
+		if config.PlatformType == PlatformAzure {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+		} else {
+			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+		}
 	}
 
 	return &OutboundTransformer{
@@ -299,7 +300,9 @@ func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error
 		return fmt.Sprintf("%s/openai/v1/chat/completions?api-version=%s",
 			t.config.BaseURL, t.config.APIVersion), nil
 	default:
-		// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+		if t.config.RawURL {
+			return t.config.BaseURL, nil
+		}
 		return t.config.BaseURL + "/chat/completions", nil
 	}
 }

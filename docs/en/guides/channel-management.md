@@ -232,6 +232,109 @@ For detailed information on how to use templates, conditional logic, and more ad
 - View the disable reason and error code
 - Consider increasing the number of API Keys to distribute load
 
+## Base URL Configuration
+
+### Overview
+
+`base_url` is a required field in channel configuration, used to specify the API endpoint address of the AI provider. AxonHub supports flexible URL configuration options to accommodate different deployment scenarios.
+
+### Default Base URLs
+
+Each channel type has a preset default Base URL that is automatically populated when you create a channel:
+
+| Channel Type | Default Base URL |
+|-------------|------------------|
+| openai | `https://api.openai.com/v1` |
+| anthropic | `https://api.anthropic.com` |
+| gemini | `https://generativelanguage.googleapis.com/v1beta` |
+| deepseek | `https://api.deepseek.com/v1` |
+| moonshot | `https://api.moonshot.cn/v1` |
+| ... | See configuration interface for other types |
+
+### Custom Base URL
+
+You can configure a custom Base URL to support:
+
+- **Third-party proxy services**: Access models through OpenAI/Anthropic-compatible proxy services
+- **Private deployments**: Connect to internally deployed AI services within your organization
+- **Multi-region deployments**: Use API endpoints from different regions
+
+### Special Suffixes
+
+AxonHub supports adding special suffixes to the end of the Base URL to control URL normalization behavior:
+
+#### `#` Suffix - Disable Automatic Version Appending
+
+Adding `#` at the end of the Base URL tells the system **not** to automatically append the API version:
+
+```yaml
+# Anthropic channel example - use raw URL without auto-appending /v1
+base_url: "https://custom-api.example.com/anthropic#"
+
+# Actual request URL: https://custom-api.example.com/anthropic/messages
+# Instead of: https://custom-api.example.com/anthropic/v1/messages
+```
+
+**Use Cases**:
+- Using custom proxy services where the URL path already includes version information
+- Providers using non-standard URL structures
+- Need full control over the request path
+
+#### `##` Suffix - Fully Raw Mode (OpenAI Format)
+
+Adding `##` at the end of the Base URL tells the system to:
+1. Disable automatic version appending
+2. Disable automatic endpoint appending (e.g., `/chat/completions`)
+
+```yaml
+# OpenAI channel example - fully raw mode
+base_url: "https://custom-gateway.example.com/api/v2##"
+
+# Actual request URL: https://custom-gateway.example.com/api/v2
+# Instead of: https://custom-gateway.example.com/api/v2/v1/chat/completions
+```
+
+**Use Cases**:
+- Using fully custom API gateways
+- Need precise control over the complete request URL
+- Compatible with special proxy or relay services
+
+### Automatic Version Appending Rules
+
+When not using `#` or `##` suffixes, the system automatically appends API versions based on channel type:
+
+| Channel Type | Automatically Appended Version |
+|-------------|-------------------------------|
+| openai, deepseek, moonshot, xai, etc. | `/v1` |
+| gemini | `/v1beta` |
+| doubao | `/v3` |
+| zai, zhipu | `/v4` |
+| anthropic | `/v1` |
+| anthropic_aws (Bedrock) | Not appended |
+| anthropic_gcp (Vertex) | Not appended |
+
+### Configuration Examples
+
+```yaml
+# Standard configuration - use default behavior
+name: "openai-standard"
+type: "openai"
+base_url: "https://api.openai.com"
+# Actual request: https://api.openai.com/v1/chat/completions
+
+# Disable version appending - Anthropic
+name: "anthropic-custom"
+type: "anthropic"
+base_url: "https://api.anthropic.com#"
+# Actual request: https://api.anthropic.com/messages
+
+# Fully raw mode - OpenAI
+name: "openai-raw"
+type: "openai"
+base_url: "https://gateway.example.com/proxy##"
+# Actual request: https://gateway.example.com/proxy
+```
+
 ## Related Documentation
 
 - [Request Override Guide](request-override.md) - Advanced request modification with templates

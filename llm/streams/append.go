@@ -27,6 +27,11 @@ func (s *appendStream[T]) Next() bool {
 		}
 
 		s.streamDone = true
+
+		// If the source stream has an error, don't append items
+		if s.stream.Err() != nil {
+			return false
+		}
 	}
 
 	// Then, consume the appended items
