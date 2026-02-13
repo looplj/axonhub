@@ -127,8 +127,9 @@ func (h *CodexHandlers) StartOAuth(c *gin.Context) {
 }
 
 type ExchangeCodexOAuthRequest struct {
-	SessionID   string `json:"session_id" binding:"required"`
-	CallbackURL string `json:"callback_url" binding:"required"`
+	SessionID   string                  `json:"session_id" binding:"required"`
+	CallbackURL string                  `json:"callback_url" binding:"required"`
+	Proxy       *httpclient.ProxyConfig `json:"proxy,omitempty"`
 }
 
 type ExchangeCodexOAuthResponse struct {
@@ -200,8 +201,14 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
+	// Create HTTP client with proxy if provided
+	httpClient := h.httpClient
+	if req.Proxy != nil && req.Proxy.Type == httpclient.ProxyTypeURL && req.Proxy.URL != "" {
+		httpClient = httpclient.NewHttpClientWithProxy(req.Proxy)
+	}
+
 	tokenProvider := codex.NewTokenProvider(codex.TokenProviderParams{
-		HTTPClient: h.httpClient,
+		HTTPClient: httpClient,
 	})
 
 	creds, err := tokenProvider.Exchange(ctx, oauth.ExchangeParams{

@@ -138,8 +138,9 @@ func (h *AntigravityHandlers) StartOAuth(c *gin.Context) {
 }
 
 type ExchangeAntigravityOAuthRequest struct {
-	SessionID   string `json:"session_id" binding:"required"`
-	CallbackURL string `json:"callback_url" binding:"required"`
+	SessionID   string                  `json:"session_id" binding:"required"`
+	CallbackURL string                  `json:"callback_url" binding:"required"`
+	Proxy       *httpclient.ProxyConfig `json:"proxy,omitempty"`
 }
 
 type ExchangeAntigravityOAuthResponse struct {
@@ -207,8 +208,14 @@ func (h *AntigravityHandlers) Exchange(c *gin.Context) {
 		log.Warn(ctx, "failed to delete used oauth state from cache", log.String("session_id", req.SessionID), log.Cause(err))
 	}
 
+	// Create HTTP client with proxy if provided
+	httpClient := h.httpClient
+	if req.Proxy != nil && req.Proxy.Type == httpclient.ProxyTypeURL && req.Proxy.URL != "" {
+		httpClient = httpclient.NewHttpClientWithProxy(req.Proxy)
+	}
+
 	tokenProvider := antigravity.NewTokenProvider(oauth.TokenProviderParams{
-		HTTPClient: h.httpClient,
+		HTTPClient: httpClient,
 	})
 
 	creds, err := tokenProvider.Exchange(ctx, oauth.ExchangeParams{
@@ -224,7 +231,7 @@ func (h *AntigravityHandlers) Exchange(c *gin.Context) {
 
 	projectID := state.ProjectID
 	if projectID == "" {
-		projectID, err = h.resolveProjectID(ctx, creds.AccessToken)
+		projectID, err = h.resolveProjectID(ctx, creds.AccessToken, httpClient)
 		if err != nil {
 			log.Warn(ctx, "failed to resolve project id", log.Cause(err))
 			JSONError(c, http.StatusBadGateway, fmt.Errorf("failed to resolve project id and none provided: %w", err))
@@ -239,7 +246,7 @@ func (h *AntigravityHandlers) Exchange(c *gin.Context) {
 	c.JSON(http.StatusOK, ExchangeAntigravityOAuthResponse{Credentials: output})
 }
 
-func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken string) (string, error) {
+func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken string, httpClient *httpclient.HttpClient) (string, error) {
 	if len(antigravity.LoadEndpoints) == 0 {
 		return "", errors.New("no load endpoints configured")
 	}
@@ -276,7 +283,7 @@ func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken 
 			Body: bodyBytes,
 		}
 
-		resp, err := h.httpClient.Do(ctx, req)
+		resp, err := httpClient.Do(ctx, req)
 		if err != nil {
 			lastErr = err
 			continue
@@ -325,7 +332,7 @@ func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken 
 		}
 
 		// Try onboarding since we didn't get a project ID
-		projectID, err = h.onboardUser(ctx, accessToken, defaultTierID)
+		projectID, err = h.onboardUser(ctx, accessToken, defaultTierID, httpClient)
 		if err == nil && projectID != "" {
 			return projectID, nil
 		}
@@ -338,7 +345,7 @@ func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken 
 	return "", lastErr
 }
 
-func (h *AntigravityHandlers) onboardUser(ctx context.Context, accessToken, tierID string) (string, error) {
+func (h *AntigravityHandlers) onboardUser(ctx context.Context, accessToken, tierID string, httpClient *httpclient.HttpClient) (string, error) {
 	// Try endpoints for onboarding
 	for _, baseEndpoint := range antigravity.LoadEndpoints {
 		url := fmt.Sprintf("%s/v1internal:onboardUser", baseEndpoint)
@@ -367,7 +374,7 @@ func (h *AntigravityHandlers) onboardUser(ctx context.Context, accessToken, tier
 
 		// Try up to 3 times with delay
 		for i := 0; i < 3; i++ {
-			resp, err := h.httpClient.Do(ctx, req)
+			resp, err := httpClient.Do(ctx, req)
 			if err != nil || resp.StatusCode != http.StatusOK {
 				time.Sleep(1 * time.Second)
 				continue

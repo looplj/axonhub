@@ -48,23 +48,42 @@ type FetchModelsResult struct {
 }
 
 // FetchModels fetches available models from the provider API.
+func (f *ModelFetcher) getDefaultModels(channelType string) []ModelIdentify {
+	return f.getDefaultModelsByType(channel.Type(channelType))
+}
+
+func (f *ModelFetcher) getDefaultModelsByType(typ channel.Type) []ModelIdentify {
+	//nolint:exhaustive // only support codex and claudecode for now.
+	switch typ {
+	case channel.TypeAntigravity:
+		return lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+	case channel.TypeCodex:
+		return lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+	case channel.TypeClaudecode:
+		return lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+	default:
+		return nil
+	}
+}
+
+func (f *ModelFetcher) tryReturnDefaultModels(channelType string) (*FetchModelsResult, bool) {
+	models := f.getDefaultModels(channelType)
+	if models != nil {
+		return &FetchModelsResult{Models: models}, true
+	}
+
+	return nil, false
+}
+
 func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsResult, error) {
-	// do not support volcengine for now.
 	if input.ChannelType == channel.TypeVolcengine.String() {
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 		}, nil
 	}
 
-	if input.ChannelType == channel.TypeAntigravity.String() {
-		models := lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify {
-			return ModelIdentify{ID: id}
-		})
-
-		return &FetchModelsResult{
-			Models: models,
-			Error:  nil,
-		}, nil
+	if result, ok := f.tryReturnDefaultModels(input.ChannelType); ok {
+		return result, nil
 	}
 
 	var (
@@ -86,22 +105,8 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 
 		if ch.Credentials.IsOAuth() {
-			//nolint:exhaustive // only support codex and claudecode for now.
-			switch ch.Type {
-			case channel.TypeCodex:
-				models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
-
-				return &FetchModelsResult{
-					Models: models,
-					Error:  nil,
-				}, nil
-			case channel.TypeClaudecode:
-				models := lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
-
-				return &FetchModelsResult{
-					Models: models,
-					Error:  nil,
-				}, nil
+			if models := f.getDefaultModelsByType(ch.Type); models != nil {
+				return &FetchModelsResult{Models: models}, nil
 			}
 		}
 
@@ -125,20 +130,8 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	if isOAuthJSON(apiKey) {
-		//nolint:exhaustive // only support codex and claudecode for now.
-		switch input.ChannelType {
-		case channel.TypeCodex.String():
-			models := lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
-			return &FetchModelsResult{
-				Models: models,
-				Error:  nil,
-			}, nil
-		case channel.TypeClaudecode.String():
-			models := lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
-			return &FetchModelsResult{
-				Models: models,
-				Error:  nil,
-			}, nil
+		if result, ok := f.tryReturnDefaultModels(input.ChannelType); ok {
+			return result, nil
 		}
 	}
 

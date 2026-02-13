@@ -12,11 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,8 +52,10 @@ import {
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
-import { useOAuthFlow } from '../hooks/use-oauth-flow';
+import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { ManualModelBadge } from './manual-model-badge';
+import { ProxyType } from './channels-proxy-dialog';
+import { mergeChannelSettingsForUpdate } from '../utils/merge';
 
 interface Props {
   currentRow?: Channel;
@@ -92,7 +95,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isDuplicate = !!duplicateFromRow && !isEdit;
   const initialRow: Channel | undefined = currentRow || duplicateFromRow;
   const createChannel = useCreateChannel();
-  const bulkCreateChannels = useBulkCreateChannels();
   const updateChannel = useUpdateChannel();
   const fetchModels = useFetchModels();
   const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate });
@@ -127,12 +129,36 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [authMode, setAuthMode] = useState<'official' | 'third-party'>('official');
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
+  const [proxyType, setProxyType] = useState<ProxyType>(() => {
+    if (initialRow?.settings?.proxy?.type) {
+      return initialRow.settings.proxy.type as ProxyType;
+    }
+    return ProxyType.ENVIRONMENT;
+  });
+  const [proxyUrl, setProxyUrl] = useState(() => initialRow?.settings?.proxy?.url || '');
+  const [proxyUsername, setProxyUsername] = useState(() => initialRow?.settings?.proxy?.username || '');
+  const [proxyPassword, setProxyPassword] = useState(() => initialRow?.settings?.proxy?.password || '');
+
+  // Memoized proxy config for OAuth exchange
+  const proxyConfig: ProxyConfig | undefined = useMemo(() => {
+    if (proxyType === ProxyType.URL && proxyUrl) {
+      return {
+        type: proxyType,
+        url: proxyUrl,
+        ...(proxyUsername && { username: proxyUsername }),
+        ...(proxyPassword && { password: proxyPassword }),
+      };
+    }
+    return undefined;
+  }, [proxyType, proxyUrl, proxyUsername, proxyPassword]);
+
   // OAuth flows using the reusable hook
   // OAuth credentials are stored in apiKey field as JSON string, not in apiKeys array
   const codexOAuth = useOAuthFlow({
     startFn: codexOAuthStart,
     exchangeFn: codexOAuthExchange,
     projectId: selectedProjectId,
+    proxyConfig,
     onSuccess: (credentials) => {
       form.setValue('credentials.apiKey', credentials);
     },
@@ -142,6 +168,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     startFn: claudecodeOAuthStart,
     exchangeFn: claudecodeOAuthExchange,
     projectId: selectedProjectId,
+    proxyConfig,
     onSuccess: (credentials) => {
       form.setValue('credentials.apiKey', credentials);
     },
@@ -151,6 +178,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     startFn: antigravityOAuthStart,
     exchangeFn: antigravityOAuthExchange,
     projectId: selectedProjectId,
+    proxyConfig,
     onSuccess: (credentials) => {
       form.setValue('credentials.apiKey', credentials);
     },
@@ -720,15 +748,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
-        // For edit mode, only include credentials if user actually entered new values
         const updateInput = {
           ...dataWithModels,
-          // type 不能更新
+          settings: undefined,
           type: undefined,
-        };
+        } as z.infer<typeof updateChannelInputSchema>;
 
-        // Check if any credential fields have actual values
-        // apiKey: OAuth 凭据 (codex/claudecode/antigravity)，不会出现在 apiKeys 中
         const apiKey = values.credentials?.apiKey || '';
         const hasApiKey = apiKey.trim().length > 0;
         const apiKeys = values.credentials?.apiKeys || [];
@@ -741,7 +766,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           values.credentials?.gcp?.jsonData &&
           values.credentials.gcp.jsonData.trim() !== '';
 
-        // Only include credentials if user provided new values
         if (!hasApiKey && !hasApiKeys && !hasGcpCredentials) {
           delete updateInput.credentials;
         }
@@ -751,12 +775,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           input: updateInput,
         });
       } else {
-        // For create mode, always use createChannel mutation with apiKeys
-        // The backend will handle multiple API keys in a single channel
+        const proxyConfig = {
+          type: proxyType as 'disabled' | 'environment' | 'url',
+          ...(proxyType === ProxyType.URL && {
+            url: proxyUrl,
+            username: proxyUsername || undefined,
+            password: proxyPassword || undefined,
+          }),
+        };
+
+        const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
+          proxy: proxyConfig,
+        });
+
         await createChannel.mutateAsync({
           ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
-          settings: values.settings ?? duplicateFromRow?.settings ?? undefined,
-        });
+          settings: nextSettings,
+        } as z.infer<typeof createChannelInputSchema>);
       }
 
       form.reset();
@@ -1066,6 +1101,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setConfirmRemoveSelectedOpen(false);
             setConfirmRemoveKey(null);
             setShowApiKey(false);
+            // Reset proxy state
+            if (initialRow?.settings?.proxy?.type) {
+              setProxyType(initialRow.settings.proxy.type as ProxyType);
+            } else {
+              setProxyType(ProxyType.ENVIRONMENT);
+            }
+            setProxyUrl(initialRow?.settings?.proxy?.url || '');
+            setProxyUsername(initialRow?.settings?.proxy?.username || '');
+            setProxyPassword(initialRow?.settings?.proxy?.password || '');
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -1524,6 +1568,60 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             )}
                           />
                         )}
+
+                      {!isEdit && (
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                            {t('channels.dialogs.proxy.fields.type.label')}
+                          </FormLabel>
+                          <div className='space-y-3 md:col-span-6'>
+                            <Select value={proxyType} onValueChange={(value) => setProxyType(value as ProxyType)}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={t('channels.dialogs.proxy.fields.type.placeholder')} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value={ProxyType.DISABLED}>{t('channels.dialogs.proxy.types.disabled')}</SelectItem>
+                                <SelectItem value={ProxyType.ENVIRONMENT}>{t('channels.dialogs.proxy.types.environment')}</SelectItem>
+                                <SelectItem value={ProxyType.URL}>{t('channels.dialogs.proxy.types.url')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            {proxyType === ProxyType.URL && (
+                              <>
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.url.label')}</FormLabel>
+                                  <Input
+                                    placeholder={t('channels.dialogs.proxy.fields.url.placeholder')}
+                                    value={proxyUrl}
+                                    onChange={(e) => setProxyUrl(e.target.value)}
+                                  />
+                                </div>
+
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.username.label')}</FormLabel>
+                                  <Input
+                                    placeholder={t('channels.dialogs.proxy.fields.username.placeholder')}
+                                    value={proxyUsername}
+                                    onChange={(e) => setProxyUsername(e.target.value)}
+                                  />
+                                </div>
+
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.password.label')}</FormLabel>
+                                  <Input
+                                    type='password'
+                                    placeholder={t('channels.dialogs.proxy.fields.password.placeholder')}
+                                    value={proxyPassword}
+                                    onChange={(e) => setProxyPassword(e.target.value)}
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </FormItem>
+                      )}
 
                       <FormField
                         control={form.control}

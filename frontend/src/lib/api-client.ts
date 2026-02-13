@@ -3,8 +3,6 @@ import { AuthUser, getTokenFromStorage } from '@/stores/authStore';
 // Same domain, no need to add baseURL.
 export const API_BASE_URL = '';
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
-
 type ErrorResponseBody = {
   message?: string;
   error?: string | { message?: string };
@@ -33,7 +31,7 @@ const isErrorResponseBody = (value: unknown): value is ErrorResponseBody => {
 interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   headers?: Record<string, string>;
-  body?: JsonValue;
+  body?: any;
   requireAuth?: boolean;
 }
 
@@ -144,31 +142,5 @@ export const authApi = {
     apiRequest('/admin/auth/signin', {
       method: 'POST',
       body: data,
-    }),
-};
-
-// Rerank API endpoints
-export const rerankApi = {
-  rerank: (data: {
-    model: string;
-    query: string;
-    documents: string[];
-    top_n?: number;
-  }): Promise<{
-    results: Array<{
-      index: number;
-      relevance_score: number;
-      document?: string;
-    }>;
-    usage?: {
-      prompt_tokens: number;
-      completion_tokens: number;
-      total_tokens: number;
-    };
-  }> =>
-    apiRequest('/v1/rerank', {
-      method: 'POST',
-      body: data,
-      requireAuth: true,
     }),
 };
