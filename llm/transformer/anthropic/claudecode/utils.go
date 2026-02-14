@@ -194,6 +194,34 @@ func mergeBetasIntoHeader(baseBetas string, extraBetas []string) string {
 	return strings.Join(parts, ",")
 }
 
+// billingHeaderPrefix is the prefix used to identify billing header system messages.
+const billingHeaderPrefix = "x-anthropic-billing-header:"
+
+// removeBillingSystemMessages removes system messages that contain the
+// x-anthropic-billing-header pattern. These messages are injected by the
+// Claude Code CLI to report billing metadata. For non-official (non-OAuth)
+// channels, these messages should be stripped to avoid leaking client info.
+func removeBillingSystemMessages(llmReq *llm.Request) *llm.Request {
+	if len(llmReq.Messages) == 0 {
+		return llmReq
+	}
+
+	filtered := make([]llm.Message, 0, len(llmReq.Messages))
+
+	for _, msg := range llmReq.Messages {
+		if msg.Role == "system" && msg.Content.Content != nil &&
+			strings.HasPrefix(strings.TrimSpace(*msg.Content.Content), billingHeaderPrefix) {
+			continue
+		}
+
+		filtered = append(filtered, msg)
+	}
+
+	llmReq.Messages = filtered
+
+	return llmReq
+}
+
 // injectClaudeCodeSystemMessageStructured prepends the Claude Code system message.
 // 注意：不在此处设置 cache_control，缓存策略由 ensureCacheControl 统一管理。
 func injectClaudeCodeSystemMessageStructured(llmReq *llm.Request) *llm.Request {
