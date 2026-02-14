@@ -105,7 +105,7 @@ export function RequestsTable({
     localStorage.setItem('requests-table-column-visibility', JSON.stringify(columnVisibility));
   }, [columnVisibility]);
 
-  const displayedData = useAnimatedList(data, autoRefresh);
+  const displayedData = useAnimatedList(data, autoRefresh, pageSize);
 
   // Sync filters with the server state
   const handleColumnFiltersChange = (updater: any) => {
