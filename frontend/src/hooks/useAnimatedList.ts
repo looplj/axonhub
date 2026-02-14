@@ -79,10 +79,7 @@ export function useAnimatedList<T extends { id: string; createdAt: Date | string
         if (nextItem) {
           setDisplayedData((prev) => {
             const newData = [nextItem, ...prev];
-            if (newData.length > pageSize) {
-              return newData.slice(0, pageSize);
-            }
-            return newData;
+            return newData.slice(0, pageSize);
           });
         }
       }
