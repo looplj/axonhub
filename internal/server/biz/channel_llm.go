@@ -309,6 +309,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			transformer, err := claudecode.NewOutboundTransformer(claudecode.Params{
 				TokenProvider: tokens,
 				BaseURL:       c.BaseURL,
+				IsOfficial:    true,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to create claudecode outbound transformer: %w", err)
@@ -330,6 +331,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		transformer, err := claudecode.NewOutboundTransformer(claudecode.Params{
 			TokenProvider: tokens,
 			BaseURL:       c.BaseURL,
+			IsOfficial:    false,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create claudecode outbound transformer: %w", err)

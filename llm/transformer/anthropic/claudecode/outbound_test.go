@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -182,6 +183,71 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		userID := gjson.GetBytes(httpReq.Body, "metadata.user_id").String()
 		assert.NotEmpty(t, userID)
 		assert.True(t, isValidUserID(userID))
+	})
+
+	t.Run("removes billing system messages when not official", func(t *testing.T) {
+
+		transformer, err := NewOutboundTransformer(Params{
+			TokenProvider: newMockTokenProvider("test-api-key"),
+			IsOfficial:    false,
+		})
+		require.NoError(t, err)
+
+		billingMsg := "x-anthropic-billing-header: cc_version=2.1.37.fbe; cc_entrypoint=cli; cch=e478e;"
+		req := &llm.Request{
+			Model: "claude-sonnet-4-5",
+			Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: &billingMsg}},
+				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
+			},
+			MaxTokens: int64Ptr(1024),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// The billing system message should be removed
+		system := gjson.GetBytes(httpReq.Body, "system")
+		require.True(t, system.Exists())
+
+		// Should only contain the injected Claude Code system message, not the billing header
+		for _, item := range system.Array() {
+			assert.NotContains(t, item.Get("text").String(), "x-anthropic-billing-header")
+		}
+	})
+
+	t.Run("preserves billing system messages when official", func(t *testing.T) {
+
+		transformer, err := NewOutboundTransformer(Params{
+			TokenProvider: newMockTokenProvider("test-api-key"),
+			IsOfficial:    true,
+		})
+		require.NoError(t, err)
+
+		billingMsg := "x-anthropic-billing-header: cc_version=2.1.37.fbe; cc_entrypoint=cli; cch=e478e;"
+		req := &llm.Request{
+			Model: "claude-sonnet-4-5",
+			Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: &billingMsg}},
+				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
+			},
+			MaxTokens: int64Ptr(1024),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// The billing system message should be preserved
+		system := gjson.GetBytes(httpReq.Body, "system")
+		require.True(t, system.Exists())
+
+		foundBilling := false
+		for _, item := range system.Array() {
+			if strings.Contains(item.Get("text").String(), "x-anthropic-billing-header") {
+				foundBilling = true
+			}
+		}
+		assert.True(t, foundBilling, "billing system message should be preserved for official channels")
 	})
 
 	t.Run("disables thinking when tool_choice forces tool use", func(t *testing.T) {
