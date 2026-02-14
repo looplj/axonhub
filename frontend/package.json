@@ -56,6 +56,7 @@
     "@tanstack/react-query": "^5.81.2",
     "@tanstack/react-router": "^1.121.34",
     "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.18",
     "@vvo/tzdb": "^6.198.0",
     "@xyflow/react": "^12.9.2",
     "ai": "^5.0.52",

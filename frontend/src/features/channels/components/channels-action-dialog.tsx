@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -69,6 +70,109 @@ const MAX_MODELS_DISPLAY = 2;
 
 const duplicateNameRegex = /^(.*) \((\d+)\)$/;
 
+// Custom hook for debounced value
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Memoized FetchedModelItem component
+const FetchedModelItem = memo(({
+  model,
+  isAdded,
+  isSelected,
+  onToggle,
+  addedLabel,
+  willRemoveLabel
+}: {
+  model: string;
+  isAdded: boolean;
+  isSelected: boolean;
+  onToggle: () => void;
+  addedLabel: string;
+  willRemoveLabel: string;
+}) => (
+  <div
+    className={`flex items-center gap-2 rounded-md p-2 text-sm transition-colors ${
+      isAdded && !isSelected
+        ? 'bg-muted/50 text-muted-foreground'
+        : isSelected
+          ? 'bg-primary/10 border-primary/30 border'
+          : 'hover:bg-accent cursor-pointer'
+    }`}
+  >
+    <Checkbox checked={isSelected} onCheckedChange={onToggle} />
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className='max-w-[200px] flex-1 cursor-pointer truncate'
+          onClick={onToggle}
+        >
+          {model}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className='max-w-xs break-all'>{model}</p>
+      </TooltipContent>
+    </Tooltip>
+    {isAdded && !isSelected && (
+      <Badge variant='secondary' className='shrink-0 text-xs'>
+        {addedLabel}
+      </Badge>
+    )}
+    {isAdded && isSelected && (
+      <Badge variant='destructive' className='shrink-0 text-xs'>
+        {willRemoveLabel}
+      </Badge>
+    )}
+  </div>
+));
+FetchedModelItem.displayName = 'FetchedModelItem';
+
+// Memoized SupportedModelItem component
+const SupportedModelItem = memo(({
+  model,
+  isManual,
+  onRemove
+}: {
+  model: string;
+  isManual: boolean;
+  onRemove: () => void;
+}) => (
+  <div className='hover:bg-accent flex items-center gap-2 rounded-md p-2 text-sm'>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className='w-0 flex-1 cursor-help truncate'>{model}</span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className='max-w-xs break-all'>{model}</p>
+      </TooltipContent>
+    </Tooltip>
+    <ManualModelBadge isManual={isManual} />
+    <Button
+      type='button'
+      variant='ghost'
+      size='sm'
+      className='hover:text-destructive h-6 w-6 shrink-0 p-0'
+      onClick={onRemove}
+    >
+      <X className='h-3 w-3' />
+    </Button>
+  </div>
+));
+SupportedModelItem.displayName = 'SupportedModelItem';
+
 function getDuplicateBaseName(name: string) {
   const match = name.match(duplicateNameRegex);
   if (match?.[1]) {
@@ -128,6 +232,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [showGcpJsonData, setShowGcpJsonData] = useState(false);
   const [authMode, setAuthMode] = useState<'official' | 'third-party'>('official');
   const dialogContentRef = useRef<HTMLDivElement>(null);
+
+  // Debounced search values for better performance
+  const debouncedFetchedModelsSearch = useDebounce(fetchedModelsSearch, 300);
+  const debouncedSupportedModelsSearch = useDebounce(supportedModelsSearch, 300);
+  const debouncedApiKeysSearch = useDebounce(apiKeysSearch, 300);
+
+  // Refs for virtual scrolling
+  const fetchedModelsParentRef = useRef<HTMLDivElement>(null);
+  const supportedModelsParentRef = useRef<HTMLDivElement>(null);
 
   const [proxyType, setProxyType] = useState<ProxyType>(() => {
     if (initialRow?.settings?.proxy?.type) {
@@ -943,12 +1056,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (showNotAddedModelsOnly) {
       models = models.filter((model) => !supportedModels.includes(model));
     }
-    if (fetchedModelsSearch.trim()) {
-      const search = fetchedModelsSearch.toLowerCase();
+    if (debouncedFetchedModelsSearch.trim()) {
+      const search = debouncedFetchedModelsSearch.toLowerCase();
       models = models.filter((model) => model.toLowerCase().includes(search));
     }
     return models;
-  }, [fetchedModels, fetchedModelsSearch, showNotAddedModelsOnly, supportedModels]);
+  }, [fetchedModels, debouncedFetchedModelsSearch, showNotAddedModelsOnly, supportedModels]);
 
   // Toggle selection for fetched model
   const toggleFetchedModelSelection = useCallback((model: string) => {
@@ -1068,12 +1181,28 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   // Filtered supported models based on search
   const filteredSupportedModels = useMemo(() => {
-    if (!supportedModelsSearch.trim()) {
+    if (!debouncedSupportedModelsSearch.trim()) {
       return supportedModels;
     }
-    const search = supportedModelsSearch.toLowerCase();
+    const search = debouncedSupportedModelsSearch.toLowerCase();
     return supportedModels.filter((model) => model.toLowerCase().includes(search));
-  }, [supportedModels, supportedModelsSearch]);
+  }, [supportedModels, debouncedSupportedModelsSearch]);
+
+  // Virtual scrolling for fetched models
+  const fetchedModelsVirtualizer = useVirtualizer({
+    count: filteredFetchedModels.length,
+    getScrollElement: () => fetchedModelsParentRef.current,
+    estimateSize: () => 40,
+    overscan: 5,
+  });
+
+  // Virtual scrolling for supported models
+  const supportedModelsVirtualizer = useVirtualizer({
+    count: filteredSupportedModels.length,
+    getScrollElement: () => supportedModelsParentRef.current,
+    estimateSize: () => 40,
+    overscan: 5,
+  });
 
   return (
     <>
@@ -1927,51 +2056,43 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 </div>
 
                 {/* Model List */}
-                <ScrollArea className='min-h-0 flex-1' type='always'>
-                  <div className='space-y-1 pr-3'>
-                    {filteredFetchedModels.map((model) => {
+                <div ref={fetchedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>
+                  <div
+                    style={{
+                      height: `${fetchedModelsVirtualizer.getTotalSize()}px`,
+                      width: '100%',
+                      position: 'relative',
+                    }}
+                  >
+                    {fetchedModelsVirtualizer.getVirtualItems().map((virtualItem) => {
+                      const model = filteredFetchedModels[virtualItem.index];
                       const isAdded = supportedModels.includes(model);
                       const isSelected = selectedFetchedModels.includes(model);
                       return (
                         <div
-                          key={model}
-                          className={`flex items-center gap-2 rounded-md p-2 text-sm transition-colors ${
-                            isAdded && !isSelected
-                              ? 'bg-muted/50 text-muted-foreground'
-                              : isSelected
-                                ? 'bg-primary/10 border-primary/30 border'
-                                : 'hover:bg-accent cursor-pointer'
-                          }`}
+                          key={virtualItem.key}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: `${virtualItem.size}px`,
+                            transform: `translateY(${virtualItem.start}px)`,
+                          }}
                         >
-                          <Checkbox checked={isSelected} onCheckedChange={() => toggleFetchedModelSelection(model)} />
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span
-                                className='max-w-[200px] flex-1 cursor-pointer truncate'
-                                onClick={() => toggleFetchedModelSelection(model)}
-                              >
-                                {model}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className='max-w-xs break-all'>{model}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          {isAdded && !isSelected && (
-                            <Badge variant='secondary' className='shrink-0 text-xs'>
-                              {t('channels.dialogs.fields.supportedModels.added')}
-                            </Badge>
-                          )}
-                          {isAdded && isSelected && (
-                            <Badge variant='destructive' className='shrink-0 text-xs'>
-                              {t('channels.dialogs.fields.supportedModels.willRemove')}
-                            </Badge>
-                          )}
+                          <FetchedModelItem
+                            model={model}
+                            isAdded={isAdded}
+                            isSelected={isSelected}
+                            onToggle={() => toggleFetchedModelSelection(model)}
+                            addedLabel={t('channels.dialogs.fields.supportedModels.added')}
+                            willRemoveLabel={t('channels.dialogs.fields.supportedModels.willRemove')}
+                          />
                         </div>
                       );
                     })}
                   </div>
-                </ScrollArea>
+                </div>
 
                 {/* Action Buttons */}
                 <div className='mt-2 flex gap-2 border-t pt-2'>
@@ -2228,32 +2349,38 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 </div>
 
                 {/* Model List */}
-                <ScrollArea className='min-h-0 flex-1' type='always'>
-                  <div className='space-y-1 pr-3'>
-                    {filteredSupportedModels.map((model) => (
-                      <div key={model} className='hover:bg-accent flex items-center gap-2 rounded-md p-2 text-sm'>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className='w-0 flex-1 cursor-help truncate'>{model}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className='max-w-xs break-all'>{model}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <ManualModelBadge isManual={isModelManual(model)} />
-                        <Button
-                          type='button'
-                          variant='ghost'
-                          size='sm'
-                          className='hover:text-destructive h-6 w-6 shrink-0 p-0'
-                          onClick={() => removeModel(model)}
+                <div ref={supportedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>
+                  <div
+                    style={{
+                      height: `${supportedModelsVirtualizer.getTotalSize()}px`,
+                      width: '100%',
+                      position: 'relative',
+                    }}
+                  >
+                    {supportedModelsVirtualizer.getVirtualItems().map((virtualItem) => {
+                      const model = filteredSupportedModels[virtualItem.index];
+                      return (
+                        <div
+                          key={virtualItem.key}
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: `${virtualItem.size}px`,
+                            transform: `translateY(${virtualItem.start}px)`,
+                          }}
                         >
-                          <X className='h-3 w-3' />
-                        </Button>
-                      </div>
-                    ))}
+                          <SupportedModelItem
+                            model={model}
+                            isManual={isModelManual(model)}
+                            onRemove={() => removeModel(model)}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
-                </ScrollArea>
+                </div>
               </div>
             </div>
           </div>
