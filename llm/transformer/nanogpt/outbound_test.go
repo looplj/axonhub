@@ -144,6 +144,94 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			},
 			expectedErr: true,
 		},
+		{
+			name: "embedding request routes to embedded OpenAI transformer",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"object": "list",
+					"data": [{
+						"object": "embedding",
+						"embedding": [0.1, 0.2, 0.3],
+						"index": 0
+					}],
+					"model": "text-embedding-3-small",
+					"usage": {
+						"prompt_tokens": 10,
+						"total_tokens": 10
+					}
+				}`),
+				Request: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIEmbedding),
+				},
+			},
+			expectedErr: false,
+			validateResp: func(t *testing.T, resp *llm.Response) {
+				require.NotNil(t, resp)
+				require.NotNil(t, resp.Embedding)
+				require.Len(t, resp.Embedding.Data, 1)
+				require.NotNil(t, resp.Embedding.Data[0].Embedding)
+				assert.Len(t, resp.Embedding.Data[0].Embedding.Embedding, 3)
+			},
+		},
+		{
+			name: "chat request uses NanoGPT-specific parsing",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"id": "chat-123",
+					"object": "chat.completion",
+					"created": 1234567890,
+					"model": "zai-org/glm-4.7",
+					"choices": [{
+						"index": 0,
+						"message": {
+							"role": "assistant",
+							"content": "Hello from NanoGPT!"
+						},
+						"finish_reason": "stop"
+					}]
+				}`),
+				Request: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+				},
+			},
+			expectedErr: false,
+			validateResp: func(t *testing.T, resp *llm.Response) {
+				require.NotNil(t, resp)
+				require.Len(t, resp.Choices, 1)
+				require.NotNil(t, resp.Choices[0].Message.Content)
+				assert.Equal(t, "Hello from NanoGPT!", *resp.Choices[0].Message.Content.Content)
+			},
+		},
+		{
+			name: "nil request in httpResp uses NanoGPT parsing",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"id": "chat-456",
+					"object": "chat.completion",
+					"created": 1234567890,
+					"model": "zai-org/glm-4.7",
+					"choices": [{
+						"index": 0,
+						"message": {
+							"role": "assistant",
+							"content": "Response without request info"
+						},
+						"finish_reason": "stop"
+					}]
+				}`),
+				Request: nil,
+			},
+			expectedErr: false,
+			validateResp: func(t *testing.T, resp *llm.Response) {
+				require.NotNil(t, resp)
+				require.Len(t, resp.Choices, 1)
+				require.NotNil(t, resp.Choices[0].Message.Content)
+				assert.Equal(t, "Response without request info", *resp.Choices[0].Message.Content.Content)
+			},
+		},
 	}
 
 	for _, tt := range tests {
