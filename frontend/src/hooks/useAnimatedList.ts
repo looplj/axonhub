@@ -5,7 +5,7 @@ const MAX_ITEMS = 50;
 const parsedInterval = parseInt(import.meta.env.VITE_REQUESTS_ANIMATION_INTERVAL, 10);
 const ANIMATION_INTERVAL = !isNaN(parsedInterval) && parsedInterval > 0 ? parsedInterval : 500;
 
-export function useAnimatedList<T extends { id: string; createdAt: Date | string }>(data: T[], autoRefresh: boolean) {
+export function useAnimatedList<T extends { id: string; createdAt: Date | string }>(data: T[], autoRefresh: boolean, pageSize: number = MAX_ITEMS) {
   const [displayedData, setDisplayedData] = useState<T[]>(data);
   const queueRef = useRef<T[]>([]);
   const prevDataLengthRef = useRef<number>(data.length);
@@ -79,10 +79,7 @@ export function useAnimatedList<T extends { id: string; createdAt: Date | string
         if (nextItem) {
           setDisplayedData((prev) => {
             const newData = [nextItem, ...prev];
-            if (newData.length > MAX_ITEMS) {
-              return newData.slice(0, MAX_ITEMS);
-            }
-            return newData;
+            return newData.slice(0, pageSize);
           });
         }
       }
