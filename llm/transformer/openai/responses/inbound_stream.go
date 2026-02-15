@@ -8,7 +8,6 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -72,9 +71,6 @@ type responsesInboundStream struct {
 	eventQueue []*httpclient.StreamEvent
 	queueIndex int
 	err        error
-
-	// For dumping
-	sourceEvents []*llm.Response
 }
 
 func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
@@ -122,10 +118,6 @@ func (s *responsesInboundStream) Next() bool {
 	chunk := s.source.Current()
 	if chunk == nil {
 		return s.Next() // Try next chunk
-	}
-
-	if dumper.Enabled() {
-		s.sourceEvents = append(s.sourceEvents, chunk)
 	}
 
 	// Handle [DONE] marker
@@ -718,10 +710,6 @@ func (s *responsesInboundStream) Err() error {
 }
 
 func (s *responsesInboundStream) Close() error {
-	if dumper.Enabled() {
-		dumper.DumpObject(s.ctx, s.sourceEvents, "responses-inbound-stream")
-	}
-
 	return s.source.Close()
 }
 

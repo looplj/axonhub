@@ -7,7 +7,6 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -46,8 +45,6 @@ type anthropicInboundStream struct {
 	stopReason                *string
 	// Tool call tracking
 	toolCalls map[int]*llm.ToolCall // Track tool calls by index
-
-	sourceEvents []*llm.Response
 
 	lastEventType string
 }
@@ -92,10 +89,6 @@ func (s *anthropicInboundStream) Next() bool {
 	chunk := s.source.Current()
 	if chunk == nil {
 		return s.Next() // Try next chunk
-	}
-
-	if dumper.Enabled() {
-		s.sourceEvents = append(s.sourceEvents, chunk)
 	}
 
 	// Handle [DONE] marker
@@ -605,9 +598,5 @@ func (s *anthropicInboundStream) Err() error {
 }
 
 func (s *anthropicInboundStream) Close() error {
-	if dumper.Enabled() {
-		dumper.DumpObject(s.ctx, s.sourceEvents, "anthropic-inbound-stream")
-	}
-
 	return s.source.Close()
 }

@@ -29,13 +29,13 @@ type streamAggregator struct {
 
 // aggregatedItem holds the accumulated state for an output item.
 type aggregatedItem struct {
-	ID        string
-	Type      string
-	Status    string
-	Role      string
-	CallID    string
-	Name      string
-	Arguments *strings.Builder
+	ID               string
+	Type             string
+	Status           string
+	Role             string
+	CallID           string
+	Name             string
+	Arguments        *strings.Builder
 	EncryptedContent *string
 
 	// For message type
@@ -319,10 +319,10 @@ func (a *streamAggregator) buildResponse() *Response {
 				}
 
 				output = append(output, Item{
-					ID:      item.ID,
-					Type:    item.Type,
-					Status:  lo.ToPtr(item.Status),
-					Summary: summary,
+					ID:               item.ID,
+					Type:             item.Type,
+					Status:           lo.ToPtr(item.Status),
+					Summary:          summary,
 					EncryptedContent: item.EncryptedContent,
 				})
 

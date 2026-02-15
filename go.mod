@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub
 
-go 1.25.3
+go 1.26.0
 
 require (
 	github.com/go-openapi/inflect v0.21.4 // indirect

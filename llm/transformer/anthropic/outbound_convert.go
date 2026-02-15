@@ -3,9 +3,9 @@ package anthropic
 import (
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xjson"
-	"github.com/looplj/axonhub/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 

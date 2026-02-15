@@ -8,12 +8,12 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/tracing"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Config holds all configuration for the Zai outbound transformer.
@@ -127,8 +127,8 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	if zaiReq.RequestID == "" {
-		traceID, _ := tracing.GetTraceID(ctx)
-		zaiReq.RequestID = traceID
+		sessionID, _ := shared.GetSessionID(ctx)
+		zaiReq.RequestID = sessionID
 	}
 
 	// zai only support auto tool choice.
