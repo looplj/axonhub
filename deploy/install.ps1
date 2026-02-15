@@ -175,11 +175,11 @@ server:
 
 db:
   dialect: "sqlite3"
-  dsn: "$baseForDSN/axonhub.db?cache=shared&_fk=1&journal_mode=WAL"
+  dsn: "$baseForDSN/axonhub.db?cache=shared&_fk=1"
 
 cache:
   mode: "memory"
-  cache:
+  memory:
     expiration: "5s"
     cleanup_interval: "5s"
     
