@@ -31,7 +31,7 @@ const (
 	ApiClient = "google-cloud-sdk vscode_cloudshelleditor/0.1"
 
 	// ClientMetadata used for Client-Metadata header.
-	ClientMetadata = `{"ideType":"IDE_UNSPECIFIED","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}`
+	ClientMetadata = `{"ideType":"ANTIGRAVITY","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}`
 
 	// DefaultProjectID is the fallback project ID (Cloud Code default).
 	DefaultProjectID = "rising-fact-p41fc"
