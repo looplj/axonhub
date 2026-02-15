@@ -5145,7 +5145,7 @@
             "default": true
           },
           "tool_call": true,
-          "structured_output": true,
+          "structured_output": false,
           "temperature": false,
           "knowledge": "2025-08-31",
           "release_date": "2025-12-11",
