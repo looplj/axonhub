@@ -23,7 +23,6 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/andreazorzetto/yh v0.4.0
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4
 	github.com/aws/aws-sdk-go-v2/config v1.32.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.0
@@ -58,7 +57,6 @@ require (
 	github.com/studio-b12/gowebdav v0.12.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
-	github.com/tmaxmax/go-sse v0.11.0
 	github.com/vektah/gqlparser/v2 v2.5.31
 	github.com/viterin/partial v1.1.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
@@ -76,6 +74,11 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.40.1
+)
+
+require (
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
+	github.com/tmaxmax/go-sse v0.11.0 // indirect
 )
 
 replace github.com/99designs/gqlgen => github.com/looplj/gqlgen v0.0.0-20251206072334-03e453169896
@@ -158,6 +161,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
+	github.com/looplj/axonhub/llm v0.0.0
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
@@ -222,3 +226,5 @@ require (
 )
 
 tool github.com/99designs/gqlgen
+
+replace github.com/looplj/axonhub/llm => ./llm
