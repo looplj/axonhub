@@ -297,9 +297,8 @@ func TestMaskSensitiveHeaders_MasksAllHardcodedHeaders(t *testing.T) {
 	got := MaskSensitiveHeaders(headers)
 
 	for k := range sensitiveHeaders {
-		canonical := http.CanonicalHeaderKey(k)
-		require.Equal(t, []string{"******"}, got.Values(canonical),
-			"sensitiveHeaders %q (canonical: %q) should be masked", k, canonical)
+		require.Equal(t, []string{"******"}, got.Values(k),
+			"sensitiveHeaders %q should be masked", k)
 	}
 	require.Equal(t, []string{"visible"}, got.Values("X-Custom"))
 }
