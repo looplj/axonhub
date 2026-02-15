@@ -8,10 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/looplj/axonhub/internal/pkg/xerrors"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	transformer "github.com/looplj/axonhub/llm/transformer"
 )
 
@@ -135,7 +134,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
 		return &httpclient.Error{
 			StatusCode: llmErr.StatusCode,
 			Status:     http.StatusText(llmErr.StatusCode),
@@ -150,7 +149,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
+	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
 		return httpErr
 	}
 

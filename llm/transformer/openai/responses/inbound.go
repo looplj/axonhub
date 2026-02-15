@@ -11,12 +11,11 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xerrors"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
-	"github.com/looplj/axonhub/internal/pkg/xmap"
-	"github.com/looplj/axonhub/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -116,7 +115,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
 		errResp := ResponseError{
 			Error: ResponseErrorDetail{
 				Message: llmErr.Detail.Message,
@@ -132,7 +131,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
+	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
 		return httpErr
 	}
 

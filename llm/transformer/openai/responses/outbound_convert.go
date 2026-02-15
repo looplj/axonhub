@@ -6,8 +6,8 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 

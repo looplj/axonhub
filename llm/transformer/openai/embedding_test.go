@@ -267,8 +267,8 @@ func TestEmbeddingInboundTransformer_TransformRequest(t *testing.T) {
 func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 	t.Run("valid request with /v1 suffix", func(t *testing.T) {
 		config := &Config{
-			PlatformType: PlatformOpenAI,
-			BaseURL:      "https://api.openai.com/v1",
+			PlatformType:   PlatformOpenAI,
+			BaseURL:        "https://api.openai.com/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
@@ -296,8 +296,8 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 
 	t.Run("nil llm request", func(t *testing.T) {
 		config := &Config{
-			PlatformType: PlatformOpenAI,
-			BaseURL:      "https://api.openai.com/v1",
+			PlatformType:   PlatformOpenAI,
+			BaseURL:        "https://api.openai.com/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
@@ -310,8 +310,8 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 
 	t.Run("missing embedding request", func(t *testing.T) {
 		config := &Config{
-			PlatformType: PlatformOpenAI,
-			BaseURL:      "https://api.openai.com/v1",
+			PlatformType:   PlatformOpenAI,
+			BaseURL:        "https://api.openai.com/v1",
 			APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 		}
 		transformer, err := NewOutboundTransformerWithConfig(config)
@@ -330,8 +330,8 @@ func TestEmbeddingOutboundTransformer_TransformRequest(t *testing.T) {
 
 func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 	config := &Config{
-		PlatformType: PlatformOpenAI,
-		BaseURL:      "https://api.openai.com/v1",
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
@@ -566,8 +566,8 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIEmbedding, inbound.APIFormat())
 
 	config := &Config{
-		PlatformType: PlatformOpenAI,
-		BaseURL:      "https://api.openai.com/v1",
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	outbound, err := NewOutboundTransformerWithConfig(config)
@@ -577,8 +577,8 @@ func TestEmbeddingTransformers_APIFormat(t *testing.T) {
 
 func TestEmbeddingOutboundTransformer_TransformError(t *testing.T) {
 	config := &Config{
-		PlatformType: PlatformOpenAI,
-		BaseURL:      "https://api.openai.com/v1",
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	}
 	transformer, err := NewOutboundTransformerWithConfig(config)
@@ -666,8 +666,8 @@ func TestEmbeddingOutboundTransformer_URLBuilding(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			config := &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      tc.baseURL,
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        tc.baseURL,
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			}
 			transformer, err := NewOutboundTransformerWithConfig(config)
@@ -698,8 +698,8 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 		{
 			name: "raw URL enabled for embedding",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://custom.api.com/v100#",
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom.api.com/v100#",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -716,8 +716,8 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 		{
 			name: "raw URL auto-enabled with # suffix for embedding",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://custom.api.com/v20#",
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom.api.com/v20#",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -734,10 +734,10 @@ func TestOutboundTransformer_RawURL_Embedding(t *testing.T) {
 		{
 			name: "raw URL false for embedding",
 			config: &Config{
-				PlatformType: PlatformOpenAI,
-				BaseURL:      "https://api.openai.com",
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://api.openai.com",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-				RawURL:       false,
+				RawURL:         false,
 			},
 			request: &llm.Request{
 				RequestType: llm.RequestTypeEmbedding,

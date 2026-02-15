@@ -574,4 +574,3 @@ func (m *mockHTTPStream) Err() error {
 func (m *mockHTTPStream) Close() error {
 	return nil
 }
-
