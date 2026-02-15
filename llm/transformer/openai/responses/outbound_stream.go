@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -125,8 +125,8 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return fmt.Errorf("failed to unmarshal responses api stream event: %w", err)
 	}
 
-	if log.DebugEnabled(context.Background()) {
-		log.Debug(context.Background(), "received response stream event", log.Any("event", streamEvent))
+	if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
+		slog.DebugContext(context.Background(), "received response stream event", slog.Any("event", streamEvent))
 	}
 
 	// Build base response

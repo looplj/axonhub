@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"sync"
 
 	"github.com/tmaxmax/go-sse"
-
-	"github.com/looplj/axonhub/internal/log"
 )
 
 // decoderRegistry holds registered stream decoders.
@@ -83,7 +82,7 @@ func (s *defaultSSEDecoder) Next() bool {
 	// Check context cancellation
 	select {
 	case <-s.ctx.Done():
-		log.Debug(s.ctx, "SSE stream closed")
+		slog.DebugContext(s.ctx, "SSE stream closed")
 
 		s.err = s.ctx.Err()
 		_ = s.Close()
@@ -96,7 +95,7 @@ func (s *defaultSSEDecoder) Next() bool {
 	event, err := s.sseStream.Recv()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			log.Debug(s.ctx, "SSE stream closed")
+			slog.DebugContext(s.ctx, "SSE stream closed")
 			_ = s.Close()
 
 			return false
@@ -108,7 +107,7 @@ func (s *defaultSSEDecoder) Next() bool {
 		return false
 	}
 
-	log.Debug(s.ctx, "SSE event received", log.Any("event", event))
+	slog.DebugContext(s.ctx, "SSE event received", slog.Any("event", event))
 
 	// Create stream event for this event
 	s.current = &StreamEvent{
@@ -140,7 +139,7 @@ func (s *defaultSSEDecoder) Close() error {
 	s.closed = true
 	if s.sseStream != nil {
 		s.closeErr = s.sseStream.Close()
-		log.Debug(s.ctx, "SSE stream closed")
+		slog.DebugContext(s.ctx, "SSE stream closed")
 	}
 
 	return s.closeErr

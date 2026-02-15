@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
@@ -218,7 +218,7 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		if err == nil {
 			headers.Set("Authorization", "Bearer "+creds.AccessToken)
 		} else {
-			log.Warn(ctx, "failed to get oauth token, attempting fallback to api key", log.Cause(err))
+			slog.WarnContext(ctx, "failed to get oauth token, attempting fallback to api key", slog.Any("error", err))
 
 			if t.config.APIKey != "" {
 				auth = &httpclient.AuthConfig{
@@ -268,7 +268,7 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 			sanitized = UppercaseSchemaTypes(sanitized)
 			req.GenerationConfig.ResponseSchema = xjson.MustMarshal(sanitized)
 		} else {
-			log.Debug(ctx, "failed to unmarshal response schema", log.Cause(err))
+			slog.DebugContext(ctx, "failed to unmarshal response schema", slog.Any("error", err))
 		}
 	}
 
@@ -304,7 +304,7 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 					// Clear ParametersJsonSchema to avoid sending both
 					fd.ParametersJsonSchema = nil
 				} else {
-					log.Debug(ctx, "failed to unmarshal tool parameters", log.String("tool", fd.Name), log.Cause(err))
+					slog.DebugContext(ctx, "failed to unmarshal tool parameters", slog.String("tool", fd.Name), slog.Any("error", err))
 				}
 			}
 		}
