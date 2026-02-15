@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -302,8 +302,8 @@ func (t *OutboundTransformer) TransformRequest(
 	// Fallback: Filter out Google native tools (not supported by OpenAI-compatible endpoint)
 	// This is a graceful degradation when no native Gemini channels are available.
 	if llm.ContainsGoogleNativeTools(req.Tools) {
-		log.Warn(ctx, "Google native tools detected but gemini_openai channel does not support them, filtering out",
-			log.Int("original_tools_count", len(req.Tools)))
+		slog.WarnContext(ctx, "Google native tools detected but gemini_openai channel does not support them, filtering out",
+			slog.Int("original_tools_count", len(req.Tools)))
 
 		req.Tools = llm.FilterGoogleNativeTools(req.Tools)
 
@@ -314,8 +314,8 @@ func (t *OutboundTransformer) TransformRequest(
 			req.ToolChoice = nil
 		}
 
-		log.Debug(ctx, "Filtered Google native tools",
-			log.Int("remaining_tools_count", len(req.Tools)))
+		slog.DebugContext(ctx, "Filtered Google native tools",
+			slog.Int("remaining_tools_count", len(req.Tools)))
 	}
 
 	var extraBody *ExtraBody

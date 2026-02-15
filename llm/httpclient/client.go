@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -81,7 +81,7 @@ func getProxyFunc(config *ProxyConfig) func(*http.Request) (*url.URL, error) {
 			proxyURL.User = url.UserPassword(config.Username, config.Password)
 		}
 
-		log.Debug(context.Background(), "use custom proxy", log.Any("proxy_url", proxyURL.Redacted()))
+		slog.DebugContext(context.Background(), "use custom proxy", slog.Any("proxy_url", proxyURL.Redacted()))
 
 		return http.ProxyURL(proxyURL)
 
@@ -107,7 +107,7 @@ func NewHttpClientWithClient(client *http.Client) *HttpClient {
 
 // Do executes the HTTP request.
 func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, error) {
-	log.Debug(ctx, "execute http request", log.Any("request", request), log.Any("proxy", hc.proxyConfig))
+	slog.DebugContext(ctx, "execute http request", slog.Any("request", request), slog.Any("proxy", hc.proxyConfig))
 
 	rawReq, err := hc.BuildHttpRequest(ctx, request)
 	if err != nil {
@@ -124,7 +124,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	defer func() {
 		err := rawResp.Body.Close()
 		if err != nil {
-			log.Warn(ctx, "failed to close HTTP response body", log.Cause(err))
+			slog.WarnContext(ctx, "failed to close HTTP response body", slog.Any("error", err))
 		}
 	}()
 
@@ -134,12 +134,12 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	}
 
 	if rawResp.StatusCode >= 400 {
-		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "HTTP request failed",
-				log.String("method", rawReq.Method),
-				log.String("url", rawReq.URL.String()),
-				log.Any("status_code", rawResp.StatusCode),
-				log.String("body", string(body)))
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.DebugContext(ctx, "HTTP request failed",
+				slog.String("method", rawReq.Method),
+				slog.String("url", rawReq.URL.String()),
+				slog.Int("status_code", rawResp.StatusCode),
+				slog.String("body", string(body)))
 		}
 
 		return nil, &Error{
@@ -151,12 +151,12 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}
 
-	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "HTTP request success",
-			log.String("method", rawReq.Method),
-			log.String("url", rawReq.URL.String()),
-			log.Any("status_code", rawResp.StatusCode),
-			log.String("body", string(body)))
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+		slog.DebugContext(ctx, "HTTP request success",
+			slog.String("method", rawReq.Method),
+			slog.String("url", rawReq.URL.String()),
+			slog.Int("status_code", rawResp.StatusCode),
+			slog.String("body", string(body)))
 	}
 
 	// Build generic response
@@ -175,7 +175,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 
 // DoStream executes a streaming HTTP request using Server-Sent Events.
 func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
-	log.Debug(ctx, "execute stream request", log.Any("request", request))
+	slog.DebugContext(ctx, "execute stream request", slog.Any("request", request))
 
 	rawReq, err := hc.BuildHttpRequest(ctx, request)
 	if err != nil {
@@ -198,7 +198,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		defer func() {
 			err := rawResp.Body.Close()
 			if err != nil {
-				log.Warn(ctx, "failed to close HTTP response body", log.Cause(err))
+				slog.WarnContext(ctx, "failed to close HTTP response body", slog.Any("error", err))
 			}
 		}()
 
@@ -208,12 +208,12 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 			return nil, err
 		}
 
-		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "HTTP stream request failed",
-				log.String("method", rawReq.Method),
-				log.String("url", rawReq.URL.String()),
-				log.Any("status_code", rawResp.StatusCode),
-				log.String("body", string(body)))
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.DebugContext(ctx, "HTTP stream request failed",
+				slog.String("method", rawReq.Method),
+				slog.String("url", rawReq.URL.String()),
+				slog.Int("status_code", rawResp.StatusCode),
+				slog.String("body", string(body)))
 		}
 
 		return nil, &Error{
@@ -235,7 +235,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	decoderFactory, exists := GetDecoder(contentType)
 	if !exists {
 		// Fallback to default SSE decoder
-		log.Debug(ctx, "no decoder found for content type, using default SSE", log.String("content_type", contentType))
+		slog.DebugContext(ctx, "no decoder found for content type, using default SSE", slog.String("content_type", contentType))
 
 		decoderFactory = NewDefaultSSEDecoder
 	}

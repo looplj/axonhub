@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -196,7 +196,7 @@ func downloadImageToDataURL(ctx context.Context, imageURL string) (string, error
 
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Error(ctx, "failed to close response body", log.Cause(err))
+			slog.ErrorContext(ctx, "failed to close response body", slog.Any("error", err))
 		}
 	}()
 

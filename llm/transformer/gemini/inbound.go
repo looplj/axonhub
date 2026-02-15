@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
@@ -69,7 +69,7 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 		return nil, err
 	}
 
-	log.Debug(ctx, "extract gemini request params", log.String("model", model), log.Bool("stream", stream))
+	slog.DebugContext(ctx, "extract gemini request params", slog.String("model", model), slog.Bool("stream", stream))
 
 	var geminiReq GenerateContentRequest
 	if err := json.Unmarshal(httpReq.Body, &geminiReq); err != nil {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -36,10 +36,10 @@ func (p *pipeline) stream(
 		return nil, fmt.Errorf("failed to apply raw stream middlewares: %w", err)
 	}
 
-	if log.DebugEnabled(ctx) {
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		outboundStream = streams.Map(outboundStream,
 			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-				log.Debug(ctx, "Outbound stream event", log.Any("event", event))
+				slog.DebugContext(ctx, "Outbound stream event", slog.Any("event", event))
 				return event
 			},
 		)
@@ -47,7 +47,7 @@ func (p *pipeline) stream(
 
 	llmStream, err := p.Outbound.TransformStream(ctx, outboundStream)
 	if err != nil {
-		log.Error(ctx, "Failed to transform streaming request", log.Cause(err))
+		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
 		return nil, err
 	}
 
@@ -57,24 +57,24 @@ func (p *pipeline) stream(
 		return nil, fmt.Errorf("failed to apply llm stream middlewares: %w", err)
 	}
 
-	if log.DebugEnabled(ctx) {
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		llmStream = streams.Map(llmStream, func(event *llm.Response) *llm.Response {
-			log.Debug(ctx, "LLM stream event", log.Any("event", event))
+			slog.DebugContext(ctx, "LLM stream event", slog.Any("event", event))
 			return event
 		})
 	}
 
 	inboundStream, err := p.Inbound.TransformStream(ctx, llmStream)
 	if err != nil {
-		log.Error(ctx, "Failed to transform streaming request", log.Cause(err))
+		slog.ErrorContext(ctx, "Failed to transform streaming request", slog.Any("error", err))
 		return nil, err
 	}
 
-	if log.DebugEnabled(ctx) {
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		inboundStream = streams.Map(
 			inboundStream,
 			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-				log.Debug(ctx, "Inbound stream event", log.Any("event", event))
+				slog.DebugContext(ctx, "Inbound stream event", slog.Any("event", event))
 				return event
 			},
 		)

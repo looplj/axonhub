@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -94,7 +94,7 @@ func (t *TextTransformer) TransformStreamChunk(
 
 	// Process each choice
 	for _, choice := range chunk.Choices {
-		log.Debug(ctx, "Processing choice for ai text", log.Any("choice", choice))
+		slog.DebugContext(ctx, "Processing choice for ai text", slog.Any("choice", choice))
 
 		// Handle text content - Format: 0:"text"\n
 		if choice.Delta != nil && choice.Delta.Content.Content != nil &&
