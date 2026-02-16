@@ -653,12 +653,12 @@ func isOAuthJSON(s string) bool {
 	return strings.HasPrefix(trimmed, "{") && strings.Contains(s, "access_token")
 }
 
-func extractProjectIDFromAntigravityCreds(apiKey string) string {
+func extractProjectIDFromAntigravityCreds(apiKey string) (string, error) {
 	parts := strings.Split(apiKey, "|")
 	if len(parts) >= 2 {
-		return parts[1]
+		return parts[1], nil
 	}
-	return ""
+	return "", errors.New("api key does not contain project ID (expected format: \"<refreshToken>|<projectID>\")")
 }
 
 func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channel, refreshed *oauth.OAuthCredentials) error {
@@ -669,7 +669,13 @@ func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channe
 	updated := ch.Credentials
 
 	if ch.Type == channel.TypeAntigravity {
-		projectID := extractProjectIDFromAntigravityCreds(ch.Credentials.APIKey)
+		projectID, err := extractProjectIDFromAntigravityCreds(ch.Credentials.APIKey)
+		if err != nil {
+			log.Warn(ctx, "failed to extract project ID from antigravity credentials",
+				log.Cause(err),
+				log.String("channel", ch.Name))
+			return fmt.Errorf("failed to extract project ID from antigravity credentials: %w", err)
+		}
 		updated.APIKey = fmt.Sprintf("%s|%s", refreshed.RefreshToken, projectID)
 	} else {
 		credJSON, err := refreshed.ToJSON()
