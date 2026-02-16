@@ -15,6 +15,17 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+func wrapHttpError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var httpErr *httpclient.Error
+	if errors.As(err, &httpErr) && len(httpErr.Body) > 0 {
+		return fmt.Errorf("%w (response body: %s)", err, string(httpErr.Body))
+	}
+	return err
+}
+
 type OAuthUrls struct {
 	AuthorizeUrl string
 	TokenUrl     string
@@ -481,7 +492,7 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 
 	resp, err := p.httpClient.Do(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, wrapHttpError(err)
 	}
 
 	refreshed, err := ParseTokenResponse(resp.Body, creds.ClientID)
