@@ -237,6 +237,72 @@ func TestMergeHTTPHeaders(t *testing.T) {
 	}
 }
 
+// TestHeaderMaps_CanonicalForm verifies every key in the three header maps
+// matches Go's http.CanonicalHeaderKey form. A mismatch causes silent lookup
+// failures when iterating http.Header (which always uses canonical keys).
+func TestHeaderMaps_CanonicalForm(t *testing.T) {
+	for name, m := range map[string]map[string]bool{
+		"blockedHeaders":    blockedHeaders,
+		"sensitiveHeaders":  sensitiveHeaders,
+		"libManagedHeaders": libManagedHeaders,
+	} {
+		for k := range m {
+			canonical := http.CanonicalHeaderKey(k)
+			require.Equal(t, canonical, k, "%s key %q should be canonical form %q", name, k, canonical)
+		}
+	}
+}
+
+// TestMergeHTTPHeaders_BlocksAllHardcodedHeaders builds an http.Header via
+// Set() (auto-canonicalized, matching real HTTP server behavior) for every
+// header in blockedHeaders, sensitiveHeaders and libManagedHeaders, then
+// verifies none of them appear in the merge result.
+func TestMergeHTTPHeaders_BlocksAllHardcodedHeaders(t *testing.T) {
+	src := make(http.Header)
+	for k := range blockedHeaders {
+		src.Set(k, "blocked-val")
+	}
+	for k := range sensitiveHeaders {
+		src.Set(k, "sensitive-val")
+	}
+	for k := range libManagedHeaders {
+		src.Set(k, "lib-val")
+	}
+	src.Set("X-Custom", "keep-me")
+
+	dest := make(http.Header)
+	got := MergeHTTPHeaders(dest, src)
+
+	for k := range blockedHeaders {
+		require.Empty(t, got.Values(k), "blockedHeaders %q should not be merged", k)
+	}
+	for k := range sensitiveHeaders {
+		require.Empty(t, got.Values(k), "sensitiveHeaders %q should not be merged", k)
+	}
+	for k := range libManagedHeaders {
+		require.Empty(t, got.Values(k), "libManagedHeaders %q should not be merged", k)
+	}
+	require.Equal(t, "keep-me", got.Get("X-Custom"), "non-blocked header should be merged")
+}
+
+// TestMaskSensitiveHeaders_MasksAllHardcodedHeaders verifies every header in
+// sensitiveHeaders is masked to "******" by MaskSensitiveHeaders.
+func TestMaskSensitiveHeaders_MasksAllHardcodedHeaders(t *testing.T) {
+	headers := make(http.Header)
+	for k := range sensitiveHeaders {
+		headers.Set(k, "secret-value")
+	}
+	headers.Set("X-Custom", "visible")
+
+	got := MaskSensitiveHeaders(headers)
+
+	for k := range sensitiveHeaders {
+		require.Equal(t, []string{"******"}, got.Values(k),
+			"sensitiveHeaders %q should be masked", k)
+	}
+	require.Equal(t, []string{"visible"}, got.Values("X-Custom"))
+}
+
 func TestRegisterAppendHeaders(t *testing.T) {
 	RegisterMergeWithAppendHeaders("X-New-Append")
 

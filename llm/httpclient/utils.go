@@ -87,7 +87,7 @@ var blockedHeaders = map[string]bool{
 	"Connection":        true,
 	"X-Channel-Id":      true,
 	"X-Project-Id":      true,
-	"X-Real-IP":         true,
+	"X-Real-Ip":         true,
 	"X-Forwarded-For":   true,
 	"X-Forwarded-Proto": true,
 	"X-Forwarded-Host":  true,
@@ -118,7 +118,7 @@ var sensitiveHeaders = map[string]bool{
 	"Cookie":              true,
 	"Set-Cookie":          true,
 	"Proxy-Authorization": true,
-	"WWW-Authenticate":    true,
+	"Www-Authenticate":    true,
 }
 
 var mergeWithAppendHeaders = map[string]bool{}
