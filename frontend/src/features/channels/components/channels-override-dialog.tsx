@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { z } from 'zod';
 import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Save, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Save, Download, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useUpdateChannel } from '../data/channels';
 import { Channel, OverrideOperation, overrideOperationSchema } from '../data/schema';
-import { useChannelOverrideTemplates, useCreateChannelOverrideTemplate } from '../data/templates';
+import { useChannelOverrideTemplates, useCreateChannelOverrideTemplate, useDeleteChannelOverrideTemplate } from '../data/templates';
 import { mergeChannelSettingsForUpdate, mergeOverrideHeaders, mergeOverrideOperations } from '../utils/merge';
 
 type OpType = OverrideOperation['op'];
@@ -406,6 +406,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
   const createTemplate = useCreateChannelOverrideTemplate();
+  const deleteTemplate = useDeleteChannelOverrideTemplate();
 
   const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -632,6 +633,18 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
     [form, currentRow.type, createTemplate]
   );
 
+  const handleDeleteTemplate = useCallback(
+    async (e: React.MouseEvent, templateId: string) => {
+      e.stopPropagation();
+      e.preventDefault();
+      await deleteTemplate.mutateAsync(templateId);
+      if (selectedTemplateId === templateId) {
+        setSelectedTemplateId(null);
+      }
+    },
+    [deleteTemplate, selectedTemplateId]
+  );
+
   const headerOpsCount = headerFields.length;
   const bodyOpsCount = bodyFields.length;
 
@@ -681,11 +694,23 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
                             setTimeout(() => handleApplyTemplate(template.id), 0);
                           }}
                         >
-                          <div className='flex flex-col'>
-                            <span className='font-medium'>{template.name}</span>
-                            {template.description && (
-                              <span className='text-muted-foreground line-clamp-1 text-xs'>{template.description}</span>
-                            )}
+                          <div className='flex flex-1 items-center justify-between'>
+                            <div className='flex flex-col'>
+                              <span className='font-medium'>{template.name}</span>
+                              {template.description && (
+                                <span className='text-muted-foreground line-clamp-1 text-xs'>{template.description}</span>
+                              )}
+                            </div>
+                            <Button
+                              type='button'
+                              variant='ghost'
+                              size='icon'
+                              className='text-muted-foreground hover:text-destructive h-6 w-6 shrink-0'
+                              onClick={(e) => handleDeleteTemplate(e, template.id)}
+                              disabled={deleteTemplate.isPending}
+                            >
+                              <Trash2 className='h-3.5 w-3.5' />
+                            </Button>
                           </div>
                         </CommandItem>
                       ))}
