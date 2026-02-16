@@ -680,7 +680,7 @@ func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channe
 	} else {
 		credJSON, err := refreshed.ToJSON()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to serialize refreshed credentials: %w", err)
 		}
 		// NOTE：必须是使用 APIKey 字段，不能使用 API Keys 字段
 		updated.APIKey = credJSON
