@@ -259,7 +259,7 @@ func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken 
 		url := fmt.Sprintf("%s/v1internal:loadCodeAssist", baseEndpoint)
 		reqBody := map[string]any{
 			"metadata": map[string]string{
-				"ideType":    "IDE_UNSPECIFIED",
+				"ideType":    "ANTIGRAVITY",
 				"platform":   "PLATFORM_UNSPECIFIED",
 				"pluginType": "GEMINI",
 			},
@@ -278,7 +278,7 @@ func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken 
 				"Content-Type":      []string{"application/json"},
 				"User-Agent":        []string{antigravity.UserAgent},
 				"X-Goog-Api-Client": []string{"google-cloud-sdk vscode_cloudshelleditor/0.1"},
-				"Client-Metadata":   []string{`{"ideType":"IDE_UNSPECIFIED","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}`},
+				"Client-Metadata":   []string{antigravity.ClientMetadata},
 			},
 			Body: bodyBytes,
 		}
@@ -352,7 +352,7 @@ func (h *AntigravityHandlers) onboardUser(ctx context.Context, accessToken, tier
 		reqBody := map[string]any{
 			"tierId": tierID,
 			"metadata": map[string]string{
-				"ideType":    "IDE_UNSPECIFIED",
+				"ideType":    "ANTIGRAVITY",
 				"platform":   "PLATFORM_UNSPECIFIED",
 				"pluginType": "GEMINI",
 			},
@@ -367,7 +367,7 @@ func (h *AntigravityHandlers) onboardUser(ctx context.Context, accessToken, tier
 				"Content-Type":      []string{"application/json"},
 				"User-Agent":        []string{antigravity.UserAgent},
 				"X-Goog-Api-Client": []string{"google-cloud-sdk vscode_cloudshelleditor/0.1"},
-				"Client-Metadata":   []string{`{"ideType":"IDE_UNSPECIFIED","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}`},
+				"Client-Metadata":   []string{antigravity.ClientMetadata},
 			},
 			Body: bodyBytes,
 		}

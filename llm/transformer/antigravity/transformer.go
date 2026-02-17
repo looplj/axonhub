@@ -210,31 +210,19 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		headers.Set("Accept", "application/json")
 	}
 
-	// Auth
-	var auth *httpclient.AuthConfig
-
+	// Auth - OAuth only, no API key fallback
+	var authConfig *httpclient.AuthConfig
 	if t.tokenProvider != nil {
 		creds, err := t.tokenProvider.Get(ctx)
-		if err == nil {
-			headers.Set("Authorization", "Bearer "+creds.AccessToken)
-		} else {
-			slog.WarnContext(ctx, "failed to get oauth token, attempting fallback to api key", slog.Any("error", err))
-
-			if t.config.APIKey != "" {
-				auth = &httpclient.AuthConfig{
-					Type:      "api_key",
-					APIKey:    t.config.APIKey,
-					HeaderKey: "x-goog-api-key",
-				}
-			}
+		if err != nil {
+			return nil, fmt.Errorf("failed to get OAuth token: %w", err)
 		}
-	} else if t.config.APIKey != "" {
-		// Fallback to API Key if no token provider (legacy/testing?)
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    t.config.APIKey,
-			HeaderKey: "x-goog-api-key",
+		authConfig = &httpclient.AuthConfig{
+			Type:   httpclient.AuthTypeBearer,
+			APIKey: creds.AccessToken,
 		}
+	} else {
+		return nil, fmt.Errorf("no OAuth token provider configured")
 	}
 
 	// URL
@@ -245,7 +233,7 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		URL:     url,
 		Headers: headers,
 		Body:    body,
-		Auth:    auth,
+		Auth:    authConfig,
 	}
 
 	// Store the original model name in metadata for executor routing

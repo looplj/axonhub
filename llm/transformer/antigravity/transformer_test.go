@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -27,9 +28,10 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 }
 
 func TestTransformRequest_Antigravity(t *testing.T) {
+	// Use OAuth credentials format: refreshToken|projectID
 	config := Config{
 		BaseURL: "https://api.antigravity.dev",
-		APIKey:  "secret-key",
+		APIKey:  "test-refresh-token|test-project-id",
 		Project: "my-project",
 	}
 
@@ -74,8 +76,10 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 		assert.Equal(t, UserAgent, httpReq.Headers.Get("User-Agent"))
 		assert.Equal(t, ApiClient, httpReq.Headers.Get("X-Goog-Api-Client"))
 		assert.Equal(t, ClientMetadata, httpReq.Headers.Get("Client-Metadata"))
-		// Since we mocked the token response, we expect the mock access token
-		assert.Equal(t, "Bearer mock-access-token", httpReq.Headers.Get("Authorization"))
+		// Since we mocked the token response, we expect the mock access token in Auth config
+		require.NotNil(t, httpReq.Auth)
+		assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+		assert.Equal(t, "mock-access-token", httpReq.Auth.APIKey)
 
 		// Check URL
 		assert.Equal(t, "https://api.antigravity.dev/v1internal:generateContent", httpReq.URL)
@@ -294,4 +298,148 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 		assert.Equal(t, "OBJECT", parameters["type"]) // UPPERCASE, as Antigravity API expects
 		assert.NotNil(t, parameters["properties"])
 	})
+}
+
+// TestOAuthFailureNoFallback verifies that when OAuth token retrieval fails, an error is returned (not fallback to API key)
+func TestOAuthFailureNoFallback(t *testing.T) {
+	config := Config{
+		BaseURL: "https://api.antigravity.dev",
+		APIKey:  "test-refresh-token|test-project-id",
+		Project: "my-project",
+	}
+
+	// Mock HTTP Client that fails token retrieval
+	mockRT := &mockRoundTripper{
+		roundTrip: func(req *http.Request) (*http.Response, error) {
+			if req.URL.String() == TokenURL {
+				return nil, fmt.Errorf("token retrieval failed")
+			}
+			return &http.Response{StatusCode: http.StatusNotFound}, nil
+		},
+	}
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: mockRT,
+	})
+
+	transformer, err := NewTransformer(config, WithHTTPClient(httpClient))
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gemini-2.5-flash",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	}
+
+	_, err = transformer.TransformRequest(context.Background(), req)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get OAuth token")
+}
+
+// TestNoAPIKeyAuthConfig verifies that AuthConfig is never set to api_key type
+func TestNoAPIKeyAuthConfig(t *testing.T) {
+	config := Config{
+		BaseURL: "https://api.antigravity.dev",
+		APIKey:  "test-refresh-token|test-project-id",
+		Project: "my-project",
+	}
+
+	// Mock successful OAuth token retrieval
+	mockRT := &mockRoundTripper{
+		roundTrip: func(req *http.Request) (*http.Response, error) {
+			if req.URL.String() == TokenURL {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body: io.NopCloser(bytes.NewBufferString(`{
+						"access_token": "mock-access-token",
+						"token_type": "Bearer",
+						"expires_in": 3600
+					}`)),
+					Header: make(http.Header),
+				}, nil
+			}
+			return &http.Response{StatusCode: http.StatusNotFound}, nil
+		},
+	}
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: mockRT,
+	})
+
+	transformer, err := NewTransformer(config, WithHTTPClient(httpClient))
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gemini-2.5-flash",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+
+	// Verify Auth config is set with Bearer token (OAuth)
+	require.NotNil(t, httpReq.Auth)
+	assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+	assert.Equal(t, "mock-access-token", httpReq.Auth.APIKey)
+
+	// Verify no X-Goog-Api-Key header is set
+	assert.Empty(t, httpReq.Headers.Get("X-Goog-Api-Key"))
+}
+
+// TestOAuthOnlyHeaders verifies that X-Goog-Api-Key header is never sent
+func TestOAuthOnlyHeaders(t *testing.T) {
+	config := Config{
+		BaseURL: "https://api.antigravity.dev",
+		APIKey:  "test-refresh-token|test-project-id",
+		Project: "my-project",
+	}
+
+	// Mock successful OAuth token retrieval
+	mockRT := &mockRoundTripper{
+		roundTrip: func(req *http.Request) (*http.Response, error) {
+			if req.URL.String() == TokenURL {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body: io.NopCloser(bytes.NewBufferString(`{
+						"access_token": "oauth-access-token",
+						"token_type": "Bearer",
+						"expires_in": 3600
+					}`)),
+					Header: make(http.Header),
+				}, nil
+			}
+			return &http.Response{StatusCode: http.StatusNotFound}, nil
+		},
+	}
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: mockRT,
+	})
+
+	transformer, err := NewTransformer(config, WithHTTPClient(httpClient))
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "claude-3-5-sonnet",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Test")}},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+
+	// Verify Auth config is set correctly with Bearer token
+	require.NotNil(t, httpReq.Auth)
+	assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+	assert.Equal(t, "oauth-access-token", httpReq.Auth.APIKey)
+
+	// Verify X-Goog-Api-Key header is NOT present
+	assert.Empty(t, httpReq.Headers.Get("X-Goog-Api-Key"), "X-Goog-Api-Key header should not be set when using OAuth")
+
+	// Verify other required headers are present
+	assert.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
+	assert.Equal(t, UserAgent, httpReq.Headers.Get("User-Agent"))
+	assert.Equal(t, ApiClient, httpReq.Headers.Get("X-Goog-Api-Client"))
+	assert.Equal(t, ClientMetadata, httpReq.Headers.Get("Client-Metadata"))
 }
