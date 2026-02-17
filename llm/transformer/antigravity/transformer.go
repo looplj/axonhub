@@ -211,12 +211,16 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	}
 
 	// Auth - OAuth only, no API key fallback
+	var authConfig *httpclient.AuthConfig
 	if t.tokenProvider != nil {
 		creds, err := t.tokenProvider.Get(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get OAuth token: %w", err)
 		}
-		headers.Set("Authorization", "Bearer "+creds.AccessToken)
+		authConfig = &httpclient.AuthConfig{
+			Type:   httpclient.AuthTypeBearer,
+			APIKey: creds.AccessToken,
+		}
 	} else {
 		return nil, fmt.Errorf("no OAuth token provider configured")
 	}
@@ -229,6 +233,7 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		URL:     url,
 		Headers: headers,
 		Body:    body,
+		Auth:    authConfig,
 	}
 
 	// Store the original model name in metadata for executor routing

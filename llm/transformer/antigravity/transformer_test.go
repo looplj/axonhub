@@ -76,8 +76,10 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 		assert.Equal(t, UserAgent, httpReq.Headers.Get("User-Agent"))
 		assert.Equal(t, ApiClient, httpReq.Headers.Get("X-Goog-Api-Client"))
 		assert.Equal(t, ClientMetadata, httpReq.Headers.Get("Client-Metadata"))
-		// Since we mocked the token response, we expect the mock access token
-		assert.Equal(t, "Bearer mock-access-token", httpReq.Headers.Get("Authorization"))
+		// Since we mocked the token response, we expect the mock access token in Auth config
+		require.NotNil(t, httpReq.Auth)
+		assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+		assert.Equal(t, "mock-access-token", httpReq.Auth.APIKey)
 
 		// Check URL
 		assert.Equal(t, "https://api.antigravity.dev/v1internal:generateContent", httpReq.URL)
@@ -376,8 +378,10 @@ func TestNoAPIKeyAuthConfig(t *testing.T) {
 	httpReq, err := transformer.TransformRequest(context.Background(), req)
 	require.NoError(t, err)
 
-	// Verify Authorization header is set with Bearer token (OAuth)
-	assert.Equal(t, "Bearer mock-access-token", httpReq.Headers.Get("Authorization"))
+	// Verify Auth config is set with Bearer token (OAuth)
+	require.NotNil(t, httpReq.Auth)
+	assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+	assert.Equal(t, "mock-access-token", httpReq.Auth.APIKey)
 
 	// Verify no X-Goog-Api-Key header is set
 	assert.Empty(t, httpReq.Headers.Get("X-Goog-Api-Key"))
@@ -425,8 +429,10 @@ func TestOAuthOnlyHeaders(t *testing.T) {
 	httpReq, err := transformer.TransformRequest(context.Background(), req)
 	require.NoError(t, err)
 
-	// Verify OAuth headers are set correctly
-	assert.Equal(t, "Bearer oauth-access-token", httpReq.Headers.Get("Authorization"))
+	// Verify Auth config is set correctly with Bearer token
+	require.NotNil(t, httpReq.Auth)
+	assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
+	assert.Equal(t, "oauth-access-token", httpReq.Auth.APIKey)
 
 	// Verify X-Goog-Api-Key header is NOT present
 	assert.Empty(t, httpReq.Headers.Get("X-Goog-Api-Key"), "X-Goog-Api-Key header should not be set when using OAuth")
