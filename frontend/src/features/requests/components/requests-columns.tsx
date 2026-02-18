@@ -419,16 +419,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       id: 'latency',
-      accessorFn: (row) => {
-        const request = row.original;
-        if (displayMode === 'latency') {
-          return request.metricsLatencyMs ?? null;
-        } else {
-          // Calculate tokens per second for sorting
-          const tokensPerSecond = calculateTokensPerSecond(request);
-          return tokensPerSecond !== '-' ? parseFloat(tokensPerSecond) : null;
-        }
-      },
+      accessorFn: (row) => row.metricsLatencyMs ?? null,
       header: ({ column }) => (
         <div className="flex items-center gap-1">
           <DataTableColumnHeader
