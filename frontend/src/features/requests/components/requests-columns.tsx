@@ -422,10 +422,14 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       accessorFn: (row) => row.metricsLatencyMs ?? null,
       header: ({ column }) => (
         <div className="flex items-center gap-1">
-          <DataTableColumnHeader
-            column={column}
-            title={displayMode === 'latency' ? t('requests.columns.latency') : t('requests.columns.tokensPerSecond')}
-          />
+          {displayMode === 'latency' ? (
+            <DataTableColumnHeader
+              column={column}
+              title={t('requests.columns.latency')}
+            />
+          ) : (
+            <span className="uppercase text-sm font-medium">{t('requests.columns.tokensPerSecond')}</span>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
