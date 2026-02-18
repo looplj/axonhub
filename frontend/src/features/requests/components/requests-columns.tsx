@@ -269,7 +269,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         return value.includes(row.getValue(id));
       },
       enableSorting: false,
-      enableHiding: false,
+      enableHiding: true,
     },
     {
       id: 'tokens',
@@ -393,6 +393,10 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       id: 'cost',
+      accessorFn: (row) => {
+        const usageLog = row.usageLogs?.edges?.[0]?.node;
+        return usageLog?.totalCost ?? null;
+      },
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.cost')} />,
       enableSorting: false,
       enableHiding: true,
@@ -415,6 +419,16 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     },
     {
       id: 'latency',
+      accessorFn: (row) => {
+        const request = row.original;
+        if (displayMode === 'latency') {
+          return request.metricsLatencyMs ?? null;
+        } else {
+          // Calculate tokens per second for sorting
+          const tokensPerSecond = calculateTokensPerSecond(request);
+          return tokensPerSecond !== '-' ? parseFloat(tokensPerSecond) : null;
+        }
+      },
       header: ({ column }) => (
         <div className="flex items-center gap-1">
           <DataTableColumnHeader
@@ -461,8 +475,13 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
 
         return <div className='font-mono text-xs'>{latencyParts.join(' | ')}</div>;
       },
-      enableSorting: false,
+      enableSorting: true,
       enableHiding: true,
+      sortingFn: (rowA, rowB) => {
+        const a = rowA.original.metricsLatencyMs ?? 0;
+        const b = rowB.original.metricsLatencyMs ?? 0;
+        return a - b;
+      },
     },
     {
       id: 'details',
@@ -492,7 +511,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
       },
       enableSorting: false,
-      enableHiding: false,
+      enableHiding: true,
     },
   ];
   return columns;
