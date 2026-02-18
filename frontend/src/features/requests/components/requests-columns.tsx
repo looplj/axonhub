@@ -478,9 +478,17 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       enableSorting: true,
       enableHiding: true,
       sortingFn: (rowA, rowB) => {
-        const a = rowA.original.metricsLatencyMs ?? 0;
-        const b = rowB.original.metricsLatencyMs ?? 0;
-        return a - b;
+        if (displayMode === 'latency') {
+          const a = rowA.original.metricsLatencyMs ?? 0;
+          const b = rowB.original.metricsLatencyMs ?? 0;
+          return a - b;
+        } else {
+          const tokensA = calculateTokensPerSecond(rowA.original);
+          const tokensB = calculateTokensPerSecond(rowB.original);
+          const valA = tokensA !== '-' ? parseFloat(tokensA) : 0;
+          const valB = tokensB !== '-' ? parseFloat(tokensB) : 0;
+          return valA - valB;
+        }
       },
     },
     {
