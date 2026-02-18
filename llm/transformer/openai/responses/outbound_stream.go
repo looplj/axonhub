@@ -236,6 +236,41 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 					},
 				},
 			}
+
+		case "custom_tool_call":
+			// Custom tool call - initialize tracking, input will be streamed via delta events
+			toolCallIdx := len(s.state.toolCalls)
+			s.state.toolCalls[item.CallID] = &llm.ToolCall{
+				ID:   item.CallID,
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+					CallID: item.CallID,
+					Name:   item.Name,
+					Input:  "",
+				},
+			}
+			s.state.itemToCallID[item.ID] = item.CallID
+			s.state.toolCallIndex[item.CallID] = toolCallIdx
+
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								ID:    item.CallID,
+								Type:  llm.ToolTypeResponsesCustomTool,
+								Index: toolCallIdx,
+								ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+									CallID: item.CallID,
+									Name:   item.Name,
+								},
+							},
+						},
+					},
+				},
+			}
+
 		default:
 			// For other item types (e.g., message), skip - no meaningful content to emit
 			return nil // Intentionally skip this event
@@ -279,6 +314,54 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			if tc, ok := s.state.toolCalls[streamEvent.CallID]; ok {
 				tc.Function.Name = streamEvent.Name
 				tc.Function.Arguments = streamEvent.Arguments
+			}
+		}
+
+		return nil // Intentionally skip this event
+
+	case StreamEventTypeCustomToolCallInputDelta:
+		// Custom tool call input delta - accumulate and emit as tool call delta
+		if streamEvent.ItemID != nil {
+			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
+			if !ok {
+				callID = *streamEvent.ItemID
+			}
+
+			if tc, ok := s.state.toolCalls[callID]; ok {
+				tc.ResponseCustomToolCall.Input += streamEvent.Delta
+				toolCallIdx := s.state.toolCallIndex[callID]
+
+				resp.Choices = []llm.Choice{
+					{
+						Index: 0,
+						Delta: &llm.Message{
+							ToolCalls: []llm.ToolCall{
+								{
+									Index: toolCallIdx,
+									Type:  llm.ToolTypeResponsesCustomTool,
+									ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+										CallID: callID,
+										Name:   tc.ResponseCustomToolCall.Name,
+										Input:  streamEvent.Delta,
+									},
+								},
+							},
+						},
+					},
+				}
+			}
+		}
+
+	case StreamEventTypeCustomToolCallInputDone:
+		// Custom tool call input completed - update state but don't emit an event
+		if streamEvent.ItemID != nil {
+			callID, ok := s.state.itemToCallID[*streamEvent.ItemID]
+			if !ok {
+				callID = *streamEvent.ItemID
+			}
+
+			if tc, ok := s.state.toolCalls[callID]; ok {
+				tc.ResponseCustomToolCall.Input = streamEvent.Input
 			}
 		}
 

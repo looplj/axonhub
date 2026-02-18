@@ -34,6 +34,7 @@
   "traces.detail.thinking": "Thinking",
   "traces.detail.functionCall": "Function Call",
   "traces.detail.nameLabel": "Name",
+  "traces.detail.typeLabel": "Type",
   "traces.detail.idLabel": "ID",
   "traces.detail.argumentsLabel": "Arguments",
   "traces.detail.functionResult": "Function Result",

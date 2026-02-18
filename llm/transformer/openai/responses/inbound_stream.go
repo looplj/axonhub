@@ -408,73 +408,144 @@ func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error
 
 		// Initialize tool call tracking if needed
 		if _, ok := s.toolCalls[toolCallIndex]; !ok {
-			if err := s.closeCurrentContentPart(); err != nil {
+			if err := s.initToolCall(tc); err != nil {
 				return err
 			}
-
-			if err := s.closeCurrentOutputItem(); err != nil {
-				return err
-			}
-
-			s.toolCalls[toolCallIndex] = &llm.ToolCall{
-				Index: toolCallIndex,
-				ID:    tc.ID,
-				Type:  tc.Type,
-				Function: llm.FunctionCall{
-					Name:      tc.Function.Name,
-					Arguments: "",
-				},
-			}
-
-			// Emit output_item.added for function_call
-			itemID := tc.ID
-			if itemID == "" {
-				itemID = generateItemID()
-			}
-
-			item := &Item{
-				ID:     itemID,
-				Type:   "function_call",
-				Status: lo.ToPtr("in_progress"),
-				CallID: tc.ID,
-				Name:   tc.Function.Name,
-			}
-
-			err := s.enqueueEvent(&StreamEvent{
-				Type:        StreamEventTypeOutputItemAdded,
-				OutputIndex: s.outputIndex,
-				Item:        item,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
-			}
-
-			s.toolCallItemStarted[toolCallIndex] = true
-			s.toolCallOutputIndex[toolCallIndex] = s.outputIndex
-			s.currentItemID = itemID
-			s.outputIndex++
 		}
 
-		// Accumulate arguments
-		s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
-
-		// Emit function_call_arguments.delta
-		if tc.Function.Arguments != "" {
-			itemID := s.toolCalls[toolCallIndex].ID
-			if itemID == "" {
-				itemID = s.currentItemID
+		// Process delta based on tool type
+		switch {
+		case tc.ResponseCustomToolCall != nil:
+			if err := s.handleCustomToolCallDelta(tc); err != nil {
+				return err
 			}
-
-			err := s.enqueueEvent(&StreamEvent{
-				Type:         StreamEventTypeFunctionCallArgumentsDelta,
-				ItemID:       &itemID,
-				OutputIndex:  s.outputIndex - 1,
-				ContentIndex: lo.ToPtr(0),
-				Delta:        tc.Function.Arguments,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to enqueue function_call_arguments.delta event: %w", err)
+		default:
+			if err := s.handleFunctionCallDelta(tc); err != nil {
+				return err
 			}
+		}
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
+	toolCallIndex := tc.Index
+
+	if err := s.closeCurrentContentPart(); err != nil {
+		return err
+	}
+
+	if err := s.closeCurrentOutputItem(); err != nil {
+		return err
+	}
+
+	s.toolCalls[toolCallIndex] = &llm.ToolCall{
+		Index:                  toolCallIndex,
+		ID:                     tc.ID,
+		Type:                   tc.Type,
+		ResponseCustomToolCall: tc.ResponseCustomToolCall,
+		Function: llm.FunctionCall{
+			Name:      tc.Function.Name,
+			Arguments: "",
+		},
+	}
+
+	itemID := tc.ID
+	if itemID == "" {
+		itemID = generateItemID()
+	}
+
+	switch {
+	case tc.ResponseCustomToolCall != nil:
+		item := &Item{
+			ID:     itemID,
+			Type:   "custom_tool_call",
+			Status: lo.ToPtr("in_progress"),
+			CallID: tc.ResponseCustomToolCall.CallID,
+			Name:   tc.ResponseCustomToolCall.Name,
+			Input:  lo.ToPtr(""),
+		}
+
+		err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeOutputItemAdded,
+			OutputIndex: s.outputIndex,
+			Item:        item,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
+		}
+
+	default:
+		item := &Item{
+			ID:     itemID,
+			Type:   "function_call",
+			Status: lo.ToPtr("in_progress"),
+			CallID: tc.ID,
+			Name:   tc.Function.Name,
+		}
+
+		err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeOutputItemAdded,
+			OutputIndex: s.outputIndex,
+			Item:        item,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
+		}
+	}
+
+	s.toolCallItemStarted[toolCallIndex] = true
+	s.toolCallOutputIndex[toolCallIndex] = s.outputIndex
+	s.currentItemID = itemID
+	s.outputIndex++
+
+	return nil
+}
+
+func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error {
+	toolCallIndex := tc.Index
+	s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
+
+	if tc.Function.Arguments != "" {
+		itemID := s.toolCalls[toolCallIndex].ID
+		if itemID == "" {
+			itemID = s.currentItemID
+		}
+
+		err := s.enqueueEvent(&StreamEvent{
+			Type:         StreamEventTypeFunctionCallArgumentsDelta,
+			ItemID:       &itemID,
+			OutputIndex:  s.toolCallOutputIndex[toolCallIndex],
+			ContentIndex: lo.ToPtr(0),
+			Delta:        tc.Function.Arguments,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue function_call_arguments.delta event: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) error {
+	toolCallIndex := tc.Index
+	s.toolCalls[toolCallIndex].ResponseCustomToolCall.Input += tc.ResponseCustomToolCall.Input
+
+	if tc.ResponseCustomToolCall.Input != "" {
+		itemID := s.toolCalls[toolCallIndex].ID
+		if itemID == "" {
+			itemID = s.currentItemID
+		}
+
+		err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeCustomToolCallInputDelta,
+			ItemID:      &itemID,
+			OutputIndex: s.toolCallOutputIndex[toolCallIndex],
+			Delta:       tc.ResponseCustomToolCall.Input,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue custom_tool_call_input.delta event: %w", err)
 		}
 	}
 
@@ -647,13 +718,50 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 
 	// Close any open tool call items
 	for idx, tc := range s.toolCalls {
-		if s.toolCallItemStarted[idx] {
-			// Emit function_call_arguments.done
-			itemID := tc.ID
-			if itemID == "" {
-				itemID = s.currentItemID
+		if !s.toolCallItemStarted[idx] {
+			continue
+		}
+
+		itemID := tc.ID
+		if itemID == "" {
+			itemID = s.currentItemID
+		}
+
+		switch {
+		case tc.ResponseCustomToolCall != nil:
+			// Custom tool call - emit custom_tool_call_input.done then output_item.done
+			fullInput := tc.ResponseCustomToolCall.Input
+
+			err := s.enqueueEvent(&StreamEvent{
+				Type:        StreamEventTypeCustomToolCallInputDone,
+				ItemID:      &itemID,
+				OutputIndex: s.toolCallOutputIndex[idx],
+				Input:       fullInput,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to enqueue custom_tool_call_input.done event: %w", err)
 			}
 
+			item := Item{
+				ID:     itemID,
+				Type:   "custom_tool_call",
+				Status: lo.ToPtr("completed"),
+				CallID: tc.ResponseCustomToolCall.CallID,
+				Name:   tc.ResponseCustomToolCall.Name,
+				Input:  lo.ToPtr(fullInput),
+			}
+
+			err = s.enqueueEvent(&StreamEvent{
+				Type:        StreamEventTypeOutputItemDone,
+				OutputIndex: s.toolCallOutputIndex[idx],
+				Item:        &item,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to enqueue output_item.done event: %w", err)
+			}
+
+		default:
+			// Function call - emit function_call_arguments.done then output_item.done
 			err := s.enqueueEvent(&StreamEvent{
 				Type:        StreamEventTypeFunctionCallArgumentsDone,
 				ItemID:      &itemID,
@@ -664,7 +772,6 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				return fmt.Errorf("failed to enqueue function_call_arguments.done event: %w", err)
 			}
 
-			// Emit output_item.done
 			item := Item{
 				ID:        itemID,
 				Type:      "function_call",
@@ -682,9 +789,9 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 			if err != nil {
 				return fmt.Errorf("failed to enqueue output_item.done event: %w", err)
 			}
-
-			s.toolCallItemStarted[idx] = false
 		}
+
+		s.toolCallItemStarted[idx] = false
 	}
 
 	return nil

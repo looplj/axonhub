@@ -33,6 +33,12 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			expectedStreamFile:   "llm-encrypted_content.stream.jsonl",
 			expectedResponseFile: "llm-encrypted_content.response.json",
 		},
+		{
+			name:                 "stream transformation with custom tool call",
+			inputStreamFile:      "custom_tool.stream.jsonl",
+			expectedStreamFile:   "llm-custom_tool.stream.jsonl",
+			expectedResponseFile: "llm-custom_tool.stream.response.json",
+		},
 	}
 
 	for _, tt := range tests {

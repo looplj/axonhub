@@ -35,6 +35,7 @@
   "traces.detail.thinking": "思考内容",
   "traces.detail.functionCall": "函数调用",
   "traces.detail.nameLabel": "名称",
+  "traces.detail.typeLabel": "类型",
   "traces.detail.idLabel": "ID",
   "traces.detail.argumentsLabel": "参数",
   "traces.detail.functionResult": "函数结果",
