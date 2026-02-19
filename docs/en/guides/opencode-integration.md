@@ -160,29 +160,57 @@ Route to specialized models:
 
 ## OpenCode Tracing Plugin
 
-The `opencode-axonhub-tracing` plugin enhances your development experience by providing:
-- Request/response logging
-- Performance metrics
-- Error tracking
-- Session correlation
+The `opencode-axonhub-tracing` plugin injects trace headers for every LLM request, enabling request aggregation and tracing in AxonHub.
 
-### Installation
+### Default Headers
 
-The plugin is specified in the configuration file:
+| Header Key | Source | Description |
+|------------|--------|-------------|
+| `AH-Thread-Id` | OpenCode `sessionID` | Groups requests from the same session |
+| `AH-Trace-Id` | OpenCode `message.id` | Unique identifier for each message |
+
+### Enable the Plugin
+
+Add the plugin to your `opencode.json`:
 
 ```json
 {
-  "plugin": [
-    "opencode-axonhub-tracing"
-  ]
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-axonhub-tracing"]
 }
 ```
 
+OpenCode will automatically install the plugin when needed.
+
+### Custom Header Configuration (Optional)
+
+By default, the plugin uses `AH-Thread-Id` and `AH-Trace-Id` header keys. You can override these with environment variables:
+
+| Environment Variable | Default Value | Description |
+|---------------------|---------------|-------------|
+| `OPENCODE_AXONHUB_TRACING_THREAD_HEADER` | `AH-Thread-Id` | Custom thread header key |
+| `OPENCODE_AXONHUB_TRACING_TRACE_HEADER` | `AH-Trace-Id` | Custom trace header key |
+
+Example:
+
+```bash
+export OPENCODE_AXONHUB_TRACING_THREAD_HEADER="X-Thread-Id"
+export OPENCODE_AXONHUB_TRACING_TRACE_HEADER="X-Trace-Id"
+```
+
+> **Note**: Empty string values will fall back to the default keys.
+
+### Behavior Details
+
+- **Thread ID**: Uses OpenCode's `sessionID` to group related requests
+- **Trace ID**: Uses OpenCode's current user message `message.id` for unique identification
+- If the current message has no `id`, only the thread header is injected
+
 ### Benefits
-- **Debugging**: Easily trace issues in your AI interactions
-- **Performance**: Monitor response times and identify bottlenecks
-- **Cost Tracking**: See token usage and costs per request
-- **Session Management**: Group related requests for better analysis
+
+- **Session Aggregation**: Group related requests from the same OpenCode session in AxonHub traces
+- **Request Correlation**: Track individual messages across your AI infrastructure
+- **Flexible Configuration**: Customize header keys to match your existing tracing infrastructure
 
 ---
 
