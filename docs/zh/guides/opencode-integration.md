@@ -165,29 +165,57 @@ AxonHub 模型配置可以将传入的模型名称重映射为特定提供商的
 
 ## OpenCode 追踪插件
 
-`opencode-axonhub-tracing` 插件通过提供以下功能增强您的开发体验：
-- 请求/响应日志记录
-- 性能指标
-- 错误追踪
-- 会话关联
+`opencode-axonhub-tracing` 插件为每个 LLM 请求注入追踪头部（trace headers），实现在 AxonHub 中的请求聚合和追踪。
 
-### 安装
+### 默认 Headers
 
-插件在配置文件中指定：
+| Header Key | 来源 | 描述 |
+|------------|------|------|
+| `AH-Thread-Id` | OpenCode `sessionID` | 将同一会话的请求分组 |
+| `AH-Trace-Id` | OpenCode `message.id` | 每条消息的唯一标识符 |
+
+### 启用插件
+
+在 `opencode.json` 中添加插件：
 
 ```json
 {
-  "plugin": [
-    "opencode-axonhub-tracing"
-  ]
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-axonhub-tracing"]
 }
 ```
 
+OpenCode 会在需要时自动安装插件。
+
+### 自定义 Header 配置（可选）
+
+默认情况下，插件使用 `AH-Thread-Id` 和 `AH-Trace-Id` 作为 header key。您可以通过环境变量覆盖：
+
+| 环境变量 | 默认值 | 描述 |
+|----------|--------|------|
+| `OPENCODE_AXONHUB_TRACING_THREAD_HEADER` | `AH-Thread-Id` | 自定义线程 header key |
+| `OPENCODE_AXONHUB_TRACING_TRACE_HEADER` | `AH-Trace-Id` | 自定义追踪 header key |
+
+示例：
+
+```bash
+export OPENCODE_AXONHUB_TRACING_THREAD_HEADER="X-Thread-Id"
+export OPENCODE_AXONHUB_TRACING_TRACE_HEADER="X-Trace-Id"
+```
+
+> **注意**：空字符串值会自动回退到默认 key。
+
+### 行为说明
+
+- **Thread ID**：使用 OpenCode 的 `sessionID` 对相关请求进行分组
+- **Trace ID**：使用 OpenCode 当前用户消息的 `message.id` 进行唯一标识
+- 如果当前消息没有 `id`，则仅注入 thread header
+
 ### 收益
-- **调试**：轻松追踪 AI 交互中的问题
-- **性能**：监控响应时间并识别瓶颈
-- **成本追踪**：查看每次请求的 Token 使用情况和成本
-- **会话管理**：对相关请求进行分组以便更好地分析
+
+- **会话聚合**：在 AxonHub 追踪中将同一 OpenCode 会话的相关请求分组
+- **请求关联**：在 AI 基础设施中追踪单个消息
+- **灵活配置**：自定义 header key 以匹配现有的追踪基础设施
 
 ---
 
