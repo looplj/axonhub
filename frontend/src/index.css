@@ -26,8 +26,13 @@
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-4: oklch(0.6 0.18 150);
   --chart-5: oklch(0.769 0.188 70.08);
+  --chart-6: oklch(0.65 0.15 280);
+  --chart-7: oklch(0.55 0.18 20);
+  --chart-8: oklch(0.7 0.15 200);
+  --chart-9: oklch(0.6 0.12 320);
+  --chart-10: oklch(0.5 0.2 100);
 
   --sidebar: var(--card);
   --sidebar-foreground: var(--foreground);
@@ -76,8 +81,13 @@
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-4: oklch(0.6 0.2 150);
   --chart-5: oklch(0.645 0.246 16.439);
+  --chart-6: oklch(0.65 0.18 280);
+  --chart-7: oklch(0.7 0.2 20);
+  --chart-8: oklch(0.6 0.18 200);
+  --chart-9: oklch(0.7 0.15 320);
+  --chart-10: oklch(0.65 0.18 100);
 
   /* Table specific colors */
   --table-background: var(--card);
@@ -107,11 +117,16 @@
   --border: #d8d4cf; /* 更柔和的边框 */
   --input: #d8d4cf;
   --ring: #b05d2e;
-  --chart-1: #b05d2e; /* 核心主色 */
-  --chart-2: #7a381d; /* 深棕色 */
-  --chart-3: #e0b6a1; /* 中棕色 */
-  --chart-4: #f5ebe6; /* 浅棕色 */
-  --chart-5: #f5f5f4; /* 暖背景 */
+  --chart-1: #b05d2e;
+  --chart-2: #7a381d;
+  --chart-3: #2d6a4f;
+  --chart-4: #9c6644;
+  --chart-5: #d4a373;
+  --chart-6: #7c3aed;
+  --chart-7: #be123c;
+  --chart-8: #0891b2;
+  --chart-9: #9333ea;
+  --chart-10: #65a30d;
   --sidebar: var(--card);
   --sidebar-foreground: #292524;
   --sidebar-primary: #b05d2e;
@@ -164,8 +179,13 @@
   --chart-1: oklch(0.5583 0.1276 42.9956);
   --chart-2: oklch(0.6898 0.1581 290.4107);
   --chart-3: oklch(0.65 0.1 60);
-  --chart-4: oklch(0.3074 0.0516 289.323);
+  --chart-4: oklch(0.55 0.12 150);
   --chart-5: oklch(0.5608 0.1348 42.0584);
+  --chart-6: oklch(0.6 0.12 280);
+  --chart-7: oklch(0.65 0.12 20);
+  --chart-8: oklch(0.55 0.12 200);
+  --chart-9: oklch(0.6 0.1 320);
+  --chart-10: oklch(0.5 0.14 100);
   --sidebar: oklch(0.2357 0.0024 67.7077);
   --sidebar-foreground: oklch(0.8074 0.0142 93.0137);
   --sidebar-primary: oklch(0.325 0 0);
