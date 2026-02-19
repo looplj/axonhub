@@ -1,0 +1,51 @@
+{
+  "id": "resp_custom_tool_stream_001",
+  "model": "gpt-5.1-codex-mini",
+  "object": "chat.completion",
+  "created": 1765086000,
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_patch_stream_001",
+            "type": "responses_custom_tool",
+            "function": {
+              "name": ""
+            },
+            "response_custom_tool_call": {
+              "call_id": "call_patch_stream_001",
+              "name": "apply_patch",
+              "input": "*** Begin Patch\n*** Update File: main.py\n@@ def hello():\n-    print(\"Hello\")\n+    print(\"Hi\")\n*** End Patch\n"
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 150,
+    "completion_tokens": 40,
+    "total_tokens": 190,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "text_tokens": 0,
+      "audio_tokens": 0,
+      "image_tokens": 0
+    },
+    "completion_tokens_details": {
+      "text_tokens": 0,
+      "audio_tokens": 0,
+      "reasoning_tokens": 20
+    },
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "input_tokens_details": null,
+    "claude_cache_creation_5_m_tokens": 0,
+    "claude_cache_creation_1_h_tokens": 0
+  }
+}

@@ -87,6 +87,7 @@ const spanThinkingSchema = z
 const spanToolUseSchema = z
   .object({
     id: z.string().nullable().optional(),
+    type: z.string().nullable().optional(),
     name: z.string(),
     arguments: z.string().nullable().optional(),
   })

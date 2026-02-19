@@ -93,14 +93,40 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 
 	var items []Item
 
+	// Track tool call types so tool result messages can be encoded correctly.
+	// callID -> item type (function_call_output or custom_tool_call_output)
+	toolResultItemTypeByCallID := map[string]string{}
+
 	for _, msg := range msgs {
 		switch msg.Role {
 		case "user", "developer":
 			items = append(items, convertUserMessage(msg))
 		case "assistant":
-			items = append(items, convertAssistantMessage(msg)...)
+			assistantItems := convertAssistantMessage(msg)
+			items = append(items, assistantItems...)
+
+			// Record tool call types for later tool result encoding.
+			for _, it := range assistantItems {
+				switch it.Type {
+				case "function_call":
+					if it.CallID != "" {
+						toolResultItemTypeByCallID[it.CallID] = "function_call_output"
+					}
+				case "custom_tool_call":
+					if it.CallID != "" {
+						toolResultItemTypeByCallID[it.CallID] = "custom_tool_call_output"
+					}
+				}
+			}
 		case "tool":
-			items = append(items, convertToolMessage(msg))
+			itemType := "function_call_output"
+			if msg.ToolCallID != nil {
+				if mapped, ok := toolResultItemTypeByCallID[*msg.ToolCallID]; ok {
+					itemType = mapped
+				}
+			}
+
+			items = append(items, convertToolMessageWithType(msg, itemType))
 		}
 	}
 
@@ -178,12 +204,21 @@ func convertAssistantMessage(msg llm.Message) []Item {
 
 	// Handle tool calls
 	for _, tc := range msg.ToolCalls {
-		items = append(items, Item{
-			Type:      "function_call",
-			CallID:    tc.ID,
-			Name:      tc.Function.Name,
-			Arguments: tc.Function.Arguments,
-		})
+		if tc.ResponseCustomToolCall != nil {
+			items = append(items, Item{
+				Type:   "custom_tool_call",
+				CallID: tc.ResponseCustomToolCall.CallID,
+				Name:   tc.ResponseCustomToolCall.Name,
+				Input:  lo.ToPtr(tc.ResponseCustomToolCall.Input),
+			})
+		} else {
+			items = append(items, Item{
+				Type:      "function_call",
+				CallID:    tc.ID,
+				Name:      tc.Function.Name,
+				Arguments: tc.Function.Arguments,
+			})
+		}
 	}
 
 	var contentItems []Item
@@ -220,6 +255,10 @@ func convertAssistantMessage(msg llm.Message) []Item {
 
 // convertToolMessage converts a tool result message to Responses API Item format.
 func convertToolMessage(msg llm.Message) Item {
+	return convertToolMessageWithType(msg, "function_call_output")
+}
+
+func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 	var output Input
 
 	// Handle simple content first
@@ -242,8 +281,9 @@ func convertToolMessage(msg llm.Message) Item {
 	}
 
 	return Item{
-		Type:   "function_call_output",
+		Type:   itemType,
 		CallID: lo.FromPtr(msg.ToolCallID),
+		Name:   lo.FromPtr(msg.ToolCallName),
 		Output: &output,
 	}
 }
@@ -262,6 +302,26 @@ func convertImageGenerationToTool(src llm.Tool) Tool {
 		tool.PartialImages = src.ImageGeneration.PartialImages
 		tool.Quality = src.ImageGeneration.Quality
 		tool.Size = src.ImageGeneration.Size
+	}
+
+	return tool
+}
+
+// convertCustomToTool converts an llm.Tool custom tool to Responses API Tool format.
+func convertCustomToTool(src llm.Tool) Tool {
+	tool := Tool{
+		Type: "custom",
+	}
+	if src.ResponseCustomTool != nil {
+		tool.Name = src.ResponseCustomTool.Name
+		tool.Description = src.ResponseCustomTool.Description
+		if src.ResponseCustomTool.Format != nil {
+			tool.Format = &CustomToolFormat{
+				Type:       src.ResponseCustomTool.Format.Type,
+				Syntax:     src.ResponseCustomTool.Format.Syntax,
+				Definition: src.ResponseCustomTool.Format.Definition,
+			}
+		}
 	}
 
 	return tool

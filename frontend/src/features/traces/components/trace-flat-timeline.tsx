@@ -355,6 +355,8 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
   const spanKindLabel = t(`traces.common.badges.${spanSource.spanKind}`);
   const normalizedSpanType = normalizeSpanType(spanSource.span.type);
   const SpanIcon = getSpanIcon(normalizedSpanType);
+  const toolType = spanSource.span.value?.toolUse?.type;
+  const isResponsesCustomTool = normalizeSpanType(toolType) === 'responses_custom_tool';
 
   return (
     <div className='border-border/40 border-b'>
@@ -379,6 +381,11 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
           {spanKindLabel && (
             <Badge variant='secondary' className='text-[10px] tracking-wide uppercase'>
               {spanKindLabel}
+            </Badge>
+          )}
+          {isResponsesCustomTool && toolType && (
+            <Badge variant='outline' className='text-[10px]'>
+              {toolType}
             </Badge>
           )}
           {spanDisplay?.secondary && <span className='text-muted-foreground truncate text-xs'>{spanDisplay.secondary}</span>}

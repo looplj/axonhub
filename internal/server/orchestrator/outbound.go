@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -75,8 +74,10 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
 		ts.responseChunks = append(ts.responseChunks, event)
-		// Check if this is the [DONE] event, which indicates the stream completed successfully
-		if bytes.Equal(event.Data, llm.DoneStreamEvent.Data) {
+		// Check if this is a terminal event, which indicates the stream completed successfully.
+		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
+		// response.completed; for Anthropic Messages API this is message_stop.
+		if isTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
 		}
 	}

@@ -57,6 +57,13 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 			expectedMetaID:   "resp_020592949fb9ce090069355e9a54788196911d78a6360a88f2",
 			expectedHasUsage: true,
 		},
+		{
+			name:             "custom tool call stream",
+			streamFile:       "custom_tool.stream.jsonl",
+			expectedFile:     "custom_tool.stream.response.json",
+			expectedMetaID:   "resp_custom_tool_stream_001",
+			expectedHasUsage: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -337,4 +344,111 @@ func TestAggregateStreamChunks_SkipsDONEMarker(t *testing.T) {
 	err = json.Unmarshal(resultBytes, &resp)
 	require.NoError(t, err)
 	require.Equal(t, "resp_test", resp.ID)
+}
+
+func TestAggregateStreamChunks_ReasoningSummaryMultipleParts(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{
+			Type: "response.created",
+			Data: []byte(`{
+				"type": "response.created",
+				"sequence_number": 0,
+				"response": {
+					"id": "resp_test_reasoning_multi_summary",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-5",
+					"status": "in_progress",
+					"output": []
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.added",
+			Data: []byte(`{
+				"type": "response.output_item.added",
+				"sequence_number": 1,
+				"output_index": 0,
+				"item": {
+					"id": "rs_test_multi_001",
+					"type": "reasoning",
+					"status": "in_progress",
+					"summary": []
+				}
+			}`),
+		},
+		{
+			Type: "response.reasoning_summary_part.done",
+			Data: []byte(`{
+				"type": "response.reasoning_summary_part.done",
+				"sequence_number": 2,
+				"item_id": "rs_test_multi_001",
+				"output_index": 0,
+				"summary_index": 0,
+				"part": {
+					"type": "summary_text",
+					"text": "**Analyzing output logic**"
+				}
+			}`),
+		},
+		{
+			Type: "response.reasoning_summary_part.added",
+			Data: []byte(`{
+				"type": "response.reasoning_summary_part.added",
+				"sequence_number": 3,
+				"item_id": "rs_test_multi_001",
+				"output_index": 0,
+				"summary_index": 1,
+				"part": {
+					"type": "summary_text",
+					"text": ""
+				}
+			}`),
+		},
+		{
+			Type: "response.output_item.done",
+			Data: []byte(`{
+				"type": "response.output_item.done",
+				"sequence_number": 4,
+				"output_index": 0,
+				"item": {
+					"id": "rs_test_multi_001",
+					"type": "reasoning",
+					"status": "completed",
+					"summary": []
+				}
+			}`),
+		},
+		{
+			Type: "response.completed",
+			Data: []byte(`{
+				"type": "response.completed",
+				"sequence_number": 5,
+				"response": {
+					"id": "resp_test_reasoning_multi_summary",
+					"object": "response",
+					"created_at": 1700000000,
+					"model": "gpt-5",
+					"status": "completed",
+					"output": []
+				}
+			}`),
+		},
+	}
+
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotNil(t, resultBytes)
+
+	var resp Response
+	err = json.Unmarshal(resultBytes, &resp)
+	require.NoError(t, err)
+
+	require.Len(t, resp.Output, 1)
+	require.Equal(t, "reasoning", resp.Output[0].Type)
+	require.Len(t, resp.Output[0].Summary, 2)
+	require.Equal(t, "summary_text", resp.Output[0].Summary[0].Type)
+	require.Equal(t, "**Analyzing output logic**", resp.Output[0].Summary[0].Text)
+	require.Equal(t, "summary_text", resp.Output[0].Summary[1].Type)
+	require.Equal(t, "", resp.Output[0].Summary[1].Text)
 }

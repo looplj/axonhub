@@ -407,6 +407,23 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			})
 			consumed++
 
+		case "custom_tool_call":
+			// Merge custom_tool_call into the same assistant message
+			inputStr := ""
+			if nextItem.Input != nil {
+				inputStr = *nextItem.Input
+			}
+			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
+				ID:   nextItem.CallID,
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+					CallID: nextItem.CallID,
+					Name:   nextItem.Name,
+					Input:  inputStr,
+				},
+			})
+			consumed++
+
 		case "message", "input_text", "":
 			// If we encounter a text message with assistant role, merge its content
 			if nextItem.Role == "assistant" {
@@ -492,13 +509,59 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			},
 		}, nil
 
-	case "function_call_output":
-		// Function call output - convert to tool message
+	case "custom_tool_call":
+		// Custom tool call from assistant - convert to tool call with ResponseCustomToolCall
+		inputStr := ""
+		if item.Input != nil {
+			inputStr = *item.Input
+		}
+
 		return &llm.Message{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{
+				{
+					ID:   item.CallID,
+					Type: llm.ToolTypeResponsesCustomTool,
+					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+						CallID: item.CallID,
+						Name:   item.Name,
+						Input:  inputStr,
+					},
+				},
+			},
+		}, nil
+
+	case "function_call_output":
+		if item.Output == nil {
+			return nil, fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, "function_call_output item must have non-nil Output")
+		}
+		// Function call output - convert to tool message
+		msg := &llm.Message{
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
 			Content:    convertToMessageContent(*item.Output),
-		}, nil
+		}
+		if item.Name != "" {
+			msg.ToolCallName = lo.ToPtr(item.Name)
+		}
+
+		return msg, nil
+
+	case "custom_tool_call_output":
+		if item.Output == nil {
+			return nil, fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, "custom_tool_call_output item must have non-nil Output")
+		}
+		// Custom tool call output - convert to tool message
+		msg := &llm.Message{
+			Role:       "tool",
+			ToolCallID: lo.ToPtr(item.CallID),
+			Content:    convertToMessageContent(*item.Output),
+		}
+		if item.Name != "" {
+			msg.ToolCallName = lo.ToPtr(item.Name)
+		}
+
+		return msg, nil
 
 	case "reasoning":
 		// Reasoning is handled by convertReasoningWithFollowing in convertInputToMessages
@@ -648,6 +711,23 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				},
 			})
 
+		case "custom":
+			customTool := &llm.ResponseCustomTool{
+				Name:        tool.Name,
+				Description: tool.Description,
+			}
+			if tool.Format != nil {
+				customTool.Format = &llm.ResponseCustomToolFormat{
+					Type:       tool.Format.Type,
+					Syntax:     tool.Format.Syntax,
+					Definition: tool.Format.Definition,
+				}
+			}
+			result = append(result, llm.Tool{
+				Type:               llm.ToolTypeResponsesCustomTool,
+				ResponseCustomTool: customTool,
+			})
+
 		default:
 			// Skip unsupported tool types
 			continue
@@ -703,17 +783,28 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			})
 		}
 
-		// Handle tool calls (function calls)
+		// Handle tool calls (function calls and custom tool calls)
 		if len(message.ToolCalls) > 0 {
 			for _, toolCall := range message.ToolCalls {
-				resp.Output = append(resp.Output, Item{
-					ID:        toolCall.ID,
-					Type:      "function_call",
-					CallID:    toolCall.ID,
-					Name:      toolCall.Function.Name,
-					Arguments: toolCall.Function.Arguments,
-					Status:    lo.ToPtr("completed"),
-				})
+				if toolCall.ResponseCustomToolCall != nil {
+					resp.Output = append(resp.Output, Item{
+						ID:     toolCall.ID,
+						Type:   "custom_tool_call",
+						CallID: toolCall.ResponseCustomToolCall.CallID,
+						Name:   toolCall.ResponseCustomToolCall.Name,
+						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
+						Status: lo.ToPtr("completed"),
+					})
+				} else {
+					resp.Output = append(resp.Output, Item{
+						ID:        toolCall.ID,
+						Type:      "function_call",
+						CallID:    toolCall.ID,
+						Name:      toolCall.Function.Name,
+						Arguments: toolCall.Function.Arguments,
+						Status:    lo.ToPtr("completed"),
+					})
+				}
 			}
 		}
 

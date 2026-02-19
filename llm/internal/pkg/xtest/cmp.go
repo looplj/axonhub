@@ -95,7 +95,8 @@ var ToolCallsTransformer = cmp.Transformer("toolCall", func(x llm.ToolCall) llm.
 			Name:      x.Function.Name,
 			Arguments: rawArgs,
 		},
-		Index:        x.Index,
-		CacheControl: x.CacheControl,
+		Index:                  x.Index,
+		CacheControl:           x.CacheControl,
+		ResponseCustomToolCall: x.ResponseCustomToolCall,
 	}
 })
