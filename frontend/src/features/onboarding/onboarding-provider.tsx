@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useOnboardingInfo } from '@/features/system/data/system';
+import { useAuthStore } from '@/stores/authStore';
 import { AutoDisableChannelOnboardingFlow } from './auto-disable-channel-onboarding-flow';
 import { OnboardingFlow } from './onboarding-flow';
 
@@ -16,9 +17,11 @@ interface OnboardingProviderProps {
 export function OnboardingProvider({ children, showOnboarding = true, onComplete }: OnboardingProviderProps) {
   const { data: onboardingInfo, isLoading } = useOnboardingInfo();
   const [mode, setMode] = useState<OnboardingMode>('none');
+  const user = useAuthStore((state) => state.auth.user);
+  const isOwner = user?.isOwner ?? false;
 
   useEffect(() => {
-    if (!isLoading && showOnboarding) {
+    if (!isLoading && showOnboarding && isOwner) {
       if (!onboardingInfo || !onboardingInfo.onboarded) {
         setMode('main');
       } else if (!onboardingInfo.autoDisableChannel?.onboarded) {
@@ -27,7 +30,7 @@ export function OnboardingProvider({ children, showOnboarding = true, onComplete
         setMode('none');
       }
     }
-  }, [onboardingInfo, isLoading, showOnboarding]);
+  }, [onboardingInfo, isLoading, showOnboarding, isOwner]);
 
   const handleComplete = () => {
     setMode('none');
