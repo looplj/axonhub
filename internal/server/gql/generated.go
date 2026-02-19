@@ -382,6 +382,7 @@ type ComplexityRoot struct {
 		Date         func(childComplexity int) int
 		RequestCount func(childComplexity int) int
 		Throughput   func(childComplexity int) int
+		TtftMs       func(childComplexity int) int
 	}
 
 	ChannelPolicies struct {
@@ -695,6 +696,7 @@ type ComplexityRoot struct {
 		ModelID      func(childComplexity int) int
 		RequestCount func(childComplexity int) int
 		Throughput   func(childComplexity int) int
+		TtftMs       func(childComplexity int) int
 	}
 
 	ModelPrice struct {
@@ -2956,6 +2958,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPerformanceStat.Throughput(childComplexity), true
+	case "ChannelPerformanceStat.ttftMs":
+		if e.complexity.ChannelPerformanceStat.TtftMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformanceStat.TtftMs(childComplexity), true
 
 	case "ChannelPolicies.stream":
 		if e.complexity.ChannelPolicies.Stream == nil {
@@ -4079,6 +4087,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelPerformanceStat.Throughput(childComplexity), true
+	case "ModelPerformanceStat.ttftMs":
+		if e.complexity.ModelPerformanceStat.TtftMs == nil {
+			break
+		}
+
+		return e.complexity.ModelPerformanceStat.TtftMs(childComplexity), true
 
 	case "ModelPrice.items":
 		if e.complexity.ModelPrice.Items == nil {
@@ -16890,6 +16904,35 @@ func (ec *executionContext) fieldContext_ChannelPerformanceStat_throughput(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelPerformanceStat_ttftMs(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPerformanceStat_ttftMs,
+		func(ctx context.Context) (any, error) {
+			return obj.TtftMs, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformanceStat_ttftMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelPerformanceStat_requestCount(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -22540,6 +22583,35 @@ func (ec *executionContext) _ModelPerformanceStat_throughput(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_ModelPerformanceStat_throughput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPerformanceStat_ttftMs(ctx context.Context, field graphql.CollectedField, obj *ModelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPerformanceStat_ttftMs,
+		func(ctx context.Context) (any, error) {
+			return obj.TtftMs, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPerformanceStat_ttftMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ModelPerformanceStat",
 		Field:      field,
@@ -31251,6 +31323,8 @@ func (ec *executionContext) fieldContext_Query_modelPerformanceStats(_ context.C
 				return ec.fieldContext_ModelPerformanceStat_modelId(ctx, field)
 			case "throughput":
 				return ec.fieldContext_ModelPerformanceStat_throughput(ctx, field)
+			case "ttftMs":
+				return ec.fieldContext_ModelPerformanceStat_ttftMs(ctx, field)
 			case "requestCount":
 				return ec.fieldContext_ModelPerformanceStat_requestCount(ctx, field)
 			}
@@ -31290,6 +31364,8 @@ func (ec *executionContext) fieldContext_Query_channelPerformanceStats(_ context
 				return ec.fieldContext_ChannelPerformanceStat_channelId(ctx, field)
 			case "throughput":
 				return ec.fieldContext_ChannelPerformanceStat_throughput(ctx, field)
+			case "ttftMs":
+				return ec.fieldContext_ChannelPerformanceStat_ttftMs(ctx, field)
 			case "requestCount":
 				return ec.fieldContext_ChannelPerformanceStat_requestCount(ctx, field)
 			}
@@ -69224,6 +69300,8 @@ func (ec *executionContext) _ChannelPerformanceStat(ctx context.Context, sel ast
 			}
 		case "throughput":
 			out.Values[i] = ec._ChannelPerformanceStat_throughput(ctx, field, obj)
+		case "ttftMs":
+			out.Values[i] = ec._ChannelPerformanceStat_ttftMs(ctx, field, obj)
 		case "requestCount":
 			out.Values[i] = ec._ChannelPerformanceStat_requestCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -71853,6 +71931,8 @@ func (ec *executionContext) _ModelPerformanceStat(ctx context.Context, sel ast.S
 			}
 		case "throughput":
 			out.Values[i] = ec._ModelPerformanceStat_throughput(ctx, field, obj)
+		case "ttftMs":
+			out.Values[i] = ec._ModelPerformanceStat_ttftMs(ctx, field, obj)
 		case "requestCount":
 			out.Values[i] = ec._ModelPerformanceStat_requestCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

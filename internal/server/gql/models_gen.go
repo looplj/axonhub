@@ -100,6 +100,7 @@ type ChannelPerformanceStat struct {
 	Date         string   `json:"date"`
 	ChannelID    string   `json:"channelId"`
 	Throughput   *float64 `json:"throughput,omitempty"`
+	TtftMs       *float64 `json:"ttftMs,omitempty"`
 	RequestCount int      `json:"requestCount"`
 }
 
@@ -205,6 +206,7 @@ type ModelPerformanceStat struct {
 	Date         string   `json:"date"`
 	ModelID      string   `json:"modelId"`
 	Throughput   *float64 `json:"throughput,omitempty"`
+	TtftMs       *float64 `json:"ttftMs,omitempty"`
 	RequestCount int      `json:"requestCount"`
 }
 

@@ -1075,50 +1075,79 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 
 	// Query to get daily model performance stats with throughput calculation
 	// Uses ROW_NUMBER() to get latest execution per request (like FastestModels)
-	query := fmt.Sprintf(`
-WITH successful_execs AS (
-    SELECT
-        se.request_id,
-        r.model_id,
-        se.metrics_latency_ms,
-        se.metrics_first_token_latency_ms,
-        se.stream,
-        ` + dateExpr + ` as exec_date,
-        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC) as rn
-    FROM request_executions se
-    JOIN requests r ON se.request_id = r.id
-    WHERE se.status = 'completed'
-        AND se.metrics_latency_ms > 0
-        AND se.created_at >= ` + placeholder + `
-)
-SELECT
-    exec_date as date,
-    model_id,
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-    SUM(se.metrics_latency_ms) as latency_ms,
-    COUNT(DISTINCT se.request_id) as request_count,
-    CASE
-        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                 THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
-                      THEN 0
-                      ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
-                 ELSE se.metrics_latency_ms END) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                   THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
-                        THEN 0
-                        ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
-                   ELSE se.metrics_latency_ms END)
-        ELSE NULL
-    END as throughput
-FROM successful_execs se
-JOIN usage_logs ul ON se.request_id = ul.request_id
-WHERE se.rn = 1
-GROUP BY exec_date, model_id
-HAVING throughput IS NOT NULL AND throughput > 0
-ORDER BY exec_date DESC, throughput DESC
-`,
-	)
+	query := "WITH successful_execs AS (\n" +
+		"    SELECT\n" +
+		"        se.request_id,\n" +
+		"        r.model_id,\n" +
+		"        se.metrics_latency_ms,\n" +
+		"        se.metrics_first_token_latency_ms,\n" +
+		"        se.stream,\n" +
+		"        " + dateExpr + " as exec_date,\n" +
+		"        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC) as rn\n" +
+		"    FROM request_executions se\n" +
+		"    JOIN requests r ON se.request_id = r.id\n" +
+		"    WHERE se.status = 'completed'\n" +
+		"        AND se.metrics_latency_ms > 0\n" +
+		"        AND se.created_at >= " + placeholder + "\n" +
+		")\n" +
+		"SELECT\n" +
+		"    exec_date as date,\n" +
+		"    se.model_id,\n" +
+		"    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"    SUM(se.metrics_latency_ms) as latency_ms,\n" +
+		"    AVG(CASE\n" +
+		"        WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
+		"        THEN se.metrics_first_token_latency_ms\n" +
+		"        ELSE se.metrics_latency_ms\n" +
+		"    END) as ttft_ms,\n" +
+		"    COUNT(DISTINCT se.request_id) as request_count,\n" +
+		"    CASE\n" +
+		"        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
+		"                 THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
+		"                      THEN 0\n" +
+		"                      ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
+		"                 ELSE se.metrics_latency_ms END) > 0\n" +
+		"        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0\n" +
+		"             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
+		"                   THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
+		"                        THEN 0\n" +
+		"                        ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
+		"                   ELSE se.metrics_latency_ms END)\n" +
+		"        ELSE NULL\n" +
+		"    END as throughput\n" +
+		"FROM successful_execs se\n" +
+		"JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
+		"WHERE se.rn = 1\n" +
+		"GROUP BY exec_date, se.model_id\n" +
+		"HAVING CASE\n" +
+		"    WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
+		"             THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
+		"                  THEN 0\n" +
+		"                  ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
+		"             ELSE se.metrics_latency_ms END) > 0\n" +
+		"    THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0\n" +
+		"         / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
+		"               THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
+		"                    THEN 0\n" +
+		"                    ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
+		"               ELSE se.metrics_latency_ms END)\n" +
+		"    ELSE NULL\n" +
+		"END IS NOT NULL\n" +
+		"AND CASE\n" +
+		"    WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
+		"             THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
+		"                  THEN 0\n" +
+		"                  ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
+		"             ELSE se.metrics_latency_ms END) > 0\n" +
+		"    THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0\n" +
+		"         / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
+		"               THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
+		"                    THEN 0\n" +
+		"                    ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
+		"               ELSE se.metrics_latency_ms END)\n" +
+		"    ELSE NULL\n" +
+		"END > 0\n" +
+		"ORDER BY exec_date DESC, throughput DESC"
 
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
@@ -1135,6 +1164,7 @@ ORDER BY exec_date DESC, throughput DESC
 		ModelID      string
 		TokensCount  int64
 		LatencyMs    int64
+		FirstTokenMs float64
 		RequestCount int64
 		Throughput   *float64
 	}
@@ -1151,6 +1181,7 @@ ORDER BY exec_date DESC, throughput DESC
 			&stat.ModelID,
 			&stat.TokensCount,
 			&stat.LatencyMs,
+			&stat.FirstTokenMs,
 			&stat.RequestCount,
 			&stat.Throughput,
 		); err != nil {
@@ -1173,10 +1204,17 @@ ORDER BY exec_date DESC, throughput DESC
 			continue
 		}
 
+		var ttftMs *float64
+		if raw.FirstTokenMs > 0 {
+			value := raw.FirstTokenMs
+			ttftMs = &value
+		}
+
 		results = append(results, &ModelPerformanceStat{
 			Date:         raw.Date,
 			ModelID:      raw.ModelID,
 			Throughput:   raw.Throughput,
+			TtftMs:       ttftMs,
 			RequestCount: int(raw.RequestCount),
 		})
 		modelsPerDay[raw.Date]++
@@ -1208,6 +1246,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		ChannelID    int     `json:"channel_id"`
 		RequestCount int     `json:"request_count"`
 		Throughput   float64 `json:"throughput"`
+		TTFTMs       float64 `json:"ttft_ms"`
 	}
 
 	var probeResults []probeStats
@@ -1242,6 +1281,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 				sql.As(s.C(channelprobe.FieldChannelID), "channel_id"),
 				sql.As(sql.Sum(s.C(channelprobe.FieldTotalRequestCount)), "request_count"),
 				sql.As(sql.Avg(s.C(channelprobe.FieldAvgTokensPerSecond)), "throughput"),
+				sql.As(sql.Avg(s.C(channelprobe.FieldAvgTimeToFirstTokenMs)), "ttft_ms"),
 			).
 				GroupBy(dateExpr, s.C(channelprobe.FieldChannelID)).
 				OrderBy(dateExpr, s.C(channelprobe.FieldChannelID))
@@ -1302,6 +1342,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 				channelID    int
 				requestCount int
 				throughput   float64
+				ttftMs       float64
 			}
 
 			var dayChannels []channelStat
@@ -1310,6 +1351,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 					channelID:    chID,
 					requestCount: stats.RequestCount,
 					throughput:   stats.Throughput,
+					ttftMs:       stats.TTFTMs,
 				})
 			}
 
@@ -1338,10 +1380,17 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 					throughput = &ch.throughput
 				}
 
+				var ttftMs *float64
+				if ch.ttftMs > 0 {
+					value := ch.ttftMs
+					ttftMs = &value
+				}
+
 				response = append(response, &ChannelPerformanceStat{
 					Date:         dateStr,
 					ChannelID:    channelName,
 					Throughput:   throughput,
+					TtftMs:       ttftMs,
 					RequestCount: ch.requestCount,
 				})
 			}

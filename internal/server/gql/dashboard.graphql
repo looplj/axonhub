@@ -109,6 +109,7 @@ type ModelPerformanceStat {
   date: String!
   modelId: String!
   throughput: Float
+  ttftMs: Float
   requestCount: Int!
 }
 
@@ -117,6 +118,7 @@ type ChannelPerformanceStat {
   date: String!
   channelId: String!
   throughput: Float
+  ttftMs: Float
   requestCount: Int!
 }
 
