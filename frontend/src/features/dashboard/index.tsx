@@ -17,6 +17,8 @@ import { TokenStatsCard } from './components/token-stats-card';
 import { TotalRequestsCard } from './components/total-requests-card';
 import { FastestChannelsCard } from './components/fastest-channels-card';
 import { FastestModelsCard } from './components/fastest-models-card';
+import { ModelPerformanceStats } from './components/model-performance-stats';
+import { ChannelPerformanceStats } from './components/channel-performance-stats';
 import { useDashboardStats } from './data/dashboard';
 
 interface CollapsibleSectionProps {
@@ -217,6 +219,24 @@ export default function DashboardPage() {
         <div className='grid gap-4 md:grid-cols-2'>
           <FastestChannelsCard />
           <FastestModelsCard />
+        </div>
+        <div className='grid gap-4 md:grid-cols-1'>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('dashboard.charts.modelPerformance')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ModelPerformanceStats />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('dashboard.charts.channelPerformance')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChannelPerformanceStats />
+            </CardContent>
+          </Card>
         </div>
       </CollapsibleSection>
     </div>
