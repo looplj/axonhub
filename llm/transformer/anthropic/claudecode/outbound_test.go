@@ -108,7 +108,10 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 	t.Run("applies tool prefix for OAuth tokens from non-CLI clients", func(t *testing.T) {
 
-		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("sk-ant-oat01-test-oauth-token")})
+		transformer, err := NewOutboundTransformer(Params{
+			TokenProvider: newMockTokenProvider("sk-ant-oat01-test-oauth-token"),
+			IsOfficial:    true,
+		})
 		require.NoError(t, err)
 
 		req := &llm.Request{
@@ -185,7 +188,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		assert.True(t, isValidUserID(userID))
 	})
 
-	t.Run("removes billing system messages when not official", func(t *testing.T) {
+	t.Run("does not add billing cch when not official", func(t *testing.T) {
 
 		transformer, err := NewOutboundTransformer(Params{
 			TokenProvider: newMockTokenProvider("test-api-key"),
@@ -193,7 +196,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		billingMsg := "x-anthropic-billing-header: cc_version=2.1.37.fbe; cc_entrypoint=cli; cch=e478e;"
+		billingMsg := "x-anthropic-billing-header: cc_version=2.1.37.fbe; cc_entrypoint=cli;"
 		req := &llm.Request{
 			Model: "claude-sonnet-4-5",
 			Messages: []llm.Message{
@@ -206,17 +209,18 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
 
-		// The billing system message should be removed
+		// The billing system message should not contain cch (it's stripped by pipeline middleware).
 		system := gjson.GetBytes(httpReq.Body, "system")
 		require.True(t, system.Exists())
 
-		// Should only contain the injected Claude Code system message, not the billing header
 		for _, item := range system.Array() {
-			assert.NotContains(t, item.Get("text").String(), "x-anthropic-billing-header")
+			if strings.Contains(item.Get("text").String(), "x-anthropic-billing-header") {
+				assert.NotContains(t, item.Get("text").String(), "cch=")
+			}
 		}
 	})
 
-	t.Run("preserves billing system messages when official", func(t *testing.T) {
+	t.Run("restores billing cch when official and stripped", func(t *testing.T) {
 
 		transformer, err := NewOutboundTransformer(Params{
 			TokenProvider: newMockTokenProvider("test-api-key"),
@@ -224,7 +228,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		billingMsg := "x-anthropic-billing-header: cc_version=2.1.37.fbe; cc_entrypoint=cli; cch=e478e;"
+		billingMsg := "x-anthropic-billing-header: cc_version=2.1.42.c31; cc_entrypoint=cli;"
 		req := &llm.Request{
 			Model: "claude-sonnet-4-5",
 			Messages: []llm.Message{
@@ -232,22 +236,26 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
 			},
 			MaxTokens: int64Ptr(1024),
+			TransformerMetadata: map[string]any{
+				"claudecode_billing_cch": "38a80",
+			},
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
 
-		// The billing system message should be preserved
+		// The billing system message should include the restored cch.
 		system := gjson.GetBytes(httpReq.Body, "system")
 		require.True(t, system.Exists())
 
-		foundBilling := false
+		foundCCH := false
 		for _, item := range system.Array() {
-			if strings.Contains(item.Get("text").String(), "x-anthropic-billing-header") {
-				foundBilling = true
+			if strings.Contains(item.Get("text").String(), "x-anthropic-billing-header") &&
+				strings.Contains(item.Get("text").String(), "cch=38a80;") {
+				foundCCH = true
 			}
 		}
-		assert.True(t, foundBilling, "billing system message should be preserved for official channels")
+		assert.True(t, foundCCH, "billing system message should restore cch for official channels")
 	})
 
 	t.Run("disables thinking when tool_choice forces tool use", func(t *testing.T) {

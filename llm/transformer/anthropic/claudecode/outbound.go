@@ -120,11 +120,11 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	// Apply structured transformations before serialization
 	reqCopy = *disableThinkingIfToolChoiceForcedStructured(&reqCopy)
 	reqCopy = *injectClaudeCodeSystemMessageStructured(&reqCopy)
-	if !t.isOfficial {
-		reqCopy = *removeBillingSystemMessages(&reqCopy)
+	if t.isOfficial {
+		reqCopy = *ensureBillingSystemMessageCCH(&reqCopy)
 	}
 	reqCopy = *injectFakeUserIDStructured(&reqCopy)
-	if isClaudeOAuthToken(apiKey) && !keepClientUA {
+	if t.isOfficial && !keepClientUA {
 		reqCopy = *applyClaudeToolPrefixStructured(&reqCopy, toolPrefix)
 	}
 
@@ -169,7 +169,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		httpReq.Metadata = make(map[string]string)
 	}
 
-	if isClaudeOAuthToken(apiKey) && !keepClientUA {
+	if t.isOfficial && !keepClientUA {
 		httpReq.Metadata["strip_tool_prefix"] = "true"
 	}
 

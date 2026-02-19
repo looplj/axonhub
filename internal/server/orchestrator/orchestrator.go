@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/pipeline/stream"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -54,6 +55,7 @@ func NewChatCompletionOrchestrator(
 		QuotaService:    quotaService,
 		PromptProvider:  promptService,
 		Middlewares: []pipeline.Middleware{
+			cc.StripBillingHeaderCCH(),
 			stream.EnsureUsage(),
 		},
 		PipelineFactory:            pipeline.NewFactory(httpClient),
