@@ -49,6 +49,60 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			},
 		},
 		{
+			name:         "custom tool request transformation",
+			requestFile:  "custom_tool.request.json",
+			expectedFile: "llm-custom_tool.request.json",
+			validate: func(t *testing.T, result *llm.Request, httpReq *httpclient.Request) {
+				t.Helper()
+
+				require.Equal(t, "gpt-5.1-codex-mini", result.Model)
+				require.Equal(t, llm.APIFormatOpenAIResponse, result.APIFormat)
+
+				// Verify messages: system (instructions) + user + assistant (custom_tool_call) + tool
+				require.Len(t, result.Messages, 4)
+
+				// First message: system from instructions
+				require.Equal(t, "system", result.Messages[0].Role)
+				require.NotNil(t, result.Messages[0].Content.Content)
+				require.Equal(t, "You are a helpful coding assistant.", *result.Messages[0].Content.Content)
+
+				// Second message: user
+				require.Equal(t, "user", result.Messages[1].Role)
+				require.NotNil(t, result.Messages[1].Content.Content)
+				require.Equal(t, "Add a hello world function to main.py", *result.Messages[1].Content.Content)
+
+				// Third message: assistant with custom_tool_call
+				require.Equal(t, "assistant", result.Messages[2].Role)
+				require.Len(t, result.Messages[2].ToolCalls, 1)
+				tc := result.Messages[2].ToolCalls[0]
+				require.Equal(t, "call_patch_001", tc.ID)
+				require.Equal(t, llm.ToolTypeResponsesCustomTool, tc.Type)
+				require.NotNil(t, tc.ResponseCustomToolCall)
+				require.Equal(t, "call_patch_001", tc.ResponseCustomToolCall.CallID)
+				require.Equal(t, "apply_patch", tc.ResponseCustomToolCall.Name)
+				require.Contains(t, tc.ResponseCustomToolCall.Input, "*** Begin Patch")
+
+				// Fourth message: tool response
+				require.Equal(t, "tool", result.Messages[3].Role)
+				require.NotNil(t, result.Messages[3].ToolCallID)
+				require.Equal(t, "call_patch_001", *result.Messages[3].ToolCallID)
+				require.NotNil(t, result.Messages[3].Content.Content)
+				require.Equal(t, "Patch applied successfully.", *result.Messages[3].Content.Content)
+
+				// Verify tools: custom tool + function tool
+				require.Len(t, result.Tools, 2)
+				require.Equal(t, llm.ToolTypeResponsesCustomTool, result.Tools[0].Type)
+				require.NotNil(t, result.Tools[0].ResponseCustomTool)
+				require.Equal(t, "apply_patch", result.Tools[0].ResponseCustomTool.Name)
+				require.NotNil(t, result.Tools[0].ResponseCustomTool.Format)
+				require.Equal(t, "grammar", result.Tools[0].ResponseCustomTool.Format.Type)
+				require.Equal(t, "lark", result.Tools[0].ResponseCustomTool.Format.Syntax)
+
+				require.Equal(t, "function", result.Tools[1].Type)
+				require.Equal(t, "shell_command", result.Tools[1].Function.Name)
+			},
+		},
+		{
 			name:         "reasoning with function_call merge transformation",
 			requestFile:  "reasoning.request.json",
 			expectedFile: "llm-reasoning.request.json",
@@ -191,6 +245,32 @@ func TestInboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 				output1 := resp.Output[1]
 				require.Equal(t, "function_call", output1.Type)
 				require.Equal(t, "call_bd313747960f44af8bef50dc27f0f07e", output1.ID)
+			},
+		},
+		{
+			name:         "custom tool call response transformation",
+			responseFile: "llm-custom_tool.response.json",
+			expectedFile: "custom_tool.response.json",
+			validate: func(t *testing.T, result *httpclient.Response, resp *Response) {
+				t.Helper()
+
+				require.Equal(t, http.StatusOK, result.StatusCode)
+
+				// Verify response properties
+				require.Equal(t, "response", resp.Object)
+				require.Equal(t, "gpt-5.1-codex-mini", resp.Model)
+				require.NotNil(t, resp.Status)
+				require.Equal(t, "completed", *resp.Status)
+
+				// Verify custom tool call output
+				require.Len(t, resp.Output, 1)
+				output := resp.Output[0]
+				require.Equal(t, "custom_tool_call", output.Type)
+				require.Equal(t, "call_patch_002", output.CallID)
+				require.Equal(t, "apply_patch", output.Name)
+				require.NotNil(t, output.Input)
+				require.Contains(t, *output.Input, "*** Begin Patch")
+				require.Contains(t, *output.Input, "*** Update File: main.py")
 			},
 		},
 	}

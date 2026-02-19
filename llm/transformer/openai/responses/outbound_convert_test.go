@@ -16,6 +16,21 @@ func TestConvertToolMessage(t *testing.T) {
 		expected Item
 	}{
 		{
+			name: "custom tool output uses custom_tool_call_output",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_patch_001"),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Patch applied successfully."),
+				},
+			},
+			expected: Item{
+				Type:   "custom_tool_call_output",
+				CallID: "call_patch_001",
+				Output: &Input{Text: lo.ToPtr("Patch applied successfully.")},
+			},
+		},
+		{
 			name: "tool message with simple content",
 			msg: llm.Message{
 				Role:       "tool",
@@ -194,7 +209,11 @@ func TestConvertToolMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertToolMessage(tt.msg)
+			itemType := "function_call_output"
+			if tt.expected.Type != "" {
+				itemType = tt.expected.Type
+			}
+			result := convertToolMessageWithType(tt.msg, itemType)
 			require.Equal(t, tt.expected, result)
 		})
 	}

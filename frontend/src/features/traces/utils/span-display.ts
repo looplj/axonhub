@@ -70,7 +70,11 @@ export function getSpanDisplayLabels(span: Span, t: TFunction): { primary: strin
 
   if (normalizedType === 'tool_use') {
     const toolName = span.value?.toolUse?.name;
+    const toolType = normalizeSpanType(span.value?.toolUse?.type);
     if (toolName) {
+      if (toolType === 'responses_custom_tool') {
+        return { primary: toolName, secondary: `${typeLabel} · responses_custom_tool` };
+      }
       return { primary: toolName, secondary: typeLabel };
     }
   }

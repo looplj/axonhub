@@ -295,6 +295,7 @@ type SpanImageURL struct {
 
 type SpanToolUse struct {
 	ID        string  `json:"id,omitempty"`
+	Type      string  `json:"type,omitempty"`
 	Name      string  `json:"name"`
 	Arguments *string `json:"arguments,omitempty"`
 }
@@ -682,7 +683,18 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 
 	// Handle tool calls
 	for _, toolCall := range msg.ToolCalls {
-		args := toolCall.Function.Arguments
+		toolID := toolCall.ID
+		toolType := toolCall.Type
+		toolName := toolCall.Function.Name
+		toolArgs := toolCall.Function.Arguments
+
+		if toolCall.ResponseCustomToolCall != nil {
+			toolID = toolCall.ResponseCustomToolCall.CallID
+			toolName = toolCall.ResponseCustomToolCall.Name
+			toolArgs = toolCall.ResponseCustomToolCall.Input
+		}
+
+		args := toolArgs
 		toolSpan := Span{
 			ID:        fmt.Sprintf("%s-tool-%d", idPrefix, len(spans)),
 			Type:      "tool_use",
@@ -690,8 +702,9 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 			EndTime:   now,
 			Value: &SpanValue{
 				ToolUse: &SpanToolUse{
-					ID:        toolCall.ID,
-					Name:      toolCall.Function.Name,
+					ID:        toolID,
+					Type:      toolType,
+					Name:      toolName,
 					Arguments: &args,
 				},
 			},

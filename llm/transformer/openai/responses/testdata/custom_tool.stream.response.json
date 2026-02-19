@@ -1,0 +1,27 @@
+{
+  "object": "response",
+  "id": "resp_custom_tool_stream_001",
+  "created_at": 1765086000,
+  "model": "gpt-5.1-codex-mini",
+  "output": [
+    {
+      "type": "custom_tool_call",
+      "call_id": "call_patch_stream_001",
+      "name": "apply_patch",
+      "input": "*** Begin Patch\n*** Update File: main.py\n@@ def hello():\n-    print(\"Hello\")\n+    print(\"Hi\")\n*** End Patch\n",
+      "status": "completed"
+    }
+  ],
+  "status": "completed",
+  "usage": {
+    "input_tokens": 150,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 40,
+    "output_tokens_details": {
+      "reasoning_tokens": 20
+    },
+    "total_tokens": 190
+  }
+}

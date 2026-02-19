@@ -1,4 +1,5 @@
 .PHONY: generate build backend frontend cleanup-db \
+	test-backend-all \
 	e2e-test e2e-backend-start e2e-backend-stop e2e-backend-status e2e-backend-restart e2e-backend-clean \
 	migration-test migration-test-all migration-test-all-dbs \
 	sync-faq sync-models filter-logs \
@@ -51,6 +52,19 @@ cleanup-db:
 	@sqlite3 axonhub.db "DELETE FROM users WHERE email LIKE 'pw-test-%' OR first_name LIKE 'pw-test%';"
 	@sqlite3 axonhub.db "DELETE FROM projects WHERE slug LIKE 'pw-test-%' OR name LIKE 'pw-test-%';"
 	@echo "Cleanup completed!"
+
+# --- Testing ---
+
+# Run all backend tests across all Go modules
+test-backend-all:
+	@echo "Running all backend tests..."
+	@echo ""
+	@echo "=== Testing root module ==="
+	go test ./...
+	@echo "=== Testing llm module ==="
+	cd llm && go test ./...
+	@echo ""
+	@echo "All backend tests completed!"
 
 # --- E2E Testing ---
 

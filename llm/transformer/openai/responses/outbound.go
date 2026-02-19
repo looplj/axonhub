@@ -136,6 +136,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			tools = append(tools, tool)
 			// Store image output format in TransformerMetadata
 			llmReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
+		case llm.ToolTypeResponsesCustomTool:
+			tool := convertCustomToTool(item)
+			tools = append(tools, tool)
 		case "function":
 			tool := convertFunctionToTool(item)
 			tools = append(tools, tool)
@@ -286,6 +289,21 @@ func (t *OutboundTransformer) TransformResponse(
 				Function: llm.FunctionCall{
 					Name:      outputItem.Name,
 					Arguments: outputItem.Arguments,
+				},
+			})
+		case "custom_tool_call":
+			// Custom tool call output
+			inputStr := ""
+			if outputItem.Input != nil {
+				inputStr = *outputItem.Input
+			}
+			toolCalls = append(toolCalls, llm.ToolCall{
+				ID:   outputItem.CallID,
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+					CallID: outputItem.CallID,
+					Name:   outputItem.Name,
+					Input:  inputStr,
 				},
 			})
 		case "reasoning":

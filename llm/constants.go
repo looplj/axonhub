@@ -53,4 +53,8 @@ const (
 
 	// ToolTypeGoogleUrlContext is the URL context grounding tool type for Gemini 2.0+.
 	ToolTypeGoogleUrlContext = "google_url_context"
+
+	// ToolTypeResponsesCustomTool is the custom tool type for OpenAI Responses API.
+	// Custom tools use freeform input (not JSON) and a grammar-based format definition.
+	ToolTypeResponsesCustomTool = "responses_custom_tool"
 )
