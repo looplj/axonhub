@@ -76,6 +76,7 @@ export const modelPerformanceStatSchema = z.object({
   date: z.string(),
   modelId: z.string(),
   throughput: z.number().nullable(),
+  ttftMs: z.number().nullable(),
   requestCount: z.number(),
 });
 
@@ -83,6 +84,7 @@ export const channelPerformanceStatSchema = z.object({
   date: z.string(),
   channelId: z.string(),
   throughput: z.number().nullable(),
+  ttftMs: z.number().nullable(),
   requestCount: z.number(),
 });
 
@@ -223,6 +225,7 @@ const MODEL_PERFORMANCE_STATS_QUERY = `
       date
       modelId
       throughput
+      ttftMs
       requestCount
     }
   }
@@ -234,6 +237,7 @@ const CHANNEL_PERFORMANCE_STATS_QUERY = `
       date
       channelId
       throughput
+      ttftMs
       requestCount
     }
   }
