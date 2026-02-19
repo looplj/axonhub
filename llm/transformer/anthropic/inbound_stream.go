@@ -47,6 +47,29 @@ type anthropicInboundStream struct {
 	toolCalls map[int]*llm.ToolCall // Track tool calls by index
 
 	lastEventType string
+
+	// Buffered signature: when signature arrives before thinking starts,
+	// we hold it until thinking finishes.
+	pendingSignature *string
+}
+
+// flushPendingSignature emits a buffered signature_delta event.
+// Call this before closing a thinking block so the signature appears after thinking content.
+func (s *anthropicInboundStream) flushPendingSignature() error {
+	if s.pendingSignature == nil {
+		return nil
+	}
+	sig := s.pendingSignature
+	s.pendingSignature = nil
+
+	return s.enqueEvent(&StreamEvent{
+		Type:  "content_block_delta",
+		Index: &s.contentIndex,
+		Delta: &StreamDelta{
+			Type:      lo.ToPtr("signature_delta"),
+			Signature: sig,
+		},
+	})
 }
 
 func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
@@ -199,17 +222,23 @@ func (s *anthropicInboundStream) Next() bool {
 
 		// Add signature delta before stopping thinking block if signature is available
 		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
-			err := s.enqueEvent(&StreamEvent{
-				Type:  "content_block_delta",
-				Index: &s.contentIndex,
-				Delta: &StreamDelta{
-					Type:      lo.ToPtr("signature_delta"),
-					Signature: choice.Delta.ReasoningSignature,
-				},
-			})
-			if err != nil {
-				s.err = fmt.Errorf("failed to enqueue signature_delta event: %w", err)
-				return false
+			if !s.hasThinkingContentStarted {
+				// Thinking hasn't started yet (e.g., Responses API sends encrypted_content before thinking).
+				// Buffer the signature and emit it after thinking finishes.
+				s.pendingSignature = choice.Delta.ReasoningSignature
+			} else {
+				err := s.enqueEvent(&StreamEvent{
+					Type:  "content_block_delta",
+					Index: &s.contentIndex,
+					Delta: &StreamDelta{
+						Type:      lo.ToPtr("signature_delta"),
+						Signature: choice.Delta.ReasoningSignature,
+					},
+				})
+				if err != nil {
+					s.err = fmt.Errorf("failed to enqueue signature_delta event: %w", err)
+					return false
+				}
 			}
 		}
 
@@ -218,6 +247,11 @@ func (s *anthropicInboundStream) Next() bool {
 			// If the thinking content has started before the redacted thinking content, we need to stop it
 			if s.hasThinkingContentStarted {
 				s.hasThinkingContentStarted = false
+
+				if err := s.flushPendingSignature(); err != nil {
+					s.err = fmt.Errorf("failed to flush pending signature: %w", err)
+					return false
+				}
 
 				stopEvent := StreamEvent{
 					Type:  "content_block_stop",
@@ -303,6 +337,11 @@ func (s *anthropicInboundStream) Next() bool {
 			if s.hasThinkingContentStarted {
 				s.hasThinkingContentStarted = false
 
+				if err := s.flushPendingSignature(); err != nil {
+					s.err = fmt.Errorf("failed to flush pending signature: %w", err)
+					return false
+				}
+
 				stopEvent := StreamEvent{
 					Type:  "content_block_stop",
 					Index: &s.contentIndex,
@@ -378,6 +417,11 @@ func (s *anthropicInboundStream) Next() bool {
 			// If the thinking content has started before the text content, we need to stop it
 			if s.hasThinkingContentStarted {
 				s.hasThinkingContentStarted = false
+
+				if err := s.flushPendingSignature(); err != nil {
+					s.err = fmt.Errorf("failed to flush pending signature: %w", err)
+					return false
+				}
 
 				stopEvent := StreamEvent{
 					Type:  "content_block_stop",
@@ -508,6 +552,11 @@ func (s *anthropicInboundStream) Next() bool {
 		// Handle finish reason
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
+
+			if err := s.flushPendingSignature(); err != nil {
+				s.err = fmt.Errorf("failed to flush pending signature: %w", err)
+				return false
+			}
 
 			streamEvent := StreamEvent{
 				Type:  "content_block_stop",

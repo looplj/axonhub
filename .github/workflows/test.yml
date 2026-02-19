@@ -25,4 +25,4 @@ jobs:
           stable: true
 
       - name: Test
-        run: go test -v --short ./...
+        run: make test-backend-all
