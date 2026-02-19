@@ -221,7 +221,7 @@ export default function DashboardPage() {
           <FastestModelsCard />
         </div>
         <div className='grid gap-4 md:grid-cols-1'>
-          <Card>
+          <Card className='gap-2'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.modelPerformance')}</CardTitle>
             </CardHeader>
@@ -229,7 +229,7 @@ export default function DashboardPage() {
               <ModelPerformanceStats />
             </CardContent>
           </Card>
-          <Card>
+          <Card className='gap-2'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.channelPerformance')}</CardTitle>
             </CardHeader>
