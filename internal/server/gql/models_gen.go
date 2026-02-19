@@ -95,6 +95,28 @@ type BulkUpdateChannelOrderingResult struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+type ChannelStatistics struct {
+	ChannelID        objects.GUID `json:"channelId"`
+	ChannelName      string       `json:"channelName"`
+	ChannelType      string       `json:"channelType"`
+	RequestCount     int          `json:"requestCount"`
+	PromptTokens     int          `json:"promptTokens"`
+	CompletionTokens int          `json:"completionTokens"`
+	CachedTokens     int          `json:"cachedTokens"`
+	AvgTtftMs        *float64     `json:"avgTtftMs,omitempty"`
+	AvgLatencyMs     *float64     `json:"avgLatencyMs,omitempty"`
+	AvgTps           *float64     `json:"avgTps,omitempty"`
+	TotalCost        *float64     `json:"totalCost,omitempty"`
+}
+
+type ChannelStatisticsTimeSeries struct {
+	Date             string   `json:"date"`
+	RequestCount     int      `json:"requestCount"`
+	PromptTokens     int      `json:"promptTokens"`
+	CompletionTokens int      `json:"completionTokens"`
+	AvgLatencyMs     *float64 `json:"avgLatencyMs,omitempty"`
+}
+
 type ChannelSuccessRate struct {
 	ChannelID    objects.GUID `json:"channelId"`
 	ChannelName  string       `json:"channelName"`
@@ -190,6 +212,20 @@ type InitializeSystemPayload struct {
 	Message string    `json:"message"`
 	User    *ent.User `json:"user,omitempty"`
 	Token   *string   `json:"token,omitempty"`
+}
+
+type ModelStatistics struct {
+	ModelID          string       `json:"modelId"`
+	ChannelID        objects.GUID `json:"channelId"`
+	ChannelName      string       `json:"channelName"`
+	RequestCount     int          `json:"requestCount"`
+	PromptTokens     int          `json:"promptTokens"`
+	CompletionTokens int          `json:"completionTokens"`
+	CachedTokens     int          `json:"cachedTokens"`
+	AvgTtftMs        *float64     `json:"avgTtftMs,omitempty"`
+	AvgLatencyMs     *float64     `json:"avgLatencyMs,omitempty"`
+	AvgTps           *float64     `json:"avgTps,omitempty"`
+	TotalCost        *float64     `json:"totalCost,omitempty"`
 }
 
 type OnboardingInfo struct {
@@ -406,6 +442,63 @@ func (e *OverrideApplyMode) UnmarshalJSON(b []byte) error {
 }
 
 func (e OverrideApplyMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type StatisticsTimeWindow string
+
+const (
+	StatisticsTimeWindowDay   StatisticsTimeWindow = "day"
+	StatisticsTimeWindowWeek  StatisticsTimeWindow = "week"
+	StatisticsTimeWindowMonth StatisticsTimeWindow = "month"
+)
+
+var AllStatisticsTimeWindow = []StatisticsTimeWindow{
+	StatisticsTimeWindowDay,
+	StatisticsTimeWindowWeek,
+	StatisticsTimeWindowMonth,
+}
+
+func (e StatisticsTimeWindow) IsValid() bool {
+	switch e {
+	case StatisticsTimeWindowDay, StatisticsTimeWindowWeek, StatisticsTimeWindowMonth:
+		return true
+	}
+	return false
+}
+
+func (e StatisticsTimeWindow) String() string {
+	return string(e)
+}
+
+func (e *StatisticsTimeWindow) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = StatisticsTimeWindow(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid StatisticsTimeWindow", str)
+	}
+	return nil
+}
+
+func (e StatisticsTimeWindow) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *StatisticsTimeWindow) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e StatisticsTimeWindow) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

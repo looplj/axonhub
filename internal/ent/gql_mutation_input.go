@@ -194,7 +194,7 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 		m.SetManualModels(v)
 	}
 	if i.AppendManualModels != nil {
-		m.AppendManualModels(i.AppendManualModels)
+		m.AppendManualModels(i.ManualModels)
 	}
 	if v := i.AutoSyncSupportedModels; v != nil {
 		m.SetAutoSyncSupportedModels(*v)

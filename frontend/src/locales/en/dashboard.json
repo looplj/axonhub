@@ -59,5 +59,21 @@
   "dashboard.cards.fastestPerformers.description": "Fastest {{type}} by tokens/second · {{count}} requests across top performers",
   "dashboard.fastestPerformers.loadError": "Unable to load fastest performers. Please try again later.",
   "dashboard.cards.fastestPerformers.channelType": "channels",
-  "dashboard.cards.fastestPerformers.modelType": "models"
+  "dashboard.cards.fastestPerformers.modelType": "models",
+  "statistics.title": "Statistics",
+  "statistics.byChannel": "By Channel",
+  "statistics.byModel": "By Model",
+  "statistics.channelName": "Channel",
+  "statistics.provider": "Provider",
+  "statistics.requests": "Requests",
+  "statistics.tokensIn": "Tokens In",
+  "statistics.tokensOut": "Tokens Out",
+  "statistics.cached": "Cached",
+  "statistics.avgTtft": "Avg TTFT",
+  "statistics.avgTps": "Avg TPS",
+  "statistics.cost": "Cost",
+  "statistics.daily": "Daily",
+  "statistics.weekly": "Weekly",
+  "statistics.monthly": "Monthly",
+  "statistics.noData": "No data available"
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -1023,6 +1024,308 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 			LatencyMs:       safeIntFromInt64(item.stats.LatencyMs),
 			RequestCount:    int(item.stats.RequestCount),
 			ConfidenceLevel: item.confidence,
+		}
+	}), nil
+}
+
+// ChannelStatistics returns aggregated statistics per channel
+func (r *queryResolver) ChannelStatistics(ctx context.Context, timeWindow StatisticsTimeWindow) ([]*ChannelStatistics, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	switch timeWindow {
+	case model.StatisticsTimeWindowDay:
+		since = period.Today.Start
+	case model.StatisticsTimeWindowWeek:
+		since = period.ThisWeek.Start
+	case model.StatisticsTimeWindowMonth:
+		since = period.ThisMonth.Start
+	}
+
+	type statsResult struct {
+		ChannelID      int     `json:"channel_id"`
+		ChannelName    string  `json:"channel_name"`
+		ChannelType    string  `json:"channel_type"`
+		RequestCount   int64   `json:"request_count"`
+		PromptTokens   int64   `json:"prompt_tokens"`
+		CompletionTok  int64   `json:"completion_tokens"`
+		CachedTokens   int64   `json:"cached_tokens"`
+		TotalLatencyMs int64   `json:"total_latency_ms"`
+		TotalTtftMs    int64   `json:"total_ttft_ms"`
+		StreamingCount int64   `json:"streaming_count"`
+		TotalCost      float64 `json:"total_cost"`
+	}
+
+	var results []statsResult
+
+	err := r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(since)).
+		Modify(func(s *sql.Selector) {
+			channelTable := sql.Table(channel.Table)
+			execTable := sql.Table(requestexecution.Table)
+
+			s.Join(channelTable).On(s.C(usagelog.FieldChannelID), channelTable.C(channel.FieldID))
+			s.Join(execTable).On(s.C(usagelog.FieldRequestID), execTable.C(requestexecution.FieldRequestID))
+
+			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+
+			s.Select(
+				s.C(usagelog.FieldChannelID),
+				channelTable.C(channel.FieldName),
+				channelTable.C(channel.FieldType),
+				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+				sql.As(sql.Sum(s.C(usagelog.FieldPromptTokens)), "prompt_tokens"),
+				sql.As(sql.Sum(s.C(usagelog.FieldCompletionTokens)), "completion_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("SUM(%s)", execTable.C(requestexecution.FieldMetricsLatencyMs)), "total_latency_ms"),
+				sql.As(fmt.Sprintf("SUM(CASE WHEN %s > 0 THEN %s ELSE 0 END)",
+					execTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
+					execTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs)), "total_ttft_ms"),
+				sql.As(fmt.Sprintf("SUM(CASE WHEN %s > 0 THEN 1 ELSE 0 END)",
+					execTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs)), "streaming_count"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+			).GroupBy(
+				s.C(usagelog.FieldChannelID),
+				channelTable.C(channel.FieldName),
+				channelTable.C(channel.FieldType),
+			)
+		}).
+		Scan(ctx, &results)
+
+	if err != nil {
+		log.Warn(ctx, "failed to get channel statistics", log.Cause(err))
+		return nil, fmt.Errorf("failed to get channel statistics: %w", err)
+	}
+
+	return lo.Map(results, func(r statsResult, _ int) *model.ChannelStatistics {
+		var avgTtftMs, avgTps, avgLatencyMs *float64
+
+		if r.RequestCount > 0 {
+			avg := float64(r.TotalLatencyMs) / float64(r.RequestCount)
+			avgLatencyMs = &avg
+		}
+
+		if r.StreamingCount > 0 && r.TotalTtftMs > 0 {
+			ttft := float64(r.TotalTtftMs) / float64(r.StreamingCount)
+			avgTtftMs = &ttft
+		}
+
+		if r.TotalLatencyMs > r.TotalTtftMs && r.CompletionTok > 0 {
+			effectiveMs := float64(r.TotalLatencyMs - r.TotalTtftMs)
+			if effectiveMs > 0 {
+				tps := float64(r.CompletionTok) / (effectiveMs / 1000.0)
+				avgTps = &tps
+			}
+		}
+
+		var cost *float64
+		if r.TotalCost > 0 {
+			cost = &r.TotalCost
+		}
+
+		return &model.ChannelStatistics{
+			ChannelID:        objects.GUID{Type: "Channel", ID: r.ChannelID},
+			ChannelName:      r.ChannelName,
+			ChannelType:      r.ChannelType,
+			RequestCount:     int(r.RequestCount),
+			PromptTokens:     int(r.PromptTokens),
+			CompletionTokens: int(r.CompletionTok),
+			CachedTokens:     int(r.CachedTokens),
+			AvgTtftMs:        avgTtftMs,
+			AvgLatencyMs:     avgLatencyMs,
+			AvgTps:           avgTps,
+			TotalCost:        cost,
+		}
+	}), nil
+}
+
+// ModelStatistics returns aggregated statistics per model
+func (r *queryResolver) ModelStatistics(ctx context.Context, channelID *objects.GUID, timeWindow StatisticsTimeWindow) ([]*ModelStatistics, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	switch timeWindow {
+	case model.StatisticsTimeWindowDay:
+		since = period.Today.Start
+	case model.StatisticsTimeWindowWeek:
+		since = period.ThisWeek.Start
+	case model.StatisticsTimeWindowMonth:
+		since = period.ThisMonth.Start
+	}
+
+	type statsResult struct {
+		ModelID        string  `json:"model_id"`
+		ChannelID      int     `json:"channel_id"`
+		ChannelName    string  `json:"channel_name"`
+		RequestCount   int64   `json:"request_count"`
+		PromptTokens   int64   `json:"prompt_tokens"`
+		CompletionTok  int64   `json:"completion_tokens"`
+		CachedTokens   int64   `json:"cached_tokens"`
+		TotalLatencyMs int64   `json:"total_latency_ms"`
+		TotalTtftMs    int64   `json:"total_ttft_ms"`
+		StreamingCount int64   `json:"streaming_count"`
+		TotalCost      float64 `json:"total_cost"`
+	}
+
+	var results []statsResult
+
+	query := r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(since))
+
+	if channelID != nil {
+		chID := objects.MustParseGUID(*channelID).ID
+		query = query.Where(usagelog.ChannelID(chID))
+	}
+
+	err := query.Modify(func(s *sql.Selector) {
+		channelTable := sql.Table(channel.Table)
+		execTable := sql.Table(requestexecution.Table)
+
+		s.Join(channelTable).On(s.C(usagelog.FieldChannelID), channelTable.C(channel.FieldID))
+		s.Join(execTable).On(s.C(usagelog.FieldRequestID), execTable.C(requestexecution.FieldRequestID))
+
+		s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+
+		s.Select(
+			s.C(usagelog.FieldModelID),
+			s.C(usagelog.FieldChannelID),
+			channelTable.C(channel.FieldName),
+			sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+			sql.As(sql.Sum(s.C(usagelog.FieldPromptTokens)), "prompt_tokens"),
+			sql.As(sql.Sum(s.C(usagelog.FieldCompletionTokens)), "completion_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+			sql.As(fmt.Sprintf("SUM(%s)", execTable.C(requestexecution.FieldMetricsLatencyMs)), "total_latency_ms"),
+			sql.As(fmt.Sprintf("SUM(CASE WHEN %s > 0 THEN %s ELSE 0 END)",
+				execTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
+				execTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs)), "total_ttft_ms"),
+			sql.As(fmt.Sprintf("SUM(CASE WHEN %s > 0 THEN 1 ELSE 0 END)",
+				execTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs)), "streaming_count"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+		).GroupBy(
+			s.C(usagelog.FieldModelID),
+			s.C(usagelog.FieldChannelID),
+			channelTable.C(channel.FieldName),
+		)
+	}).Scan(ctx, &results)
+
+	if err != nil {
+		log.Warn(ctx, "failed to get model statistics", log.Cause(err))
+		return nil, fmt.Errorf("failed to get model statistics: %w", err)
+	}
+
+	return lo.Map(results, func(r statsResult, _ int) *model.ModelStatistics {
+		var avgTtftMs, avgTps, avgLatencyMs *float64
+
+		if r.RequestCount > 0 {
+			avg := float64(r.TotalLatencyMs) / float64(r.RequestCount)
+			avgLatencyMs = &avg
+		}
+
+		if r.StreamingCount > 0 && r.TotalTtftMs > 0 {
+			ttft := float64(r.TotalTtftMs) / float64(r.StreamingCount)
+			avgTtftMs = &ttft
+		}
+
+		if r.TotalLatencyMs > r.TotalTtftMs && r.CompletionTok > 0 {
+			effectiveMs := float64(r.TotalLatencyMs - r.TotalTtftMs)
+			if effectiveMs > 0 {
+				tps := float64(r.CompletionTok) / (effectiveMs / 1000.0)
+				avgTps = &tps
+			}
+		}
+
+		var cost *float64
+		if r.TotalCost > 0 {
+			cost = &r.TotalCost
+		}
+
+		return &model.ModelStatistics{
+			ModelID:          r.ModelID,
+			ChannelID:        objects.GUID{Type: "Channel", ID: r.ChannelID},
+			ChannelName:      r.ChannelName,
+			RequestCount:     int(r.RequestCount),
+			PromptTokens:     int(r.PromptTokens),
+			CompletionTokens: int(r.CompletionTok),
+			CachedTokens:     int(r.CachedTokens),
+			AvgTtftMs:        avgTtftMs,
+			AvgLatencyMs:     avgLatencyMs,
+			AvgTps:           avgTps,
+			TotalCost:        cost,
+		}
+	}), nil
+}
+
+// ChannelStatisticsTimeSeries returns time-series data for charts
+func (r *queryResolver) ChannelStatisticsTimeSeries(ctx context.Context, channelID objects.GUID, timeWindow StatisticsTimeWindow) ([]*ChannelStatisticsTimeSeries, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	switch timeWindow {
+	case model.StatisticsTimeWindowDay:
+		since = period.Today.Start
+	case model.StatisticsTimeWindowWeek:
+		since = period.ThisWeek.Start
+	case model.StatisticsTimeWindowMonth:
+		since = period.ThisMonth.Start
+	}
+
+	chID := objects.MustParseGUID(channelID).ID
+
+	type statsResult struct {
+		Date           string `json:"date"`
+		RequestCount   int64  `json:"request_count"`
+		PromptTokens   int64  `json:"prompt_tokens"`
+		CompletionTok  int64  `json:"completion_tokens"`
+		TotalLatencyMs int64  `json:"total_latency_ms"`
+	}
+
+	var results []statsResult
+
+	err := r.client.UsageLog.Query().
+		Where(
+			usagelog.CreatedAtGTE(since),
+			usagelog.ChannelID(chID),
+		).
+		Modify(func(s *sql.Selector) {
+			execTable := sql.Table(requestexecution.Table)
+			s.Join(execTable).On(s.C(usagelog.FieldRequestID), execTable.C(requestexecution.FieldRequestID))
+			s.Select(
+				sql.As("DATE(created_at)", "date"),
+				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+				sql.As(sql.Sum(s.C(usagelog.FieldPromptTokens)), "prompt_tokens"),
+				sql.As(sql.Sum(s.C(usagelog.FieldCompletionTokens)), "completion_tokens"),
+				sql.As(sql.Sum(execTable.C(requestexecution.FieldMetricsLatencyMs)), "total_latency_ms"),
+			).GroupBy("DATE(created_at)").
+				OrderBy(sql.Asc("date"))
+		}).Scan(ctx, &results)
+
+	if err != nil {
+		log.Warn(ctx, "failed to get channel time series", log.Cause(err))
+		return nil, fmt.Errorf("failed to get channel time series: %w", err)
+	}
+
+	return lo.Map(results, func(r statsResult, _ int) *model.ChannelStatisticsTimeSeries {
+		var avgLatency *float64
+		if r.RequestCount > 0 && r.TotalLatencyMs > 0 {
+			avg := float64(r.TotalLatencyMs) / float64(r.RequestCount)
+			avgLatency = &avg
+		}
+
+		return &model.ChannelStatisticsTimeSeries{
+			Date:             r.Date,
+			RequestCount:     int(r.RequestCount),
+			PromptTokens:     int(r.PromptTokens),
+			CompletionTokens: int(r.CompletionTok),
+			AvgLatencyMs:     avgLatency,
 		}
 	}), nil
 }

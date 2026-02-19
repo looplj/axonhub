@@ -65,6 +65,11 @@ export const routeConfigs: RouteGroup[] = [
         path: '/permission-demo',
         // 权限演示页面所有用户都可以访问
       },
+      {
+        path: '/admin/statistics',
+        requiredScopes: ['read_dashboard'],
+        mode: 'hidden',
+      },
     ],
   },
   {

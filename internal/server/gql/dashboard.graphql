@@ -1,5 +1,51 @@
 # Dashboard statistics and analytics
 
+# Time window filter
+enum StatisticsTimeWindow {
+  day
+  week
+  month
+}
+
+# Per-Channel Statistics
+type ChannelStatistics {
+  channelId: ID!
+  channelName: String!
+  channelType: String!         # Provider (openai, anthropic, etc.)
+  requestCount: Int!
+  promptTokens: Int!
+  completionTokens: Int!
+  cachedTokens: Int!
+  avgTtftMs: Float             # Time to First Token (nullable)
+  avgLatencyMs: Float          # Average latency
+  avgTps: Float                # Tokens Per Second (nullable)
+  totalCost: Float
+}
+
+# Per-Model Statistics (within a channel)
+type ModelStatistics {
+  modelId: String!
+  channelId: ID!
+  channelName: String!
+  requestCount: Int!
+  promptTokens: Int!
+  completionTokens: Int!
+  cachedTokens: Int!
+  avgTtftMs: Float
+  avgLatencyMs: Float
+  avgTps: Float
+  totalCost: Float
+}
+
+# Time-series data for charts
+type ChannelStatisticsTimeSeries {
+  date: String!
+  requestCount: Int!
+  promptTokens: Int!
+  completionTokens: Int!
+  avgLatencyMs: Float
+}
+
 type DashboardOverview {
   totalRequests: Int!
   requestStats: RequestStats!
@@ -122,4 +168,7 @@ extend type Query {
   channelSuccessRates: [ChannelSuccessRate!]!
   fastestChannels(input: FastestChannelsInput!): [FastestChannel!]!
   fastestModels(input: FastestChannelsInput!): [FastestModel!]!
+  channelStatistics(timeWindow: StatisticsTimeWindow!): [ChannelStatistics!]!
+  modelStatistics(channelId: ID, timeWindow: StatisticsTimeWindow!): [ModelStatistics!]!
+  channelStatisticsTimeSeries(channelId: ID!, timeWindow: StatisticsTimeWindow!): [ChannelStatisticsTimeSeries!]!
 }

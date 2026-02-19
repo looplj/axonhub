@@ -1,0 +1,1 @@
+export { StatisticsPage } from './index';

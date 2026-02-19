@@ -59,5 +59,21 @@
   "dashboard.cards.fastestPerformers.description": "最快的{{type}} by tokens/second · {{count}} 次请求",
   "dashboard.fastestPerformers.loadError": "无法加载最快执行者数据，请重试。",
   "dashboard.cards.fastestPerformers.channelType": "通道",
-  "dashboard.cards.fastestPerformers.modelType": "模型"
+  "dashboard.cards.fastestPerformers.modelType": "模型",
+  "statistics.title": "统计",
+  "statistics.byChannel": "按渠道",
+  "statistics.byModel": "按模型",
+  "statistics.channelName": "渠道",
+  "statistics.provider": "服务商",
+  "statistics.requests": "请求数",
+  "statistics.tokensIn": "输入Token",
+  "statistics.tokensOut": "输出Token",
+  "statistics.cached": "缓存",
+  "statistics.avgTtft": "平均TTFT",
+  "statistics.avgTps": "平均TPS",
+  "statistics.cost": "费用",
+  "statistics.daily": "日",
+  "statistics.weekly": "周",
+  "statistics.monthly": "月",
+  "statistics.noData": "暂无数据"
 }
