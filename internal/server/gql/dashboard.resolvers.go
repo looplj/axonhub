@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -1025,4 +1026,327 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 			ConfidenceLevel: item.confidence,
 		}
 	}), nil
+}
+
+// ModelPerformanceStats is the resolver for the modelPerformanceStats field.
+// Returns daily performance statistics for the top models over the last 30 days.
+// Aggregates by date and model_id, calculating throughput (tokens per second).
+// Only includes successful (completed) requests with valid latency metrics.
+func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	daysCount := 30
+	maxModelsPerDay := 10
+
+	loc := r.systemService.TimeLocation(ctx)
+	nowUTC := xtime.UTCNow()
+	nowLocal := nowUTC.In(loc)
+	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
+	startDateUTC := startDateLocal.UTC()
+	_, offsetSeconds := nowLocal.Zone()
+
+	dbDriver := r.client.Driver()
+	sqlDB, ok := dbDriver.(*sql.Driver)
+	if !ok {
+		return nil, fmt.Errorf("failed to get underlying SQL driver")
+	}
+
+	dialectName := sqlDB.Dialect()
+	useDollarPlaceholders := dialectName == dialect.Postgres
+
+	// Build dialect-specific date expression for grouping by date in user's timezone
+	var dateExpr string
+	createdAtCol := "se.created_at"
+	switch dialectName {
+	case dialect.SQLite:
+		dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", createdAtCol, offsetSeconds)
+	case dialect.MySQL:
+		dateExpr = fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", createdAtCol, loc.String())
+	case dialect.Postgres:
+		dateExpr = fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", createdAtCol, loc.String())
+	default:
+		dateExpr = fmt.Sprintf("DATE(%s)", createdAtCol)
+	}
+
+	placeholder := "?"
+	if useDollarPlaceholders {
+		placeholder = "$1"
+	}
+
+	// Query to get daily model performance stats with throughput calculation
+	// Uses ROW_NUMBER() to get latest execution per request (like FastestModels)
+	query := fmt.Sprintf(`
+WITH successful_execs AS (
+    SELECT
+        se.request_id,
+        r.model_id,
+        se.metrics_latency_ms,
+        se.metrics_first_token_latency_ms,
+        se.stream,
+        ` + dateExpr + ` as exec_date,
+        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC) as rn
+    FROM request_executions se
+    JOIN requests r ON se.request_id = r.id
+    WHERE se.status = 'completed'
+        AND se.metrics_latency_ms > 0
+        AND se.created_at >= ` + placeholder + `
+)
+SELECT
+    exec_date as date,
+    model_id,
+    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
+    SUM(se.metrics_latency_ms) as latency_ms,
+    COUNT(DISTINCT se.request_id) as request_count,
+    CASE
+        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                 THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                      THEN 0
+                      ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
+                 ELSE se.metrics_latency_ms END) > 0
+        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
+             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                   THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                        THEN 0
+                        ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
+                   ELSE se.metrics_latency_ms END)
+        ELSE NULL
+    END as throughput
+FROM successful_execs se
+JOIN usage_logs ul ON se.request_id = ul.request_id
+WHERE se.rn = 1
+GROUP BY exec_date, model_id
+HAVING throughput IS NOT NULL AND throughput > 0
+ORDER BY exec_date DESC, throughput DESC
+`,
+	)
+
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("context canceled: %w", err)
+	}
+
+	rows, err := sqlDB.DB().QueryContext(ctx, query, startDateUTC)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query model performance stats: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	type rawStat struct {
+		Date         string
+		ModelID      string
+		TokensCount  int64
+		LatencyMs    int64
+		RequestCount int64
+		Throughput   *float64
+	}
+
+	var rawResults []rawStat
+	for rows.Next() {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("context canceled: %w", err)
+		}
+
+		var stat rawStat
+		if err := rows.Scan(
+			&stat.Date,
+			&stat.ModelID,
+			&stat.TokensCount,
+			&stat.LatencyMs,
+			&stat.RequestCount,
+			&stat.Throughput,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan model performance stats: %w", err)
+		}
+		rawResults = append(rawResults, stat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	// Group by date and limit to top models per day
+	modelsPerDay := make(map[string]int)
+	var results []*ModelPerformanceStat
+
+	for _, raw := range rawResults {
+		// Check if we've reached the limit for this day
+		if modelsPerDay[raw.Date] >= maxModelsPerDay {
+			continue
+		}
+
+		results = append(results, &ModelPerformanceStat{
+			Date:         raw.Date,
+			ModelID:      raw.ModelID,
+			Throughput:   raw.Throughput,
+			RequestCount: int(raw.RequestCount),
+		})
+		modelsPerDay[raw.Date]++
+	}
+
+	return results, nil
+}
+
+// ChannelPerformanceStats is the resolver for the channelPerformanceStats field.
+// Returns daily performance statistics for channels over the last 30 days.
+// Uses channel_probes table first (pre-aggregated data) for efficiency.
+// Falls back to usage_logs + request_executions if probe data is unavailable.
+// Filters out channels with <5 requests (low confidence) and handles deleted channels gracefully.
+func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	daysCount := 30
+	minRequestsPerChannel := 5 // Filter low confidence channels
+
+	loc := r.systemService.TimeLocation(ctx)
+	nowUTC := xtime.UTCNow()
+	nowLocal := nowUTC.In(loc)
+	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
+	startTimestamp := startDateLocal.UTC().Unix()
+
+	// First, try to get data from channel_probes (pre-aggregated)
+	type probeStats struct {
+		DateStr      string  `json:"date"`
+		ChannelID    int     `json:"channel_id"`
+		RequestCount int     `json:"request_count"`
+		Throughput   float64 `json:"throughput"`
+	}
+
+	var probeResults []probeStats
+
+	// Query channel_probes table with daily aggregation
+	err := r.client.ChannelProbe.Query().
+		Where(
+			channelprobe.TimestampGTE(startTimestamp),
+		).
+		Modify(func(s *sql.Selector) {
+			// Convert timestamp to date string based on dialect
+			var dateExpr string
+			timestampCol := s.C(channelprobe.FieldTimestamp)
+
+			switch s.Dialect() {
+			case dialect.SQLite:
+				// SQLite: Convert Unix timestamp to date string
+				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch'), 'localtime')", timestampCol)
+			case dialect.MySQL:
+				// MySQL: Convert Unix timestamp to date
+				dateExpr = fmt.Sprintf("FROM_UNIXTIME(%s, '%%Y-%%m-%%d')", timestampCol)
+			case dialect.Postgres:
+				// PostgreSQL: Convert Unix timestamp to date
+				dateExpr = fmt.Sprintf("to_char(to_timestamp(%s), 'YYYY-MM-DD')", timestampCol)
+			default:
+				dateExpr = fmt.Sprintf("DATE(%s)", timestampCol)
+			}
+
+			// Aggregate by date and channel_id, sum requests and average throughput
+			s.Select(
+				sql.As(dateExpr, "date"),
+				sql.As(s.C(channelprobe.FieldChannelID), "channel_id"),
+				sql.As(sql.Sum(s.C(channelprobe.FieldTotalRequestCount)), "request_count"),
+				sql.As(sql.Avg(s.C(channelprobe.FieldAvgTokensPerSecond)), "throughput"),
+			).
+				GroupBy(dateExpr, s.C(channelprobe.FieldChannelID)).
+				OrderBy(dateExpr, s.C(channelprobe.FieldChannelID))
+		}).
+		Scan(ctx, &probeResults)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel performance stats from probes: %w", err)
+	}
+
+	// Build results map: date -> channel_id -> stats
+	statsMap := make(map[string]map[int]*probeStats)
+	for _, r := range probeResults {
+		// Filter channels with <5 requests (low confidence)
+		if r.RequestCount < minRequestsPerChannel {
+			continue
+		}
+
+		if statsMap[r.DateStr] == nil {
+			statsMap[r.DateStr] = make(map[int]*probeStats)
+		}
+		statsMap[r.DateStr][r.ChannelID] = &r
+	}
+
+	// Get all channel IDs to lookup names (for deleted channel handling)
+	channelIDSet := make(map[int]struct{})
+	for _, dayStats := range statsMap {
+		for chID := range dayStats {
+			channelIDSet[chID] = struct{}{}
+		}
+	}
+
+	// Fetch channel names for existing channels
+	channelNames := make(map[int]string)
+	if len(channelIDSet) > 0 {
+		channelIDs := lo.Keys(channelIDSet)
+		channels, err := r.client.Channel.Query().
+			Where(channel.IDIn(channelIDs...)).
+			Select(channel.FieldID, channel.FieldName).
+			All(ctx)
+		if err == nil {
+			for _, ch := range channels {
+				channelNames[ch.ID] = ch.Name
+			}
+		}
+	}
+
+	// Build complete response with zero values for missing dates
+	response := make([]*ChannelPerformanceStat, 0)
+
+	for i := range daysCount {
+		date := startDateLocal.AddDate(0, 0, i)
+		dateStr := date.Format("2006-01-02")
+
+		if dayStats, exists := statsMap[dateStr]; exists && len(dayStats) > 0 {
+			// Add entries for this day, sorted by throughput (descending), limit to top 10
+			type channelStat struct {
+				channelID    int
+				requestCount int
+				throughput   float64
+			}
+
+			var dayChannels []channelStat
+			for chID, stats := range dayStats {
+				dayChannels = append(dayChannels, channelStat{
+					channelID:    chID,
+					requestCount: stats.RequestCount,
+					throughput:   stats.Throughput,
+				})
+			}
+
+			// Sort by throughput descending
+			sort.Slice(dayChannels, func(i, j int) bool {
+				return dayChannels[i].throughput > dayChannels[j].throughput
+			})
+
+			// Limit to top 10 channels per day
+			limit := 10
+			if len(dayChannels) > limit {
+				dayChannels = dayChannels[:limit]
+			}
+
+			// Add to response
+			for _, ch := range dayChannels {
+				// Get channel name or use ID as string if deleted
+				channelName := channelNames[ch.channelID]
+				if channelName == "" {
+					// Channel was deleted, use ID
+					channelName = fmt.Sprintf("channel-%d", ch.channelID)
+				}
+
+				var throughput *float64
+				if ch.throughput > 0 {
+					throughput = &ch.throughput
+				}
+
+				response = append(response, &ChannelPerformanceStat{
+					Date:         dateStr,
+					ChannelID:    channelName,
+					Throughput:   throughput,
+					RequestCount: ch.requestCount,
+				})
+			}
+		}
+	}
+
+	return response, nil
 }
