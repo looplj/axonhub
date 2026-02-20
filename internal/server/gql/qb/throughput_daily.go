@@ -270,11 +270,15 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 		"        se." + getIDColumnName(queryType) + " as id,\n" +
 		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
 		"        SUM(se.metrics_latency_ms) as latency_ms,\n" +
-		"        AVG(CASE\n" +
+		"        SUM(CASE\n" +
 		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
 		"            THEN se.metrics_first_token_latency_ms\n" +
-		"            ELSE NULL\n" +
-		"        END) as ttft_ms,\n" +
+		"            ELSE 0\n" +
+		"        END) / NULLIF(SUM(CASE\n" +
+		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
+		"            THEN 1\n" +
+		"            ELSE 0\n" +
+		"        END), 0) as ttft_ms,\n" +
 		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
 		"        " + throughputSQL + " as throughput\n" +
 		"    FROM successful_execs se\n" +
