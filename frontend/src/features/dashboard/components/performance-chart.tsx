@@ -57,7 +57,7 @@ interface PerformanceChartProps {
 
 interface TooltipPayloadItem {
   dataKey: string;
-  value: number;
+  value: number | null;
   name: string;
   color: string;
   payload: Record<string, string | number | null>;
@@ -152,9 +152,7 @@ export function PerformanceChart({
   const timezone = generalSettings?.timezone || 'UTC';
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
 
-  const safeData = data ?? [];
-
-  const memoizedSafeData = useMemo(() => safeData, [data]);
+  const memoizedSafeData = useMemo(() => data ?? [], [data]);
 
   const groupedById = useMemo(() => groupBy(memoizedSafeData, 'id'), [memoizedSafeData]);
 

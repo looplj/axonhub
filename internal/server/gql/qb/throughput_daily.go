@@ -147,17 +147,6 @@ func throughputCalculationSQL(seTable string) string {
     END`, core, core)
 }
 
-// throughputHavingSQL returns the SQL for HAVING clause filtering non-null throughput.
-func throughputHavingSQL(seTable string) string {
-	core := throughputCoreSQL(seTable)
-	return fmt.Sprintf(`CASE
-    WHEN SUM(%s) > 0
-    THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-         / SUM(%s)
-    ELSE NULL
-END`, core, core)
-}
-
 // buildDailyRowNumberQuery constructs a daily throughput query using ROW_NUMBER().
 // Applies date filtering and per-day limit using ROW_NUMBER() window partitioned by date.
 func buildDailyRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, limit int, startDatePlaceholder string) string {
