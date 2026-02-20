@@ -144,6 +144,14 @@ export function ChannelPerformanceStats() {
     return { dates: uniqueDates, topChannels: tChannels, legendItems: lItems };
   }, [safeStats]);
 
+  const statsMap = useMemo(() => {
+    return safeStats.reduce((acc, stat) => {
+      if (!acc[stat.date]) acc[stat.date] = {};
+      acc[stat.date][stat.channelId] = stat;
+      return acc;
+    }, {} as Record<string, Record<string, typeof safeStats[0]>>);
+  }, [safeStats]);
+
   if (isLoading) {
     return (
       <div className='flex h-[350px] items-center justify-center'>
@@ -167,14 +175,6 @@ export function ChannelPerformanceStats() {
       </div>
     );
   }
-
-  const statsMap = useMemo(() => {
-    return safeStats.reduce((acc, stat) => {
-      if (!acc[stat.date]) acc[stat.date] = {};
-      acc[stat.date][stat.channelId] = stat;
-      return acc;
-    }, {} as Record<string, Record<string, typeof safeStats[0]>>);
-  }, [safeStats]);
 
   // Transform data for the chart
   const chartData = dates.map((date) => {
