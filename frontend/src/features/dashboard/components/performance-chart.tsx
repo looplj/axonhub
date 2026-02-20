@@ -222,6 +222,13 @@ export function PerformanceChart({
     return ranges;
   }, [dates, statsMap, topItems]);
 
+  // Build date→index map for O(1) lookups instead of O(n) indexOf
+  const dateIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    dates.forEach((date, index) => map.set(date, index));
+    return map;
+  }, [dates]);
+
   if (isLoadingData) {
     return (
       <div className='flex h-[350px] items-center justify-center'>
@@ -245,13 +252,6 @@ export function PerformanceChart({
       </div>
     );
   }
-
-  // Build date→index map for O(1) lookups instead of O(n) indexOf
-  const dateIndexMap = useMemo(() => {
-    const map = new Map<string, number>();
-    dates.forEach((date, index) => map.set(date, index));
-    return map;
-  }, [dates]);
 
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
