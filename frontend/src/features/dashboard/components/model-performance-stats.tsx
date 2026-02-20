@@ -138,7 +138,7 @@ export function ModelPerformanceStats() {
         totalRequests: stats.totalRequests,
       }))
       .sort((a, b) => b.avgThroughput - a.avgThroughput)
-      .slice(0, 10)
+      .slice(0, 6)
       .sort((a, b) => a.modelId.localeCompare(b.modelId))
       .map((m) => m.modelId);
 
