@@ -137,6 +137,9 @@ export function ModelPerformanceStats() {
       };
     });
 
+    // Sort legend items alphabetically by name
+    lItems.sort((a, b) => a.name.localeCompare(b.name));
+
     return { dates: uniqueDates, topModels: uniqueModels, legendItems: lItems };
   }, [safeStats]);
 

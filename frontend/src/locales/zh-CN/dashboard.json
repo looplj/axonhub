@@ -32,7 +32,7 @@
   "dashboard.charts.requestsByAPIKeyDescription": "不同API密钥的请求分布情况。",
   "dashboard.charts.tokensByAPIKeyDescription": "前3个API密钥的词元使用情况。",
   "dashboard.charts.channelSuccessRateDescription": "不同渠道的请求成功率情况。",
-  "dashboard.charts.performanceDescription": "过去30天的每秒Token数与首个Token延迟。",
+  "dashboard.charts.performanceDescription": "过去30天的tokens/second与首个Token延迟。",
   "dashboard.stats.totalUsersInSystem": "系统用户总数",
   "dashboard.stats.allTimeRequests": "总请求数",
   "dashboard.stats.thisMonth": "本月",

@@ -138,6 +138,9 @@ export function ChannelPerformanceStats() {
       };
     });
 
+    // Sort legend items alphabetically by name
+    lItems.sort((a, b) => a.name.localeCompare(b.name));
+
     return { dates: uniqueDates, topChannels: uniqueChannels, legendItems: lItems };
   }, [safeStats]);
 
