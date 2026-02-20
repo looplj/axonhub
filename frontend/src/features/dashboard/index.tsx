@@ -216,12 +216,8 @@ export default function DashboardPage() {
         icon={<Zap className='h-4 w-4 text-primary' />}
         storageKey='performance'
       >
-        <div className='grid gap-4 md:grid-cols-2'>
-          <FastestChannelsCard />
-          <FastestModelsCard />
-        </div>
-        <div className='grid gap-4 md:grid-cols-1'>
-          <Card className='gap-2'>
+        <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
+          <Card className='hover-card col-span-1 lg:col-span-5'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.modelPerformance')}</CardTitle>
             </CardHeader>
@@ -229,7 +225,12 @@ export default function DashboardPage() {
               <ModelPerformanceStats />
             </CardContent>
           </Card>
-          <Card className='gap-2'>
+          <div className='col-span-1 lg:col-span-2'>
+            <FastestModelsCard />
+          </div>
+        </div>
+        <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
+          <Card className='hover-card col-span-1 lg:col-span-5'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.channelPerformance')}</CardTitle>
             </CardHeader>
@@ -237,6 +238,9 @@ export default function DashboardPage() {
               <ChannelPerformanceStats />
             </CardContent>
           </Card>
+          <div className='col-span-1 lg:col-span-2'>
+            <FastestChannelsCard />
+          </div>
         </div>
       </CollapsibleSection>
     </div>

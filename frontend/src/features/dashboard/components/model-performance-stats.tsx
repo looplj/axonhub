@@ -210,7 +210,7 @@ export function ModelPerformanceStats() {
           <defs>
             {topModels.map((modelId, index) => (
               <linearGradient key={`${modelId}-fill`} id={`model-throughput-${index}`} x1='0' y1='0' x2='0' y2='1'>
-                <stop offset='5%' stopColor={COLORS[index % COLORS.length]} stopOpacity={0.25} />
+                <stop offset='5%' stopColor={COLORS[index % COLORS.length]} stopOpacity={0.3} />
                 <stop offset='95%' stopColor={COLORS[index % COLORS.length]} stopOpacity={0} />
               </linearGradient>
             ))}
@@ -260,7 +260,7 @@ export function ModelPerformanceStats() {
                 stroke={color}
                 strokeWidth={2}
                 fill={`url(#model-throughput-${index})`}
-                fillOpacity={isActive ? 0.6 : 0.2}
+                fillOpacity={1}
                 dot={false}
                 activeDot={{ r: 4 }}
                 connectNulls={false}
@@ -301,15 +301,15 @@ export function ModelPerformanceStats() {
               type='button'
               key={item.id}
               onClick={() => setActiveSeries((current) => (current === item.id ? null : item.id))}
-              className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-left text-xs transition ${
+              className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-sm transition ${
                 isActive ? 'border-primary/40 bg-primary/5 text-foreground' : 'border-border text-muted-foreground'
               }`}
             >
               <span className='flex min-w-0 items-center gap-2'>
                 <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
-                <span className='truncate'>{item.name}</span>
+                <span className='truncate font-medium'>{item.name}</span>
               </span>
-              <span className='text-[10px] text-muted-foreground'>
+              <span className='text-xs text-muted-foreground tabular-nums'>
                 {formatNumber(item.avgThroughput)} {t('dashboard.stats.throughput')} · TTFT {formatDuration(item.avgTtft)}
               </span>
             </button>
