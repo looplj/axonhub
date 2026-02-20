@@ -214,14 +214,9 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 		// Calculate avg tokens per second using effective latency
 		// For streaming: tokens / ((latency - first_token_latency) / 1000)
 		// For non-streaming: tokens / (latency / 1000)
-		// Only calculate if we have sufficient sample size to avoid outliers
-		const minRequestsForTPS = 5
-		const maxTPS = 2000.0 // Physically unrealistic above this
-		if r.TotalTokens > 0 && r.EffectiveLatencyMs > 0 && r.RequestCount >= minRequestsForTPS {
+		if r.TotalTokens > 0 && r.EffectiveLatencyMs > 0 {
 			tps := float64(r.TotalTokens) / (float64(r.EffectiveLatencyMs) / 1000.0)
-			if tps <= maxTPS {
-				stats.avgTokensPerSecond = &tps
-			}
+			stats.avgTokensPerSecond = &tps
 		}
 
 		// Calculate avg time to first token (only for streaming requests)
