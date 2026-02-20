@@ -50,7 +50,7 @@
   "dashboard.stats.reasoningTokens": "Reasoning Tokens",
   "dashboard.stats.totalTokens": "Tokens",
   "dashboard.stats.totalCost": "Cost",
-  "dashboard.stats.throughput": "Tok/s",
+  "dashboard.stats.throughput": "tok/s",
   "dashboard.stats.ttft": "TTFT",
   "dashboard.stats.model": "Model",
   "dashboard.stats.channel": "Channel",

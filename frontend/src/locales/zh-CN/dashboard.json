@@ -50,7 +50,7 @@
   "dashboard.stats.reasoningTokens": "推理Token",
   "dashboard.stats.totalTokens": "Token",
   "dashboard.stats.totalCost": "费用",
-  "dashboard.stats.throughput": "Tok/s",
+  "dashboard.stats.throughput": "tok/s",
   "dashboard.stats.ttft": "TTFT",
   "dashboard.stats.model": "模型",
   "dashboard.stats.channel": "渠道",

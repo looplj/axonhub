@@ -67,7 +67,7 @@ function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProp
         color: item.color,
       };
     })
-    .sort((a, b) => a.channelId.localeCompare(b.channelId));
+    .sort((a, b) => displayMode === 'throughput' ? b.throughput - a.throughput : a.ttft - b.ttft);
 
   if (channelData.length === 0) return null;
 
