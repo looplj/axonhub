@@ -56,7 +56,7 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
       <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
         <div className='text-foreground text-sm font-medium'>{item.name}</div>
         <div className='text-muted-foreground'>
-          {safeToFixed(safeThroughput)} tokens/s ({safeToFixed(percent, 0)}%)
+          {safeToFixed(safeThroughput, 0)} tokens/s ({safeToFixed(percent, 0)}%)
         </div>
         <div className='text-muted-foreground text-xs'>
           {safeNumber(item.requestCount)} requests
@@ -101,7 +101,7 @@ function ChartLegend({ items }: { items: LegendItem[] }) {
             <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
             <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
             <div className='text-right leading-tight'>
-              <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
+              <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput, 0)} tok/s</div>
               <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
             </div>
           </div>

@@ -87,7 +87,7 @@ function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProp
             </div>
             <div className='ml-4 text-muted-foreground'>
               {displayMode === 'throughput' ? (
-                <>{formatNumber(item.throughput)} {t('dashboard.stats.throughput')}</>
+                <>{formatNumber(item.throughput, { digits: 0 })} {t('dashboard.stats.throughput')}</>
               ) : (
                 <>TTFT {formatDuration(item.ttft)}</>
               )}
@@ -310,7 +310,7 @@ export function ChannelPerformanceStats() {
                 <span className='font-medium'>{item.name}</span>
               </span>
               <span className='text-xs text-muted-foreground tabular-nums 2xl:text-right'>
-                {formatNumber(item.avgThroughput)} {t('dashboard.stats.throughput')} · TTFT {formatDuration(item.avgTtft)}
+                {formatNumber(item.avgThroughput, { digits: 0 })} {t('dashboard.stats.throughput')} · TTFT {formatDuration(item.avgTtft)}
               </span>
             </button>
           );
