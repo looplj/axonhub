@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, Key, Zap, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -87,6 +87,16 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { isLoading, error } = useDashboardStats();
+  const [modelTotalRequests, setModelTotalRequests] = useState(0);
+  const [channelTotalRequests, setChannelTotalRequests] = useState(0);
+
+  const modelPerformanceDescription = useMemo(() => {
+    return t('dashboard.charts.performanceDescription', { count: modelTotalRequests });
+  }, [t, modelTotalRequests]);
+
+  const channelPerformanceDescription = useMemo(() => {
+    return t('dashboard.charts.performanceDescription', { count: channelTotalRequests });
+  }, [t, channelTotalRequests]);
 
   if (isLoading) {
     return (
@@ -220,10 +230,10 @@ export default function DashboardPage() {
           <Card className='hover-card col-span-1 lg:col-span-4'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.modelPerformance')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.performanceDescription')}</CardDescription>
+              <CardDescription>{modelPerformanceDescription}</CardDescription>
             </CardHeader>
             <CardContent>
-              <ModelPerformanceStats />
+              <ModelPerformanceStats onTotalRequestsChange={setModelTotalRequests} />
             </CardContent>
           </Card>
           <div className='col-span-1 lg:col-span-3'>
@@ -234,10 +244,10 @@ export default function DashboardPage() {
           <Card className='hover-card col-span-1 lg:col-span-4'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.channelPerformance')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.performanceDescription')}</CardDescription>
+              <CardDescription>{channelPerformanceDescription}</CardDescription>
             </CardHeader>
             <CardContent>
-              <ChannelPerformanceStats />
+              <ChannelPerformanceStats onTotalRequestsChange={setChannelTotalRequests} />
             </CardContent>
           </Card>
           <div className='col-span-1 lg:col-span-3'>

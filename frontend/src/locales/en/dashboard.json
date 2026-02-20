@@ -15,7 +15,7 @@
   "dashboard.charts.channelSuccessRate": "Channel Success Rate",
   "dashboard.charts.modelPerformance": "Top Models Performance",
   "dashboard.charts.channelPerformance": "Top Channels Performance",
-  "dashboard.charts.performanceDescription": "tokens/second and time to first token over the last 30 days.",
+  "dashboard.charts.performanceDescription": "Shows tokens/second and time to first token over the last 30 days across {{count}} requests.",
   "dashboard.charts.errorLoadingChart": "Error loading chart data:",
   "dashboard.charts.errorLoadingTopProjects": "Error loading top projects:",
   "dashboard.charts.errorLoadingChannelData": "Error loading channel data:",

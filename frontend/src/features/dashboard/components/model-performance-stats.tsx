@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
@@ -24,6 +24,10 @@ const COLORS = [
 ];
 
 export type PerformanceDisplayMode = 'throughput' | 'ttft';
+
+interface ModelPerformanceStatsProps {
+  onTotalRequestsChange?: (total: number) => void;
+}
 
 interface TooltipProps {
   active?: boolean;
@@ -99,7 +103,7 @@ function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProp
   );
 }
 
-export function ModelPerformanceStats() {
+export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanceStatsProps) {
   const { t, i18n } = useTranslation();
   const { data: performanceStats, isLoading: isStatsLoading, error } = useModelPerformanceStats();
   const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
@@ -113,11 +117,11 @@ export function ModelPerformanceStats() {
 
   const safeStats = performanceStats ?? [];
 
-  const { dates, topModels, legendItems } = useMemo(() => {
+  const { dates, topModels, legendItems, totalRequests } = useMemo(() => {
     const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
-    
+
     const uniqueModels = [...new Set(safeStats.map((stat) => stat.modelId))].sort();
-    
+
     const lItems = uniqueModels.map((modelId, index) => {
       const modelStatsList = safeStats.filter((s) => s.modelId === modelId);
       const totalRequests = modelStatsList.reduce((sum, s) => sum + s.requestCount, 0);
@@ -140,8 +144,14 @@ export function ModelPerformanceStats() {
     // Sort legend items alphabetically by name
     lItems.sort((a, b) => a.name.localeCompare(b.name));
 
-    return { dates: uniqueDates, topModels: uniqueModels, legendItems: lItems };
+    const total = safeStats.reduce((sum, s) => sum + s.requestCount, 0);
+
+    return { dates: uniqueDates, topModels: uniqueModels, legendItems: lItems, totalRequests: total };
   }, [safeStats]);
+
+  useEffect(() => {
+    onTotalRequestsChange?.(totalRequests);
+  }, [totalRequests, onTotalRequestsChange]);
 
   const statsMap = useMemo(() => {
     return safeStats.reduce((acc, stat) => {

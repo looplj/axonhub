@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
@@ -10,6 +10,10 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeneralSettings } from '../../system/data/system';
 import { useChannelPerformanceStats } from '../data/dashboard';
 import type { PerformanceDisplayMode } from './model-performance-stats';
+
+interface ChannelPerformanceStatsProps {
+  onTotalRequestsChange?: (total: number) => void;
+}
 
 const COLORS = [
   'var(--chart-1)',
@@ -99,7 +103,7 @@ function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProp
   );
 }
 
-export function ChannelPerformanceStats() {
+export function ChannelPerformanceStats({ onTotalRequestsChange }: ChannelPerformanceStatsProps) {
   const { t, i18n } = useTranslation();
   const { data: performanceStats, isLoading: isStatsLoading, error } = useChannelPerformanceStats();
   const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
@@ -113,7 +117,7 @@ export function ChannelPerformanceStats() {
 
   const safeStats = performanceStats ?? [];
 
-  const { dates, topChannels, legendItems } = useMemo(() => {
+  const { dates, topChannels, legendItems, totalRequests } = useMemo(() => {
     const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
     
     const uniqueChannels = [...new Set(safeStats.map((stat) => stat.channelId))].sort();
@@ -141,8 +145,14 @@ export function ChannelPerformanceStats() {
     // Sort legend items alphabetically by name
     lItems.sort((a, b) => a.name.localeCompare(b.name));
 
-    return { dates: uniqueDates, topChannels: uniqueChannels, legendItems: lItems };
+    const total = safeStats.reduce((sum, s) => sum + s.requestCount, 0);
+
+    return { dates: uniqueDates, topChannels: uniqueChannels, legendItems: lItems, totalRequests: total };
   }, [safeStats]);
+
+  useEffect(() => {
+    onTotalRequestsChange?.(totalRequests);
+  }, [totalRequests, onTotalRequestsChange]);
 
   const statsMap = useMemo(() => {
     return safeStats.reduce((acc, stat) => {
