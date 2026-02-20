@@ -30,19 +30,27 @@ var AllowedDailyQueryConfigs = map[DailyThroughputQueryType]DailyQueryFragmentCo
 		NameColumn:    "c.name as channel_name",
 		NameAlias:     "channel_name",
 		JoinClause:    "JOIN channels c ON se.channel_id = c.id",
-		GroupByFields: "date, se.channel_id, c.name",
+		GroupByFields: "se.channel_id, c.name",
 	},
 	DailyThroughputByModel: {
 		IDColumn:      "r.model_id",
 		NameColumn:    "m.name as model_name",
 		NameAlias:     "model_name",
 		JoinClause:    "JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
-		GroupByFields: "date, r.model_id, m.name",
+		GroupByFields: "r.model_id, m.name",
 	},
 }
 
 // getDateExpression returns the dialect-specific date expression for grouping by day.
 // The dateExpr should include the column reference (e.g., "se.created_at").
+//
+// SECURITY NOTE: The timezone parameter is interpolated directly into SQL queries for
+// MySQL (CONVERT_TZ) and Postgres (AT TIME ZONE). This parameter must be a trusted,
+// sanitized value (e.g., from system loc.String() which returns a valid IANA timezone name
+// like "America/New_York"). NEVER pass untrusted user input directly to this function.
+// If you need timezone support from user input, validate against a whitelist of known
+// timezones first, or use offsetSeconds as an alternative (though offsetSeconds doesn't
+// handle DST transitions correctly).
 func getDateExpression(dialect string, dateExpr string, timezone string, offsetSeconds int) string {
 	switch dialect {
 	case "sqlite3", "sqlite":
@@ -180,12 +188,12 @@ daily_stats AS (
     JOIN usage_logs ul ON se.request_id = ul.request_id
     %s
     WHERE se.rn = 1
-    GROUP BY %s
+    GROUP BY %s, %s
 )
 SELECT date, id, %s, tokens_count, request_count, throughput
 FROM daily_stats
 WHERE daily_rn <= %d
-ORDER BY date DESC, throughput DESC`, startDatePlaceholder, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, config.GroupByFields, config.NameAlias, limit)
+ORDER BY date DESC, throughput DESC`, startDatePlaceholder, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, dateExpr, config.GroupByFields, config.NameAlias, limit)
 }
 
 // buildDailyMaxIDQuery constructs a daily throughput query using MAX(id) subquery.
@@ -215,12 +223,12 @@ WITH ranked_execs AS (
                 AND re2.status = 'completed'
                 AND re2.metrics_latency_ms > 0
         )
-    GROUP BY %s
+    GROUP BY %s, %s
 )
 SELECT date, id, %s, tokens_count, request_count, throughput
 FROM ranked_execs
 WHERE daily_rn <= %d
-ORDER BY date DESC, throughput DESC`, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, startDatePlaceholder, config.GroupByFields, config.NameAlias, limit)
+ORDER BY date DESC, throughput DESC`, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, startDatePlaceholder, dateExpr, config.GroupByFields, config.NameAlias, limit)
 }
 
 // BuildDailyPerformanceStatsQuery constructs a SQL query for daily performance statistics

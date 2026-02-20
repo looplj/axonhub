@@ -20,10 +20,6 @@ const COLORS = [
   'var(--chart-4)',
   'var(--chart-5)',
   'var(--chart-6)',
-  'var(--chart-7)',
-  'var(--chart-8)',
-  'var(--chart-9)',
-  'var(--chart-10)',
 ];
 
 interface TooltipProps {
@@ -33,7 +29,7 @@ interface TooltipProps {
     value: number;
     name: string;
     color: string;
-    payload: Record<string, string | number>;
+    payload: Record<string, string | number | null>;
   }>;
   label?: string;
   displayMode: PerformanceDisplayMode;
@@ -44,7 +40,7 @@ function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProp
 
   if (!active || !payload || payload.length === 0) return null;
 
-  const dataPoint = payload[0]?.payload as Record<string, string | number> | undefined;
+  const dataPoint = payload[0]?.payload as Record<string, string | number | null> | undefined;
   if (!dataPoint) return null;
 
   const filteredPayload = displayMode === 'throughput'

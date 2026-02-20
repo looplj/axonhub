@@ -1092,6 +1092,13 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		Throughput   *float64
 	}
 
+	// ModelStatsBucket holds aggregated statistics for a single model.
+	// This is used internally to group performance stats before ranking.
+	type ModelStatsBucket struct {
+		totalRequests int64
+		results       []*ModelPerformanceStat
+	}
+
 	var rawResults []rawStat
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
@@ -1117,10 +1124,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
 
-	modelStats := make(map[string]*struct {
-		totalRequests int64
-		results       []*ModelPerformanceStat
-	})
+	modelStats := make(map[string]*ModelStatsBucket)
 
 	for _, raw := range rawResults {
 		var ttftMs *float64
@@ -1137,10 +1141,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		}
 
 		if modelStats[raw.ModelID] == nil {
-			modelStats[raw.ModelID] = &struct {
-				totalRequests int64
-				results       []*ModelPerformanceStat
-			}{}
+			modelStats[raw.ModelID] = &ModelStatsBucket{}
 		}
 		modelStats[raw.ModelID].totalRequests += raw.RequestCount
 		modelStats[raw.ModelID].results = append(modelStats[raw.ModelID].results, stat)
@@ -1151,22 +1152,24 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		requestCount int64
 	}
 
-	var models []modelInfo
+	var modelInfos []modelInfo
 	for modelID, stats := range modelStats {
-		models = append(models, modelInfo{
+		modelInfos = append(modelInfos, modelInfo{
 			modelID:      modelID,
 			requestCount: stats.totalRequests,
 		})
 	}
 
-	topModels := calculateConfidenceAndSort(models, func(m modelInfo) int64 { return m.requestCount }, func(m modelInfo) float64 { return float64(m.requestCount) }, 6)
+	// Use requestCount for both count and value since modelInfo doesn't include throughput.
+	// This ranks models by request volume rather than performance metrics.
+	topModels := calculateConfidenceAndSort(modelInfos, func(m modelInfo) int64 { return m.requestCount }, func(m modelInfo) float64 { return float64(m.requestCount) }, 6)
 
-	var results []*ModelPerformanceStat
+	var statsResults []*ModelPerformanceStat
 	for _, item := range topModels {
-		results = append(results, modelStats[item.stats.modelID].results...)
+		statsResults = append(statsResults, modelStats[item.stats.modelID].results...)
 	}
 
-	return results, nil
+	return statsResults, nil
 }
 
 // ChannelPerformanceStats is the resolver for the channelPerformanceStats field.
@@ -1217,14 +1220,11 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 
 			switch s.Dialect() {
 			case dialect.SQLite:
-				// SQLite: Convert Unix timestamp to date string with explicit timezone offset
 				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
 			case dialect.MySQL:
-				// MySQL: Convert Unix timestamp to date with timezone offset
-				dateExpr = fmt.Sprintf("FROM_UNIXTIME(%s + %d, '%%Y-%%m-%%d')", timestampCol, offsetSeconds)
+				dateExpr = fmt.Sprintf("DATE(CONVERT_TZ(FROM_UNIXTIME(%s), '+00:00', '%s'))", timestampCol, loc.String())
 			case dialect.Postgres:
-				// PostgreSQL: Convert Unix timestamp to date with timezone offset
-				dateExpr = fmt.Sprintf("to_char(to_timestamp(%s + %d), 'YYYY-MM-DD')", timestampCol, offsetSeconds)
+				dateExpr = fmt.Sprintf("to_char(to_timestamp(%s) AT TIME ZONE '%s', 'YYYY-MM-DD')", timestampCol, loc.String())
 			default:
 				dateExpr = fmt.Sprintf("DATE(%s)", timestampCol)
 			}
@@ -1308,7 +1308,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	channelNames := make(map[int]string)
 	if len(channelIDSet) > 0 {
 		channelIDs := lo.Keys(channelIDSet)
-		channels, err := r.client.Channel.Query().
+		queriedChannels, err := r.client.Channel.Query().
 			Where(channel.IDIn(channelIDs...)).
 			Select(channel.FieldID, channel.FieldName).
 			All(ctx)
@@ -1317,7 +1317,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 				log.Any("channelIDs", channelIDs),
 				log.Cause(err))
 		} else {
-			for _, ch := range channels {
+			for _, ch := range queriedChannels {
 				channelNames[ch.ID] = ch.Name
 			}
 		}

@@ -15,10 +15,6 @@ const COLORS = [
   'var(--chart-4)',
   'var(--chart-5)',
   'var(--chart-6)',
-  'var(--chart-7)',
-  'var(--chart-8)',
-  'var(--chart-9)',
-  'var(--chart-10)',
 ];
 
 export type PerformanceDisplayMode = 'throughput' | 'ttft';
@@ -34,7 +30,7 @@ interface TooltipProps {
     value: number;
     name: string;
     color: string;
-    payload: Record<string, string | number>;
+    payload: Record<string, string | number | null>;
   }>;
   label?: string;
   displayMode: PerformanceDisplayMode;
@@ -45,7 +41,7 @@ function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProp
 
   if (!active || !payload || payload.length === 0) return null;
 
-  const dataPoint = payload[0]?.payload as Record<string, string | number> | undefined;
+  const dataPoint = payload[0]?.payload as Record<string, string | number | null> | undefined;
   if (!dataPoint) return null;
 
   const filteredPayload = displayMode === 'throughput'
@@ -115,13 +111,15 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
 
   const safeStats = performanceStats ?? [];
 
-  const { dates, topModels, legendItems, totalRequests } = useMemo(() => {
-    const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
+  const memoizedSafeStats = useMemo(() => safeStats, [performanceStats]);
 
-    const uniqueModels = [...new Set(safeStats.map((stat) => stat.modelId))].sort();
+  const { dates, topModels, legendItems, totalRequests } = useMemo(() => {
+    const uniqueDates = [...new Set(memoizedSafeStats.map((stat) => stat.date))].sort();
+
+    const uniqueModels = [...new Set(memoizedSafeStats.map((stat) => stat.modelId))].sort();
 
     const lItems = uniqueModels.map((modelId, index) => {
-      const modelStatsList = safeStats.filter((s) => s.modelId === modelId);
+      const modelStatsList = memoizedSafeStats.filter((s) => s.modelId === modelId);
       const totalRequests = modelStatsList.reduce((sum, s) => sum + s.requestCount, 0);
       const weightedThroughput = totalRequests > 0
         ? modelStatsList.reduce((sum, s) => sum + (s.throughput ?? 0) * s.requestCount, 0) / totalRequests
@@ -142,22 +140,22 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
     // Sort legend items alphabetically by name
     lItems.sort((a, b) => a.name.localeCompare(b.name));
 
-    const total = safeStats.reduce((sum, s) => sum + s.requestCount, 0);
+    const total = memoizedSafeStats.reduce((sum, s) => sum + s.requestCount, 0);
 
     return { dates: uniqueDates, topModels: uniqueModels, legendItems: lItems, totalRequests: total };
-  }, [safeStats]);
+  }, [memoizedSafeStats]);
 
   useEffect(() => {
     onTotalRequestsChange?.(totalRequests);
   }, [totalRequests, onTotalRequestsChange]);
 
   const statsMap = useMemo(() => {
-    return safeStats.reduce((acc, stat) => {
+    return memoizedSafeStats.reduce((acc, stat) => {
       if (!acc[stat.date]) acc[stat.date] = {};
       acc[stat.date][stat.modelId] = stat;
       return acc;
-    }, {} as Record<string, Record<string, typeof safeStats[0]>>);
-  }, [safeStats]);
+    }, {} as Record<string, Record<string, typeof memoizedSafeStats[0]>>);
+  }, [memoizedSafeStats]);
 
   if (isLoading) {
     return (
@@ -204,7 +202,7 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
   });
 
   // Get throughput values and sort them
-  const throughputValues = safeStats
+  const throughputValues = memoizedSafeStats
     .filter((s) => s.throughput != null && topModels.includes(s.modelId))
     .map((s) => s.throughput!)
     .sort((a, b) => a - b);
@@ -218,7 +216,7 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
   const throughputMax = Math.max(10, Math.ceil(maxThroughput * 1.1));
 
   const maxTtft = Math.max(
-    ...safeStats
+    ...memoizedSafeStats
       .filter((s) => s.ttftMs != null && s.ttftMs > 0 && topModels.includes(s.modelId))
       .map((s) => s.ttftMs!),
     0
@@ -250,7 +248,7 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             {topModels.map((modelId, index) => (
-              <linearGradient key={`${modelId}-fill`} id={`model-throughput-${index}`} x1='0' y1='0' x2='0' y2='1'>
+              <linearGradient key={`${modelId}-fill`} id={`model-${displayMode}-${modelId}`} x1='0' y1='0' x2='0' y2='1'>
                 <stop offset='5%' stopColor={COLORS[index % COLORS.length]} stopOpacity={0.3} />
                 <stop offset='95%' stopColor={COLORS[index % COLORS.length]} stopOpacity={0} />
               </linearGradient>
@@ -289,7 +287,7 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
                 name={modelId}
                 stroke={color}
                 strokeWidth={2}
-                fill={`url(#model-throughput-${index})`}
+                fill={`url(#model-${displayMode}-${modelId})`}
                 fillOpacity={1}
                 dot={false}
                 activeDot={{ r: 4 }}

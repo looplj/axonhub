@@ -378,7 +378,7 @@ func TestAllowedDailyQueryConfigs(t *testing.T) {
 	assert.Contains(t, channelConfig.NameColumn, "channel_name", "should include channel_name")
 	assert.Contains(t, channelConfig.JoinClause, "channels c ON", "should join channels table")
 	assert.Contains(t, channelConfig.GroupByFields, "channel_id", "should group by channel_id")
-	assert.Contains(t, channelConfig.GroupByFields, "date", "should group by date")
+	// date is added separately via dateExpr in GROUP BY clauses
 
 	modelConfig := AllowedDailyQueryConfigs[DailyThroughputByModel]
 	assert.Contains(t, modelConfig.IDColumn, "model_id", "should include model_id")
@@ -386,7 +386,7 @@ func TestAllowedDailyQueryConfigs(t *testing.T) {
 	assert.Contains(t, modelConfig.JoinClause, "requests r ON", "should join requests table")
 	assert.Contains(t, modelConfig.JoinClause, "models m ON", "should join models table")
 	assert.Contains(t, modelConfig.GroupByFields, "model_id", "should group by model_id")
-	assert.Contains(t, modelConfig.GroupByFields, "date", "should group by date")
+	// date is added separately via dateExpr in GROUP BY clauses
 }
 
 func TestDailyThroughputQueryTypeEnum(t *testing.T) {
