@@ -192,12 +192,18 @@ export function ModelPerformanceStats() {
     return dataPoint;
   });
 
-  const maxThroughput = Math.max(
-    ...safeStats
-      .filter((s) => s.throughput != null && topModels.includes(s.modelId))
-      .map((s) => s.throughput!),
-    0
-  );
+  // Get throughput values and sort them
+  const throughputValues = safeStats
+    .filter((s) => s.throughput != null && topModels.includes(s.modelId))
+    .map((s) => s.throughput!)
+    .sort((a, b) => a - b);
+
+  // Use 95th percentile to avoid outlier squashing, fallback to max if array is small
+  const maxThroughput = throughputValues.length > 20
+    ? throughputValues[Math.floor(throughputValues.length * 0.95)] || throughputValues[throughputValues.length - 1]
+    : throughputValues.length > 0
+      ? throughputValues[throughputValues.length - 1]
+      : 0;
   const throughputMax = Math.max(10, Math.ceil(maxThroughput * 1.1));
 
   const maxTtft = Math.max(
@@ -212,7 +218,7 @@ export function ModelPerformanceStats() {
 
   const yAxisDomain = displayMode === 'throughput' ? [0, throughputMax] : [0, ttftMax];
   const yAxisTickFormatter = displayMode === 'throughput'
-    ? (value: number) => formatNumber(value)
+    ? (value: number) => formatNumber(value, { digits: 0 })
     : (value: number) => formatDuration(value);
 
   return (

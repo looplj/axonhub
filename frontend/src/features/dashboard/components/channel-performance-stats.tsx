@@ -219,7 +219,7 @@ export function ChannelPerformanceStats() {
 
   const yAxisDomain = displayMode === 'throughput' ? [0, throughputMax] : [0, ttftMax];
   const yAxisTickFormatter = displayMode === 'throughput'
-    ? (value: number) => formatNumber(value)
+    ? (value: number) => formatNumber(value, { digits: 0 })
     : (value: number) => formatDuration(value);
 
   return (
