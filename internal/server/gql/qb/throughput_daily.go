@@ -126,7 +126,7 @@ func buildDailyThroughputQuery(dialect string, timezone string, offsetSeconds in
 }
 
 // throughputCoreSQL returns the shared CASE expression body for throughput calculations.
-// This extracts the common latency calculation logic used by both throughputCalculationSQL and throughputHavingSQL.
+// This extracts the common latency calculation logic used by throughputCalculationSQL.
 func throughputCoreSQL(seTable string) string {
 	return fmt.Sprintf(`CASE WHEN %s.stream AND %s.metrics_first_token_latency_ms IS NOT NULL
                  THEN CASE WHEN %s.metrics_first_token_latency_ms >= %s.metrics_latency_ms
@@ -230,9 +230,10 @@ ORDER BY date DESC, throughput DESC`, dateExpr, config.IDColumn, config.NameColu
 //   - offsetSeconds: timezone offset in seconds
 //   - queryType: DailyThroughputByModel or DailyThroughputByChannel
 //   - placeholder: parameter placeholder ("?" or "$1")
+//   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
 //
 // Returns: SQL query string ready for execution
-func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeconds int, queryType DailyThroughputQueryType, placeholder string) string {
+func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeconds int, queryType DailyThroughputQueryType, placeholder string, mode ThroughputQueryMode) string {
 	config, ok := AllowedDailyQueryConfigs[queryType]
 	if !ok {
 		config = AllowedDailyQueryConfigs[DailyThroughputByModel]
@@ -247,6 +248,15 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 		joinRequests = "    JOIN requests r ON se.request_id = r.id\n"
 	}
 
+	if mode == ThroughputModeMaxID {
+		return buildDailyPerformanceStatsMaxIDQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
+	}
+
+	return buildDailyPerformanceStatsRowNumberQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
+}
+
+// buildDailyPerformanceStatsRowNumberQuery constructs the ROW_NUMBER() version of the daily performance stats query.
+func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, placeholder string, joinRequests string, throughputSQL string) string {
 	return "WITH successful_execs AS (\n" +
 		"    SELECT\n" +
 		"        se.request_id,\n" +
@@ -282,6 +292,57 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 		"    FROM successful_execs se\n" +
 		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
 		"    WHERE se.rn = 1\n" +
+		"    GROUP BY exec_date, se." + getIDColumnName(queryType) + "\n" +
+		")\n" +
+		"SELECT date, id, tokens_count, latency_ms, ttft_ms, request_count, throughput\n" +
+		"FROM daily\n" +
+		"WHERE daily.throughput IS NOT NULL\n" +
+		"    AND daily.throughput > 0\n" +
+		"ORDER BY date DESC, throughput DESC"
+}
+
+// buildDailyPerformanceStatsMaxIDQuery constructs the MAX(id) fallback version for older databases.
+func buildDailyPerformanceStatsMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, placeholder string, joinRequests string, throughputSQL string) string {
+	return "WITH latest_execs AS (\n" +
+		"    SELECT\n" +
+		"        se.request_id,\n" +
+		"        " + config.IDColumn + ",\n" +
+		"        se.metrics_latency_ms,\n" +
+		"        se.metrics_first_token_latency_ms,\n" +
+		"        se.stream,\n" +
+		"        " + dateExpr + " as exec_date\n" +
+		"    FROM request_executions se\n" +
+		joinRequests +
+		"    WHERE se.status = 'completed'\n" +
+		"        AND se.metrics_latency_ms > 0\n" +
+		"        AND se.created_at >= " + placeholder + "\n" +
+		"        AND se.id = (\n" +
+		"            SELECT MAX(se2.id)\n" +
+		"            FROM request_executions se2\n" +
+		"            WHERE se2.request_id = se.request_id\n" +
+		"                AND se2.status = 'completed'\n" +
+		"                AND se2.metrics_latency_ms > 0\n" +
+		"        )\n" +
+		"),\n" +
+		"daily AS (\n" +
+		"    SELECT\n" +
+		"        exec_date as date,\n" +
+		"        se." + getIDColumnName(queryType) + " as id,\n" +
+		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"        SUM(se.metrics_latency_ms) as latency_ms,\n" +
+		"        SUM(CASE\n" +
+		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
+		"            THEN se.metrics_first_token_latency_ms\n" +
+		"            ELSE 0\n" +
+		"        END) / NULLIF(SUM(CASE\n" +
+		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
+		"            THEN 1\n" +
+		"            ELSE 0\n" +
+		"        END), 0) as ttft_ms,\n" +
+		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
+		"        " + throughputSQL + " as throughput\n" +
+		"    FROM latest_execs se\n" +
+		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
 		"    GROUP BY exec_date, se." + getIDColumnName(queryType) + "\n" +
 		")\n" +
 		"SELECT date, id, tokens_count, latency_ms, ttft_ms, request_count, throughput\n" +

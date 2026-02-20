@@ -283,7 +283,7 @@ func TestBuildDailyThroughputQuery_SQLStructure(t *testing.T) {
 			}
 
 			assert.Contains(t, got, "GROUP BY", "should have GROUP BY clause")
-			assert.Contains(t, got, "date", "should group by date")
+			assert.Contains(t, got, "GROUP BY exec_date", "should group by date using exec_date column")
 			assert.Contains(t, got, "throughput", "should calculate throughput")
 			assert.Contains(t, got, "request_count", "should count requests")
 			assert.Contains(t, got, "ORDER BY date DESC, throughput DESC", "should order by date and throughput")
@@ -412,6 +412,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 		offsetSeconds   int
 		queryType       DailyThroughputQueryType
 		placeholder     string
+		mode            ThroughputQueryMode
 		wantContains    []string
 		wantNotContains []string
 	}{
@@ -422,6 +423,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			offsetSeconds: 0,
 			queryType:     DailyThroughputByModel,
 			placeholder:   "$1",
+			mode:          ThroughputModeRowNumber,
 			wantContains: []string{
 				"WITH successful_execs AS",
 				"JOIN requests r ON se.request_id = r.id",
@@ -444,6 +446,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			offsetSeconds: 0,
 			queryType:     DailyThroughputByChannel,
 			placeholder:   "$1",
+			mode:          ThroughputModeRowNumber,
 			wantContains: []string{
 				"WITH successful_execs AS",
 				"se.channel_id",
@@ -468,6 +471,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			offsetSeconds: -14400,
 			queryType:     DailyThroughputByModel,
 			placeholder:   "?",
+			mode:          ThroughputModeRowNumber,
 			wantContains: []string{
 				"WITH successful_execs AS",
 				"JOIN requests r ON se.request_id = r.id",
@@ -489,6 +493,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			offsetSeconds: 0,
 			queryType:     DailyThroughputByChannel,
 			placeholder:   "?",
+			mode:          ThroughputModeRowNumber,
 			wantContains: []string{
 				"se.channel_id",
 				"DATE_FORMAT",
@@ -510,6 +515,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			offsetSeconds: 0,
 			queryType:     DailyThroughputByModel,
 			placeholder:   "?",
+			mode:          ThroughputModeRowNumber,
 			wantContains: []string{
 				"WITH successful_execs AS",
 				"JOIN requests r ON se.request_id = r.id",
@@ -529,6 +535,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			offsetSeconds: 0,
 			queryType:     DailyThroughputByChannel,
 			placeholder:   "?",
+			mode:          ThroughputModeRowNumber,
 			wantContains: []string{
 				"se.channel_id",
 				"strftime",
@@ -549,6 +556,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			offsetSeconds: 0,
 			queryType:     DailyThroughputByModel,
 			placeholder:   "$1",
+			mode:          ThroughputModeRowNumber,
 			wantContains: []string{
 				"AT TIME ZONE 'Europe/London'",
 				"JOIN requests r ON se.request_id = r.id",
@@ -559,7 +567,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := BuildDailyPerformanceStatsQuery(tt.dialect, tt.timezone, tt.offsetSeconds, tt.queryType, tt.placeholder)
+			got := BuildDailyPerformanceStatsQuery(tt.dialect, tt.timezone, tt.offsetSeconds, tt.queryType, tt.placeholder, tt.mode)
 
 			for _, want := range tt.wantContains {
 				assert.Contains(t, got, want, "query should contain %q", want)
@@ -573,7 +581,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 }
 
 func TestBuildDailyPerformanceStatsQuery_TTFTCalculation(t *testing.T) {
-	got := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1")
+	got := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1", ThroughputModeRowNumber)
 
 	assert.Contains(t, got, "NULLIF(", "should use NULLIF for TTFT denominator")
 	assert.Contains(t, got, ", 0)", "should have NULLIF(..., 0) pattern")
@@ -601,7 +609,7 @@ func TestBuildDailyPerformanceStatsQuery_GroupByBehavior(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, tt.queryType, "$1")
+			got := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, tt.queryType, "$1", ThroughputModeRowNumber)
 
 			assert.Contains(t, got, "GROUP BY exec_date", "should group by CTE column exec_date")
 
@@ -611,18 +619,18 @@ func TestBuildDailyPerformanceStatsQuery_GroupByBehavior(t *testing.T) {
 }
 
 func TestBuildDailyPerformanceStatsQuery_PostFilter(t *testing.T) {
-	got := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1")
+	got := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1", ThroughputModeRowNumber)
 
 	assert.Contains(t, got, "WHERE daily.throughput IS NOT NULL", "should filter null throughput")
 	assert.Contains(t, got, "AND daily.throughput > 0", "should filter zero/negative throughput")
 }
 
 func TestBuildDailyPerformanceStatsQuery_ConditionalJoinRequests(t *testing.T) {
-	modelQuery := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1")
+	modelQuery := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1", ThroughputModeRowNumber)
 	assert.Contains(t, modelQuery, "JOIN requests r ON se.request_id = r.id", "model query should join requests")
 	assert.Contains(t, modelQuery, "r.model_id", "model query should reference r.model_id")
 
-	channelQuery := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByChannel, "$1")
+	channelQuery := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByChannel, "$1", ThroughputModeRowNumber)
 	assert.NotContains(t, channelQuery, "JOIN requests r ON se.request_id = r.id", "channel query should not join requests")
 	assert.NotContains(t, channelQuery, "r.model_id", "channel query should not reference r.model_id")
 }
