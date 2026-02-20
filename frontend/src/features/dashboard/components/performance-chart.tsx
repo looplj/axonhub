@@ -7,6 +7,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeneralSettings } from '../../system/data/system';
 
+function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
+  return array.reduce((acc, item) => {
+    const k = String(item[key]);
+    if (!acc[k]) acc[k] = [];
+    acc[k].push(item);
+    return acc;
+  }, {} as Record<string, T[]>);
+}
+
 const COLORS = [
   'var(--chart-1)',
   'var(--chart-2)',
@@ -147,13 +156,15 @@ export function PerformanceChart({
 
   const memoizedSafeData = useMemo(() => safeData, [data]);
 
+  const groupedById = useMemo(() => groupBy(memoizedSafeData, 'id'), [memoizedSafeData]);
+
   const { dates, topItems, legendItems, totalRequests } = useMemo(() => {
     const uniqueDates = [...new Set(memoizedSafeData.map((stat) => stat.date))].sort();
 
     const uniqueIds = [...new Set(memoizedSafeData.map((stat) => stat.id))].sort();
 
     const lItems = uniqueIds.map((id, index) => {
-      const itemStatsList = memoizedSafeData.filter((s) => s.id === id);
+      const itemStatsList = groupedById[id] ?? [];
       const name = nameField && itemStatsList[0]?.name
         ? itemStatsList[0].name
         : id;
@@ -179,7 +190,7 @@ export function PerformanceChart({
     const total = memoizedSafeData.reduce((sum, s) => sum + s.requestCount, 0);
 
     return { dates: uniqueDates, topItems: uniqueIds, legendItems: lItems, totalRequests: total };
-  }, [memoizedSafeData, nameField]);
+  }, [memoizedSafeData, nameField, groupedById]);
 
   useEffect(() => {
     onTotalRequestsChange?.(totalRequests);
