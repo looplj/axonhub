@@ -6,9 +6,10 @@ import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, A
 import { formatNumber } from '@/utils/format-number';
 import { formatDuration } from '@/utils/format-duration';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CardDescription } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeneralSettings } from '../../system/data/system';
 import { useChannelPerformanceStats } from '../data/dashboard';
+import type { PerformanceDisplayMode } from './model-performance-stats';
 
 const COLORS = [
   'var(--chart-1)',
@@ -30,11 +31,13 @@ interface TooltipProps {
     value: number;
     name: string;
     color: string;
+    payload: Record<string, string | number>;
   }>;
   label?: string;
+  displayMode: PerformanceDisplayMode;
 }
 
-function PerformanceTooltip({ active, payload, label }: TooltipProps) {
+function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProps) {
   const { t } = useTranslation();
 
   if (!active || !payload || payload.length === 0) return null;
@@ -42,15 +45,20 @@ function PerformanceTooltip({ active, payload, label }: TooltipProps) {
   const dataPoint = payload[0]?.payload as Record<string, string | number> | undefined;
   if (!dataPoint) return null;
 
-  const channelData = payload
-    .filter((item) => !item.dataKey.toString().includes('-ttft') && item.value > 0)
+  const filteredPayload = displayMode === 'throughput'
+    ? payload.filter((item) => !item.dataKey.toString().includes('-ttft') && item.value > 0)
+    : payload.filter((item) => item.dataKey.toString().includes('-ttft') && item.value > 0);
+
+  const channelData = filteredPayload
     .map((item) => {
-      const channelId = item.dataKey.toString();
+      const dataKey = item.dataKey.toString();
+      const channelId = displayMode === 'throughput' ? dataKey : dataKey.replace('-ttft', '');
+      const throughputValue = dataPoint[channelId] as number ?? 0;
       const ttftValue = dataPoint[`${channelId}-ttft`] as number ?? 0;
       return {
         channelId: channelId,
         channelName: item.name,
-        throughput: item.value as number,
+        throughput: throughputValue,
         ttft: ttftValue,
         color: item.color,
       };
@@ -78,8 +86,11 @@ function PerformanceTooltip({ active, payload, label }: TooltipProps) {
               </span>
             </div>
             <div className='ml-4 text-muted-foreground'>
-              {formatNumber(item.throughput)} {t('dashboard.stats.throughput')} · TTFT{' '}
-              {formatDuration(item.ttft)}
+              {displayMode === 'throughput' ? (
+                <>{formatNumber(item.throughput)} {t('dashboard.stats.throughput')}</>
+              ) : (
+                <>TTFT {formatDuration(item.ttft)}</>
+              )}
             </div>
           </div>
         ))}
@@ -93,6 +104,7 @@ export function ChannelPerformanceStats() {
   const { data: performanceStats, isLoading: isStatsLoading, error } = useChannelPerformanceStats();
   const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
   const [activeSeries, setActiveSeries] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<PerformanceDisplayMode>('throughput');
 
   const isLoading = isStatsLoading || isSettingsLoading;
 
@@ -180,10 +192,8 @@ export function ChannelPerformanceStats() {
     );
   }
 
-  // Transform data for the chart
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
-    // Use Date.UTC to avoid local timezone shifts when formatting
     const dateObj = new Date(Date.UTC(year, month - 1, day));
     const dataPoint: Record<string, string | number> = {
       name: dateObj.toLocaleDateString(locale, {
@@ -202,7 +212,6 @@ export function ChannelPerformanceStats() {
     return dataPoint;
   });
 
-  // Calculate max throughput for Y-axis domain
   const maxThroughput = Math.max(
     ...safeStats
       .filter((s) => s.throughput != null && topChannels.includes(s.channelId))
@@ -211,13 +220,35 @@ export function ChannelPerformanceStats() {
   );
   const throughputMax = Math.max(10, Math.ceil(maxThroughput * 1.1));
 
+  const maxTtft = Math.max(
+    ...safeStats
+      .filter((s) => s.ttftMs != null && s.ttftMs > 0 && topChannels.includes(s.channelId))
+      .map((s) => s.ttftMs!),
+    0
+  );
+  const ttftMax = Math.max(100, Math.ceil(maxTtft * 1.1));
+
   const visibleChannels = activeSeries ? [activeSeries] : topChannels;
+
+  const yAxisDomain = displayMode === 'throughput' ? [0, throughputMax] : [0, ttftMax];
+  const yAxisTickFormatter = displayMode === 'throughput'
+    ? (value: number) => formatNumber(value)
+    : (value: number) => formatDuration(value);
 
   return (
     <div>
-      <CardDescription className='mb-1'>
-        {t('dashboard.charts.performanceDescription')}
-      </CardDescription>
+      <div className='mb-3 flex items-center justify-end'>
+        <Tabs value={displayMode} onValueChange={(v) => setDisplayMode(v as PerformanceDisplayMode)}>
+          <TabsList className='h-7 p-0.5'>
+            <TabsTrigger value='throughput' className='h-6 px-2.5 text-xs'>
+              {t('dashboard.stats.throughput')}
+            </TabsTrigger>
+            <TabsTrigger value='ttft' className='h-6 px-2.5 text-xs'>
+              TTFT
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
       <ResponsiveContainer width='100%' height={350}>
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -249,22 +280,23 @@ export function ChannelPerformanceStats() {
             fontSize={12}
             tickLine={true}
             axisLine={true}
-            domain={[0, throughputMax]}
-            tickFormatter={(value) => formatNumber(value)}
+            domain={yAxisDomain}
+            tickFormatter={yAxisTickFormatter}
             width={40}
             tickMargin={8}
           />
-          <Tooltip content={<PerformanceTooltip />} />
+          <Tooltip content={<PerformanceTooltip displayMode={displayMode} />} />
           {topChannels.map((channelId, index) => {
             const color = COLORS[index % COLORS.length];
             const isActive = !activeSeries || activeSeries === channelId;
             const opacity = isActive ? 1 : 0.2;
             const channelName = legendItems.find((item) => item.id === channelId)?.name || channelId;
+            const dataKey = displayMode === 'throughput' ? channelId : `${channelId}-ttft`;
             return (
               <Area
                 key={channelId}
                 type='monotone'
-                dataKey={channelId}
+                dataKey={dataKey}
                 name={channelName}
                 stroke={color}
                 strokeWidth={2}

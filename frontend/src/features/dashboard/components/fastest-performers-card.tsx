@@ -122,7 +122,6 @@ interface FastestPerformersCardProps<T extends ThroughputData> {
   noDataLabel: string;
   useData: (timeWindow: TimeWindow) => UseQueryResult<T[], Error>;
   getName: (item: T) => string | null;
-  titleIcon?: React.ReactNode;
 }
 
 export function FastestPerformersCard<T extends ThroughputData>({
@@ -131,7 +130,6 @@ export function FastestPerformersCard<T extends ThroughputData>({
   noDataLabel,
   useData,
   getName,
-  titleIcon,
 }: FastestPerformersCardProps<T>) {
   const { t } = useTranslation();
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('day');
@@ -189,15 +187,8 @@ export function FastestPerformersCard<T extends ThroughputData>({
   return (
     <Card className='hover-card h-full'>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-        <div>
-          <div className='flex items-center gap-2'>
-            {titleIcon && (
-              <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
-                {titleIcon}
-              </div>
-            )}
-            <CardTitle className='text-base font-medium'>{title}</CardTitle>
-          </div>
+        <div className='space-y-1'>
+          <CardTitle className='text-base font-medium'>{title}</CardTitle>
           <CardDescription>{description(totalRequests)}</CardDescription>
         </div>
         <div className='flex items-center gap-2'>

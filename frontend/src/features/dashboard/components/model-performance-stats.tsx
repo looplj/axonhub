@@ -6,7 +6,7 @@ import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, A
 import { formatNumber } from '@/utils/format-number';
 import { formatDuration } from '@/utils/format-duration';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CardDescription } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeneralSettings } from '../../system/data/system';
 import { useModelPerformanceStats } from '../data/dashboard';
 
@@ -23,6 +23,8 @@ const COLORS = [
   'var(--chart-10)',
 ];
 
+export type PerformanceDisplayMode = 'throughput' | 'ttft';
+
 interface TooltipProps {
   active?: boolean;
   payload?: Array<{
@@ -30,11 +32,13 @@ interface TooltipProps {
     value: number;
     name: string;
     color: string;
+    payload: Record<string, string | number>;
   }>;
   label?: string;
+  displayMode: PerformanceDisplayMode;
 }
 
-function PerformanceTooltip({ active, payload, label }: TooltipProps) {
+function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProps) {
   const { t } = useTranslation();
 
   if (!active || !payload || payload.length === 0) return null;
@@ -42,19 +46,24 @@ function PerformanceTooltip({ active, payload, label }: TooltipProps) {
   const dataPoint = payload[0]?.payload as Record<string, string | number> | undefined;
   if (!dataPoint) return null;
 
-  const modelData = payload
-    .filter((item) => !item.dataKey.toString().includes('-ttft') && item.value > 0)
+  const filteredPayload = displayMode === 'throughput'
+    ? payload.filter((item) => !item.dataKey.toString().includes('-ttft') && item.value > 0)
+    : payload.filter((item) => item.dataKey.toString().includes('-ttft') && item.value > 0);
+
+  const modelData = filteredPayload
     .map((item) => {
-      const modelId = item.dataKey.toString();
+      const dataKey = item.dataKey.toString();
+      const modelId = displayMode === 'throughput' ? dataKey : dataKey.replace('-ttft', '');
+      const throughputValue = dataPoint[modelId] as number ?? 0;
       const ttftValue = dataPoint[`${modelId}-ttft`] as number ?? 0;
       return {
         modelId: modelId,
-        throughput: item.value as number,
+        throughput: throughputValue,
         ttft: ttftValue,
         color: item.color,
       };
     })
-    .sort((a, b) => b.throughput - a.throughput);
+    .sort((a, b) => displayMode === 'throughput' ? b.throughput - a.throughput : a.ttft - b.ttft);
 
   if (modelData.length === 0) return null;
 
@@ -77,8 +86,11 @@ function PerformanceTooltip({ active, payload, label }: TooltipProps) {
               </span>
             </div>
             <div className='ml-4 text-muted-foreground'>
-              {formatNumber(item.throughput)} {t('dashboard.stats.throughput')} · TTFT{' '}
-              {formatDuration(item.ttft)}
+              {displayMode === 'throughput' ? (
+                <>{formatNumber(item.throughput)} {t('dashboard.stats.throughput')}</>
+              ) : (
+                <>TTFT {formatDuration(item.ttft)}</>
+              )}
             </div>
           </div>
         ))}
@@ -92,6 +104,7 @@ export function ModelPerformanceStats() {
   const { data: performanceStats, isLoading: isStatsLoading, error } = useModelPerformanceStats();
   const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
   const [activeSeries, setActiveSeries] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<PerformanceDisplayMode>('throughput');
 
   const isLoading = isStatsLoading || isSettingsLoading;
 
@@ -206,13 +219,35 @@ export function ModelPerformanceStats() {
   );
   const throughputMax = Math.max(10, Math.ceil(maxThroughput * 1.1));
 
+  const maxTtft = Math.max(
+    ...safeStats
+      .filter((s) => s.ttftMs != null && s.ttftMs > 0 && topModels.includes(s.modelId))
+      .map((s) => s.ttftMs!),
+    0
+  );
+  const ttftMax = Math.max(100, Math.ceil(maxTtft * 1.1));
+
   const visibleModels = activeSeries ? [activeSeries] : topModels;
+
+  const yAxisDomain = displayMode === 'throughput' ? [0, throughputMax] : [0, ttftMax];
+  const yAxisTickFormatter = displayMode === 'throughput'
+    ? (value: number) => formatNumber(value)
+    : (value: number) => formatDuration(value);
 
   return (
     <div>
-      <CardDescription className='mb-1'>
-        {t('dashboard.charts.performanceDescription')}
-      </CardDescription>
+      <div className='mb-3 flex items-center justify-end'>
+        <Tabs value={displayMode} onValueChange={(v) => setDisplayMode(v as PerformanceDisplayMode)}>
+          <TabsList className='h-7 p-0.5'>
+            <TabsTrigger value='throughput' className='h-6 px-2.5 text-xs'>
+              {t('dashboard.stats.throughput')}
+            </TabsTrigger>
+            <TabsTrigger value='ttft' className='h-6 px-2.5 text-xs'>
+              TTFT
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
       <ResponsiveContainer width='100%' height={350}>
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -237,21 +272,22 @@ export function ModelPerformanceStats() {
             fontSize={12}
             tickLine={true}
             axisLine={true}
-            domain={[0, throughputMax]}
-            tickFormatter={(value) => formatNumber(value)}
+            domain={yAxisDomain}
+            tickFormatter={yAxisTickFormatter}
             width={40}
             tickMargin={8}
           />
-          <Tooltip content={<PerformanceTooltip />} />
+          <Tooltip content={<PerformanceTooltip displayMode={displayMode} />} />
           {topModels.map((modelId, index) => {
             const color = COLORS[index % COLORS.length];
             const isActive = !activeSeries || activeSeries === modelId;
             const opacity = isActive ? 1 : 0.2;
+            const dataKey = displayMode === 'throughput' ? modelId : `${modelId}-ttft`;
             return (
               <Area
                 key={modelId}
                 type='monotone'
-                dataKey={modelId}
+                dataKey={dataKey}
                 name={modelId}
                 stroke={color}
                 strokeWidth={2}

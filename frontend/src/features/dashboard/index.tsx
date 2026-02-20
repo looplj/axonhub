@@ -220,6 +220,7 @@ export default function DashboardPage() {
           <Card className='hover-card col-span-1 lg:col-span-4'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.modelPerformance')}</CardTitle>
+              <CardDescription>{t('dashboard.charts.performanceDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <ModelPerformanceStats />
@@ -233,6 +234,7 @@ export default function DashboardPage() {
           <Card className='hover-card col-span-1 lg:col-span-4'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.channelPerformance')}</CardTitle>
+              <CardDescription>{t('dashboard.charts.performanceDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <ChannelPerformanceStats />
