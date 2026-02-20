@@ -79,8 +79,8 @@ function PerformanceTooltip({ active, payload, label, displayMode }: Performance
   if (!dataPoint) return null;
 
   const filteredPayload = displayMode === 'throughput'
-    ? payload.filter((item) => !item.dataKey.toString().includes('-ttft') && item.value > 0)
-    : payload.filter((item) => item.dataKey.toString().includes('-ttft') && item.value > 0);
+    ? payload.filter((item) => !item.dataKey.toString().includes('-ttft') && item.value != null && item.value > 0)
+    : payload.filter((item) => item.dataKey.toString().includes('-ttft') && item.value != null && item.value > 0);
 
   const itemData = filteredPayload
     .map((item) => {
@@ -246,6 +246,13 @@ export function PerformanceChart({
     );
   }
 
+  // Build date→index map for O(1) lookups instead of O(n) indexOf
+  const dateIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    dates.forEach((date, index) => map.set(date, index));
+    return map;
+  }, [dates]);
+
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
     const dateObj = new Date(Date.UTC(year, month - 1, day));
@@ -257,19 +264,20 @@ export function PerformanceChart({
       }),
     };
 
+    const dateIndex = dateIndexMap.get(date) ?? -1;
+
     topItems.forEach((id) => {
       const stat = statsMap[date]?.[id];
       const ranges = seriesDateRanges[id];
-      const dateIndex = dates.indexOf(date);
 
       const throughputRange = ranges.throughput;
-      const throughputFirstIndex = throughputRange.first ? dates.indexOf(throughputRange.first) : -1;
-      const throughputLastIndex = throughputRange.last ? dates.indexOf(throughputRange.last) : -1;
+      const throughputFirstIndex = throughputRange.first != null ? (dateIndexMap.get(throughputRange.first) ?? -1) : -1;
+      const throughputLastIndex = throughputRange.last != null ? (dateIndexMap.get(throughputRange.last) ?? -1) : -1;
       const isThroughputOutsideRange = dateIndex < throughputFirstIndex || dateIndex > throughputLastIndex;
 
       const ttftRange = ranges.ttft;
-      const ttftFirstIndex = ttftRange.first ? dates.indexOf(ttftRange.first) : -1;
-      const ttftLastIndex = ttftRange.last ? dates.indexOf(ttftRange.last) : -1;
+      const ttftFirstIndex = ttftRange.first != null ? (dateIndexMap.get(ttftRange.first) ?? -1) : -1;
+      const ttftLastIndex = ttftRange.last != null ? (dateIndexMap.get(ttftRange.last) ?? -1) : -1;
       const isTtftOutsideRange = dateIndex < ttftFirstIndex || dateIndex > ttftLastIndex;
 
       dataPoint[id] = stat?.throughput ?? (isThroughputOutsideRange ? 0 : null);
@@ -291,12 +299,9 @@ export function PerformanceChart({
       : 0;
   const throughputMax = Math.max(10, Math.ceil(maxThroughput * 1.1));
 
-  const maxTtft = Math.max(
-    ...memoizedSafeData
-      .filter((s) => s.ttftMs != null && s.ttftMs > 0 && topItems.includes(s.id))
-      .map((s) => s.ttftMs!),
-    0
-  );
+  const maxTtft = memoizedSafeData
+    .filter((s) => s.ttftMs != null && s.ttftMs > 0 && topItems.includes(s.id))
+    .reduce((max, s) => Math.max(max, s.ttftMs!), 0);
   const ttftMax = Math.max(100, Math.ceil(maxTtft * 1.1));
 
   const visibleItems = activeSeries ? [activeSeries] : topItems;
