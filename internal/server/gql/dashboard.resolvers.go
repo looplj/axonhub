@@ -1203,9 +1203,12 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	var probeResults []probeStats
 
 	// Query channel_probes table with daily aggregation
+	// Filter out outlier probe entries (>2000 tok/s is physically unrealistic)
+	const maxThroughputCap = 2000.0
 	err := r.client.ChannelProbe.Query().
 		Where(
 			channelprobe.TimestampGTE(startTimestamp),
+			channelprobe.AvgTokensPerSecondLTE(maxThroughputCap),
 		).
 		Modify(func(s *sql.Selector) {
 			// Convert timestamp to date string based on dialect
