@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Line, LineChart, Area } from 'recharts';
+import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
 import { formatDuration } from '@/utils/format-duration';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,15 +39,19 @@ function PerformanceTooltip({ active, payload, label }: TooltipProps) {
 
   if (!active || !payload || payload.length === 0) return null;
 
+  const dataPoint = payload[0]?.payload as Record<string, string | number> | undefined;
+  if (!dataPoint) return null;
+
   const channelData = payload
-    .filter((item) => !item.dataKey.includes('-ttft') && item.value > 0)
+    .filter((item) => !item.dataKey.toString().includes('-ttft') && item.value > 0)
     .map((item) => {
-      const ttftItem = payload.find((p) => p.dataKey === `${item.dataKey}-ttft`);
+      const channelId = item.dataKey.toString();
+      const ttftValue = dataPoint[`${channelId}-ttft`] as number ?? 0;
       return {
-        channelId: item.dataKey,
+        channelId: channelId,
         channelName: item.name,
-        throughput: item.value,
-        ttft: ttftItem?.value ?? 0,
+        throughput: item.value as number,
+        ttft: ttftValue,
         color: item.color,
       };
     })
@@ -207,14 +211,6 @@ export function ChannelPerformanceStats() {
   );
   const throughputMax = Math.max(10, Math.ceil(maxThroughput * 1.1));
 
-  const maxTtft = Math.max(
-    ...safeStats
-      .filter((s) => s.ttftMs != null && topChannels.includes(s.channelId))
-      .map((s) => s.ttftMs!),
-    0
-  );
-  const ttftMax = Math.max(10, Math.ceil(maxTtft * 1.1));
-
   const visibleChannels = activeSeries ? [activeSeries] : topChannels;
 
   return (
@@ -223,7 +219,7 @@ export function ChannelPerformanceStats() {
         {t('dashboard.charts.performanceDescription')}
       </CardDescription>
       <ResponsiveContainer width='100%' height={350}>
-        <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             {topChannels.map((channelId, index) => (
               <linearGradient
@@ -258,18 +254,6 @@ export function ChannelPerformanceStats() {
             width={40}
             tickMargin={8}
           />
-          <YAxis
-            yAxisId='ttft'
-            orientation='right'
-            stroke='var(--chart-3)'
-            fontSize={12}
-            tickLine={true}
-            axisLine={true}
-            domain={[0, ttftMax]}
-            tickFormatter={(value) => formatNumber(value)}
-            width={50}
-            tickMargin={8}
-          />
           <Tooltip content={<PerformanceTooltip />} />
           {topChannels.map((channelId, index) => {
             const color = COLORS[index % COLORS.length];
@@ -294,30 +278,7 @@ export function ChannelPerformanceStats() {
               />
             );
           })}
-          {topChannels.map((channelId, index) => {
-            const color = COLORS[index % COLORS.length];
-            const isActive = !activeSeries || activeSeries === channelId;
-            const opacity = isActive ? 0.35 : 0.1;
-            const channelName = legendItems.find((item) => item.id === channelId)?.name || channelId;
-            return (
-              <Line
-                key={`${channelId}-ttft`}
-                yAxisId='ttft'
-                type='monotone'
-                dataKey={`${channelId}-ttft`}
-                name={`${channelName} TTFT`}
-                stroke={color}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 3 }}
-                connectNulls={false}
-                strokeOpacity={opacity}
-                hide={!visibleChannels.includes(channelId)}
-                isAnimationActive={false}
-              />
-            );
-          })}
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
       <div className='mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3'>
         {legendItems.map((item) => {
@@ -327,15 +288,15 @@ export function ChannelPerformanceStats() {
               type='button'
               key={item.id}
               onClick={() => setActiveSeries((current) => (current === item.id ? null : item.id))}
-              className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left text-sm transition ${
+              className={`flex flex-col gap-1 rounded-md border px-2 py-1.5 text-left text-sm transition 2xl:flex-row 2xl:items-center 2xl:justify-between ${
                 isActive ? 'border-primary/40 bg-primary/5 text-foreground' : 'border-border text-muted-foreground'
               }`}
             >
               <span className='flex min-w-0 items-center gap-2'>
                 <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
-                <span className='truncate font-medium'>{item.name}</span>
+                <span className='font-medium'>{item.name}</span>
               </span>
-              <span className='text-xs text-muted-foreground tabular-nums'>
+              <span className='text-xs text-muted-foreground tabular-nums 2xl:text-right'>
                 {formatNumber(item.avgThroughput)} {t('dashboard.stats.throughput')} · TTFT {formatDuration(item.avgTtft)}
               </span>
             </button>
