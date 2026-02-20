@@ -1065,7 +1065,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 
 	// Use shared query builder for daily performance stats
 	query := qb.BuildDailyPerformanceStatsQuery(
-		string(dialectName),
+		dialectName,
 		loc.String(),
 		offsetSeconds,
 		qb.DailyThroughputByModel,

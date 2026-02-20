@@ -1,4 +1,3 @@
-// Package qb provides database utilities and query builders for AxonHub.
 package qb
 
 import (
