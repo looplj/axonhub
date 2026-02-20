@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/layout/header';
+import { formatNumber } from '@/utils/format-number';
 import { ChannelSuccessRate } from './components/channel-success-rate';
 import { DailyRequestStats } from './components/daily-requests-stats';
 import { RequestsByChannelChart } from './components/requests-by-channel-chart';
@@ -91,11 +92,11 @@ export default function DashboardPage() {
   const [channelTotalRequests, setChannelTotalRequests] = useState(0);
 
   const modelPerformanceDescription = useMemo(() => {
-    return t('dashboard.charts.performanceDescription', { count: modelTotalRequests });
+    return t('dashboard.charts.performanceDescription', { count: formatNumber(modelTotalRequests) });
   }, [t, modelTotalRequests]);
 
   const channelPerformanceDescription = useMemo(() => {
-    return t('dashboard.charts.performanceDescription', { count: channelTotalRequests });
+    return t('dashboard.charts.performanceDescription', { count: formatNumber(channelTotalRequests) });
   }, [t, channelTotalRequests]);
 
   if (isLoading) {
