@@ -1035,6 +1035,11 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
+	// Add 30-second timeout to prevent long-running queries
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	daysCount := 30
 	maxModelsPerDay := 10
 
@@ -1054,100 +1059,19 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 	dialectName := sqlDB.Dialect()
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
-	// Build dialect-specific date expression for grouping by date in user's timezone
-	var dateExpr string
-	createdAtCol := "se.created_at"
-	switch dialectName {
-	case dialect.SQLite:
-		dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", createdAtCol, offsetSeconds)
-	case dialect.MySQL:
-		dateExpr = fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", createdAtCol, loc.String())
-	case dialect.Postgres:
-		dateExpr = fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", createdAtCol, loc.String())
-	default:
-		dateExpr = fmt.Sprintf("DATE(%s)", createdAtCol)
-	}
-
 	placeholder := "?"
 	if useDollarPlaceholders {
 		placeholder = "$1"
 	}
 
-	// Query to get daily model performance stats with throughput calculation
-	// Uses ROW_NUMBER() to get latest execution per request (like FastestModels)
-	query := "WITH successful_execs AS (\n" +
-		"    SELECT\n" +
-		"        se.request_id,\n" +
-		"        r.model_id,\n" +
-		"        se.metrics_latency_ms,\n" +
-		"        se.metrics_first_token_latency_ms,\n" +
-		"        se.stream,\n" +
-		"        " + dateExpr + " as exec_date,\n" +
-		"        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC) as rn\n" +
-		"    FROM request_executions se\n" +
-		"    JOIN requests r ON se.request_id = r.id\n" +
-		"    WHERE se.status = 'completed'\n" +
-		"        AND se.metrics_latency_ms > 0\n" +
-		"        AND se.created_at >= " + placeholder + "\n" +
-		")\n" +
-		"SELECT\n" +
-		"    exec_date as date,\n" +
-		"    se.model_id,\n" +
-		"    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
-		"    SUM(se.metrics_latency_ms) as latency_ms,\n" +
-		"    AVG(CASE\n" +
-		"        WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
-		"        THEN se.metrics_first_token_latency_ms\n" +
-		"        ELSE se.metrics_latency_ms\n" +
-		"    END) as ttft_ms,\n" +
-		"    COUNT(DISTINCT se.request_id) as request_count,\n" +
-		"    CASE\n" +
-		"        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
-		"                 THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
-		"                      THEN 0\n" +
-		"                      ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
-		"                 ELSE se.metrics_latency_ms END) > 0\n" +
-		"        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0\n" +
-		"             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
-		"                   THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
-		"                        THEN 0\n" +
-		"                        ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
-		"                   ELSE se.metrics_latency_ms END)\n" +
-		"        ELSE NULL\n" +
-		"    END as throughput\n" +
-		"FROM successful_execs se\n" +
-		"JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
-		"WHERE se.rn = 1\n" +
-		"GROUP BY exec_date, se.model_id\n" +
-		"HAVING CASE\n" +
-		"    WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
-		"             THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
-		"                  THEN 0\n" +
-		"                  ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
-		"             ELSE se.metrics_latency_ms END) > 0\n" +
-		"    THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0\n" +
-		"         / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
-		"               THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
-		"                    THEN 0\n" +
-		"                    ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
-		"               ELSE se.metrics_latency_ms END)\n" +
-		"    ELSE NULL\n" +
-		"END IS NOT NULL\n" +
-		"AND CASE\n" +
-		"    WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
-		"             THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
-		"                  THEN 0\n" +
-		"                  ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
-		"             ELSE se.metrics_latency_ms END) > 0\n" +
-		"    THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0\n" +
-		"         / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL\n" +
-		"               THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms\n" +
-		"                    THEN 0\n" +
-		"                    ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END\n" +
-		"               ELSE se.metrics_latency_ms END)\n" +
-		"    ELSE NULL\n" +
-		"END > 0\n" +
-		"ORDER BY exec_date DESC, throughput DESC"
+	// Use shared query builder for daily performance stats
+	query := qb.BuildDailyPerformanceStatsQuery(
+		string(dialectName),
+		loc.String(),
+		offsetSeconds,
+		qb.DailyThroughputByModel,
+		placeholder,
+	)
 
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
@@ -1230,6 +1154,11 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 // Filters out channels with <5 requests (low confidence) and handles deleted channels gracefully.
 func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Add 30-second timeout to prevent long-running queries
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
 	daysCount := 30
 	minRequestsPerChannel := 5 // Filter low confidence channels
