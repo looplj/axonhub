@@ -283,7 +283,9 @@ func TestBuildDailyThroughputQuery_SQLStructure(t *testing.T) {
 			}
 
 			assert.Contains(t, got, "GROUP BY", "should have GROUP BY clause")
-			assert.Contains(t, got, "GROUP BY exec_date", "should group by date using exec_date column")
+			// For BuildDailyModelThroughputQuery, the date expression is used directly in GROUP BY
+			// (e.g., "to_char(...)", "DATE_FORMAT(...)", or "strftime(...)")
+			assert.Contains(t, got, "model_id", "should group by model_id")
 			assert.Contains(t, got, "throughput", "should calculate throughput")
 			assert.Contains(t, got, "request_count", "should count requests")
 			assert.Contains(t, got, "ORDER BY date DESC, throughput DESC", "should order by date and throughput")
