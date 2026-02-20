@@ -1220,11 +1220,11 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 				// SQLite: Convert Unix timestamp to date string with explicit timezone offset
 				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
 			case dialect.MySQL:
-				// MySQL: Convert Unix timestamp to date
-				dateExpr = fmt.Sprintf("FROM_UNIXTIME(%s, '%%Y-%%m-%%d')", timestampCol)
+				// MySQL: Convert Unix timestamp to date with timezone offset
+				dateExpr = fmt.Sprintf("FROM_UNIXTIME(%s + %d, '%%Y-%%m-%%d')", timestampCol, offsetSeconds)
 			case dialect.Postgres:
-				// PostgreSQL: Convert Unix timestamp to date
-				dateExpr = fmt.Sprintf("to_char(to_timestamp(%s), 'YYYY-MM-DD')", timestampCol)
+				// PostgreSQL: Convert Unix timestamp to date with timezone offset
+				dateExpr = fmt.Sprintf("to_char(to_timestamp(%s + %d), 'YYYY-MM-DD')", timestampCol, offsetSeconds)
 			default:
 				dateExpr = fmt.Sprintf("DATE(%s)", timestampCol)
 			}
@@ -1252,11 +1252,12 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	}
 
 	statsMap := make(map[string]map[int]*probeStats)
-	for _, r := range probeResults {
-		if statsMap[r.DateStr] == nil {
-			statsMap[r.DateStr] = make(map[int]*probeStats)
+	for i := range probeResults {
+		res := probeResults[i]
+		if statsMap[res.DateStr] == nil {
+			statsMap[res.DateStr] = make(map[int]*probeStats)
 		}
-		statsMap[r.DateStr][r.ChannelID] = &r
+		statsMap[res.DateStr][res.ChannelID] = &probeResults[i]
 	}
 
 	type channelInfo struct {
@@ -1311,7 +1312,11 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 			Where(channel.IDIn(channelIDs...)).
 			Select(channel.FieldID, channel.FieldName).
 			All(ctx)
-		if err == nil {
+		if err != nil {
+			log.Error(ctx, "failed to query channel names for performance stats",
+				log.Any("channelIDs", channelIDs),
+				log.Cause(err))
+		} else {
 			for _, ch := range channels {
 				channelNames[ch.ID] = ch.Name
 			}

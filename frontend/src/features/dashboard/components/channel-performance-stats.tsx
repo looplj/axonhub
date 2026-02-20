@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
@@ -93,7 +91,7 @@ function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProp
               {displayMode === 'throughput' ? (
                 <>{formatNumber(item.throughput, { digits: 0 })} {t('dashboard.stats.throughput')}</>
               ) : (
-                <>TTFT {formatDuration(item.ttft)}</>
+                <>{t('dashboard.stats.ttft')} {formatDuration(item.ttft)}</>
               )}
             </div>
           </div>
@@ -189,7 +187,7 @@ export function ChannelPerformanceStats({ onTotalRequestsChange }: ChannelPerfor
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
     const dateObj = new Date(Date.UTC(year, month - 1, day));
-    const dataPoint: Record<string, string | number> = {
+    const dataPoint: Record<string, string | number | null> = {
       name: dateObj.toLocaleDateString(locale, {
         month: '2-digit',
         day: '2-digit',
@@ -199,8 +197,8 @@ export function ChannelPerformanceStats({ onTotalRequestsChange }: ChannelPerfor
 
     topChannels.forEach((channelId) => {
       const stat = statsMap[date]?.[channelId];
-      dataPoint[channelId] = stat?.throughput ?? 0;
-      dataPoint[`${channelId}-ttft`] = stat?.ttftMs ?? 0;
+      dataPoint[channelId] = stat?.throughput ?? null;
+      dataPoint[`${channelId}-ttft`] = stat?.ttftMs ?? null;
     });
 
     return dataPoint;
@@ -244,7 +242,7 @@ export function ChannelPerformanceStats({ onTotalRequestsChange }: ChannelPerfor
               {t('dashboard.stats.throughput')}
             </TabsTrigger>
             <TabsTrigger value='ttft' className='h-6 px-2.5 text-xs'>
-              TTFT
+              {t('dashboard.stats.ttft')}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -329,7 +327,7 @@ export function ChannelPerformanceStats({ onTotalRequestsChange }: ChannelPerfor
                 <span className='font-medium'>{item.name}</span>
               </span>
               <span className='text-xs text-muted-foreground tabular-nums 2xl:text-right'>
-                {formatNumber(item.avgThroughput, { digits: 0 })} {t('dashboard.stats.throughput')} · TTFT {formatDuration(item.avgTtft)}
+                {formatNumber(item.avgThroughput, { digits: 0 })} {t('dashboard.stats.throughput')} · {t('dashboard.stats.ttft')} {formatDuration(item.avgTtft)}
               </span>
             </button>
           );

@@ -18,6 +18,7 @@ const (
 type DailyQueryFragmentConfig struct {
 	IDColumn      string
 	NameColumn    string
+	NameAlias     string
 	JoinClause    string
 	GroupByFields string
 }
@@ -27,25 +28,17 @@ var AllowedDailyQueryConfigs = map[DailyThroughputQueryType]DailyQueryFragmentCo
 	DailyThroughputByChannel: {
 		IDColumn:      "se.channel_id",
 		NameColumn:    "c.name as channel_name",
+		NameAlias:     "channel_name",
 		JoinClause:    "JOIN channels c ON se.channel_id = c.id",
 		GroupByFields: "date, se.channel_id, c.name",
 	},
 	DailyThroughputByModel: {
 		IDColumn:      "r.model_id",
 		NameColumn:    "m.name as model_name",
+		NameAlias:     "model_name",
 		JoinClause:    "JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
 		GroupByFields: "date, r.model_id, m.name",
 	},
-}
-
-// DateFormatDialect holds dialect-specific date formatting expressions.
-type DateFormatDialect struct {
-	// SQLite format string using strftime
-	SQLite string
-	// MySQL format using DATE_FORMAT and CONVERT_TZ
-	MySQL string
-	// Postgres format using to_char and AT TIME ZONE
-	Postgres string
 }
 
 // getDateExpression returns the dialect-specific date expression for grouping by day.
@@ -111,48 +104,50 @@ func buildDailyThroughputQuery(dialect string, timezone string, offsetSeconds in
 	// Get date expression based on dialect
 	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds)
 
-	if mode == ThroughputModeMaxID {
-		return buildDailyMaxIDQuery(dateExpr, config, limit, "?")
+	// Determine parameter placeholder based on dialect
+	paramPlaceholder := "?"
+	if dialect == "postgres" || dialect == "postgresql" {
+		paramPlaceholder = "$1"
 	}
 
-	return buildDailyRowNumberQuery(dateExpr, config, limit, "?")
+	if mode == ThroughputModeMaxID {
+		return buildDailyMaxIDQuery(dateExpr, config, limit, paramPlaceholder)
+	}
+
+	return buildDailyRowNumberQuery(dateExpr, config, limit, paramPlaceholder)
+}
+
+// throughputCoreSQL returns the shared CASE expression body for throughput calculations.
+// This extracts the common latency calculation logic used by both throughputCalculationSQL and throughputHavingSQL.
+func throughputCoreSQL(seTable string) string {
+	return fmt.Sprintf(`CASE WHEN %s.stream AND %s.metrics_first_token_latency_ms IS NOT NULL
+                 THEN CASE WHEN %s.metrics_first_token_latency_ms >= %s.metrics_latency_ms
+                      THEN 0
+                      ELSE %s.metrics_latency_ms - %s.metrics_first_token_latency_ms END
+                 ELSE %s.metrics_latency_ms END`, seTable, seTable, seTable, seTable, seTable, seTable, seTable)
 }
 
 // throughputCalculationSQL returns the SQL for calculating throughput from tokens and latency.
 // This is shared across multiple query builders to ensure consistent throughput calculation.
 func throughputCalculationSQL(seTable string) string {
+	core := throughputCoreSQL(seTable)
 	return fmt.Sprintf(`CASE
-        WHEN SUM(CASE WHEN %s.stream AND %s.metrics_first_token_latency_ms IS NOT NULL
-                 THEN CASE WHEN %s.metrics_first_token_latency_ms >= %s.metrics_latency_ms
-                      THEN 0
-                      ELSE %s.metrics_latency_ms - %s.metrics_first_token_latency_ms END
-                 ELSE %s.metrics_latency_ms END) > 0
+        WHEN SUM(%s) > 0
         THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-             / SUM(CASE WHEN %s.stream AND %s.metrics_first_token_latency_ms IS NOT NULL
-                   THEN CASE WHEN %s.metrics_first_token_latency_ms >= %s.metrics_latency_ms
-                        THEN 0
-                        ELSE %s.metrics_latency_ms - %s.metrics_first_token_latency_ms END
-                   ELSE %s.metrics_latency_ms END)
+             / SUM(%s)
         ELSE 0
-    END`, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable)
+    END`, core, core)
 }
 
 // throughputHavingSQL returns the SQL for HAVING clause filtering non-null throughput.
 func throughputHavingSQL(seTable string) string {
+	core := throughputCoreSQL(seTable)
 	return fmt.Sprintf(`CASE
-    WHEN SUM(CASE WHEN %s.stream AND %s.metrics_first_token_latency_ms IS NOT NULL
-             THEN CASE WHEN %s.metrics_first_token_latency_ms >= %s.metrics_latency_ms
-                  THEN 0
-                  ELSE %s.metrics_latency_ms - %s.metrics_first_token_latency_ms END
-             ELSE %s.metrics_latency_ms END) > 0
+    WHEN SUM(%s) > 0
     THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
-         / SUM(CASE WHEN %s.stream AND %s.metrics_first_token_latency_ms IS NOT NULL
-               THEN CASE WHEN %s.metrics_first_token_latency_ms >= %s.metrics_latency_ms
-                    THEN 0
-                    ELSE %s.metrics_latency_ms - %s.metrics_first_token_latency_ms END
-               ELSE %s.metrics_latency_ms END)
+         / SUM(%s)
     ELSE NULL
-END`, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable)
+END`, core, core)
 }
 
 // buildDailyRowNumberQuery constructs a daily throughput query using ROW_NUMBER().
@@ -190,7 +185,7 @@ daily_stats AS (
 SELECT date, id, %s, tokens_count, request_count, throughput
 FROM daily_stats
 WHERE daily_rn <= %d
-ORDER BY date DESC, throughput DESC`, startDatePlaceholder, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, config.GroupByFields, config.GroupByFields, limit)
+ORDER BY date DESC, throughput DESC`, startDatePlaceholder, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, config.GroupByFields, config.NameAlias, limit)
 }
 
 // buildDailyMaxIDQuery constructs a daily throughput query using MAX(id) subquery.
@@ -225,7 +220,7 @@ WITH ranked_execs AS (
 SELECT date, id, %s, tokens_count, request_count, throughput
 FROM ranked_execs
 WHERE daily_rn <= %d
-ORDER BY date DESC, throughput DESC`, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, startDatePlaceholder, config.GroupByFields, config.GroupByFields, limit)
+ORDER BY date DESC, throughput DESC`, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, startDatePlaceholder, config.GroupByFields, config.NameAlias, limit)
 }
 
 // BuildDailyPerformanceStatsQuery constructs a SQL query for daily performance statistics
@@ -249,6 +244,12 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds)
 	throughputSQL := throughputCalculationSQL("se")
 
+	// Only add the requests join for model queries (channel_id is already in request_executions)
+	var joinRequests string
+	if queryType == DailyThroughputByModel {
+		joinRequests = "    JOIN requests r ON se.request_id = r.id\n"
+	}
+
 	return "WITH successful_execs AS (\n" +
 		"    SELECT\n" +
 		"        se.request_id,\n" +
@@ -259,7 +260,7 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 		"        " + dateExpr + " as exec_date,\n" +
 		"        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC) as rn\n" +
 		"    FROM request_executions se\n" +
-		"    JOIN requests r ON se.request_id = r.id\n" +
+		joinRequests +
 		"    WHERE se.status = 'completed'\n" +
 		"        AND se.metrics_latency_ms > 0\n" +
 		"        AND se.created_at >= " + placeholder + "\n" +

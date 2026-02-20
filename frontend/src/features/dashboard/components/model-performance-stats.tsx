@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
@@ -93,7 +91,7 @@ function PerformanceTooltip({ active, payload, label, displayMode }: TooltipProp
               {displayMode === 'throughput' ? (
                 <>{formatNumber(item.throughput, { digits: 0 })} {t('dashboard.stats.throughput')}</>
               ) : (
-                <>TTFT {formatDuration(item.ttft)}</>
+                <>{t('dashboard.stats.ttft')} {formatDuration(item.ttft)}</>
               )}
             </div>
           </div>
@@ -188,7 +186,7 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
     const dateObj = new Date(Date.UTC(year, month - 1, day));
-    const dataPoint: Record<string, string | number> = {
+    const dataPoint: Record<string, string | number | null> = {
       name: dateObj.toLocaleDateString(locale, {
         month: '2-digit',
         day: '2-digit',
@@ -198,8 +196,8 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
 
     topModels.forEach((modelId) => {
       const stat = statsMap[date]?.[modelId];
-      dataPoint[modelId] = stat?.throughput ?? 0;
-      dataPoint[`${modelId}-ttft`] = stat?.ttftMs ?? 0;
+      dataPoint[modelId] = stat?.throughput ?? null;
+      dataPoint[`${modelId}-ttft`] = stat?.ttftMs ?? null;
     });
 
     return dataPoint;
@@ -243,7 +241,7 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
               {t('dashboard.stats.throughput')}
             </TabsTrigger>
             <TabsTrigger value='ttft' className='h-6 px-2.5 text-xs'>
-              TTFT
+              {t('dashboard.stats.ttft')}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -320,7 +318,7 @@ export function ModelPerformanceStats({ onTotalRequestsChange }: ModelPerformanc
                 <span className='font-medium'>{item.name}</span>
               </span>
               <span className='text-xs text-muted-foreground tabular-nums 2xl:text-right'>
-                {formatNumber(item.avgThroughput, { digits: 0 })} {t('dashboard.stats.throughput')} · TTFT {formatDuration(item.avgTtft)}
+                {formatNumber(item.avgThroughput, { digits: 0 })} {t('dashboard.stats.throughput')} · {t('dashboard.stats.ttft')} {formatDuration(item.avgTtft)}
               </span>
             </button>
           );
