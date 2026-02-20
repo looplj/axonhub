@@ -115,8 +115,9 @@ export function ModelPerformanceStats() {
       avgThroughput: stats.count > 0 ? stats.totalThroughput / stats.count : 0,
       totalRequests: stats.totalRequests,
     }))
-    .sort((a, b) => a.modelId.localeCompare(b.modelId))
+    .sort((a, b) => b.avgThroughput - a.avgThroughput)
     .slice(0, 10)
+    .sort((a, b) => a.modelId.localeCompare(b.modelId))
     .map((m) => m.modelId);
 
   const legendItems = useMemo(() => {

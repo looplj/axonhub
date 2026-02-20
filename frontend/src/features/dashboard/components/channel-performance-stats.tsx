@@ -115,8 +115,9 @@ export function ChannelPerformanceStats() {
       avgThroughput: stats.count > 0 ? stats.totalThroughput / stats.count : 0,
       totalRequests: stats.totalRequests,
     }))
-    .sort((a, b) => a.channelId.localeCompare(b.channelId))
+    .sort((a, b) => b.avgThroughput - a.avgThroughput)
     .slice(0, 10)
+    .sort((a, b) => a.channelId.localeCompare(b.channelId))
     .map((c) => c.channelId);
 
   const legendItems = useMemo(() => {
