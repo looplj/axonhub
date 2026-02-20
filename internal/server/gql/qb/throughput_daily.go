@@ -113,10 +113,10 @@ func buildDailyThroughputQuery(dialect string, timezone string, offsetSeconds in
 	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds)
 
 	if mode == ThroughputModeMaxID {
-		return buildDailyMaxIDQuery(dateExpr, config, limit)
+		return buildDailyMaxIDQuery(dateExpr, config, limit, "?")
 	}
 
-	return buildDailyRowNumberQuery(dateExpr, config, limit)
+	return buildDailyRowNumberQuery(dateExpr, config, limit, "?")
 }
 
 // throughputCalculationSQL returns the SQL for calculating throughput from tokens and latency.
@@ -157,7 +157,8 @@ END`, seTable, seTable, seTable, seTable, seTable, seTable, seTable, seTable, se
 }
 
 // buildDailyRowNumberQuery constructs a daily throughput query using ROW_NUMBER().
-func buildDailyRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, limit int) string {
+// Applies date filtering and per-day limit using ROW_NUMBER() window partitioned by date.
+func buildDailyRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, limit int, startDatePlaceholder string) string {
 	throughputSQL := throughputCalculationSQL("se")
 	return fmt.Sprintf(`
 WITH successful_execs AS (
@@ -170,50 +171,62 @@ WITH successful_execs AS (
         created_at,
         ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
     FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0
+    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= %s
+),
+daily_stats AS (
+    SELECT
+        %s as date,
+        %s as id,
+        %s,
+        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
+        COUNT(DISTINCT se.request_id) as request_count,
+        %s as throughput,
+        ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s DESC) as daily_rn
+    FROM successful_execs se
+    JOIN usage_logs ul ON se.request_id = ul.request_id
+    %s
+    WHERE se.rn = 1
+    GROUP BY %s
 )
-SELECT
-    %s as date,
-    %s as id,
-    %s,
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-    COUNT(DISTINCT se.request_id) as request_count,
-    %s as throughput
-FROM successful_execs se
-JOIN usage_logs ul ON se.request_id = ul.request_id
-%s
-WHERE se.rn = 1
-GROUP BY %s
-ORDER BY date DESC, throughput DESC
-LIMIT %d`, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, config.JoinClause, config.GroupByFields, limit)
+SELECT date, id, %s, tokens_count, request_count, throughput
+FROM daily_stats
+WHERE daily_rn <= %d
+ORDER BY date DESC, throughput DESC`, startDatePlaceholder, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, config.GroupByFields, config.GroupByFields, limit)
 }
 
 // buildDailyMaxIDQuery constructs a daily throughput query using MAX(id) subquery.
-func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limit int) string {
+// Applies date filtering and per-day limit using ROW_NUMBER() window partitioned by date.
+func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limit int, startDatePlaceholder string) string {
 	throughputSQL := throughputCalculationSQL("se")
 	return fmt.Sprintf(`
-SELECT
-    %s as date,
-    %s as id,
-    %s,
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-    COUNT(DISTINCT se.request_id) as request_count,
-    %s as throughput
-FROM request_executions se
-JOIN usage_logs ul ON se.request_id = ul.request_id
-%s
-WHERE se.status = 'completed'
-    AND se.metrics_latency_ms > 0
-    AND se.id = (
-        SELECT MAX(re2.id)
-        FROM request_executions re2
-        WHERE re2.request_id = se.request_id
-            AND re2.status = 'completed'
-            AND re2.metrics_latency_ms > 0
-    )
-GROUP BY %s
-ORDER BY date DESC, throughput DESC
-LIMIT %d`, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, config.JoinClause, config.GroupByFields, limit)
+WITH ranked_execs AS (
+    SELECT
+        %s as date,
+        %s as id,
+        %s,
+        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
+        COUNT(DISTINCT se.request_id) as request_count,
+        %s as throughput,
+        ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s DESC) as daily_rn
+    FROM request_executions se
+    JOIN usage_logs ul ON se.request_id = ul.request_id
+    %s
+    WHERE se.status = 'completed'
+        AND se.metrics_latency_ms > 0
+        AND se.created_at >= %s
+        AND se.id = (
+            SELECT MAX(re2.id)
+            FROM request_executions re2
+            WHERE re2.request_id = se.request_id
+                AND re2.status = 'completed'
+                AND re2.metrics_latency_ms > 0
+        )
+    GROUP BY %s
+)
+SELECT date, id, %s, tokens_count, request_count, throughput
+FROM ranked_execs
+WHERE daily_rn <= %d
+ORDER BY date DESC, throughput DESC`, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, startDatePlaceholder, config.GroupByFields, config.GroupByFields, limit)
 }
 
 // BuildDailyPerformanceStatsQuery constructs a SQL query for daily performance statistics
@@ -236,7 +249,6 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 
 	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds)
 	throughputSQL := throughputCalculationSQL("se")
-	havingSQL := throughputHavingSQL("se")
 
 	return "WITH successful_execs AS (\n" +
 		"    SELECT\n" +
@@ -252,26 +264,30 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 		"    WHERE se.status = 'completed'\n" +
 		"        AND se.metrics_latency_ms > 0\n" +
 		"        AND se.created_at >= " + placeholder + "\n" +
+		"),\n" +
+		"daily AS (\n" +
+		"    SELECT\n" +
+		"        exec_date as date,\n" +
+		"        se." + getIDColumnName(queryType) + " as id,\n" +
+		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"        SUM(se.metrics_latency_ms) as latency_ms,\n" +
+		"        AVG(CASE\n" +
+		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
+		"            THEN se.metrics_first_token_latency_ms\n" +
+		"            ELSE NULL\n" +
+		"        END) as ttft_ms,\n" +
+		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
+		"        " + throughputSQL + " as throughput\n" +
+		"    FROM successful_execs se\n" +
+		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
+		"    WHERE se.rn = 1\n" +
+		"    GROUP BY exec_date, se." + getIDColumnName(queryType) + "\n" +
 		")\n" +
-		"SELECT\n" +
-		"    exec_date as date,\n" +
-		"    se." + getIDColumnName(queryType) + " as id,\n" +
-		"    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
-		"    SUM(se.metrics_latency_ms) as latency_ms,\n" +
-		"    AVG(CASE\n" +
-		"        WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
-		"        THEN se.metrics_first_token_latency_ms\n" +
-		"        ELSE se.metrics_latency_ms\n" +
-		"    END) as ttft_ms,\n" +
-		"    COUNT(DISTINCT se.request_id) as request_count,\n" +
-		throughputSQL + " as throughput\n" +
-		"FROM successful_execs se\n" +
-		"JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
-		"WHERE se.rn = 1\n" +
-		"GROUP BY exec_date, se." + getIDColumnName(queryType) + "\n" +
-		"HAVING " + havingSQL + " IS NOT NULL\n" +
-		"AND " + havingSQL + " > 0\n" +
-		"ORDER BY exec_date DESC, throughput DESC"
+		"SELECT date, id, tokens_count, latency_ms, ttft_ms, request_count, throughput\n" +
+		"FROM daily\n" +
+		"WHERE daily.throughput IS NOT NULL\n" +
+		"    AND daily.throughput > 0\n" +
+		"ORDER BY date DESC, throughput DESC"
 }
 
 // getIDColumnName returns the appropriate ID column name for the query type.

@@ -96,38 +96,37 @@ export function ModelPerformanceStats() {
 
   const safeStats = performanceStats ?? [];
 
-  const dates = [...new Set(safeStats.map((stat) => stat.date))].sort();
-  const modelStats = safeStats.reduce((acc, stat) => {
-    if (!acc[stat.modelId]) {
-      acc[stat.modelId] = { totalRequests: 0, totalThroughput: 0, count: 0 };
-    }
-    if (stat.throughput != null) {
-      acc[stat.modelId].totalRequests += stat.requestCount;
-      acc[stat.modelId].totalThroughput += stat.throughput * stat.requestCount;
-      acc[stat.modelId].count += 1;
-    }
-    return acc;
-  }, {} as Record<string, { totalRequests: number; totalThroughput: number; count: number }>);
+  const { dates, topModels, legendItems } = useMemo(() => {
+    const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
+    const mStats = safeStats.reduce((acc, stat) => {
+      if (!acc[stat.modelId]) {
+        acc[stat.modelId] = { totalRequests: 0, totalThroughput: 0, count: 0 };
+      }
+      if (stat.throughput != null) {
+        acc[stat.modelId].totalRequests += stat.requestCount;
+        acc[stat.modelId].totalThroughput += stat.throughput * stat.requestCount;
+        acc[stat.modelId].count += 1;
+      }
+      return acc;
+    }, {} as Record<string, { totalRequests: number; totalThroughput: number; count: number }>);
 
-  const topModels = Object.entries(modelStats)
-    .map(([modelId, stats]) => ({
-      modelId,
-      avgThroughput: stats.count > 0 ? stats.totalThroughput / stats.count : 0,
-      totalRequests: stats.totalRequests,
-    }))
-    .sort((a, b) => b.avgThroughput - a.avgThroughput)
-    .slice(0, 10)
-    .sort((a, b) => a.modelId.localeCompare(b.modelId))
-    .map((m) => m.modelId);
+    const tModels = Object.entries(mStats)
+      .map(([modelId, stats]) => ({
+        modelId,
+        avgThroughput: stats.count > 0 ? stats.totalThroughput / stats.count : 0,
+        totalRequests: stats.totalRequests,
+      }))
+      .sort((a, b) => b.avgThroughput - a.avgThroughput)
+      .slice(0, 10)
+      .sort((a, b) => a.modelId.localeCompare(b.modelId))
+      .map((m) => m.modelId);
 
-  const legendItems = useMemo(() => {
-    if (topModels.length === 0) return [];
-    return topModels.map((modelId, index) => {
-      const modelStats = safeStats.filter((stat) => stat.modelId === modelId);
+    const lItems = tModels.map((modelId, index) => {
+      const stats = safeStats.filter((stat) => stat.modelId === modelId);
       const avgThroughput =
-        modelStats.reduce((sum, stat) => sum + (stat.throughput ?? 0), 0) / (modelStats.length || 1);
+        stats.reduce((sum, stat) => sum + (stat.throughput ?? 0), 0) / (stats.length || 1);
       const avgTtft =
-        modelStats.reduce((sum, stat) => sum + (stat.ttftMs ?? 0), 0) / (modelStats.length || 1);
+        stats.reduce((sum, stat) => sum + (stat.ttftMs ?? 0), 0) / (stats.length || 1);
 
       return {
         id: modelId,
@@ -137,7 +136,9 @@ export function ModelPerformanceStats() {
         avgTtft,
       };
     });
-  }, [safeStats, topModels]);
+
+    return { dates: uniqueDates, topModels: tModels, legendItems: lItems };
+  }, [safeStats]);
   if (isLoading) {
     return (
       <div className='flex h-[350px] items-center justify-center'>
@@ -164,7 +165,8 @@ export function ModelPerformanceStats() {
 
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
-    const dateObj = new Date(year, month - 1, day);
+    // Use Date.UTC to avoid local timezone shifts when formatting
+    const dateObj = new Date(Date.UTC(year, month - 1, day));
     const dataPoint: Record<string, string | number> = {
       name: dateObj.toLocaleDateString(locale, {
         month: '2-digit',

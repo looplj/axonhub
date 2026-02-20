@@ -99,6 +99,7 @@ type BulkUpdateChannelOrderingResult struct {
 type ChannelPerformanceStat struct {
 	Date         string   `json:"date"`
 	ChannelID    string   `json:"channelId"`
+	ChannelName  string   `json:"channelName"`
 	Throughput   *float64 `json:"throughput,omitempty"`
 	TtftMs       *float64 `json:"ttftMs,omitempty"`
 	RequestCount int      `json:"requestCount"`

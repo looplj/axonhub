@@ -379,6 +379,7 @@ type ComplexityRoot struct {
 
 	ChannelPerformanceStat struct {
 		ChannelID    func(childComplexity int) int
+		ChannelName  func(childComplexity int) int
 		Date         func(childComplexity int) int
 		RequestCount func(childComplexity int) int
 		Throughput   func(childComplexity int) int
@@ -2940,6 +2941,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPerformanceStat.ChannelID(childComplexity), true
+	case "ChannelPerformanceStat.channelName":
+		if e.complexity.ChannelPerformanceStat.ChannelName == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformanceStat.ChannelName(childComplexity), true
 	case "ChannelPerformanceStat.date":
 		if e.complexity.ChannelPerformanceStat.Date == nil {
 			break
@@ -16863,6 +16870,35 @@ func (ec *executionContext) _ChannelPerformanceStat_channelId(ctx context.Contex
 }
 
 func (ec *executionContext) fieldContext_ChannelPerformanceStat_channelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformanceStat_channelName(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPerformanceStat_channelName,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformanceStat_channelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelPerformanceStat",
 		Field:      field,
@@ -31362,6 +31398,8 @@ func (ec *executionContext) fieldContext_Query_channelPerformanceStats(_ context
 				return ec.fieldContext_ChannelPerformanceStat_date(ctx, field)
 			case "channelId":
 				return ec.fieldContext_ChannelPerformanceStat_channelId(ctx, field)
+			case "channelName":
+				return ec.fieldContext_ChannelPerformanceStat_channelName(ctx, field)
 			case "throughput":
 				return ec.fieldContext_ChannelPerformanceStat_throughput(ctx, field)
 			case "ttftMs":
@@ -69295,6 +69333,11 @@ func (ec *executionContext) _ChannelPerformanceStat(ctx context.Context, sel ast
 			}
 		case "channelId":
 			out.Values[i] = ec._ChannelPerformanceStat_channelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelName":
+			out.Values[i] = ec._ChannelPerformanceStat_channelName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

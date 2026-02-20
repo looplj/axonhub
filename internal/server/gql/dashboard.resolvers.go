@@ -1168,6 +1168,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	nowLocal := nowUTC.In(loc)
 	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
 	startTimestamp := startDateLocal.UTC().Unix()
+	_, offsetSeconds := nowLocal.Zone()
 
 	// First, try to get data from channel_probes (pre-aggregated)
 	type probeStats struct {
@@ -1192,8 +1193,8 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 
 			switch s.Dialect() {
 			case dialect.SQLite:
-				// SQLite: Convert Unix timestamp to date string
-				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch'), 'localtime')", timestampCol)
+				// SQLite: Convert Unix timestamp to date string with explicit timezone offset
+				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
 			case dialect.MySQL:
 				// MySQL: Convert Unix timestamp to date
 				dateExpr = fmt.Sprintf("FROM_UNIXTIME(%s, '%%Y-%%m-%%d')", timestampCol)
@@ -1317,7 +1318,8 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 
 				response = append(response, &ChannelPerformanceStat{
 					Date:         dateStr,
-					ChannelID:    channelName,
+					ChannelID:    fmt.Sprintf("%d", ch.channelID),
+					ChannelName:  channelName,
 					Throughput:   throughput,
 					TtftMs:       ttftMs,
 					RequestCount: ch.requestCount,

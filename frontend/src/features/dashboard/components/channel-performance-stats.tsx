@@ -96,38 +96,37 @@ export function ChannelPerformanceStats() {
 
   const safeStats = performanceStats ?? [];
 
-  const dates = [...new Set(safeStats.map((stat) => stat.date))].sort();
-  const channelStats = safeStats.reduce((acc, stat) => {
-    if (!acc[stat.channelId]) {
-      acc[stat.channelId] = { totalRequests: 0, totalThroughput: 0, count: 0 };
-    }
-    if (stat.throughput != null) {
-      acc[stat.channelId].totalRequests += stat.requestCount;
-      acc[stat.channelId].totalThroughput += stat.throughput * stat.requestCount;
-      acc[stat.channelId].count += 1;
-    }
-    return acc;
-  }, {} as Record<string, { totalRequests: number; totalThroughput: number; count: number }>);
+  const { dates, topChannels, legendItems } = useMemo(() => {
+    const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
+    const cStats = safeStats.reduce((acc, stat) => {
+      if (!acc[stat.channelId]) {
+        acc[stat.channelId] = { totalRequests: 0, totalThroughput: 0, count: 0 };
+      }
+      if (stat.throughput != null) {
+        acc[stat.channelId].totalRequests += stat.requestCount;
+        acc[stat.channelId].totalThroughput += stat.throughput * stat.requestCount;
+        acc[stat.channelId].count += 1;
+      }
+      return acc;
+    }, {} as Record<string, { totalRequests: number; totalThroughput: number; count: number }>);
 
-  const topChannels = Object.entries(channelStats)
-    .map(([channelId, stats]) => ({
-      channelId,
-      avgThroughput: stats.count > 0 ? stats.totalThroughput / stats.count : 0,
-      totalRequests: stats.totalRequests,
-    }))
-    .sort((a, b) => b.avgThroughput - a.avgThroughput)
-    .slice(0, 10)
-    .sort((a, b) => a.channelId.localeCompare(b.channelId))
-    .map((c) => c.channelId);
+    const tChannels = Object.entries(cStats)
+      .map(([channelId, stats]) => ({
+        channelId,
+        avgThroughput: stats.count > 0 ? stats.totalThroughput / stats.count : 0,
+        totalRequests: stats.totalRequests,
+      }))
+      .sort((a, b) => b.avgThroughput - a.avgThroughput)
+      .slice(0, 10)
+      .sort((a, b) => a.channelId.localeCompare(b.channelId))
+      .map((c) => c.channelId);
 
-  const legendItems = useMemo(() => {
-    if (topChannels.length === 0) return [];
-    return topChannels.map((channelId, index) => {
-      const channelStats = safeStats.filter((stat) => stat.channelId === channelId);
+    const lItems = tChannels.map((channelId, index) => {
+      const stats = safeStats.filter((stat) => stat.channelId === channelId);
       const avgThroughput =
-        channelStats.reduce((sum, stat) => sum + (stat.throughput ?? 0), 0) / (channelStats.length || 1);
+        stats.reduce((sum, stat) => sum + (stat.throughput ?? 0), 0) / (stats.length || 1);
       const avgTtft =
-        channelStats.reduce((sum, stat) => sum + (stat.ttftMs ?? 0), 0) / (channelStats.length || 1);
+        stats.reduce((sum, stat) => sum + (stat.ttftMs ?? 0), 0) / (stats.length || 1);
 
       return {
         id: channelId,
@@ -137,7 +136,9 @@ export function ChannelPerformanceStats() {
         avgTtft,
       };
     });
-  }, [safeStats, topChannels]);
+
+    return { dates: uniqueDates, topChannels: tChannels, legendItems: lItems };
+  }, [safeStats]);
 
   if (isLoading) {
     return (
@@ -166,7 +167,8 @@ export function ChannelPerformanceStats() {
   // Transform data for the chart
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
-    const dateObj = new Date(year, month - 1, day);
+    // Use Date.UTC to avoid local timezone shifts when formatting
+    const dateObj = new Date(Date.UTC(year, month - 1, day));
     const dataPoint: Record<string, string | number> = {
       name: dateObj.toLocaleDateString(locale, {
         month: '2-digit',
