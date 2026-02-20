@@ -116,11 +116,13 @@ export function ModelsAssociationDialog() {
     allModelEntries: Array<{ requestModel: string; actualModel: string; source: string }>;
   }[] => {
     if (!channelsData?.edges) return [];
-    return channelsData.edges.map((edge) => ({
-      value: extractNumberIDAsNumber(edge.node.id),
-      label: edge.node.name,
-      allModelEntries: edge.node.allModelEntries || [],
-    }));
+    return channelsData.edges
+      .filter((edge) => !edge.node.type.startsWith('search_'))
+      .map((edge) => ({
+        value: extractNumberIDAsNumber(edge.node.id),
+        label: edge.node.name,
+        allModelEntries: edge.node.allModelEntries || [],
+      }));
   }, [channelsData]);
 
   // Build all available model options

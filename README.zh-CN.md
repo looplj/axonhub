@@ -147,6 +147,7 @@
 | **图片生成（Image Generation）** | ✅ Done | 图片生成 | [Image Generation](docs/zh/api-reference/image-generation.md) |
 | **重排序（Rerank）** | ✅ Done | 结果排序 | [Rerank API](docs/zh/api-reference/rerank-api.md) |
 | **嵌入（Embedding）** | ✅ Done | 向量嵌入生成 | [Embedding API](docs/zh/api-reference/embedding-api.md) |
+| **网络搜索（Web Search）** | ✅ Done | 统一网络搜索网关 | [Search API](docs/zh/api-reference/search-api.md) |
 | **实时对话（Realtime）** | 📝 Todo | 实时对话功能 | - |
 
 ---
@@ -168,6 +169,9 @@
 | **AWS Bedrock**        | 🔄 测试中  | Claude on AWS                | OpenAI, Anthropic, Gemini |
 | **Google Cloud**       | 🔄 测试中  | Claude on GCP                | OpenAI, Anthropic, Gemini |
 | **NanoGPT**            | ✅ 已完成  | 多种模型、图像生成             | OpenAI, Anthropic, Gemini, Image Generation |
+| **Tavily**             | ✅ 已完成   | Web 搜索                     | Search |
+| **Brave Search**       | ✅ 已完成   | Web 搜索                     | Search |
+| **Exa**                | ✅ 已完成   | 神经语义搜索                  | Search |
 
 ---
 
@@ -437,6 +441,27 @@ AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模
 - [OpenAI API](docs/zh/api-reference/openai-api.md)
 - [Anthropic API](docs/zh/api-reference/anthropic-api.md)
 - [Gemini API](docs/zh/api-reference/gemini-api.md)
+- [Search API](docs/zh/api-reference/search-api.md)
+
+#### 网络搜索示例 | Web Search Example
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/v1/search",
+    headers={"Authorization": "Bearer your-axonhub-api-key"},
+    json={
+        "query": "量子计算最新进展",
+        "model": "__search",
+        "max_results": 5
+    }
+)
+
+results = response.json()
+for r in results["results"]:
+    print(f"{r['title']}: {r['url']}")
+```
 
 
 ## 🛠️ 开发指南

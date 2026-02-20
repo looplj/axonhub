@@ -19,6 +19,8 @@ import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChannelsTestDialog } from './channels-test-dialog';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
 import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog';
+import { SearchChannelDialog } from './search-channel-dialog';
+import { SearchChannelPriceDialog } from './search-channel-price-dialog';
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow, setCurrentRow, selectedChannels } = useChannels();
@@ -27,6 +29,7 @@ export function ChannelsDialogs() {
       <ChannelsSystemSettingsDialog />
 
       <ChannelsActionDialog key='channel-add' open={open === 'add'} onOpenChange={(isOpen) => setOpen(isOpen ? 'add' : null)} />
+      <SearchChannelDialog open={open === 'addSearch'} onOpenChange={(isOpen) => setOpen(isOpen ? 'addSearch' : null)} />
 
       <ChannelsBulkArchiveDialog />
 
@@ -64,12 +67,44 @@ export function ChannelsDialogs() {
             currentRow={currentRow}
           />
 
+          <SearchChannelDialog
+            key={`search-channel-edit-${currentRow.id}`}
+            open={open === 'editSearch'}
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                setOpen('editSearch');
+              } else {
+                setOpen(null);
+                setTimeout(() => {
+                  setCurrentRow(null);
+                }, 500);
+              }
+            }}
+            currentRow={currentRow}
+          />
+
           <ChannelsActionDialog
             key={`channel-duplicate-${currentRow.id}`}
             open={open === 'duplicate'}
             onOpenChange={(isOpen) => {
               if (isOpen) {
                 setOpen('duplicate');
+              } else {
+                setOpen(null);
+                setTimeout(() => {
+                  setCurrentRow(null);
+                }, 500);
+              }
+            }}
+            duplicateFromRow={currentRow}
+          />
+
+          <SearchChannelDialog
+            key={`search-channel-duplicate-${currentRow.id}`}
+            open={open === 'duplicateSearch'}
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                setOpen('duplicateSearch');
               } else {
                 setOpen(null);
                 setTimeout(() => {
@@ -140,6 +175,8 @@ export function ChannelsDialogs() {
           />
 
           <ChannelsModelPriceDialog />
+
+          <SearchChannelPriceDialog />
 
           <ChannelsOverrideDialog
             key={`channel-overrides-${currentRow.id}`}

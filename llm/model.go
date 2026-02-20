@@ -217,6 +217,8 @@ type Request struct {
 
 	// Video is the video request, will be set if the request is video request.
 	Video *VideoRequest `json:"video,omitempty"`
+	// Search is the web search request, will be set if the request is search request.
+	Search *SearchRequest `json:"search,omitempty"`
 
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
@@ -511,6 +513,8 @@ type Response struct {
 
 	// Video is the video response, will present if the request is video request.
 	Video *VideoResponse `json:"video,omitempty"`
+	// Search is the web search response, will present if the request is search request.
+	Search *SearchResponse `json:"search,omitempty"`
 
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.
@@ -577,6 +581,10 @@ type ResponseMeta struct {
 
 // Usage Represents the total token usage per request to OpenAI.
 type Usage struct {
+	// Some models charge based on credits instead of tokens.
+	// We use Quantity to represent the credits used.
+	Quantity int64 `json:"quantity,omitempty"`
+
 	// Number of tokens in the prompt, including cached tokens.
 	PromptTokens int64 `json:"prompt_tokens"`
 

@@ -220,10 +220,10 @@ func (p *PriceTier) Equals(other *PriceTier) bool {
 type PriceItemCode string
 
 const (
-	// PriceItemCodeUsage is the price item code for the token usage.
+	// PriceItemCodeUsage is the price item code for the input token usage.
 	PriceItemCodeUsage PriceItemCode = "prompt_tokens"
 
-	// PriceItemCodeCompletion is the price item code for the token completion.
+	// PriceItemCodeCompletion is the price item code for the output token completion.
 	PriceItemCodeCompletion PriceItemCode = "completion_tokens"
 
 	// PriceItemCodePromptCachedToken is the price item code for the cached token usage.
@@ -232,6 +232,10 @@ const (
 	// PriceItemCodeWriteCachedTokens is the price item code for the cached token write.
 	//nolint:gosec // not token.
 	PriceItemCodeWriteCachedTokens PriceItemCode = "prompt_write_cached_tokens"
+
+	// PriceItemCodeRequests is the price item code for per-request billing (e.g. search).
+	// It uses Usage.Quantity as the billing unit count.
+	PriceItemCodeRequests PriceItemCode = "requests"
 )
 
 type PromptWriteCacheVariantCode string

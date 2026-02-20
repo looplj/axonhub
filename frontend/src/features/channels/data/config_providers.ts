@@ -25,9 +25,12 @@ import {
   AiHubMix,
   Cerebras,
   Claude,
-  XiaomiMiMo
+  XiaomiMiMo,
+  Exa,
+  Tavily,
 } from '@lobehub/icons';
-import { NanoGPTIcon } from '../components/nanogpt-icon';
+import { BraveIcon } from '@/assets/brave-icon';
+import { NanoGPTIcon } from '@/assets/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
 
@@ -223,6 +226,24 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: NanoGPTIcon,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['nanogpt'],
+  },
+  brave_search: {
+    provider: 'brave_search',
+    icon: BraveIcon,
+    color: 'bg-[#FB542B] text-white border-[#FB542B]',
+    channelTypes: ['search_brave'],
+  },
+  exa: {
+    provider: 'exa',
+    icon: Exa,
+    color: 'bg-[#4338CA] text-white border-[#4338CA]',
+    channelTypes: ['search_exa'],
+  },
+  tavily: {
+    provider: 'tavily',
+    icon: Tavily,
+    color: 'bg-[#468BFF] text-white border-[#468BFF]',
+    channelTypes: ['search_tavily'],
   },
 };
 

@@ -25,7 +25,8 @@ function groupTypesByPrefix(typeCounts: ChannelTypeCount[]): GroupedTypeCount[] 
 
   typeCounts.forEach(({ type, count }) => {
     // Find the base prefix (before the first underscore or the whole string)
-    const prefix = type.split('_')[0];
+    // For search_* types, don't group by "search" (it isn't a real channel type in configs/i18n).
+    const prefix = type.startsWith('search_') ? type : type.split('_')[0];
 
     if (!groups.has(prefix)) {
       groups.set(prefix, { types: [], totalCount: 0 });

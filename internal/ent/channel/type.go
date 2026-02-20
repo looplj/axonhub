@@ -20,6 +20,10 @@ func (t Type) IsOpenAI() bool {
 	return !t.IsAnthropicLike() && !t.IsAnthropic() && !t.IsGemini()
 }
 
+func (t Type) IsSearch() bool {
+	return strings.HasPrefix(string(t), "search_")
+}
+
 // SupportsGoogleNativeTools returns true if the channel type supports Google native tools.
 // Google native tools (google_search, google_url_context, google_code_execution) are only
 // supported by native Gemini API format channels (gemini, gemini_vertex).

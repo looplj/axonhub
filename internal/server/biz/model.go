@@ -458,6 +458,10 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 	)
 
 	for _, ch := range channels {
+		if ch.Channel.Type.IsSearch() {
+			continue
+		}
+
 		entries := ch.GetModelEntries()
 
 		for requestModel := range entries {
@@ -548,6 +552,14 @@ func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*Unas
 }
 
 func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.ModelAssociation) []*UnassociatedChannel {
+	if len(channels) == 0 {
+		return []*UnassociatedChannel{}
+	}
+
+	channels = lo.Filter(channels, func(ch *ent.Channel, _ int) bool {
+		return !ch.Type.IsSearch()
+	})
+
 	if len(channels) == 0 {
 		return []*UnassociatedChannel{}
 	}

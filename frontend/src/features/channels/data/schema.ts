@@ -14,6 +14,9 @@ export const apiFormatSchema = z.enum([
   'aisdk/datastream',
   'jina/rerank',
   'jina/embeddings',
+  'tavily/search',
+  'brave/search',
+  'exa/search',
 ]);
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>;
@@ -64,6 +67,9 @@ export const channelTypeSchema = z.enum([
   'antigravity',
   'cerebras',
   'nanogpt',
+  'search_tavily',
+  'search_brave',
+  'search_exa',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
@@ -229,7 +235,7 @@ export type Channel = z.infer<typeof channelSchema>;
 export const pricingModeSchema = z.enum(['flat_fee', 'usage_per_unit', 'usage_tiered']);
 export type PricingMode = z.infer<typeof pricingModeSchema>;
 
-export const priceItemCodeSchema = z.enum(['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens']);
+export const priceItemCodeSchema = z.enum(['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens', 'requests']);
 export type PriceItemCode = z.infer<typeof priceItemCodeSchema>;
 
 export const priceTierSchema = z.object({

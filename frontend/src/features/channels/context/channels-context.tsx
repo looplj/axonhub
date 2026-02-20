@@ -4,8 +4,11 @@ import { Channel } from '../data/schema';
 
 type ChannelsDialogType =
   | 'add'
+  | 'addSearch'
   | 'duplicate'
+  | 'duplicateSearch'
   | 'edit'
+  | 'editSearch'
   | 'delete'
   | 'settings'
   | 'channelSettings'
@@ -25,6 +28,7 @@ type ChannelsDialogType =
   | 'errorResolved'
   | 'viewModels'
   | 'price'
+  | 'searchPrice'
   | 'transformOptions'
   | 'disabledAPIKeys';
 

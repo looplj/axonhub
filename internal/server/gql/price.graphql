@@ -6,6 +6,7 @@ enum PricingMode {
 }
 
 enum PriceItemCode {
+  requests
   prompt_tokens
   completion_tokens
   prompt_cached_tokens

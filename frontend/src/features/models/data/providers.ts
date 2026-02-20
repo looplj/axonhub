@@ -17,8 +17,7 @@ export function useProvidersData() {
         }
         const data = await response.json();
         return providersDataSchema.parse(data);
-      } catch (error) {
-        console.error('Failed to fetch remote providers data, falling back to local:', error);
+      } catch {
         return providersDataSchema.parse(providersDataRaw);
       }
     },
@@ -38,8 +37,7 @@ export function useDevelopersData() {
         }
         const data = await response.json();
         return providersDataSchema.parse(data);
-      } catch (error) {
-        console.error('Failed to fetch remote developers data, falling back to local:', error);
+      } catch {
         return providersDataSchema.parse(providersDataRaw);
       }
     },

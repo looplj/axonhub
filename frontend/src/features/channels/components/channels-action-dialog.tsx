@@ -428,7 +428,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         .filter(([, config]) => {
           // Filter out providers that only have fake types
           const nonFakeTypes = config.channelTypes.filter((t) => !t.endsWith('_fake'));
-          return nonFakeTypes.length > 0;
+          if (nonFakeTypes.length === 0) return false;
+          // Filter out search providers (managed via search-channel-dialog)
+          const nonSearchTypes = nonFakeTypes.filter((t) => !t.startsWith('search_'));
+          return nonSearchTypes.length > 0;
         })
         .map(([key, config]) => ({
           key,

@@ -776,25 +776,6 @@ export interface BulkCreateChannelsInput {
   remark?: string;
 }
 
-export function useBulkCreateChannels() {
-  const queryClient = useQueryClient();
-  const { t } = useTranslation();
-
-  return useMutation({
-    mutationFn: async (input: BulkCreateChannelsInput) => {
-      const data = await graphqlRequest<{ bulkCreateChannels: Channel[] }>(BULK_CREATE_CHANNELS_MUTATION, { input });
-      return data.bulkCreateChannels.map((ch) => channelSchema.parse(ch));
-    },
-    onSuccess: (channels) => {
-      queryClient.invalidateQueries({ queryKey: ['channels'] });
-      toast.success(t('channels.messages.batchCreateSuccess', { count: channels.length }));
-    },
-    onError: (error) => {
-      toast.error(t('channels.messages.batchCreateError', { error: error.message }));
-    },
-  });
-}
-
 export function useUpdateChannel() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -1343,10 +1324,10 @@ export function useEnableSelectedChannelAPIKeys() {
 
   return useMutation({
     mutationFn: async ({ channelID, keys }: { channelID: string; keys: string[] }) => {
-      const data = await graphqlRequest<{ enableSelectedChannelAPIKeys: boolean }>(
-        ENABLE_SELECTED_CHANNEL_API_KEYS_MUTATION,
-        { channelID, keys }
-      );
+      const data = await graphqlRequest<{ enableSelectedChannelAPIKeys: boolean }>(ENABLE_SELECTED_CHANNEL_API_KEYS_MUTATION, {
+        channelID,
+        keys,
+      });
       return data.enableSelectedChannelAPIKeys;
     },
     onSuccess: (_data, variables) => {
@@ -1375,7 +1356,7 @@ export function useDeleteDisabledChannelAPIKeys() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channelDisabledAPIKeys', variables.channelID] });
       queryClient.invalidateQueries({ queryKey: ['channels'] });
-      
+
       // Show appropriate message based on the result
       if (data.message === 'ONE_KEY_PRESERVED') {
         toast.success(t('channels.messages.deleteDisabledAPIKeysPreserved'));

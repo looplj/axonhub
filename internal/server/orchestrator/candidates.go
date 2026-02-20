@@ -83,9 +83,14 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 	return candidates, nil
 }
 
-// selectChannelCadidates performs the original channel selection logic.
+// selectChannelCadidates performs the legacy channel selection logic for non-search requests.
+// Search requests use SearchSelector instead.
 func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	channels := s.ChannelService.GetEnabledChannels()
+
+	channels = lo.Filter(channels, func(ch *biz.Channel, _ int) bool {
+		return !ch.Channel.Type.IsSearch()
+	})
 
 	candidates := make([]*ChannelModelsCandidate, 0, len(channels))
 	for _, ch := range channels {
@@ -157,6 +162,9 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 // Results are cached per model ID and invalidated when channel count, latest update time, or model update time changes.
 func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Model, associations []*objects.ModelAssociation) ([]*ChannelModelsCandidate, error) {
 	channels := s.ChannelService.GetEnabledChannels()
+	channels = lo.Filter(channels, func(ch *biz.Channel, _ int) bool {
+		return !ch.Channel.Type.IsSearch()
+	})
 	if len(channels) == 0 {
 		return []*ChannelModelsCandidate{}, nil
 	}

@@ -145,6 +145,7 @@ Here are some screenshots of AxonHub in action:
 | **Image Generation** | ✅ Done | Image generation               | [Image Generation](docs/en/api-reference/image-generation.md) |
 | **Rerank**           | ✅ Done    | Results ranking                | [Rerank API](docs/en/api-reference/rerank-api.md) |
 | **Embedding**        | ✅ Done    | Vector embedding generation    | [Embedding API](docs/en/api-reference/embedding-api.md) |
+| **Web Search**       | ✅ Done    | Unified web search gateway     | [Search API](docs/en/api-reference/search-api.md) |
 | **Realtime**         | 📝 Todo    | Live conversation capabilities | -                                            |
 
 ---
@@ -166,6 +167,9 @@ Here are some screenshots of AxonHub in action:
 | **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | OpenAI, Anthropic, Gemini |
 | **Google Cloud**       | 🔄 Testing | Claude on GCP                | OpenAI, Anthropic, Gemini |
 | **NanoGPT**            | ✅ Done    | Various models, Image Gen    | OpenAI, Anthropic, Gemini, Image Generation |
+| **Tavily**             | ✅ Done    | Web Search                   | Search |
+| **Brave Search**       | ✅ Done    | Web Search                   | Search |
+| **Exa**                | ✅ Done    | Neural Search                | Search |
 
 ---
 
@@ -460,6 +464,27 @@ For detailed SDK usage examples and code samples, please refer to the API docume
 - [OpenAI API](docs/en/api-reference/openai-api.md)
 - [Anthropic API](docs/en/api-reference/anthropic-api.md)
 - [Gemini API](docs/en/api-reference/gemini-api.md)
+- [Search API](docs/en/api-reference/search-api.md)
+
+#### Web Search Example
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/v1/search",
+    headers={"Authorization": "Bearer your-axonhub-api-key"},
+    json={
+        "query": "latest developments in quantum computing",
+        "model": "__search",
+        "max_results": 5
+    }
+)
+
+results = response.json()
+for r in results["results"]:
+    print(f"{r['title']}: {r['url']}")
+```
 
 ## 🛠️ Development Guide
 

@@ -27,7 +27,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
@@ -85,6 +85,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const testChannel = useTestChannel();
   const hasError = !!channel.errorMessage;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
+  const isSearch = channel.type.startsWith('search_');
 
   const handleDefaultTest = async () => {
     try {
@@ -102,8 +103,8 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
 
   const handleEdit = useCallback(() => {
     setCurrentRow(channel);
-    setOpen('edit');
-  }, [channel, setCurrentRow, setOpen]);
+    setOpen(isSearch ? 'editSearch' : 'edit');
+  }, [channel, isSearch, setCurrentRow, setOpen]);
 
   return (
     <div className='flex items-center justify-center gap-1'>
@@ -120,39 +121,56 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-[160px]'>
-          <DropdownMenuItem onClick={handleOpenTestDialog}>
-            <IconPlayerPlay size={16} className='mr-2' />
-            {t('channels.actions.test')}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {!isSearch && (
+            <DropdownMenuItem onClick={handleOpenTestDialog}>
+              <IconPlayerPlay size={16} className='mr-2' />
+              {t('channels.actions.test')}
+            </DropdownMenuItem>
+          )}
+          {!isSearch && <DropdownMenuSeparator />}
 
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(channel);
-              setOpen('duplicate');
+              setOpen(isSearch ? 'duplicateSearch' : 'duplicate');
             }}
           >
             <IconCopy size={16} className='mr-2' />
             {t('common.actions.duplicate')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('modelMapping');
-            }}
-          >
-            <IconRoute size={16} className='mr-2' />
-            {t('channels.dialogs.settings.modelMapping.title')}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('price');
-            }}
-          >
-            <IconCoin size={16} className='mr-2' />
-            {t('channels.actions.modelPrice')}
-          </DropdownMenuItem>
+          {!isSearch && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('modelMapping');
+              }}
+            >
+              <IconRoute size={16} className='mr-2' />
+              {t('channels.dialogs.settings.modelMapping.title')}
+            </DropdownMenuItem>
+          )}
+          {!isSearch && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('price');
+              }}
+            >
+              <IconCoin size={16} className='mr-2' />
+              {t('channels.actions.modelPrice')}
+            </DropdownMenuItem>
+          )}
+          {isSearch && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('searchPrice');
+              }}
+            >
+              <IconCoin size={16} className='mr-2' />
+              {t('channels.actions.searchPrice')}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(channel);
@@ -172,15 +190,17 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconNetwork size={16} className='mr-2' />
             {t('channels.dialogs.proxy.action')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('transformOptions');
-            }}
-          >
-            <IconTransform size={16} className='mr-2' />
-            {t('channels.dialogs.transformOptions.action')}
-          </DropdownMenuItem>
+          {!isSearch && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('transformOptions');
+              }}
+            >
+              <IconTransform size={16} className='mr-2' />
+              {t('channels.dialogs.transformOptions.action')}
+            </DropdownMenuItem>
+          )}
           {hasDisabledAPIKeys && (
             <DropdownMenuItem
               onClick={() => {
@@ -292,9 +312,7 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
       <Tooltip>
         <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent>
-          <p className='text-sm text-amber-500'>
-            {t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}
-          </p>
+          <p className='text-sm text-amber-500'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
         </TooltipContent>
       </Tooltip>
     );
@@ -460,11 +478,9 @@ const OrderingWeightCell = memo(({ row }: { row: Row<Channel> }) => {
   }
 
   return (
-    <div className='flex items-center justify-center gap-2 group cursor-pointer' onDoubleClick={handleDoubleClick}>
-      <span className={cn('font-mono text-sm', initialWeight == null && 'text-muted-foreground')}>
-        {initialWeight ?? '-'}
-      </span>
-      {updateChannel.isPending && <IconLoader2 className='h-3 w-3 animate-spin text-muted-foreground' />}
+    <div className='group flex cursor-pointer items-center justify-center gap-2' onDoubleClick={handleDoubleClick}>
+      <span className={cn('font-mono text-sm', initialWeight == null && 'text-muted-foreground')}>{initialWeight ?? '-'}</span>
+      {updateChannel.isPending && <IconLoader2 className='text-muted-foreground h-3 w-3 animate-spin' />}
     </div>
   );
 });

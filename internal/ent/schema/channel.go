@@ -80,6 +80,9 @@ func (Channel) Fields() []ent.Field {
 				"cerebras",
 				"antigravity",
 				"nanogpt",
+				"search_tavily",
+				"search_brave",
+				"search_exa",
 			).
 			Immutable().
 			Annotations(

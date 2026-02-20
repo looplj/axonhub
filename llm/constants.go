@@ -8,6 +8,7 @@ const (
 	RequestTypeRerank    RequestType = "rerank"
 	RequestTypeImage     RequestType = "image"
 	RequestTypeVideo     RequestType = "video"
+	RequestTypeSearch    RequestType = "search"
 )
 
 func (r RequestType) String() string {
@@ -33,10 +34,24 @@ const (
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
 
 	APIFormatSeedanceVideo APIFormat = "seedance/video"
+	APIFormatAxonHubSearch APIFormat = "axonhub/search"
+	APIFormatTavilySearch  APIFormat = "tavily/search"
+	APIFormatBraveSearch   APIFormat = "brave/search"
+	APIFormatExaSearch     APIFormat = "exa/search"
 )
 
 func (f APIFormat) String() string {
 	return string(f)
+}
+
+// IsSearch returns true if the API format is a search format.
+func (f APIFormat) IsSearch() bool {
+	switch f {
+	case APIFormatAxonHubSearch, APIFormatTavilySearch, APIFormatBraveSearch, APIFormatExaSearch:
+		return true
+	default:
+		return false
+	}
 }
 
 const (
