@@ -24,5 +24,5 @@ export function formatNumber(value: number | null | undefined, options?: { digit
     return formatWithSuffix(1_000, 'K');
   }
 
-  return value.toLocaleString();
+  return value.toFixed(digits).replace(/\.0+$|(?<=\.\d*[1-9])0+$/g, '').replace(/\.$/, '');
 }

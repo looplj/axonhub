@@ -199,9 +199,9 @@ export function ChannelPerformanceStats() {
     .map((s) => s.throughput!)
     .sort((a, b) => a - b);
 
-  // Use 95th percentile to avoid outlier squashing, fallback to max if array is small
-  const maxThroughput = throughputValues.length > 20
-    ? throughputValues[Math.floor(throughputValues.length * 0.95)] || throughputValues[throughputValues.length - 1]
+  // Use 90th percentile to avoid outlier squashing, fallback to max if array is small
+  const maxThroughput = throughputValues.length > 10
+    ? throughputValues[Math.floor(throughputValues.length * 0.9)] || throughputValues[throughputValues.length - 1]
     : throughputValues.length > 0
       ? throughputValues[throughputValues.length - 1]
       : 0;
