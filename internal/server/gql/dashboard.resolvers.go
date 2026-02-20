@@ -1065,6 +1065,12 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		placeholder = "$1"
 	}
 
+	// Select throughput mode based on dialect: ROW_NUMBER for PostgreSQL, MaxID for older SQLite
+	queryMode := qb.ThroughputModeRowNumber
+	if !useDollarPlaceholders {
+		queryMode = qb.ThroughputModeMaxID
+	}
+
 	// Use shared query builder for daily performance stats
 	query := qb.BuildDailyPerformanceStatsQuery(
 		dialectName,
@@ -1072,6 +1078,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		offsetSeconds,
 		qb.DailyThroughputByModel,
 		placeholder,
+		queryMode,
 	)
 
 	if err := ctx.Err(); err != nil {
@@ -1166,7 +1173,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 	// This ranks models by request volume rather than performance metrics.
 	topModels := calculateConfidenceAndSort(modelInfos, func(m modelInfo) int64 { return m.requestCount }, func(m modelInfo) float64 { return float64(m.requestCount) }, topPerformersLimit)
 
-	var statsResults []*ModelPerformanceStat
+	statsResults := make([]*ModelPerformanceStat, 0)
 	for _, item := range topModels {
 		statsResults = append(statsResults, modelStats[item.stats.modelID].results...)
 	}
@@ -1235,13 +1242,19 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 				sql.As(dateExpr, "date"),
 				sql.As(s.C(channelprobe.FieldChannelID), "channel_id"),
 				sql.As(sql.Sum(s.C(channelprobe.FieldTotalRequestCount)), "request_count"),
-				sql.As(fmt.Sprintf("SUM(%s * %s) / NULLIF(SUM(%s), 0)",
+				// Weighted average: only include rows where AvgTokensPerSecond is not null in both numerator and denominator
+				sql.As(fmt.Sprintf("SUM(CASE WHEN %s IS NOT NULL THEN %s * %s ELSE 0 END) / NULLIF(SUM(CASE WHEN %s IS NOT NULL THEN %s ELSE 0 END), 0)",
+					s.C(channelprobe.FieldAvgTokensPerSecond),
 					s.C(channelprobe.FieldAvgTokensPerSecond),
 					s.C(channelprobe.FieldTotalRequestCount),
+					s.C(channelprobe.FieldAvgTokensPerSecond),
 					s.C(channelprobe.FieldTotalRequestCount)), "throughput"),
-				sql.As(fmt.Sprintf("SUM(%s * %s) / NULLIF(SUM(%s), 0)",
+				// Weighted average: only include rows where AvgTimeToFirstTokenMs is not null in both numerator and denominator
+				sql.As(fmt.Sprintf("SUM(CASE WHEN %s IS NOT NULL THEN %s * %s ELSE 0 END) / NULLIF(SUM(CASE WHEN %s IS NOT NULL THEN %s ELSE 0 END), 0)",
+					s.C(channelprobe.FieldAvgTimeToFirstTokenMs),
 					s.C(channelprobe.FieldAvgTimeToFirstTokenMs),
 					s.C(channelprobe.FieldTotalRequestCount),
+					s.C(channelprobe.FieldAvgTimeToFirstTokenMs),
 					s.C(channelprobe.FieldTotalRequestCount)), "ttft_ms"),
 			).
 				GroupBy(dateExpr, s.C(channelprobe.FieldChannelID)).
@@ -1251,6 +1264,11 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel performance stats from probes: %w", err)
+	}
+
+	// If no probe data available, fall back to usage_logs + request_executions
+	if len(probeResults) == 0 {
+		return r.buildChannelPerformanceStatsFromExecutions(ctx, startDateLocal, offsetSeconds, daysCount)
 	}
 
 	statsMap := make(map[string]map[int]*probeStats)
@@ -1356,6 +1374,159 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 					Throughput:   throughput,
 					TtftMs:       ttftMs,
 					RequestCount: stats.RequestCount,
+				})
+			}
+		}
+	}
+
+	return response, nil
+}
+
+// buildChannelPerformanceStatsFromExecutions builds channel performance stats from request_executions
+// when channel_probes data is not available. Uses the same approach as ModelPerformanceStats.
+func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.Context, startDateLocal time.Time, offsetSeconds int, daysCount int) ([]*ChannelPerformanceStat, error) {
+	dbDriver := r.client.Driver()
+	sqlDB, ok := dbDriver.(*sql.Driver)
+	if !ok {
+		return nil, fmt.Errorf("failed to get underlying SQL driver")
+	}
+
+	dialectName := sqlDB.Dialect()
+	useDollarPlaceholders := dialectName == dialect.Postgres
+
+	placeholder := "?"
+	if useDollarPlaceholders {
+		placeholder = "$1"
+	}
+
+	queryMode := qb.ThroughputModeRowNumber
+	if !useDollarPlaceholders {
+		queryMode = qb.ThroughputModeMaxID
+	}
+
+	query := qb.BuildDailyPerformanceStatsQuery(
+		dialectName,
+		r.systemService.TimeLocation(ctx).String(),
+		offsetSeconds,
+		qb.DailyThroughputByChannel,
+		placeholder,
+		queryMode,
+	)
+
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("context canceled: %w", err)
+	}
+
+	rows, err := sqlDB.DB().QueryContext(ctx, query, startDateLocal.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channel performance stats from executions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	type rawStat struct {
+		Date         string
+		ChannelID    int
+		TokensCount  int64
+		LatencyMs    int64
+		FirstTokenMs *float64
+		RequestCount int64
+		Throughput   *float64
+	}
+
+	statsMap := make(map[string]map[int]*rawStat)
+	channelTotals := make(map[int]int64)
+
+	for rows.Next() {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("context canceled: %w", err)
+		}
+
+		var stat rawStat
+		if err := rows.Scan(
+			&stat.Date,
+			&stat.ChannelID,
+			&stat.TokensCount,
+			&stat.LatencyMs,
+			&stat.FirstTokenMs,
+			&stat.RequestCount,
+			&stat.Throughput,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan channel performance stats: %w", err)
+		}
+
+		if statsMap[stat.Date] == nil {
+			statsMap[stat.Date] = make(map[int]*rawStat)
+		}
+		statsMap[stat.Date][stat.ChannelID] = &stat
+		channelTotals[stat.ChannelID] += stat.RequestCount
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	// Filter out channels with <5 requests (low confidence)
+	var validChannelIDs []int
+	for chID, total := range channelTotals {
+		if total >= 5 {
+			validChannelIDs = append(validChannelIDs, chID)
+		}
+	}
+
+	// Get channel names
+	channelNames := make(map[int]string)
+	if len(validChannelIDs) > 0 {
+		queriedChannels, err := r.client.Channel.Query().
+			Where(channel.IDIn(validChannelIDs...)).
+			Select(channel.FieldID, channel.FieldName).
+			All(ctx)
+		if err != nil {
+			log.Error(ctx, "failed to query channel names for performance stats",
+				log.Any("channelIDs", validChannelIDs),
+				log.Cause(err))
+		} else {
+			for _, ch := range queriedChannels {
+				channelNames[ch.ID] = ch.Name
+			}
+		}
+	}
+
+	// Build response
+	response := make([]*ChannelPerformanceStat, 0)
+	for i := range daysCount {
+		date := startDateLocal.AddDate(0, 0, i)
+		dateStr := date.Format("2006-01-02")
+
+		if dayStats, exists := statsMap[dateStr]; exists && len(dayStats) > 0 {
+			for chID, stats := range dayStats {
+				// Skip channels with <5 total requests
+				if channelTotals[chID] < 5 {
+					continue
+				}
+
+				channelName := channelNames[chID]
+				if channelName == "" {
+					channelName = fmt.Sprintf("channel-%d", chID)
+				}
+
+				var throughput *float64
+				if stats.Throughput != nil && *stats.Throughput > 0 {
+					throughput = stats.Throughput
+				}
+
+				var ttftMs *float64
+				if stats.FirstTokenMs != nil && *stats.FirstTokenMs > 0 {
+					value := *stats.FirstTokenMs
+					ttftMs = &value
+				}
+
+				response = append(response, &ChannelPerformanceStat{
+					Date:         dateStr,
+					ChannelID:    fmt.Sprintf("%d", chID),
+					ChannelName:  channelName,
+					Throughput:   throughput,
+					TtftMs:       ttftMs,
+					RequestCount: int(stats.RequestCount),
 				})
 			}
 		}
