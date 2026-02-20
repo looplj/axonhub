@@ -1088,7 +1088,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		ModelID      string
 		TokensCount  int64
 		LatencyMs    int64
-		FirstTokenMs float64
+		FirstTokenMs *float64
 		RequestCount int64
 		Throughput   *float64
 	}
@@ -1129,9 +1129,8 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		}
 
 		var ttftMs *float64
-		if raw.FirstTokenMs > 0 {
-			value := raw.FirstTokenMs
-			ttftMs = &value
+		if raw.FirstTokenMs != nil && *raw.FirstTokenMs > 0 {
+			ttftMs = raw.FirstTokenMs
 		}
 
 		results = append(results, &ModelPerformanceStat{

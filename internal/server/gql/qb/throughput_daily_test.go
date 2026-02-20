@@ -104,7 +104,7 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 				"to_char",
 				"throughput",
 				"request_count",
-				"LIMIT 10",
+				"daily_rn <= 10",
 				"ORDER BY date DESC, throughput DESC",
 			},
 			wantNotContains: []string{"MAX(re2.id)"},
@@ -122,8 +122,9 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 				"JOIN models m ON",
 				"DATE_FORMAT",
 				"throughput",
+				"daily_rn <= 10",
 			},
-			wantNotContains: []string{"ROW_NUMBER()", "WITH successful_execs"},
+			wantNotContains: []string{"WITH successful_execs"},
 		},
 		{
 			name:          "model query with sqlite",
@@ -145,7 +146,7 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 			offsetSeconds: 0,
 			limit:         0,
 			mode:          ThroughputModeRowNumber,
-			wantContains:  []string{"LIMIT 10"},
+			wantContains:  []string{"daily_rn <= 10"},
 		},
 		{
 			name:          "custom limit is respected",
@@ -154,7 +155,7 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 			offsetSeconds: 0,
 			limit:         25,
 			mode:          ThroughputModeRowNumber,
-			wantContains:  []string{"LIMIT 25"},
+			wantContains:  []string{"daily_rn <= 25"},
 		},
 	}
 
@@ -200,7 +201,7 @@ func TestBuildDailyChannelThroughputQuery(t *testing.T) {
 				"to_char",
 				"throughput",
 				"request_count",
-				"LIMIT 10",
+				"daily_rn <= 10",
 			},
 			wantNotContains: []string{"MAX(re2.id)", "JOIN requests r ON"},
 		},
@@ -216,8 +217,9 @@ func TestBuildDailyChannelThroughputQuery(t *testing.T) {
 				"JOIN channels c ON",
 				"DATE_FORMAT",
 				"se.channel_id",
+				"daily_rn <= 10",
 			},
-			wantNotContains: []string{"ROW_NUMBER()", "WITH successful_execs"},
+			wantNotContains: []string{"WITH successful_execs"},
 		},
 		{
 			name:          "channel query with sqlite",
