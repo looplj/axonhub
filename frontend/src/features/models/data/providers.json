@@ -1,16 +1,16 @@
 {
   "providers": {
-    "zai": {
-      "id": "zai",
-      "api": "https://api.z.ai/api/paas/v4",
-      "name": "Z.AI",
-      "doc": "https://docs.z.ai/guides/overview/pricing",
-      "display_name": "Z.AI",
+    "moonshot": {
+      "id": "moonshot",
+      "api": "https://api.moonshot.cn/v1",
+      "name": "Moonshot AI (China)",
+      "doc": "https://platform.moonshot.cn/docs/api/chat",
+      "display_name": "Moonshot AI (China)",
       "models": [
         {
-          "id": "glm-5",
-          "name": "GLM-5",
-          "family": "glm",
+          "id": "kimi-k2.5",
+          "name": "Kimi K2.5",
+          "family": "kimi",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -20,192 +20,11 @@
           "interleaved": {
             "field": "reasoning_content"
           },
-          "temperature": true,
-          "release_date": "2026-02-11",
-          "last_updated": "2026-02-11",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 1,
-            "output": 3.2,
-            "cache_read": 0.2,
-            "cache_write": 0
-          },
-          "limit": {
-            "context": 204800,
-            "output": 131072
-          },
-          "display_name": "GLM-5",
-          "type": "chat"
-        },
-        {
-          "id": "glm-4.7-flash",
-          "name": "GLM-4.7-Flash",
-          "family": "glm-flash",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2026-01-19",
-          "last_updated": "2026-01-19",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0,
-            "output": 0,
-            "cache_read": 0,
-            "cache_write": 0
-          },
-          "limit": {
-            "context": 200000,
-            "output": 131072
-          },
-          "display_name": "GLM-4.7-Flash",
-          "type": "chat"
-        },
-        {
-          "id": "glm-4.7",
-          "name": "GLM-4.7",
-          "family": "glm",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-12-22",
-          "last_updated": "2025-12-22",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.6,
-            "output": 2.2,
-            "cache_read": 0.11,
-            "cache_write": 0
-          },
-          "limit": {
-            "context": 204800,
-            "output": 131072
-          },
-          "display_name": "GLM-4.7",
-          "type": "chat"
-        },
-        {
-          "id": "glm-4.6v",
-          "name": "GLM-4.6V",
-          "family": "glm",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-12-08",
-          "last_updated": "2025-12-08",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "video"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.3,
-            "output": 0.9
-          },
-          "limit": {
-            "context": 128000,
-            "output": 32768
-          },
-          "display_name": "GLM-4.6V",
-          "type": "chat"
-        },
-        {
-          "id": "glm-4.6",
-          "name": "GLM-4.6",
-          "family": "glm",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-09-30",
-          "last_updated": "2025-09-30",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.6,
-            "output": 2.2,
-            "cache_read": 0.11,
-            "cache_write": 0
-          },
-          "limit": {
-            "context": 204800,
-            "output": 131072
-          },
-          "display_name": "GLM-4.6",
-          "type": "chat"
-        },
-        {
-          "id": "glm-4.5v",
-          "name": "GLM-4.5V",
-          "family": "glm",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-08-11",
-          "last_updated": "2025-08-11",
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2025-01",
+          "release_date": "2026-01",
+          "last_updated": "2026-01",
           "modalities": {
             "input": [
               "text",
@@ -219,121 +38,192 @@
           "open_weights": true,
           "cost": {
             "input": 0.6,
-            "output": 1.8
+            "output": 3,
+            "cache_read": 0.1
           },
           "limit": {
-            "context": 64000,
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Kimi K2.5",
+          "type": "chat"
+        },
+        {
+          "id": "kimi-k2-thinking",
+          "name": "Kimi K2 Thinking",
+          "family": "kimi-thinking",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-11-06",
+          "last_updated": "2025-11-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Kimi K2 Thinking",
+          "type": "chat"
+        },
+        {
+          "id": "kimi-k2-thinking-turbo",
+          "name": "Kimi K2 Thinking Turbo",
+          "family": "kimi-thinking",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2025-11-06",
+          "last_updated": "2025-11-06",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 1.15,
+            "output": 8,
+            "cache_read": 0.15
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Kimi K2 Thinking Turbo",
+          "type": "chat"
+        },
+        {
+          "id": "kimi-k2-0905-preview",
+          "name": "Kimi K2 0905",
+          "family": "kimi",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-09-05",
+          "last_updated": "2025-09-05",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Kimi K2 0905",
+          "type": "chat"
+        },
+        {
+          "id": "kimi-k2-turbo-preview",
+          "name": "Kimi K2 Turbo",
+          "family": "kimi",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-09-05",
+          "last_updated": "2025-09-05",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 2.4,
+            "output": 10,
+            "cache_read": 0.6
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Kimi K2 Turbo",
+          "type": "chat"
+        },
+        {
+          "id": "kimi-k2-0711-preview",
+          "name": "Kimi K2 0711",
+          "family": "kimi",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-07-14",
+          "last_updated": "2025-07-14",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          },
+          "limit": {
+            "context": 131072,
             "output": 16384
           },
-          "display_name": "GLM-4.5V",
-          "type": "chat"
-        },
-        {
-          "id": "glm-4.5-air",
-          "name": "GLM-4.5-Air",
-          "family": "glm-air",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-07-28",
-          "last_updated": "2025-07-28",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.2,
-            "output": 1.1,
-            "cache_read": 0.03,
-            "cache_write": 0
-          },
-          "limit": {
-            "context": 131072,
-            "output": 98304
-          },
-          "display_name": "GLM-4.5-Air",
-          "type": "chat"
-        },
-        {
-          "id": "glm-4.5",
-          "name": "GLM-4.5",
-          "family": "glm",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-07-28",
-          "last_updated": "2025-07-28",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.6,
-            "output": 2.2,
-            "cache_read": 0.11,
-            "cache_write": 0
-          },
-          "limit": {
-            "context": 131072,
-            "output": 98304
-          },
-          "display_name": "GLM-4.5",
-          "type": "chat"
-        },
-        {
-          "id": "glm-4.5-flash",
-          "name": "GLM-4.5-Flash",
-          "family": "glm-flash",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-07-28",
-          "last_updated": "2025-07-28",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0,
-            "output": 0,
-            "cache_read": 0,
-            "cache_write": 0
-          },
-          "limit": {
-            "context": 131072,
-            "output": 98304
-          },
-          "display_name": "GLM-4.5-Flash",
+          "display_name": "Kimi K2 0711",
           "type": "chat"
         }
       ]
@@ -391,6 +281,80 @@
       "doc": "https://www.alibabacloud.com/help/en/model-studio/models",
       "display_name": "alibaba",
       "models": [
+        {
+          "id": "qwen3.5-397b-a17b",
+          "name": "Qwen3.5 397B-A17B",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2026-02",
+          "last_updated": "2026-02",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 3.6,
+            "reasoning": 3.6
+          },
+          "limit": {
+            "context": 262144,
+            "output": 65536
+          },
+          "display_name": "Qwen3.5 397B-A17B",
+          "type": "chat"
+        },
+        {
+          "id": "qwen3.5-plus",
+          "name": "Qwen3.5 Plus",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2026-02",
+          "last_updated": "2026-02",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.4,
+            "output": 2.4,
+            "reasoning": 2.4
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          },
+          "display_name": "Qwen3.5 Plus",
+          "type": "chat"
+        },
         {
           "id": "qwen3-vl-plus",
           "name": "Qwen3 VL Plus",
@@ -617,6 +581,39 @@
           "type": "chat"
         },
         {
+          "id": "qwen3-next-80b-a3b-instruct",
+          "name": "Qwen3 Next 80B A3B Instruct",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-09",
+          "last_updated": "2025-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.5,
+            "output": 2
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "display_name": "Qwen3 Next 80B A3B Instruct",
+          "type": "chat"
+        },
+        {
           "id": "qwen3-next-80b-a3b-thinking",
           "name": "Qwen3 Next 80B A3B Thinking",
           "family": "qwen",
@@ -653,39 +650,6 @@
             "output": 32768
           },
           "display_name": "Qwen3 Next 80B A3B Thinking",
-          "type": "chat"
-        },
-        {
-          "id": "qwen3-next-80b-a3b-instruct",
-          "name": "Qwen3 Next 80B A3B Instruct",
-          "family": "qwen",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-09",
-          "last_updated": "2025-09",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.5,
-            "output": 2
-          },
-          "limit": {
-            "context": 131072,
-            "output": 32768
-          },
-          "display_name": "Qwen3 Next 80B A3B Instruct",
           "type": "chat"
         },
         {
@@ -838,12 +802,13 @@
           "type": "chat"
         },
         {
-          "id": "qwen3-coder-480b-a35b-instruct",
-          "name": "Qwen3-Coder 480B-A35B Instruct",
+          "id": "qwen3-vl-235b-a22b",
+          "name": "Qwen3-VL 235B-A22B",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
-            "supported": false
+            "supported": true,
+            "default": true
           },
           "tool_call": true,
           "temperature": true,
@@ -852,7 +817,8 @@
           "last_updated": "2025-04",
           "modalities": {
             "input": [
-              "text"
+              "text",
+              "image"
             ],
             "output": [
               "text"
@@ -860,14 +826,51 @@
           },
           "open_weights": true,
           "cost": {
-            "input": 1.5,
-            "output": 7.5
+            "input": 0.7,
+            "output": 2.8,
+            "reasoning": 8.4
           },
           "limit": {
-            "context": 262144,
-            "output": 65536
+            "context": 131072,
+            "output": 32768
           },
-          "display_name": "Qwen3-Coder 480B-A35B Instruct",
+          "display_name": "Qwen3-VL 235B-A22B",
+          "type": "chat"
+        },
+        {
+          "id": "qwen3-vl-30b-a3b",
+          "name": "Qwen3-VL 30B-A3B",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-04",
+          "last_updated": "2025-04",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.2,
+            "output": 0.8,
+            "reasoning": 2.4
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "display_name": "Qwen3-VL 30B-A3B",
           "type": "chat"
         },
         {
@@ -911,13 +914,12 @@
           "type": "chat"
         },
         {
-          "id": "qwen3-vl-30b-a3b",
-          "name": "Qwen3-VL 30B-A3B",
+          "id": "qwen3-coder-30b-a3b-instruct",
+          "name": "Qwen3-Coder 30B-A3B Instruct",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
-            "supported": true,
-            "default": true
+            "supported": false
           },
           "tool_call": true,
           "temperature": true,
@@ -926,8 +928,7 @@
           "last_updated": "2025-04",
           "modalities": {
             "input": [
-              "text",
-              "image"
+              "text"
             ],
             "output": [
               "text"
@@ -935,15 +936,14 @@
           },
           "open_weights": true,
           "cost": {
-            "input": 0.2,
-            "output": 0.8,
-            "reasoning": 2.4
+            "input": 0.45,
+            "output": 2.25
           },
           "limit": {
-            "context": 131072,
-            "output": 32768
+            "context": 262144,
+            "output": 65536
           },
-          "display_name": "Qwen3-VL 30B-A3B",
+          "display_name": "Qwen3-Coder 30B-A3B Instruct",
           "type": "chat"
         },
         {
@@ -987,46 +987,6 @@
           "type": "chat"
         },
         {
-          "id": "qwen3-32b",
-          "name": "Qwen3 32B",
-          "family": "qwen",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true,
-            "budget": {
-              "min": 0,
-              "max": 38912,
-              "default": 38912
-            }
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-04",
-          "release_date": "2025-04",
-          "last_updated": "2025-04",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.7,
-            "output": 2.8,
-            "reasoning": 8.4
-          },
-          "limit": {
-            "context": 131072,
-            "output": 16384
-          },
-          "display_name": "Qwen3 32B",
-          "type": "chat"
-        },
-        {
           "id": "qwen3-235b-a22b",
           "name": "Qwen3 235B A22B",
           "family": "qwen",
@@ -1067,8 +1027,8 @@
           "type": "chat"
         },
         {
-          "id": "qwen3-coder-30b-a3b-instruct",
-          "name": "Qwen3-Coder 30B-A3B Instruct",
+          "id": "qwen3-coder-480b-a35b-instruct",
+          "name": "Qwen3-Coder 480B-A35B Instruct",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -1089,24 +1049,29 @@
           },
           "open_weights": true,
           "cost": {
-            "input": 0.45,
-            "output": 2.25
+            "input": 1.5,
+            "output": 7.5
           },
           "limit": {
             "context": 262144,
             "output": 65536
           },
-          "display_name": "Qwen3-Coder 30B-A3B Instruct",
+          "display_name": "Qwen3-Coder 480B-A35B Instruct",
           "type": "chat"
         },
         {
-          "id": "qwen3-vl-235b-a22b",
-          "name": "Qwen3-VL 235B-A22B",
+          "id": "qwen3-32b",
+          "name": "Qwen3 32B",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
             "supported": true,
-            "default": true
+            "default": true,
+            "budget": {
+              "min": 0,
+              "max": 38912,
+              "default": 38912
+            }
           },
           "tool_call": true,
           "temperature": true,
@@ -1115,8 +1080,7 @@
           "last_updated": "2025-04",
           "modalities": {
             "input": [
-              "text",
-              "image"
+              "text"
             ],
             "output": [
               "text"
@@ -1130,9 +1094,9 @@
           },
           "limit": {
             "context": 131072,
-            "output": 32768
+            "output": 16384
           },
-          "display_name": "Qwen3-VL 235B-A22B",
+          "display_name": "Qwen3 32B",
           "type": "chat"
         },
         {
@@ -1255,39 +1219,6 @@
           "type": "chat"
         },
         {
-          "id": "qwen-mt-plus",
-          "name": "Qwen Mt Plus",
-          "family": "qwen",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": true,
-          "knowledge": "2024-04",
-          "release_date": "2025-01",
-          "last_updated": "2025-01",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2.46,
-            "output": 7.37
-          },
-          "limit": {
-            "context": 16384,
-            "output": 8192
-          },
-          "display_name": "Qwen Mt Plus",
-          "type": "chat"
-        },
-        {
           "id": "qwen-mt-turbo",
           "name": "Qwen Mt Turbo",
           "family": "qwen",
@@ -1318,6 +1249,39 @@
             "output": 8192
           },
           "display_name": "Qwen Mt Turbo",
+          "type": "chat"
+        },
+        {
+          "id": "qwen-mt-plus",
+          "name": "Qwen Mt Plus",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2024-04",
+          "release_date": "2025-01",
+          "last_updated": "2025-01",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2.46,
+            "output": 7.37
+          },
+          "limit": {
+            "context": 16384,
+            "output": 8192
+          },
+          "display_name": "Qwen Mt Plus",
           "type": "chat"
         },
         {
@@ -1439,8 +1403,8 @@
           "type": "chat"
         },
         {
-          "id": "qwen2-5-7b-instruct",
-          "name": "Qwen2.5 7B Instruct",
+          "id": "qwen2-5-14b-instruct",
+          "name": "Qwen2.5 14B Instruct",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -1461,14 +1425,47 @@
           },
           "open_weights": true,
           "cost": {
-            "input": 0.175,
-            "output": 0.7
+            "input": 0.35,
+            "output": 1.4
           },
           "limit": {
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen2.5 7B Instruct",
+          "display_name": "Qwen2.5 14B Instruct",
+          "type": "chat"
+        },
+        {
+          "id": "qwen2-5-72b-instruct",
+          "name": "Qwen2.5 72B Instruct",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-04",
+          "release_date": "2024-09",
+          "last_updated": "2024-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 1.4,
+            "output": 5.6
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Qwen2.5 72B Instruct",
           "type": "chat"
         },
         {
@@ -1506,8 +1503,8 @@
           "type": "chat"
         },
         {
-          "id": "qwen2-5-14b-instruct",
-          "name": "Qwen2.5 14B Instruct",
+          "id": "qwen2-5-32b-instruct",
+          "name": "Qwen2.5 32B Instruct",
           "family": "qwen",
           "attachment": false,
           "reasoning": {
@@ -1528,14 +1525,47 @@
           },
           "open_weights": true,
           "cost": {
-            "input": 0.35,
-            "output": 1.4
+            "input": 0.7,
+            "output": 2.8
           },
           "limit": {
             "context": 131072,
             "output": 8192
           },
-          "display_name": "Qwen2.5 14B Instruct",
+          "display_name": "Qwen2.5 32B Instruct",
+          "type": "chat"
+        },
+        {
+          "id": "qwen2-5-7b-instruct",
+          "name": "Qwen2.5 7B Instruct",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-04",
+          "release_date": "2024-09",
+          "last_updated": "2024-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.175,
+            "output": 0.7
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Qwen2.5 7B Instruct",
           "type": "chat"
         },
         {
@@ -1570,72 +1600,6 @@
             "output": 8192
           },
           "display_name": "Qwen2.5-VL 7B Instruct",
-          "type": "chat"
-        },
-        {
-          "id": "qwen2-5-32b-instruct",
-          "name": "Qwen2.5 32B Instruct",
-          "family": "qwen",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-04",
-          "release_date": "2024-09",
-          "last_updated": "2024-09",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.7,
-            "output": 2.8
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Qwen2.5 32B Instruct",
-          "type": "chat"
-        },
-        {
-          "id": "qwen2-5-72b-instruct",
-          "name": "Qwen2.5 72B Instruct",
-          "family": "qwen",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-04",
-          "release_date": "2024-09",
-          "last_updated": "2024-09",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 1.4,
-            "output": 5.6
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Qwen2.5 72B Instruct",
           "type": "chat"
         },
         {
@@ -1712,40 +1676,6 @@
           "type": "chat"
         },
         {
-          "id": "qwen-vl-plus",
-          "name": "Qwen-VL Plus",
-          "family": "qwen",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-04",
-          "release_date": "2024-01-25",
-          "last_updated": "2025-08-15",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.21,
-            "output": 0.63
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Qwen-VL Plus",
-          "type": "chat"
-        },
-        {
           "id": "qwen-plus",
           "name": "Qwen Plus",
           "family": "qwen",
@@ -1789,6 +1719,40 @@
             "forced_search": false,
             "search_strategy": "turbo"
           },
+          "type": "chat"
+        },
+        {
+          "id": "qwen-vl-plus",
+          "name": "Qwen-VL Plus",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-04",
+          "release_date": "2024-01-25",
+          "last_updated": "2025-08-15",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.21,
+            "output": 0.63
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Qwen-VL Plus",
           "type": "chat"
         },
         {
@@ -2672,12 +2636,968 @@
         }
       ]
     },
+    "xai": {
+      "id": "xai",
+      "name": "xai",
+      "doc": "https://docs.x.ai/docs/models",
+      "display_name": "xai",
+      "models": [
+        {
+          "id": "grok-4-1-fast",
+          "name": "Grok 4.1 Fast",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-07",
+          "release_date": "2025-11-19",
+          "last_updated": "2025-11-19",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.2,
+            "output": 0.5,
+            "cache_read": 0.05
+          },
+          "limit": {
+            "context": 2000000,
+            "output": 30000
+          },
+          "display_name": "Grok 4.1 Fast",
+          "type": "chat"
+        },
+        {
+          "id": "grok-4-1-fast-non-reasoning",
+          "name": "Grok 4.1 Fast (Non-Reasoning)",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-07",
+          "release_date": "2025-11-19",
+          "last_updated": "2025-11-19",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.2,
+            "output": 0.5,
+            "cache_read": 0.05
+          },
+          "limit": {
+            "context": 2000000,
+            "output": 30000
+          },
+          "display_name": "Grok 4.1 Fast (Non-Reasoning)",
+          "type": "chat"
+        },
+        {
+          "id": "grok-4-fast-non-reasoning",
+          "name": "Grok 4 Fast (Non-Reasoning)",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-07",
+          "release_date": "2025-09-19",
+          "last_updated": "2025-09-19",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.2,
+            "output": 0.5,
+            "cache_read": 0.05
+          },
+          "limit": {
+            "context": 2000000,
+            "output": 30000
+          },
+          "display_name": "Grok 4 Fast (Non-Reasoning)",
+          "type": "chat"
+        },
+        {
+          "id": "grok-4-fast",
+          "name": "Grok 4 Fast",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-07",
+          "release_date": "2025-09-19",
+          "last_updated": "2025-09-19",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.2,
+            "output": 0.5,
+            "cache_read": 0.05
+          },
+          "limit": {
+            "context": 2000000,
+            "output": 30000
+          },
+          "display_name": "Grok 4 Fast",
+          "type": "chat"
+        },
+        {
+          "id": "grok-code-fast-1",
+          "name": "Grok Code Fast 1",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2023-10",
+          "release_date": "2025-08-28",
+          "last_updated": "2025-08-28",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.2,
+            "output": 1.5,
+            "cache_read": 0.02
+          },
+          "limit": {
+            "context": 256000,
+            "output": 10000
+          },
+          "display_name": "Grok Code Fast 1",
+          "type": "chat"
+        },
+        {
+          "id": "grok-4",
+          "name": "Grok 4",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-07",
+          "release_date": "2025-07-09",
+          "last_updated": "2025-07-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 3,
+            "output": 15,
+            "reasoning": 15,
+            "cache_read": 0.75
+          },
+          "limit": {
+            "context": 256000,
+            "output": 64000
+          },
+          "display_name": "Grok 4",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-fast",
+          "name": "Grok 3 Fast",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-11",
+          "release_date": "2025-02-17",
+          "last_updated": "2025-02-17",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 5,
+            "output": 25,
+            "cache_read": 1.25
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 3 Fast",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-mini-fast-latest",
+          "name": "Grok 3 Mini Fast Latest",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-11",
+          "release_date": "2025-02-17",
+          "last_updated": "2025-02-17",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.6,
+            "output": 4,
+            "reasoning": 4,
+            "cache_read": 0.15
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 3 Mini Fast Latest",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3",
+          "name": "Grok 3",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-11",
+          "release_date": "2025-02-17",
+          "last_updated": "2025-02-17",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 3,
+            "output": 15,
+            "cache_read": 0.75
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 3",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-fast-latest",
+          "name": "Grok 3 Fast Latest",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-11",
+          "release_date": "2025-02-17",
+          "last_updated": "2025-02-17",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 5,
+            "output": 25,
+            "cache_read": 1.25
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 3 Fast Latest",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-latest",
+          "name": "Grok 3 Latest",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-11",
+          "release_date": "2025-02-17",
+          "last_updated": "2025-02-17",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 3,
+            "output": 15,
+            "cache_read": 0.75
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 3 Latest",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-mini",
+          "name": "Grok 3 Mini",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-11",
+          "release_date": "2025-02-17",
+          "last_updated": "2025-02-17",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.3,
+            "output": 0.5,
+            "reasoning": 0.5,
+            "cache_read": 0.075
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 3 Mini",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-mini-latest",
+          "name": "Grok 3 Mini Latest",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-11",
+          "release_date": "2025-02-17",
+          "last_updated": "2025-02-17",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.3,
+            "output": 0.5,
+            "reasoning": 0.5,
+            "cache_read": 0.075
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 3 Mini Latest",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-mini-fast",
+          "name": "Grok 3 Mini Fast",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-11",
+          "release_date": "2025-02-17",
+          "last_updated": "2025-02-17",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.6,
+            "output": 4,
+            "reasoning": 4,
+            "cache_read": 0.15
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 3 Mini Fast",
+          "type": "chat"
+        },
+        {
+          "id": "grok-2-1212",
+          "name": "Grok 2 1212",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2024-12-12",
+          "last_updated": "2024-12-12",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cache_read": 2
+          },
+          "limit": {
+            "context": 120000,
+            "output": 100000
+          },
+          "display_name": "Grok 2 1212",
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
+          "id": "grok-vision-beta",
+          "name": "Grok Vision Beta",
+          "family": "grok-vision",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2024-11-01",
+          "last_updated": "2024-11-01",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 5,
+            "output": 15,
+            "cache_read": 5
+          },
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          },
+          "display_name": "Grok Vision Beta",
+          "type": "chat"
+        },
+        {
+          "id": "grok-beta",
+          "name": "Grok Beta",
+          "family": "grok-beta",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2024-11-01",
+          "last_updated": "2024-11-01",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 5,
+            "output": 15,
+            "cache_read": 5
+          },
+          "limit": {
+            "context": 131072,
+            "output": 4096
+          },
+          "display_name": "Grok Beta",
+          "type": "chat"
+        },
+        {
+          "id": "grok-2-vision",
+          "name": "Grok 2 Vision",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2024-08-20",
+          "last_updated": "2024-08-20",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cache_read": 2
+          },
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          },
+          "display_name": "Grok 2 Vision",
+          "type": "chat"
+        },
+        {
+          "id": "grok-2",
+          "name": "Grok 2",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2024-08-20",
+          "last_updated": "2024-08-20",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cache_read": 2
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 2",
+          "type": "chat"
+        },
+        {
+          "id": "grok-2-vision-1212",
+          "name": "Grok 2 Vision 1212",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2024-08-20",
+          "last_updated": "2024-12-12",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cache_read": 2
+          },
+          "limit": {
+            "context": 32000,
+            "output": 32000
+          },
+          "display_name": "Grok 2 Vision 1212",
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
+          "id": "grok-2-latest",
+          "name": "Grok 2 Latest",
+          "family": "grok",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2024-08-20",
+          "last_updated": "2024-12-12",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cache_read": 2
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Grok 2 Latest",
+          "type": "chat"
+        },
+        {
+          "id": "grok-2-vision-latest",
+          "name": "Grok 2 Vision Latest",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-08",
+          "release_date": "2024-08-20",
+          "last_updated": "2024-12-12",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cache_read": 2
+          },
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          },
+          "display_name": "Grok 2 Vision Latest",
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-mini-fast-beta",
+          "name": "Grok 3 Mini Fast Beta",
+          "display_name": "Grok 3 Mini Fast Beta",
+          "temperature": true,
+          "attachment": false,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 120000,
+            "output": 100000
+          },
+          "reasoning": {
+            "supported": true,
+            "effort": "low",
+            "default": true
+          },
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-mini-beta",
+          "name": "Grok 3 Mini Beta",
+          "display_name": "Grok 3 Mini Beta",
+          "temperature": true,
+          "attachment": false,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 120000,
+            "output": 100000
+          },
+          "reasoning": {
+            "supported": true,
+            "effort": "low",
+            "default": true
+          },
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-fast-beta",
+          "name": "Grok 3 Fast Beta",
+          "display_name": "Grok 3 Fast Beta",
+          "temperature": true,
+          "attachment": false,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 120000,
+            "output": 100000
+          },
+          "reasoning": {
+            "supported": false
+          },
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
+          "id": "grok-2-image-1212",
+          "name": "Grok 2 Image 1212",
+          "display_name": "Grok 2 Image 1212",
+          "temperature": true,
+          "attachment": false,
+          "tool_call": false,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 130000,
+            "output": 100000
+          },
+          "reasoning": {
+            "supported": false
+          },
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
+          "id": "grok-3-beta",
+          "name": "Grok 3 Beta",
+          "display_name": "Grok 3 Beta",
+          "temperature": true,
+          "attachment": false,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 120000,
+            "output": 100000
+          },
+          "reasoning": {
+            "supported": false
+          },
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        }
+      ]
+    },
     "mistral": {
       "id": "mistral",
       "name": "Mistral",
       "doc": "https://docs.mistral.ai/getting-started/models/",
       "display_name": "Mistral",
       "models": [
+        {
+          "id": "devstral-2512",
+          "name": "Devstral 2",
+          "family": "devstral",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-12",
+          "release_date": "2025-12-09",
+          "last_updated": "2025-12-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.4,
+            "output": 2
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Devstral 2",
+          "type": "chat"
+        },
         {
           "id": "labs-devstral-small-2512",
           "name": "Devstral Small 2",
@@ -2710,39 +3630,6 @@
             "output": 256000
           },
           "display_name": "Devstral Small 2",
-          "type": "chat"
-        },
-        {
-          "id": "devstral-2512",
-          "name": "Devstral 2",
-          "family": "devstral",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-12",
-          "release_date": "2025-12-09",
-          "last_updated": "2025-12-09",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.4,
-            "output": 2
-          },
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "display_name": "Devstral 2",
           "type": "chat"
         },
         {
@@ -3630,12 +4517,247 @@
         }
       ]
     },
+    "minimax": {
+      "id": "minimax",
+      "api": "https://api.minimax.io/anthropic/v1",
+      "name": "MiniMax (minimax.io)",
+      "doc": "https://platform.minimax.io/docs/guides/quickstart",
+      "display_name": "MiniMax (minimax.io)",
+      "models": [
+        {
+          "id": "MiniMax-M2.5-highspeed",
+          "name": "MiniMax-M2.5-highspeed",
+          "family": "minimax",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-02-13",
+          "last_updated": "2026-02-13",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 2.4,
+            "cache_read": 0.06,
+            "cache_write": 0.375
+          },
+          "limit": {
+            "context": 204800,
+            "output": 131072
+          },
+          "display_name": "MiniMax-M2.5-highspeed",
+          "type": "chat"
+        },
+        {
+          "id": "MiniMax-M2.5",
+          "name": "MiniMax-M2.5",
+          "family": "minimax",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-02-12",
+          "last_updated": "2026-02-12",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.3,
+            "output": 1.2,
+            "cache_read": 0.03,
+            "cache_write": 0.375
+          },
+          "limit": {
+            "context": 204800,
+            "output": 131072
+          },
+          "display_name": "MiniMax-M2.5",
+          "type": "chat"
+        },
+        {
+          "id": "MiniMax-M2.1",
+          "name": "MiniMax-M2.1",
+          "family": "minimax",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-12-23",
+          "last_updated": "2025-12-23",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.3,
+            "output": 1.2
+          },
+          "limit": {
+            "context": 204800,
+            "output": 131072
+          },
+          "display_name": "MiniMax-M2.1",
+          "type": "chat"
+        },
+        {
+          "id": "MiniMax-M2",
+          "name": "MiniMax-M2",
+          "family": "minimax",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-10-27",
+          "last_updated": "2025-10-27",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.3,
+            "output": 1.2
+          },
+          "limit": {
+            "context": 196608,
+            "output": 128000
+          },
+          "display_name": "MiniMax-M2",
+          "type": "chat"
+        }
+      ]
+    },
     "google": {
       "id": "google",
       "name": "google",
       "doc": "https://ai.google.dev/gemini-api/docs/pricing",
       "display_name": "google",
       "models": [
+        {
+          "id": "gemini-3.1-pro-preview-customtools",
+          "name": "Gemini 3.1 Pro Preview Custom Tools",
+          "family": "gemini-pro",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-02-19",
+          "last_updated": "2026-02-19",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 12,
+            "cache_read": 0.2,
+            "context_over_200k": {
+              "input": 4,
+              "output": 18,
+              "cache_read": 0.4
+            }
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "display_name": "Gemini 3.1 Pro Preview Custom Tools",
+          "type": "chat"
+        },
+        {
+          "id": "gemini-3.1-pro-preview",
+          "name": "Gemini 3.1 Pro Preview",
+          "family": "gemini-pro",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-02-19",
+          "last_updated": "2026-02-19",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 12,
+            "cache_read": 0.2,
+            "context_over_200k": {
+              "input": 4,
+              "output": 18,
+              "cache_read": 0.4
+            }
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "display_name": "Gemini 3.1 Pro Preview",
+          "type": "chat"
+        },
         {
           "id": "gemini-3-flash-preview",
           "name": "Gemini 3 Flash Preview",
@@ -3727,18 +4849,13 @@
           "type": "chat"
         },
         {
-          "id": "gemini-2.5-flash-lite-preview-09-2025",
-          "name": "Gemini 2.5 Flash Lite Preview 09 2025",
+          "id": "gemini-flash-lite-latest",
+          "name": "Gemini Flash-Lite Latest",
           "family": "gemini-flash-lite",
           "attachment": true,
           "reasoning": {
             "supported": true,
-            "default": false,
-            "budget": {
-              "min": 512,
-              "max": 24576,
-              "default": -1
-            }
+            "default": true
           },
           "tool_call": true,
           "structured_output": true,
@@ -3749,7 +4866,10 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "audio",
+              "video",
+              "pdf"
             ],
             "output": [
               "text"
@@ -3765,11 +4885,48 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini 2.5 Flash Lite Preview 09 2025",
-          "search": {
+          "display_name": "Gemini Flash-Lite Latest",
+          "type": "chat"
+        },
+        {
+          "id": "gemini-flash-latest",
+          "name": "Gemini Flash Latest",
+          "family": "gemini-flash",
+          "attachment": true,
+          "reasoning": {
             "supported": true,
-            "default": false
+            "default": true
           },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2025-09-25",
+          "last_updated": "2025-09-25",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.3,
+            "output": 2.5,
+            "cache_read": 0.075,
+            "input_audio": 1
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "display_name": "Gemini Flash Latest",
           "type": "chat"
         },
         {
@@ -3820,54 +4977,18 @@
           "type": "chat"
         },
         {
-          "id": "gemini-flash-latest",
-          "name": "Gemini Flash Latest",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-09-25",
-          "last_updated": "2025-09-25",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.3,
-            "output": 2.5,
-            "cache_read": 0.075,
-            "input_audio": 1
-          },
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "display_name": "Gemini Flash Latest",
-          "type": "chat"
-        },
-        {
-          "id": "gemini-flash-lite-latest",
-          "name": "Gemini Flash-Lite Latest",
+          "id": "gemini-2.5-flash-lite-preview-09-2025",
+          "name": "Gemini 2.5 Flash Lite Preview 09 2025",
           "family": "gemini-flash-lite",
           "attachment": true,
           "reasoning": {
             "supported": true,
-            "default": true
+            "default": false,
+            "budget": {
+              "min": 512,
+              "max": 24576,
+              "default": -1
+            }
           },
           "tool_call": true,
           "structured_output": true,
@@ -3878,10 +4999,7 @@
           "modalities": {
             "input": [
               "text",
-              "image",
-              "audio",
-              "video",
-              "pdf"
+              "image"
             ],
             "output": [
               "text"
@@ -3897,7 +5015,11 @@
             "context": 1048576,
             "output": 65536
           },
-          "display_name": "Gemini Flash-Lite Latest",
+          "display_name": "Gemini 2.5 Flash Lite Preview 09 2025",
+          "search": {
+            "supported": true,
+            "default": false
+          },
           "type": "chat"
         },
         {
@@ -4709,279 +5831,12 @@
         }
       ]
     },
-    "moonshot": {
-      "id": "moonshot",
-      "api": "https://api.moonshot.cn/v1",
-      "name": "Moonshot AI (China)",
-      "doc": "https://platform.moonshot.cn/docs/api/chat",
-      "display_name": "Moonshot AI (China)",
-      "models": [
-        {
-          "id": "kimi-k2.5",
-          "name": "Kimi K2.5",
-          "family": "kimi",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "structured_output": true,
-          "temperature": false,
-          "knowledge": "2025-01",
-          "release_date": "2026-01",
-          "last_updated": "2026-01",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "video"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.6,
-            "output": 3,
-            "cache_read": 0.1
-          },
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "display_name": "Kimi K2.5",
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-thinking-turbo",
-          "name": "Kimi K2 Thinking Turbo",
-          "family": "kimi-thinking",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2025-11-06",
-          "last_updated": "2025-11-06",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 1.15,
-            "output": 8,
-            "cache_read": 0.15
-          },
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "display_name": "Kimi K2 Thinking Turbo",
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-thinking",
-          "name": "Kimi K2 Thinking",
-          "family": "kimi-thinking",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2025-11-06",
-          "last_updated": "2025-11-06",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "display_name": "Kimi K2 Thinking",
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-turbo-preview",
-          "name": "Kimi K2 Turbo",
-          "family": "kimi",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-09-05",
-          "last_updated": "2025-09-05",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 2.4,
-            "output": 10,
-            "cache_read": 0.6
-          },
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "display_name": "Kimi K2 Turbo",
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-0905-preview",
-          "name": "Kimi K2 0905",
-          "family": "kimi",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-09-05",
-          "last_updated": "2025-09-05",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "display_name": "Kimi K2 0905",
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-0711-preview",
-          "name": "Kimi K2 0711",
-          "family": "kimi",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-07-14",
-          "last_updated": "2025-07-14",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "limit": {
-            "context": 131072,
-            "output": 16384
-          },
-          "display_name": "Kimi K2 0711",
-          "type": "chat"
-        }
-      ]
-    },
     "openai": {
       "id": "openai",
       "name": "OpenAI",
       "doc": "https://platform.openai.com/docs/models",
       "display_name": "OpenAI",
       "models": [
-        {
-          "id": "gpt-5.3-codex",
-          "name": "GPT-5.3 Codex",
-          "family": "gpt-codex",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": false,
-          "knowledge": "2025-08-31",
-          "release_date": "2026-02-05",
-          "last_updated": "2026-02-05",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 1.75,
-            "output": 14,
-            "cache_read": 0.175
-          },
-          "limit": {
-            "context": 400000,
-            "input": 272000,
-            "output": 128000
-          },
-          "display_name": "GPT-5.3 Codex",
-          "type": "chat"
-        },
         {
           "id": "gpt-5.3-codex-spark",
           "name": "GPT-5.3 Codex Spark",
@@ -5022,8 +5877,8 @@
           "type": "chat"
         },
         {
-          "id": "gpt-5.2-chat-latest",
-          "name": "GPT-5.2 Chat",
+          "id": "gpt-5.3-codex",
+          "name": "GPT-5.3 Codex",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -5034,12 +5889,13 @@
           "structured_output": true,
           "temperature": false,
           "knowledge": "2025-08-31",
-          "release_date": "2025-12-11",
-          "last_updated": "2025-12-11",
+          "release_date": "2026-02-05",
+          "last_updated": "2026-02-05",
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -5052,10 +5908,11 @@
             "cache_read": 0.175
           },
           "limit": {
-            "context": 128000,
-            "output": 16384
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
           },
-          "display_name": "GPT-5.2 Chat",
+          "display_name": "GPT-5.3 Codex",
           "type": "chat"
         },
         {
@@ -5098,6 +5955,80 @@
           "type": "chat"
         },
         {
+          "id": "gpt-5.2-pro",
+          "name": "GPT-5.2 Pro",
+          "family": "gpt-pro",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": false,
+          "knowledge": "2025-08-31",
+          "release_date": "2025-12-11",
+          "last_updated": "2025-12-11",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 21,
+            "output": 168
+          },
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          },
+          "display_name": "GPT-5.2 Pro",
+          "type": "chat"
+        },
+        {
+          "id": "gpt-5.2-chat-latest",
+          "name": "GPT-5.2 Chat",
+          "family": "gpt-codex",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2025-08-31",
+          "release_date": "2025-12-11",
+          "last_updated": "2025-12-11",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 1.75,
+            "output": 14,
+            "cache_read": 0.175
+          },
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          },
+          "display_name": "GPT-5.2 Chat",
+          "type": "chat"
+        },
+        {
           "id": "gpt-5.2",
           "name": "GPT-5.2",
           "family": "gpt",
@@ -5136,45 +6067,8 @@
           "type": "chat"
         },
         {
-          "id": "gpt-5.2-pro",
-          "name": "GPT-5.2 Pro",
-          "family": "gpt-pro",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": false,
-          "knowledge": "2025-08-31",
-          "release_date": "2025-12-11",
-          "last_updated": "2025-12-11",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 21,
-            "output": 168
-          },
-          "limit": {
-            "context": 400000,
-            "input": 272000,
-            "output": 128000
-          },
-          "display_name": "GPT-5.2 Pro",
-          "type": "chat"
-        },
-        {
-          "id": "gpt-5.1-codex-max",
-          "name": "GPT-5.1 Codex Max",
+          "id": "gpt-5.1-codex",
+          "name": "GPT-5.1 Codex",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -5207,45 +6101,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.1 Codex Max",
-          "type": "chat"
-        },
-        {
-          "id": "gpt-5.1",
-          "name": "GPT-5.1",
-          "family": "gpt",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": false,
-          "knowledge": "2024-09-30",
-          "release_date": "2025-11-13",
-          "last_updated": "2025-11-13",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 1.25,
-            "output": 10,
-            "cache_read": 0.13
-          },
-          "limit": {
-            "context": 400000,
-            "input": 272000,
-            "output": 128000
-          },
-          "display_name": "GPT-5.1",
+          "display_name": "GPT-5.1 Codex",
           "type": "chat"
         },
         {
@@ -5287,8 +6143,46 @@
           "type": "chat"
         },
         {
-          "id": "gpt-5.1-codex",
-          "name": "GPT-5.1 Codex",
+          "id": "gpt-5.1",
+          "name": "GPT-5.1",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2024-09-30",
+          "release_date": "2025-11-13",
+          "last_updated": "2025-11-13",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 1.25,
+            "output": 10,
+            "cache_read": 0.13
+          },
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          },
+          "display_name": "GPT-5.1",
+          "type": "chat"
+        },
+        {
+          "id": "gpt-5.1-codex-max",
+          "name": "GPT-5.1 Codex Max",
           "family": "gpt-codex",
           "attachment": true,
           "reasoning": {
@@ -5321,7 +6215,7 @@
             "input": 272000,
             "output": 128000
           },
-          "display_name": "GPT-5.1 Codex",
+          "display_name": "GPT-5.1 Codex Max",
           "type": "chat"
         },
         {
@@ -5437,6 +6331,82 @@
           "type": "chat"
         },
         {
+          "id": "gpt-5-nano",
+          "name": "GPT-5 Nano",
+          "family": "gpt-nano",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2024-05-30",
+          "release_date": "2025-08-07",
+          "last_updated": "2025-08-07",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.05,
+            "output": 0.4,
+            "cache_read": 0.005
+          },
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          },
+          "display_name": "GPT-5 Nano",
+          "type": "chat"
+        },
+        {
+          "id": "gpt-5-mini",
+          "name": "GPT-5 Mini",
+          "family": "gpt-mini",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2024-05-30",
+          "release_date": "2025-08-07",
+          "last_updated": "2025-08-07",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.25,
+            "output": 2,
+            "cache_read": 0.025
+          },
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          },
+          "display_name": "GPT-5 Mini",
+          "type": "chat"
+        },
+        {
           "id": "gpt-5-chat-latest",
           "name": "GPT-5 Chat (latest)",
           "family": "gpt-codex",
@@ -5509,82 +6479,6 @@
             "output": 128000
           },
           "display_name": "GPT-5",
-          "type": "chat"
-        },
-        {
-          "id": "gpt-5-mini",
-          "name": "GPT-5 Mini",
-          "family": "gpt-mini",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": false,
-          "knowledge": "2024-05-30",
-          "release_date": "2025-08-07",
-          "last_updated": "2025-08-07",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.25,
-            "output": 2,
-            "cache_read": 0.025
-          },
-          "limit": {
-            "context": 400000,
-            "input": 272000,
-            "output": 128000
-          },
-          "display_name": "GPT-5 Mini",
-          "type": "chat"
-        },
-        {
-          "id": "gpt-5-nano",
-          "name": "GPT-5 Nano",
-          "family": "gpt-nano",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": false,
-          "knowledge": "2024-05-30",
-          "release_date": "2025-08-07",
-          "last_updated": "2025-08-07",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.05,
-            "output": 0.4,
-            "cache_read": 0.005
-          },
-          "limit": {
-            "context": 400000,
-            "input": 272000,
-            "output": 128000
-          },
-          "display_name": "GPT-5 Nano",
           "type": "chat"
         },
         {
@@ -5713,43 +6607,6 @@
           "type": "chat"
         },
         {
-          "id": "o3",
-          "name": "o3",
-          "family": "o",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": false,
-          "knowledge": "2024-05",
-          "release_date": "2025-04-16",
-          "last_updated": "2025-04-16",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2,
-            "output": 8,
-            "cache_read": 0.5
-          },
-          "limit": {
-            "context": 200000,
-            "output": 100000
-          },
-          "display_name": "o3",
-          "type": "chat"
-        },
-        {
           "id": "o4-mini",
           "name": "o4-mini",
           "family": "o-mini",
@@ -5784,6 +6641,43 @@
             "output": 100000
           },
           "display_name": "o4-mini",
+          "type": "chat"
+        },
+        {
+          "id": "o3",
+          "name": "o3",
+          "family": "o",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2024-05",
+          "release_date": "2025-04-16",
+          "last_updated": "2025-04-16",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 8,
+            "cache_read": 0.5
+          },
+          "limit": {
+            "context": 200000,
+            "output": 100000
+          },
+          "display_name": "o3",
           "type": "chat"
         },
         {
@@ -5823,42 +6717,6 @@
           "type": "chat"
         },
         {
-          "id": "gpt-4.1",
-          "name": "GPT-4.1",
-          "family": "gpt",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2024-04",
-          "release_date": "2025-04-14",
-          "last_updated": "2025-04-14",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2,
-            "output": 8,
-            "cache_read": 0.5
-          },
-          "limit": {
-            "context": 1047576,
-            "output": 32768
-          },
-          "display_name": "GPT-4.1",
-          "type": "chat"
-        },
-        {
           "id": "gpt-4.1-mini",
           "name": "GPT-4.1 mini",
           "family": "gpt-mini",
@@ -5892,6 +6750,42 @@
             "output": 32768
           },
           "display_name": "GPT-4.1 mini",
+          "type": "chat"
+        },
+        {
+          "id": "gpt-4.1",
+          "name": "GPT-4.1",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2024-04",
+          "release_date": "2025-04-14",
+          "last_updated": "2025-04-14",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 8,
+            "cache_read": 0.5
+          },
+          "limit": {
+            "context": 1047576,
+            "output": 32768
+          },
+          "display_name": "GPT-4.1",
           "type": "chat"
         },
         {
@@ -6392,6 +7286,40 @@
           "type": "embedding"
         },
         {
+          "id": "gpt-4",
+          "name": "GPT-4",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": true,
+          "knowledge": "2023-11",
+          "release_date": "2023-11-06",
+          "last_updated": "2024-04-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 30,
+            "output": 60
+          },
+          "limit": {
+            "context": 8192,
+            "output": 8192
+          },
+          "display_name": "GPT-4",
+          "type": "chat"
+        },
+        {
           "id": "gpt-4-turbo",
           "name": "GPT-4 Turbo",
           "family": "gpt",
@@ -6424,40 +7352,6 @@
             "output": 4096
           },
           "display_name": "GPT-4 Turbo",
-          "type": "chat"
-        },
-        {
-          "id": "gpt-4",
-          "name": "GPT-4",
-          "family": "gpt",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "structured_output": false,
-          "temperature": true,
-          "knowledge": "2023-11",
-          "release_date": "2023-11-06",
-          "last_updated": "2024-04-09",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 30,
-            "output": 60
-          },
-          "limit": {
-            "context": 8192,
-            "output": 8192
-          },
-          "display_name": "GPT-4",
           "type": "chat"
         },
         {
@@ -6530,17 +7424,55 @@
         }
       ]
     },
-    "minimax": {
-      "id": "minimax",
-      "api": "https://api.minimax.io/anthropic/v1",
-      "name": "MiniMax (minimax.io)",
-      "doc": "https://platform.minimax.io/docs/guides/quickstart",
-      "display_name": "MiniMax (minimax.io)",
+    "zai": {
+      "id": "zai",
+      "api": "https://api.z.ai/api/paas/v4",
+      "name": "Z.AI",
+      "doc": "https://docs.z.ai/guides/overview/pricing",
+      "display_name": "Z.AI",
       "models": [
         {
-          "id": "MiniMax-M2.5",
-          "name": "MiniMax-M2.5",
-          "family": "minimax",
+          "id": "glm-5",
+          "name": "GLM-5",
+          "family": "glm",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "release_date": "2026-02-11",
+          "last_updated": "2026-02-11",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 1,
+            "output": 3.2,
+            "cache_read": 0.2,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 204800,
+            "output": 131072
+          },
+          "display_name": "GLM-5",
+          "type": "chat"
+        },
+        {
+          "id": "glm-4.7-flash",
+          "name": "GLM-4.7-Flash",
+          "family": "glm-flash",
           "attachment": false,
           "reasoning": {
             "supported": true,
@@ -6548,8 +7480,9 @@
           },
           "tool_call": true,
           "temperature": true,
-          "release_date": "2026-02-12",
-          "last_updated": "2026-02-12",
+          "knowledge": "2025-04",
+          "release_date": "2026-01-19",
+          "last_updated": "2026-01-19",
           "modalities": {
             "input": [
               "text"
@@ -6560,82 +7493,271 @@
           },
           "open_weights": true,
           "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 200000,
+            "output": 131072
+          },
+          "display_name": "GLM-4.7-Flash",
+          "type": "chat"
+        },
+        {
+          "id": "glm-4.7",
+          "name": "GLM-4.7",
+          "family": "glm",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-12-22",
+          "last_updated": "2025-12-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 2.2,
+            "cache_read": 0.11,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 204800,
+            "output": 131072
+          },
+          "display_name": "GLM-4.7",
+          "type": "chat"
+        },
+        {
+          "id": "glm-4.6v",
+          "name": "GLM-4.6V",
+          "family": "glm",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-12-08",
+          "last_updated": "2025-12-08",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
             "input": 0.3,
-            "output": 1.2,
+            "output": 0.9
+          },
+          "limit": {
+            "context": 128000,
+            "output": 32768
+          },
+          "display_name": "GLM-4.6V",
+          "type": "chat"
+        },
+        {
+          "id": "glm-4.6",
+          "name": "GLM-4.6",
+          "family": "glm",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-09-30",
+          "last_updated": "2025-09-30",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 2.2,
+            "cache_read": 0.11,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 204800,
+            "output": 131072
+          },
+          "display_name": "GLM-4.6",
+          "type": "chat"
+        },
+        {
+          "id": "glm-4.5v",
+          "name": "GLM-4.5V",
+          "family": "glm",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-08-11",
+          "last_updated": "2025-08-11",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 1.8
+          },
+          "limit": {
+            "context": 64000,
+            "output": 16384
+          },
+          "display_name": "GLM-4.5V",
+          "type": "chat"
+        },
+        {
+          "id": "glm-4.5-flash",
+          "name": "GLM-4.5-Flash",
+          "family": "glm-flash",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-07-28",
+          "last_updated": "2025-07-28",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 131072,
+            "output": 98304
+          },
+          "display_name": "GLM-4.5-Flash",
+          "type": "chat"
+        },
+        {
+          "id": "glm-4.5",
+          "name": "GLM-4.5",
+          "family": "glm",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-07-28",
+          "last_updated": "2025-07-28",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.6,
+            "output": 2.2,
+            "cache_read": 0.11,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 131072,
+            "output": 98304
+          },
+          "display_name": "GLM-4.5",
+          "type": "chat"
+        },
+        {
+          "id": "glm-4.5-air",
+          "name": "GLM-4.5-Air",
+          "family": "glm-air",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2025-07-28",
+          "last_updated": "2025-07-28",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.2,
+            "output": 1.1,
             "cache_read": 0.03,
-            "cache_write": 0.375
+            "cache_write": 0
           },
           "limit": {
-            "context": 204800,
-            "output": 131072
+            "context": 131072,
+            "output": 98304
           },
-          "display_name": "MiniMax-M2.5",
-          "type": "chat"
-        },
-        {
-          "id": "MiniMax-M2.1",
-          "name": "MiniMax-M2.1",
-          "family": "minimax",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "release_date": "2025-12-23",
-          "last_updated": "2025-12-23",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.3,
-            "output": 1.2
-          },
-          "limit": {
-            "context": 204800,
-            "output": 131072
-          },
-          "display_name": "MiniMax-M2.1",
-          "type": "chat"
-        },
-        {
-          "id": "MiniMax-M2",
-          "name": "MiniMax-M2",
-          "family": "minimax",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "release_date": "2025-10-27",
-          "last_updated": "2025-10-27",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.3,
-            "output": 1.2
-          },
-          "limit": {
-            "context": 196608,
-            "output": 128000
-          },
-          "display_name": "MiniMax-M2",
+          "display_name": "GLM-4.5-Air",
           "type": "chat"
         }
       ]
@@ -6646,6 +7768,50 @@
       "doc": "https://docs.anthropic.com/en/docs/about-claude/models",
       "display_name": "Anthropic",
       "models": [
+        {
+          "id": "claude-sonnet-4-6",
+          "name": "Claude Sonnet 4.6",
+          "family": "claude-sonnet",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-08",
+          "release_date": "2026-02-17",
+          "last_updated": "2026-02-17",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 3,
+            "output": 15,
+            "cache_read": 0.3,
+            "cache_write": 3.75,
+            "context_over_200k": {
+              "input": 6,
+              "output": 22.5,
+              "cache_read": 0.6,
+              "cache_write": 7.5
+            }
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "display_name": "Claude Sonnet 4.6",
+          "type": "chat"
+        },
         {
           "id": "claude-opus-4-6",
           "name": "Claude Opus 4.6",
@@ -6767,44 +7933,6 @@
           "type": "chat"
         },
         {
-          "id": "claude-haiku-4-5-20251001",
-          "name": "Claude Haiku 4.5",
-          "family": "claude-haiku",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-02-28",
-          "release_date": "2025-10-15",
-          "last_updated": "2025-10-15",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 1,
-            "output": 5,
-            "cache_read": 0.1,
-            "cache_write": 1.25
-          },
-          "limit": {
-            "context": 200000,
-            "output": 64000
-          },
-          "display_name": "Claude Haiku 4.5",
-          "type": "chat"
-        },
-        {
           "id": "claude-haiku-4-5",
           "name": "Claude Haiku 4.5 (latest)",
           "family": "claude-haiku",
@@ -6843,9 +7971,9 @@
           "type": "chat"
         },
         {
-          "id": "claude-sonnet-4-5-20250929",
-          "name": "Claude Sonnet 4.5",
-          "family": "claude-sonnet",
+          "id": "claude-haiku-4-5-20251001",
+          "name": "Claude Haiku 4.5",
+          "family": "claude-haiku",
           "attachment": true,
           "reasoning": {
             "supported": true,
@@ -6853,9 +7981,9 @@
           },
           "tool_call": true,
           "temperature": true,
-          "knowledge": "2025-07-31",
-          "release_date": "2025-09-29",
-          "last_updated": "2025-09-29",
+          "knowledge": "2025-02-28",
+          "release_date": "2025-10-15",
+          "last_updated": "2025-10-15",
           "modalities": {
             "input": [
               "text",
@@ -6868,16 +7996,16 @@
           },
           "open_weights": false,
           "cost": {
-            "input": 3,
-            "output": 15,
-            "cache_read": 0.3,
-            "cache_write": 3.75
+            "input": 1,
+            "output": 5,
+            "cache_read": 0.1,
+            "cache_write": 1.25
           },
           "limit": {
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Sonnet 4.5",
+          "display_name": "Claude Haiku 4.5",
           "type": "chat"
         },
         {
@@ -6916,6 +8044,44 @@
             "output": 64000
           },
           "display_name": "Claude Sonnet 4.5 (latest)",
+          "type": "chat"
+        },
+        {
+          "id": "claude-sonnet-4-5-20250929",
+          "name": "Claude Sonnet 4.5",
+          "family": "claude-sonnet",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-07-31",
+          "release_date": "2025-09-29",
+          "last_updated": "2025-09-29",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 3,
+            "output": 15,
+            "cache_read": 0.3,
+            "cache_write": 3.75
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "display_name": "Claude Sonnet 4.5",
           "type": "chat"
         },
         {
@@ -6995,82 +8161,6 @@
           "type": "chat"
         },
         {
-          "id": "claude-sonnet-4-0",
-          "name": "Claude Sonnet 4 (latest)",
-          "family": "claude-sonnet",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-03-31",
-          "release_date": "2025-05-22",
-          "last_updated": "2025-05-22",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 3,
-            "output": 15,
-            "cache_read": 0.3,
-            "cache_write": 3.75
-          },
-          "limit": {
-            "context": 200000,
-            "output": 64000
-          },
-          "display_name": "Claude Sonnet 4 (latest)",
-          "type": "chat"
-        },
-        {
-          "id": "claude-opus-4-20250514",
-          "name": "Claude Opus 4",
-          "family": "claude-opus",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-03-31",
-          "release_date": "2025-05-22",
-          "last_updated": "2025-05-22",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 15,
-            "output": 75,
-            "cache_read": 1.5,
-            "cache_write": 18.75
-          },
-          "limit": {
-            "context": 200000,
-            "output": 32000
-          },
-          "display_name": "Claude Opus 4",
-          "type": "chat"
-        },
-        {
           "id": "claude-opus-4-0",
           "name": "Claude Opus 4 (latest)",
           "family": "claude-opus",
@@ -7147,8 +8237,46 @@
           "type": "chat"
         },
         {
-          "id": "claude-3-7-sonnet-latest",
-          "name": "Claude Sonnet 3.7 (latest)",
+          "id": "claude-opus-4-20250514",
+          "name": "Claude Opus 4",
+          "family": "claude-opus",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-03-31",
+          "release_date": "2025-05-22",
+          "last_updated": "2025-05-22",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 15,
+            "output": 75,
+            "cache_read": 1.5,
+            "cache_write": 18.75
+          },
+          "limit": {
+            "context": 200000,
+            "output": 32000
+          },
+          "display_name": "Claude Opus 4",
+          "type": "chat"
+        },
+        {
+          "id": "claude-sonnet-4-0",
+          "name": "Claude Sonnet 4 (latest)",
           "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
@@ -7157,9 +8285,9 @@
           },
           "tool_call": true,
           "temperature": true,
-          "knowledge": "2024-10-31",
-          "release_date": "2025-02-19",
-          "last_updated": "2025-02-19",
+          "knowledge": "2025-03-31",
+          "release_date": "2025-05-22",
+          "last_updated": "2025-05-22",
           "modalities": {
             "input": [
               "text",
@@ -7181,7 +8309,7 @@
             "context": 200000,
             "output": 64000
           },
-          "display_name": "Claude Sonnet 3.7 (latest)",
+          "display_name": "Claude Sonnet 4 (latest)",
           "type": "chat"
         },
         {
@@ -7223,18 +8351,19 @@
           "type": "chat"
         },
         {
-          "id": "claude-3-5-haiku-latest",
-          "name": "Claude Haiku 3.5 (latest)",
-          "family": "claude-haiku",
+          "id": "claude-3-7-sonnet-latest",
+          "name": "Claude Sonnet 3.7 (latest)",
+          "family": "claude-sonnet",
           "attachment": true,
           "reasoning": {
-            "supported": false
+            "supported": true,
+            "default": true
           },
           "tool_call": true,
           "temperature": true,
-          "knowledge": "2024-07-31",
-          "release_date": "2024-10-22",
-          "last_updated": "2024-10-22",
+          "knowledge": "2024-10-31",
+          "release_date": "2025-02-19",
+          "last_updated": "2025-02-19",
           "modalities": {
             "input": [
               "text",
@@ -7247,16 +8376,16 @@
           },
           "open_weights": false,
           "cost": {
-            "input": 0.8,
-            "output": 4,
-            "cache_read": 0.08,
-            "cache_write": 1
+            "input": 3,
+            "output": 15,
+            "cache_read": 0.3,
+            "cache_write": 3.75
           },
           "limit": {
             "context": 200000,
-            "output": 8192
+            "output": 64000
           },
-          "display_name": "Claude Haiku 3.5 (latest)",
+          "display_name": "Claude Sonnet 3.7 (latest)",
           "type": "chat"
         },
         {
@@ -7294,6 +8423,43 @@
             "output": 8192
           },
           "display_name": "Claude Sonnet 3.5 v2",
+          "type": "chat"
+        },
+        {
+          "id": "claude-3-5-haiku-latest",
+          "name": "Claude Haiku 3.5 (latest)",
+          "family": "claude-haiku",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-07-31",
+          "release_date": "2024-10-22",
+          "last_updated": "2024-10-22",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.8,
+            "output": 4,
+            "cache_read": 0.08,
+            "cache_write": 1
+          },
+          "limit": {
+            "context": 200000,
+            "output": 8192
+          },
+          "display_name": "Claude Haiku 3.5 (latest)",
           "type": "chat"
         },
         {
@@ -7479,929 +8645,6 @@
             "output": 4096
           },
           "display_name": "Claude Opus 3",
-          "type": "chat"
-        }
-      ]
-    },
-    "xai": {
-      "id": "xai",
-      "name": "xai",
-      "doc": "https://docs.x.ai/docs/models",
-      "display_name": "xai",
-      "models": [
-        {
-          "id": "grok-4-1-fast-non-reasoning",
-          "name": "Grok 4.1 Fast (Non-Reasoning)",
-          "family": "grok",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-07",
-          "release_date": "2025-11-19",
-          "last_updated": "2025-11-19",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.2,
-            "output": 0.5,
-            "cache_read": 0.05
-          },
-          "limit": {
-            "context": 2000000,
-            "output": 30000
-          },
-          "display_name": "Grok 4.1 Fast (Non-Reasoning)",
-          "type": "chat"
-        },
-        {
-          "id": "grok-4-1-fast",
-          "name": "Grok 4.1 Fast",
-          "family": "grok",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-07",
-          "release_date": "2025-11-19",
-          "last_updated": "2025-11-19",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.2,
-            "output": 0.5,
-            "cache_read": 0.05
-          },
-          "limit": {
-            "context": 2000000,
-            "output": 30000
-          },
-          "display_name": "Grok 4.1 Fast",
-          "type": "chat"
-        },
-        {
-          "id": "grok-4-fast",
-          "name": "Grok 4 Fast",
-          "family": "grok",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-07",
-          "release_date": "2025-09-19",
-          "last_updated": "2025-09-19",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.2,
-            "output": 0.5,
-            "cache_read": 0.05
-          },
-          "limit": {
-            "context": 2000000,
-            "output": 30000
-          },
-          "display_name": "Grok 4 Fast",
-          "type": "chat"
-        },
-        {
-          "id": "grok-4-fast-non-reasoning",
-          "name": "Grok 4 Fast (Non-Reasoning)",
-          "family": "grok",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-07",
-          "release_date": "2025-09-19",
-          "last_updated": "2025-09-19",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.2,
-            "output": 0.5,
-            "cache_read": 0.05
-          },
-          "limit": {
-            "context": 2000000,
-            "output": 30000
-          },
-          "display_name": "Grok 4 Fast (Non-Reasoning)",
-          "type": "chat"
-        },
-        {
-          "id": "grok-code-fast-1",
-          "name": "Grok Code Fast 1",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2023-10",
-          "release_date": "2025-08-28",
-          "last_updated": "2025-08-28",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.2,
-            "output": 1.5,
-            "cache_read": 0.02
-          },
-          "limit": {
-            "context": 256000,
-            "output": 10000
-          },
-          "display_name": "Grok Code Fast 1",
-          "type": "chat"
-        },
-        {
-          "id": "grok-4",
-          "name": "Grok 4",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-07",
-          "release_date": "2025-07-09",
-          "last_updated": "2025-07-09",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 3,
-            "output": 15,
-            "reasoning": 15,
-            "cache_read": 0.75
-          },
-          "limit": {
-            "context": 256000,
-            "output": 64000
-          },
-          "display_name": "Grok 4",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-fast-latest",
-          "name": "Grok 3 Fast Latest",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-11",
-          "release_date": "2025-02-17",
-          "last_updated": "2025-02-17",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 5,
-            "output": 25,
-            "cache_read": 1.25
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 3 Fast Latest",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3",
-          "name": "Grok 3",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-11",
-          "release_date": "2025-02-17",
-          "last_updated": "2025-02-17",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 3,
-            "output": 15,
-            "cache_read": 0.75
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 3",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-mini-fast",
-          "name": "Grok 3 Mini Fast",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-11",
-          "release_date": "2025-02-17",
-          "last_updated": "2025-02-17",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.6,
-            "output": 4,
-            "reasoning": 4,
-            "cache_read": 0.15
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 3 Mini Fast",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-latest",
-          "name": "Grok 3 Latest",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-11",
-          "release_date": "2025-02-17",
-          "last_updated": "2025-02-17",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 3,
-            "output": 15,
-            "cache_read": 0.75
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 3 Latest",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-mini-latest",
-          "name": "Grok 3 Mini Latest",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-11",
-          "release_date": "2025-02-17",
-          "last_updated": "2025-02-17",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.3,
-            "output": 0.5,
-            "reasoning": 0.5,
-            "cache_read": 0.075
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 3 Mini Latest",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-mini",
-          "name": "Grok 3 Mini",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-11",
-          "release_date": "2025-02-17",
-          "last_updated": "2025-02-17",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.3,
-            "output": 0.5,
-            "reasoning": 0.5,
-            "cache_read": 0.075
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 3 Mini",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-mini-fast-latest",
-          "name": "Grok 3 Mini Fast Latest",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-11",
-          "release_date": "2025-02-17",
-          "last_updated": "2025-02-17",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 0.6,
-            "output": 4,
-            "reasoning": 4,
-            "cache_read": 0.15
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 3 Mini Fast Latest",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-fast",
-          "name": "Grok 3 Fast",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-11",
-          "release_date": "2025-02-17",
-          "last_updated": "2025-02-17",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 5,
-            "output": 25,
-            "cache_read": 1.25
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 3 Fast",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-1212",
-          "name": "Grok 2 1212",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-12-12",
-          "last_updated": "2024-12-12",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "limit": {
-            "context": 120000,
-            "output": 100000
-          },
-          "display_name": "Grok 2 1212",
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "grok-beta",
-          "name": "Grok Beta",
-          "family": "grok-beta",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-11-01",
-          "last_updated": "2024-11-01",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 5,
-            "output": 15,
-            "cache_read": 5
-          },
-          "limit": {
-            "context": 131072,
-            "output": 4096
-          },
-          "display_name": "Grok Beta",
-          "type": "chat"
-        },
-        {
-          "id": "grok-vision-beta",
-          "name": "Grok Vision Beta",
-          "family": "grok-vision",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-11-01",
-          "last_updated": "2024-11-01",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 5,
-            "output": 15,
-            "cache_read": 5
-          },
-          "limit": {
-            "context": 8192,
-            "output": 4096
-          },
-          "display_name": "Grok Vision Beta",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2",
-          "name": "Grok 2",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-08-20",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 2",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-vision",
-          "name": "Grok 2 Vision",
-          "family": "grok",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-08-20",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "limit": {
-            "context": 8192,
-            "output": 4096
-          },
-          "display_name": "Grok 2 Vision",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-vision-1212",
-          "name": "Grok 2 Vision 1212",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-12-12",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "limit": {
-            "context": 32000,
-            "output": 32000
-          },
-          "display_name": "Grok 2 Vision 1212",
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-vision-latest",
-          "name": "Grok 2 Vision Latest",
-          "family": "grok",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-12-12",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "limit": {
-            "context": 8192,
-            "output": 4096
-          },
-          "display_name": "Grok 2 Vision Latest",
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-latest",
-          "name": "Grok 2 Latest",
-          "family": "grok",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2024-08-20",
-          "last_updated": "2024-12-12",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cache_read": 2
-          },
-          "limit": {
-            "context": 131072,
-            "output": 8192
-          },
-          "display_name": "Grok 2 Latest",
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-mini-fast-beta",
-          "name": "Grok 3 Mini Fast Beta",
-          "display_name": "Grok 3 Mini Fast Beta",
-          "temperature": true,
-          "attachment": false,
-          "tool_call": true,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 120000,
-            "output": 100000
-          },
-          "reasoning": {
-            "supported": true,
-            "effort": "low",
-            "default": true
-          },
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-mini-beta",
-          "name": "Grok 3 Mini Beta",
-          "display_name": "Grok 3 Mini Beta",
-          "temperature": true,
-          "attachment": false,
-          "tool_call": true,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 120000,
-            "output": 100000
-          },
-          "reasoning": {
-            "supported": true,
-            "effort": "low",
-            "default": true
-          },
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-fast-beta",
-          "name": "Grok 3 Fast Beta",
-          "display_name": "Grok 3 Fast Beta",
-          "temperature": true,
-          "attachment": false,
-          "tool_call": true,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 120000,
-            "output": 100000
-          },
-          "reasoning": {
-            "supported": false
-          },
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "grok-2-image-1212",
-          "name": "Grok 2 Image 1212",
-          "display_name": "Grok 2 Image 1212",
-          "temperature": true,
-          "attachment": false,
-          "tool_call": false,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 130000,
-            "output": 100000
-          },
-          "reasoning": {
-            "supported": false
-          },
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "grok-3-beta",
-          "name": "Grok 3 Beta",
-          "display_name": "Grok 3 Beta",
-          "temperature": true,
-          "attachment": false,
-          "tool_call": true,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "limit": {
-            "context": 120000,
-            "output": 100000
-          },
-          "reasoning": {
-            "supported": false
-          },
-          "search": {
-            "supported": false
-          },
           "type": "chat"
         }
       ]
