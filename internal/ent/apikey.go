@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -35,11 +36,11 @@ type APIKey struct {
 	Key string `json:"key,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
-	// API Key type: user or service_account
+	// API Key type: user, service_account, or agent
 	Type apikey.Type `json:"type,omitempty"`
 	// Status holds the value of the "status" field.
 	Status apikey.Status `json:"status,omitempty"`
-	// API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.
+	// API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account/agent: custom scopes.
 	Scopes []string `json:"scopes,omitempty"`
 	// Profiles holds the value of the "profiles" field.
 	Profiles *objects.APIKeyProfiles `json:"profiles,omitempty"`
@@ -57,11 +58,13 @@ type APIKeyEdges struct {
 	Project *Project `json:"project,omitempty"`
 	// Requests holds the value of the requests edge.
 	Requests []*Request `json:"requests,omitempty"`
+	// Agent holds the value of the agent edge.
+	Agent *Agent `json:"agent,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [3]map[string]int
+	totalCount [4]map[string]int
 
 	namedRequests map[string][]*Request
 }
@@ -95,6 +98,17 @@ func (e APIKeyEdges) RequestsOrErr() ([]*Request, error) {
 		return e.Requests, nil
 	}
 	return nil, &NotLoadedError{edge: "requests"}
+}
+
+// AgentOrErr returns the Agent value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e APIKeyEdges) AgentOrErr() (*Agent, error) {
+	if e.Agent != nil {
+		return e.Agent, nil
+	} else if e.loadedTypes[3] {
+		return nil, &NotFoundError{label: agent.Label}
+	}
+	return nil, &NotLoadedError{edge: "agent"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -227,6 +241,11 @@ func (_m *APIKey) QueryProject() *ProjectQuery {
 // QueryRequests queries the "requests" edge of the APIKey entity.
 func (_m *APIKey) QueryRequests() *RequestQuery {
 	return NewAPIKeyClient(_m.config).QueryRequests(_m)
+}
+
+// QueryAgent queries the "agent" edge of the APIKey entity.
+func (_m *APIKey) QueryAgent() *AgentQuery {
+	return NewAPIKeyClient(_m.config).QueryAgent(_m)
 }
 
 // Update returns a builder for updating this APIKey.

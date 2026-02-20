@@ -13,9 +13,11 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 )
 
 // PromptQuery is the builder for querying Prompt entities.
@@ -26,9 +28,15 @@ type PromptQuery struct {
 	inters            []Interceptor
 	predicates        []predicate.Prompt
 	withProjects      *ProjectQuery
+	withVersions      *PromptVersionQuery
+	withActiveVersion *PromptVersionQuery
+	withDraftVersion  *PromptVersionQuery
+	withAgents        *AgentQuery
 	loadTotal         []func(context.Context, []*Prompt) error
 	modifiers         []func(*sql.Selector)
 	withNamedProjects map[string]*ProjectQuery
+	withNamedVersions map[string]*PromptVersionQuery
+	withNamedAgents   map[string]*AgentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -80,6 +88,94 @@ func (_q *PromptQuery) QueryProjects() *ProjectQuery {
 			sqlgraph.From(prompt.Table, prompt.FieldID, selector),
 			sqlgraph.To(project.Table, project.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, prompt.ProjectsTable, prompt.ProjectsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryVersions chains the current query on the "versions" edge.
+func (_q *PromptQuery) QueryVersions() *PromptVersionQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(prompt.Table, prompt.FieldID, selector),
+			sqlgraph.To(promptversion.Table, promptversion.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, prompt.VersionsTable, prompt.VersionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryActiveVersion chains the current query on the "active_version" edge.
+func (_q *PromptQuery) QueryActiveVersion() *PromptVersionQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(prompt.Table, prompt.FieldID, selector),
+			sqlgraph.To(promptversion.Table, promptversion.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, prompt.ActiveVersionTable, prompt.ActiveVersionColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryDraftVersion chains the current query on the "draft_version" edge.
+func (_q *PromptQuery) QueryDraftVersion() *PromptVersionQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(prompt.Table, prompt.FieldID, selector),
+			sqlgraph.To(promptversion.Table, promptversion.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, prompt.DraftVersionTable, prompt.DraftVersionColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAgents chains the current query on the "agents" edge.
+func (_q *PromptQuery) QueryAgents() *AgentQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(prompt.Table, prompt.FieldID, selector),
+			sqlgraph.To(agent.Table, agent.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, prompt.AgentsTable, prompt.AgentsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -274,12 +370,16 @@ func (_q *PromptQuery) Clone() *PromptQuery {
 		return nil
 	}
 	return &PromptQuery{
-		config:       _q.config,
-		ctx:          _q.ctx.Clone(),
-		order:        append([]prompt.OrderOption{}, _q.order...),
-		inters:       append([]Interceptor{}, _q.inters...),
-		predicates:   append([]predicate.Prompt{}, _q.predicates...),
-		withProjects: _q.withProjects.Clone(),
+		config:            _q.config,
+		ctx:               _q.ctx.Clone(),
+		order:             append([]prompt.OrderOption{}, _q.order...),
+		inters:            append([]Interceptor{}, _q.inters...),
+		predicates:        append([]predicate.Prompt{}, _q.predicates...),
+		withProjects:      _q.withProjects.Clone(),
+		withVersions:      _q.withVersions.Clone(),
+		withActiveVersion: _q.withActiveVersion.Clone(),
+		withDraftVersion:  _q.withDraftVersion.Clone(),
+		withAgents:        _q.withAgents.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -295,6 +395,50 @@ func (_q *PromptQuery) WithProjects(opts ...func(*ProjectQuery)) *PromptQuery {
 		opt(query)
 	}
 	_q.withProjects = query
+	return _q
+}
+
+// WithVersions tells the query-builder to eager-load the nodes that are connected to
+// the "versions" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *PromptQuery) WithVersions(opts ...func(*PromptVersionQuery)) *PromptQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withVersions = query
+	return _q
+}
+
+// WithActiveVersion tells the query-builder to eager-load the nodes that are connected to
+// the "active_version" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *PromptQuery) WithActiveVersion(opts ...func(*PromptVersionQuery)) *PromptQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withActiveVersion = query
+	return _q
+}
+
+// WithDraftVersion tells the query-builder to eager-load the nodes that are connected to
+// the "draft_version" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *PromptQuery) WithDraftVersion(opts ...func(*PromptVersionQuery)) *PromptQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDraftVersion = query
+	return _q
+}
+
+// WithAgents tells the query-builder to eager-load the nodes that are connected to
+// the "agents" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *PromptQuery) WithAgents(opts ...func(*AgentQuery)) *PromptQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAgents = query
 	return _q
 }
 
@@ -382,8 +526,12 @@ func (_q *PromptQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Promp
 	var (
 		nodes       = []*Prompt{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [5]bool{
 			_q.withProjects != nil,
+			_q.withVersions != nil,
+			_q.withActiveVersion != nil,
+			_q.withDraftVersion != nil,
+			_q.withAgents != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -414,10 +562,50 @@ func (_q *PromptQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Promp
 			return nil, err
 		}
 	}
+	if query := _q.withVersions; query != nil {
+		if err := _q.loadVersions(ctx, query, nodes,
+			func(n *Prompt) { n.Edges.Versions = []*PromptVersion{} },
+			func(n *Prompt, e *PromptVersion) { n.Edges.Versions = append(n.Edges.Versions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withActiveVersion; query != nil {
+		if err := _q.loadActiveVersion(ctx, query, nodes, nil,
+			func(n *Prompt, e *PromptVersion) { n.Edges.ActiveVersion = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withDraftVersion; query != nil {
+		if err := _q.loadDraftVersion(ctx, query, nodes, nil,
+			func(n *Prompt, e *PromptVersion) { n.Edges.DraftVersion = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAgents; query != nil {
+		if err := _q.loadAgents(ctx, query, nodes,
+			func(n *Prompt) { n.Edges.Agents = []*Agent{} },
+			func(n *Prompt, e *Agent) { n.Edges.Agents = append(n.Edges.Agents, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedProjects {
 		if err := _q.loadProjects(ctx, query, nodes,
 			func(n *Prompt) { n.appendNamedProjects(name) },
 			func(n *Prompt, e *Project) { n.appendNamedProjects(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedVersions {
+		if err := _q.loadVersions(ctx, query, nodes,
+			func(n *Prompt) { n.appendNamedVersions(name) },
+			func(n *Prompt, e *PromptVersion) { n.appendNamedVersions(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedAgents {
+		if err := _q.loadAgents(ctx, query, nodes,
+			func(n *Prompt) { n.appendNamedAgents(name) },
+			func(n *Prompt, e *Agent) { n.appendNamedAgents(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -490,6 +678,130 @@ func (_q *PromptQuery) loadProjects(ctx context.Context, query *ProjectQuery, no
 	}
 	return nil
 }
+func (_q *PromptQuery) loadVersions(ctx context.Context, query *PromptVersionQuery, nodes []*Prompt, init func(*Prompt), assign func(*Prompt, *PromptVersion)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Prompt)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(promptversion.FieldPromptID)
+	}
+	query.Where(predicate.PromptVersion(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(prompt.VersionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.PromptID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "prompt_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *PromptQuery) loadActiveVersion(ctx context.Context, query *PromptVersionQuery, nodes []*Prompt, init func(*Prompt), assign func(*Prompt, *PromptVersion)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Prompt)
+	for i := range nodes {
+		if nodes[i].ActiveVersionID == nil {
+			continue
+		}
+		fk := *nodes[i].ActiveVersionID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(promptversion.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "active_version_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *PromptQuery) loadDraftVersion(ctx context.Context, query *PromptVersionQuery, nodes []*Prompt, init func(*Prompt), assign func(*Prompt, *PromptVersion)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Prompt)
+	for i := range nodes {
+		if nodes[i].DraftVersionID == nil {
+			continue
+		}
+		fk := *nodes[i].DraftVersionID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(promptversion.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "draft_version_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *PromptQuery) loadAgents(ctx context.Context, query *AgentQuery, nodes []*Prompt, init func(*Prompt), assign func(*Prompt, *Agent)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Prompt)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(agent.FieldPromptID)
+	}
+	query.Where(predicate.Agent(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(prompt.AgentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.PromptID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "prompt_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
 
 func (_q *PromptQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
@@ -518,6 +830,12 @@ func (_q *PromptQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != prompt.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withActiveVersion != nil {
+			_spec.Node.AddColumnOnce(prompt.FieldActiveVersionID)
+		}
+		if _q.withDraftVersion != nil {
+			_spec.Node.AddColumnOnce(prompt.FieldDraftVersionID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
@@ -595,6 +913,34 @@ func (_q *PromptQuery) WithNamedProjects(name string, opts ...func(*ProjectQuery
 		_q.withNamedProjects = make(map[string]*ProjectQuery)
 	}
 	_q.withNamedProjects[name] = query
+	return _q
+}
+
+// WithNamedVersions tells the query-builder to eager-load the nodes that are connected to the "versions"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *PromptQuery) WithNamedVersions(name string, opts ...func(*PromptVersionQuery)) *PromptQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedVersions == nil {
+		_q.withNamedVersions = make(map[string]*PromptVersionQuery)
+	}
+	_q.withNamedVersions[name] = query
+	return _q
+}
+
+// WithNamedAgents tells the query-builder to eager-load the nodes that are connected to the "agents"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *PromptQuery) WithNamedAgents(name string, opts ...func(*AgentQuery)) *PromptQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedAgents == nil {
+		_q.withNamedAgents = make(map[string]*AgentQuery)
+	}
+	_q.withNamedAgents[name] = query
 	return _q
 }
 

@@ -1,0 +1,20 @@
+# schema tells gqlgen where the GraphQL schema is located.
+schema:
+  - agentapi.graphql
+
+omit_gqlgen_version_in_file_notice: true
+
+resolver:
+  layout: follow-schema
+  dir: .
+
+autobind:
+  - github.com/99designs/gqlgen/graphql/introspection
+
+models:
+  ID:
+    model:
+      - github.com/looplj/axonhub/internal/objects.GUID
+  JSONRawMessage:
+    model:
+      - github.com/looplj/axonhub/internal/objects.JSONRawMessage

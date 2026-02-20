@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -41,6 +42,25 @@ type AddUserToProjectInput struct {
 	IsOwner   *bool           `json:"isOwner,omitempty"`
 	Scopes    []string        `json:"scopes,omitempty"`
 	RoleIDs   []*objects.GUID `json:"roleIDs,omitempty"`
+}
+
+// Minimal message view for Agent thread chat in Web UI.
+type AgentChatMessage struct {
+	ID         objects.GUID            `json:"id"`
+	AgentID    objects.GUID            `json:"agentID"`
+	ThreadID   string                  `json:"threadID"`
+	Direction  agentmessage.Direction  `json:"direction"`
+	SenderType agentmessage.SenderType `json:"senderType"`
+	SenderID   *int                    `json:"senderID,omitempty"`
+	Text       string                  `json:"text"`
+	Sequence   int                     `json:"sequence"`
+	Status     agentmessage.Status     `json:"status"`
+	CreatedAt  time.Time               `json:"createdAt"`
+}
+
+type AgentThreadSummary struct {
+	ThreadID  string    `json:"threadID"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type ApplyChannelOverrideTemplateInput struct {

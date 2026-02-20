@@ -26,6 +26,10 @@ func TestAllScopes(t *testing.T) {
 		ScopeReadDashboard,
 		ScopeReadSettings,
 		ScopeWriteSettings,
+		ScopeReadPrompts,
+		ScopeWritePrompts,
+		ScopeReadAgents,
+		ScopeWriteAgents,
 	}
 
 	for _, expectedScope := range expectedScopes {
@@ -124,6 +128,10 @@ func TestScopeConstants(t *testing.T) {
 		"ScopeReadDashboard": ScopeReadDashboard,
 		"ScopeReadSettings":  ScopeReadSettings,
 		"ScopeWriteSettings": ScopeWriteSettings,
+		"ScopeReadPrompts":   ScopeReadPrompts,
+		"ScopeWritePrompts":  ScopeWritePrompts,
+		"ScopeReadAgents":    ScopeReadAgents,
+		"ScopeWriteAgents":   ScopeWriteAgents,
 	}
 
 	for name, scope := range scopes {

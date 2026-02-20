@@ -24,6 +24,8 @@ var Module = fx.Module("biz",
 	fx.Provide(NewModelService),
 	fx.Provide(NewChannelProbeService),
 	fx.Provide(NewPromptService),
+	fx.Provide(NewAgentService),
+	fx.Provide(NewAgentRuntimeService),
 	fx.Provide(NewQuotaService),
 	fx.Provide(NewProviderQuotaService),
 	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService) {

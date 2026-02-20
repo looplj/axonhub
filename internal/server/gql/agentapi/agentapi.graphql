@@ -1,0 +1,124 @@
+scalar Time
+scalar JSONRawMessage
+
+enum AgentSkillAddPolicy {
+  open
+  approval_required
+  registry_only
+}
+
+type AgentSkillsPolicy {
+  add: AgentSkillAddPolicy!
+}
+
+type AgentBuiltinTool {
+  name: String!
+  enabled: Boolean!
+  order: Int!
+  config: JSONRawMessage
+}
+
+type AgentToolDefinition {
+  name: String!
+  description: String!
+  parameters: JSONRawMessage!
+  config: JSONRawMessage
+}
+
+type AgentSkillDefinition {
+  name: String!
+  content: String
+  entrypoint: String
+  args: String
+}
+
+type AgentBootstrap {
+  agentID: ID!
+  agentName: String!
+  model: String
+  systemPrompt: String!
+  tools: [AgentToolDefinition!]!
+  skills: [AgentSkillDefinition!]!
+  builtinTools: [AgentBuiltinTool!]!
+  skillsPolicy: AgentSkillsPolicy!
+  memoryPolicy: JSONRawMessage
+}
+
+enum AgentMessageDirection { to_runtime to_user }
+enum AgentMessageStatus { pending acked expired }
+enum AgentMessageSenderType { user runtime system }
+
+input RegisterAgentInstanceInput {
+  agentID: ID!
+  instanceID: String!
+  name: String
+  platform: String
+  version: String
+}
+
+type AgentInstance {
+  id: ID!
+  agentID: ID!
+  instanceID: String!
+  lastHeartbeatAt: Time!
+}
+
+input HeartbeatAgentInstanceInput {
+  agentID: ID!
+  instanceID: String!
+}
+
+input SendAgentMessageInput {
+  agentID: ID!
+  threadID: String!
+  text: String!
+}
+
+input PushAgentMessageInput {
+  agentID: ID!
+  instanceID: String!
+  threadID: String!
+  text: String!
+}
+
+type AgentMessage {
+  id: ID!
+  agentID: ID!
+  threadID: String!
+  direction: AgentMessageDirection!
+  senderType: AgentMessageSenderType!
+  text: String!
+  sequence: Int!
+  status: AgentMessageStatus!
+  createdAt: Time!
+}
+
+input PullAgentMessagesInput {
+  agentID: ID!
+  instanceID: String!
+  threadID: String!
+  afterSequence: Int
+  limit: Int = 50
+}
+
+input AckAgentMessagesInput {
+  agentID: ID!
+  instanceID: String!
+  messageIDs: [ID!]!
+}
+
+type Query {
+  agentBootstrap(agentID: ID!): AgentBootstrap!
+  pullAgentMessages(input: PullAgentMessagesInput!): [AgentMessage!]!
+  pullAgentMessagesToUser(agentID: ID!, threadID: String!, afterSequence: Int, limit: Int = 50): [AgentMessage!]!
+}
+
+type Mutation {
+  registerAgentInstance(input: RegisterAgentInstanceInput!): AgentInstance!
+  heartbeatAgentInstance(input: HeartbeatAgentInstanceInput!): Boolean!
+
+  sendAgentMessage(input: SendAgentMessageInput!): AgentMessage!
+  pushAgentMessage(input: PushAgentMessageInput!): AgentMessage!
+  ackAgentMessages(input: AckAgentMessagesInput!): Boolean!
+}
+

@@ -46,6 +46,18 @@ const (
 	EdgeTraces = "traces"
 	// EdgePrompts holds the string denoting the prompts edge name in mutations.
 	EdgePrompts = "prompts"
+	// EdgePromptVersions holds the string denoting the prompt_versions edge name in mutations.
+	EdgePromptVersions = "prompt_versions"
+	// EdgeAgents holds the string denoting the agents edge name in mutations.
+	EdgeAgents = "agents"
+	// EdgeTools holds the string denoting the tools edge name in mutations.
+	EdgeTools = "tools"
+	// EdgeSkills holds the string denoting the skills edge name in mutations.
+	EdgeSkills = "skills"
+	// EdgeAgentToolBindings holds the string denoting the agent_tool_bindings edge name in mutations.
+	EdgeAgentToolBindings = "agent_tool_bindings"
+	// EdgeAgentSkillBindings holds the string denoting the agent_skill_bindings edge name in mutations.
+	EdgeAgentSkillBindings = "agent_skill_bindings"
 	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
 	EdgeProjectUsers = "project_users"
 	// Table holds the table name of the project in the database.
@@ -102,6 +114,48 @@ const (
 	// PromptsInverseTable is the table name for the Prompt entity.
 	// It exists in this package in order to avoid circular dependency with the "prompt" package.
 	PromptsInverseTable = "prompts"
+	// PromptVersionsTable is the table that holds the prompt_versions relation/edge.
+	PromptVersionsTable = "prompt_versions"
+	// PromptVersionsInverseTable is the table name for the PromptVersion entity.
+	// It exists in this package in order to avoid circular dependency with the "promptversion" package.
+	PromptVersionsInverseTable = "prompt_versions"
+	// PromptVersionsColumn is the table column denoting the prompt_versions relation/edge.
+	PromptVersionsColumn = "project_id"
+	// AgentsTable is the table that holds the agents relation/edge.
+	AgentsTable = "agents"
+	// AgentsInverseTable is the table name for the Agent entity.
+	// It exists in this package in order to avoid circular dependency with the "agent" package.
+	AgentsInverseTable = "agents"
+	// AgentsColumn is the table column denoting the agents relation/edge.
+	AgentsColumn = "project_id"
+	// ToolsTable is the table that holds the tools relation/edge.
+	ToolsTable = "tools"
+	// ToolsInverseTable is the table name for the Tool entity.
+	// It exists in this package in order to avoid circular dependency with the "tool" package.
+	ToolsInverseTable = "tools"
+	// ToolsColumn is the table column denoting the tools relation/edge.
+	ToolsColumn = "project_id"
+	// SkillsTable is the table that holds the skills relation/edge.
+	SkillsTable = "skills"
+	// SkillsInverseTable is the table name for the Skill entity.
+	// It exists in this package in order to avoid circular dependency with the "skill" package.
+	SkillsInverseTable = "skills"
+	// SkillsColumn is the table column denoting the skills relation/edge.
+	SkillsColumn = "project_id"
+	// AgentToolBindingsTable is the table that holds the agent_tool_bindings relation/edge.
+	AgentToolBindingsTable = "agent_tools"
+	// AgentToolBindingsInverseTable is the table name for the AgentTool entity.
+	// It exists in this package in order to avoid circular dependency with the "agenttool" package.
+	AgentToolBindingsInverseTable = "agent_tools"
+	// AgentToolBindingsColumn is the table column denoting the agent_tool_bindings relation/edge.
+	AgentToolBindingsColumn = "project_id"
+	// AgentSkillBindingsTable is the table that holds the agent_skill_bindings relation/edge.
+	AgentSkillBindingsTable = "agent_skills"
+	// AgentSkillBindingsInverseTable is the table name for the AgentSkill entity.
+	// It exists in this package in order to avoid circular dependency with the "agentskill" package.
+	AgentSkillBindingsInverseTable = "agent_skills"
+	// AgentSkillBindingsColumn is the table column denoting the agent_skill_bindings relation/edge.
+	AgentSkillBindingsColumn = "project_id"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -338,6 +392,90 @@ func ByPrompts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByPromptVersionsCount orders the results by prompt_versions count.
+func ByPromptVersionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPromptVersionsStep(), opts...)
+	}
+}
+
+// ByPromptVersions orders the results by prompt_versions terms.
+func ByPromptVersions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPromptVersionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByAgentsCount orders the results by agents count.
+func ByAgentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAgentsStep(), opts...)
+	}
+}
+
+// ByAgents orders the results by agents terms.
+func ByAgents(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAgentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByToolsCount orders the results by tools count.
+func ByToolsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newToolsStep(), opts...)
+	}
+}
+
+// ByTools orders the results by tools terms.
+func ByTools(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newToolsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// BySkillsCount orders the results by skills count.
+func BySkillsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSkillsStep(), opts...)
+	}
+}
+
+// BySkills orders the results by skills terms.
+func BySkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByAgentToolBindingsCount orders the results by agent_tool_bindings count.
+func ByAgentToolBindingsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAgentToolBindingsStep(), opts...)
+	}
+}
+
+// ByAgentToolBindings orders the results by agent_tool_bindings terms.
+func ByAgentToolBindings(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAgentToolBindingsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByAgentSkillBindingsCount orders the results by agent_skill_bindings count.
+func ByAgentSkillBindingsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAgentSkillBindingsStep(), opts...)
+	}
+}
+
+// ByAgentSkillBindings orders the results by agent_skill_bindings terms.
+func ByAgentSkillBindings(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAgentSkillBindingsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByProjectUsersCount orders the results by project_users count.
 func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -405,6 +543,48 @@ func newPromptsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PromptsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, PromptsTable, PromptsPrimaryKey...),
+	)
+}
+func newPromptVersionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PromptVersionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, PromptVersionsTable, PromptVersionsColumn),
+	)
+}
+func newAgentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AgentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, AgentsTable, AgentsColumn),
+	)
+}
+func newToolsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ToolsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ToolsTable, ToolsColumn),
+	)
+}
+func newSkillsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SkillsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, SkillsTable, SkillsColumn),
+	)
+}
+func newAgentToolBindingsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AgentToolBindingsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, AgentToolBindingsTable, AgentToolBindingsColumn),
+	)
+}
+func newAgentSkillBindingsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AgentSkillBindingsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, AgentSkillBindingsTable, AgentSkillBindingsColumn),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {

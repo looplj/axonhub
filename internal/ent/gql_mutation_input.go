@@ -5,14 +5,18 @@ package ent
 import (
 	"time"
 
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -76,6 +80,398 @@ func (c *APIKeyUpdate) SetInput(i UpdateAPIKeyInput) *APIKeyUpdate {
 
 // SetInput applies the change-set in the UpdateAPIKeyInput on the APIKeyUpdateOne builder.
 func (c *APIKeyUpdateOne) SetInput(i UpdateAPIKeyInput) *APIKeyUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateAgentInstanceInput represents a mutation input for creating agentinstances.
+type CreateAgentInstanceInput struct {
+	ProjectID       int
+	InstanceID      string
+	Name            *string
+	Platform        *string
+	Version         *string
+	LastHeartbeatAt time.Time
+	AgentID         int
+}
+
+// Mutate applies the CreateAgentInstanceInput on the AgentInstanceMutation builder.
+func (i *CreateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
+	m.SetProjectID(i.ProjectID)
+	m.SetInstanceID(i.InstanceID)
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Platform; v != nil {
+		m.SetPlatform(*v)
+	}
+	if v := i.Version; v != nil {
+		m.SetVersion(*v)
+	}
+	m.SetLastHeartbeatAt(i.LastHeartbeatAt)
+	m.SetAgentID(i.AgentID)
+}
+
+// SetInput applies the change-set in the CreateAgentInstanceInput on the AgentInstanceCreate builder.
+func (c *AgentInstanceCreate) SetInput(i CreateAgentInstanceInput) *AgentInstanceCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAgentInstanceInput represents a mutation input for updating agentinstances.
+type UpdateAgentInstanceInput struct {
+	Name            *string
+	Platform        *string
+	Version         *string
+	LastHeartbeatAt *time.Time
+}
+
+// Mutate applies the UpdateAgentInstanceInput on the AgentInstanceMutation builder.
+func (i *UpdateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Platform; v != nil {
+		m.SetPlatform(*v)
+	}
+	if v := i.Version; v != nil {
+		m.SetVersion(*v)
+	}
+	if v := i.LastHeartbeatAt; v != nil {
+		m.SetLastHeartbeatAt(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAgentInstanceInput on the AgentInstanceUpdate builder.
+func (c *AgentInstanceUpdate) SetInput(i UpdateAgentInstanceInput) *AgentInstanceUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAgentInstanceInput on the AgentInstanceUpdateOne builder.
+func (c *AgentInstanceUpdateOne) SetInput(i UpdateAgentInstanceInput) *AgentInstanceUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateAgentMemoryInput represents a mutation input for creating agentmemories.
+type CreateAgentMemoryInput struct {
+	ProjectID int
+	Path      string
+	Content   string
+	Source    *string
+	AgentID   *int
+}
+
+// Mutate applies the CreateAgentMemoryInput on the AgentMemoryMutation builder.
+func (i *CreateAgentMemoryInput) Mutate(m *AgentMemoryMutation) {
+	m.SetProjectID(i.ProjectID)
+	m.SetPath(i.Path)
+	m.SetContent(i.Content)
+	if v := i.Source; v != nil {
+		m.SetSource(*v)
+	}
+	if v := i.AgentID; v != nil {
+		m.SetAgentID(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateAgentMemoryInput on the AgentMemoryCreate builder.
+func (c *AgentMemoryCreate) SetInput(i CreateAgentMemoryInput) *AgentMemoryCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAgentMemoryInput represents a mutation input for updating agentmemories.
+type UpdateAgentMemoryInput struct {
+	Path       *string
+	Content    *string
+	Source     *string
+	ClearAgent bool
+	AgentID    *int
+}
+
+// Mutate applies the UpdateAgentMemoryInput on the AgentMemoryMutation builder.
+func (i *UpdateAgentMemoryInput) Mutate(m *AgentMemoryMutation) {
+	if v := i.Path; v != nil {
+		m.SetPath(*v)
+	}
+	if v := i.Content; v != nil {
+		m.SetContent(*v)
+	}
+	if v := i.Source; v != nil {
+		m.SetSource(*v)
+	}
+	if i.ClearAgent {
+		m.ClearAgent()
+	}
+	if v := i.AgentID; v != nil {
+		m.SetAgentID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAgentMemoryInput on the AgentMemoryUpdate builder.
+func (c *AgentMemoryUpdate) SetInput(i UpdateAgentMemoryInput) *AgentMemoryUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAgentMemoryInput on the AgentMemoryUpdateOne builder.
+func (c *AgentMemoryUpdateOne) SetInput(i UpdateAgentMemoryInput) *AgentMemoryUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateAgentMessageInput represents a mutation input for creating agentmessages.
+type CreateAgentMessageInput struct {
+	ProjectID  int
+	Direction  agentmessage.Direction
+	SenderType agentmessage.SenderType
+	SenderID   *int
+	Content    objects.JSONRawMessage
+	Status     *agentmessage.Status
+	Sequence   int64
+	ExpiresAt  *time.Time
+	AgentID    int
+	ThreadID   int
+}
+
+// Mutate applies the CreateAgentMessageInput on the AgentMessageMutation builder.
+func (i *CreateAgentMessageInput) Mutate(m *AgentMessageMutation) {
+	m.SetProjectID(i.ProjectID)
+	m.SetDirection(i.Direction)
+	m.SetSenderType(i.SenderType)
+	if v := i.SenderID; v != nil {
+		m.SetSenderID(*v)
+	}
+	if v := i.Content; v != nil {
+		m.SetContent(v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	m.SetSequence(i.Sequence)
+	if v := i.ExpiresAt; v != nil {
+		m.SetExpiresAt(*v)
+	}
+	m.SetAgentID(i.AgentID)
+	m.SetThreadID(i.ThreadID)
+}
+
+// SetInput applies the change-set in the CreateAgentMessageInput on the AgentMessageCreate builder.
+func (c *AgentMessageCreate) SetInput(i CreateAgentMessageInput) *AgentMessageCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAgentMessageInput represents a mutation input for updating agentmessages.
+type UpdateAgentMessageInput struct {
+	Direction      *agentmessage.Direction
+	SenderType     *agentmessage.SenderType
+	ClearSenderID  bool
+	SenderID       *int
+	Content        objects.JSONRawMessage
+	AppendContent  objects.JSONRawMessage
+	Status         *agentmessage.Status
+	Sequence       *int64
+	ClearExpiresAt bool
+	ExpiresAt      *time.Time
+}
+
+// Mutate applies the UpdateAgentMessageInput on the AgentMessageMutation builder.
+func (i *UpdateAgentMessageInput) Mutate(m *AgentMessageMutation) {
+	if v := i.Direction; v != nil {
+		m.SetDirection(*v)
+	}
+	if v := i.SenderType; v != nil {
+		m.SetSenderType(*v)
+	}
+	if i.ClearSenderID {
+		m.ClearSenderID()
+	}
+	if v := i.SenderID; v != nil {
+		m.SetSenderID(*v)
+	}
+	if v := i.Content; v != nil {
+		m.SetContent(v)
+	}
+	if i.AppendContent != nil {
+		m.AppendContent(i.Content)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.Sequence; v != nil {
+		m.SetSequence(*v)
+	}
+	if i.ClearExpiresAt {
+		m.ClearExpiresAt()
+	}
+	if v := i.ExpiresAt; v != nil {
+		m.SetExpiresAt(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAgentMessageInput on the AgentMessageUpdate builder.
+func (c *AgentMessageUpdate) SetInput(i UpdateAgentMessageInput) *AgentMessageUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAgentMessageInput on the AgentMessageUpdateOne builder.
+func (c *AgentMessageUpdateOne) SetInput(i UpdateAgentMessageInput) *AgentMessageUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateAgentSkillInput represents a mutation input for creating agentskills.
+type CreateAgentSkillInput struct {
+	Enabled   *bool
+	Order     *int
+	Args      *string
+	AgentID   int
+	SkillID   int
+	ProjectID int
+}
+
+// Mutate applies the CreateAgentSkillInput on the AgentSkillMutation builder.
+func (i *CreateAgentSkillInput) Mutate(m *AgentSkillMutation) {
+	if v := i.Enabled; v != nil {
+		m.SetEnabled(*v)
+	}
+	if v := i.Order; v != nil {
+		m.SetOrder(*v)
+	}
+	if v := i.Args; v != nil {
+		m.SetArgs(*v)
+	}
+	m.SetAgentID(i.AgentID)
+	m.SetSkillID(i.SkillID)
+	m.SetProjectID(i.ProjectID)
+}
+
+// SetInput applies the change-set in the CreateAgentSkillInput on the AgentSkillCreate builder.
+func (c *AgentSkillCreate) SetInput(i CreateAgentSkillInput) *AgentSkillCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAgentSkillInput represents a mutation input for updating agentskills.
+type UpdateAgentSkillInput struct {
+	Enabled *bool
+	Order   *int
+	Args    *string
+}
+
+// Mutate applies the UpdateAgentSkillInput on the AgentSkillMutation builder.
+func (i *UpdateAgentSkillInput) Mutate(m *AgentSkillMutation) {
+	if v := i.Enabled; v != nil {
+		m.SetEnabled(*v)
+	}
+	if v := i.Order; v != nil {
+		m.SetOrder(*v)
+	}
+	if v := i.Args; v != nil {
+		m.SetArgs(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAgentSkillInput on the AgentSkillUpdate builder.
+func (c *AgentSkillUpdate) SetInput(i UpdateAgentSkillInput) *AgentSkillUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAgentSkillInput on the AgentSkillUpdateOne builder.
+func (c *AgentSkillUpdateOne) SetInput(i UpdateAgentSkillInput) *AgentSkillUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateAgentThreadInput represents a mutation input for creating agentthreads.
+type CreateAgentThreadInput struct {
+	ProjectID int
+	AgentID   int
+	ThreadID  int
+}
+
+// Mutate applies the CreateAgentThreadInput on the AgentThreadMutation builder.
+func (i *CreateAgentThreadInput) Mutate(m *AgentThreadMutation) {
+	m.SetProjectID(i.ProjectID)
+	m.SetAgentID(i.AgentID)
+	m.SetThreadID(i.ThreadID)
+}
+
+// SetInput applies the change-set in the CreateAgentThreadInput on the AgentThreadCreate builder.
+func (c *AgentThreadCreate) SetInput(i CreateAgentThreadInput) *AgentThreadCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateAgentToolInput represents a mutation input for creating agenttools.
+type CreateAgentToolInput struct {
+	Enabled   *bool
+	Order     *int
+	Config    objects.JSONRawMessage
+	AgentID   int
+	ToolID    int
+	ProjectID int
+}
+
+// Mutate applies the CreateAgentToolInput on the AgentToolMutation builder.
+func (i *CreateAgentToolInput) Mutate(m *AgentToolMutation) {
+	if v := i.Enabled; v != nil {
+		m.SetEnabled(*v)
+	}
+	if v := i.Order; v != nil {
+		m.SetOrder(*v)
+	}
+	if v := i.Config; v != nil {
+		m.SetConfig(v)
+	}
+	m.SetAgentID(i.AgentID)
+	m.SetToolID(i.ToolID)
+	m.SetProjectID(i.ProjectID)
+}
+
+// SetInput applies the change-set in the CreateAgentToolInput on the AgentToolCreate builder.
+func (c *AgentToolCreate) SetInput(i CreateAgentToolInput) *AgentToolCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAgentToolInput represents a mutation input for updating agenttools.
+type UpdateAgentToolInput struct {
+	Enabled      *bool
+	Order        *int
+	Config       objects.JSONRawMessage
+	AppendConfig objects.JSONRawMessage
+}
+
+// Mutate applies the UpdateAgentToolInput on the AgentToolMutation builder.
+func (i *UpdateAgentToolInput) Mutate(m *AgentToolMutation) {
+	if v := i.Enabled; v != nil {
+		m.SetEnabled(*v)
+	}
+	if v := i.Order; v != nil {
+		m.SetOrder(*v)
+	}
+	if v := i.Config; v != nil {
+		m.SetConfig(v)
+	}
+	if i.AppendConfig != nil {
+		m.AppendConfig(i.Config)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAgentToolInput on the AgentToolUpdate builder.
+func (c *AgentToolUpdate) SetInput(i UpdateAgentToolInput) *AgentToolUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAgentToolInput on the AgentToolUpdateOne builder.
+func (c *AgentToolUpdateOne) SetInput(i UpdateAgentToolInput) *AgentToolUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }
@@ -580,18 +976,24 @@ func (c *ProjectUpdateOne) SetInput(i UpdateProjectInput) *ProjectUpdateOne {
 
 // CreatePromptInput represents a mutation input for creating prompts.
 type CreatePromptInput struct {
-	Name        string
-	Description *string
-	Role        string
-	Content     string
-	Status      *prompt.Status
-	Order       *int
-	Settings    objects.PromptSettings
-	ProjectIDs  []int
+	Type            *prompt.Type
+	Name            string
+	Description     *string
+	Role            string
+	Content         string
+	Status          *prompt.Status
+	Order           *int
+	Settings        objects.PromptSettings
+	ProjectIDs      []int
+	ActiveVersionID *int
+	DraftVersionID  *int
 }
 
 // Mutate applies the CreatePromptInput on the PromptMutation builder.
 func (i *CreatePromptInput) Mutate(m *PromptMutation) {
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
 	m.SetName(i.Name)
 	if v := i.Description; v != nil {
 		m.SetDescription(*v)
@@ -608,6 +1010,12 @@ func (i *CreatePromptInput) Mutate(m *PromptMutation) {
 	if v := i.ProjectIDs; len(v) > 0 {
 		m.AddProjectIDs(v...)
 	}
+	if v := i.ActiveVersionID; v != nil {
+		m.SetActiveVersionID(*v)
+	}
+	if v := i.DraftVersionID; v != nil {
+		m.SetDraftVersionID(*v)
+	}
 }
 
 // SetInput applies the change-set in the CreatePromptInput on the PromptCreate builder.
@@ -618,20 +1026,32 @@ func (c *PromptCreate) SetInput(i CreatePromptInput) *PromptCreate {
 
 // UpdatePromptInput represents a mutation input for updating prompts.
 type UpdatePromptInput struct {
-	Name             *string
-	Description      *string
-	Role             *string
-	Content          *string
-	Status           *prompt.Status
-	Order            *int
-	Settings         *objects.PromptSettings
-	ClearProjects    bool
-	AddProjectIDs    []int
-	RemoveProjectIDs []int
+	ClearType          bool
+	Type               *prompt.Type
+	Name               *string
+	Description        *string
+	Role               *string
+	Content            *string
+	Status             *prompt.Status
+	Order              *int
+	Settings           *objects.PromptSettings
+	ClearProjects      bool
+	AddProjectIDs      []int
+	RemoveProjectIDs   []int
+	ClearActiveVersion bool
+	ActiveVersionID    *int
+	ClearDraftVersion  bool
+	DraftVersionID     *int
 }
 
 // Mutate applies the UpdatePromptInput on the PromptMutation builder.
 func (i *UpdatePromptInput) Mutate(m *PromptMutation) {
+	if i.ClearType {
+		m.ClearType()
+	}
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}
@@ -662,6 +1082,18 @@ func (i *UpdatePromptInput) Mutate(m *PromptMutation) {
 	if v := i.RemoveProjectIDs; len(v) > 0 {
 		m.RemoveProjectIDs(v...)
 	}
+	if i.ClearActiveVersion {
+		m.ClearActiveVersion()
+	}
+	if v := i.ActiveVersionID; v != nil {
+		m.SetActiveVersionID(*v)
+	}
+	if i.ClearDraftVersion {
+		m.ClearDraftVersion()
+	}
+	if v := i.DraftVersionID; v != nil {
+		m.SetDraftVersionID(*v)
+	}
 }
 
 // SetInput applies the change-set in the UpdatePromptInput on the PromptUpdate builder.
@@ -672,6 +1104,84 @@ func (c *PromptUpdate) SetInput(i UpdatePromptInput) *PromptUpdate {
 
 // SetInput applies the change-set in the UpdatePromptInput on the PromptUpdateOne builder.
 func (c *PromptUpdateOne) SetInput(i UpdatePromptInput) *PromptUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreatePromptVersionInput represents a mutation input for creating promptversions.
+type CreatePromptVersionInput struct {
+	Version         int
+	Content         string
+	Status          *promptversion.Status
+	ChangeLog       *string
+	PromptID        int
+	ProjectID       int
+	CreatedByUserID *int
+}
+
+// Mutate applies the CreatePromptVersionInput on the PromptVersionMutation builder.
+func (i *CreatePromptVersionInput) Mutate(m *PromptVersionMutation) {
+	m.SetVersion(i.Version)
+	m.SetContent(i.Content)
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.ChangeLog; v != nil {
+		m.SetChangeLog(*v)
+	}
+	m.SetPromptID(i.PromptID)
+	m.SetProjectID(i.ProjectID)
+	if v := i.CreatedByUserID; v != nil {
+		m.SetCreatedByUserID(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreatePromptVersionInput on the PromptVersionCreate builder.
+func (c *PromptVersionCreate) SetInput(i CreatePromptVersionInput) *PromptVersionCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdatePromptVersionInput represents a mutation input for updating promptversions.
+type UpdatePromptVersionInput struct {
+	Version            *int
+	Content            *string
+	Status             *promptversion.Status
+	ChangeLog          *string
+	ClearCreatedByUser bool
+	CreatedByUserID    *int
+}
+
+// Mutate applies the UpdatePromptVersionInput on the PromptVersionMutation builder.
+func (i *UpdatePromptVersionInput) Mutate(m *PromptVersionMutation) {
+	if v := i.Version; v != nil {
+		m.SetVersion(*v)
+	}
+	if v := i.Content; v != nil {
+		m.SetContent(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.ChangeLog; v != nil {
+		m.SetChangeLog(*v)
+	}
+	if i.ClearCreatedByUser {
+		m.ClearCreatedByUser()
+	}
+	if v := i.CreatedByUserID; v != nil {
+		m.SetCreatedByUserID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdatePromptVersionInput on the PromptVersionUpdate builder.
+func (c *PromptVersionUpdate) SetInput(i UpdatePromptVersionInput) *PromptVersionUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdatePromptVersionInput on the PromptVersionUpdateOne builder.
+func (c *PromptVersionUpdateOne) SetInput(i UpdatePromptVersionInput) *PromptVersionUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }
@@ -980,6 +1490,122 @@ func (c *RoleUpdateOne) SetInput(i UpdateRoleInput) *RoleUpdateOne {
 	return c
 }
 
+// CreateSkillInput represents a mutation input for creating skills.
+type CreateSkillInput struct {
+	Name            string
+	Description     *string
+	Kind            *skill.Kind
+	Content         *string
+	Entrypoint      *string
+	Bundle          objects.JSONRawMessage
+	Status          *skill.Status
+	ProjectID       *int
+	CreatedByUserID *int
+}
+
+// Mutate applies the CreateSkillInput on the SkillMutation builder.
+func (i *CreateSkillInput) Mutate(m *SkillMutation) {
+	m.SetName(i.Name)
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Kind; v != nil {
+		m.SetKind(*v)
+	}
+	if v := i.Content; v != nil {
+		m.SetContent(*v)
+	}
+	if v := i.Entrypoint; v != nil {
+		m.SetEntrypoint(*v)
+	}
+	if v := i.Bundle; v != nil {
+		m.SetBundle(v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.ProjectID; v != nil {
+		m.SetProjectID(*v)
+	}
+	if v := i.CreatedByUserID; v != nil {
+		m.SetCreatedByUserID(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateSkillInput on the SkillCreate builder.
+func (c *SkillCreate) SetInput(i CreateSkillInput) *SkillCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateSkillInput represents a mutation input for updating skills.
+type UpdateSkillInput struct {
+	Name               *string
+	Description        *string
+	Kind               *skill.Kind
+	ClearContent       bool
+	Content            *string
+	Entrypoint         *string
+	ClearBundle        bool
+	Bundle             objects.JSONRawMessage
+	AppendBundle       objects.JSONRawMessage
+	Status             *skill.Status
+	ClearCreatedByUser bool
+	CreatedByUserID    *int
+}
+
+// Mutate applies the UpdateSkillInput on the SkillMutation builder.
+func (i *UpdateSkillInput) Mutate(m *SkillMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Kind; v != nil {
+		m.SetKind(*v)
+	}
+	if i.ClearContent {
+		m.ClearContent()
+	}
+	if v := i.Content; v != nil {
+		m.SetContent(*v)
+	}
+	if v := i.Entrypoint; v != nil {
+		m.SetEntrypoint(*v)
+	}
+	if i.ClearBundle {
+		m.ClearBundle()
+	}
+	if v := i.Bundle; v != nil {
+		m.SetBundle(v)
+	}
+	if i.AppendBundle != nil {
+		m.AppendBundle(i.Bundle)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if i.ClearCreatedByUser {
+		m.ClearCreatedByUser()
+	}
+	if v := i.CreatedByUserID; v != nil {
+		m.SetCreatedByUserID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateSkillInput on the SkillUpdate builder.
+func (c *SkillUpdate) SetInput(i UpdateSkillInput) *SkillUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateSkillInput on the SkillUpdateOne builder.
+func (c *SkillUpdateOne) SetInput(i UpdateSkillInput) *SkillUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateSystemInput represents a mutation input for creating systems.
 type CreateSystemInput struct {
 	Key   string
@@ -1064,6 +1690,110 @@ func (c *ThreadUpdate) SetInput(i UpdateThreadInput) *ThreadUpdate {
 
 // SetInput applies the change-set in the UpdateThreadInput on the ThreadUpdateOne builder.
 func (c *ThreadUpdateOne) SetInput(i UpdateThreadInput) *ThreadUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateToolInput represents a mutation input for creating tools.
+type CreateToolInput struct {
+	Name            string
+	Description     *string
+	Type            *tool.Type
+	Schema          objects.JSONRawMessage
+	DefaultPolicy   objects.JSONRawMessage
+	Status          *tool.Status
+	ProjectID       *int
+	CreatedByUserID *int
+}
+
+// Mutate applies the CreateToolInput on the ToolMutation builder.
+func (i *CreateToolInput) Mutate(m *ToolMutation) {
+	m.SetName(i.Name)
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	if v := i.Schema; v != nil {
+		m.SetSchema(v)
+	}
+	if v := i.DefaultPolicy; v != nil {
+		m.SetDefaultPolicy(v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.ProjectID; v != nil {
+		m.SetProjectID(*v)
+	}
+	if v := i.CreatedByUserID; v != nil {
+		m.SetCreatedByUserID(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateToolInput on the ToolCreate builder.
+func (c *ToolCreate) SetInput(i CreateToolInput) *ToolCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateToolInput represents a mutation input for updating tools.
+type UpdateToolInput struct {
+	Name                *string
+	Description         *string
+	Type                *tool.Type
+	Schema              objects.JSONRawMessage
+	AppendSchema        objects.JSONRawMessage
+	DefaultPolicy       objects.JSONRawMessage
+	AppendDefaultPolicy objects.JSONRawMessage
+	Status              *tool.Status
+	ClearCreatedByUser  bool
+	CreatedByUserID     *int
+}
+
+// Mutate applies the UpdateToolInput on the ToolMutation builder.
+func (i *UpdateToolInput) Mutate(m *ToolMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	if v := i.Schema; v != nil {
+		m.SetSchema(v)
+	}
+	if i.AppendSchema != nil {
+		m.AppendSchema(i.Schema)
+	}
+	if v := i.DefaultPolicy; v != nil {
+		m.SetDefaultPolicy(v)
+	}
+	if i.AppendDefaultPolicy != nil {
+		m.AppendDefaultPolicy(i.DefaultPolicy)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if i.ClearCreatedByUser {
+		m.ClearCreatedByUser()
+	}
+	if v := i.CreatedByUserID; v != nil {
+		m.SetCreatedByUserID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateToolInput on the ToolUpdate builder.
+func (c *ToolUpdate) SetInput(i UpdateToolInput) *ToolUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateToolInput on the ToolUpdateOne builder.
+func (c *ToolUpdateOne) SetInput(i UpdateToolInput) *ToolUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }

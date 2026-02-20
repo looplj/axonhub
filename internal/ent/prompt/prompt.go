@@ -26,6 +26,8 @@ const (
 	FieldDeletedAt = "deleted_at"
 	// FieldProjectID holds the string denoting the project_id field in the database.
 	FieldProjectID = "project_id"
+	// FieldType holds the string denoting the type field in the database.
+	FieldType = "type"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
@@ -40,8 +42,20 @@ const (
 	FieldOrder = "order"
 	// FieldSettings holds the string denoting the settings field in the database.
 	FieldSettings = "settings"
+	// FieldActiveVersionID holds the string denoting the active_version_id field in the database.
+	FieldActiveVersionID = "active_version_id"
+	// FieldDraftVersionID holds the string denoting the draft_version_id field in the database.
+	FieldDraftVersionID = "draft_version_id"
 	// EdgeProjects holds the string denoting the projects edge name in mutations.
 	EdgeProjects = "projects"
+	// EdgeVersions holds the string denoting the versions edge name in mutations.
+	EdgeVersions = "versions"
+	// EdgeActiveVersion holds the string denoting the active_version edge name in mutations.
+	EdgeActiveVersion = "active_version"
+	// EdgeDraftVersion holds the string denoting the draft_version edge name in mutations.
+	EdgeDraftVersion = "draft_version"
+	// EdgeAgents holds the string denoting the agents edge name in mutations.
+	EdgeAgents = "agents"
 	// Table holds the table name of the prompt in the database.
 	Table = "prompts"
 	// ProjectsTable is the table that holds the projects relation/edge. The primary key declared below.
@@ -49,6 +63,34 @@ const (
 	// ProjectsInverseTable is the table name for the Project entity.
 	// It exists in this package in order to avoid circular dependency with the "project" package.
 	ProjectsInverseTable = "projects"
+	// VersionsTable is the table that holds the versions relation/edge.
+	VersionsTable = "prompt_versions"
+	// VersionsInverseTable is the table name for the PromptVersion entity.
+	// It exists in this package in order to avoid circular dependency with the "promptversion" package.
+	VersionsInverseTable = "prompt_versions"
+	// VersionsColumn is the table column denoting the versions relation/edge.
+	VersionsColumn = "prompt_id"
+	// ActiveVersionTable is the table that holds the active_version relation/edge.
+	ActiveVersionTable = "prompts"
+	// ActiveVersionInverseTable is the table name for the PromptVersion entity.
+	// It exists in this package in order to avoid circular dependency with the "promptversion" package.
+	ActiveVersionInverseTable = "prompt_versions"
+	// ActiveVersionColumn is the table column denoting the active_version relation/edge.
+	ActiveVersionColumn = "active_version_id"
+	// DraftVersionTable is the table that holds the draft_version relation/edge.
+	DraftVersionTable = "prompts"
+	// DraftVersionInverseTable is the table name for the PromptVersion entity.
+	// It exists in this package in order to avoid circular dependency with the "promptversion" package.
+	DraftVersionInverseTable = "prompt_versions"
+	// DraftVersionColumn is the table column denoting the draft_version relation/edge.
+	DraftVersionColumn = "draft_version_id"
+	// AgentsTable is the table that holds the agents relation/edge.
+	AgentsTable = "agents"
+	// AgentsInverseTable is the table name for the Agent entity.
+	// It exists in this package in order to avoid circular dependency with the "agent" package.
+	AgentsInverseTable = "agents"
+	// AgentsColumn is the table column denoting the agents relation/edge.
+	AgentsColumn = "prompt_id"
 )
 
 // Columns holds all SQL columns for prompt fields.
@@ -58,6 +100,7 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldDeletedAt,
 	FieldProjectID,
+	FieldType,
 	FieldName,
 	FieldDescription,
 	FieldRole,
@@ -65,6 +108,8 @@ var Columns = []string{
 	FieldStatus,
 	FieldOrder,
 	FieldSettings,
+	FieldActiveVersionID,
+	FieldDraftVersionID,
 }
 
 var (
@@ -105,6 +150,32 @@ var (
 	// DefaultOrder holds the default value on creation for the "order" field.
 	DefaultOrder int
 )
+
+// Type defines the type for the "type" enum field.
+type Type string
+
+// TypeSystem is the default value of the Type enum.
+const DefaultType = TypeSystem
+
+// Type values.
+const (
+	TypeAgentSystem Type = "agent_system"
+	TypeSystem      Type = "system"
+)
+
+func (_type Type) String() string {
+	return string(_type)
+}
+
+// TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
+func TypeValidator(_type Type) error {
+	switch _type {
+	case TypeAgentSystem, TypeSystem:
+		return nil
+	default:
+		return fmt.Errorf("prompt: invalid enum value for type field: %q", _type)
+	}
+}
 
 // Status defines the type for the "status" enum field.
 type Status string
@@ -160,6 +231,11 @@ func ByProjectID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProjectID, opts...).ToFunc()
 }
 
+// ByType orders the results by the type field.
+func ByType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldType, opts...).ToFunc()
+}
+
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
@@ -190,6 +266,16 @@ func ByOrder(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldOrder, opts...).ToFunc()
 }
 
+// ByActiveVersionID orders the results by the active_version_id field.
+func ByActiveVersionID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldActiveVersionID, opts...).ToFunc()
+}
+
+// ByDraftVersionID orders the results by the draft_version_id field.
+func ByDraftVersionID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDraftVersionID, opts...).ToFunc()
+}
+
 // ByProjectsCount orders the results by projects count.
 func ByProjectsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -203,12 +289,100 @@ func ByProjects(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newProjectsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByVersionsCount orders the results by versions count.
+func ByVersionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newVersionsStep(), opts...)
+	}
+}
+
+// ByVersions orders the results by versions terms.
+func ByVersions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newVersionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByActiveVersionField orders the results by active_version field.
+func ByActiveVersionField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newActiveVersionStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByDraftVersionField orders the results by draft_version field.
+func ByDraftVersionField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDraftVersionStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByAgentsCount orders the results by agents count.
+func ByAgentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAgentsStep(), opts...)
+	}
+}
+
+// ByAgents orders the results by agents terms.
+func ByAgents(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAgentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newProjectsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ProjectsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, true, ProjectsTable, ProjectsPrimaryKey...),
 	)
+}
+func newVersionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(VersionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, VersionsTable, VersionsColumn),
+	)
+}
+func newActiveVersionStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ActiveVersionInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, ActiveVersionTable, ActiveVersionColumn),
+	)
+}
+func newDraftVersionStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DraftVersionInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, DraftVersionTable, DraftVersionColumn),
+	)
+}
+func newAgentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AgentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, AgentsTable, AgentsColumn),
+	)
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Type) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Type) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Type(str)
+	if err := TypeValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Type", str)
+	}
+	return nil
 }
 
 // MarshalGQL implements graphql.Marshaler interface.

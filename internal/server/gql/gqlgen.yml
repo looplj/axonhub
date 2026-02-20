@@ -11,6 +11,7 @@ schema:
   - model.graphql
   - backup.graphql
   - channel_probe.graphql
+  - agent.graphql
   - prompt.graphql
   - price.graphql
   - cost.graphql
@@ -85,6 +86,18 @@ models:
   JSONRawMessageInput:
     model:
       - github.com/looplj/axonhub/internal/objects.JSONRawMessage
+  AgentBuiltinTool:
+    model:
+      - github.com/looplj/axonhub/internal/objects.AgentBuiltinTool
+  AgentSkillsPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.AgentSkillsPolicy
+  AgentBuiltinToolInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.AgentBuiltinTool
+  AgentSkillsPolicyInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.AgentSkillsPolicy
   Decimal:
     model:
       - github.com/looplj/axonhub/internal/objects.Decimal

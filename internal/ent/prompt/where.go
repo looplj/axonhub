@@ -100,6 +100,16 @@ func Order(v int) predicate.Prompt {
 	return predicate.Prompt(sql.FieldEQ(FieldOrder, v))
 }
 
+// ActiveVersionID applies equality check predicate on the "active_version_id" field. It's identical to ActiveVersionIDEQ.
+func ActiveVersionID(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldEQ(FieldActiveVersionID, v))
+}
+
+// DraftVersionID applies equality check predicate on the "draft_version_id" field. It's identical to DraftVersionIDEQ.
+func DraftVersionID(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldEQ(FieldDraftVersionID, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Prompt {
 	return predicate.Prompt(sql.FieldEQ(FieldCreatedAt, v))
@@ -258,6 +268,36 @@ func ProjectIDLT(v int) predicate.Prompt {
 // ProjectIDLTE applies the LTE predicate on the "project_id" field.
 func ProjectIDLTE(v int) predicate.Prompt {
 	return predicate.Prompt(sql.FieldLTE(FieldProjectID, v))
+}
+
+// TypeEQ applies the EQ predicate on the "type" field.
+func TypeEQ(v Type) predicate.Prompt {
+	return predicate.Prompt(sql.FieldEQ(FieldType, v))
+}
+
+// TypeNEQ applies the NEQ predicate on the "type" field.
+func TypeNEQ(v Type) predicate.Prompt {
+	return predicate.Prompt(sql.FieldNEQ(FieldType, v))
+}
+
+// TypeIn applies the In predicate on the "type" field.
+func TypeIn(vs ...Type) predicate.Prompt {
+	return predicate.Prompt(sql.FieldIn(FieldType, vs...))
+}
+
+// TypeNotIn applies the NotIn predicate on the "type" field.
+func TypeNotIn(vs ...Type) predicate.Prompt {
+	return predicate.Prompt(sql.FieldNotIn(FieldType, vs...))
+}
+
+// TypeIsNil applies the IsNil predicate on the "type" field.
+func TypeIsNil() predicate.Prompt {
+	return predicate.Prompt(sql.FieldIsNull(FieldType))
+}
+
+// TypeNotNil applies the NotNil predicate on the "type" field.
+func TypeNotNil() predicate.Prompt {
+	return predicate.Prompt(sql.FieldNotNull(FieldType))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.
@@ -580,6 +620,66 @@ func OrderLTE(v int) predicate.Prompt {
 	return predicate.Prompt(sql.FieldLTE(FieldOrder, v))
 }
 
+// ActiveVersionIDEQ applies the EQ predicate on the "active_version_id" field.
+func ActiveVersionIDEQ(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldEQ(FieldActiveVersionID, v))
+}
+
+// ActiveVersionIDNEQ applies the NEQ predicate on the "active_version_id" field.
+func ActiveVersionIDNEQ(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldNEQ(FieldActiveVersionID, v))
+}
+
+// ActiveVersionIDIn applies the In predicate on the "active_version_id" field.
+func ActiveVersionIDIn(vs ...int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldIn(FieldActiveVersionID, vs...))
+}
+
+// ActiveVersionIDNotIn applies the NotIn predicate on the "active_version_id" field.
+func ActiveVersionIDNotIn(vs ...int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldNotIn(FieldActiveVersionID, vs...))
+}
+
+// ActiveVersionIDIsNil applies the IsNil predicate on the "active_version_id" field.
+func ActiveVersionIDIsNil() predicate.Prompt {
+	return predicate.Prompt(sql.FieldIsNull(FieldActiveVersionID))
+}
+
+// ActiveVersionIDNotNil applies the NotNil predicate on the "active_version_id" field.
+func ActiveVersionIDNotNil() predicate.Prompt {
+	return predicate.Prompt(sql.FieldNotNull(FieldActiveVersionID))
+}
+
+// DraftVersionIDEQ applies the EQ predicate on the "draft_version_id" field.
+func DraftVersionIDEQ(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldEQ(FieldDraftVersionID, v))
+}
+
+// DraftVersionIDNEQ applies the NEQ predicate on the "draft_version_id" field.
+func DraftVersionIDNEQ(v int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldNEQ(FieldDraftVersionID, v))
+}
+
+// DraftVersionIDIn applies the In predicate on the "draft_version_id" field.
+func DraftVersionIDIn(vs ...int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldIn(FieldDraftVersionID, vs...))
+}
+
+// DraftVersionIDNotIn applies the NotIn predicate on the "draft_version_id" field.
+func DraftVersionIDNotIn(vs ...int) predicate.Prompt {
+	return predicate.Prompt(sql.FieldNotIn(FieldDraftVersionID, vs...))
+}
+
+// DraftVersionIDIsNil applies the IsNil predicate on the "draft_version_id" field.
+func DraftVersionIDIsNil() predicate.Prompt {
+	return predicate.Prompt(sql.FieldIsNull(FieldDraftVersionID))
+}
+
+// DraftVersionIDNotNil applies the NotNil predicate on the "draft_version_id" field.
+func DraftVersionIDNotNil() predicate.Prompt {
+	return predicate.Prompt(sql.FieldNotNull(FieldDraftVersionID))
+}
+
 // HasProjects applies the HasEdge predicate on the "projects" edge.
 func HasProjects() predicate.Prompt {
 	return predicate.Prompt(func(s *sql.Selector) {
@@ -595,6 +695,98 @@ func HasProjects() predicate.Prompt {
 func HasProjectsWith(preds ...predicate.Project) predicate.Prompt {
 	return predicate.Prompt(func(s *sql.Selector) {
 		step := newProjectsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasVersions applies the HasEdge predicate on the "versions" edge.
+func HasVersions() predicate.Prompt {
+	return predicate.Prompt(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, VersionsTable, VersionsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasVersionsWith applies the HasEdge predicate on the "versions" edge with a given conditions (other predicates).
+func HasVersionsWith(preds ...predicate.PromptVersion) predicate.Prompt {
+	return predicate.Prompt(func(s *sql.Selector) {
+		step := newVersionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasActiveVersion applies the HasEdge predicate on the "active_version" edge.
+func HasActiveVersion() predicate.Prompt {
+	return predicate.Prompt(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, ActiveVersionTable, ActiveVersionColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasActiveVersionWith applies the HasEdge predicate on the "active_version" edge with a given conditions (other predicates).
+func HasActiveVersionWith(preds ...predicate.PromptVersion) predicate.Prompt {
+	return predicate.Prompt(func(s *sql.Selector) {
+		step := newActiveVersionStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDraftVersion applies the HasEdge predicate on the "draft_version" edge.
+func HasDraftVersion() predicate.Prompt {
+	return predicate.Prompt(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, DraftVersionTable, DraftVersionColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDraftVersionWith applies the HasEdge predicate on the "draft_version" edge with a given conditions (other predicates).
+func HasDraftVersionWith(preds ...predicate.PromptVersion) predicate.Prompt {
+	return predicate.Prompt(func(s *sql.Selector) {
+		step := newDraftVersionStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasAgents applies the HasEdge predicate on the "agents" edge.
+func HasAgents() predicate.Prompt {
+	return predicate.Prompt(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, AgentsTable, AgentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAgentsWith applies the HasEdge predicate on the "agents" edge with a given conditions (other predicates).
+func HasAgentsWith(preds ...predicate.Agent) predicate.Prompt {
+	return predicate.Prompt(func(s *sql.Selector) {
+		step := newAgentsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

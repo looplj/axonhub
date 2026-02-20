@@ -3,6 +3,25 @@ scalar JSONRawMessageInput
 scalar Decimal
 scalar DecimalInput
 
+"""
+Agent built-in tool configuration entry.
+
+Note: the same shape is also used by the agent runtime GraphQL API.
+"""
+type AgentBuiltinTool {
+  name: String!
+  enabled: Boolean!
+  order: Int!
+  config: JSONRawMessage
+}
+
+"""
+Agent skills policy stored in DB as structured JSON.
+"""
+type AgentSkillsPolicy {
+  add: String!
+}
+
 type ModelMapping {
   from: String!
   to: String!

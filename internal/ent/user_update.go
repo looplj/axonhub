@@ -12,11 +12,15 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -259,6 +263,66 @@ func (_u *UserUpdate) AddChannelOverrideTemplates(v ...*ChannelOverrideTemplate)
 	return _u.AddChannelOverrideTemplateIDs(ids...)
 }
 
+// AddPromptVersionIDs adds the "prompt_versions" edge to the PromptVersion entity by IDs.
+func (_u *UserUpdate) AddPromptVersionIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddPromptVersionIDs(ids...)
+	return _u
+}
+
+// AddPromptVersions adds the "prompt_versions" edges to the PromptVersion entity.
+func (_u *UserUpdate) AddPromptVersions(v ...*PromptVersion) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddPromptVersionIDs(ids...)
+}
+
+// AddAgentIDs adds the "agents" edge to the Agent entity by IDs.
+func (_u *UserUpdate) AddAgentIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddAgentIDs(ids...)
+	return _u
+}
+
+// AddAgents adds the "agents" edges to the Agent entity.
+func (_u *UserUpdate) AddAgents(v ...*Agent) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAgentIDs(ids...)
+}
+
+// AddToolIDs adds the "tools" edge to the Tool entity by IDs.
+func (_u *UserUpdate) AddToolIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddToolIDs(ids...)
+	return _u
+}
+
+// AddTools adds the "tools" edges to the Tool entity.
+func (_u *UserUpdate) AddTools(v ...*Tool) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddToolIDs(ids...)
+}
+
+// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+func (_u *UserUpdate) AddSkillIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddSkillIDs(ids...)
+	return _u
+}
+
+// AddSkills adds the "skills" edges to the Skill entity.
+func (_u *UserUpdate) AddSkills(v ...*Skill) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddSkillIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *UserUpdate) AddProjectUserIDs(ids ...int) *UserUpdate {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -376,6 +440,90 @@ func (_u *UserUpdate) RemoveChannelOverrideTemplates(v ...*ChannelOverrideTempla
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveChannelOverrideTemplateIDs(ids...)
+}
+
+// ClearPromptVersions clears all "prompt_versions" edges to the PromptVersion entity.
+func (_u *UserUpdate) ClearPromptVersions() *UserUpdate {
+	_u.mutation.ClearPromptVersions()
+	return _u
+}
+
+// RemovePromptVersionIDs removes the "prompt_versions" edge to PromptVersion entities by IDs.
+func (_u *UserUpdate) RemovePromptVersionIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemovePromptVersionIDs(ids...)
+	return _u
+}
+
+// RemovePromptVersions removes "prompt_versions" edges to PromptVersion entities.
+func (_u *UserUpdate) RemovePromptVersions(v ...*PromptVersion) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemovePromptVersionIDs(ids...)
+}
+
+// ClearAgents clears all "agents" edges to the Agent entity.
+func (_u *UserUpdate) ClearAgents() *UserUpdate {
+	_u.mutation.ClearAgents()
+	return _u
+}
+
+// RemoveAgentIDs removes the "agents" edge to Agent entities by IDs.
+func (_u *UserUpdate) RemoveAgentIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveAgentIDs(ids...)
+	return _u
+}
+
+// RemoveAgents removes "agents" edges to Agent entities.
+func (_u *UserUpdate) RemoveAgents(v ...*Agent) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAgentIDs(ids...)
+}
+
+// ClearTools clears all "tools" edges to the Tool entity.
+func (_u *UserUpdate) ClearTools() *UserUpdate {
+	_u.mutation.ClearTools()
+	return _u
+}
+
+// RemoveToolIDs removes the "tools" edge to Tool entities by IDs.
+func (_u *UserUpdate) RemoveToolIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveToolIDs(ids...)
+	return _u
+}
+
+// RemoveTools removes "tools" edges to Tool entities.
+func (_u *UserUpdate) RemoveTools(v ...*Tool) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveToolIDs(ids...)
+}
+
+// ClearSkills clears all "skills" edges to the Skill entity.
+func (_u *UserUpdate) ClearSkills() *UserUpdate {
+	_u.mutation.ClearSkills()
+	return _u
+}
+
+// RemoveSkillIDs removes the "skills" edge to Skill entities by IDs.
+func (_u *UserUpdate) RemoveSkillIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveSkillIDs(ids...)
+	return _u
+}
+
+// RemoveSkills removes "skills" edges to Skill entities.
+func (_u *UserUpdate) RemoveSkills(v ...*Skill) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveSkillIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -741,6 +889,186 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.PromptVersionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PromptVersionsTable,
+			Columns: []string{user.PromptVersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedPromptVersionsIDs(); len(nodes) > 0 && !_u.mutation.PromptVersionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PromptVersionsTable,
+			Columns: []string{user.PromptVersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PromptVersionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PromptVersionsTable,
+			Columns: []string{user.PromptVersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.AgentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.AgentsTable,
+			Columns: []string{user.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAgentsIDs(); len(nodes) > 0 && !_u.mutation.AgentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.AgentsTable,
+			Columns: []string{user.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.AgentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.AgentsTable,
+			Columns: []string{user.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ToolsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ToolsTable,
+			Columns: []string{user.ToolsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedToolsIDs(); len(nodes) > 0 && !_u.mutation.ToolsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ToolsTable,
+			Columns: []string{user.ToolsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ToolsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ToolsTable,
+			Columns: []string{user.ToolsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SkillsTable,
+			Columns: []string{user.SkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedSkillsIDs(); len(nodes) > 0 && !_u.mutation.SkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SkillsTable,
+			Columns: []string{user.SkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SkillsTable,
+			Columns: []string{user.SkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ProjectUsersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1076,6 +1404,66 @@ func (_u *UserUpdateOne) AddChannelOverrideTemplates(v ...*ChannelOverrideTempla
 	return _u.AddChannelOverrideTemplateIDs(ids...)
 }
 
+// AddPromptVersionIDs adds the "prompt_versions" edge to the PromptVersion entity by IDs.
+func (_u *UserUpdateOne) AddPromptVersionIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddPromptVersionIDs(ids...)
+	return _u
+}
+
+// AddPromptVersions adds the "prompt_versions" edges to the PromptVersion entity.
+func (_u *UserUpdateOne) AddPromptVersions(v ...*PromptVersion) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddPromptVersionIDs(ids...)
+}
+
+// AddAgentIDs adds the "agents" edge to the Agent entity by IDs.
+func (_u *UserUpdateOne) AddAgentIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddAgentIDs(ids...)
+	return _u
+}
+
+// AddAgents adds the "agents" edges to the Agent entity.
+func (_u *UserUpdateOne) AddAgents(v ...*Agent) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAgentIDs(ids...)
+}
+
+// AddToolIDs adds the "tools" edge to the Tool entity by IDs.
+func (_u *UserUpdateOne) AddToolIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddToolIDs(ids...)
+	return _u
+}
+
+// AddTools adds the "tools" edges to the Tool entity.
+func (_u *UserUpdateOne) AddTools(v ...*Tool) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddToolIDs(ids...)
+}
+
+// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+func (_u *UserUpdateOne) AddSkillIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddSkillIDs(ids...)
+	return _u
+}
+
+// AddSkills adds the "skills" edges to the Skill entity.
+func (_u *UserUpdateOne) AddSkills(v ...*Skill) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddSkillIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *UserUpdateOne) AddProjectUserIDs(ids ...int) *UserUpdateOne {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -1193,6 +1581,90 @@ func (_u *UserUpdateOne) RemoveChannelOverrideTemplates(v ...*ChannelOverrideTem
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveChannelOverrideTemplateIDs(ids...)
+}
+
+// ClearPromptVersions clears all "prompt_versions" edges to the PromptVersion entity.
+func (_u *UserUpdateOne) ClearPromptVersions() *UserUpdateOne {
+	_u.mutation.ClearPromptVersions()
+	return _u
+}
+
+// RemovePromptVersionIDs removes the "prompt_versions" edge to PromptVersion entities by IDs.
+func (_u *UserUpdateOne) RemovePromptVersionIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemovePromptVersionIDs(ids...)
+	return _u
+}
+
+// RemovePromptVersions removes "prompt_versions" edges to PromptVersion entities.
+func (_u *UserUpdateOne) RemovePromptVersions(v ...*PromptVersion) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemovePromptVersionIDs(ids...)
+}
+
+// ClearAgents clears all "agents" edges to the Agent entity.
+func (_u *UserUpdateOne) ClearAgents() *UserUpdateOne {
+	_u.mutation.ClearAgents()
+	return _u
+}
+
+// RemoveAgentIDs removes the "agents" edge to Agent entities by IDs.
+func (_u *UserUpdateOne) RemoveAgentIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveAgentIDs(ids...)
+	return _u
+}
+
+// RemoveAgents removes "agents" edges to Agent entities.
+func (_u *UserUpdateOne) RemoveAgents(v ...*Agent) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAgentIDs(ids...)
+}
+
+// ClearTools clears all "tools" edges to the Tool entity.
+func (_u *UserUpdateOne) ClearTools() *UserUpdateOne {
+	_u.mutation.ClearTools()
+	return _u
+}
+
+// RemoveToolIDs removes the "tools" edge to Tool entities by IDs.
+func (_u *UserUpdateOne) RemoveToolIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveToolIDs(ids...)
+	return _u
+}
+
+// RemoveTools removes "tools" edges to Tool entities.
+func (_u *UserUpdateOne) RemoveTools(v ...*Tool) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveToolIDs(ids...)
+}
+
+// ClearSkills clears all "skills" edges to the Skill entity.
+func (_u *UserUpdateOne) ClearSkills() *UserUpdateOne {
+	_u.mutation.ClearSkills()
+	return _u
+}
+
+// RemoveSkillIDs removes the "skills" edge to Skill entities by IDs.
+func (_u *UserUpdateOne) RemoveSkillIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveSkillIDs(ids...)
+	return _u
+}
+
+// RemoveSkills removes "skills" edges to Skill entities.
+func (_u *UserUpdateOne) RemoveSkills(v ...*Skill) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveSkillIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -1581,6 +2053,186 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(channeloverridetemplate.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.PromptVersionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PromptVersionsTable,
+			Columns: []string{user.PromptVersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedPromptVersionsIDs(); len(nodes) > 0 && !_u.mutation.PromptVersionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PromptVersionsTable,
+			Columns: []string{user.PromptVersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PromptVersionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PromptVersionsTable,
+			Columns: []string{user.PromptVersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.AgentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.AgentsTable,
+			Columns: []string{user.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAgentsIDs(); len(nodes) > 0 && !_u.mutation.AgentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.AgentsTable,
+			Columns: []string{user.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.AgentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.AgentsTable,
+			Columns: []string{user.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ToolsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ToolsTable,
+			Columns: []string{user.ToolsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedToolsIDs(); len(nodes) > 0 && !_u.mutation.ToolsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ToolsTable,
+			Columns: []string{user.ToolsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ToolsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ToolsTable,
+			Columns: []string{user.ToolsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SkillsTable,
+			Columns: []string{user.SkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedSkillsIDs(); len(nodes) > 0 && !_u.mutation.SkillsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SkillsTable,
+			Columns: []string{user.SkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.SkillsTable,
+			Columns: []string{user.SkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

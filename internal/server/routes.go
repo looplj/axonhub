@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gql"
+	"github.com/looplj/axonhub/internal/server/gql/agentapi"
 	"github.com/looplj/axonhub/internal/server/gql/openapi"
 	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/static"
@@ -20,6 +21,7 @@ type Handlers struct {
 
 	Graphql        *gql.GraphqlHandler
 	OpenAPIGraphql *openapi.GraphqlHandler
+	AgentAPIGraphql *agentapi.GraphqlHandler
 	OpenAI         *api.OpenAIHandlers
 	Doubao         *api.DoubaoHandlers
 	Search         *api.SearchHandlers
@@ -130,6 +132,16 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		})
 		openAPIGroup.GET("/v1/playground", func(c *gin.Context) {
 			handlers.OpenAPIGraphql.Playground.ServeHTTP(c.Writer, c.Request)
+		})
+	}
+
+	agentAPIGroup := server.Group("/agent", middleware.WithAgentAPIAuth(services.AuthService), middleware.WithTimeout(server.Config.RequestTimeout))
+	{
+		agentAPIGroup.POST("/v1/graphql", func(c *gin.Context) {
+			handlers.AgentAPIGraphql.Graphql.ServeHTTP(c.Writer, c.Request)
+		})
+		agentAPIGroup.GET("/v1/playground", func(c *gin.Context) {
+			handlers.AgentAPIGraphql.Playground.ServeHTTP(c.Writer, c.Request)
 		})
 	}
 

@@ -13,11 +13,15 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -34,6 +38,10 @@ type UserQuery struct {
 	withAPIKeys                       *APIKeyQuery
 	withRoles                         *RoleQuery
 	withChannelOverrideTemplates      *ChannelOverrideTemplateQuery
+	withPromptVersions                *PromptVersionQuery
+	withAgents                        *AgentQuery
+	withTools                         *ToolQuery
+	withSkills                        *SkillQuery
 	withProjectUsers                  *UserProjectQuery
 	withUserRoles                     *UserRoleQuery
 	loadTotal                         []func(context.Context, []*User) error
@@ -42,6 +50,10 @@ type UserQuery struct {
 	withNamedAPIKeys                  map[string]*APIKeyQuery
 	withNamedRoles                    map[string]*RoleQuery
 	withNamedChannelOverrideTemplates map[string]*ChannelOverrideTemplateQuery
+	withNamedPromptVersions           map[string]*PromptVersionQuery
+	withNamedAgents                   map[string]*AgentQuery
+	withNamedTools                    map[string]*ToolQuery
+	withNamedSkills                   map[string]*SkillQuery
 	withNamedProjectUsers             map[string]*UserProjectQuery
 	withNamedUserRoles                map[string]*UserRoleQuery
 	// intermediate query (i.e. traversal path).
@@ -161,6 +173,94 @@ func (_q *UserQuery) QueryChannelOverrideTemplates() *ChannelOverrideTemplateQue
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(channeloverridetemplate.Table, channeloverridetemplate.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.ChannelOverrideTemplatesTable, user.ChannelOverrideTemplatesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPromptVersions chains the current query on the "prompt_versions" edge.
+func (_q *UserQuery) QueryPromptVersions() *PromptVersionQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(promptversion.Table, promptversion.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.PromptVersionsTable, user.PromptVersionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAgents chains the current query on the "agents" edge.
+func (_q *UserQuery) QueryAgents() *AgentQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(agent.Table, agent.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.AgentsTable, user.AgentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTools chains the current query on the "tools" edge.
+func (_q *UserQuery) QueryTools() *ToolQuery {
+	query := (&ToolClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(tool.Table, tool.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ToolsTable, user.ToolsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QuerySkills chains the current query on the "skills" edge.
+func (_q *UserQuery) QuerySkills() *SkillQuery {
+	query := (&SkillClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.SkillsTable, user.SkillsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -408,6 +508,10 @@ func (_q *UserQuery) Clone() *UserQuery {
 		withAPIKeys:                  _q.withAPIKeys.Clone(),
 		withRoles:                    _q.withRoles.Clone(),
 		withChannelOverrideTemplates: _q.withChannelOverrideTemplates.Clone(),
+		withPromptVersions:           _q.withPromptVersions.Clone(),
+		withAgents:                   _q.withAgents.Clone(),
+		withTools:                    _q.withTools.Clone(),
+		withSkills:                   _q.withSkills.Clone(),
 		withProjectUsers:             _q.withProjectUsers.Clone(),
 		withUserRoles:                _q.withUserRoles.Clone(),
 		// clone intermediate query.
@@ -458,6 +562,50 @@ func (_q *UserQuery) WithChannelOverrideTemplates(opts ...func(*ChannelOverrideT
 		opt(query)
 	}
 	_q.withChannelOverrideTemplates = query
+	return _q
+}
+
+// WithPromptVersions tells the query-builder to eager-load the nodes that are connected to
+// the "prompt_versions" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithPromptVersions(opts ...func(*PromptVersionQuery)) *UserQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPromptVersions = query
+	return _q
+}
+
+// WithAgents tells the query-builder to eager-load the nodes that are connected to
+// the "agents" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithAgents(opts ...func(*AgentQuery)) *UserQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAgents = query
+	return _q
+}
+
+// WithTools tells the query-builder to eager-load the nodes that are connected to
+// the "tools" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithTools(opts ...func(*ToolQuery)) *UserQuery {
+	query := (&ToolClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTools = query
+	return _q
+}
+
+// WithSkills tells the query-builder to eager-load the nodes that are connected to
+// the "skills" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithSkills(opts ...func(*SkillQuery)) *UserQuery {
+	query := (&SkillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withSkills = query
 	return _q
 }
 
@@ -567,11 +715,15 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [6]bool{
+		loadedTypes = [10]bool{
 			_q.withProjects != nil,
 			_q.withAPIKeys != nil,
 			_q.withRoles != nil,
 			_q.withChannelOverrideTemplates != nil,
+			_q.withPromptVersions != nil,
+			_q.withAgents != nil,
+			_q.withTools != nil,
+			_q.withSkills != nil,
 			_q.withProjectUsers != nil,
 			_q.withUserRoles != nil,
 		}
@@ -627,6 +779,34 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			return nil, err
 		}
 	}
+	if query := _q.withPromptVersions; query != nil {
+		if err := _q.loadPromptVersions(ctx, query, nodes,
+			func(n *User) { n.Edges.PromptVersions = []*PromptVersion{} },
+			func(n *User, e *PromptVersion) { n.Edges.PromptVersions = append(n.Edges.PromptVersions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAgents; query != nil {
+		if err := _q.loadAgents(ctx, query, nodes,
+			func(n *User) { n.Edges.Agents = []*Agent{} },
+			func(n *User, e *Agent) { n.Edges.Agents = append(n.Edges.Agents, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withTools; query != nil {
+		if err := _q.loadTools(ctx, query, nodes,
+			func(n *User) { n.Edges.Tools = []*Tool{} },
+			func(n *User, e *Tool) { n.Edges.Tools = append(n.Edges.Tools, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withSkills; query != nil {
+		if err := _q.loadSkills(ctx, query, nodes,
+			func(n *User) { n.Edges.Skills = []*Skill{} },
+			func(n *User, e *Skill) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withProjectUsers; query != nil {
 		if err := _q.loadProjectUsers(ctx, query, nodes,
 			func(n *User) { n.Edges.ProjectUsers = []*UserProject{} },
@@ -666,6 +846,34 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadChannelOverrideTemplates(ctx, query, nodes,
 			func(n *User) { n.appendNamedChannelOverrideTemplates(name) },
 			func(n *User, e *ChannelOverrideTemplate) { n.appendNamedChannelOverrideTemplates(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedPromptVersions {
+		if err := _q.loadPromptVersions(ctx, query, nodes,
+			func(n *User) { n.appendNamedPromptVersions(name) },
+			func(n *User, e *PromptVersion) { n.appendNamedPromptVersions(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedAgents {
+		if err := _q.loadAgents(ctx, query, nodes,
+			func(n *User) { n.appendNamedAgents(name) },
+			func(n *User, e *Agent) { n.appendNamedAgents(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedTools {
+		if err := _q.loadTools(ctx, query, nodes,
+			func(n *User) { n.appendNamedTools(name) },
+			func(n *User, e *Tool) { n.appendNamedTools(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedSkills {
+		if err := _q.loadSkills(ctx, query, nodes,
+			func(n *User) { n.appendNamedSkills(name) },
+			func(n *User, e *Skill) { n.appendNamedSkills(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -868,6 +1076,135 @@ func (_q *UserQuery) loadChannelOverrideTemplates(ctx context.Context, query *Ch
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadPromptVersions(ctx context.Context, query *PromptVersionQuery, nodes []*User, init func(*User), assign func(*User, *PromptVersion)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(promptversion.FieldCreatedByUserID)
+	}
+	query.Where(predicate.PromptVersion(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.PromptVersionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CreatedByUserID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "created_by_user_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "created_by_user_id" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadAgents(ctx context.Context, query *AgentQuery, nodes []*User, init func(*User), assign func(*User, *Agent)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(agent.FieldCreatedByUserID)
+	}
+	query.Where(predicate.Agent(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.AgentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CreatedByUserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "created_by_user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadTools(ctx context.Context, query *ToolQuery, nodes []*User, init func(*User), assign func(*User, *Tool)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(tool.FieldCreatedByUserID)
+	}
+	query.Where(predicate.Tool(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ToolsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CreatedByUserID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "created_by_user_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "created_by_user_id" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadSkills(ctx context.Context, query *SkillQuery, nodes []*User, init func(*User), assign func(*User, *Skill)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(skill.FieldCreatedByUserID)
+	}
+	query.Where(predicate.Skill(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.SkillsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CreatedByUserID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "created_by_user_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "created_by_user_id" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -1080,6 +1417,62 @@ func (_q *UserQuery) WithNamedChannelOverrideTemplates(name string, opts ...func
 		_q.withNamedChannelOverrideTemplates = make(map[string]*ChannelOverrideTemplateQuery)
 	}
 	_q.withNamedChannelOverrideTemplates[name] = query
+	return _q
+}
+
+// WithNamedPromptVersions tells the query-builder to eager-load the nodes that are connected to the "prompt_versions"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNamedPromptVersions(name string, opts ...func(*PromptVersionQuery)) *UserQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedPromptVersions == nil {
+		_q.withNamedPromptVersions = make(map[string]*PromptVersionQuery)
+	}
+	_q.withNamedPromptVersions[name] = query
+	return _q
+}
+
+// WithNamedAgents tells the query-builder to eager-load the nodes that are connected to the "agents"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNamedAgents(name string, opts ...func(*AgentQuery)) *UserQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedAgents == nil {
+		_q.withNamedAgents = make(map[string]*AgentQuery)
+	}
+	_q.withNamedAgents[name] = query
+	return _q
+}
+
+// WithNamedTools tells the query-builder to eager-load the nodes that are connected to the "tools"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNamedTools(name string, opts ...func(*ToolQuery)) *UserQuery {
+	query := (&ToolClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedTools == nil {
+		_q.withNamedTools = make(map[string]*ToolQuery)
+	}
+	_q.withNamedTools[name] = query
+	return _q
+}
+
+// WithNamedSkills tells the query-builder to eager-load the nodes that are connected to the "skills"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNamedSkills(name string, opts ...func(*SkillQuery)) *UserQuery {
+	query := (&SkillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedSkills == nil {
+		_q.withNamedSkills = make(map[string]*SkillQuery)
+	}
+	_q.withNamedSkills[name] = query
 	return _q
 }
 

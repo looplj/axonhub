@@ -53,23 +53,41 @@ type ProjectEdges struct {
 	Traces []*Trace `json:"traces,omitempty"`
 	// Prompts holds the value of the prompts edge.
 	Prompts []*Prompt `json:"prompts,omitempty"`
+	// PromptVersions holds the value of the prompt_versions edge.
+	PromptVersions []*PromptVersion `json:"prompt_versions,omitempty"`
+	// Agents holds the value of the agents edge.
+	Agents []*Agent `json:"agents,omitempty"`
+	// Tools holds the value of the tools edge.
+	Tools []*Tool `json:"tools,omitempty"`
+	// Skills holds the value of the skills edge.
+	Skills []*Skill `json:"skills,omitempty"`
+	// AgentToolBindings holds the value of the agent_tool_bindings edge.
+	AgentToolBindings []*AgentTool `json:"agent_tool_bindings,omitempty"`
+	// AgentSkillBindings holds the value of the agent_skill_bindings edge.
+	AgentSkillBindings []*AgentSkill `json:"agent_skill_bindings,omitempty"`
 	// ProjectUsers holds the value of the project_users edge.
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [9]bool
+	loadedTypes [15]bool
 	// totalCount holds the count of the edges above.
-	totalCount [9]map[string]int
+	totalCount [15]map[string]int
 
-	namedUsers        map[string][]*User
-	namedRoles        map[string][]*Role
-	namedAPIKeys      map[string][]*APIKey
-	namedRequests     map[string][]*Request
-	namedUsageLogs    map[string][]*UsageLog
-	namedThreads      map[string][]*Thread
-	namedTraces       map[string][]*Trace
-	namedPrompts      map[string][]*Prompt
-	namedProjectUsers map[string][]*UserProject
+	namedUsers              map[string][]*User
+	namedRoles              map[string][]*Role
+	namedAPIKeys            map[string][]*APIKey
+	namedRequests           map[string][]*Request
+	namedUsageLogs          map[string][]*UsageLog
+	namedThreads            map[string][]*Thread
+	namedTraces             map[string][]*Trace
+	namedPrompts            map[string][]*Prompt
+	namedPromptVersions     map[string][]*PromptVersion
+	namedAgents             map[string][]*Agent
+	namedTools              map[string][]*Tool
+	namedSkills             map[string][]*Skill
+	namedAgentToolBindings  map[string][]*AgentTool
+	namedAgentSkillBindings map[string][]*AgentSkill
+	namedProjectUsers       map[string][]*UserProject
 }
 
 // UsersOrErr returns the Users value or an error if the edge
@@ -144,10 +162,64 @@ func (e ProjectEdges) PromptsOrErr() ([]*Prompt, error) {
 	return nil, &NotLoadedError{edge: "prompts"}
 }
 
+// PromptVersionsOrErr returns the PromptVersions value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) PromptVersionsOrErr() ([]*PromptVersion, error) {
+	if e.loadedTypes[8] {
+		return e.PromptVersions, nil
+	}
+	return nil, &NotLoadedError{edge: "prompt_versions"}
+}
+
+// AgentsOrErr returns the Agents value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) AgentsOrErr() ([]*Agent, error) {
+	if e.loadedTypes[9] {
+		return e.Agents, nil
+	}
+	return nil, &NotLoadedError{edge: "agents"}
+}
+
+// ToolsOrErr returns the Tools value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) ToolsOrErr() ([]*Tool, error) {
+	if e.loadedTypes[10] {
+		return e.Tools, nil
+	}
+	return nil, &NotLoadedError{edge: "tools"}
+}
+
+// SkillsOrErr returns the Skills value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) SkillsOrErr() ([]*Skill, error) {
+	if e.loadedTypes[11] {
+		return e.Skills, nil
+	}
+	return nil, &NotLoadedError{edge: "skills"}
+}
+
+// AgentToolBindingsOrErr returns the AgentToolBindings value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) AgentToolBindingsOrErr() ([]*AgentTool, error) {
+	if e.loadedTypes[12] {
+		return e.AgentToolBindings, nil
+	}
+	return nil, &NotLoadedError{edge: "agent_tool_bindings"}
+}
+
+// AgentSkillBindingsOrErr returns the AgentSkillBindings value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) AgentSkillBindingsOrErr() ([]*AgentSkill, error) {
+	if e.loadedTypes[13] {
+		return e.AgentSkillBindings, nil
+	}
+	return nil, &NotLoadedError{edge: "agent_skill_bindings"}
+}
+
 // ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) ProjectUsersOrErr() ([]*UserProject, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[14] {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
@@ -272,6 +344,36 @@ func (_m *Project) QueryTraces() *TraceQuery {
 // QueryPrompts queries the "prompts" edge of the Project entity.
 func (_m *Project) QueryPrompts() *PromptQuery {
 	return NewProjectClient(_m.config).QueryPrompts(_m)
+}
+
+// QueryPromptVersions queries the "prompt_versions" edge of the Project entity.
+func (_m *Project) QueryPromptVersions() *PromptVersionQuery {
+	return NewProjectClient(_m.config).QueryPromptVersions(_m)
+}
+
+// QueryAgents queries the "agents" edge of the Project entity.
+func (_m *Project) QueryAgents() *AgentQuery {
+	return NewProjectClient(_m.config).QueryAgents(_m)
+}
+
+// QueryTools queries the "tools" edge of the Project entity.
+func (_m *Project) QueryTools() *ToolQuery {
+	return NewProjectClient(_m.config).QueryTools(_m)
+}
+
+// QuerySkills queries the "skills" edge of the Project entity.
+func (_m *Project) QuerySkills() *SkillQuery {
+	return NewProjectClient(_m.config).QuerySkills(_m)
+}
+
+// QueryAgentToolBindings queries the "agent_tool_bindings" edge of the Project entity.
+func (_m *Project) QueryAgentToolBindings() *AgentToolQuery {
+	return NewProjectClient(_m.config).QueryAgentToolBindings(_m)
+}
+
+// QueryAgentSkillBindings queries the "agent_skill_bindings" edge of the Project entity.
+func (_m *Project) QueryAgentSkillBindings() *AgentSkillQuery {
+	return NewProjectClient(_m.config).QueryAgentSkillBindings(_m)
 }
 
 // QueryProjectUsers queries the "project_users" edge of the Project entity.
@@ -512,6 +614,150 @@ func (_m *Project) appendNamedPrompts(name string, edges ...*Prompt) {
 		_m.Edges.namedPrompts[name] = []*Prompt{}
 	} else {
 		_m.Edges.namedPrompts[name] = append(_m.Edges.namedPrompts[name], edges...)
+	}
+}
+
+// NamedPromptVersions returns the PromptVersions named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedPromptVersions(name string) ([]*PromptVersion, error) {
+	if _m.Edges.namedPromptVersions == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedPromptVersions[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedPromptVersions(name string, edges ...*PromptVersion) {
+	if _m.Edges.namedPromptVersions == nil {
+		_m.Edges.namedPromptVersions = make(map[string][]*PromptVersion)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedPromptVersions[name] = []*PromptVersion{}
+	} else {
+		_m.Edges.namedPromptVersions[name] = append(_m.Edges.namedPromptVersions[name], edges...)
+	}
+}
+
+// NamedAgents returns the Agents named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedAgents(name string) ([]*Agent, error) {
+	if _m.Edges.namedAgents == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedAgents[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedAgents(name string, edges ...*Agent) {
+	if _m.Edges.namedAgents == nil {
+		_m.Edges.namedAgents = make(map[string][]*Agent)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedAgents[name] = []*Agent{}
+	} else {
+		_m.Edges.namedAgents[name] = append(_m.Edges.namedAgents[name], edges...)
+	}
+}
+
+// NamedTools returns the Tools named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedTools(name string) ([]*Tool, error) {
+	if _m.Edges.namedTools == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedTools[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedTools(name string, edges ...*Tool) {
+	if _m.Edges.namedTools == nil {
+		_m.Edges.namedTools = make(map[string][]*Tool)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedTools[name] = []*Tool{}
+	} else {
+		_m.Edges.namedTools[name] = append(_m.Edges.namedTools[name], edges...)
+	}
+}
+
+// NamedSkills returns the Skills named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedSkills(name string) ([]*Skill, error) {
+	if _m.Edges.namedSkills == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedSkills[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedSkills(name string, edges ...*Skill) {
+	if _m.Edges.namedSkills == nil {
+		_m.Edges.namedSkills = make(map[string][]*Skill)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedSkills[name] = []*Skill{}
+	} else {
+		_m.Edges.namedSkills[name] = append(_m.Edges.namedSkills[name], edges...)
+	}
+}
+
+// NamedAgentToolBindings returns the AgentToolBindings named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedAgentToolBindings(name string) ([]*AgentTool, error) {
+	if _m.Edges.namedAgentToolBindings == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedAgentToolBindings[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedAgentToolBindings(name string, edges ...*AgentTool) {
+	if _m.Edges.namedAgentToolBindings == nil {
+		_m.Edges.namedAgentToolBindings = make(map[string][]*AgentTool)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedAgentToolBindings[name] = []*AgentTool{}
+	} else {
+		_m.Edges.namedAgentToolBindings[name] = append(_m.Edges.namedAgentToolBindings[name], edges...)
+	}
+}
+
+// NamedAgentSkillBindings returns the AgentSkillBindings named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedAgentSkillBindings(name string) ([]*AgentSkill, error) {
+	if _m.Edges.namedAgentSkillBindings == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedAgentSkillBindings[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedAgentSkillBindings(name string, edges ...*AgentSkill) {
+	if _m.Edges.namedAgentSkillBindings == nil {
+		_m.Edges.namedAgentSkillBindings = make(map[string][]*AgentSkill)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedAgentSkillBindings[name] = []*AgentSkill{}
+	} else {
+		_m.Edges.namedAgentSkillBindings[name] = append(_m.Edges.namedAgentSkillBindings[name], edges...)
 	}
 }
 

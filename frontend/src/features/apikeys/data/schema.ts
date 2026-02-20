@@ -3,7 +3,7 @@ import { pageInfoSchema } from '@/gql/pagination';
 import { userSchema } from '@/features/users/data/schema';
 
 // API Key Type
-export const apiKeyTypeSchema = z.enum(['user', 'service_account']);
+export const apiKeyTypeSchema = z.enum(['user', 'service_account', 'agent']);
 export type ApiKeyType = z.infer<typeof apiKeyTypeSchema>;
 
 // API Key Status

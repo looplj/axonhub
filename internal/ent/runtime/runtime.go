@@ -6,6 +6,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmemory"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agentthread"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
@@ -15,13 +22,16 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/schema"
+	"github.com/looplj/axonhub/internal/ent/skill"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -84,6 +94,278 @@ func init() {
 	apikeyDescProfiles := apikeyFields[7].Descriptor()
 	// apikey.DefaultProfiles holds the default value on creation for the profiles field.
 	apikey.DefaultProfiles = apikeyDescProfiles.Default.(*objects.APIKeyProfiles)
+	agentMixin := schema.Agent{}.Mixin()
+	agent.Policy = privacy.NewPolicies(schema.Agent{})
+	agent.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := agent.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	agentMixinHooks1 := agentMixin[1].Hooks()
+
+	agent.Hooks[1] = agentMixinHooks1[0]
+	agentMixinInters1 := agentMixin[1].Interceptors()
+	agent.Interceptors[0] = agentMixinInters1[0]
+	agentMixinFields0 := agentMixin[0].Fields()
+	_ = agentMixinFields0
+	agentMixinFields1 := agentMixin[1].Fields()
+	_ = agentMixinFields1
+	agentFields := schema.Agent{}.Fields()
+	_ = agentFields
+	// agentDescCreatedAt is the schema descriptor for created_at field.
+	agentDescCreatedAt := agentMixinFields0[0].Descriptor()
+	// agent.DefaultCreatedAt holds the default value on creation for the created_at field.
+	agent.DefaultCreatedAt = agentDescCreatedAt.Default.(func() time.Time)
+	// agentDescUpdatedAt is the schema descriptor for updated_at field.
+	agentDescUpdatedAt := agentMixinFields0[1].Descriptor()
+	// agent.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	agent.DefaultUpdatedAt = agentDescUpdatedAt.Default.(func() time.Time)
+	// agent.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	agent.UpdateDefaultUpdatedAt = agentDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// agentDescDeletedAt is the schema descriptor for deleted_at field.
+	agentDescDeletedAt := agentMixinFields1[0].Descriptor()
+	// agent.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	agent.DefaultDeletedAt = agentDescDeletedAt.Default.(int)
+	// agentDescDescription is the schema descriptor for description field.
+	agentDescDescription := agentFields[3].Descriptor()
+	// agent.DefaultDescription holds the default value on creation for the description field.
+	agent.DefaultDescription = agentDescDescription.Default.(string)
+	// agentDescModel is the schema descriptor for model field.
+	agentDescModel := agentFields[6].Descriptor()
+	// agent.DefaultModel holds the default value on creation for the model field.
+	agent.DefaultModel = agentDescModel.Default.(string)
+	// agentDescAgentBuiltinTools is the schema descriptor for agent_builtin_tools field.
+	agentDescAgentBuiltinTools := agentFields[7].Descriptor()
+	// agent.DefaultAgentBuiltinTools holds the default value on creation for the agent_builtin_tools field.
+	agent.DefaultAgentBuiltinTools = agentDescAgentBuiltinTools.Default.([]objects.AgentBuiltinTool)
+	// agentDescSkillsPolicy is the schema descriptor for skills_policy field.
+	agentDescSkillsPolicy := agentFields[8].Descriptor()
+	// agent.DefaultSkillsPolicy holds the default value on creation for the skills_policy field.
+	agent.DefaultSkillsPolicy = agentDescSkillsPolicy.Default.(objects.AgentSkillsPolicy)
+	agentinstanceMixin := schema.AgentInstance{}.Mixin()
+	agentinstance.Policy = privacy.NewPolicies(schema.AgentInstance{})
+	agentinstance.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := agentinstance.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	agentinstanceMixinHooks1 := agentinstanceMixin[1].Hooks()
+
+	agentinstance.Hooks[1] = agentinstanceMixinHooks1[0]
+	agentinstanceMixinInters1 := agentinstanceMixin[1].Interceptors()
+	agentinstance.Interceptors[0] = agentinstanceMixinInters1[0]
+	agentinstanceMixinFields0 := agentinstanceMixin[0].Fields()
+	_ = agentinstanceMixinFields0
+	agentinstanceMixinFields1 := agentinstanceMixin[1].Fields()
+	_ = agentinstanceMixinFields1
+	agentinstanceFields := schema.AgentInstance{}.Fields()
+	_ = agentinstanceFields
+	// agentinstanceDescCreatedAt is the schema descriptor for created_at field.
+	agentinstanceDescCreatedAt := agentinstanceMixinFields0[0].Descriptor()
+	// agentinstance.DefaultCreatedAt holds the default value on creation for the created_at field.
+	agentinstance.DefaultCreatedAt = agentinstanceDescCreatedAt.Default.(func() time.Time)
+	// agentinstanceDescUpdatedAt is the schema descriptor for updated_at field.
+	agentinstanceDescUpdatedAt := agentinstanceMixinFields0[1].Descriptor()
+	// agentinstance.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	agentinstance.DefaultUpdatedAt = agentinstanceDescUpdatedAt.Default.(func() time.Time)
+	// agentinstance.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	agentinstance.UpdateDefaultUpdatedAt = agentinstanceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// agentinstanceDescDeletedAt is the schema descriptor for deleted_at field.
+	agentinstanceDescDeletedAt := agentinstanceMixinFields1[0].Descriptor()
+	// agentinstance.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	agentinstance.DefaultDeletedAt = agentinstanceDescDeletedAt.Default.(int)
+	// agentinstanceDescName is the schema descriptor for name field.
+	agentinstanceDescName := agentinstanceFields[3].Descriptor()
+	// agentinstance.DefaultName holds the default value on creation for the name field.
+	agentinstance.DefaultName = agentinstanceDescName.Default.(string)
+	// agentinstanceDescPlatform is the schema descriptor for platform field.
+	agentinstanceDescPlatform := agentinstanceFields[4].Descriptor()
+	// agentinstance.DefaultPlatform holds the default value on creation for the platform field.
+	agentinstance.DefaultPlatform = agentinstanceDescPlatform.Default.(string)
+	// agentinstanceDescVersion is the schema descriptor for version field.
+	agentinstanceDescVersion := agentinstanceFields[5].Descriptor()
+	// agentinstance.DefaultVersion holds the default value on creation for the version field.
+	agentinstance.DefaultVersion = agentinstanceDescVersion.Default.(string)
+	agentmemoryMixin := schema.AgentMemory{}.Mixin()
+	agentmemory.Policy = privacy.NewPolicies(schema.AgentMemory{})
+	agentmemory.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := agentmemory.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	agentmemoryMixinHooks1 := agentmemoryMixin[1].Hooks()
+
+	agentmemory.Hooks[1] = agentmemoryMixinHooks1[0]
+	agentmemoryMixinInters1 := agentmemoryMixin[1].Interceptors()
+	agentmemory.Interceptors[0] = agentmemoryMixinInters1[0]
+	agentmemoryMixinFields0 := agentmemoryMixin[0].Fields()
+	_ = agentmemoryMixinFields0
+	agentmemoryMixinFields1 := agentmemoryMixin[1].Fields()
+	_ = agentmemoryMixinFields1
+	agentmemoryFields := schema.AgentMemory{}.Fields()
+	_ = agentmemoryFields
+	// agentmemoryDescCreatedAt is the schema descriptor for created_at field.
+	agentmemoryDescCreatedAt := agentmemoryMixinFields0[0].Descriptor()
+	// agentmemory.DefaultCreatedAt holds the default value on creation for the created_at field.
+	agentmemory.DefaultCreatedAt = agentmemoryDescCreatedAt.Default.(func() time.Time)
+	// agentmemoryDescUpdatedAt is the schema descriptor for updated_at field.
+	agentmemoryDescUpdatedAt := agentmemoryMixinFields0[1].Descriptor()
+	// agentmemory.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	agentmemory.DefaultUpdatedAt = agentmemoryDescUpdatedAt.Default.(func() time.Time)
+	// agentmemory.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	agentmemory.UpdateDefaultUpdatedAt = agentmemoryDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// agentmemoryDescDeletedAt is the schema descriptor for deleted_at field.
+	agentmemoryDescDeletedAt := agentmemoryMixinFields1[0].Descriptor()
+	// agentmemory.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	agentmemory.DefaultDeletedAt = agentmemoryDescDeletedAt.Default.(int)
+	// agentmemoryDescSource is the schema descriptor for source field.
+	agentmemoryDescSource := agentmemoryFields[4].Descriptor()
+	// agentmemory.DefaultSource holds the default value on creation for the source field.
+	agentmemory.DefaultSource = agentmemoryDescSource.Default.(string)
+	agentmessageMixin := schema.AgentMessage{}.Mixin()
+	agentmessage.Policy = privacy.NewPolicies(schema.AgentMessage{})
+	agentmessage.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := agentmessage.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	agentmessageMixinHooks1 := agentmessageMixin[1].Hooks()
+
+	agentmessage.Hooks[1] = agentmessageMixinHooks1[0]
+	agentmessageMixinInters1 := agentmessageMixin[1].Interceptors()
+	agentmessage.Interceptors[0] = agentmessageMixinInters1[0]
+	agentmessageMixinFields0 := agentmessageMixin[0].Fields()
+	_ = agentmessageMixinFields0
+	agentmessageMixinFields1 := agentmessageMixin[1].Fields()
+	_ = agentmessageMixinFields1
+	agentmessageFields := schema.AgentMessage{}.Fields()
+	_ = agentmessageFields
+	// agentmessageDescCreatedAt is the schema descriptor for created_at field.
+	agentmessageDescCreatedAt := agentmessageMixinFields0[0].Descriptor()
+	// agentmessage.DefaultCreatedAt holds the default value on creation for the created_at field.
+	agentmessage.DefaultCreatedAt = agentmessageDescCreatedAt.Default.(func() time.Time)
+	// agentmessageDescUpdatedAt is the schema descriptor for updated_at field.
+	agentmessageDescUpdatedAt := agentmessageMixinFields0[1].Descriptor()
+	// agentmessage.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	agentmessage.DefaultUpdatedAt = agentmessageDescUpdatedAt.Default.(func() time.Time)
+	// agentmessage.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	agentmessage.UpdateDefaultUpdatedAt = agentmessageDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// agentmessageDescDeletedAt is the schema descriptor for deleted_at field.
+	agentmessageDescDeletedAt := agentmessageMixinFields1[0].Descriptor()
+	// agentmessage.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	agentmessage.DefaultDeletedAt = agentmessageDescDeletedAt.Default.(int)
+	// agentmessageDescContent is the schema descriptor for content field.
+	agentmessageDescContent := agentmessageFields[6].Descriptor()
+	// agentmessage.DefaultContent holds the default value on creation for the content field.
+	agentmessage.DefaultContent = agentmessageDescContent.Default.(objects.JSONRawMessage)
+	agentskillMixin := schema.AgentSkill{}.Mixin()
+	agentskill.Policy = privacy.NewPolicies(schema.AgentSkill{})
+	agentskill.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := agentskill.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	agentskillMixinFields0 := agentskillMixin[0].Fields()
+	_ = agentskillMixinFields0
+	agentskillFields := schema.AgentSkill{}.Fields()
+	_ = agentskillFields
+	// agentskillDescCreatedAt is the schema descriptor for created_at field.
+	agentskillDescCreatedAt := agentskillMixinFields0[0].Descriptor()
+	// agentskill.DefaultCreatedAt holds the default value on creation for the created_at field.
+	agentskill.DefaultCreatedAt = agentskillDescCreatedAt.Default.(func() time.Time)
+	// agentskillDescUpdatedAt is the schema descriptor for updated_at field.
+	agentskillDescUpdatedAt := agentskillMixinFields0[1].Descriptor()
+	// agentskill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	agentskill.DefaultUpdatedAt = agentskillDescUpdatedAt.Default.(func() time.Time)
+	// agentskill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	agentskill.UpdateDefaultUpdatedAt = agentskillDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// agentskillDescEnabled is the schema descriptor for enabled field.
+	agentskillDescEnabled := agentskillFields[3].Descriptor()
+	// agentskill.DefaultEnabled holds the default value on creation for the enabled field.
+	agentskill.DefaultEnabled = agentskillDescEnabled.Default.(bool)
+	// agentskillDescOrder is the schema descriptor for order field.
+	agentskillDescOrder := agentskillFields[4].Descriptor()
+	// agentskill.DefaultOrder holds the default value on creation for the order field.
+	agentskill.DefaultOrder = agentskillDescOrder.Default.(int)
+	// agentskillDescArgs is the schema descriptor for args field.
+	agentskillDescArgs := agentskillFields[5].Descriptor()
+	// agentskill.DefaultArgs holds the default value on creation for the args field.
+	agentskill.DefaultArgs = agentskillDescArgs.Default.(string)
+	agentthreadMixin := schema.AgentThread{}.Mixin()
+	agentthread.Policy = privacy.NewPolicies(schema.AgentThread{})
+	agentthread.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := agentthread.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	agentthreadMixinFields0 := agentthreadMixin[0].Fields()
+	_ = agentthreadMixinFields0
+	agentthreadFields := schema.AgentThread{}.Fields()
+	_ = agentthreadFields
+	// agentthreadDescCreatedAt is the schema descriptor for created_at field.
+	agentthreadDescCreatedAt := agentthreadMixinFields0[0].Descriptor()
+	// agentthread.DefaultCreatedAt holds the default value on creation for the created_at field.
+	agentthread.DefaultCreatedAt = agentthreadDescCreatedAt.Default.(func() time.Time)
+	// agentthreadDescUpdatedAt is the schema descriptor for updated_at field.
+	agentthreadDescUpdatedAt := agentthreadMixinFields0[1].Descriptor()
+	// agentthread.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	agentthread.DefaultUpdatedAt = agentthreadDescUpdatedAt.Default.(func() time.Time)
+	// agentthread.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	agentthread.UpdateDefaultUpdatedAt = agentthreadDescUpdatedAt.UpdateDefault.(func() time.Time)
+	agenttoolMixin := schema.AgentTool{}.Mixin()
+	agenttool.Policy = privacy.NewPolicies(schema.AgentTool{})
+	agenttool.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := agenttool.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	agenttoolMixinFields0 := agenttoolMixin[0].Fields()
+	_ = agenttoolMixinFields0
+	agenttoolFields := schema.AgentTool{}.Fields()
+	_ = agenttoolFields
+	// agenttoolDescCreatedAt is the schema descriptor for created_at field.
+	agenttoolDescCreatedAt := agenttoolMixinFields0[0].Descriptor()
+	// agenttool.DefaultCreatedAt holds the default value on creation for the created_at field.
+	agenttool.DefaultCreatedAt = agenttoolDescCreatedAt.Default.(func() time.Time)
+	// agenttoolDescUpdatedAt is the schema descriptor for updated_at field.
+	agenttoolDescUpdatedAt := agenttoolMixinFields0[1].Descriptor()
+	// agenttool.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	agenttool.DefaultUpdatedAt = agenttoolDescUpdatedAt.Default.(func() time.Time)
+	// agenttool.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	agenttool.UpdateDefaultUpdatedAt = agenttoolDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// agenttoolDescEnabled is the schema descriptor for enabled field.
+	agenttoolDescEnabled := agenttoolFields[3].Descriptor()
+	// agenttool.DefaultEnabled holds the default value on creation for the enabled field.
+	agenttool.DefaultEnabled = agenttoolDescEnabled.Default.(bool)
+	// agenttoolDescOrder is the schema descriptor for order field.
+	agenttoolDescOrder := agenttoolFields[4].Descriptor()
+	// agenttool.DefaultOrder holds the default value on creation for the order field.
+	agenttool.DefaultOrder = agenttoolDescOrder.Default.(int)
+	// agenttoolDescConfig is the schema descriptor for config field.
+	agenttoolDescConfig := agenttoolFields[5].Descriptor()
+	// agenttool.DefaultConfig holds the default value on creation for the config field.
+	agenttool.DefaultConfig = agenttoolDescConfig.Default.(objects.JSONRawMessage)
 	channelMixin := schema.Channel{}.Mixin()
 	channel.Policy = privacy.NewPolicies(schema.Channel{})
 	channel.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -414,13 +696,52 @@ func init() {
 	// prompt.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	prompt.DefaultDeletedAt = promptDescDeletedAt.Default.(int)
 	// promptDescDescription is the schema descriptor for description field.
-	promptDescDescription := promptFields[2].Descriptor()
+	promptDescDescription := promptFields[3].Descriptor()
 	// prompt.DefaultDescription holds the default value on creation for the description field.
 	prompt.DefaultDescription = promptDescDescription.Default.(string)
 	// promptDescOrder is the schema descriptor for order field.
-	promptDescOrder := promptFields[6].Descriptor()
+	promptDescOrder := promptFields[7].Descriptor()
 	// prompt.DefaultOrder holds the default value on creation for the order field.
 	prompt.DefaultOrder = promptDescOrder.Default.(int)
+	promptversionMixin := schema.PromptVersion{}.Mixin()
+	promptversion.Policy = privacy.NewPolicies(schema.PromptVersion{})
+	promptversion.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := promptversion.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	promptversionMixinHooks1 := promptversionMixin[1].Hooks()
+
+	promptversion.Hooks[1] = promptversionMixinHooks1[0]
+	promptversionMixinInters1 := promptversionMixin[1].Interceptors()
+	promptversion.Interceptors[0] = promptversionMixinInters1[0]
+	promptversionMixinFields0 := promptversionMixin[0].Fields()
+	_ = promptversionMixinFields0
+	promptversionMixinFields1 := promptversionMixin[1].Fields()
+	_ = promptversionMixinFields1
+	promptversionFields := schema.PromptVersion{}.Fields()
+	_ = promptversionFields
+	// promptversionDescCreatedAt is the schema descriptor for created_at field.
+	promptversionDescCreatedAt := promptversionMixinFields0[0].Descriptor()
+	// promptversion.DefaultCreatedAt holds the default value on creation for the created_at field.
+	promptversion.DefaultCreatedAt = promptversionDescCreatedAt.Default.(func() time.Time)
+	// promptversionDescUpdatedAt is the schema descriptor for updated_at field.
+	promptversionDescUpdatedAt := promptversionMixinFields0[1].Descriptor()
+	// promptversion.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	promptversion.DefaultUpdatedAt = promptversionDescUpdatedAt.Default.(func() time.Time)
+	// promptversion.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	promptversion.UpdateDefaultUpdatedAt = promptversionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// promptversionDescDeletedAt is the schema descriptor for deleted_at field.
+	promptversionDescDeletedAt := promptversionMixinFields1[0].Descriptor()
+	// promptversion.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	promptversion.DefaultDeletedAt = promptversionDescDeletedAt.Default.(int)
+	// promptversionDescChangeLog is the schema descriptor for change_log field.
+	promptversionDescChangeLog := promptversionFields[5].Descriptor()
+	// promptversion.DefaultChangeLog holds the default value on creation for the change_log field.
+	promptversion.DefaultChangeLog = promptversionDescChangeLog.Default.(string)
 	providerquotastatusMixin := schema.ProviderQuotaStatus{}.Mixin()
 	providerquotastatusMixinHooks1 := providerquotastatusMixin[1].Hooks()
 	providerquotastatus.Hooks[0] = providerquotastatusMixinHooks1[0]
@@ -560,6 +881,49 @@ func init() {
 	roleDescScopes := roleFields[3].Descriptor()
 	// role.DefaultScopes holds the default value on creation for the scopes field.
 	role.DefaultScopes = roleDescScopes.Default.([]string)
+	skillMixin := schema.Skill{}.Mixin()
+	skill.Policy = privacy.NewPolicies(schema.Skill{})
+	skill.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := skill.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	skillMixinHooks1 := skillMixin[1].Hooks()
+
+	skill.Hooks[1] = skillMixinHooks1[0]
+	skillMixinInters1 := skillMixin[1].Interceptors()
+	skill.Interceptors[0] = skillMixinInters1[0]
+	skillMixinFields0 := skillMixin[0].Fields()
+	_ = skillMixinFields0
+	skillMixinFields1 := skillMixin[1].Fields()
+	_ = skillMixinFields1
+	skillFields := schema.Skill{}.Fields()
+	_ = skillFields
+	// skillDescCreatedAt is the schema descriptor for created_at field.
+	skillDescCreatedAt := skillMixinFields0[0].Descriptor()
+	// skill.DefaultCreatedAt holds the default value on creation for the created_at field.
+	skill.DefaultCreatedAt = skillDescCreatedAt.Default.(func() time.Time)
+	// skillDescUpdatedAt is the schema descriptor for updated_at field.
+	skillDescUpdatedAt := skillMixinFields0[1].Descriptor()
+	// skill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	skill.DefaultUpdatedAt = skillDescUpdatedAt.Default.(func() time.Time)
+	// skill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	skill.UpdateDefaultUpdatedAt = skillDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// skillDescDeletedAt is the schema descriptor for deleted_at field.
+	skillDescDeletedAt := skillMixinFields1[0].Descriptor()
+	// skill.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	skill.DefaultDeletedAt = skillDescDeletedAt.Default.(int)
+	// skillDescDescription is the schema descriptor for description field.
+	skillDescDescription := skillFields[2].Descriptor()
+	// skill.DefaultDescription holds the default value on creation for the description field.
+	skill.DefaultDescription = skillDescDescription.Default.(string)
+	// skillDescEntrypoint is the schema descriptor for entrypoint field.
+	skillDescEntrypoint := skillFields[5].Descriptor()
+	// skill.DefaultEntrypoint holds the default value on creation for the entrypoint field.
+	skill.DefaultEntrypoint = skillDescEntrypoint.Default.(string)
 	systemMixin := schema.System{}.Mixin()
 	system.Policy = privacy.NewPolicies(schema.System{})
 	system.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -619,6 +983,53 @@ func init() {
 	thread.DefaultUpdatedAt = threadDescUpdatedAt.Default.(func() time.Time)
 	// thread.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	thread.UpdateDefaultUpdatedAt = threadDescUpdatedAt.UpdateDefault.(func() time.Time)
+	toolMixin := schema.Tool{}.Mixin()
+	tool.Policy = privacy.NewPolicies(schema.Tool{})
+	tool.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := tool.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	toolMixinHooks1 := toolMixin[1].Hooks()
+
+	tool.Hooks[1] = toolMixinHooks1[0]
+	toolMixinInters1 := toolMixin[1].Interceptors()
+	tool.Interceptors[0] = toolMixinInters1[0]
+	toolMixinFields0 := toolMixin[0].Fields()
+	_ = toolMixinFields0
+	toolMixinFields1 := toolMixin[1].Fields()
+	_ = toolMixinFields1
+	toolFields := schema.Tool{}.Fields()
+	_ = toolFields
+	// toolDescCreatedAt is the schema descriptor for created_at field.
+	toolDescCreatedAt := toolMixinFields0[0].Descriptor()
+	// tool.DefaultCreatedAt holds the default value on creation for the created_at field.
+	tool.DefaultCreatedAt = toolDescCreatedAt.Default.(func() time.Time)
+	// toolDescUpdatedAt is the schema descriptor for updated_at field.
+	toolDescUpdatedAt := toolMixinFields0[1].Descriptor()
+	// tool.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	tool.DefaultUpdatedAt = toolDescUpdatedAt.Default.(func() time.Time)
+	// tool.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	tool.UpdateDefaultUpdatedAt = toolDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// toolDescDeletedAt is the schema descriptor for deleted_at field.
+	toolDescDeletedAt := toolMixinFields1[0].Descriptor()
+	// tool.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	tool.DefaultDeletedAt = toolDescDeletedAt.Default.(int)
+	// toolDescDescription is the schema descriptor for description field.
+	toolDescDescription := toolFields[2].Descriptor()
+	// tool.DefaultDescription holds the default value on creation for the description field.
+	tool.DefaultDescription = toolDescDescription.Default.(string)
+	// toolDescSchema is the schema descriptor for schema field.
+	toolDescSchema := toolFields[4].Descriptor()
+	// tool.DefaultSchema holds the default value on creation for the schema field.
+	tool.DefaultSchema = toolDescSchema.Default.(objects.JSONRawMessage)
+	// toolDescDefaultPolicy is the schema descriptor for default_policy field.
+	toolDescDefaultPolicy := toolFields[5].Descriptor()
+	// tool.DefaultDefaultPolicy holds the default value on creation for the default_policy field.
+	tool.DefaultDefaultPolicy = toolDescDefaultPolicy.Default.(objects.JSONRawMessage)
 	traceMixin := schema.Trace{}.Mixin()
 	trace.Policy = privacy.NewPolicies(schema.Trace{})
 	trace.Hooks[0] = func(next ent.Mutator) ent.Mutator {

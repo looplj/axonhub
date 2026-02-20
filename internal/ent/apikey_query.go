@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -30,6 +31,7 @@ type APIKeyQuery struct {
 	withUser          *UserQuery
 	withProject       *ProjectQuery
 	withRequests      *RequestQuery
+	withAgent         *AgentQuery
 	loadTotal         []func(context.Context, []*APIKey) error
 	modifiers         []func(*sql.Selector)
 	withNamedRequests map[string]*RequestQuery
@@ -128,6 +130,28 @@ func (_q *APIKeyQuery) QueryRequests() *RequestQuery {
 			sqlgraph.From(apikey.Table, apikey.FieldID, selector),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, apikey.RequestsTable, apikey.RequestsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAgent chains the current query on the "agent" edge.
+func (_q *APIKeyQuery) QueryAgent() *AgentQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(apikey.Table, apikey.FieldID, selector),
+			sqlgraph.To(agent.Table, agent.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, apikey.AgentTable, apikey.AgentColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -330,6 +354,7 @@ func (_q *APIKeyQuery) Clone() *APIKeyQuery {
 		withUser:     _q.withUser.Clone(),
 		withProject:  _q.withProject.Clone(),
 		withRequests: _q.withRequests.Clone(),
+		withAgent:    _q.withAgent.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -367,6 +392,17 @@ func (_q *APIKeyQuery) WithRequests(opts ...func(*RequestQuery)) *APIKeyQuery {
 		opt(query)
 	}
 	_q.withRequests = query
+	return _q
+}
+
+// WithAgent tells the query-builder to eager-load the nodes that are connected to
+// the "agent" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *APIKeyQuery) WithAgent(opts ...func(*AgentQuery)) *APIKeyQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAgent = query
 	return _q
 }
 
@@ -454,10 +490,11 @@ func (_q *APIKeyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*APIKe
 	var (
 		nodes       = []*APIKey{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withUser != nil,
 			_q.withProject != nil,
 			_q.withRequests != nil,
+			_q.withAgent != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -497,6 +534,12 @@ func (_q *APIKeyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*APIKe
 		if err := _q.loadRequests(ctx, query, nodes,
 			func(n *APIKey) { n.Edges.Requests = []*Request{} },
 			func(n *APIKey, e *Request) { n.Edges.Requests = append(n.Edges.Requests, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAgent; query != nil {
+		if err := _q.loadAgent(ctx, query, nodes, nil,
+			func(n *APIKey, e *Agent) { n.Edges.Agent = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -588,6 +631,33 @@ func (_q *APIKeyQuery) loadRequests(ctx context.Context, query *RequestQuery, no
 	}
 	query.Where(predicate.Request(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(apikey.RequestsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.APIKeyID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "api_key_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *APIKeyQuery) loadAgent(ctx context.Context, query *AgentQuery, nodes []*APIKey, init func(*APIKey), assign func(*APIKey, *Agent)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*APIKey)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(agent.FieldAPIKeyID)
+	}
+	query.Where(predicate.Agent(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(apikey.AgentColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

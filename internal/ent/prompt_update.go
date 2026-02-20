@@ -11,9 +11,11 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -55,6 +57,26 @@ func (_u *PromptUpdate) SetNillableDeletedAt(v *int) *PromptUpdate {
 // AddDeletedAt adds value to the "deleted_at" field.
 func (_u *PromptUpdate) AddDeletedAt(v int) *PromptUpdate {
 	_u.mutation.AddDeletedAt(v)
+	return _u
+}
+
+// SetType sets the "type" field.
+func (_u *PromptUpdate) SetType(v prompt.Type) *PromptUpdate {
+	_u.mutation.SetType(v)
+	return _u
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_u *PromptUpdate) SetNillableType(v *prompt.Type) *PromptUpdate {
+	if v != nil {
+		_u.SetType(*v)
+	}
+	return _u
+}
+
+// ClearType clears the value of the "type" field.
+func (_u *PromptUpdate) ClearType() *PromptUpdate {
+	_u.mutation.ClearType()
 	return _u
 }
 
@@ -163,6 +185,46 @@ func (_u *PromptUpdate) SetNillableSettings(v *objects.PromptSettings) *PromptUp
 	return _u
 }
 
+// SetActiveVersionID sets the "active_version_id" field.
+func (_u *PromptUpdate) SetActiveVersionID(v int) *PromptUpdate {
+	_u.mutation.SetActiveVersionID(v)
+	return _u
+}
+
+// SetNillableActiveVersionID sets the "active_version_id" field if the given value is not nil.
+func (_u *PromptUpdate) SetNillableActiveVersionID(v *int) *PromptUpdate {
+	if v != nil {
+		_u.SetActiveVersionID(*v)
+	}
+	return _u
+}
+
+// ClearActiveVersionID clears the value of the "active_version_id" field.
+func (_u *PromptUpdate) ClearActiveVersionID() *PromptUpdate {
+	_u.mutation.ClearActiveVersionID()
+	return _u
+}
+
+// SetDraftVersionID sets the "draft_version_id" field.
+func (_u *PromptUpdate) SetDraftVersionID(v int) *PromptUpdate {
+	_u.mutation.SetDraftVersionID(v)
+	return _u
+}
+
+// SetNillableDraftVersionID sets the "draft_version_id" field if the given value is not nil.
+func (_u *PromptUpdate) SetNillableDraftVersionID(v *int) *PromptUpdate {
+	if v != nil {
+		_u.SetDraftVersionID(*v)
+	}
+	return _u
+}
+
+// ClearDraftVersionID clears the value of the "draft_version_id" field.
+func (_u *PromptUpdate) ClearDraftVersionID() *PromptUpdate {
+	_u.mutation.ClearDraftVersionID()
+	return _u
+}
+
 // AddProjectIDs adds the "projects" edge to the Project entity by IDs.
 func (_u *PromptUpdate) AddProjectIDs(ids ...int) *PromptUpdate {
 	_u.mutation.AddProjectIDs(ids...)
@@ -176,6 +238,46 @@ func (_u *PromptUpdate) AddProjects(v ...*Project) *PromptUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddProjectIDs(ids...)
+}
+
+// AddVersionIDs adds the "versions" edge to the PromptVersion entity by IDs.
+func (_u *PromptUpdate) AddVersionIDs(ids ...int) *PromptUpdate {
+	_u.mutation.AddVersionIDs(ids...)
+	return _u
+}
+
+// AddVersions adds the "versions" edges to the PromptVersion entity.
+func (_u *PromptUpdate) AddVersions(v ...*PromptVersion) *PromptUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddVersionIDs(ids...)
+}
+
+// SetActiveVersion sets the "active_version" edge to the PromptVersion entity.
+func (_u *PromptUpdate) SetActiveVersion(v *PromptVersion) *PromptUpdate {
+	return _u.SetActiveVersionID(v.ID)
+}
+
+// SetDraftVersion sets the "draft_version" edge to the PromptVersion entity.
+func (_u *PromptUpdate) SetDraftVersion(v *PromptVersion) *PromptUpdate {
+	return _u.SetDraftVersionID(v.ID)
+}
+
+// AddAgentIDs adds the "agents" edge to the Agent entity by IDs.
+func (_u *PromptUpdate) AddAgentIDs(ids ...int) *PromptUpdate {
+	_u.mutation.AddAgentIDs(ids...)
+	return _u
+}
+
+// AddAgents adds the "agents" edges to the Agent entity.
+func (_u *PromptUpdate) AddAgents(v ...*Agent) *PromptUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAgentIDs(ids...)
 }
 
 // Mutation returns the PromptMutation object of the builder.
@@ -202,6 +304,60 @@ func (_u *PromptUpdate) RemoveProjects(v ...*Project) *PromptUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveProjectIDs(ids...)
+}
+
+// ClearVersions clears all "versions" edges to the PromptVersion entity.
+func (_u *PromptUpdate) ClearVersions() *PromptUpdate {
+	_u.mutation.ClearVersions()
+	return _u
+}
+
+// RemoveVersionIDs removes the "versions" edge to PromptVersion entities by IDs.
+func (_u *PromptUpdate) RemoveVersionIDs(ids ...int) *PromptUpdate {
+	_u.mutation.RemoveVersionIDs(ids...)
+	return _u
+}
+
+// RemoveVersions removes "versions" edges to PromptVersion entities.
+func (_u *PromptUpdate) RemoveVersions(v ...*PromptVersion) *PromptUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveVersionIDs(ids...)
+}
+
+// ClearActiveVersion clears the "active_version" edge to the PromptVersion entity.
+func (_u *PromptUpdate) ClearActiveVersion() *PromptUpdate {
+	_u.mutation.ClearActiveVersion()
+	return _u
+}
+
+// ClearDraftVersion clears the "draft_version" edge to the PromptVersion entity.
+func (_u *PromptUpdate) ClearDraftVersion() *PromptUpdate {
+	_u.mutation.ClearDraftVersion()
+	return _u
+}
+
+// ClearAgents clears all "agents" edges to the Agent entity.
+func (_u *PromptUpdate) ClearAgents() *PromptUpdate {
+	_u.mutation.ClearAgents()
+	return _u
+}
+
+// RemoveAgentIDs removes the "agents" edge to Agent entities by IDs.
+func (_u *PromptUpdate) RemoveAgentIDs(ids ...int) *PromptUpdate {
+	_u.mutation.RemoveAgentIDs(ids...)
+	return _u
+}
+
+// RemoveAgents removes "agents" edges to Agent entities.
+func (_u *PromptUpdate) RemoveAgents(v ...*Agent) *PromptUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAgentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -248,6 +404,11 @@ func (_u *PromptUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PromptUpdate) check() error {
+	if v, ok := _u.mutation.GetType(); ok {
+		if err := prompt.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Prompt.type": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := prompt.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Prompt.status": %w`, err)}
@@ -282,6 +443,12 @@ func (_u *PromptUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(prompt.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.GetType(); ok {
+		_spec.SetField(prompt.FieldType, field.TypeEnum, value)
+	}
+	if _u.mutation.TypeCleared() {
+		_spec.ClearField(prompt.FieldType, field.TypeEnum)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(prompt.FieldName, field.TypeString, value)
@@ -352,6 +519,154 @@ func (_u *PromptUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.VersionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.VersionsTable,
+			Columns: []string{prompt.VersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedVersionsIDs(); len(nodes) > 0 && !_u.mutation.VersionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.VersionsTable,
+			Columns: []string{prompt.VersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.VersionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.VersionsTable,
+			Columns: []string{prompt.VersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ActiveVersionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.ActiveVersionTable,
+			Columns: []string{prompt.ActiveVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ActiveVersionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.ActiveVersionTable,
+			Columns: []string{prompt.ActiveVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DraftVersionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.DraftVersionTable,
+			Columns: []string{prompt.DraftVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DraftVersionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.DraftVersionTable,
+			Columns: []string{prompt.DraftVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.AgentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.AgentsTable,
+			Columns: []string{prompt.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAgentsIDs(); len(nodes) > 0 && !_u.mutation.AgentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.AgentsTable,
+			Columns: []string{prompt.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.AgentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.AgentsTable,
+			Columns: []string{prompt.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -398,6 +713,26 @@ func (_u *PromptUpdateOne) SetNillableDeletedAt(v *int) *PromptUpdateOne {
 // AddDeletedAt adds value to the "deleted_at" field.
 func (_u *PromptUpdateOne) AddDeletedAt(v int) *PromptUpdateOne {
 	_u.mutation.AddDeletedAt(v)
+	return _u
+}
+
+// SetType sets the "type" field.
+func (_u *PromptUpdateOne) SetType(v prompt.Type) *PromptUpdateOne {
+	_u.mutation.SetType(v)
+	return _u
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_u *PromptUpdateOne) SetNillableType(v *prompt.Type) *PromptUpdateOne {
+	if v != nil {
+		_u.SetType(*v)
+	}
+	return _u
+}
+
+// ClearType clears the value of the "type" field.
+func (_u *PromptUpdateOne) ClearType() *PromptUpdateOne {
+	_u.mutation.ClearType()
 	return _u
 }
 
@@ -506,6 +841,46 @@ func (_u *PromptUpdateOne) SetNillableSettings(v *objects.PromptSettings) *Promp
 	return _u
 }
 
+// SetActiveVersionID sets the "active_version_id" field.
+func (_u *PromptUpdateOne) SetActiveVersionID(v int) *PromptUpdateOne {
+	_u.mutation.SetActiveVersionID(v)
+	return _u
+}
+
+// SetNillableActiveVersionID sets the "active_version_id" field if the given value is not nil.
+func (_u *PromptUpdateOne) SetNillableActiveVersionID(v *int) *PromptUpdateOne {
+	if v != nil {
+		_u.SetActiveVersionID(*v)
+	}
+	return _u
+}
+
+// ClearActiveVersionID clears the value of the "active_version_id" field.
+func (_u *PromptUpdateOne) ClearActiveVersionID() *PromptUpdateOne {
+	_u.mutation.ClearActiveVersionID()
+	return _u
+}
+
+// SetDraftVersionID sets the "draft_version_id" field.
+func (_u *PromptUpdateOne) SetDraftVersionID(v int) *PromptUpdateOne {
+	_u.mutation.SetDraftVersionID(v)
+	return _u
+}
+
+// SetNillableDraftVersionID sets the "draft_version_id" field if the given value is not nil.
+func (_u *PromptUpdateOne) SetNillableDraftVersionID(v *int) *PromptUpdateOne {
+	if v != nil {
+		_u.SetDraftVersionID(*v)
+	}
+	return _u
+}
+
+// ClearDraftVersionID clears the value of the "draft_version_id" field.
+func (_u *PromptUpdateOne) ClearDraftVersionID() *PromptUpdateOne {
+	_u.mutation.ClearDraftVersionID()
+	return _u
+}
+
 // AddProjectIDs adds the "projects" edge to the Project entity by IDs.
 func (_u *PromptUpdateOne) AddProjectIDs(ids ...int) *PromptUpdateOne {
 	_u.mutation.AddProjectIDs(ids...)
@@ -519,6 +894,46 @@ func (_u *PromptUpdateOne) AddProjects(v ...*Project) *PromptUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.AddProjectIDs(ids...)
+}
+
+// AddVersionIDs adds the "versions" edge to the PromptVersion entity by IDs.
+func (_u *PromptUpdateOne) AddVersionIDs(ids ...int) *PromptUpdateOne {
+	_u.mutation.AddVersionIDs(ids...)
+	return _u
+}
+
+// AddVersions adds the "versions" edges to the PromptVersion entity.
+func (_u *PromptUpdateOne) AddVersions(v ...*PromptVersion) *PromptUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddVersionIDs(ids...)
+}
+
+// SetActiveVersion sets the "active_version" edge to the PromptVersion entity.
+func (_u *PromptUpdateOne) SetActiveVersion(v *PromptVersion) *PromptUpdateOne {
+	return _u.SetActiveVersionID(v.ID)
+}
+
+// SetDraftVersion sets the "draft_version" edge to the PromptVersion entity.
+func (_u *PromptUpdateOne) SetDraftVersion(v *PromptVersion) *PromptUpdateOne {
+	return _u.SetDraftVersionID(v.ID)
+}
+
+// AddAgentIDs adds the "agents" edge to the Agent entity by IDs.
+func (_u *PromptUpdateOne) AddAgentIDs(ids ...int) *PromptUpdateOne {
+	_u.mutation.AddAgentIDs(ids...)
+	return _u
+}
+
+// AddAgents adds the "agents" edges to the Agent entity.
+func (_u *PromptUpdateOne) AddAgents(v ...*Agent) *PromptUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAgentIDs(ids...)
 }
 
 // Mutation returns the PromptMutation object of the builder.
@@ -545,6 +960,60 @@ func (_u *PromptUpdateOne) RemoveProjects(v ...*Project) *PromptUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveProjectIDs(ids...)
+}
+
+// ClearVersions clears all "versions" edges to the PromptVersion entity.
+func (_u *PromptUpdateOne) ClearVersions() *PromptUpdateOne {
+	_u.mutation.ClearVersions()
+	return _u
+}
+
+// RemoveVersionIDs removes the "versions" edge to PromptVersion entities by IDs.
+func (_u *PromptUpdateOne) RemoveVersionIDs(ids ...int) *PromptUpdateOne {
+	_u.mutation.RemoveVersionIDs(ids...)
+	return _u
+}
+
+// RemoveVersions removes "versions" edges to PromptVersion entities.
+func (_u *PromptUpdateOne) RemoveVersions(v ...*PromptVersion) *PromptUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveVersionIDs(ids...)
+}
+
+// ClearActiveVersion clears the "active_version" edge to the PromptVersion entity.
+func (_u *PromptUpdateOne) ClearActiveVersion() *PromptUpdateOne {
+	_u.mutation.ClearActiveVersion()
+	return _u
+}
+
+// ClearDraftVersion clears the "draft_version" edge to the PromptVersion entity.
+func (_u *PromptUpdateOne) ClearDraftVersion() *PromptUpdateOne {
+	_u.mutation.ClearDraftVersion()
+	return _u
+}
+
+// ClearAgents clears all "agents" edges to the Agent entity.
+func (_u *PromptUpdateOne) ClearAgents() *PromptUpdateOne {
+	_u.mutation.ClearAgents()
+	return _u
+}
+
+// RemoveAgentIDs removes the "agents" edge to Agent entities by IDs.
+func (_u *PromptUpdateOne) RemoveAgentIDs(ids ...int) *PromptUpdateOne {
+	_u.mutation.RemoveAgentIDs(ids...)
+	return _u
+}
+
+// RemoveAgents removes "agents" edges to Agent entities.
+func (_u *PromptUpdateOne) RemoveAgents(v ...*Agent) *PromptUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAgentIDs(ids...)
 }
 
 // Where appends a list predicates to the PromptUpdate builder.
@@ -604,6 +1073,11 @@ func (_u *PromptUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *PromptUpdateOne) check() error {
+	if v, ok := _u.mutation.GetType(); ok {
+		if err := prompt.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Prompt.type": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := prompt.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Prompt.status": %w`, err)}
@@ -655,6 +1129,12 @@ func (_u *PromptUpdateOne) sqlSave(ctx context.Context) (_node *Prompt, err erro
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(prompt.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.GetType(); ok {
+		_spec.SetField(prompt.FieldType, field.TypeEnum, value)
+	}
+	if _u.mutation.TypeCleared() {
+		_spec.ClearField(prompt.FieldType, field.TypeEnum)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(prompt.FieldName, field.TypeString, value)
@@ -718,6 +1198,154 @@ func (_u *PromptUpdateOne) sqlSave(ctx context.Context) (_node *Prompt, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.VersionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.VersionsTable,
+			Columns: []string{prompt.VersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedVersionsIDs(); len(nodes) > 0 && !_u.mutation.VersionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.VersionsTable,
+			Columns: []string{prompt.VersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.VersionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.VersionsTable,
+			Columns: []string{prompt.VersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ActiveVersionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.ActiveVersionTable,
+			Columns: []string{prompt.ActiveVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ActiveVersionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.ActiveVersionTable,
+			Columns: []string{prompt.ActiveVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DraftVersionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.DraftVersionTable,
+			Columns: []string{prompt.DraftVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DraftVersionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.DraftVersionTable,
+			Columns: []string{prompt.DraftVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.AgentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.AgentsTable,
+			Columns: []string{prompt.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAgentsIDs(); len(nodes) > 0 && !_u.mutation.AgentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.AgentsTable,
+			Columns: []string{prompt.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.AgentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.AgentsTable,
+			Columns: []string{prompt.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

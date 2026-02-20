@@ -11,8 +11,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -69,6 +71,20 @@ func (_c *PromptCreate) SetNillableDeletedAt(v *int) *PromptCreate {
 // SetProjectID sets the "project_id" field.
 func (_c *PromptCreate) SetProjectID(v int) *PromptCreate {
 	_c.mutation.SetProjectID(v)
+	return _c
+}
+
+// SetType sets the "type" field.
+func (_c *PromptCreate) SetType(v prompt.Type) *PromptCreate {
+	_c.mutation.SetType(v)
+	return _c
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_c *PromptCreate) SetNillableType(v *prompt.Type) *PromptCreate {
+	if v != nil {
+		_c.SetType(*v)
+	}
 	return _c
 }
 
@@ -138,6 +154,34 @@ func (_c *PromptCreate) SetSettings(v objects.PromptSettings) *PromptCreate {
 	return _c
 }
 
+// SetActiveVersionID sets the "active_version_id" field.
+func (_c *PromptCreate) SetActiveVersionID(v int) *PromptCreate {
+	_c.mutation.SetActiveVersionID(v)
+	return _c
+}
+
+// SetNillableActiveVersionID sets the "active_version_id" field if the given value is not nil.
+func (_c *PromptCreate) SetNillableActiveVersionID(v *int) *PromptCreate {
+	if v != nil {
+		_c.SetActiveVersionID(*v)
+	}
+	return _c
+}
+
+// SetDraftVersionID sets the "draft_version_id" field.
+func (_c *PromptCreate) SetDraftVersionID(v int) *PromptCreate {
+	_c.mutation.SetDraftVersionID(v)
+	return _c
+}
+
+// SetNillableDraftVersionID sets the "draft_version_id" field if the given value is not nil.
+func (_c *PromptCreate) SetNillableDraftVersionID(v *int) *PromptCreate {
+	if v != nil {
+		_c.SetDraftVersionID(*v)
+	}
+	return _c
+}
+
 // AddProjectIDs adds the "projects" edge to the Project entity by IDs.
 func (_c *PromptCreate) AddProjectIDs(ids ...int) *PromptCreate {
 	_c.mutation.AddProjectIDs(ids...)
@@ -151,6 +195,46 @@ func (_c *PromptCreate) AddProjects(v ...*Project) *PromptCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddProjectIDs(ids...)
+}
+
+// AddVersionIDs adds the "versions" edge to the PromptVersion entity by IDs.
+func (_c *PromptCreate) AddVersionIDs(ids ...int) *PromptCreate {
+	_c.mutation.AddVersionIDs(ids...)
+	return _c
+}
+
+// AddVersions adds the "versions" edges to the PromptVersion entity.
+func (_c *PromptCreate) AddVersions(v ...*PromptVersion) *PromptCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddVersionIDs(ids...)
+}
+
+// SetActiveVersion sets the "active_version" edge to the PromptVersion entity.
+func (_c *PromptCreate) SetActiveVersion(v *PromptVersion) *PromptCreate {
+	return _c.SetActiveVersionID(v.ID)
+}
+
+// SetDraftVersion sets the "draft_version" edge to the PromptVersion entity.
+func (_c *PromptCreate) SetDraftVersion(v *PromptVersion) *PromptCreate {
+	return _c.SetDraftVersionID(v.ID)
+}
+
+// AddAgentIDs adds the "agents" edge to the Agent entity by IDs.
+func (_c *PromptCreate) AddAgentIDs(ids ...int) *PromptCreate {
+	_c.mutation.AddAgentIDs(ids...)
+	return _c
+}
+
+// AddAgents adds the "agents" edges to the Agent entity.
+func (_c *PromptCreate) AddAgents(v ...*Agent) *PromptCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddAgentIDs(ids...)
 }
 
 // Mutation returns the PromptMutation object of the builder.
@@ -208,6 +292,10 @@ func (_c *PromptCreate) defaults() error {
 		v := prompt.DefaultDeletedAt
 		_c.mutation.SetDeletedAt(v)
 	}
+	if _, ok := _c.mutation.GetType(); !ok {
+		v := prompt.DefaultType
+		_c.mutation.SetType(v)
+	}
 	if _, ok := _c.mutation.Description(); !ok {
 		v := prompt.DefaultDescription
 		_c.mutation.SetDescription(v)
@@ -236,6 +324,11 @@ func (_c *PromptCreate) check() error {
 	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Prompt.project_id"`)}
+	}
+	if v, ok := _c.mutation.GetType(); ok {
+		if err := prompt.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Prompt.type": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Prompt.name"`)}
@@ -306,6 +399,10 @@ func (_c *PromptCreate) createSpec() (*Prompt, *sqlgraph.CreateSpec) {
 		_spec.SetField(prompt.FieldProjectID, field.TypeInt, value)
 		_node.ProjectID = value
 	}
+	if value, ok := _c.mutation.GetType(); ok {
+		_spec.SetField(prompt.FieldType, field.TypeEnum, value)
+		_node.Type = value
+	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(prompt.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -343,6 +440,72 @@ func (_c *PromptCreate) createSpec() (*Prompt, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.VersionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.VersionsTable,
+			Columns: []string{prompt.VersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ActiveVersionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.ActiveVersionTable,
+			Columns: []string{prompt.ActiveVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ActiveVersionID = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DraftVersionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   prompt.DraftVersionTable,
+			Columns: []string{prompt.DraftVersionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.DraftVersionID = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.AgentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   prompt.AgentsTable,
+			Columns: []string{prompt.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -429,6 +592,24 @@ func (u *PromptUpsert) UpdateDeletedAt() *PromptUpsert {
 // AddDeletedAt adds v to the "deleted_at" field.
 func (u *PromptUpsert) AddDeletedAt(v int) *PromptUpsert {
 	u.Add(prompt.FieldDeletedAt, v)
+	return u
+}
+
+// SetType sets the "type" field.
+func (u *PromptUpsert) SetType(v prompt.Type) *PromptUpsert {
+	u.Set(prompt.FieldType, v)
+	return u
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *PromptUpsert) UpdateType() *PromptUpsert {
+	u.SetExcluded(prompt.FieldType)
+	return u
+}
+
+// ClearType clears the value of the "type" field.
+func (u *PromptUpsert) ClearType() *PromptUpsert {
+	u.SetNull(prompt.FieldType)
 	return u
 }
 
@@ -522,6 +703,42 @@ func (u *PromptUpsert) UpdateSettings() *PromptUpsert {
 	return u
 }
 
+// SetActiveVersionID sets the "active_version_id" field.
+func (u *PromptUpsert) SetActiveVersionID(v int) *PromptUpsert {
+	u.Set(prompt.FieldActiveVersionID, v)
+	return u
+}
+
+// UpdateActiveVersionID sets the "active_version_id" field to the value that was provided on create.
+func (u *PromptUpsert) UpdateActiveVersionID() *PromptUpsert {
+	u.SetExcluded(prompt.FieldActiveVersionID)
+	return u
+}
+
+// ClearActiveVersionID clears the value of the "active_version_id" field.
+func (u *PromptUpsert) ClearActiveVersionID() *PromptUpsert {
+	u.SetNull(prompt.FieldActiveVersionID)
+	return u
+}
+
+// SetDraftVersionID sets the "draft_version_id" field.
+func (u *PromptUpsert) SetDraftVersionID(v int) *PromptUpsert {
+	u.Set(prompt.FieldDraftVersionID, v)
+	return u
+}
+
+// UpdateDraftVersionID sets the "draft_version_id" field to the value that was provided on create.
+func (u *PromptUpsert) UpdateDraftVersionID() *PromptUpsert {
+	u.SetExcluded(prompt.FieldDraftVersionID)
+	return u
+}
+
+// ClearDraftVersionID clears the value of the "draft_version_id" field.
+func (u *PromptUpsert) ClearDraftVersionID() *PromptUpsert {
+	u.SetNull(prompt.FieldDraftVersionID)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -602,6 +819,27 @@ func (u *PromptUpsertOne) AddDeletedAt(v int) *PromptUpsertOne {
 func (u *PromptUpsertOne) UpdateDeletedAt() *PromptUpsertOne {
 	return u.Update(func(s *PromptUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetType sets the "type" field.
+func (u *PromptUpsertOne) SetType(v prompt.Type) *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.SetType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *PromptUpsertOne) UpdateType() *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.UpdateType()
+	})
+}
+
+// ClearType clears the value of the "type" field.
+func (u *PromptUpsertOne) ClearType() *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.ClearType()
 	})
 }
 
@@ -707,6 +945,48 @@ func (u *PromptUpsertOne) SetSettings(v objects.PromptSettings) *PromptUpsertOne
 func (u *PromptUpsertOne) UpdateSettings() *PromptUpsertOne {
 	return u.Update(func(s *PromptUpsert) {
 		s.UpdateSettings()
+	})
+}
+
+// SetActiveVersionID sets the "active_version_id" field.
+func (u *PromptUpsertOne) SetActiveVersionID(v int) *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.SetActiveVersionID(v)
+	})
+}
+
+// UpdateActiveVersionID sets the "active_version_id" field to the value that was provided on create.
+func (u *PromptUpsertOne) UpdateActiveVersionID() *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.UpdateActiveVersionID()
+	})
+}
+
+// ClearActiveVersionID clears the value of the "active_version_id" field.
+func (u *PromptUpsertOne) ClearActiveVersionID() *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.ClearActiveVersionID()
+	})
+}
+
+// SetDraftVersionID sets the "draft_version_id" field.
+func (u *PromptUpsertOne) SetDraftVersionID(v int) *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.SetDraftVersionID(v)
+	})
+}
+
+// UpdateDraftVersionID sets the "draft_version_id" field to the value that was provided on create.
+func (u *PromptUpsertOne) UpdateDraftVersionID() *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.UpdateDraftVersionID()
+	})
+}
+
+// ClearDraftVersionID clears the value of the "draft_version_id" field.
+func (u *PromptUpsertOne) ClearDraftVersionID() *PromptUpsertOne {
+	return u.Update(func(s *PromptUpsert) {
+		s.ClearDraftVersionID()
 	})
 }
 
@@ -959,6 +1239,27 @@ func (u *PromptUpsertBulk) UpdateDeletedAt() *PromptUpsertBulk {
 	})
 }
 
+// SetType sets the "type" field.
+func (u *PromptUpsertBulk) SetType(v prompt.Type) *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.SetType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *PromptUpsertBulk) UpdateType() *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.UpdateType()
+	})
+}
+
+// ClearType clears the value of the "type" field.
+func (u *PromptUpsertBulk) ClearType() *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.ClearType()
+	})
+}
+
 // SetName sets the "name" field.
 func (u *PromptUpsertBulk) SetName(v string) *PromptUpsertBulk {
 	return u.Update(func(s *PromptUpsert) {
@@ -1061,6 +1362,48 @@ func (u *PromptUpsertBulk) SetSettings(v objects.PromptSettings) *PromptUpsertBu
 func (u *PromptUpsertBulk) UpdateSettings() *PromptUpsertBulk {
 	return u.Update(func(s *PromptUpsert) {
 		s.UpdateSettings()
+	})
+}
+
+// SetActiveVersionID sets the "active_version_id" field.
+func (u *PromptUpsertBulk) SetActiveVersionID(v int) *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.SetActiveVersionID(v)
+	})
+}
+
+// UpdateActiveVersionID sets the "active_version_id" field to the value that was provided on create.
+func (u *PromptUpsertBulk) UpdateActiveVersionID() *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.UpdateActiveVersionID()
+	})
+}
+
+// ClearActiveVersionID clears the value of the "active_version_id" field.
+func (u *PromptUpsertBulk) ClearActiveVersionID() *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.ClearActiveVersionID()
+	})
+}
+
+// SetDraftVersionID sets the "draft_version_id" field.
+func (u *PromptUpsertBulk) SetDraftVersionID(v int) *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.SetDraftVersionID(v)
+	})
+}
+
+// UpdateDraftVersionID sets the "draft_version_id" field to the value that was provided on create.
+func (u *PromptUpsertBulk) UpdateDraftVersionID() *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.UpdateDraftVersionID()
+	})
+}
+
+// ClearDraftVersionID clears the value of the "draft_version_id" field.
+func (u *PromptUpsertBulk) ClearDraftVersionID() *PromptUpsertBulk {
+	return u.Update(func(s *PromptUpsert) {
+		s.ClearDraftVersionID()
 	})
 }
 

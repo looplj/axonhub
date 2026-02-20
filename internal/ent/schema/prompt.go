@@ -42,6 +42,11 @@ func (Prompt) Fields() []ent.Field {
 			Immutable().
 			Comment("Project ID that this prompt belongs to").Annotations(
 			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput)),
+		field.Enum("type").
+			Values("agent_system", "system").
+			Optional().
+			Default("system").
+			Comment("Prompt type"),
 		field.String("name").
 			Comment("prompt name"),
 		field.String("description").
@@ -60,6 +65,20 @@ func (Prompt) Fields() []ent.Field {
 			Annotations(entgql.OrderField("ORDER")),
 		field.JSON("settings", objects.PromptSettings{}).
 			Comment("prompt settings in JSON format"),
+		field.Int("active_version_id").
+			Optional().
+			Nillable().
+			Comment("Active prompt version ID").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
+		field.Int("draft_version_id").
+			Optional().
+			Nillable().
+			Comment("Draft prompt version ID").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 	}
 }
 
@@ -69,6 +88,24 @@ func (Prompt) Edges() []ent.Edge {
 		edge.From("projects", Project.Type).
 			Ref("prompts").
 			Annotations(
+				entgql.RelayConnection(),
+			),
+		edge.To("versions", PromptVersion.Type).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entgql.RelayConnection(),
+			),
+		edge.From("active_version", PromptVersion.Type).
+			Ref("active_for_prompts").
+			Field("active_version_id").
+			Unique(),
+		edge.From("draft_version", PromptVersion.Type).
+			Ref("draft_for_prompts").
+			Field("draft_version_id").
+			Unique(),
+		edge.To("agents", Agent.Type).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
 	}

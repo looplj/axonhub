@@ -38,13 +38,19 @@ type ThreadEdges struct {
 	Project *Project `json:"project,omitempty"`
 	// Traces holds the value of the traces edge.
 	Traces []*Trace `json:"traces,omitempty"`
+	// AgentThreads holds the value of the agent_threads edge.
+	AgentThreads []*AgentThread `json:"agent_threads,omitempty"`
+	// AgentMessages holds the value of the agent_messages edge.
+	AgentMessages []*AgentMessage `json:"agent_messages,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [2]map[string]int
+	totalCount [4]map[string]int
 
-	namedTraces map[string][]*Trace
+	namedTraces        map[string][]*Trace
+	namedAgentThreads  map[string][]*AgentThread
+	namedAgentMessages map[string][]*AgentMessage
 }
 
 // ProjectOrErr returns the Project value or an error if the edge
@@ -65,6 +71,24 @@ func (e ThreadEdges) TracesOrErr() ([]*Trace, error) {
 		return e.Traces, nil
 	}
 	return nil, &NotLoadedError{edge: "traces"}
+}
+
+// AgentThreadsOrErr returns the AgentThreads value or an error if the edge
+// was not loaded in eager-loading.
+func (e ThreadEdges) AgentThreadsOrErr() ([]*AgentThread, error) {
+	if e.loadedTypes[2] {
+		return e.AgentThreads, nil
+	}
+	return nil, &NotLoadedError{edge: "agent_threads"}
+}
+
+// AgentMessagesOrErr returns the AgentMessages value or an error if the edge
+// was not loaded in eager-loading.
+func (e ThreadEdges) AgentMessagesOrErr() ([]*AgentMessage, error) {
+	if e.loadedTypes[3] {
+		return e.AgentMessages, nil
+	}
+	return nil, &NotLoadedError{edge: "agent_messages"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -146,6 +170,16 @@ func (_m *Thread) QueryTraces() *TraceQuery {
 	return NewThreadClient(_m.config).QueryTraces(_m)
 }
 
+// QueryAgentThreads queries the "agent_threads" edge of the Thread entity.
+func (_m *Thread) QueryAgentThreads() *AgentThreadQuery {
+	return NewThreadClient(_m.config).QueryAgentThreads(_m)
+}
+
+// QueryAgentMessages queries the "agent_messages" edge of the Thread entity.
+func (_m *Thread) QueryAgentMessages() *AgentMessageQuery {
+	return NewThreadClient(_m.config).QueryAgentMessages(_m)
+}
+
 // Update returns a builder for updating this Thread.
 // Note that you need to call Thread.Unwrap() before calling this method if this Thread
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -205,6 +239,54 @@ func (_m *Thread) appendNamedTraces(name string, edges ...*Trace) {
 		_m.Edges.namedTraces[name] = []*Trace{}
 	} else {
 		_m.Edges.namedTraces[name] = append(_m.Edges.namedTraces[name], edges...)
+	}
+}
+
+// NamedAgentThreads returns the AgentThreads named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Thread) NamedAgentThreads(name string) ([]*AgentThread, error) {
+	if _m.Edges.namedAgentThreads == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedAgentThreads[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Thread) appendNamedAgentThreads(name string, edges ...*AgentThread) {
+	if _m.Edges.namedAgentThreads == nil {
+		_m.Edges.namedAgentThreads = make(map[string][]*AgentThread)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedAgentThreads[name] = []*AgentThread{}
+	} else {
+		_m.Edges.namedAgentThreads[name] = append(_m.Edges.namedAgentThreads[name], edges...)
+	}
+}
+
+// NamedAgentMessages returns the AgentMessages named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Thread) NamedAgentMessages(name string) ([]*AgentMessage, error) {
+	if _m.Edges.namedAgentMessages == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedAgentMessages[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Thread) appendNamedAgentMessages(name string, edges ...*AgentMessage) {
+	if _m.Edges.namedAgentMessages == nil {
+		_m.Edges.namedAgentMessages = make(map[string][]*AgentMessage)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedAgentMessages[name] = []*AgentMessage{}
+	} else {
+		_m.Edges.namedAgentMessages[name] = append(_m.Edges.namedAgentMessages[name], edges...)
 	}
 }
 

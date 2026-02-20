@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -27,6 +28,8 @@ type Prompt struct {
 	DeletedAt int `json:"deleted_at,omitempty"`
 	// Project ID that this prompt belongs to
 	ProjectID int `json:"project_id,omitempty"`
+	// Prompt type
+	Type prompt.Type `json:"type,omitempty"`
 	// prompt name
 	Name string `json:"name,omitempty"`
 	// prompt description
@@ -41,6 +44,10 @@ type Prompt struct {
 	Order int `json:"order,omitempty"`
 	// prompt settings in JSON format
 	Settings objects.PromptSettings `json:"settings,omitempty"`
+	// Active prompt version ID
+	ActiveVersionID *int `json:"active_version_id,omitempty"`
+	// Draft prompt version ID
+	DraftVersionID *int `json:"draft_version_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the PromptQuery when eager-loading is set.
 	Edges        PromptEdges `json:"edges"`
@@ -51,13 +58,23 @@ type Prompt struct {
 type PromptEdges struct {
 	// Projects holds the value of the projects edge.
 	Projects []*Project `json:"projects,omitempty"`
+	// Versions holds the value of the versions edge.
+	Versions []*PromptVersion `json:"versions,omitempty"`
+	// ActiveVersion holds the value of the active_version edge.
+	ActiveVersion *PromptVersion `json:"active_version,omitempty"`
+	// DraftVersion holds the value of the draft_version edge.
+	DraftVersion *PromptVersion `json:"draft_version,omitempty"`
+	// Agents holds the value of the agents edge.
+	Agents []*Agent `json:"agents,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [5]bool
 	// totalCount holds the count of the edges above.
-	totalCount [1]map[string]int
+	totalCount [5]map[string]int
 
 	namedProjects map[string][]*Project
+	namedVersions map[string][]*PromptVersion
+	namedAgents   map[string][]*Agent
 }
 
 // ProjectsOrErr returns the Projects value or an error if the edge
@@ -69,6 +86,46 @@ func (e PromptEdges) ProjectsOrErr() ([]*Project, error) {
 	return nil, &NotLoadedError{edge: "projects"}
 }
 
+// VersionsOrErr returns the Versions value or an error if the edge
+// was not loaded in eager-loading.
+func (e PromptEdges) VersionsOrErr() ([]*PromptVersion, error) {
+	if e.loadedTypes[1] {
+		return e.Versions, nil
+	}
+	return nil, &NotLoadedError{edge: "versions"}
+}
+
+// ActiveVersionOrErr returns the ActiveVersion value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e PromptEdges) ActiveVersionOrErr() (*PromptVersion, error) {
+	if e.ActiveVersion != nil {
+		return e.ActiveVersion, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: promptversion.Label}
+	}
+	return nil, &NotLoadedError{edge: "active_version"}
+}
+
+// DraftVersionOrErr returns the DraftVersion value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e PromptEdges) DraftVersionOrErr() (*PromptVersion, error) {
+	if e.DraftVersion != nil {
+		return e.DraftVersion, nil
+	} else if e.loadedTypes[3] {
+		return nil, &NotFoundError{label: promptversion.Label}
+	}
+	return nil, &NotLoadedError{edge: "draft_version"}
+}
+
+// AgentsOrErr returns the Agents value or an error if the edge
+// was not loaded in eager-loading.
+func (e PromptEdges) AgentsOrErr() ([]*Agent, error) {
+	if e.loadedTypes[4] {
+		return e.Agents, nil
+	}
+	return nil, &NotLoadedError{edge: "agents"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Prompt) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -76,9 +133,9 @@ func (*Prompt) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case prompt.FieldSettings:
 			values[i] = new([]byte)
-		case prompt.FieldID, prompt.FieldDeletedAt, prompt.FieldProjectID, prompt.FieldOrder:
+		case prompt.FieldID, prompt.FieldDeletedAt, prompt.FieldProjectID, prompt.FieldOrder, prompt.FieldActiveVersionID, prompt.FieldDraftVersionID:
 			values[i] = new(sql.NullInt64)
-		case prompt.FieldName, prompt.FieldDescription, prompt.FieldRole, prompt.FieldContent, prompt.FieldStatus:
+		case prompt.FieldType, prompt.FieldName, prompt.FieldDescription, prompt.FieldRole, prompt.FieldContent, prompt.FieldStatus:
 			values[i] = new(sql.NullString)
 		case prompt.FieldCreatedAt, prompt.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -127,6 +184,12 @@ func (_m *Prompt) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ProjectID = int(value.Int64)
 			}
+		case prompt.FieldType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field type", values[i])
+			} else if value.Valid {
+				_m.Type = prompt.Type(value.String)
+			}
 		case prompt.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
@@ -171,6 +234,20 @@ func (_m *Prompt) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field settings: %w", err)
 				}
 			}
+		case prompt.FieldActiveVersionID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field active_version_id", values[i])
+			} else if value.Valid {
+				_m.ActiveVersionID = new(int)
+				*_m.ActiveVersionID = int(value.Int64)
+			}
+		case prompt.FieldDraftVersionID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field draft_version_id", values[i])
+			} else if value.Valid {
+				_m.DraftVersionID = new(int)
+				*_m.DraftVersionID = int(value.Int64)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -187,6 +264,26 @@ func (_m *Prompt) Value(name string) (ent.Value, error) {
 // QueryProjects queries the "projects" edge of the Prompt entity.
 func (_m *Prompt) QueryProjects() *ProjectQuery {
 	return NewPromptClient(_m.config).QueryProjects(_m)
+}
+
+// QueryVersions queries the "versions" edge of the Prompt entity.
+func (_m *Prompt) QueryVersions() *PromptVersionQuery {
+	return NewPromptClient(_m.config).QueryVersions(_m)
+}
+
+// QueryActiveVersion queries the "active_version" edge of the Prompt entity.
+func (_m *Prompt) QueryActiveVersion() *PromptVersionQuery {
+	return NewPromptClient(_m.config).QueryActiveVersion(_m)
+}
+
+// QueryDraftVersion queries the "draft_version" edge of the Prompt entity.
+func (_m *Prompt) QueryDraftVersion() *PromptVersionQuery {
+	return NewPromptClient(_m.config).QueryDraftVersion(_m)
+}
+
+// QueryAgents queries the "agents" edge of the Prompt entity.
+func (_m *Prompt) QueryAgents() *AgentQuery {
+	return NewPromptClient(_m.config).QueryAgents(_m)
 }
 
 // Update returns a builder for updating this Prompt.
@@ -224,6 +321,9 @@ func (_m *Prompt) String() string {
 	builder.WriteString("project_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
 	builder.WriteString(", ")
+	builder.WriteString("type=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Type))
+	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
@@ -244,6 +344,16 @@ func (_m *Prompt) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("settings=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Settings))
+	builder.WriteString(", ")
+	if v := _m.ActiveVersionID; v != nil {
+		builder.WriteString("active_version_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.DraftVersionID; v != nil {
+		builder.WriteString("draft_version_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }
@@ -269,6 +379,54 @@ func (_m *Prompt) appendNamedProjects(name string, edges ...*Project) {
 		_m.Edges.namedProjects[name] = []*Project{}
 	} else {
 		_m.Edges.namedProjects[name] = append(_m.Edges.namedProjects[name], edges...)
+	}
+}
+
+// NamedVersions returns the Versions named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Prompt) NamedVersions(name string) ([]*PromptVersion, error) {
+	if _m.Edges.namedVersions == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedVersions[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Prompt) appendNamedVersions(name string, edges ...*PromptVersion) {
+	if _m.Edges.namedVersions == nil {
+		_m.Edges.namedVersions = make(map[string][]*PromptVersion)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedVersions[name] = []*PromptVersion{}
+	} else {
+		_m.Edges.namedVersions[name] = append(_m.Edges.namedVersions[name], edges...)
+	}
+}
+
+// NamedAgents returns the Agents named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Prompt) NamedAgents(name string) ([]*Agent, error) {
+	if _m.Edges.namedAgents == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedAgents[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Prompt) appendNamedAgents(name string, edges ...*Agent) {
+	if _m.Edges.namedAgents == nil {
+		_m.Edges.namedAgents = make(map[string][]*Agent)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedAgents[name] = []*Agent{}
+	} else {
+		_m.Edges.namedAgents[name] = append(_m.Edges.namedAgents[name], edges...)
 	}
 }
 

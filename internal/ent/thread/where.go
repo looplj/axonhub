@@ -286,6 +286,52 @@ func HasTracesWith(preds ...predicate.Trace) predicate.Thread {
 	})
 }
 
+// HasAgentThreads applies the HasEdge predicate on the "agent_threads" edge.
+func HasAgentThreads() predicate.Thread {
+	return predicate.Thread(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, AgentThreadsTable, AgentThreadsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAgentThreadsWith applies the HasEdge predicate on the "agent_threads" edge with a given conditions (other predicates).
+func HasAgentThreadsWith(preds ...predicate.AgentThread) predicate.Thread {
+	return predicate.Thread(func(s *sql.Selector) {
+		step := newAgentThreadsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasAgentMessages applies the HasEdge predicate on the "agent_messages" edge.
+func HasAgentMessages() predicate.Thread {
+	return predicate.Thread(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, AgentMessagesTable, AgentMessagesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAgentMessagesWith applies the HasEdge predicate on the "agent_messages" edge with a given conditions (other predicates).
+func HasAgentMessagesWith(preds ...predicate.AgentMessage) predicate.Thread {
+	return predicate.Thread(func(s *sql.Selector) {
+		step := newAgentMessagesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Thread) predicate.Thread {
 	return predicate.Thread(sql.AndPredicates(predicates...))

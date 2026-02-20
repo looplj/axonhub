@@ -15,6 +15,13 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmemory"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agentthread"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
@@ -23,11 +30,14 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -58,6 +68,8 @@ type Dependencies struct {
 	BackupService                  *backup.BackupService
 	ChannelProbeService            *biz.ChannelProbeService
 	PromptService                  *biz.PromptService
+	AgentService                   *biz.AgentService
+	AgentRuntimeService            *biz.AgentRuntimeService
 	ProviderQuotaService           *biz.ProviderQuotaService
 }
 
@@ -87,6 +99,8 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.BackupService,
 			deps.ChannelProbeService,
 			deps.PromptService,
+			deps.AgentService,
+			deps.AgentRuntimeService,
 			deps.ProviderQuotaService,
 		),
 	)
@@ -137,6 +151,16 @@ var guidTypeToNodeType = map[string]string{
 	ent.TypeTrace:                   trace.Table,
 	ent.TypeDataStorage:             datastorage.Table,
 	ent.TypePrompt:                  prompt.Table,
+	ent.TypePromptVersion:           promptversion.Table,
+	ent.TypeAgent:                   agent.Table,
+	ent.TypeTool:                    tool.Table,
+	ent.TypeSkill:                   skill.Table,
+	ent.TypeAgentTool:               agenttool.Table,
+	ent.TypeAgentSkill:              agentskill.Table,
+	ent.TypeAgentInstance:           agentinstance.Table,
+	ent.TypeAgentThread:             agentthread.Table,
+	ent.TypeAgentMessage:            agentmessage.Table,
+	ent.TypeAgentMemory:             agentmemory.Table,
 }
 
 func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (*ent.Channel, error) {

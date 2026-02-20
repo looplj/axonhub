@@ -1,0 +1,89 @@
+"""
+Agent management (admin GraphQL).
+"""
+
+input AgentSkillsPolicyInput {
+  add: String!
+}
+
+input AgentBuiltinToolInput {
+  name: String!
+  enabled: Boolean! = true
+  order: Int! = 0
+}
+
+input CreateAgentInput {
+  name: String!
+  description: String
+  status: AgentStatus
+  model: String
+  systemPrompt: String!
+  builtinTools: [AgentBuiltinToolInput!]
+  skillsPolicy: AgentSkillsPolicyInput
+}
+
+input UpdateAgentInput {
+  name: String
+  description: String
+  status: AgentStatus
+  model: String
+  systemPrompt: String
+  builtinTools: [AgentBuiltinToolInput!]
+  skillsPolicy: AgentSkillsPolicyInput
+}
+
+extend type Mutation {
+  createAgent(input: CreateAgentInput!): Agent!
+  updateAgent(id: ID!, input: UpdateAgentInput!): Agent!
+  deleteAgent(id: ID!): Boolean!
+
+  """
+  Send a user message to the agent runtime (stored as to_runtime pending message).
+  Web UI uses this to relay messages to axonclaw via pull+ack.
+  """
+  sendAgentMessage(input: SendAgentMessageInput!): AgentChatMessage!
+}
+
+"""
+Minimal message view for Agent thread chat in Web UI.
+"""
+type AgentChatMessage {
+  id: ID!
+  agentID: ID!
+  threadID: String!
+  direction: AgentMessageDirection!
+  senderType: AgentMessageSenderType!
+  senderID: Int
+  text: String!
+  sequence: Int!
+  status: AgentMessageStatus!
+  createdAt: Time!
+}
+
+input SendAgentMessageInput {
+  agentID: ID!
+  threadID: String!
+  text: String!
+}
+
+extend type Query {
+  """
+  Pull pending messages from runtime to user for a thread (direction=to_user, status=pending).
+  """
+  pullAgentMessagesToUser(agentID: ID!, threadID: String!, afterSequence: Int, limit: Int = 50): [AgentChatMessage!]!
+
+  """
+  List messages for an agent thread (both directions), ordered by sequence asc.
+  """
+  agentThreadMessages(agentID: ID!, threadID: String!, afterSequence: Int, limit: Int = 200): [AgentChatMessage!]!
+
+  """
+  List threads that have been bound to the agent (via AgentThread table).
+  """
+  agentThreadSummaries(agentID: ID!, first: Int = 50): [AgentThreadSummary!]!
+}
+
+type AgentThreadSummary {
+  threadID: String!
+  createdAt: Time!
+}

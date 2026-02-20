@@ -10,6 +10,13 @@ import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmemory"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agentthread"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
@@ -20,12 +27,15 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -173,6 +183,17 @@ func (_q *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 			_q.WithNamedRequests(alias, func(wq *RequestQuery) {
 				*wq = *query
 			})
+
+		case "agent":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+				return err
+			}
+			_q.withAgent = query
 		case "createdAt":
 			if _, ok := fieldSeen[apikey.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, apikey.FieldCreatedAt)
@@ -282,6 +303,1673 @@ func newAPIKeyPaginateArgs(rv map[string]any) *apikeyPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*APIKeyWhereInput); ok {
 		args.opts = append(args.opts, WithAPIKeyFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *AgentQuery) CollectFields(ctx context.Context, satisfies ...string) (*AgentQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(agent.Columns))
+		selectedFields = []string{agent.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "project":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ProjectClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
+				return err
+			}
+			_q.withProject = query
+			if _, ok := fieldSeen[agent.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agent.FieldProjectID)
+				fieldSeen[agent.FieldProjectID] = struct{}{}
+			}
+
+		case "ownerUser":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UserClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+				return err
+			}
+			_q.withOwnerUser = query
+			if _, ok := fieldSeen[agent.FieldCreatedByUserID]; !ok {
+				selectedFields = append(selectedFields, agent.FieldCreatedByUserID)
+				fieldSeen[agent.FieldCreatedByUserID] = struct{}{}
+			}
+
+		case "prompt":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, promptImplementors)...); err != nil {
+				return err
+			}
+			_q.withPrompt = query
+			if _, ok := fieldSeen[agent.FieldPromptID]; !ok {
+				selectedFields = append(selectedFields, agent.FieldPromptID)
+				fieldSeen[agent.FieldPromptID] = struct{}{}
+			}
+
+		case "apiKey":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&APIKeyClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, apikeyImplementors)...); err != nil {
+				return err
+			}
+			_q.withAPIKey = query
+			if _, ok := fieldSeen[agent.FieldAPIKeyID]; !ok {
+				selectedFields = append(selectedFields, agent.FieldAPIKeyID)
+				fieldSeen[agent.FieldAPIKeyID] = struct{}{}
+			}
+
+		case "toolBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentToolClient{config: _q.config}).Query()
+			)
+			args := newAgentToolPaginateArgs(fieldArgs(ctx, new(AgentToolWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentToolPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Agent) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"agent_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(agent.ToolBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(agent.ToolBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.ToolBindings)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agenttoolImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(agent.ToolBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedToolBindings(alias, func(wq *AgentToolQuery) {
+				*wq = *query
+			})
+
+		case "skillBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentSkillClient{config: _q.config}).Query()
+			)
+			args := newAgentSkillPaginateArgs(fieldArgs(ctx, new(AgentSkillWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentSkillPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Agent) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"agent_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(agent.SkillBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(agent.SkillBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[5] == nil {
+								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[5][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.SkillBindings)
+							if nodes[i].Edges.totalCount[5] == nil {
+								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[5][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentskillImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(agent.SkillBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedSkillBindings(alias, func(wq *AgentSkillQuery) {
+				*wq = *query
+			})
+
+		case "instances":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentInstanceClient{config: _q.config}).Query()
+			)
+			args := newAgentInstancePaginateArgs(fieldArgs(ctx, new(AgentInstanceWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentInstancePager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Agent) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"agent_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(agent.InstancesColumn), ids...))
+						})
+						if err := query.GroupBy(agent.InstancesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[6] == nil {
+								nodes[i].Edges.totalCount[6] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[6][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Instances)
+							if nodes[i].Edges.totalCount[6] == nil {
+								nodes[i].Edges.totalCount[6] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[6][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentinstanceImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(agent.InstancesColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedInstances(alias, func(wq *AgentInstanceQuery) {
+				*wq = *query
+			})
+
+		case "threadBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentThreadClient{config: _q.config}).Query()
+			)
+			args := newAgentThreadPaginateArgs(fieldArgs(ctx, new(AgentThreadWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentThreadPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Agent) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"agent_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(agent.ThreadBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(agent.ThreadBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[7] == nil {
+								nodes[i].Edges.totalCount[7] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[7][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.ThreadBindings)
+							if nodes[i].Edges.totalCount[7] == nil {
+								nodes[i].Edges.totalCount[7] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[7][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentthreadImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(agent.ThreadBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedThreadBindings(alias, func(wq *AgentThreadQuery) {
+				*wq = *query
+			})
+
+		case "messages":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentMessageClient{config: _q.config}).Query()
+			)
+			args := newAgentMessagePaginateArgs(fieldArgs(ctx, new(AgentMessageWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentMessagePager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Agent) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"agent_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(agent.MessagesColumn), ids...))
+						})
+						if err := query.GroupBy(agent.MessagesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[8][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Messages)
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[8][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentmessageImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(agent.MessagesColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedMessages(alias, func(wq *AgentMessageQuery) {
+				*wq = *query
+			})
+
+		case "memories":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentMemoryClient{config: _q.config}).Query()
+			)
+			args := newAgentMemoryPaginateArgs(fieldArgs(ctx, new(AgentMemoryWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentMemoryPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Agent) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"agent_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(agent.MemoriesColumn), ids...))
+						})
+						if err := query.GroupBy(agent.MemoriesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[9] == nil {
+								nodes[i].Edges.totalCount[9] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[9][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Memories)
+							if nodes[i].Edges.totalCount[9] == nil {
+								nodes[i].Edges.totalCount[9] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[9][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentmemoryImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(agent.MemoriesColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedMemories(alias, func(wq *AgentMemoryQuery) {
+				*wq = *query
+			})
+		case "createdAt":
+			if _, ok := fieldSeen[agent.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, agent.FieldCreatedAt)
+				fieldSeen[agent.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[agent.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, agent.FieldUpdatedAt)
+				fieldSeen[agent.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[agent.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agent.FieldProjectID)
+				fieldSeen[agent.FieldProjectID] = struct{}{}
+			}
+		case "createdByUserID":
+			if _, ok := fieldSeen[agent.FieldCreatedByUserID]; !ok {
+				selectedFields = append(selectedFields, agent.FieldCreatedByUserID)
+				fieldSeen[agent.FieldCreatedByUserID] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[agent.FieldName]; !ok {
+				selectedFields = append(selectedFields, agent.FieldName)
+				fieldSeen[agent.FieldName] = struct{}{}
+			}
+		case "description":
+			if _, ok := fieldSeen[agent.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, agent.FieldDescription)
+				fieldSeen[agent.FieldDescription] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[agent.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, agent.FieldStatus)
+				fieldSeen[agent.FieldStatus] = struct{}{}
+			}
+		case "promptID":
+			if _, ok := fieldSeen[agent.FieldPromptID]; !ok {
+				selectedFields = append(selectedFields, agent.FieldPromptID)
+				fieldSeen[agent.FieldPromptID] = struct{}{}
+			}
+		case "model":
+			if _, ok := fieldSeen[agent.FieldModel]; !ok {
+				selectedFields = append(selectedFields, agent.FieldModel)
+				fieldSeen[agent.FieldModel] = struct{}{}
+			}
+		case "agentBuiltinTools":
+			if _, ok := fieldSeen[agent.FieldAgentBuiltinTools]; !ok {
+				selectedFields = append(selectedFields, agent.FieldAgentBuiltinTools)
+				fieldSeen[agent.FieldAgentBuiltinTools] = struct{}{}
+			}
+		case "skillsPolicy":
+			if _, ok := fieldSeen[agent.FieldSkillsPolicy]; !ok {
+				selectedFields = append(selectedFields, agent.FieldSkillsPolicy)
+				fieldSeen[agent.FieldSkillsPolicy] = struct{}{}
+			}
+		case "apiKeyID":
+			if _, ok := fieldSeen[agent.FieldAPIKeyID]; !ok {
+				selectedFields = append(selectedFields, agent.FieldAPIKeyID)
+				fieldSeen[agent.FieldAPIKeyID] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type agentPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []AgentPaginateOption
+}
+
+func newAgentPaginateArgs(rv map[string]any) *agentPaginateArgs {
+	args := &agentPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &AgentOrder{Field: &AgentOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAgentOrder(order))
+			}
+		case *AgentOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAgentOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*AgentWhereInput); ok {
+		args.opts = append(args.opts, WithAgentFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *AgentInstanceQuery) CollectFields(ctx context.Context, satisfies ...string) (*AgentInstanceQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *AgentInstanceQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(agentinstance.Columns))
+		selectedFields = []string{agentinstance.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "agent":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+				return err
+			}
+			_q.withAgent = query
+			if _, ok := fieldSeen[agentinstance.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldAgentID)
+				fieldSeen[agentinstance.FieldAgentID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[agentinstance.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldCreatedAt)
+				fieldSeen[agentinstance.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[agentinstance.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldUpdatedAt)
+				fieldSeen[agentinstance.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[agentinstance.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldProjectID)
+				fieldSeen[agentinstance.FieldProjectID] = struct{}{}
+			}
+		case "agentID":
+			if _, ok := fieldSeen[agentinstance.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldAgentID)
+				fieldSeen[agentinstance.FieldAgentID] = struct{}{}
+			}
+		case "instanceID":
+			if _, ok := fieldSeen[agentinstance.FieldInstanceID]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldInstanceID)
+				fieldSeen[agentinstance.FieldInstanceID] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[agentinstance.FieldName]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldName)
+				fieldSeen[agentinstance.FieldName] = struct{}{}
+			}
+		case "platform":
+			if _, ok := fieldSeen[agentinstance.FieldPlatform]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldPlatform)
+				fieldSeen[agentinstance.FieldPlatform] = struct{}{}
+			}
+		case "version":
+			if _, ok := fieldSeen[agentinstance.FieldVersion]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldVersion)
+				fieldSeen[agentinstance.FieldVersion] = struct{}{}
+			}
+		case "lastHeartbeatAt":
+			if _, ok := fieldSeen[agentinstance.FieldLastHeartbeatAt]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldLastHeartbeatAt)
+				fieldSeen[agentinstance.FieldLastHeartbeatAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type agentinstancePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []AgentInstancePaginateOption
+}
+
+func newAgentInstancePaginateArgs(rv map[string]any) *agentinstancePaginateArgs {
+	args := &agentinstancePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &AgentInstanceOrder{Field: &AgentInstanceOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAgentInstanceOrder(order))
+			}
+		case *AgentInstanceOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAgentInstanceOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*AgentInstanceWhereInput); ok {
+		args.opts = append(args.opts, WithAgentInstanceFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *AgentMemoryQuery) CollectFields(ctx context.Context, satisfies ...string) (*AgentMemoryQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *AgentMemoryQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(agentmemory.Columns))
+		selectedFields = []string{agentmemory.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "agent":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+				return err
+			}
+			_q.withAgent = query
+			if _, ok := fieldSeen[agentmemory.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentmemory.FieldAgentID)
+				fieldSeen[agentmemory.FieldAgentID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[agentmemory.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, agentmemory.FieldCreatedAt)
+				fieldSeen[agentmemory.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[agentmemory.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, agentmemory.FieldUpdatedAt)
+				fieldSeen[agentmemory.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[agentmemory.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agentmemory.FieldProjectID)
+				fieldSeen[agentmemory.FieldProjectID] = struct{}{}
+			}
+		case "agentID":
+			if _, ok := fieldSeen[agentmemory.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentmemory.FieldAgentID)
+				fieldSeen[agentmemory.FieldAgentID] = struct{}{}
+			}
+		case "path":
+			if _, ok := fieldSeen[agentmemory.FieldPath]; !ok {
+				selectedFields = append(selectedFields, agentmemory.FieldPath)
+				fieldSeen[agentmemory.FieldPath] = struct{}{}
+			}
+		case "content":
+			if _, ok := fieldSeen[agentmemory.FieldContent]; !ok {
+				selectedFields = append(selectedFields, agentmemory.FieldContent)
+				fieldSeen[agentmemory.FieldContent] = struct{}{}
+			}
+		case "source":
+			if _, ok := fieldSeen[agentmemory.FieldSource]; !ok {
+				selectedFields = append(selectedFields, agentmemory.FieldSource)
+				fieldSeen[agentmemory.FieldSource] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type agentmemoryPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []AgentMemoryPaginateOption
+}
+
+func newAgentMemoryPaginateArgs(rv map[string]any) *agentmemoryPaginateArgs {
+	args := &agentmemoryPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &AgentMemoryOrder{Field: &AgentMemoryOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAgentMemoryOrder(order))
+			}
+		case *AgentMemoryOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAgentMemoryOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*AgentMemoryWhereInput); ok {
+		args.opts = append(args.opts, WithAgentMemoryFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *AgentMessageQuery) CollectFields(ctx context.Context, satisfies ...string) (*AgentMessageQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *AgentMessageQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(agentmessage.Columns))
+		selectedFields = []string{agentmessage.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "agent":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+				return err
+			}
+			_q.withAgent = query
+			if _, ok := fieldSeen[agentmessage.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldAgentID)
+				fieldSeen[agentmessage.FieldAgentID] = struct{}{}
+			}
+
+		case "thread":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ThreadClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, threadImplementors)...); err != nil {
+				return err
+			}
+			_q.withThread = query
+			if _, ok := fieldSeen[agentmessage.FieldThreadRowID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldThreadRowID)
+				fieldSeen[agentmessage.FieldThreadRowID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[agentmessage.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldCreatedAt)
+				fieldSeen[agentmessage.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[agentmessage.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldUpdatedAt)
+				fieldSeen[agentmessage.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[agentmessage.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldProjectID)
+				fieldSeen[agentmessage.FieldProjectID] = struct{}{}
+			}
+		case "agentID":
+			if _, ok := fieldSeen[agentmessage.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldAgentID)
+				fieldSeen[agentmessage.FieldAgentID] = struct{}{}
+			}
+		case "threadRowID":
+			if _, ok := fieldSeen[agentmessage.FieldThreadRowID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldThreadRowID)
+				fieldSeen[agentmessage.FieldThreadRowID] = struct{}{}
+			}
+		case "direction":
+			if _, ok := fieldSeen[agentmessage.FieldDirection]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldDirection)
+				fieldSeen[agentmessage.FieldDirection] = struct{}{}
+			}
+		case "senderType":
+			if _, ok := fieldSeen[agentmessage.FieldSenderType]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldSenderType)
+				fieldSeen[agentmessage.FieldSenderType] = struct{}{}
+			}
+		case "senderID":
+			if _, ok := fieldSeen[agentmessage.FieldSenderID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldSenderID)
+				fieldSeen[agentmessage.FieldSenderID] = struct{}{}
+			}
+		case "content":
+			if _, ok := fieldSeen[agentmessage.FieldContent]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldContent)
+				fieldSeen[agentmessage.FieldContent] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[agentmessage.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldStatus)
+				fieldSeen[agentmessage.FieldStatus] = struct{}{}
+			}
+		case "sequence":
+			if _, ok := fieldSeen[agentmessage.FieldSequence]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldSequence)
+				fieldSeen[agentmessage.FieldSequence] = struct{}{}
+			}
+		case "expiresAt":
+			if _, ok := fieldSeen[agentmessage.FieldExpiresAt]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldExpiresAt)
+				fieldSeen[agentmessage.FieldExpiresAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type agentmessagePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []AgentMessagePaginateOption
+}
+
+func newAgentMessagePaginateArgs(rv map[string]any) *agentmessagePaginateArgs {
+	args := &agentmessagePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &AgentMessageOrder{Field: &AgentMessageOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAgentMessageOrder(order))
+			}
+		case *AgentMessageOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAgentMessageOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*AgentMessageWhereInput); ok {
+		args.opts = append(args.opts, WithAgentMessageFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *AgentSkillQuery) CollectFields(ctx context.Context, satisfies ...string) (*AgentSkillQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *AgentSkillQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(agentskill.Columns))
+		selectedFields = []string{agentskill.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "agent":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+				return err
+			}
+			_q.withAgent = query
+			if _, ok := fieldSeen[agentskill.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldAgentID)
+				fieldSeen[agentskill.FieldAgentID] = struct{}{}
+			}
+
+		case "skill":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&SkillClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, skillImplementors)...); err != nil {
+				return err
+			}
+			_q.withSkill = query
+			if _, ok := fieldSeen[agentskill.FieldSkillID]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldSkillID)
+				fieldSeen[agentskill.FieldSkillID] = struct{}{}
+			}
+
+		case "project":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ProjectClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
+				return err
+			}
+			_q.withProject = query
+			if _, ok := fieldSeen[agentskill.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldProjectID)
+				fieldSeen[agentskill.FieldProjectID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[agentskill.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldCreatedAt)
+				fieldSeen[agentskill.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[agentskill.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldUpdatedAt)
+				fieldSeen[agentskill.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[agentskill.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldProjectID)
+				fieldSeen[agentskill.FieldProjectID] = struct{}{}
+			}
+		case "agentID":
+			if _, ok := fieldSeen[agentskill.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldAgentID)
+				fieldSeen[agentskill.FieldAgentID] = struct{}{}
+			}
+		case "skillID":
+			if _, ok := fieldSeen[agentskill.FieldSkillID]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldSkillID)
+				fieldSeen[agentskill.FieldSkillID] = struct{}{}
+			}
+		case "enabled":
+			if _, ok := fieldSeen[agentskill.FieldEnabled]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldEnabled)
+				fieldSeen[agentskill.FieldEnabled] = struct{}{}
+			}
+		case "order":
+			if _, ok := fieldSeen[agentskill.FieldOrder]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldOrder)
+				fieldSeen[agentskill.FieldOrder] = struct{}{}
+			}
+		case "args":
+			if _, ok := fieldSeen[agentskill.FieldArgs]; !ok {
+				selectedFields = append(selectedFields, agentskill.FieldArgs)
+				fieldSeen[agentskill.FieldArgs] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type agentskillPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []AgentSkillPaginateOption
+}
+
+func newAgentSkillPaginateArgs(rv map[string]any) *agentskillPaginateArgs {
+	args := &agentskillPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &AgentSkillOrder{Field: &AgentSkillOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAgentSkillOrder(order))
+			}
+		case *AgentSkillOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAgentSkillOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*AgentSkillWhereInput); ok {
+		args.opts = append(args.opts, WithAgentSkillFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *AgentThreadQuery) CollectFields(ctx context.Context, satisfies ...string) (*AgentThreadQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *AgentThreadQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(agentthread.Columns))
+		selectedFields = []string{agentthread.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "agent":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+				return err
+			}
+			_q.withAgent = query
+			if _, ok := fieldSeen[agentthread.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldAgentID)
+				fieldSeen[agentthread.FieldAgentID] = struct{}{}
+			}
+
+		case "thread":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ThreadClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, threadImplementors)...); err != nil {
+				return err
+			}
+			_q.withThread = query
+			if _, ok := fieldSeen[agentthread.FieldThreadRowID]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldThreadRowID)
+				fieldSeen[agentthread.FieldThreadRowID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[agentthread.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldCreatedAt)
+				fieldSeen[agentthread.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[agentthread.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldUpdatedAt)
+				fieldSeen[agentthread.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[agentthread.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldProjectID)
+				fieldSeen[agentthread.FieldProjectID] = struct{}{}
+			}
+		case "agentID":
+			if _, ok := fieldSeen[agentthread.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldAgentID)
+				fieldSeen[agentthread.FieldAgentID] = struct{}{}
+			}
+		case "threadRowID":
+			if _, ok := fieldSeen[agentthread.FieldThreadRowID]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldThreadRowID)
+				fieldSeen[agentthread.FieldThreadRowID] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type agentthreadPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []AgentThreadPaginateOption
+}
+
+func newAgentThreadPaginateArgs(rv map[string]any) *agentthreadPaginateArgs {
+	args := &agentthreadPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &AgentThreadOrder{Field: &AgentThreadOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAgentThreadOrder(order))
+			}
+		case *AgentThreadOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAgentThreadOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*AgentThreadWhereInput); ok {
+		args.opts = append(args.opts, WithAgentThreadFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *AgentToolQuery) CollectFields(ctx context.Context, satisfies ...string) (*AgentToolQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *AgentToolQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(agenttool.Columns))
+		selectedFields = []string{agenttool.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "agent":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+				return err
+			}
+			_q.withAgent = query
+			if _, ok := fieldSeen[agenttool.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldAgentID)
+				fieldSeen[agenttool.FieldAgentID] = struct{}{}
+			}
+
+		case "tool":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ToolClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, toolImplementors)...); err != nil {
+				return err
+			}
+			_q.withTool = query
+			if _, ok := fieldSeen[agenttool.FieldToolID]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldToolID)
+				fieldSeen[agenttool.FieldToolID] = struct{}{}
+			}
+
+		case "project":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ProjectClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
+				return err
+			}
+			_q.withProject = query
+			if _, ok := fieldSeen[agenttool.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldProjectID)
+				fieldSeen[agenttool.FieldProjectID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[agenttool.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldCreatedAt)
+				fieldSeen[agenttool.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[agenttool.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldUpdatedAt)
+				fieldSeen[agenttool.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[agenttool.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldProjectID)
+				fieldSeen[agenttool.FieldProjectID] = struct{}{}
+			}
+		case "agentID":
+			if _, ok := fieldSeen[agenttool.FieldAgentID]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldAgentID)
+				fieldSeen[agenttool.FieldAgentID] = struct{}{}
+			}
+		case "toolID":
+			if _, ok := fieldSeen[agenttool.FieldToolID]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldToolID)
+				fieldSeen[agenttool.FieldToolID] = struct{}{}
+			}
+		case "enabled":
+			if _, ok := fieldSeen[agenttool.FieldEnabled]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldEnabled)
+				fieldSeen[agenttool.FieldEnabled] = struct{}{}
+			}
+		case "order":
+			if _, ok := fieldSeen[agenttool.FieldOrder]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldOrder)
+				fieldSeen[agenttool.FieldOrder] = struct{}{}
+			}
+		case "config":
+			if _, ok := fieldSeen[agenttool.FieldConfig]; !ok {
+				selectedFields = append(selectedFields, agenttool.FieldConfig)
+				fieldSeen[agenttool.FieldConfig] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type agenttoolPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []AgentToolPaginateOption
+}
+
+func newAgentToolPaginateArgs(rv map[string]any) *agenttoolPaginateArgs {
+	args := &agenttoolPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &AgentToolOrder{Field: &AgentToolOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithAgentToolOrder(order))
+			}
+		case *AgentToolOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithAgentToolOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*AgentToolWhereInput); ok {
+		args.opts = append(args.opts, WithAgentToolFilter(v.Filter))
 	}
 	return args
 }
@@ -2489,6 +4177,540 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				*wq = *query
 			})
 
+		case "promptVersions":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptVersionClient{config: _q.config}).Query()
+			)
+			args := newPromptVersionPaginateArgs(fieldArgs(ctx, new(PromptVersionWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newPromptVersionPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Project) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"project_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(project.PromptVersionsColumn), ids...))
+						})
+						if err := query.GroupBy(project.PromptVersionsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[8][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.PromptVersions)
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[8][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, promptversionImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(project.PromptVersionsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedPromptVersions(alias, func(wq *PromptVersionQuery) {
+				*wq = *query
+			})
+
+		case "agents":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			args := newAgentPaginateArgs(fieldArgs(ctx, new(AgentWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Project) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"project_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(project.AgentsColumn), ids...))
+						})
+						if err := query.GroupBy(project.AgentsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[9] == nil {
+								nodes[i].Edges.totalCount[9] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[9][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Agents)
+							if nodes[i].Edges.totalCount[9] == nil {
+								nodes[i].Edges.totalCount[9] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[9][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(project.AgentsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgents(alias, func(wq *AgentQuery) {
+				*wq = *query
+			})
+
+		case "tools":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ToolClient{config: _q.config}).Query()
+			)
+			args := newToolPaginateArgs(fieldArgs(ctx, new(ToolWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newToolPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Project) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"project_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(project.ToolsColumn), ids...))
+						})
+						if err := query.GroupBy(project.ToolsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[10] == nil {
+								nodes[i].Edges.totalCount[10] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[10][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Tools)
+							if nodes[i].Edges.totalCount[10] == nil {
+								nodes[i].Edges.totalCount[10] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[10][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, toolImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(project.ToolsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedTools(alias, func(wq *ToolQuery) {
+				*wq = *query
+			})
+
+		case "skills":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&SkillClient{config: _q.config}).Query()
+			)
+			args := newSkillPaginateArgs(fieldArgs(ctx, new(SkillWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newSkillPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Project) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"project_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(project.SkillsColumn), ids...))
+						})
+						if err := query.GroupBy(project.SkillsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[11] == nil {
+								nodes[i].Edges.totalCount[11] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[11][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Skills)
+							if nodes[i].Edges.totalCount[11] == nil {
+								nodes[i].Edges.totalCount[11] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[11][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, skillImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(project.SkillsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedSkills(alias, func(wq *SkillQuery) {
+				*wq = *query
+			})
+
+		case "agentToolBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentToolClient{config: _q.config}).Query()
+			)
+			args := newAgentToolPaginateArgs(fieldArgs(ctx, new(AgentToolWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentToolPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Project) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"project_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(project.AgentToolBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(project.AgentToolBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[12] == nil {
+								nodes[i].Edges.totalCount[12] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[12][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.AgentToolBindings)
+							if nodes[i].Edges.totalCount[12] == nil {
+								nodes[i].Edges.totalCount[12] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[12][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agenttoolImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(project.AgentToolBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgentToolBindings(alias, func(wq *AgentToolQuery) {
+				*wq = *query
+			})
+
+		case "agentSkillBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentSkillClient{config: _q.config}).Query()
+			)
+			args := newAgentSkillPaginateArgs(fieldArgs(ctx, new(AgentSkillWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentSkillPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Project) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"project_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(project.AgentSkillBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(project.AgentSkillBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[13] == nil {
+								nodes[i].Edges.totalCount[13] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[13][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.AgentSkillBindings)
+							if nodes[i].Edges.totalCount[13] == nil {
+								nodes[i].Edges.totalCount[13] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[13][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentskillImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(project.AgentSkillBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgentSkillBindings(alias, func(wq *AgentSkillQuery) {
+				*wq = *query
+			})
+
 		case "projectUsers":
 			var (
 				alias = field.Alias
@@ -2532,10 +4754,10 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[8] == nil {
-								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							if nodes[i].Edges.totalCount[14] == nil {
+								nodes[i].Edges.totalCount[14] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[8][alias] = n
+							nodes[i].Edges.totalCount[14][alias] = n
 						}
 						return nil
 					})
@@ -2543,10 +4765,10 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.ProjectUsers)
-							if nodes[i].Edges.totalCount[8] == nil {
-								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							if nodes[i].Edges.totalCount[14] == nil {
+								nodes[i].Edges.totalCount[14] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[8][alias] = n
+							nodes[i].Edges.totalCount[14][alias] = n
 						}
 						return nil
 					})
@@ -2779,6 +5001,214 @@ func (_q *PromptQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 			_q.WithNamedProjects(alias, func(wq *ProjectQuery) {
 				*wq = *query
 			})
+
+		case "versions":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptVersionClient{config: _q.config}).Query()
+			)
+			args := newPromptVersionPaginateArgs(fieldArgs(ctx, new(PromptVersionWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newPromptVersionPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Prompt) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"prompt_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(prompt.VersionsColumn), ids...))
+						})
+						if err := query.GroupBy(prompt.VersionsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[1] == nil {
+								nodes[i].Edges.totalCount[1] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[1][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Prompt) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Versions)
+							if nodes[i].Edges.totalCount[1] == nil {
+								nodes[i].Edges.totalCount[1] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[1][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, promptversionImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(prompt.VersionsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedVersions(alias, func(wq *PromptVersionQuery) {
+				*wq = *query
+			})
+
+		case "activeVersion":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptVersionClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, promptversionImplementors)...); err != nil {
+				return err
+			}
+			_q.withActiveVersion = query
+			if _, ok := fieldSeen[prompt.FieldActiveVersionID]; !ok {
+				selectedFields = append(selectedFields, prompt.FieldActiveVersionID)
+				fieldSeen[prompt.FieldActiveVersionID] = struct{}{}
+			}
+
+		case "draftVersion":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptVersionClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, promptversionImplementors)...); err != nil {
+				return err
+			}
+			_q.withDraftVersion = query
+			if _, ok := fieldSeen[prompt.FieldDraftVersionID]; !ok {
+				selectedFields = append(selectedFields, prompt.FieldDraftVersionID)
+				fieldSeen[prompt.FieldDraftVersionID] = struct{}{}
+			}
+
+		case "agents":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			args := newAgentPaginateArgs(fieldArgs(ctx, new(AgentWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Prompt) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"prompt_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(prompt.AgentsColumn), ids...))
+						})
+						if err := query.GroupBy(prompt.AgentsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Prompt) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Agents)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(prompt.AgentsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgents(alias, func(wq *AgentQuery) {
+				*wq = *query
+			})
 		case "createdAt":
 			if _, ok := fieldSeen[prompt.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, prompt.FieldCreatedAt)
@@ -2793,6 +5223,11 @@ func (_q *PromptQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 			if _, ok := fieldSeen[prompt.FieldProjectID]; !ok {
 				selectedFields = append(selectedFields, prompt.FieldProjectID)
 				fieldSeen[prompt.FieldProjectID] = struct{}{}
+			}
+		case "type":
+			if _, ok := fieldSeen[prompt.FieldType]; !ok {
+				selectedFields = append(selectedFields, prompt.FieldType)
+				fieldSeen[prompt.FieldType] = struct{}{}
 			}
 		case "name":
 			if _, ok := fieldSeen[prompt.FieldName]; !ok {
@@ -2828,6 +5263,16 @@ func (_q *PromptQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 			if _, ok := fieldSeen[prompt.FieldSettings]; !ok {
 				selectedFields = append(selectedFields, prompt.FieldSettings)
 				fieldSeen[prompt.FieldSettings] = struct{}{}
+			}
+		case "activeVersionID":
+			if _, ok := fieldSeen[prompt.FieldActiveVersionID]; !ok {
+				selectedFields = append(selectedFields, prompt.FieldActiveVersionID)
+				fieldSeen[prompt.FieldActiveVersionID] = struct{}{}
+			}
+		case "draftVersionID":
+			if _, ok := fieldSeen[prompt.FieldDraftVersionID]; !ok {
+				selectedFields = append(selectedFields, prompt.FieldDraftVersionID)
+				fieldSeen[prompt.FieldDraftVersionID] = struct{}{}
 			}
 		case "id":
 		case "__typename":
@@ -2888,6 +5333,358 @@ func newPromptPaginateArgs(rv map[string]any) *promptPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*PromptWhereInput); ok {
 		args.opts = append(args.opts, WithPromptFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *PromptVersionQuery) CollectFields(ctx context.Context, satisfies ...string) (*PromptVersionQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *PromptVersionQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(promptversion.Columns))
+		selectedFields = []string{promptversion.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "prompt":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, promptImplementors)...); err != nil {
+				return err
+			}
+			_q.withPrompt = query
+			if _, ok := fieldSeen[promptversion.FieldPromptID]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldPromptID)
+				fieldSeen[promptversion.FieldPromptID] = struct{}{}
+			}
+
+		case "project":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ProjectClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
+				return err
+			}
+			_q.withProject = query
+			if _, ok := fieldSeen[promptversion.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldProjectID)
+				fieldSeen[promptversion.FieldProjectID] = struct{}{}
+			}
+
+		case "createdByUser":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UserClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+				return err
+			}
+			_q.withCreatedByUser = query
+			if _, ok := fieldSeen[promptversion.FieldCreatedByUserID]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldCreatedByUserID)
+				fieldSeen[promptversion.FieldCreatedByUserID] = struct{}{}
+			}
+
+		case "activeForPrompts":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptClient{config: _q.config}).Query()
+			)
+			args := newPromptPaginateArgs(fieldArgs(ctx, new(PromptWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newPromptPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*PromptVersion) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"active_version_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(promptversion.ActiveForPromptsColumn), ids...))
+						})
+						if err := query.GroupBy(promptversion.ActiveForPromptsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[3][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*PromptVersion) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.ActiveForPrompts)
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[3][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, promptImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(promptversion.ActiveForPromptsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedActiveForPrompts(alias, func(wq *PromptQuery) {
+				*wq = *query
+			})
+
+		case "draftForPrompts":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptClient{config: _q.config}).Query()
+			)
+			args := newPromptPaginateArgs(fieldArgs(ctx, new(PromptWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newPromptPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*PromptVersion) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"draft_version_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(promptversion.DraftForPromptsColumn), ids...))
+						})
+						if err := query.GroupBy(promptversion.DraftForPromptsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*PromptVersion) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.DraftForPrompts)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, promptImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(promptversion.DraftForPromptsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedDraftForPrompts(alias, func(wq *PromptQuery) {
+				*wq = *query
+			})
+		case "createdAt":
+			if _, ok := fieldSeen[promptversion.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldCreatedAt)
+				fieldSeen[promptversion.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[promptversion.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldUpdatedAt)
+				fieldSeen[promptversion.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[promptversion.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldProjectID)
+				fieldSeen[promptversion.FieldProjectID] = struct{}{}
+			}
+		case "promptID":
+			if _, ok := fieldSeen[promptversion.FieldPromptID]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldPromptID)
+				fieldSeen[promptversion.FieldPromptID] = struct{}{}
+			}
+		case "version":
+			if _, ok := fieldSeen[promptversion.FieldVersion]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldVersion)
+				fieldSeen[promptversion.FieldVersion] = struct{}{}
+			}
+		case "content":
+			if _, ok := fieldSeen[promptversion.FieldContent]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldContent)
+				fieldSeen[promptversion.FieldContent] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[promptversion.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldStatus)
+				fieldSeen[promptversion.FieldStatus] = struct{}{}
+			}
+		case "changeLog":
+			if _, ok := fieldSeen[promptversion.FieldChangeLog]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldChangeLog)
+				fieldSeen[promptversion.FieldChangeLog] = struct{}{}
+			}
+		case "createdByUserID":
+			if _, ok := fieldSeen[promptversion.FieldCreatedByUserID]; !ok {
+				selectedFields = append(selectedFields, promptversion.FieldCreatedByUserID)
+				fieldSeen[promptversion.FieldCreatedByUserID] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type promptversionPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []PromptVersionPaginateOption
+}
+
+func newPromptVersionPaginateArgs(rv map[string]any) *promptversionPaginateArgs {
+	args := &promptversionPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &PromptVersionOrder{Field: &PromptVersionOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithPromptVersionOrder(order))
+			}
+		case *PromptVersionOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithPromptVersionOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*PromptVersionWhereInput); ok {
+		args.opts = append(args.opts, WithPromptVersionFilter(v.Filter))
 	}
 	return args
 }
@@ -4024,6 +6821,264 @@ func newRolePaginateArgs(rv map[string]any) *rolePaginateArgs {
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *SkillQuery) CollectFields(ctx context.Context, satisfies ...string) (*SkillQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *SkillQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(skill.Columns))
+		selectedFields = []string{skill.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "project":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ProjectClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
+				return err
+			}
+			_q.withProject = query
+			if _, ok := fieldSeen[skill.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, skill.FieldProjectID)
+				fieldSeen[skill.FieldProjectID] = struct{}{}
+			}
+
+		case "createdByUser":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UserClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+				return err
+			}
+			_q.withCreatedByUser = query
+			if _, ok := fieldSeen[skill.FieldCreatedByUserID]; !ok {
+				selectedFields = append(selectedFields, skill.FieldCreatedByUserID)
+				fieldSeen[skill.FieldCreatedByUserID] = struct{}{}
+			}
+
+		case "agentBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentSkillClient{config: _q.config}).Query()
+			)
+			args := newAgentSkillPaginateArgs(fieldArgs(ctx, new(AgentSkillWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentSkillPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Skill) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"skill_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(skill.AgentBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(skill.AgentBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Skill) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.AgentBindings)
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentskillImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(skill.AgentBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgentBindings(alias, func(wq *AgentSkillQuery) {
+				*wq = *query
+			})
+		case "createdAt":
+			if _, ok := fieldSeen[skill.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, skill.FieldCreatedAt)
+				fieldSeen[skill.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[skill.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, skill.FieldUpdatedAt)
+				fieldSeen[skill.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[skill.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, skill.FieldProjectID)
+				fieldSeen[skill.FieldProjectID] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[skill.FieldName]; !ok {
+				selectedFields = append(selectedFields, skill.FieldName)
+				fieldSeen[skill.FieldName] = struct{}{}
+			}
+		case "description":
+			if _, ok := fieldSeen[skill.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, skill.FieldDescription)
+				fieldSeen[skill.FieldDescription] = struct{}{}
+			}
+		case "kind":
+			if _, ok := fieldSeen[skill.FieldKind]; !ok {
+				selectedFields = append(selectedFields, skill.FieldKind)
+				fieldSeen[skill.FieldKind] = struct{}{}
+			}
+		case "content":
+			if _, ok := fieldSeen[skill.FieldContent]; !ok {
+				selectedFields = append(selectedFields, skill.FieldContent)
+				fieldSeen[skill.FieldContent] = struct{}{}
+			}
+		case "entrypoint":
+			if _, ok := fieldSeen[skill.FieldEntrypoint]; !ok {
+				selectedFields = append(selectedFields, skill.FieldEntrypoint)
+				fieldSeen[skill.FieldEntrypoint] = struct{}{}
+			}
+		case "bundle":
+			if _, ok := fieldSeen[skill.FieldBundle]; !ok {
+				selectedFields = append(selectedFields, skill.FieldBundle)
+				fieldSeen[skill.FieldBundle] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[skill.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, skill.FieldStatus)
+				fieldSeen[skill.FieldStatus] = struct{}{}
+			}
+		case "createdByUserID":
+			if _, ok := fieldSeen[skill.FieldCreatedByUserID]; !ok {
+				selectedFields = append(selectedFields, skill.FieldCreatedByUserID)
+				fieldSeen[skill.FieldCreatedByUserID] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type skillPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []SkillPaginateOption
+}
+
+func newSkillPaginateArgs(rv map[string]any) *skillPaginateArgs {
+	args := &skillPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &SkillOrder{Field: &SkillOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithSkillOrder(order))
+			}
+		case *SkillOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithSkillOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*SkillWhereInput); ok {
+		args.opts = append(args.opts, WithSkillFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (_q *SystemQuery) CollectFields(ctx context.Context, satisfies ...string) (*SystemQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
@@ -4252,6 +7307,184 @@ func (_q *ThreadQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 			_q.WithNamedTraces(alias, func(wq *TraceQuery) {
 				*wq = *query
 			})
+
+		case "agentThreads":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentThreadClient{config: _q.config}).Query()
+			)
+			args := newAgentThreadPaginateArgs(fieldArgs(ctx, new(AgentThreadWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentThreadPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Thread) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"thread_row_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(thread.AgentThreadsColumn), ids...))
+						})
+						if err := query.GroupBy(thread.AgentThreadsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Thread) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.AgentThreads)
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentthreadImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(thread.AgentThreadsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgentThreads(alias, func(wq *AgentThreadQuery) {
+				*wq = *query
+			})
+
+		case "agentMessages":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentMessageClient{config: _q.config}).Query()
+			)
+			args := newAgentMessagePaginateArgs(fieldArgs(ctx, new(AgentMessageWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentMessagePager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Thread) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"thread_row_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(thread.AgentMessagesColumn), ids...))
+						})
+						if err := query.GroupBy(thread.AgentMessagesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[3][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Thread) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.AgentMessages)
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[3][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentmessageImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(thread.AgentMessagesColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgentMessages(alias, func(wq *AgentMessageQuery) {
+				*wq = *query
+			})
 		case "createdAt":
 			if _, ok := fieldSeen[thread.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, thread.FieldCreatedAt)
@@ -4331,6 +7564,259 @@ func newThreadPaginateArgs(rv map[string]any) *threadPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*ThreadWhereInput); ok {
 		args.opts = append(args.opts, WithThreadFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *ToolQuery) CollectFields(ctx context.Context, satisfies ...string) (*ToolQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *ToolQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(tool.Columns))
+		selectedFields = []string{tool.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "project":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ProjectClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
+				return err
+			}
+			_q.withProject = query
+			if _, ok := fieldSeen[tool.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, tool.FieldProjectID)
+				fieldSeen[tool.FieldProjectID] = struct{}{}
+			}
+
+		case "createdByUser":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UserClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+				return err
+			}
+			_q.withCreatedByUser = query
+			if _, ok := fieldSeen[tool.FieldCreatedByUserID]; !ok {
+				selectedFields = append(selectedFields, tool.FieldCreatedByUserID)
+				fieldSeen[tool.FieldCreatedByUserID] = struct{}{}
+			}
+
+		case "agentBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentToolClient{config: _q.config}).Query()
+			)
+			args := newAgentToolPaginateArgs(fieldArgs(ctx, new(AgentToolWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentToolPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Tool) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"tool_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(tool.AgentBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(tool.AgentBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Tool) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.AgentBindings)
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agenttoolImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(tool.AgentBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgentBindings(alias, func(wq *AgentToolQuery) {
+				*wq = *query
+			})
+		case "createdAt":
+			if _, ok := fieldSeen[tool.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, tool.FieldCreatedAt)
+				fieldSeen[tool.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[tool.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, tool.FieldUpdatedAt)
+				fieldSeen[tool.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[tool.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, tool.FieldProjectID)
+				fieldSeen[tool.FieldProjectID] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[tool.FieldName]; !ok {
+				selectedFields = append(selectedFields, tool.FieldName)
+				fieldSeen[tool.FieldName] = struct{}{}
+			}
+		case "description":
+			if _, ok := fieldSeen[tool.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, tool.FieldDescription)
+				fieldSeen[tool.FieldDescription] = struct{}{}
+			}
+		case "type":
+			if _, ok := fieldSeen[tool.FieldType]; !ok {
+				selectedFields = append(selectedFields, tool.FieldType)
+				fieldSeen[tool.FieldType] = struct{}{}
+			}
+		case "schema":
+			if _, ok := fieldSeen[tool.FieldSchema]; !ok {
+				selectedFields = append(selectedFields, tool.FieldSchema)
+				fieldSeen[tool.FieldSchema] = struct{}{}
+			}
+		case "defaultPolicy":
+			if _, ok := fieldSeen[tool.FieldDefaultPolicy]; !ok {
+				selectedFields = append(selectedFields, tool.FieldDefaultPolicy)
+				fieldSeen[tool.FieldDefaultPolicy] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[tool.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, tool.FieldStatus)
+				fieldSeen[tool.FieldStatus] = struct{}{}
+			}
+		case "createdByUserID":
+			if _, ok := fieldSeen[tool.FieldCreatedByUserID]; !ok {
+				selectedFields = append(selectedFields, tool.FieldCreatedByUserID)
+				fieldSeen[tool.FieldCreatedByUserID] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type toolPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ToolPaginateOption
+}
+
+func newToolPaginateArgs(rv map[string]any) *toolPaginateArgs {
+	args := &toolPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &ToolOrder{Field: &ToolOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithToolOrder(order))
+			}
+		case *ToolOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithToolOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*ToolWhereInput); ok {
+		args.opts = append(args.opts, WithToolFilter(v.Filter))
 	}
 	return args
 }
@@ -5198,6 +8684,362 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 				*wq = *query
 			})
 
+		case "promptVersions":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&PromptVersionClient{config: _q.config}).Query()
+			)
+			args := newPromptVersionPaginateArgs(fieldArgs(ctx, new(PromptVersionWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newPromptVersionPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*User) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"created_by_user_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(user.PromptVersionsColumn), ids...))
+						})
+						if err := query.GroupBy(user.PromptVersionsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*User) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.PromptVersions)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, promptversionImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(user.PromptVersionsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedPromptVersions(alias, func(wq *PromptVersionQuery) {
+				*wq = *query
+			})
+
+		case "agents":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentClient{config: _q.config}).Query()
+			)
+			args := newAgentPaginateArgs(fieldArgs(ctx, new(AgentWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*User) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"created_by_user_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(user.AgentsColumn), ids...))
+						})
+						if err := query.GroupBy(user.AgentsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[5] == nil {
+								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[5][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*User) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Agents)
+							if nodes[i].Edges.totalCount[5] == nil {
+								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[5][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(user.AgentsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgents(alias, func(wq *AgentQuery) {
+				*wq = *query
+			})
+
+		case "tools":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ToolClient{config: _q.config}).Query()
+			)
+			args := newToolPaginateArgs(fieldArgs(ctx, new(ToolWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newToolPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*User) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"created_by_user_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(user.ToolsColumn), ids...))
+						})
+						if err := query.GroupBy(user.ToolsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[6] == nil {
+								nodes[i].Edges.totalCount[6] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[6][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*User) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Tools)
+							if nodes[i].Edges.totalCount[6] == nil {
+								nodes[i].Edges.totalCount[6] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[6][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, toolImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(user.ToolsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedTools(alias, func(wq *ToolQuery) {
+				*wq = *query
+			})
+
+		case "skills":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&SkillClient{config: _q.config}).Query()
+			)
+			args := newSkillPaginateArgs(fieldArgs(ctx, new(SkillWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newSkillPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*User) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"created_by_user_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(user.SkillsColumn), ids...))
+						})
+						if err := query.GroupBy(user.SkillsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[7] == nil {
+								nodes[i].Edges.totalCount[7] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[7][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*User) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Skills)
+							if nodes[i].Edges.totalCount[7] == nil {
+								nodes[i].Edges.totalCount[7] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[7][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, skillImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(user.SkillsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedSkills(alias, func(wq *SkillQuery) {
+				*wq = *query
+			})
+
 		case "projectUsers":
 			var (
 				alias = field.Alias
@@ -5241,10 +9083,10 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[4] == nil {
-								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[4][alias] = n
+							nodes[i].Edges.totalCount[8][alias] = n
 						}
 						return nil
 					})
@@ -5252,10 +9094,10 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*User) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.ProjectUsers)
-							if nodes[i].Edges.totalCount[4] == nil {
-								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[4][alias] = n
+							nodes[i].Edges.totalCount[8][alias] = n
 						}
 						return nil
 					})
@@ -5330,10 +9172,10 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[5] == nil {
-								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							if nodes[i].Edges.totalCount[9] == nil {
+								nodes[i].Edges.totalCount[9] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[5][alias] = n
+							nodes[i].Edges.totalCount[9][alias] = n
 						}
 						return nil
 					})
@@ -5341,10 +9183,10 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*User) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.UserRoles)
-							if nodes[i].Edges.totalCount[5] == nil {
-								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							if nodes[i].Edges.totalCount[9] == nil {
+								nodes[i].Edges.totalCount[9] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[5][alias] = n
+							nodes[i].Edges.totalCount[9][alias] = n
 						}
 						return nil
 					})

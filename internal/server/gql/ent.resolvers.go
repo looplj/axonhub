@@ -41,6 +41,195 @@ func (r *aPIKeyResolver) ProjectID(ctx context.Context, obj *ent.APIKey) (*objec
 }
 
 // ID is the resolver for the id field.
+func (r *agentResolver) ID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgent,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ProjectID is the resolver for the projectID field.
+func (r *agentResolver) ProjectID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   obj.ProjectID,
+	}, nil
+}
+
+// CreatedByUserID is the resolver for the createdByUserID field.
+func (r *agentResolver) CreatedByUserID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   obj.CreatedByUserID,
+	}, nil
+}
+
+// PromptID is the resolver for the promptID field.
+func (r *agentResolver) PromptID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypePrompt,
+		ID:   obj.PromptID,
+	}, nil
+}
+
+// APIKeyID is the resolver for the apiKeyID field.
+func (r *agentResolver) APIKeyID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAPIKey,
+		ID:   obj.APIKeyID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *agentInstanceResolver) ID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgentInstance,
+		ID:   obj.ID,
+	}, nil
+}
+
+// AgentID is the resolver for the agentID field.
+func (r *agentInstanceResolver) AgentID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgent,
+		ID:   obj.AgentID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *agentMemoryResolver) ID(ctx context.Context, obj *ent.AgentMemory) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgentMemory,
+		ID:   obj.ID,
+	}, nil
+}
+
+// AgentID is the resolver for the agentID field.
+func (r *agentMemoryResolver) AgentID(ctx context.Context, obj *ent.AgentMemory) (*objects.GUID, error) {
+	if obj.AgentID == 0 {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: ent.TypeAgent,
+		ID:   obj.AgentID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *agentMessageResolver) ID(ctx context.Context, obj *ent.AgentMessage) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgentMessage,
+		ID:   obj.ID,
+	}, nil
+}
+
+// AgentID is the resolver for the agentID field.
+func (r *agentMessageResolver) AgentID(ctx context.Context, obj *ent.AgentMessage) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgent,
+		ID:   obj.AgentID,
+	}, nil
+}
+
+// ThreadRowID is the resolver for the threadRowID field.
+func (r *agentMessageResolver) ThreadRowID(ctx context.Context, obj *ent.AgentMessage) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeThread,
+		ID:   obj.ThreadRowID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *agentSkillResolver) ID(ctx context.Context, obj *ent.AgentSkill) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgentSkill,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ProjectID is the resolver for the projectID field.
+func (r *agentSkillResolver) ProjectID(ctx context.Context, obj *ent.AgentSkill) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   obj.ProjectID,
+	}, nil
+}
+
+// AgentID is the resolver for the agentID field.
+func (r *agentSkillResolver) AgentID(ctx context.Context, obj *ent.AgentSkill) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgent,
+		ID:   obj.AgentID,
+	}, nil
+}
+
+// SkillID is the resolver for the skillID field.
+func (r *agentSkillResolver) SkillID(ctx context.Context, obj *ent.AgentSkill) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeSkill,
+		ID:   obj.SkillID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *agentThreadResolver) ID(ctx context.Context, obj *ent.AgentThread) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgentThread,
+		ID:   obj.ID,
+	}, nil
+}
+
+// AgentID is the resolver for the agentID field.
+func (r *agentThreadResolver) AgentID(ctx context.Context, obj *ent.AgentThread) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgent,
+		ID:   obj.AgentID,
+	}, nil
+}
+
+// ThreadRowID is the resolver for the threadRowID field.
+func (r *agentThreadResolver) ThreadRowID(ctx context.Context, obj *ent.AgentThread) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeThread,
+		ID:   obj.ThreadRowID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *agentToolResolver) ID(ctx context.Context, obj *ent.AgentTool) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgentTool,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ProjectID is the resolver for the projectID field.
+func (r *agentToolResolver) ProjectID(ctx context.Context, obj *ent.AgentTool) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   obj.ProjectID,
+	}, nil
+}
+
+// AgentID is the resolver for the agentID field.
+func (r *agentToolResolver) AgentID(ctx context.Context, obj *ent.AgentTool) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgent,
+		ID:   obj.AgentID,
+	}, nil
+}
+
+// ToolID is the resolver for the toolID field.
+func (r *agentToolResolver) ToolID(ctx context.Context, obj *ent.AgentTool) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeTool,
+		ID:   obj.ToolID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeChannel,
@@ -208,6 +397,69 @@ func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID
 	}, nil
 }
 
+// ActiveVersionID is the resolver for the activeVersionID field.
+func (r *promptResolver) ActiveVersionID(ctx context.Context, obj *ent.Prompt) (*objects.GUID, error) {
+	if obj.ActiveVersionID == nil {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: ent.TypePromptVersion,
+		ID:   *obj.ActiveVersionID,
+	}, nil
+}
+
+// DraftVersionID is the resolver for the draftVersionID field.
+func (r *promptResolver) DraftVersionID(ctx context.Context, obj *ent.Prompt) (*objects.GUID, error) {
+	if obj.DraftVersionID == nil {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: ent.TypePromptVersion,
+		ID:   *obj.DraftVersionID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *promptVersionResolver) ID(ctx context.Context, obj *ent.PromptVersion) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypePromptVersion,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ProjectID is the resolver for the projectID field.
+func (r *promptVersionResolver) ProjectID(ctx context.Context, obj *ent.PromptVersion) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   obj.ProjectID,
+	}, nil
+}
+
+// PromptID is the resolver for the promptID field.
+func (r *promptVersionResolver) PromptID(ctx context.Context, obj *ent.PromptVersion) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypePrompt,
+		ID:   obj.PromptID,
+	}, nil
+}
+
+// CreatedByUserID is the resolver for the createdByUserID field.
+func (r *promptVersionResolver) CreatedByUserID(ctx context.Context, obj *ent.PromptVersion) (*objects.GUID, error) {
+	if obj.CreatedByUserID == nil {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   *obj.CreatedByUserID,
+	}, nil
+}
+
 // ID is the resolver for the id field.
 func (r *providerQuotaStatusResolver) ID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -236,7 +488,31 @@ func (r *queryResolver) Node(ctx context.Context, id objects.GUID) (ent.Noder, e
 
 // Nodes is the resolver for the nodes field.
 func (r *queryResolver) Nodes(ctx context.Context, ids []*objects.GUID) ([]ent.Noder, error) {
-	panic(fmt.Errorf("not implemented: Nodes - nodes"))
+	nodeTypeByID := make(map[int]string, len(ids))
+	nodeIDs := make([]int, 0, len(ids))
+
+	for _, gid := range ids {
+		if gid == nil {
+			continue
+		}
+
+		typ, ok := guidTypeToNodeType[gid.Type]
+		if !ok {
+			return nil, fmt.Errorf("unknown node type: %s", gid.Type)
+		}
+
+		nodeTypeByID[gid.ID] = typ
+		nodeIDs = append(nodeIDs, gid.ID)
+	}
+
+	return r.client.Noders(ctx, nodeIDs, ent.WithNodeType(func(_ context.Context, id int) (string, error) {
+		typ, ok := nodeTypeByID[id]
+		if !ok {
+			return "", fmt.Errorf("unknown node id: %d", id)
+		}
+
+		return typ, nil
+	}))
 }
 
 // APIKeys is the resolver for the apiKeys field.
@@ -252,6 +528,118 @@ func (r *queryResolver) APIKeys(ctx context.Context, after *entgql.Cursor[int], 
 	return r.client.APIKey.Query().Paginate(ctx, after, first, before, last,
 		ent.WithAPIKeyOrder(orderBy),
 		ent.WithAPIKeyFilter(where.Filter),
+	)
+}
+
+// Agents is the resolver for the agents field.
+func (r *queryResolver) Agents(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentOrder, where *ent.AgentWhereInput) (*ent.AgentConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAgentOrder.Field
+	}
+
+	return r.client.Agent.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAgentOrder(orderBy),
+		ent.WithAgentFilter(where.Filter),
+	)
+}
+
+// AgentInstances is the resolver for the agentInstances field.
+func (r *queryResolver) AgentInstances(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentInstanceOrder, where *ent.AgentInstanceWhereInput) (*ent.AgentInstanceConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAgentInstanceOrder.Field
+	}
+
+	return r.client.AgentInstance.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAgentInstanceOrder(orderBy),
+		ent.WithAgentInstanceFilter(where.Filter),
+	)
+}
+
+// AgentMemories is the resolver for the agentMemories field.
+func (r *queryResolver) AgentMemories(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMemoryOrder, where *ent.AgentMemoryWhereInput) (*ent.AgentMemoryConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAgentMemoryOrder.Field
+	}
+
+	return r.client.AgentMemory.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAgentMemoryOrder(orderBy),
+		ent.WithAgentMemoryFilter(where.Filter),
+	)
+}
+
+// AgentMessages is the resolver for the agentMessages field.
+func (r *queryResolver) AgentMessages(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMessageOrder, where *ent.AgentMessageWhereInput) (*ent.AgentMessageConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAgentMessageOrder.Field
+	}
+
+	return r.client.AgentMessage.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAgentMessageOrder(orderBy),
+		ent.WithAgentMessageFilter(where.Filter),
+	)
+}
+
+// AgentSkills is the resolver for the agentSkills field.
+func (r *queryResolver) AgentSkills(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentSkillOrder, where *ent.AgentSkillWhereInput) (*ent.AgentSkillConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAgentSkillOrder.Field
+	}
+
+	return r.client.AgentSkill.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAgentSkillOrder(orderBy),
+		ent.WithAgentSkillFilter(where.Filter),
+	)
+}
+
+// AgentThreads is the resolver for the agentThreads field.
+func (r *queryResolver) AgentThreads(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentThreadOrder, where *ent.AgentThreadWhereInput) (*ent.AgentThreadConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAgentThreadOrder.Field
+	}
+
+	return r.client.AgentThread.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAgentThreadOrder(orderBy),
+		ent.WithAgentThreadFilter(where.Filter),
+	)
+}
+
+// AgentTools is the resolver for the agentTools field.
+func (r *queryResolver) AgentTools(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentToolOrder, where *ent.AgentToolWhereInput) (*ent.AgentToolConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAgentToolOrder.Field
+	}
+
+	return r.client.AgentTool.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAgentToolOrder(orderBy),
+		ent.WithAgentToolFilter(where.Filter),
 	)
 }
 
@@ -342,6 +730,22 @@ func (r *queryResolver) Prompts(ctx context.Context, after *entgql.Cursor[int], 
 	)
 }
 
+// PromptVersions is the resolver for the promptVersions field.
+func (r *queryResolver) PromptVersions(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptVersionOrder, where *ent.PromptVersionWhereInput) (*ent.PromptVersionConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultPromptVersionOrder.Field
+	}
+
+	return r.client.PromptVersion.Query().Paginate(ctx, after, first, before, last,
+		ent.WithPromptVersionOrder(orderBy),
+		ent.WithPromptVersionFilter(where.Filter),
+	)
+}
+
 // Requests is the resolver for the requests field.
 func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) (*ent.RequestConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
@@ -374,6 +778,22 @@ func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], fi
 	)
 }
 
+// Skills is the resolver for the skills field.
+func (r *queryResolver) Skills(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SkillOrder, where *ent.SkillWhereInput) (*ent.SkillConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultSkillOrder.Field
+	}
+
+	return r.client.Skill.Query().Paginate(ctx, after, first, before, last,
+		ent.WithSkillOrder(orderBy),
+		ent.WithSkillFilter(where.Filter),
+	)
+}
+
 // Systems is the resolver for the systems field.
 func (r *queryResolver) Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
@@ -399,6 +819,22 @@ func (r *queryResolver) Threads(ctx context.Context, after *entgql.Cursor[int], 
 	return r.client.Thread.Query().Paginate(ctx, after, first, before, last,
 		ent.WithThreadOrder(orderBy),
 		ent.WithThreadFilter(where.Filter),
+	)
+}
+
+// Tools is the resolver for the tools field.
+func (r *queryResolver) Tools(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ToolOrder, where *ent.ToolWhereInput) (*ent.ToolConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultToolOrder.Field
+	}
+
+	return r.client.Tool.Query().Paginate(ctx, after, first, before, last,
+		ent.WithToolOrder(orderBy),
+		ent.WithToolFilter(where.Filter),
 	)
 }
 
@@ -658,6 +1094,40 @@ func (r *roleResolver) UserRoles(ctx context.Context, obj *ent.Role) ([]*ent.Use
 }
 
 // ID is the resolver for the id field.
+func (r *skillResolver) ID(ctx context.Context, obj *ent.Skill) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeSkill,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ProjectID is the resolver for the projectID field.
+func (r *skillResolver) ProjectID(ctx context.Context, obj *ent.Skill) (*objects.GUID, error) {
+	if obj.ProjectID == nil {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   *obj.ProjectID,
+	}, nil
+}
+
+// CreatedByUserID is the resolver for the createdByUserID field.
+func (r *skillResolver) CreatedByUserID(ctx context.Context, obj *ent.Skill) (*objects.GUID, error) {
+	if obj.CreatedByUserID == nil {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   *obj.CreatedByUserID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *systemResolver) ID(ctx context.Context, obj *ent.System) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeSystem,
@@ -678,6 +1148,40 @@ func (r *threadResolver) ProjectID(ctx context.Context, obj *ent.Thread) (*objec
 	return &objects.GUID{
 		Type: ent.TypeProject,
 		ID:   obj.ProjectID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *toolResolver) ID(ctx context.Context, obj *ent.Tool) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeTool,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ProjectID is the resolver for the projectID field.
+func (r *toolResolver) ProjectID(ctx context.Context, obj *ent.Tool) (*objects.GUID, error) {
+	if obj.ProjectID == nil {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   *obj.ProjectID,
+	}, nil
+}
+
+// CreatedByUserID is the resolver for the createdByUserID field.
+func (r *toolResolver) CreatedByUserID(ctx context.Context, obj *ent.Tool) (*objects.GUID, error) {
+	if obj.CreatedByUserID == nil {
+		//nolint:nilnil // Checked.
+		return nil, nil
+	}
+
+	return &objects.GUID{
+		Type: ent.TypeUser,
+		ID:   *obj.CreatedByUserID,
 	}, nil
 }
 
@@ -811,6 +1315,27 @@ func (r *userRoleResolver) RoleID(ctx context.Context, obj *ent.UserRole) (*obje
 // APIKey returns APIKeyResolver implementation.
 func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 
+// Agent returns AgentResolver implementation.
+func (r *Resolver) Agent() AgentResolver { return &agentResolver{r} }
+
+// AgentInstance returns AgentInstanceResolver implementation.
+func (r *Resolver) AgentInstance() AgentInstanceResolver { return &agentInstanceResolver{r} }
+
+// AgentMemory returns AgentMemoryResolver implementation.
+func (r *Resolver) AgentMemory() AgentMemoryResolver { return &agentMemoryResolver{r} }
+
+// AgentMessage returns AgentMessageResolver implementation.
+func (r *Resolver) AgentMessage() AgentMessageResolver { return &agentMessageResolver{r} }
+
+// AgentSkill returns AgentSkillResolver implementation.
+func (r *Resolver) AgentSkill() AgentSkillResolver { return &agentSkillResolver{r} }
+
+// AgentThread returns AgentThreadResolver implementation.
+func (r *Resolver) AgentThread() AgentThreadResolver { return &agentThreadResolver{r} }
+
+// AgentTool returns AgentToolResolver implementation.
+func (r *Resolver) AgentTool() AgentToolResolver { return &agentToolResolver{r} }
+
 // Channel returns ChannelResolver implementation.
 func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
 
@@ -844,6 +1369,9 @@ func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 // Prompt returns PromptResolver implementation.
 func (r *Resolver) Prompt() PromptResolver { return &promptResolver{r} }
 
+// PromptVersion returns PromptVersionResolver implementation.
+func (r *Resolver) PromptVersion() PromptVersionResolver { return &promptVersionResolver{r} }
+
 // ProviderQuotaStatus returns ProviderQuotaStatusResolver implementation.
 func (r *Resolver) ProviderQuotaStatus() ProviderQuotaStatusResolver {
 	return &providerQuotaStatusResolver{r}
@@ -861,11 +1389,17 @@ func (r *Resolver) RequestExecution() RequestExecutionResolver { return &request
 // Role returns RoleResolver implementation.
 func (r *Resolver) Role() RoleResolver { return &roleResolver{r} }
 
+// Skill returns SkillResolver implementation.
+func (r *Resolver) Skill() SkillResolver { return &skillResolver{r} }
+
 // System returns SystemResolver implementation.
 func (r *Resolver) System() SystemResolver { return &systemResolver{r} }
 
 // Thread returns ThreadResolver implementation.
 func (r *Resolver) Thread() ThreadResolver { return &threadResolver{r} }
+
+// Tool returns ToolResolver implementation.
+func (r *Resolver) Tool() ToolResolver { return &toolResolver{r} }
 
 // Trace returns TraceResolver implementation.
 func (r *Resolver) Trace() TraceResolver { return &traceResolver{r} }
@@ -883,6 +1417,13 @@ func (r *Resolver) UserProject() UserProjectResolver { return &userProjectResolv
 func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
 type aPIKeyResolver struct{ *Resolver }
+type agentResolver struct{ *Resolver }
+type agentInstanceResolver struct{ *Resolver }
+type agentMemoryResolver struct{ *Resolver }
+type agentMessageResolver struct{ *Resolver }
+type agentSkillResolver struct{ *Resolver }
+type agentThreadResolver struct{ *Resolver }
+type agentToolResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
 type channelModelPriceResolver struct{ *Resolver }
 type channelModelPriceVersionResolver struct{ *Resolver }
@@ -892,13 +1433,16 @@ type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type promptResolver struct{ *Resolver }
+type promptVersionResolver struct{ *Resolver }
 type providerQuotaStatusResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }
 type roleResolver struct{ *Resolver }
+type skillResolver struct{ *Resolver }
 type systemResolver struct{ *Resolver }
 type threadResolver struct{ *Resolver }
+type toolResolver struct{ *Resolver }
 type traceResolver struct{ *Resolver }
 type usageLogResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }

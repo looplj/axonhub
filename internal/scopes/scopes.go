@@ -56,6 +56,11 @@ const (
 	ScopeReadPrompts ScopeSlug = "read_prompts"
 	// ScopeWritePrompts manage the prompts of the project.
 	ScopeWritePrompts ScopeSlug = "write_prompts"
+
+	// ScopeReadAgents read the agents of the project.
+	ScopeReadAgents ScopeSlug = "read_agents"
+	// ScopeWriteAgents manage the agents of the project.
+	ScopeWriteAgents ScopeSlug = "write_agents"
 )
 
 type ScopeLevel string
@@ -171,6 +176,16 @@ var scopeConfigs = []Scope{
 	{
 		Slug:        ScopeWritePrompts,
 		Description: "Manage prompts (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeReadAgents,
+		Description: "View agents",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeWriteAgents,
+		Description: "Manage agents (create, edit, delete)",
 		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
 	},
 }

@@ -71,3 +71,16 @@ func (a *AbstractService) RunInTransaction(ctx context.Context, fn func(context.
 
 	return nil
 }
+
+func RunInTransaction[T any](ctx context.Context, a *AbstractService, fn func(context.Context) (T, error)) (T, error) {
+	var result T
+	err := a.RunInTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		result, err = fn(txCtx)
+		return err
+	})
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+}

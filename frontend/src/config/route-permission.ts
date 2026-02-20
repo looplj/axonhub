@@ -77,6 +77,11 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/project/agents',
+        requiredScopes: ['read_agents'],
+        mode: 'hidden',
+      },
+      {
         path: '/project/prompts',
         requiredScopes: ['read_prompts'],
         mode: 'hidden',

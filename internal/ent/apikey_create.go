@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -163,6 +164,25 @@ func (_c *APIKeyCreate) AddRequests(v ...*Request) *APIKeyCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddRequestIDs(ids...)
+}
+
+// SetAgentID sets the "agent" edge to the Agent entity by ID.
+func (_c *APIKeyCreate) SetAgentID(id int) *APIKeyCreate {
+	_c.mutation.SetAgentID(id)
+	return _c
+}
+
+// SetNillableAgentID sets the "agent" edge to the Agent entity by ID if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableAgentID(id *int) *APIKeyCreate {
+	if id != nil {
+		_c = _c.SetAgentID(*id)
+	}
+	return _c
+}
+
+// SetAgent sets the "agent" edge to the Agent entity.
+func (_c *APIKeyCreate) SetAgent(v *Agent) *APIKeyCreate {
+	return _c.SetAgentID(v.ID)
 }
 
 // Mutation returns the APIKeyMutation object of the builder.
@@ -394,6 +414,22 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.AgentIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   apikey.AgentTable,
+			Columns: []string{apikey.AgentColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

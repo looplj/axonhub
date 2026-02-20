@@ -47,6 +47,8 @@ const (
 	EdgeProject = "project"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
+	// EdgeAgent holds the string denoting the agent edge name in mutations.
+	EdgeAgent = "agent"
 	// Table holds the table name of the apikey in the database.
 	Table = "api_keys"
 	// UserTable is the table that holds the user relation/edge.
@@ -70,6 +72,13 @@ const (
 	RequestsInverseTable = "requests"
 	// RequestsColumn is the table column denoting the requests relation/edge.
 	RequestsColumn = "api_key_id"
+	// AgentTable is the table that holds the agent relation/edge.
+	AgentTable = "agents"
+	// AgentInverseTable is the table name for the Agent entity.
+	// It exists in this package in order to avoid circular dependency with the "agent" package.
+	AgentInverseTable = "agents"
+	// AgentColumn is the table column denoting the agent relation/edge.
+	AgentColumn = "api_key_id"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -133,6 +142,7 @@ const DefaultType = TypeUser
 const (
 	TypeUser           Type = "user"
 	TypeServiceAccount Type = "service_account"
+	TypeAgent          Type = "agent"
 )
 
 func (_type Type) String() string {
@@ -142,7 +152,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeUser, TypeServiceAccount:
+	case TypeUser, TypeServiceAccount, TypeAgent:
 		return nil
 	default:
 		return fmt.Errorf("apikey: invalid enum value for type field: %q", _type)
@@ -256,6 +266,13 @@ func ByRequests(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newRequestsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByAgentField orders the results by agent field.
+func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAgentStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -275,6 +292,13 @@ func newRequestsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RequestsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
+	)
+}
+func newAgentStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AgentInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, AgentTable, AgentColumn),
 	)
 }
 

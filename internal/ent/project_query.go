@@ -13,13 +13,19 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -29,30 +35,42 @@ import (
 // ProjectQuery is the builder for querying Project entities.
 type ProjectQuery struct {
 	config
-	ctx                   *QueryContext
-	order                 []project.OrderOption
-	inters                []Interceptor
-	predicates            []predicate.Project
-	withUsers             *UserQuery
-	withRoles             *RoleQuery
-	withAPIKeys           *APIKeyQuery
-	withRequests          *RequestQuery
-	withUsageLogs         *UsageLogQuery
-	withThreads           *ThreadQuery
-	withTraces            *TraceQuery
-	withPrompts           *PromptQuery
-	withProjectUsers      *UserProjectQuery
-	loadTotal             []func(context.Context, []*Project) error
-	modifiers             []func(*sql.Selector)
-	withNamedUsers        map[string]*UserQuery
-	withNamedRoles        map[string]*RoleQuery
-	withNamedAPIKeys      map[string]*APIKeyQuery
-	withNamedRequests     map[string]*RequestQuery
-	withNamedUsageLogs    map[string]*UsageLogQuery
-	withNamedThreads      map[string]*ThreadQuery
-	withNamedTraces       map[string]*TraceQuery
-	withNamedPrompts      map[string]*PromptQuery
-	withNamedProjectUsers map[string]*UserProjectQuery
+	ctx                         *QueryContext
+	order                       []project.OrderOption
+	inters                      []Interceptor
+	predicates                  []predicate.Project
+	withUsers                   *UserQuery
+	withRoles                   *RoleQuery
+	withAPIKeys                 *APIKeyQuery
+	withRequests                *RequestQuery
+	withUsageLogs               *UsageLogQuery
+	withThreads                 *ThreadQuery
+	withTraces                  *TraceQuery
+	withPrompts                 *PromptQuery
+	withPromptVersions          *PromptVersionQuery
+	withAgents                  *AgentQuery
+	withTools                   *ToolQuery
+	withSkills                  *SkillQuery
+	withAgentToolBindings       *AgentToolQuery
+	withAgentSkillBindings      *AgentSkillQuery
+	withProjectUsers            *UserProjectQuery
+	loadTotal                   []func(context.Context, []*Project) error
+	modifiers                   []func(*sql.Selector)
+	withNamedUsers              map[string]*UserQuery
+	withNamedRoles              map[string]*RoleQuery
+	withNamedAPIKeys            map[string]*APIKeyQuery
+	withNamedRequests           map[string]*RequestQuery
+	withNamedUsageLogs          map[string]*UsageLogQuery
+	withNamedThreads            map[string]*ThreadQuery
+	withNamedTraces             map[string]*TraceQuery
+	withNamedPrompts            map[string]*PromptQuery
+	withNamedPromptVersions     map[string]*PromptVersionQuery
+	withNamedAgents             map[string]*AgentQuery
+	withNamedTools              map[string]*ToolQuery
+	withNamedSkills             map[string]*SkillQuery
+	withNamedAgentToolBindings  map[string]*AgentToolQuery
+	withNamedAgentSkillBindings map[string]*AgentSkillQuery
+	withNamedProjectUsers       map[string]*UserProjectQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -258,6 +276,138 @@ func (_q *ProjectQuery) QueryPrompts() *PromptQuery {
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(prompt.Table, prompt.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, project.PromptsTable, project.PromptsPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPromptVersions chains the current query on the "prompt_versions" edge.
+func (_q *ProjectQuery) QueryPromptVersions() *PromptVersionQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(promptversion.Table, promptversion.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.PromptVersionsTable, project.PromptVersionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAgents chains the current query on the "agents" edge.
+func (_q *ProjectQuery) QueryAgents() *AgentQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(agent.Table, agent.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.AgentsTable, project.AgentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTools chains the current query on the "tools" edge.
+func (_q *ProjectQuery) QueryTools() *ToolQuery {
+	query := (&ToolClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(tool.Table, tool.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.ToolsTable, project.ToolsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QuerySkills chains the current query on the "skills" edge.
+func (_q *ProjectQuery) QuerySkills() *SkillQuery {
+	query := (&SkillClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(skill.Table, skill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.SkillsTable, project.SkillsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAgentToolBindings chains the current query on the "agent_tool_bindings" edge.
+func (_q *ProjectQuery) QueryAgentToolBindings() *AgentToolQuery {
+	query := (&AgentToolClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(agenttool.Table, agenttool.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.AgentToolBindingsTable, project.AgentToolBindingsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAgentSkillBindings chains the current query on the "agent_skill_bindings" edge.
+func (_q *ProjectQuery) QueryAgentSkillBindings() *AgentSkillQuery {
+	query := (&AgentSkillClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(agentskill.Table, agentskill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.AgentSkillBindingsTable, project.AgentSkillBindingsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -474,20 +624,26 @@ func (_q *ProjectQuery) Clone() *ProjectQuery {
 		return nil
 	}
 	return &ProjectQuery{
-		config:           _q.config,
-		ctx:              _q.ctx.Clone(),
-		order:            append([]project.OrderOption{}, _q.order...),
-		inters:           append([]Interceptor{}, _q.inters...),
-		predicates:       append([]predicate.Project{}, _q.predicates...),
-		withUsers:        _q.withUsers.Clone(),
-		withRoles:        _q.withRoles.Clone(),
-		withAPIKeys:      _q.withAPIKeys.Clone(),
-		withRequests:     _q.withRequests.Clone(),
-		withUsageLogs:    _q.withUsageLogs.Clone(),
-		withThreads:      _q.withThreads.Clone(),
-		withTraces:       _q.withTraces.Clone(),
-		withPrompts:      _q.withPrompts.Clone(),
-		withProjectUsers: _q.withProjectUsers.Clone(),
+		config:                 _q.config,
+		ctx:                    _q.ctx.Clone(),
+		order:                  append([]project.OrderOption{}, _q.order...),
+		inters:                 append([]Interceptor{}, _q.inters...),
+		predicates:             append([]predicate.Project{}, _q.predicates...),
+		withUsers:              _q.withUsers.Clone(),
+		withRoles:              _q.withRoles.Clone(),
+		withAPIKeys:            _q.withAPIKeys.Clone(),
+		withRequests:           _q.withRequests.Clone(),
+		withUsageLogs:          _q.withUsageLogs.Clone(),
+		withThreads:            _q.withThreads.Clone(),
+		withTraces:             _q.withTraces.Clone(),
+		withPrompts:            _q.withPrompts.Clone(),
+		withPromptVersions:     _q.withPromptVersions.Clone(),
+		withAgents:             _q.withAgents.Clone(),
+		withTools:              _q.withTools.Clone(),
+		withSkills:             _q.withSkills.Clone(),
+		withAgentToolBindings:  _q.withAgentToolBindings.Clone(),
+		withAgentSkillBindings: _q.withAgentSkillBindings.Clone(),
+		withProjectUsers:       _q.withProjectUsers.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -580,6 +736,72 @@ func (_q *ProjectQuery) WithPrompts(opts ...func(*PromptQuery)) *ProjectQuery {
 		opt(query)
 	}
 	_q.withPrompts = query
+	return _q
+}
+
+// WithPromptVersions tells the query-builder to eager-load the nodes that are connected to
+// the "prompt_versions" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithPromptVersions(opts ...func(*PromptVersionQuery)) *ProjectQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPromptVersions = query
+	return _q
+}
+
+// WithAgents tells the query-builder to eager-load the nodes that are connected to
+// the "agents" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithAgents(opts ...func(*AgentQuery)) *ProjectQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAgents = query
+	return _q
+}
+
+// WithTools tells the query-builder to eager-load the nodes that are connected to
+// the "tools" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithTools(opts ...func(*ToolQuery)) *ProjectQuery {
+	query := (&ToolClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTools = query
+	return _q
+}
+
+// WithSkills tells the query-builder to eager-load the nodes that are connected to
+// the "skills" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithSkills(opts ...func(*SkillQuery)) *ProjectQuery {
+	query := (&SkillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withSkills = query
+	return _q
+}
+
+// WithAgentToolBindings tells the query-builder to eager-load the nodes that are connected to
+// the "agent_tool_bindings" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithAgentToolBindings(opts ...func(*AgentToolQuery)) *ProjectQuery {
+	query := (&AgentToolClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAgentToolBindings = query
+	return _q
+}
+
+// WithAgentSkillBindings tells the query-builder to eager-load the nodes that are connected to
+// the "agent_skill_bindings" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithAgentSkillBindings(opts ...func(*AgentSkillQuery)) *ProjectQuery {
+	query := (&AgentSkillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAgentSkillBindings = query
 	return _q
 }
 
@@ -678,7 +900,7 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	var (
 		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [9]bool{
+		loadedTypes = [15]bool{
 			_q.withUsers != nil,
 			_q.withRoles != nil,
 			_q.withAPIKeys != nil,
@@ -687,6 +909,12 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 			_q.withThreads != nil,
 			_q.withTraces != nil,
 			_q.withPrompts != nil,
+			_q.withPromptVersions != nil,
+			_q.withAgents != nil,
+			_q.withTools != nil,
+			_q.withSkills != nil,
+			_q.withAgentToolBindings != nil,
+			_q.withAgentSkillBindings != nil,
 			_q.withProjectUsers != nil,
 		}
 	)
@@ -767,6 +995,48 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 			return nil, err
 		}
 	}
+	if query := _q.withPromptVersions; query != nil {
+		if err := _q.loadPromptVersions(ctx, query, nodes,
+			func(n *Project) { n.Edges.PromptVersions = []*PromptVersion{} },
+			func(n *Project, e *PromptVersion) { n.Edges.PromptVersions = append(n.Edges.PromptVersions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAgents; query != nil {
+		if err := _q.loadAgents(ctx, query, nodes,
+			func(n *Project) { n.Edges.Agents = []*Agent{} },
+			func(n *Project, e *Agent) { n.Edges.Agents = append(n.Edges.Agents, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withTools; query != nil {
+		if err := _q.loadTools(ctx, query, nodes,
+			func(n *Project) { n.Edges.Tools = []*Tool{} },
+			func(n *Project, e *Tool) { n.Edges.Tools = append(n.Edges.Tools, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withSkills; query != nil {
+		if err := _q.loadSkills(ctx, query, nodes,
+			func(n *Project) { n.Edges.Skills = []*Skill{} },
+			func(n *Project, e *Skill) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAgentToolBindings; query != nil {
+		if err := _q.loadAgentToolBindings(ctx, query, nodes,
+			func(n *Project) { n.Edges.AgentToolBindings = []*AgentTool{} },
+			func(n *Project, e *AgentTool) { n.Edges.AgentToolBindings = append(n.Edges.AgentToolBindings, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAgentSkillBindings; query != nil {
+		if err := _q.loadAgentSkillBindings(ctx, query, nodes,
+			func(n *Project) { n.Edges.AgentSkillBindings = []*AgentSkill{} },
+			func(n *Project, e *AgentSkill) { n.Edges.AgentSkillBindings = append(n.Edges.AgentSkillBindings, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withProjectUsers; query != nil {
 		if err := _q.loadProjectUsers(ctx, query, nodes,
 			func(n *Project) { n.Edges.ProjectUsers = []*UserProject{} },
@@ -827,6 +1097,48 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		if err := _q.loadPrompts(ctx, query, nodes,
 			func(n *Project) { n.appendNamedPrompts(name) },
 			func(n *Project, e *Prompt) { n.appendNamedPrompts(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedPromptVersions {
+		if err := _q.loadPromptVersions(ctx, query, nodes,
+			func(n *Project) { n.appendNamedPromptVersions(name) },
+			func(n *Project, e *PromptVersion) { n.appendNamedPromptVersions(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedAgents {
+		if err := _q.loadAgents(ctx, query, nodes,
+			func(n *Project) { n.appendNamedAgents(name) },
+			func(n *Project, e *Agent) { n.appendNamedAgents(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedTools {
+		if err := _q.loadTools(ctx, query, nodes,
+			func(n *Project) { n.appendNamedTools(name) },
+			func(n *Project, e *Tool) { n.appendNamedTools(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedSkills {
+		if err := _q.loadSkills(ctx, query, nodes,
+			func(n *Project) { n.appendNamedSkills(name) },
+			func(n *Project, e *Skill) { n.appendNamedSkills(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedAgentToolBindings {
+		if err := _q.loadAgentToolBindings(ctx, query, nodes,
+			func(n *Project) { n.appendNamedAgentToolBindings(name) },
+			func(n *Project, e *AgentTool) { n.appendNamedAgentToolBindings(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedAgentSkillBindings {
+		if err := _q.loadAgentSkillBindings(ctx, query, nodes,
+			func(n *Project) { n.appendNamedAgentSkillBindings(name) },
+			func(n *Project, e *AgentSkill) { n.appendNamedAgentSkillBindings(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1150,6 +1462,192 @@ func (_q *ProjectQuery) loadPrompts(ctx context.Context, query *PromptQuery, nod
 	}
 	return nil
 }
+func (_q *ProjectQuery) loadPromptVersions(ctx context.Context, query *PromptVersionQuery, nodes []*Project, init func(*Project), assign func(*Project, *PromptVersion)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(promptversion.FieldProjectID)
+	}
+	query.Where(predicate.PromptVersion(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.PromptVersionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadAgents(ctx context.Context, query *AgentQuery, nodes []*Project, init func(*Project), assign func(*Project, *Agent)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(agent.FieldProjectID)
+	}
+	query.Where(predicate.Agent(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.AgentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadTools(ctx context.Context, query *ToolQuery, nodes []*Project, init func(*Project), assign func(*Project, *Tool)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(tool.FieldProjectID)
+	}
+	query.Where(predicate.Tool(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.ToolsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "project_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadSkills(ctx context.Context, query *SkillQuery, nodes []*Project, init func(*Project), assign func(*Project, *Skill)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(skill.FieldProjectID)
+	}
+	query.Where(predicate.Skill(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.SkillsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "project_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadAgentToolBindings(ctx context.Context, query *AgentToolQuery, nodes []*Project, init func(*Project), assign func(*Project, *AgentTool)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(agenttool.FieldProjectID)
+	}
+	query.Where(predicate.AgentTool(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.AgentToolBindingsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadAgentSkillBindings(ctx context.Context, query *AgentSkillQuery, nodes []*Project, init func(*Project), assign func(*Project, *AgentSkill)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(agentskill.FieldProjectID)
+	}
+	query.Where(predicate.AgentSkill(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.AgentSkillBindingsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
 func (_q *ProjectQuery) loadProjectUsers(ctx context.Context, query *UserProjectQuery, nodes []*Project, init func(*Project), assign func(*Project, *UserProject)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int]*Project)
@@ -1383,6 +1881,90 @@ func (_q *ProjectQuery) WithNamedPrompts(name string, opts ...func(*PromptQuery)
 		_q.withNamedPrompts = make(map[string]*PromptQuery)
 	}
 	_q.withNamedPrompts[name] = query
+	return _q
+}
+
+// WithNamedPromptVersions tells the query-builder to eager-load the nodes that are connected to the "prompt_versions"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedPromptVersions(name string, opts ...func(*PromptVersionQuery)) *ProjectQuery {
+	query := (&PromptVersionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedPromptVersions == nil {
+		_q.withNamedPromptVersions = make(map[string]*PromptVersionQuery)
+	}
+	_q.withNamedPromptVersions[name] = query
+	return _q
+}
+
+// WithNamedAgents tells the query-builder to eager-load the nodes that are connected to the "agents"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedAgents(name string, opts ...func(*AgentQuery)) *ProjectQuery {
+	query := (&AgentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedAgents == nil {
+		_q.withNamedAgents = make(map[string]*AgentQuery)
+	}
+	_q.withNamedAgents[name] = query
+	return _q
+}
+
+// WithNamedTools tells the query-builder to eager-load the nodes that are connected to the "tools"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedTools(name string, opts ...func(*ToolQuery)) *ProjectQuery {
+	query := (&ToolClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedTools == nil {
+		_q.withNamedTools = make(map[string]*ToolQuery)
+	}
+	_q.withNamedTools[name] = query
+	return _q
+}
+
+// WithNamedSkills tells the query-builder to eager-load the nodes that are connected to the "skills"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedSkills(name string, opts ...func(*SkillQuery)) *ProjectQuery {
+	query := (&SkillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedSkills == nil {
+		_q.withNamedSkills = make(map[string]*SkillQuery)
+	}
+	_q.withNamedSkills[name] = query
+	return _q
+}
+
+// WithNamedAgentToolBindings tells the query-builder to eager-load the nodes that are connected to the "agent_tool_bindings"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedAgentToolBindings(name string, opts ...func(*AgentToolQuery)) *ProjectQuery {
+	query := (&AgentToolClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedAgentToolBindings == nil {
+		_q.withNamedAgentToolBindings = make(map[string]*AgentToolQuery)
+	}
+	_q.withNamedAgentToolBindings[name] = query
+	return _q
+}
+
+// WithNamedAgentSkillBindings tells the query-builder to eager-load the nodes that are connected to the "agent_skill_bindings"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedAgentSkillBindings(name string, opts ...func(*AgentSkillQuery)) *ProjectQuery {
+	query := (&AgentSkillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedAgentSkillBindings == nil {
+		_q.withNamedAgentSkillBindings = make(map[string]*AgentSkillQuery)
+	}
+	_q.withNamedAgentSkillBindings[name] = query
 	return _q
 }
 
