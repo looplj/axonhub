@@ -83,6 +83,7 @@ export const modelPerformanceStatSchema = z.object({
 export const channelPerformanceStatSchema = z.object({
   date: z.string(),
   channelId: z.string(),
+  channelName: z.string(),
   throughput: z.number().nullable(),
   ttftMs: z.number().nullable(),
   requestCount: z.number(),
@@ -236,6 +237,7 @@ const CHANNEL_PERFORMANCE_STATS_QUERY = `
     channelPerformanceStats {
       date
       channelId
+      channelName
       throughput
       ttftMs
       requestCount

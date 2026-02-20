@@ -45,6 +45,7 @@ function PerformanceTooltip({ active, payload, label }: TooltipProps) {
       const ttftItem = payload.find((p) => p.dataKey === `${item.dataKey}-ttft`);
       return {
         channelId: item.dataKey,
+        channelName: item.name,
         throughput: item.value,
         ttft: ttftItem?.value ?? 0,
         color: item.color,
@@ -69,7 +70,7 @@ function PerformanceTooltip({ active, payload, label }: TooltipProps) {
                 style={{ backgroundColor: item.color }}
               />
               <span className='truncate font-medium text-foreground'>
-                {item.channelId}
+                {item.channelName}
               </span>
             </div>
             <div className='ml-4 text-muted-foreground'>
@@ -100,20 +101,24 @@ export function ChannelPerformanceStats() {
     const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
     const cStats = safeStats.reduce((acc, stat) => {
       if (!acc[stat.channelId]) {
-        acc[stat.channelId] = { totalRequests: 0, totalThroughput: 0, count: 0 };
+        acc[stat.channelId] = { totalRequests: 0, totalThroughput: 0, totalTtft: 0, ttftCount: 0 };
       }
       if (stat.throughput != null) {
         acc[stat.channelId].totalRequests += stat.requestCount;
         acc[stat.channelId].totalThroughput += stat.throughput * stat.requestCount;
-        acc[stat.channelId].count += 1;
+      }
+      if (stat.ttftMs != null && stat.ttftMs > 0) {
+        acc[stat.channelId].totalTtft += stat.ttftMs * stat.requestCount;
+        acc[stat.channelId].ttftCount += stat.requestCount;
       }
       return acc;
-    }, {} as Record<string, { totalRequests: number; totalThroughput: number; count: number }>);
+    }, {} as Record<string, { totalRequests: number; totalThroughput: number; totalTtft: number; ttftCount: number }>);
 
     const tChannels = Object.entries(cStats)
       .map(([channelId, stats]) => ({
         channelId,
-        avgThroughput: stats.count > 0 ? stats.totalThroughput / stats.count : 0,
+        avgThroughput: stats.totalRequests > 0 ? stats.totalThroughput / stats.totalRequests : 0,
+        avgTtft: stats.ttftCount > 0 ? stats.totalTtft / stats.ttftCount : 0,
         totalRequests: stats.totalRequests,
       }))
       .sort((a, b) => b.avgThroughput - a.avgThroughput)
@@ -122,15 +127,14 @@ export function ChannelPerformanceStats() {
       .map((c) => c.channelId);
 
     const lItems = tChannels.map((channelId, index) => {
-      const stats = safeStats.filter((stat) => stat.channelId === channelId);
-      const avgThroughput =
-        stats.reduce((sum, stat) => sum + (stat.throughput ?? 0), 0) / (stats.length || 1);
-      const avgTtft =
-        stats.reduce((sum, stat) => sum + (stat.ttftMs ?? 0), 0) / (stats.length || 1);
+      const stats = cStats[channelId];
+      const avgThroughput = stats.totalRequests > 0 ? stats.totalThroughput / stats.totalRequests : 0;
+      const avgTtft = stats.ttftCount > 0 ? stats.totalTtft / stats.ttftCount : 0;
+      const channelName = safeStats.find((s) => s.channelId === channelId)?.channelName || channelId;
 
       return {
         id: channelId,
-        name: channelId,
+        name: channelName,
         color: COLORS[index % COLORS.length],
         avgThroughput,
         avgTtft,
@@ -164,6 +168,14 @@ export function ChannelPerformanceStats() {
     );
   }
 
+  const statsMap = useMemo(() => {
+    return safeStats.reduce((acc, stat) => {
+      if (!acc[stat.date]) acc[stat.date] = {};
+      acc[stat.date][stat.channelId] = stat;
+      return acc;
+    }, {} as Record<string, Record<string, typeof safeStats[0]>>);
+  }, [safeStats]);
+
   // Transform data for the chart
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
@@ -178,7 +190,7 @@ export function ChannelPerformanceStats() {
     };
 
     topChannels.forEach((channelId) => {
-      const stat = safeStats.find((s) => s.date === date && s.channelId === channelId);
+      const stat = statsMap[date]?.[channelId];
       dataPoint[channelId] = stat?.throughput ?? 0;
       dataPoint[`${channelId}-ttft`] = stat?.ttftMs ?? 0;
     });
@@ -263,12 +275,13 @@ export function ChannelPerformanceStats() {
             const color = COLORS[index % COLORS.length];
             const isActive = !activeSeries || activeSeries === channelId;
             const opacity = isActive ? 1 : 0.2;
+            const channelName = legendItems.find((item) => item.id === channelId)?.name || channelId;
             return (
               <Area
                 key={channelId}
                 type='monotone'
                 dataKey={channelId}
-                name={channelId}
+                name={channelName}
                 stroke={color}
                 strokeWidth={2}
                 fill={`url(#channel-throughput-${index})`}
@@ -285,13 +298,14 @@ export function ChannelPerformanceStats() {
             const color = COLORS[index % COLORS.length];
             const isActive = !activeSeries || activeSeries === channelId;
             const opacity = isActive ? 0.35 : 0.1;
+            const channelName = legendItems.find((item) => item.id === channelId)?.name || channelId;
             return (
               <Line
                 key={`${channelId}-ttft`}
                 yAxisId='ttft'
                 type='monotone'
                 dataKey={`${channelId}-ttft`}
-                name={`${channelId} TTFT`}
+                name={`${channelName} TTFT`}
                 stroke={color}
                 strokeWidth={2}
                 dot={false}

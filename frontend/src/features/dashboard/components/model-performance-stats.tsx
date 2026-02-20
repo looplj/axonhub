@@ -100,20 +100,24 @@ export function ModelPerformanceStats() {
     const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
     const mStats = safeStats.reduce((acc, stat) => {
       if (!acc[stat.modelId]) {
-        acc[stat.modelId] = { totalRequests: 0, totalThroughput: 0, count: 0 };
+        acc[stat.modelId] = { totalRequests: 0, totalThroughput: 0, totalTtft: 0, ttftCount: 0 };
       }
       if (stat.throughput != null) {
         acc[stat.modelId].totalRequests += stat.requestCount;
         acc[stat.modelId].totalThroughput += stat.throughput * stat.requestCount;
-        acc[stat.modelId].count += 1;
+      }
+      if (stat.ttftMs != null && stat.ttftMs > 0) {
+        acc[stat.modelId].totalTtft += stat.ttftMs * stat.requestCount;
+        acc[stat.modelId].ttftCount += stat.requestCount;
       }
       return acc;
-    }, {} as Record<string, { totalRequests: number; totalThroughput: number; count: number }>);
+    }, {} as Record<string, { totalRequests: number; totalThroughput: number; totalTtft: number; ttftCount: number }>);
 
     const tModels = Object.entries(mStats)
       .map(([modelId, stats]) => ({
         modelId,
-        avgThroughput: stats.count > 0 ? stats.totalThroughput / stats.count : 0,
+        avgThroughput: stats.totalRequests > 0 ? stats.totalThroughput / stats.totalRequests : 0,
+        avgTtft: stats.ttftCount > 0 ? stats.totalTtft / stats.ttftCount : 0,
         totalRequests: stats.totalRequests,
       }))
       .sort((a, b) => b.avgThroughput - a.avgThroughput)
@@ -122,11 +126,9 @@ export function ModelPerformanceStats() {
       .map((m) => m.modelId);
 
     const lItems = tModels.map((modelId, index) => {
-      const stats = safeStats.filter((stat) => stat.modelId === modelId);
-      const avgThroughput =
-        stats.reduce((sum, stat) => sum + (stat.throughput ?? 0), 0) / (stats.length || 1);
-      const avgTtft =
-        stats.reduce((sum, stat) => sum + (stat.ttftMs ?? 0), 0) / (stats.length || 1);
+      const stats = mStats[modelId];
+      const avgThroughput = stats.totalRequests > 0 ? stats.totalThroughput / stats.totalRequests : 0;
+      const avgTtft = stats.ttftCount > 0 ? stats.totalTtft / stats.ttftCount : 0;
 
       return {
         id: modelId,
@@ -163,9 +165,16 @@ export function ModelPerformanceStats() {
     );
   }
 
+  const statsMap = useMemo(() => {
+    return safeStats.reduce((acc, stat) => {
+      if (!acc[stat.date]) acc[stat.date] = {};
+      acc[stat.date][stat.modelId] = stat;
+      return acc;
+    }, {} as Record<string, Record<string, typeof safeStats[0]>>);
+  }, [safeStats]);
+
   const chartData = dates.map((date) => {
     const [year, month, day] = date.split('-').map(Number);
-    // Use Date.UTC to avoid local timezone shifts when formatting
     const dateObj = new Date(Date.UTC(year, month - 1, day));
     const dataPoint: Record<string, string | number> = {
       name: dateObj.toLocaleDateString(locale, {
@@ -176,7 +185,7 @@ export function ModelPerformanceStats() {
     };
 
     topModels.forEach((modelId) => {
-      const stat = safeStats.find((s) => s.date === date && s.modelId === modelId);
+      const stat = statsMap[date]?.[modelId];
       dataPoint[modelId] = stat?.throughput ?? 0;
       dataPoint[`${modelId}-ttft`] = stat?.ttftMs ?? 0;
     });
