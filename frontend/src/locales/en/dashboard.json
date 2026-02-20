@@ -55,6 +55,7 @@
   "dashboard.stats.model": "Model",
   "dashboard.stats.channel": "Channel",
   "dashboard.stats.input": "Input",
+  "dashboard.stats.output": "Output",
   "dashboard.stats.cached": "Cached",
   "dashboard.stats.vsLastWeek": "vs last week",
   "dashboard.stats.average": "Average",
