@@ -1226,13 +1226,18 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 				dateExpr = fmt.Sprintf("DATE(%s)", timestampCol)
 			}
 
-			// Aggregate by date and channel_id, sum requests and average throughput
 			s.Select(
 				sql.As(dateExpr, "date"),
 				sql.As(s.C(channelprobe.FieldChannelID), "channel_id"),
 				sql.As(sql.Sum(s.C(channelprobe.FieldTotalRequestCount)), "request_count"),
-				sql.As(sql.Avg(s.C(channelprobe.FieldAvgTokensPerSecond)), "throughput"),
-				sql.As(sql.Avg(s.C(channelprobe.FieldAvgTimeToFirstTokenMs)), "ttft_ms"),
+				sql.As(fmt.Sprintf("SUM(%s * %s) / NULLIF(SUM(%s), 0)",
+					s.C(channelprobe.FieldAvgTokensPerSecond),
+					s.C(channelprobe.FieldTotalRequestCount),
+					s.C(channelprobe.FieldTotalRequestCount)), "throughput"),
+				sql.As(fmt.Sprintf("SUM(%s * %s) / NULLIF(SUM(%s), 0)",
+					s.C(channelprobe.FieldAvgTimeToFirstTokenMs),
+					s.C(channelprobe.FieldTotalRequestCount),
+					s.C(channelprobe.FieldTotalRequestCount)), "ttft_ms"),
 			).
 				GroupBy(dateExpr, s.C(channelprobe.FieldChannelID)).
 				OrderBy(dateExpr, s.C(channelprobe.FieldChannelID))
