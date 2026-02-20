@@ -31,6 +31,8 @@ import (
 	"github.com/samber/lo"
 )
 
+const topPerformersLimit = 6
+
 // DashboardOverview is the resolver for the dashboardOverview field.
 // Note: This resolver provides high-level dashboard metrics.
 // For detailed request statistics, see RequestStats resolver documentation.
@@ -1162,7 +1164,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 
 	// Use requestCount for both count and value since modelInfo doesn't include throughput.
 	// This ranks models by request volume rather than performance metrics.
-	topModels := calculateConfidenceAndSort(modelInfos, func(m modelInfo) int64 { return m.requestCount }, func(m modelInfo) float64 { return float64(m.requestCount) }, 6)
+	topModels := calculateConfidenceAndSort(modelInfos, func(m modelInfo) int64 { return m.requestCount }, func(m modelInfo) float64 { return float64(m.requestCount) }, topPerformersLimit)
 
 	var statsResults []*ModelPerformanceStat
 	for _, item := range topModels {
@@ -1280,7 +1282,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		})
 	}
 
-	topChannels := calculateConfidenceAndSort(channels, func(c channelInfo) int64 { return c.requestCount }, func(c channelInfo) float64 { return float64(c.requestCount) }, 6)
+	topChannels := calculateConfidenceAndSort(channels, func(c channelInfo) int64 { return c.requestCount }, func(c channelInfo) float64 { return float64(c.requestCount) }, topPerformersLimit)
 
 	topChannelIDs := make(map[int]struct{})
 	for _, item := range topChannels {
