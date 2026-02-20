@@ -13,6 +13,8 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -28,7 +30,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
-	"github.com/samber/lo"
 )
 
 const topPerformersLimit = 6
@@ -1181,96 +1182,45 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 	return statsResults, nil
 }
 
-// ChannelPerformanceStats is the resolver for the channelPerformanceStats field.
-// Returns daily performance statistics for channels over the last 30 days.
-// Uses channel_probes table first (pre-aggregated data) for efficiency.
-// Falls back to usage_logs + request_executions if probe data is unavailable.
-// Filters out channels with <5 requests (low confidence) and handles deleted channels gracefully.
-func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+type probeStats struct {
+	DateStr      string  `json:"date"`
+	ChannelID    int     `json:"channel_id"`
+	RequestCount int     `json:"request_count"`
+	Throughput   float64 `json:"throughput"`
+	TTFTMs       float64 `json:"ttft_ms"`
+}
 
-	// Add 30-second timeout to prevent long-running queries
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+type channelInfo struct {
+	channelID    int
+	requestCount int64
+}
 
-	daysCount := 30
-
-	loc := r.systemService.TimeLocation(ctx)
-	nowUTC := xtime.UTCNow()
-	nowLocal := nowUTC.In(loc)
-	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
-	startTimestamp := startDateLocal.UTC().Unix()
-	_, offsetSeconds := nowLocal.Zone()
-
-	// First, try to get data from channel_probes (pre-aggregated)
-	type probeStats struct {
-		DateStr      string  `json:"date"`
-		ChannelID    int     `json:"channel_id"`
-		RequestCount int     `json:"request_count"`
-		Throughput   float64 `json:"throughput"`
-		TTFTMs       float64 `json:"ttft_ms"`
-	}
-
+func (r *queryResolver) queryChannelProbeStats(ctx context.Context, startTimestamp int64, locName string, offsetSeconds int) ([]probeStats, error) {
 	var probeResults []probeStats
-
-	// Query channel_probes table with daily aggregation
-	// Filter out outlier probe entries (>2000 tok/s is physically unrealistic)
 	const maxThroughputCap = 2000.0
+
 	err := r.client.ChannelProbe.Query().
 		Where(
 			channelprobe.TimestampGTE(startTimestamp),
 			channelprobe.AvgTokensPerSecondLTE(maxThroughputCap),
 		).
 		Modify(func(s *sql.Selector) {
-			// Convert timestamp to date string based on dialect
-			var dateExpr string
 			timestampCol := s.C(channelprobe.FieldTimestamp)
-
-			switch s.Dialect() {
-			case dialect.SQLite:
-				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
-			case dialect.MySQL:
-				dateExpr = fmt.Sprintf("DATE(CONVERT_TZ(FROM_UNIXTIME(%s), '+00:00', '%s'))", timestampCol, loc.String())
-			case dialect.Postgres:
-				dateExpr = fmt.Sprintf("to_char(to_timestamp(%s) AT TIME ZONE '%s', 'YYYY-MM-DD')", timestampCol, loc.String())
-			default:
-				dateExpr = fmt.Sprintf("DATE(%s)", timestampCol)
-			}
-
-			s.Select(
-				sql.As(dateExpr, "date"),
-				sql.As(s.C(channelprobe.FieldChannelID), "channel_id"),
-				sql.As(sql.Sum(s.C(channelprobe.FieldTotalRequestCount)), "request_count"),
-				// Weighted average: only include rows where AvgTokensPerSecond is not null in both numerator and denominator
-				sql.As(fmt.Sprintf("SUM(CASE WHEN %s IS NOT NULL THEN %s * %s ELSE 0 END) / NULLIF(SUM(CASE WHEN %s IS NOT NULL THEN %s ELSE 0 END), 0)",
-					s.C(channelprobe.FieldAvgTokensPerSecond),
-					s.C(channelprobe.FieldAvgTokensPerSecond),
-					s.C(channelprobe.FieldTotalRequestCount),
-					s.C(channelprobe.FieldAvgTokensPerSecond),
-					s.C(channelprobe.FieldTotalRequestCount)), "throughput"),
-				// Weighted average: only include rows where AvgTimeToFirstTokenMs is not null in both numerator and denominator
-				sql.As(fmt.Sprintf("SUM(CASE WHEN %s IS NOT NULL THEN %s * %s ELSE 0 END) / NULLIF(SUM(CASE WHEN %s IS NOT NULL THEN %s ELSE 0 END), 0)",
-					s.C(channelprobe.FieldAvgTimeToFirstTokenMs),
-					s.C(channelprobe.FieldAvgTimeToFirstTokenMs),
-					s.C(channelprobe.FieldTotalRequestCount),
-					s.C(channelprobe.FieldAvgTimeToFirstTokenMs),
-					s.C(channelprobe.FieldTotalRequestCount)), "ttft_ms"),
-			).
+			dateExpr := buildDateExpression(s.Dialect(), timestampCol, offsetSeconds, locName)
+			selects := buildProbeQuerySelects(s, dateExpr)
+			s.Select(selects...).
 				GroupBy(dateExpr, s.C(channelprobe.FieldChannelID)).
 				OrderBy(dateExpr, s.C(channelprobe.FieldChannelID))
 		}).
 		Scan(ctx, &probeResults)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel performance stats from probes: %w", err)
 	}
 
-	// If no probe data available, fall back to usage_logs + request_executions
-	if len(probeResults) == 0 {
-		return r.buildChannelPerformanceStatsFromExecutions(ctx, startDateLocal, offsetSeconds, daysCount)
-	}
+	return probeResults, nil
+}
 
+func aggregateProbeStats(probeResults []probeStats) map[string]map[int]*probeStats {
 	statsMap := make(map[string]map[int]*probeStats)
 	for i := range probeResults {
 		res := probeResults[i]
@@ -1280,17 +1230,22 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		statsMap[res.DateStr][res.ChannelID] = &probeResults[i]
 	}
 
-	type channelInfo struct {
-		channelID    int
-		requestCount int64
-	}
+	return statsMap
+}
 
+func calculateChannelTotals(statsMap map[string]map[int]*probeStats) map[int]int64 {
 	channelTotals := make(map[int]int64)
 	for _, dayStats := range statsMap {
 		for chID, stats := range dayStats {
 			channelTotals[chID] += int64(stats.RequestCount)
 		}
 	}
+
+	return channelTotals
+}
+
+func getTopChannelIDs(statsMap map[string]map[int]*probeStats, limit int) map[int]struct{} {
+	channelTotals := calculateChannelTotals(statsMap)
 
 	var channels []channelInfo
 	for chID, total := range channelTotals {
@@ -1300,13 +1255,20 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		})
 	}
 
-	topChannels := calculateConfidenceAndSort(channels, func(c channelInfo) int64 { return c.requestCount }, func(c channelInfo) float64 { return float64(c.requestCount) }, topPerformersLimit)
+	topChannels := calculateConfidenceAndSort(channels,
+		func(c channelInfo) int64 { return c.requestCount },
+		func(c channelInfo) float64 { return float64(c.requestCount) },
+		limit)
 
 	topChannelIDs := make(map[int]struct{})
 	for _, item := range topChannels {
 		topChannelIDs[item.stats.channelID] = struct{}{}
 	}
 
+	return topChannelIDs
+}
+
+func filterStatsByTopChannels(statsMap map[string]map[int]*probeStats, topChannelIDs map[int]struct{}) {
 	for dateStr, dayStats := range statsMap {
 		for chID := range dayStats {
 			if _, ok := topChannelIDs[chID]; !ok {
@@ -1317,7 +1279,9 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 			delete(statsMap, dateStr)
 		}
 	}
+}
 
+func extractChannelIDsFromStats(statsMap map[string]map[int]*probeStats) []int {
 	channelIDSet := make(map[int]struct{})
 	for _, dayStats := range statsMap {
 		for chID := range dayStats {
@@ -1325,24 +1289,35 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		}
 	}
 
+	return lo.Keys(channelIDSet)
+}
+
+func (r *queryResolver) fetchChannelNames(ctx context.Context, channelIDs []int) map[int]string {
 	channelNames := make(map[int]string)
-	if len(channelIDSet) > 0 {
-		channelIDs := lo.Keys(channelIDSet)
-		queriedChannels, err := r.client.Channel.Query().
-			Where(channel.IDIn(channelIDs...)).
-			Select(channel.FieldID, channel.FieldName).
-			All(ctx)
-		if err != nil {
-			log.Error(ctx, "failed to query channel names for performance stats",
-				log.Any("channelIDs", channelIDs),
-				log.Cause(err))
-		} else {
-			for _, ch := range queriedChannels {
-				channelNames[ch.ID] = ch.Name
-			}
-		}
+	if len(channelIDs) == 0 {
+		return channelNames
 	}
 
+	queriedChannels, err := r.client.Channel.Query().
+		Where(channel.IDIn(channelIDs...)).
+		Select(channel.FieldID, channel.FieldName).
+		All(ctx)
+	if err != nil {
+		log.Error(ctx, "failed to query channel names for performance stats",
+			log.Any("channelIDs", channelIDs),
+			log.Cause(err))
+
+		return channelNames
+	}
+
+	for _, ch := range queriedChannels {
+		channelNames[ch.ID] = ch.Name
+	}
+
+	return channelNames
+}
+
+func buildChannelPerformanceResponse(statsMap map[string]map[int]*probeStats, channelNames map[int]string, startDateLocal time.Time, daysCount int) []*ChannelPerformanceStat {
 	response := make([]*ChannelPerformanceStat, 0)
 
 	for i := range daysCount {
@@ -1379,7 +1354,43 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		}
 	}
 
-	return response, nil
+	return response
+}
+
+func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	var cancel context.CancelFunc
+
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	daysCount := 30
+
+	loc := r.systemService.TimeLocation(ctx)
+	nowUTC := xtime.UTCNow()
+	nowLocal := nowUTC.In(loc)
+	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
+	startTimestamp := startDateLocal.UTC().Unix()
+	_, offsetSeconds := nowLocal.Zone()
+
+	probeResults, err := r.queryChannelProbeStats(ctx, startTimestamp, loc.String(), offsetSeconds)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(probeResults) == 0 {
+		return r.buildChannelPerformanceStatsFromExecutions(ctx, startDateLocal, offsetSeconds, daysCount)
+	}
+
+	statsMap := aggregateProbeStats(probeResults)
+	topChannelIDs := getTopChannelIDs(statsMap, topPerformersLimit)
+	filterStatsByTopChannels(statsMap, topChannelIDs)
+
+	channelIDs := extractChannelIDsFromStats(statsMap)
+	channelNames := r.fetchChannelNames(ctx, channelIDs)
+
+	return buildChannelPerformanceResponse(statsMap, channelNames, startDateLocal, daysCount), nil
 }
 
 // buildChannelPerformanceStatsFromExecutions builds channel performance stats from request_executions
