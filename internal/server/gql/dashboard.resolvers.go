@@ -1041,7 +1041,6 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 	defer cancel()
 
 	daysCount := 30
-	maxModelsPerDay := 10
 
 	loc := r.systemService.TimeLocation(ctx)
 	nowUTC := xtime.UTCNow()
@@ -1118,29 +1117,53 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
 
-	// Group by date and limit to top models per day
-	modelsPerDay := make(map[string]int)
-	var results []*ModelPerformanceStat
+	modelStats := make(map[string]*struct {
+		totalRequests int64
+		results       []*ModelPerformanceStat
+	})
 
 	for _, raw := range rawResults {
-		// Check if we've reached the limit for this day
-		if modelsPerDay[raw.Date] >= maxModelsPerDay {
-			continue
-		}
-
 		var ttftMs *float64
 		if raw.FirstTokenMs != nil && *raw.FirstTokenMs > 0 {
 			ttftMs = raw.FirstTokenMs
 		}
 
-		results = append(results, &ModelPerformanceStat{
+		stat := &ModelPerformanceStat{
 			Date:         raw.Date,
 			ModelID:      raw.ModelID,
 			Throughput:   raw.Throughput,
 			TtftMs:       ttftMs,
 			RequestCount: int(raw.RequestCount),
+		}
+
+		if modelStats[raw.ModelID] == nil {
+			modelStats[raw.ModelID] = &struct {
+				totalRequests int64
+				results       []*ModelPerformanceStat
+			}{}
+		}
+		modelStats[raw.ModelID].totalRequests += raw.RequestCount
+		modelStats[raw.ModelID].results = append(modelStats[raw.ModelID].results, stat)
+	}
+
+	type modelInfo struct {
+		modelID      string
+		requestCount int64
+	}
+
+	var models []modelInfo
+	for modelID, stats := range modelStats {
+		models = append(models, modelInfo{
+			modelID:      modelID,
+			requestCount: stats.totalRequests,
 		})
-		modelsPerDay[raw.Date]++
+	}
+
+	topModels := calculateConfidenceAndSort(models, func(m modelInfo) int64 { return m.requestCount }, func(m modelInfo) float64 { return float64(m.requestCount) }, 6)
+
+	var results []*ModelPerformanceStat
+	for _, item := range topModels {
+		results = append(results, modelStats[item.stats.modelID].results...)
 	}
 
 	return results, nil
@@ -1160,7 +1183,6 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	defer cancel()
 
 	daysCount := 30
-	minRequestsPerChannel := 5 // Filter low confidence channels
 
 	loc := r.systemService.TimeLocation(ctx)
 	nowUTC := xtime.UTCNow()
@@ -1221,21 +1243,52 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		return nil, fmt.Errorf("failed to get channel performance stats from probes: %w", err)
 	}
 
-	// Build results map: date -> channel_id -> stats
 	statsMap := make(map[string]map[int]*probeStats)
 	for _, r := range probeResults {
-		// Filter channels with <5 requests (low confidence)
-		if r.RequestCount < minRequestsPerChannel {
-			continue
-		}
-
 		if statsMap[r.DateStr] == nil {
 			statsMap[r.DateStr] = make(map[int]*probeStats)
 		}
 		statsMap[r.DateStr][r.ChannelID] = &r
 	}
 
-	// Get all channel IDs to lookup names (for deleted channel handling)
+	type channelInfo struct {
+		channelID    int
+		requestCount int64
+	}
+
+	channelTotals := make(map[int]int64)
+	for _, dayStats := range statsMap {
+		for chID, stats := range dayStats {
+			channelTotals[chID] += int64(stats.RequestCount)
+		}
+	}
+
+	var channels []channelInfo
+	for chID, total := range channelTotals {
+		channels = append(channels, channelInfo{
+			channelID:    chID,
+			requestCount: total,
+		})
+	}
+
+	topChannels := calculateConfidenceAndSort(channels, func(c channelInfo) int64 { return c.requestCount }, func(c channelInfo) float64 { return float64(c.requestCount) }, 6)
+
+	topChannelIDs := make(map[int]struct{})
+	for _, item := range topChannels {
+		topChannelIDs[item.stats.channelID] = struct{}{}
+	}
+
+	for dateStr, dayStats := range statsMap {
+		for chID := range dayStats {
+			if _, ok := topChannelIDs[chID]; !ok {
+				delete(dayStats, chID)
+			}
+		}
+		if len(dayStats) == 0 {
+			delete(statsMap, dateStr)
+		}
+	}
+
 	channelIDSet := make(map[int]struct{})
 	for _, dayStats := range statsMap {
 		for chID := range dayStats {
@@ -1243,7 +1296,6 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		}
 	}
 
-	// Fetch channel names for existing channels
 	channelNames := make(map[int]string)
 	if len(channelIDSet) > 0 {
 		channelIDs := lo.Keys(channelIDSet)
@@ -1258,7 +1310,6 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		}
 	}
 
-	// Build complete response with zero values for missing dates
 	response := make([]*ChannelPerformanceStat, 0)
 
 	for i := range daysCount {
@@ -1266,62 +1317,30 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 		dateStr := date.Format("2006-01-02")
 
 		if dayStats, exists := statsMap[dateStr]; exists && len(dayStats) > 0 {
-			// Add entries for this day, sorted by throughput (descending), limit to top 10
-			type channelStat struct {
-				channelID    int
-				requestCount int
-				throughput   float64
-				ttftMs       float64
-			}
-
-			var dayChannels []channelStat
 			for chID, stats := range dayStats {
-				dayChannels = append(dayChannels, channelStat{
-					channelID:    chID,
-					requestCount: stats.RequestCount,
-					throughput:   stats.Throughput,
-					ttftMs:       stats.TTFTMs,
-				})
-			}
-
-			// Sort by throughput descending
-			sort.Slice(dayChannels, func(i, j int) bool {
-				return dayChannels[i].throughput > dayChannels[j].throughput
-			})
-
-			// Limit to top 10 channels per day
-			limit := 10
-			if len(dayChannels) > limit {
-				dayChannels = dayChannels[:limit]
-			}
-
-			// Add to response
-			for _, ch := range dayChannels {
-				// Get channel name or use ID as string if deleted
-				channelName := channelNames[ch.channelID]
+				channelName := channelNames[chID]
 				if channelName == "" {
-					// Channel was deleted, use ID
-					channelName = fmt.Sprintf("channel-%d", ch.channelID)
+					channelName = fmt.Sprintf("channel-%d", chID)
 				}
 
 				var throughput *float64
-				if ch.throughput > 0 {
-					throughput = &ch.throughput
+				if stats.Throughput > 0 {
+					throughput = &stats.Throughput
 				}
 
 				var ttftMs *float64
-				if ch.ttftMs > 0 {
-					value := ch.ttftMs
+				if stats.TTFTMs > 0 {
+					value := stats.TTFTMs
 					ttftMs = &value
 				}
 
 				response = append(response, &ChannelPerformanceStat{
 					Date:         dateStr,
-					ChannelID:    fmt.Sprintf("%d", ch.channelID),
+					ChannelID:    fmt.Sprintf("%d", chID),
 					ChannelName:  channelName,
 					Throughput:   throughput,
 					TtftMs:       ttftMs,
-					RequestCount: ch.requestCount,
+					RequestCount: stats.RequestCount,
 				})
 			}
 		}

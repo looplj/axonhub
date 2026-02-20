@@ -115,49 +115,30 @@ export function ChannelPerformanceStats() {
 
   const { dates, topChannels, legendItems } = useMemo(() => {
     const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
-    const cStats = safeStats.reduce((acc, stat) => {
-      if (!acc[stat.channelId]) {
-        acc[stat.channelId] = { totalRequests: 0, totalThroughput: 0, totalTtft: 0, ttftCount: 0 };
-      }
-      if (stat.throughput != null) {
-        acc[stat.channelId].totalRequests += stat.requestCount;
-        acc[stat.channelId].totalThroughput += stat.throughput * stat.requestCount;
-      }
-      if (stat.ttftMs != null && stat.ttftMs > 0) {
-        acc[stat.channelId].totalTtft += stat.ttftMs * stat.requestCount;
-        acc[stat.channelId].ttftCount += stat.requestCount;
-      }
-      return acc;
-    }, {} as Record<string, { totalRequests: number; totalThroughput: number; totalTtft: number; ttftCount: number }>);
-
-    const tChannels = Object.entries(cStats)
-      .map(([channelId, stats]) => ({
-        channelId,
-        avgThroughput: stats.totalRequests > 0 ? stats.totalThroughput / stats.totalRequests : 0,
-        avgTtft: stats.ttftCount > 0 ? stats.totalTtft / stats.ttftCount : 0,
-        totalRequests: stats.totalRequests,
-      }))
-      .sort((a, b) => b.avgThroughput - a.avgThroughput)
-      .slice(0, 6)
-      .sort((a, b) => a.channelId.localeCompare(b.channelId))
-      .map((c) => c.channelId);
-
-    const lItems = tChannels.map((channelId, index) => {
-      const stats = cStats[channelId];
-      const avgThroughput = stats.totalRequests > 0 ? stats.totalThroughput / stats.totalRequests : 0;
-      const avgTtft = stats.ttftCount > 0 ? stats.totalTtft / stats.ttftCount : 0;
-      const channelName = safeStats.find((s) => s.channelId === channelId)?.channelName || channelId;
+    
+    const uniqueChannels = [...new Set(safeStats.map((stat) => stat.channelId))].sort();
+    
+    const lItems = uniqueChannels.map((channelId, index) => {
+      const channelStatsList = safeStats.filter((s) => s.channelId === channelId);
+      const channelName = channelStatsList[0]?.channelName || channelId;
+      const totalRequests = channelStatsList.reduce((sum, s) => sum + s.requestCount, 0);
+      const weightedThroughput = totalRequests > 0
+        ? channelStatsList.reduce((sum, s) => sum + (s.throughput ?? 0) * s.requestCount, 0) / totalRequests
+        : 0;
+      const weightedTtft = totalRequests > 0
+        ? channelStatsList.reduce((sum, s) => sum + (s.ttftMs ?? 0) * s.requestCount, 0) / totalRequests
+        : 0;
 
       return {
         id: channelId,
         name: channelName,
         color: COLORS[index % COLORS.length],
-        avgThroughput,
-        avgTtft,
+        avgThroughput: weightedThroughput,
+        avgTtft: weightedTtft,
       };
     });
 
-    return { dates: uniqueDates, topChannels: tChannels, legendItems: lItems };
+    return { dates: uniqueDates, topChannels: uniqueChannels, legendItems: lItems };
   }, [safeStats]);
 
   const statsMap = useMemo(() => {

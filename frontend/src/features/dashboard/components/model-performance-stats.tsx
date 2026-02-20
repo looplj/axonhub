@@ -115,48 +115,29 @@ export function ModelPerformanceStats() {
 
   const { dates, topModels, legendItems } = useMemo(() => {
     const uniqueDates = [...new Set(safeStats.map((stat) => stat.date))].sort();
-    const mStats = safeStats.reduce((acc, stat) => {
-      if (!acc[stat.modelId]) {
-        acc[stat.modelId] = { totalRequests: 0, totalThroughput: 0, totalTtft: 0, ttftCount: 0 };
-      }
-      if (stat.throughput != null) {
-        acc[stat.modelId].totalRequests += stat.requestCount;
-        acc[stat.modelId].totalThroughput += stat.throughput * stat.requestCount;
-      }
-      if (stat.ttftMs != null && stat.ttftMs > 0) {
-        acc[stat.modelId].totalTtft += stat.ttftMs * stat.requestCount;
-        acc[stat.modelId].ttftCount += stat.requestCount;
-      }
-      return acc;
-    }, {} as Record<string, { totalRequests: number; totalThroughput: number; totalTtft: number; ttftCount: number }>);
-
-    const tModels = Object.entries(mStats)
-      .map(([modelId, stats]) => ({
-        modelId,
-        avgThroughput: stats.totalRequests > 0 ? stats.totalThroughput / stats.totalRequests : 0,
-        avgTtft: stats.ttftCount > 0 ? stats.totalTtft / stats.ttftCount : 0,
-        totalRequests: stats.totalRequests,
-      }))
-      .sort((a, b) => b.avgThroughput - a.avgThroughput)
-      .slice(0, 6)
-      .sort((a, b) => a.modelId.localeCompare(b.modelId))
-      .map((m) => m.modelId);
-
-    const lItems = tModels.map((modelId, index) => {
-      const stats = mStats[modelId];
-      const avgThroughput = stats.totalRequests > 0 ? stats.totalThroughput / stats.totalRequests : 0;
-      const avgTtft = stats.ttftCount > 0 ? stats.totalTtft / stats.ttftCount : 0;
+    
+    const uniqueModels = [...new Set(safeStats.map((stat) => stat.modelId))].sort();
+    
+    const lItems = uniqueModels.map((modelId, index) => {
+      const modelStatsList = safeStats.filter((s) => s.modelId === modelId);
+      const totalRequests = modelStatsList.reduce((sum, s) => sum + s.requestCount, 0);
+      const weightedThroughput = totalRequests > 0
+        ? modelStatsList.reduce((sum, s) => sum + (s.throughput ?? 0) * s.requestCount, 0) / totalRequests
+        : 0;
+      const weightedTtft = totalRequests > 0
+        ? modelStatsList.reduce((sum, s) => sum + (s.ttftMs ?? 0) * s.requestCount, 0) / totalRequests
+        : 0;
 
       return {
         id: modelId,
         name: modelId,
         color: COLORS[index % COLORS.length],
-        avgThroughput,
-        avgTtft,
+        avgThroughput: weightedThroughput,
+        avgTtft: weightedTtft,
       };
     });
 
-    return { dates: uniqueDates, topModels: tModels, legendItems: lItems };
+    return { dates: uniqueDates, topModels: uniqueModels, legendItems: lItems };
   }, [safeStats]);
 
   const statsMap = useMemo(() => {
