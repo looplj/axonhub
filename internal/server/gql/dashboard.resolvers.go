@@ -886,7 +886,7 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 			Throughput:      item.stats.Throughput,
 			TokensCount:     safeIntFromInt64(item.stats.TokensCount),
 			LatencyMs:       safeIntFromInt64(item.stats.LatencyMs),
-			RequestCount:    int(item.stats.RequestCount),
+			RequestCount:    safeIntFromInt64(item.stats.RequestCount),
 			ConfidenceLevel: item.confidence,
 		}
 	}), nil
@@ -1025,7 +1025,7 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 			Throughput:      item.stats.Throughput,
 			TokensCount:     safeIntFromInt64(item.stats.TokensCount),
 			LatencyMs:       safeIntFromInt64(item.stats.LatencyMs),
-			RequestCount:    int(item.stats.RequestCount),
+			RequestCount:    safeIntFromInt64(item.stats.RequestCount),
 			ConfidenceLevel: item.confidence,
 		}
 	}), nil
@@ -1147,7 +1147,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 			ModelID:      raw.ModelID,
 			Throughput:   raw.Throughput,
 			TtftMs:       ttftMs,
-			RequestCount: int(raw.RequestCount),
+			RequestCount: safeIntFromInt64(raw.RequestCount),
 		}
 
 		if modelStats[raw.ModelID] == nil {
@@ -1162,13 +1162,12 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		requestCount int64
 	}
 
-	var modelInfos []modelInfo
-	for modelID, stats := range modelStats {
-		modelInfos = append(modelInfos, modelInfo{
+	modelInfos := lo.MapToSlice(modelStats, func(modelID string, stats *ModelStatsBucket) modelInfo {
+		return modelInfo{
 			modelID:      modelID,
 			requestCount: stats.totalRequests,
-		})
-	}
+		}
+	})
 
 	// Use requestCount for both count and value since modelInfo doesn't include throughput.
 	// This ranks models by request volume rather than performance metrics.
@@ -1247,13 +1246,12 @@ func calculateChannelTotals(statsMap map[string]map[int]*probeStats) map[int]int
 func getTopChannelIDs(statsMap map[string]map[int]*probeStats, limit int) map[int]struct{} {
 	channelTotals := calculateChannelTotals(statsMap)
 
-	var channels []channelInfo
-	for chID, total := range channelTotals {
-		channels = append(channels, channelInfo{
+	channels := lo.MapToSlice(channelTotals, func(chID int, total int64) channelInfo {
+		return channelInfo{
 			channelID:    chID,
 			requestCount: total,
-		})
-	}
+		}
+	})
 
 	topChannels := calculateConfidenceAndSort(channels,
 		func(c channelInfo) int64 { return c.requestCount },
@@ -1476,15 +1474,40 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
 
-	// Filter out channels with <5 requests (low confidence)
-	var validChannelIDs []int
+	var channels []channelInfo
 	for chID, total := range channelTotals {
-		if total >= 5 {
-			validChannelIDs = append(validChannelIDs, chID)
+		channels = append(channels, channelInfo{
+			channelID:    chID,
+			requestCount: total,
+		})
+	}
+
+	topChannels := calculateConfidenceAndSort(channels,
+		func(c channelInfo) int64 { return c.requestCount },
+		func(c channelInfo) float64 { return float64(c.requestCount) },
+		topPerformersLimit)
+
+	topChannelIDs := make(map[int]struct{})
+	for _, item := range topChannels {
+		topChannelIDs[item.stats.channelID] = struct{}{}
+	}
+
+	for dateStr, dayStats := range statsMap {
+		for chID := range dayStats {
+			if _, ok := topChannelIDs[chID]; !ok {
+				delete(dayStats, chID)
+			}
+		}
+		if len(dayStats) == 0 {
+			delete(statsMap, dateStr)
 		}
 	}
 
-	// Get channel names
+	var validChannelIDs []int
+	for chID := range topChannelIDs {
+		validChannelIDs = append(validChannelIDs, chID)
+	}
+
 	channelNames := make(map[int]string)
 	if len(validChannelIDs) > 0 {
 		queriedChannels, err := r.client.Channel.Query().
@@ -1502,7 +1525,6 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 		}
 	}
 
-	// Build response
 	response := make([]*ChannelPerformanceStat, 0)
 	for i := range daysCount {
 		date := startDateLocal.AddDate(0, 0, i)
@@ -1510,11 +1532,6 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 
 		if dayStats, exists := statsMap[dateStr]; exists && len(dayStats) > 0 {
 			for chID, stats := range dayStats {
-				// Skip channels with <5 total requests
-				if channelTotals[chID] < 5 {
-					continue
-				}
-
 				channelName := channelNames[chID]
 				if channelName == "" {
 					channelName = fmt.Sprintf("channel-%d", chID)
@@ -1537,7 +1554,7 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 					ChannelName:  channelName,
 					Throughput:   throughput,
 					TtftMs:       ttftMs,
-					RequestCount: int(stats.RequestCount),
+					RequestCount: safeIntFromInt64(stats.RequestCount),
 				})
 			}
 		}
