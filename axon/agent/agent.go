@@ -8,8 +8,10 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/looplj/axonhub/axon/bus"
+	clawcontext "github.com/looplj/axonhub/axon/context"
 )
 
 const (
@@ -44,13 +46,21 @@ type Config struct {
 type Agent struct {
 	config atomic.Pointer[Config]
 
-	provider Provider
-	bus      bus.EventBus
-	tools    *ToolRegistry
-	logger   *slog.Logger
+	provider    Provider
+	bus         bus.EventBus
+	tools       *ToolRegistry
+	logger      *slog.Logger
+	middlewares []Middleware
 
 	messages []Message
 	msgMu    sync.RWMutex
+
+	// requestIndex groups assistant messages that came from the same LLM call.
+	// It is an agent-maintained field: every LLM turn must assign the same
+	// RequestIndex to all assistant messages produced by that turn (text/thinking
+	// blocks and tool_use blocks), so downstream adapters can safely aggregate
+	// them into one "assistant message" at the provider API level.
+	requestIndex atomic.Int64
 
 	steeringQueue []Message
 	followUpQueue []Message
@@ -78,12 +88,27 @@ func WithLogger(l *slog.Logger) Option {
 	}
 }
 
-// WithMessages initializes the agent with existing message history,
-// typically used when resuming a previous thread.
+func WithMiddlewares(mws ...Middleware) Option {
+	return func(a *Agent) {
+		a.middlewares = append(a.middlewares, mws...)
+	}
+}
+
 func WithMessages(msgs []Message) Option {
 	return func(a *Agent) {
 		a.messages = make([]Message, len(msgs))
 		copy(a.messages, msgs)
+
+		// Continue request index numbering from persisted history to avoid collisions.
+		var maxRequestIndex int64
+		for i := range msgs {
+			if int64(msgs[i].RequestIndex) > maxRequestIndex {
+				maxRequestIndex = int64(msgs[i].RequestIndex)
+			}
+		}
+		if maxRequestIndex > 0 {
+			a.requestIndex.Store(maxRequestIndex)
+		}
 	}
 }
 
@@ -400,6 +425,22 @@ func (a *Agent) buildMessages(cfg Config) []Message {
 	return messages
 }
 
+func (a *Agent) nextRequestIndex() int {
+	// Start from 1 (0 means "unset" and may be treated specially).
+	return int(a.requestIndex.Add(1))
+}
+
+func (a *Agent) ensureRequestIndex(msgs []Message, requestIndex int) {
+	for i := range msgs {
+		if msgs[i].Role != RoleAssistant {
+			continue
+		}
+		if msgs[i].RequestIndex == 0 {
+			msgs[i].RequestIndex = requestIndex
+		}
+	}
+}
+
 // runLoop is the core agent loop. It sends messages to the LLM, executes any
 // requested tools, appends results, and repeats until the model stops calling
 // tools or MaxIterations is reached.
@@ -450,6 +491,8 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 			if err != nil {
 				return fmt.Errorf("agent: LLM call failed: %w", err)
 			}
+			requestIndex := a.nextRequestIndex()
+			a.ensureRequestIndex(resp.Messages, requestIndex)
 
 			// Separate tool-use messages from non-tool messages.
 			var toolMsgs []Message
@@ -487,7 +530,11 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 				if steering := a.dequeueSteering(); len(steering) > 0 {
 					// Skip remaining tool calls.
 					for _, skipped := range toolMsgs[i+1:] {
-						a.skipToolCall(ctx, *skipped.ToolUse)
+						skippedIndex := requestIndex
+						if skipped.RequestIndex != 0 {
+							skippedIndex = skipped.RequestIndex
+						}
+						a.skipToolCall(ctx, *skipped.ToolUse, skippedIndex)
 					}
 					pendingSteering = steering
 					steered = true
@@ -566,7 +613,33 @@ func (a *Agent) executeTool(ctx context.Context, tc ToolUse) (result ToolResult)
 		"tool", tc.Name,
 	)
 
+	req := ToolRequest{
+		ThreadID:   clawcontext.ThreadID(ctx),
+		Workspace:  workspaceFromContext(ctx),
+		ToolCallID: tc.ID,
+		ToolName:   tc.Name,
+		ToolInput:  tc.Input,
+		StartedAt:  time.Now(),
+	}
+	var executedMiddlewares []Middleware
+	for _, mw := range a.middlewares {
+
+		if err := mw.BeforeTool(ctx, req); err != nil {
+			result.Error = err
+			a.emit(ctx, AgentEvent{
+				Type:      EventToolEnd,
+				ToolName:  tc.Name,
+				ToolInput: tc.Input,
+				Result:    &result,
+			})
+			a.runAfterMiddlewares(ctx, tc, result.Error, executedMiddlewares)
+			return result
+		}
+		executedMiddlewares = append(executedMiddlewares, mw)
+	}
+
 	result = tool.Execute(ctx, json.RawMessage(tc.Input))
+	a.runAfterMiddlewares(ctx, tc, result.Error, executedMiddlewares)
 
 	a.emit(ctx, AgentEvent{
 		Type:      EventToolEnd,
@@ -580,7 +653,7 @@ func (a *Agent) executeTool(ctx context.Context, tc ToolUse) (result ToolResult)
 
 // skipToolCall emits a skipped-tool message pair (tool_use + tool result)
 // so the conversation history stays consistent for the LLM.
-func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse) {
+func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse, requestIndex int) {
 	a.emit(ctx, AgentEvent{
 		Type:     EventToolSkipped,
 		ToolName: tc.Name,
@@ -594,8 +667,9 @@ func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse) {
 	}
 	// Add original tool-use message + skipped result so history is valid.
 	a.addMessage(ctx, Message{
-		Role:    RoleAssistant,
-		ToolUse: &tc,
+		Role:         RoleAssistant,
+		ToolUse:      &tc,
+		RequestIndex: requestIndex,
 	}, toolMsg)
 }
 
@@ -644,6 +718,8 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 			if err != nil {
 				return fmt.Errorf("agent: LLM stream call failed: %w", err)
 			}
+
+			requestIndex := a.nextRequestIndex()
 
 			var textBuilder strings.Builder
 			var thinkingBuilder strings.Builder
@@ -758,6 +834,8 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 				assistantMsg = Message{
 					Role:    RoleAssistant,
 					Content: &Content{Parts: contentParts},
+					// Group content + tool-use blocks from this LLM call.
+					RequestIndex: requestIndex,
 				}
 				a.addMessage(ctx, assistantMsg)
 				emit(AgentEvent{Type: EventMessageAdded, Message: &assistantMsg})
@@ -782,11 +860,11 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 					Content:   &toolContent,
 					ToolUseID: &tc.ID,
 				}
-				a.addMessage(ctx, Message{Role: RoleAssistant, ToolUse: &tc}, toolMsg)
+				a.addMessage(ctx, Message{Role: RoleAssistant, ToolUse: &tc, RequestIndex: requestIndex}, toolMsg)
 
 				if steering := a.dequeueSteering(); len(steering) > 0 {
 					for _, skipped := range toolCalls[i+1:] {
-						a.skipToolCall(ctx, skipped)
+						a.skipToolCall(ctx, skipped, requestIndex)
 					}
 					pendingSteering = steering
 					steered = true
@@ -864,7 +942,32 @@ func (a *Agent) executeToolStream(ctx context.Context, tc ToolUse, events chan A
 
 	a.logger.Debug("agent: executing tool", "tool", tc.Name)
 
+	var executedMiddlewares []Middleware
+	for _, mw := range a.middlewares {
+		req := ToolRequest{
+			ThreadID:   clawcontext.ThreadID(ctx),
+			Workspace:  workspaceFromContext(ctx),
+			ToolCallID: tc.ID,
+			ToolName:   tc.Name,
+			ToolInput:  tc.Input,
+			StartedAt:  time.Now(),
+		}
+		if err := mw.BeforeTool(ctx, req); err != nil {
+			result.Error = err
+			emit(AgentEvent{
+				Type:      EventToolEnd,
+				ToolName:  tc.Name,
+				ToolInput: tc.Input,
+				Result:    &result,
+			})
+			a.runAfterMiddlewares(ctx, tc, result.Error, executedMiddlewares)
+			return result
+		}
+		executedMiddlewares = append(executedMiddlewares, mw)
+	}
+
 	result = tool.Execute(ctx, json.RawMessage(tc.Input))
+	a.runAfterMiddlewares(ctx, tc, result.Error, executedMiddlewares)
 
 	emit(AgentEvent{
 		Type:      EventToolEnd,
@@ -896,4 +999,31 @@ func joinStrings(parts []string) string {
 		result += part
 	}
 	return result
+}
+
+type ctxKey string
+
+const workspaceCtxKey ctxKey = "workspace"
+
+func WithWorkspace(ctx context.Context, workspace string) context.Context {
+	return context.WithValue(ctx, workspaceCtxKey, workspace)
+}
+
+func workspaceFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(workspaceCtxKey).(string)
+	return v
+}
+
+func (a *Agent) runAfterMiddlewares(ctx context.Context, tc ToolUse, toolErr error, mws []Middleware) {
+	for i := len(mws) - 1; i >= 0; i-- {
+		req := ToolRequest{
+			ThreadID:   clawcontext.ThreadID(ctx),
+			Workspace:  workspaceFromContext(ctx),
+			ToolCallID: tc.ID,
+			ToolName:   tc.Name,
+			ToolInput:  tc.Input,
+			StartedAt:  time.Now(),
+		}
+		_ = mws[i].AfterTool(ctx, req, toolErr)
+	}
 }

@@ -5,10 +5,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/samber/lo"
 )
+
+type Middleware interface {
+	BeforeTool(ctx context.Context, req ToolRequest) error
+	AfterTool(ctx context.Context, req ToolRequest, toolErr error) error
+}
+
+type ToolRequest struct {
+	ThreadID   string
+	Workspace  string
+	ToolCallID string
+	ToolName   string
+	ToolInput  string
+	StartedAt  time.Time
+}
 
 // Tool is the interface that tools must implement.
 type Tool interface {

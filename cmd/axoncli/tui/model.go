@@ -14,11 +14,12 @@ import (
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/bus"
 	axonconf "github.com/looplj/axonhub/axon/conf"
+	"github.com/looplj/axonhub/axon/permission/approval"
 	"github.com/looplj/axonhub/axon/thread"
 )
 
 const (
-	headerHeight              = 7
+	headerHeight              = 0
 	statusBarHeight           = 1
 	minTextareaHeight         = 3
 	chromePadding             = 2
@@ -94,6 +95,27 @@ type Model struct {
 
 	// Model selector for switching models
 	modelSelector *modelSelector
+
+	// Text selection state for viewport content
+	selecting      bool
+	selectionStart selectionPos
+	selectionEnd   selectionPos
+
+	// Permission approval UI
+	approvalSvc      approval.Service
+	approvalReqCh    <-chan approval.Request
+	approvalActive   bool
+	approvalReq      approval.Request
+	approvalSelector *approvalSelector
+
+	// Logo display state
+	showLogo bool
+	logoTip  string
+}
+
+type selectionPos struct {
+	line int
+	col  int
 }
 
 // ModelOpts configures a new Model.
@@ -107,6 +129,7 @@ type ModelOpts struct {
 	Model      string
 	Workspace  string
 	ConfigDir  string
+	Approval   approval.Service
 	ReloadConf func(context.Context) error
 }
 
@@ -151,22 +174,30 @@ func NewModel(opts ModelOpts) Model {
 	}))
 
 	m := Model{
-		textarea:       ta,
-		spinner:        sp,
-		agent:          opts.Agent,
-		reloadConf:     opts.ReloadConf,
-		bus:            opts.Bus,
-		agentEvents:    agentEvents,
-		confEvents:     confEvents,
-		threadID:       opts.ThreadID,
-		threadMgr:      opts.ThreadMgr,
-		ctx:            opts.Ctx,
-		cancel:         opts.Cancel,
-		model:          opts.Model,
-		workspace:      opts.Workspace,
-		configDir:      opts.ConfigDir,
-		textareaHeight: minTextareaHeight,
-		streamText:     &strings.Builder{},
+		textarea:         ta,
+		spinner:          sp,
+		agent:            opts.Agent,
+		reloadConf:       opts.ReloadConf,
+		bus:              opts.Bus,
+		agentEvents:      agentEvents,
+		confEvents:       confEvents,
+		threadID:         opts.ThreadID,
+		threadMgr:        opts.ThreadMgr,
+		ctx:              opts.Ctx,
+		cancel:           opts.Cancel,
+		model:            opts.Model,
+		workspace:        opts.Workspace,
+		configDir:        opts.ConfigDir,
+		textareaHeight:   minTextareaHeight,
+		streamText:       &strings.Builder{},
+		approvalSvc:      opts.Approval,
+		approvalSelector: newApprovalSelector(),
+		showLogo:         true,
+		logoTip:          getRandomTip(),
+	}
+
+	if opts.Approval != nil {
+		m.approvalReqCh = opts.Approval.Subscribe(opts.Ctx)
 	}
 
 	// Initialize model selector
@@ -180,6 +211,7 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		waitForAgentEvent(m.agentEvents),
 		waitForConfEvent(m.confEvents),
+		waitForApprovalRequest(m.approvalReqCh),
 		m.spinner.Tick,
 		textarea.Blink,
 	)

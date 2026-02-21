@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -19,6 +20,10 @@ import (
 	"github.com/looplj/axonhub/axon/bus"
 	axonconf "github.com/looplj/axonhub/axon/conf"
 	clawcontext "github.com/looplj/axonhub/axon/context"
+	"github.com/looplj/axonhub/axon/permission"
+	"github.com/looplj/axonhub/axon/permission/approval"
+	"github.com/looplj/axonhub/axon/permission/grant"
+	"github.com/looplj/axonhub/axon/permission/policy"
 	"github.com/looplj/axonhub/axon/pkg/search"
 	"github.com/looplj/axonhub/axon/provider/reloadable"
 	"github.com/looplj/axonhub/axon/thread"
@@ -51,6 +56,35 @@ type systemPromptData struct {
 	ThreadID    string
 	ConfigDir   string
 	AxonCliPath string
+}
+
+type permissionMiddleware struct {
+	evaluator *permission.Evaluator
+}
+
+func (m *permissionMiddleware) BeforeTool(ctx context.Context, req agent.ToolRequest) error {
+	permReq := permission.ToolRequest{
+		ThreadID:   req.ThreadID,
+		Workspace:  req.Workspace,
+		ToolCallID: req.ToolCallID,
+		ToolName:   req.ToolName,
+		ToolInput:  json.RawMessage(req.ToolInput),
+		StartedAt:  req.StartedAt,
+	}
+	return m.evaluator.Evaluate(ctx, permReq)
+}
+
+func (m *permissionMiddleware) AfterTool(ctx context.Context, req agent.ToolRequest, toolErr error) error {
+	permReq := permission.ToolRequest{
+		ThreadID:   req.ThreadID,
+		Workspace:  req.Workspace,
+		ToolCallID: req.ToolCallID,
+		ToolName:   req.ToolName,
+		ToolInput:  json.RawMessage(req.ToolInput),
+		StartedAt:  req.StartedAt,
+	}
+	m.evaluator.LogToolResult(permReq, toolErr)
+	return nil
 }
 
 func main() {
@@ -147,11 +181,35 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 
 	provider := reloadable.New(cliruntime.BuildProvider(cfg))
 
+	approver := approval.NewInProcessService()
+
+	grants := grant.NewMemoryStore(grant.FileStore{BaseDir: filepath.Join(configDir, "permission")})
+	if err := grants.LoadWorkspace(workspaceDir); err != nil {
+		return fmt.Errorf("failed to load workspace grants: %w", err)
+	}
+
+	pdoc, err := conf.LoadOrCreatePolicy(configDir, workspaceDir)
+	if err != nil {
+		return fmt.Errorf("failed to load policy: %w", err)
+	}
+	eng, err := policy.New(pdoc)
+	if err != nil {
+		return fmt.Errorf("failed to build policy engine: %w", err)
+	}
+
+	permEvaluator := permission.NewEvaluator(permission.EvaluatorOptions{
+		Logger:   logger,
+		Policy:   eng,
+		Approver: approver,
+		Grants:   grants,
+	})
+	permMiddleware := &permissionMiddleware{evaluator: permEvaluator}
+
 	a := agent.New(agent.Config{
 		Model:         cfg.Model,
 		MaxIterations: defaultMaxIter,
 		SystemPrompt:  systemPrompt,
-	}, provider, agent.WithBus(eventBus), agent.WithLogger(logger))
+	}, provider, agent.WithBus(eventBus), agent.WithLogger(logger), agent.WithMiddlewares(permMiddleware))
 
 	a.RegisterTool(tools.NewAgentTool(tools.NewReadTool(workspaceDir, false)))
 	a.RegisterTool(tools.NewAgentTool(tools.NewWriteTool(workspaceDir, false)))
@@ -192,6 +250,7 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = clawcontext.WithThreadID(ctx, threadID)
+	ctx = agent.WithWorkspace(ctx, workspaceDir)
 	defer cancel()
 
 	m := tui.NewModel(tui.ModelOpts{
@@ -204,6 +263,7 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 		Model:     cfg.Model,
 		Workspace: workspaceDir,
 		ConfigDir: configDir,
+		Approval:  approver,
 		ReloadConf: func(ctx context.Context) error {
 			return confMgr.Reload(ctx, axonconf.ReloadSourceManual)
 		},

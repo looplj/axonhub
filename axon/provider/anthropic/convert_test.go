@@ -143,6 +143,20 @@ func TestConvertMessages(t *testing.T) {
 		require.Len(t, params, 1)
 	})
 
+	t.Run("assistant messages with same request index are aggregated", func(t *testing.T) {
+		t1 := "A1"
+		t2 := "A2"
+		messages := []agent.Message{
+			{Role: agent.RoleAssistant, Content: &agent.Content{Text: &t1}, RequestIndex: 7},
+			{Role: agent.RoleAssistant, Content: &agent.Content{Text: &t2}, RequestIndex: 7},
+		}
+
+		system, params := convertMessages(messages)
+
+		assert.Nil(t, system)
+		require.Len(t, params, 1)
+	})
+
 	t.Run("tool result message", func(t *testing.T) {
 		content := "Tool result content"
 		toolUseID := "tool_123"

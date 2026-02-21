@@ -25,6 +25,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		key := msg.String()
 
+		// Handle approval modal keys first if active.
+		if m.approvalActive {
+			return m.handleApprovalKey(key)
+		}
+
 		// Handle model selector keys first if active
 		if m.modelSelector.active {
 			if handled, cmd := m.modelSelector.handleKey(key); handled {
@@ -44,6 +49,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.modelSelector.active {
 				m.modelSelector.close()
 				m.applyLayout()
+				return m, nil
+			}
+			if m.hasSelection() {
+				m.selectionStart = selectionPos{}
+				m.selectionEnd = selectionPos{}
+				m.syncViewport()
 				return m, nil
 			}
 			if m.processing && m.processCancel != nil {
@@ -110,6 +121,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "end":
 			m.viewport.GotoBottom()
 			return m, nil
+		case "ctrl+shift+c":
+			if m.hasSelection() {
+				return m, tea.SetClipboard(m.getSelectedText())
+			}
+			return m, nil
+		case "ctrl+y":
+			if m.hasSelection() {
+				return m, tea.SetClipboard(m.getSelectedText())
+			}
+			return m, nil
+		case "t":
+			if len(m.thinkingBlocks) > 0 && m.thinkingBlocks[len(m.thinkingBlocks)-1] != nil {
+				block := m.thinkingBlocks[len(m.thinkingBlocks)-1]
+				block.expanded = !block.expanded
+				m.updateThinkingBlock(block)
+				m.syncViewport()
+			}
+			return m, nil
 		}
 
 		var cmd tea.Cmd
@@ -131,6 +160,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.updateThinkingBlock(block)
 				m.syncViewport()
 				return m, nil
+			}
+		}
+		if pos, ok := m.viewportPosAtMouse(mouse.X, mouse.Y); ok {
+			m.selecting = true
+			m.selectionStart = pos
+			m.selectionEnd = pos
+			m.syncViewport()
+		}
+		return m, nil
+
+	case tea.MouseMotionMsg:
+		mouse := tea.Mouse(msg)
+		if m.selecting && mouse.Button == tea.MouseLeft {
+			if pos, ok := m.viewportPosAtMouse(mouse.X, mouse.Y); ok {
+				m.selectionEnd = pos
+				m.syncViewport()
+			}
+		}
+		return m, nil
+
+	case tea.MouseReleaseMsg:
+		mouse := tea.Mouse(msg)
+		if mouse.Button == tea.MouseLeft {
+			m.selecting = false
+			m.syncViewport()
+			if m.hasSelection() {
+				return m, tea.SetClipboard(m.getSelectedText())
 			}
 		}
 		return m, nil
@@ -163,6 +219,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, waitForAgentEvent(m.agentEvents)
 		}
 		return m.handleAgentEvent(msg.event)
+
+	case approvalReqMsg:
+		m.approvalActive = true
+		m.approvalReq = msg.req
+		m.approvalSelector.reset()
+		m.syncViewport()
+		return m, waitForApprovalRequest(m.approvalReqCh)
 
 	case confEventMsg:
 		return m.handleConfEvent(msg.event)

@@ -39,6 +39,11 @@ func (m Model) handleSubmit() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Hide logo when user submits first message
+	if m.showLogo {
+		m.showLogo = false
+	}
+
 	m.textarea.Reset()
 	m.closeSlashSuggestions()
 	m.applyLayout()
@@ -95,6 +100,9 @@ func (m *Model) handleCommand(input string) (tea.Cmd, bool) {
 		m.appendLine("  ↑/↓         Scroll one line")
 		m.appendLine("  PgUp/PgDn   Scroll half page")
 		m.appendLine("  Home/End    Jump to top/bottom")
+		m.appendLine("Selection:")
+		m.appendLine("  drag select Release to copy")
+		m.appendLine("  Esc         Clear selection")
 		m.syncViewport()
 		return nil, true
 	case "/messages":

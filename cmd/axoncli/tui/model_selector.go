@@ -40,8 +40,8 @@ const maxModelVisible = 10
 
 var (
 	modelHeaderStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("205")).
-			Bold(true)
+				Foreground(lipgloss.Color("205")).
+				Bold(true)
 
 	modelItemStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("241")).
@@ -58,12 +58,12 @@ var (
 				Padding(0, 1)
 
 	modelGroupStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("99")).
-				Bold(true).
-				PaddingLeft(1)
+			Foreground(lipgloss.Color("99")).
+			Bold(true).
+			PaddingLeft(1)
 
 	modelErrorStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("196"))
+			Foreground(lipgloss.Color("196"))
 )
 
 // modelListMsg is sent when models are loaded

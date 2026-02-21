@@ -4,7 +4,13 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/viewport"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
+
+var selectionStyle = lipgloss.NewStyle().
+	Background(lipgloss.Color("62")).
+	Foreground(lipgloss.Color("255"))
 
 func newViewport(width, height int) viewport.Model {
 	vp := viewport.New(viewport.WithWidth(width), viewport.WithHeight(height))
@@ -47,10 +53,9 @@ func (m *Model) applyLayout() {
 }
 
 func (m Model) viewportTopY() int {
-	// renderHeader() currently renders 6 lines, then View() adds a newline before
-	// the viewport, making the viewport start at row 6 (zero-based). The
-	// headerHeight constant includes this separator newline.
-	return max(headerHeight-1, 0)
+	// Viewport starts at row 0 since header is removed.
+	// headerHeight is now 0.
+	return 0
 }
 
 func (m Model) chromeHeight() int {
@@ -124,7 +129,7 @@ func (m *Model) syncViewport() {
 	atBottom := m.viewport.AtBottom()
 	prevYOffset := m.viewport.YOffset()
 
-	content := strings.Join(m.lines, "\n")
+	content := m.renderLinesWithSelection()
 	m.viewport.SetContent(content)
 	m.rebuildThinkingHeaderViewportLine()
 
@@ -133,6 +138,105 @@ func (m *Model) syncViewport() {
 		return
 	}
 	m.viewport.SetYOffset(prevYOffset)
+}
+
+func (m *Model) renderLinesWithSelection() string {
+	if !m.hasSelection() {
+		return strings.Join(m.lines, "\n")
+	}
+
+	start, end := m.getSelectionRange()
+	var result []string
+	for i, line := range m.lines {
+		if i < start.line || i > end.line {
+			result = append(result, line)
+			continue
+		}
+
+		plain := ansi.Strip(line)
+		lineLen := ansi.StringWidth(plain)
+		if lineLen < 0 {
+			lineLen = 0
+		}
+
+		if i == start.line && i == end.line {
+			left := min(start.col, lineLen)
+			right := min(end.col, lineLen)
+			if right < left {
+				right = left
+			}
+			before := ansi.Cut(plain, 0, left)
+			selected := ansi.Cut(plain, left, right)
+			after := ansi.Cut(plain, right, lineLen)
+			line = before + selectionStyle.Render(selected) + after
+		} else if i == start.line {
+			left := min(start.col, lineLen)
+			before := ansi.Cut(plain, 0, left)
+			selected := ansi.Cut(plain, left, lineLen)
+			line = before + selectionStyle.Render(selected)
+		} else if i == end.line {
+			right := min(end.col, lineLen)
+			if right < 0 {
+				right = 0
+			}
+			selected := ansi.Cut(plain, 0, right)
+			after := ansi.Cut(plain, right, lineLen)
+			line = selectionStyle.Render(selected) + after
+		} else {
+			line = selectionStyle.Render(plain)
+		}
+		result = append(result, line)
+	}
+	return strings.Join(result, "\n")
+}
+
+func (m *Model) hasSelection() bool {
+	return m.selectionStart != m.selectionEnd
+}
+
+func (m *Model) getSelectionRange() (start, end selectionPos) {
+	start = m.selectionStart
+	end = m.selectionEnd
+	if start.line > end.line || (start.line == end.line && start.col > end.col) {
+		start, end = end, start
+	}
+	return start, end
+}
+
+func (m *Model) getSelectedText() string {
+	if !m.hasSelection() {
+		return ""
+	}
+	start, end := m.getSelectionRange()
+	var result []string
+	for i := start.line; i <= end.line && i < len(m.lines); i++ {
+		plain := ansi.Strip(m.lines[i])
+		lineLen := ansi.StringWidth(plain)
+		if lineLen < 0 {
+			lineLen = 0
+		}
+
+		if i == start.line && i == end.line {
+			left := min(start.col, lineLen)
+			right := min(end.col, lineLen)
+			if right < left {
+				right = left
+			}
+			result = append(result, ansi.Cut(plain, left, right))
+		} else if i == start.line {
+			left := min(start.col, lineLen)
+			result = append(result, ansi.Cut(plain, left, lineLen))
+		} else if i == end.line {
+			right := min(end.col, lineLen)
+			if right < 0 {
+				right = 0
+			}
+			result = append(result, ansi.Cut(plain, 0, right))
+		} else {
+			result = append(result, plain)
+		}
+	}
+	return strings.Join(result, "\n")
 }
 
 func (m *Model) rebuildThinkingHeaderViewportLine() {
@@ -169,11 +273,34 @@ func (m Model) thinkingBlockIndexAtMouse(x, y int) (int, bool) {
 	if !ok {
 		return 0, false
 	}
-	// Only toggle when clicking the leading indicator area ("▶"/"▼").
 	if x > 1 {
 		return 0, false
 	}
 	return idx, true
+}
+
+func (m Model) viewportPosAtMouse(x, y int) (selectionPos, bool) {
+	viewportTopY := m.viewportTopY()
+	relY := y - viewportTopY
+	if relY < 0 || relY >= m.viewport.Height() {
+		return selectionPos{}, false
+	}
+	if x < 0 || x >= m.viewport.Width() {
+		return selectionPos{}, false
+	}
+	absLine := m.viewport.YOffset() + relY
+	if absLine < 0 || absLine >= len(m.lines) {
+		return selectionPos{}, false
+	}
+	plain := ansi.Strip(m.lines[absLine])
+	maxCol := ansi.StringWidth(plain)
+	if maxCol < 0 {
+		maxCol = 0
+	}
+	if x > maxCol {
+		x = maxCol
+	}
+	return selectionPos{line: absLine, col: x}, true
 }
 
 func (m *Model) spliceLines(start, deleteCount int, insert []string) int {
