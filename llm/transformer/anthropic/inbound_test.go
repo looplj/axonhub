@@ -320,6 +320,82 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 			expectError: true,
 		},
+		{
+			name: "thinking enabled without budget_tokens",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 16000,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"thinking": {"type": "enabled"}
+				}`),
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid output_config effort value",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 1024,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"output_config": {"effort": "banana"}
+				}`),
+			},
+			expectError: true,
+		},
+		{
+			name: "tool_choice type tool without name",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 1024,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"tools": [{"name": "calculator", "description": "calc", "input_schema": {"type": "object"}}],
+					"tool_choice": {"type": "tool"}
+				}`),
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid thinking type",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 16000,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"thinking": {"type": "banana"}
+				}`),
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid tool_choice type",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 1024,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"tool_choice": {"type": "banana"}
+				}`),
+			},
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
