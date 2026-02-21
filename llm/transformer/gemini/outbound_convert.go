@@ -212,9 +212,17 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 		case "tool":
 			// Tool response - need to find the corresponding function call
-			content := convertLLMToolResultToGeminiContent(&msg, contents, config)
-			if content != nil {
-				contents = append(contents, content)
+			// Group consecutive tool messages into a single Content entry
+			toolContent := convertLLMToolResultToGeminiContent(&msg, contents, config)
+			if toolContent != nil {
+				// Check if previous content was also a tool response (user role with functionResponse parts)
+				if len(contents) > 0 && contents[len(contents)-1].Role == "user" && len(contents[len(contents)-1].Parts) > 0 && contents[len(contents)-1].Parts[0].FunctionResponse != nil {
+					// Append to existing tool content
+					contents[len(contents)-1].Parts = append(contents[len(contents)-1].Parts, toolContent.Parts...)
+				} else {
+					// Create new content entry
+					contents = append(contents, toolContent)
+				}
 			}
 
 		default:
