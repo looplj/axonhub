@@ -305,8 +305,7 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(anthropicReq.Thinking.BudgetTokens)
 			chatReq.ReasoningBudget = lo.ToPtr(anthropicReq.Thinking.BudgetTokens)
 		case "adaptive":
-			// adaptive thinking 不需要 budget，但需要传递类型标记
-			// 使用 TransformerMetadata 保留 adaptive 类型信息
+			// Adaptive thinking doesn't require a budget; preserve the type marker via TransformerMetadata.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "adaptive"
 		}
 	}
@@ -331,7 +330,7 @@ func convertAnthropicToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 			ToolChoice: new(src.Type),
 		}
 	case "any":
-		// Anthropic "any" 等价于 OpenAI "required"
+		// Anthropic "any" is equivalent to OpenAI "required"
 		required := "required"
 		return &llm.ToolChoice{
 			ToolChoice: &required,

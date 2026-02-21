@@ -41,14 +41,14 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
 	}
 
-	// 确定 thinking 配置：adaptive > enabled > disabled
+	// Determine thinking config priority: adaptive > enabled > disabled
 	if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok && v == "adaptive" {
 		req.Thinking = &Thinking{Type: "adaptive"}
 	} else if chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil {
 		req.Thinking = buildThinking(chatReq, config)
 	}
 
-	// 设置 output_config（通过 TransformerMetadata 传递）
+	// Restore output_config from TransformerMetadata
 	if chatReq.TransformerMetadata != nil {
 		if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
 			req.OutputConfig = &OutputConfig{Effort: effort}
@@ -144,11 +144,11 @@ func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
 		return nil
 	}
 
-	// 字符串形式的 tool_choice: "auto", "none", "any", "required"
+	// String-form tool_choice: "auto", "none", "any", "required"
 	if src.ToolChoice != nil {
 		choice := *src.ToolChoice
 
-		// OpenAI "required" 等价于 Anthropic "any"
+		// OpenAI "required" is equivalent to Anthropic "any"
 		if choice == "required" {
 			choice = "any"
 		}
@@ -158,7 +158,7 @@ func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
 		}
 	}
 
-	// 命名工具形式的 tool_choice: {type: "function", function: {name: "xxx"}}
+	// Named tool_choice: {type: "function", function: {name: "xxx"}}
 	if src.NamedToolChoice != nil && src.NamedToolChoice.Function.Name != "" {
 		return &ToolChoice{
 			Type: "tool",
