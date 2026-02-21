@@ -305,13 +305,14 @@ func ensureBillingHeaderCCHInText(text string, cch string) (string, bool) {
 }
 
 // injectClaudeCodeSystemMessageStructured prepends the Claude Code system message.
-// 注意：不在此处设置 cache_control，缓存策略由 ensureCacheControl 统一管理。
 func injectClaudeCodeSystemMessageStructured(llmReq *llm.Request) *llm.Request {
 	claudeCodeMsg := llm.Message{
 		Role: "system",
 		Content: llm.MessageContent{
 			Content: func() *string { s := claudeCodeSystemMessage; return &s }(),
 		},
+		// Force enable cache_control for Claude Code system message.
+		CacheControl: &llm.CacheControl{Type: "ephemeral"},
 	}
 
 	if len(llmReq.Messages) > 0 && llmReq.Messages[0].Role == "system" {
