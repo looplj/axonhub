@@ -40,9 +40,7 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {t(`requests.columns.${column.id}`, {
-                  fallback: t(`common.columns.${column.id}`),
-                })}
+                {t(`common.columns.${column.id}`)}
               </DropdownMenuCheckboxItem>
             );
           })}
