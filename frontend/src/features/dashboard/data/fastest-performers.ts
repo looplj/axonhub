@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 
@@ -66,22 +65,14 @@ const FASTEST_MODELS_QUERY = `
 
 // Query hooks
 export function useFastestChannels(timeWindow: string = 'day', limit: number = 5) {
-  const { t } = useTranslation('dashboard');
-
   return useQuery({
     queryKey: ['fastestChannels', timeWindow, limit],
     queryFn: async () => {
-      try {
-        const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(
-          FASTEST_CHANNELS_QUERY,
-          { input: { timeWindow, limit } }
-        );
-        return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(t('fastestPerformers.loadError'));
-        throw new Error(t('fastestPerformers.loadError'));
-      }
+      const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(
+        FASTEST_CHANNELS_QUERY,
+        { input: { timeWindow, limit } }
+      );
+      return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
     },
     refetchInterval: REFETCH_INTERVAL_MS,
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
@@ -89,22 +80,14 @@ export function useFastestChannels(timeWindow: string = 'day', limit: number = 5
 }
 
 export function useFastestModels(timeWindow: string = 'day', limit: number = 5) {
-  const { t } = useTranslation('dashboard');
-
   return useQuery({
     queryKey: ['fastestModels', timeWindow, limit],
     queryFn: async () => {
-      try {
-        const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(
-          FASTEST_MODELS_QUERY,
-          { input: { timeWindow, limit } }
-        );
-        return data.fastestModels.map((item) => fastestModelSchema.parse(item));
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(t('fastestPerformers.loadError'));
-        throw new Error(t('fastestPerformers.loadError'));
-      }
+      const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(
+        FASTEST_MODELS_QUERY,
+        { input: { timeWindow, limit } }
+      );
+      return data.fastestModels.map((item) => fastestModelSchema.parse(item));
     },
     refetchInterval: REFETCH_INTERVAL_MS,
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash

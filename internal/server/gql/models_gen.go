@@ -95,6 +95,16 @@ type BulkUpdateChannelOrderingResult struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+// Performance statistics for a specific channel on a given date
+type ChannelPerformanceStat struct {
+	Date         string   `json:"date"`
+	ChannelID    string   `json:"channelId"`
+	ChannelName  string   `json:"channelName"`
+	Throughput   *float64 `json:"throughput,omitempty"`
+	TtftMs       *float64 `json:"ttftMs,omitempty"`
+	RequestCount int      `json:"requestCount"`
+}
+
 type ChannelSuccessRate struct {
 	ChannelID    objects.GUID `json:"channelId"`
 	ChannelName  string       `json:"channelName"`
@@ -190,6 +200,15 @@ type InitializeSystemPayload struct {
 	Message string    `json:"message"`
 	User    *ent.User `json:"user,omitempty"`
 	Token   *string   `json:"token,omitempty"`
+}
+
+// Performance statistics for a specific model on a given date
+type ModelPerformanceStat struct {
+	Date         string   `json:"date"`
+	ModelID      string   `json:"modelId"`
+	Throughput   *float64 `json:"throughput,omitempty"`
+	TtftMs       *float64 `json:"ttftMs,omitempty"`
+	RequestCount int      `json:"requestCount"`
 }
 
 type OnboardingInfo struct {

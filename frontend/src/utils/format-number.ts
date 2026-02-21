@@ -24,5 +24,9 @@ export function formatNumber(value: number | null | undefined, options?: { digit
     return formatWithSuffix(1_000, 'K');
   }
 
-  return value.toLocaleString();
+  const num = parseFloat(value.toFixed(digits));
+  return num.toLocaleString(undefined, {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0
+  });
 }

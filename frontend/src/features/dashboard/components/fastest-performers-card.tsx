@@ -56,7 +56,7 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
       <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
         <div className='text-foreground text-sm font-medium'>{item.name}</div>
         <div className='text-muted-foreground'>
-          {safeToFixed(safeThroughput)} tokens/s ({safeToFixed(percent, 0)}%)
+          {safeToFixed(safeThroughput, 0)} tokens/s ({safeToFixed(percent, 0)}%)
         </div>
         <div className='text-muted-foreground text-xs'>
           {safeNumber(item.requestCount)} requests
@@ -101,7 +101,7 @@ function ChartLegend({ items }: { items: LegendItem[] }) {
             <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
             <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
             <div className='text-right leading-tight'>
-              <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput)} tok/s</div>
+              <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput, 0)} tok/s</div>
               <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
             </div>
           </div>
@@ -122,7 +122,6 @@ interface FastestPerformersCardProps<T extends ThroughputData> {
   noDataLabel: string;
   useData: (timeWindow: TimeWindow) => UseQueryResult<T[], Error>;
   getName: (item: T) => string | null;
-  titleIcon?: React.ReactNode;
 }
 
 export function FastestPerformersCard<T extends ThroughputData>({
@@ -131,7 +130,6 @@ export function FastestPerformersCard<T extends ThroughputData>({
   noDataLabel,
   useData,
   getName,
-  titleIcon,
 }: FastestPerformersCardProps<T>) {
   const { t } = useTranslation();
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('day');
@@ -187,17 +185,10 @@ export function FastestPerformersCard<T extends ThroughputData>({
   }));
 
   return (
-    <Card className='hover-card'>
+    <Card className='hover-card h-full'>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-        <div>
-          <div className='flex items-center gap-2'>
-            {titleIcon && (
-              <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
-                {titleIcon}
-              </div>
-            )}
-            <CardTitle className='text-base font-medium'>{title}</CardTitle>
-          </div>
+        <div className='space-y-1'>
+          <CardTitle className='text-base font-medium'>{title}</CardTitle>
           <CardDescription>{description(totalRequests)}</CardDescription>
         </div>
         <div className='flex items-center gap-2'>

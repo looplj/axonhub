@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, Key, Zap, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/layout/header';
+import { formatNumber } from '@/utils/format-number';
 import { ChannelSuccessRate } from './components/channel-success-rate';
 import { DailyRequestStats } from './components/daily-requests-stats';
 import { RequestsByChannelChart } from './components/requests-by-channel-chart';
@@ -17,6 +18,8 @@ import { TokenStatsCard } from './components/token-stats-card';
 import { TotalRequestsCard } from './components/total-requests-card';
 import { FastestChannelsCard } from './components/fastest-channels-card';
 import { FastestModelsCard } from './components/fastest-models-card';
+import { ModelPerformanceStats } from './components/model-performance-stats';
+import { ChannelPerformanceStats } from './components/channel-performance-stats';
 import { useDashboardStats } from './data/dashboard';
 
 interface CollapsibleSectionProps {
@@ -85,6 +88,16 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { isLoading, error } = useDashboardStats();
+  const [modelTotalRequests, setModelTotalRequests] = useState(0);
+  const [channelTotalRequests, setChannelTotalRequests] = useState(0);
+
+  const modelPerformanceDescription = useMemo(() => {
+    return t('dashboard.charts.performanceDescription', { count: formatNumber(modelTotalRequests) });
+  }, [t, modelTotalRequests]);
+
+  const channelPerformanceDescription = useMemo(() => {
+    return t('dashboard.charts.performanceDescription', { count: formatNumber(channelTotalRequests) });
+  }, [t, channelTotalRequests]);
 
   if (isLoading) {
     return (
@@ -214,9 +227,33 @@ export default function DashboardPage() {
         icon={<Zap className='h-4 w-4 text-primary' />}
         storageKey='performance'
       >
-        <div className='grid gap-4 md:grid-cols-2'>
-          <FastestChannelsCard />
-          <FastestModelsCard />
+        <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
+          <Card className='hover-card col-span-1 lg:col-span-4'>
+            <CardHeader>
+              <CardTitle>{t('dashboard.charts.modelPerformance')}</CardTitle>
+              <CardDescription>{modelPerformanceDescription}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ModelPerformanceStats onTotalRequestsChange={setModelTotalRequests} />
+            </CardContent>
+          </Card>
+          <div className='col-span-1 lg:col-span-3'>
+            <FastestModelsCard />
+          </div>
+        </div>
+        <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
+          <Card className='hover-card col-span-1 lg:col-span-4'>
+            <CardHeader>
+              <CardTitle>{t('dashboard.charts.channelPerformance')}</CardTitle>
+              <CardDescription>{channelPerformanceDescription}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChannelPerformanceStats onTotalRequestsChange={setChannelTotalRequests} />
+            </CardContent>
+          </Card>
+          <div className='col-span-1 lg:col-span-3'>
+            <FastestChannelsCard />
+          </div>
         </div>
       </CollapsibleSection>
     </div>

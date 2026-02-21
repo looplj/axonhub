@@ -72,6 +72,23 @@ export const channelSuccessRateSchema = z.object({
   successRate: z.number(),
 });
 
+export const modelPerformanceStatSchema = z.object({
+  date: z.string(),
+  modelId: z.string(),
+  throughput: z.number().nullable(),
+  ttftMs: z.number().nullable(),
+  requestCount: z.number(),
+});
+
+export const channelPerformanceStatSchema = z.object({
+  date: z.string(),
+  channelId: z.string(),
+  channelName: z.string(),
+  throughput: z.number().nullable(),
+  ttftMs: z.number().nullable(),
+  requestCount: z.number(),
+});
+
 export type RequestStats = z.infer<typeof requestStatsSchema>;
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
 export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>;
@@ -82,6 +99,8 @@ export type DailyRequestStats = z.infer<typeof dailyRequestStatsSchema>;
 export type HourlyRequestStats = z.infer<typeof hourlyRequestStatsSchema>;
 export type TopProjects = z.infer<typeof topProjectsSchema>;
 export type ChannelSuccessRate = z.infer<typeof channelSuccessRateSchema>;
+export type ModelPerformanceStat = z.infer<typeof modelPerformanceStatSchema>;
+export type ChannelPerformanceStat = z.infer<typeof channelPerformanceStatSchema>;
 
 export const tokenStatsSchema = z.object({
   totalInputTokensToday: z.number(),
@@ -197,6 +216,31 @@ const CHANNEL_SUCCESS_RATES_QUERY = `
       failedCount
       totalCount
       successRate
+    }
+  }
+`;
+
+const MODEL_PERFORMANCE_STATS_QUERY = `
+  query ModelPerformanceStats {
+    modelPerformanceStats {
+      date
+      modelId
+      throughput
+      ttftMs
+      requestCount
+    }
+  }
+`;
+
+const CHANNEL_PERFORMANCE_STATS_QUERY = `
+  query ChannelPerformanceStats {
+    channelPerformanceStats {
+      date
+      channelId
+      channelName
+      throughput
+      ttftMs
+      requestCount
     }
   }
 `;
@@ -328,5 +372,27 @@ export function useChannelSuccessRates() {
       return data.channelSuccessRates.map((item) => channelSuccessRateSchema.parse(item));
     },
     refetchInterval: 300000,
+  });
+}
+
+export function useModelPerformanceStats() {
+  return useQuery({
+    queryKey: ['modelPerformanceStats'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(MODEL_PERFORMANCE_STATS_QUERY);
+      return data.modelPerformanceStats.map((item) => modelPerformanceStatSchema.parse(item));
+    },
+    refetchInterval: 300000, // Refetch every 5 minutes
+  });
+}
+
+export function useChannelPerformanceStats() {
+  return useQuery({
+    queryKey: ['channelPerformanceStats'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(CHANNEL_PERFORMANCE_STATS_QUERY);
+      return data.channelPerformanceStats.map((item) => channelPerformanceStatSchema.parse(item));
+    },
+    refetchInterval: 300000, // Refetch every 5 minutes
   });
 }

@@ -377,6 +377,15 @@ type ComplexityRoot struct {
 		Node   func(childComplexity int) int
 	}
 
+	ChannelPerformanceStat struct {
+		ChannelID    func(childComplexity int) int
+		ChannelName  func(childComplexity int) int
+		Date         func(childComplexity int) int
+		RequestCount func(childComplexity int) int
+		Throughput   func(childComplexity int) int
+		TtftMs       func(childComplexity int) int
+	}
+
 	ChannelPolicies struct {
 		Stream func(childComplexity int) int
 	}
@@ -683,6 +692,14 @@ type ComplexityRoot struct {
 		To   func(childComplexity int) int
 	}
 
+	ModelPerformanceStat struct {
+		Date         func(childComplexity int) int
+		ModelID      func(childComplexity int) int
+		RequestCount func(childComplexity int) int
+		Throughput   func(childComplexity int) int
+		TtftMs       func(childComplexity int) int
+	}
+
 	ModelPrice struct {
 		Items func(childComplexity int) int
 	}
@@ -928,6 +945,7 @@ type ComplexityRoot struct {
 		AutoBackupSettings           func(childComplexity int) int
 		BrandSettings                func(childComplexity int) int
 		ChannelOverrideTemplates     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
+		ChannelPerformanceStats      func(childComplexity int) int
 		ChannelProbeData             func(childComplexity int, input biz.GetChannelProbeDataInput) int
 		ChannelSuccessRates          func(childComplexity int) int
 		Channels                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
@@ -941,6 +959,7 @@ type ComplexityRoot struct {
 		FastestModels                func(childComplexity int, input FastestChannelsInput) int
 		FetchModels                  func(childComplexity int, input biz.FetchModelsInput) int
 		Me                           func(childComplexity int) int
+		ModelPerformanceStats        func(childComplexity int) int
 		Models                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
 		MyProjects                   func(childComplexity int) int
 		Node                         func(childComplexity int, id objects.GUID) int
@@ -1705,6 +1724,8 @@ type QueryResolver interface {
 	ChannelSuccessRates(ctx context.Context) ([]*ChannelSuccessRate, error)
 	FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error)
 	FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error)
+	ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error)
+	ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error)
 	AllScopes(ctx context.Context, level *string) ([]*ScopeInfo, error)
 	Me(ctx context.Context) (*objects.UserInfo, error)
 	MyProjects(ctx context.Context) ([]*ent.Project, error)
@@ -2914,6 +2935,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelOverrideTemplateEdge.Node(childComplexity), true
 
+	case "ChannelPerformanceStat.channelId":
+		if e.complexity.ChannelPerformanceStat.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformanceStat.ChannelID(childComplexity), true
+	case "ChannelPerformanceStat.channelName":
+		if e.complexity.ChannelPerformanceStat.ChannelName == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformanceStat.ChannelName(childComplexity), true
+	case "ChannelPerformanceStat.date":
+		if e.complexity.ChannelPerformanceStat.Date == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformanceStat.Date(childComplexity), true
+	case "ChannelPerformanceStat.requestCount":
+		if e.complexity.ChannelPerformanceStat.RequestCount == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformanceStat.RequestCount(childComplexity), true
+	case "ChannelPerformanceStat.throughput":
+		if e.complexity.ChannelPerformanceStat.Throughput == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformanceStat.Throughput(childComplexity), true
+	case "ChannelPerformanceStat.ttftMs":
+		if e.complexity.ChannelPerformanceStat.TtftMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelPerformanceStat.TtftMs(childComplexity), true
+
 	case "ChannelPolicies.stream":
 		if e.complexity.ChannelPolicies.Stream == nil {
 			break
@@ -4011,6 +4069,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelMapping.To(childComplexity), true
+
+	case "ModelPerformanceStat.date":
+		if e.complexity.ModelPerformanceStat.Date == nil {
+			break
+		}
+
+		return e.complexity.ModelPerformanceStat.Date(childComplexity), true
+	case "ModelPerformanceStat.modelId":
+		if e.complexity.ModelPerformanceStat.ModelID == nil {
+			break
+		}
+
+		return e.complexity.ModelPerformanceStat.ModelID(childComplexity), true
+	case "ModelPerformanceStat.requestCount":
+		if e.complexity.ModelPerformanceStat.RequestCount == nil {
+			break
+		}
+
+		return e.complexity.ModelPerformanceStat.RequestCount(childComplexity), true
+	case "ModelPerformanceStat.throughput":
+		if e.complexity.ModelPerformanceStat.Throughput == nil {
+			break
+		}
+
+		return e.complexity.ModelPerformanceStat.Throughput(childComplexity), true
+	case "ModelPerformanceStat.ttftMs":
+		if e.complexity.ModelPerformanceStat.TtftMs == nil {
+			break
+		}
+
+		return e.complexity.ModelPerformanceStat.TtftMs(childComplexity), true
 
 	case "ModelPrice.items":
 		if e.complexity.ModelPrice.Items == nil {
@@ -5520,6 +5609,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ChannelOverrideTemplates(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.ChannelOverrideTemplateOrder), args["where"].(*ent.ChannelOverrideTemplateWhereInput)), true
+	case "Query.channelPerformanceStats":
+		if e.complexity.Query.ChannelPerformanceStats == nil {
+			break
+		}
+
+		return e.complexity.Query.ChannelPerformanceStats(childComplexity), true
 	case "Query.channelProbeData":
 		if e.complexity.Query.ChannelProbeData == nil {
 			break
@@ -5633,6 +5728,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Me(childComplexity), true
+	case "Query.modelPerformanceStats":
+		if e.complexity.Query.ModelPerformanceStats == nil {
+			break
+		}
+
+		return e.complexity.Query.ModelPerformanceStats(childComplexity), true
 	case "Query.models":
 		if e.complexity.Query.Models == nil {
 			break
@@ -16723,6 +16824,180 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplateEdge_cursor(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelPerformanceStat_date(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPerformanceStat_date,
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformanceStat_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformanceStat_channelId(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPerformanceStat_channelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformanceStat_channelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformanceStat_channelName(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPerformanceStat_channelName,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformanceStat_channelName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformanceStat_throughput(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPerformanceStat_throughput,
+		func(ctx context.Context) (any, error) {
+			return obj.Throughput, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformanceStat_throughput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformanceStat_ttftMs(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPerformanceStat_ttftMs,
+		func(ctx context.Context) (any, error) {
+			return obj.TtftMs, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformanceStat_ttftMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPerformanceStat_requestCount(ctx context.Context, field graphql.CollectedField, obj *ChannelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPerformanceStat_requestCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPerformanceStat_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelPolicies_stream(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -22264,6 +22539,151 @@ func (ec *executionContext) fieldContext_ModelMapping_to(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPerformanceStat_date(ctx context.Context, field graphql.CollectedField, obj *ModelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPerformanceStat_date,
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPerformanceStat_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPerformanceStat_modelId(ctx context.Context, field graphql.CollectedField, obj *ModelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPerformanceStat_modelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPerformanceStat_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPerformanceStat_throughput(ctx context.Context, field graphql.CollectedField, obj *ModelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPerformanceStat_throughput,
+		func(ctx context.Context) (any, error) {
+			return obj.Throughput, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPerformanceStat_throughput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPerformanceStat_ttftMs(ctx context.Context, field graphql.CollectedField, obj *ModelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPerformanceStat_ttftMs,
+		func(ctx context.Context) (any, error) {
+			return obj.TtftMs, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPerformanceStat_ttftMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPerformanceStat_requestCount(ctx context.Context, field graphql.CollectedField, obj *ModelPerformanceStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPerformanceStat_requestCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPerformanceStat_requestCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPerformanceStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30905,6 +31325,90 @@ func (ec *executionContext) fieldContext_Query_fastestModels(ctx context.Context
 	if fc.Args, err = ec.field_Query_fastestModels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_modelPerformanceStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_modelPerformanceStats,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().ModelPerformanceStats(ctx)
+		},
+		nil,
+		ec.marshalNModelPerformanceStat2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelPerformanceStatᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_modelPerformanceStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "date":
+				return ec.fieldContext_ModelPerformanceStat_date(ctx, field)
+			case "modelId":
+				return ec.fieldContext_ModelPerformanceStat_modelId(ctx, field)
+			case "throughput":
+				return ec.fieldContext_ModelPerformanceStat_throughput(ctx, field)
+			case "ttftMs":
+				return ec.fieldContext_ModelPerformanceStat_ttftMs(ctx, field)
+			case "requestCount":
+				return ec.fieldContext_ModelPerformanceStat_requestCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelPerformanceStat", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_channelPerformanceStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_channelPerformanceStats,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().ChannelPerformanceStats(ctx)
+		},
+		nil,
+		ec.marshalNChannelPerformanceStat2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelPerformanceStatᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_channelPerformanceStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "date":
+				return ec.fieldContext_ChannelPerformanceStat_date(ctx, field)
+			case "channelId":
+				return ec.fieldContext_ChannelPerformanceStat_channelId(ctx, field)
+			case "channelName":
+				return ec.fieldContext_ChannelPerformanceStat_channelName(ctx, field)
+			case "throughput":
+				return ec.fieldContext_ChannelPerformanceStat_throughput(ctx, field)
+			case "ttftMs":
+				return ec.fieldContext_ChannelPerformanceStat_ttftMs(ctx, field)
+			case "requestCount":
+				return ec.fieldContext_ChannelPerformanceStat_requestCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelPerformanceStat", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -68811,6 +69315,64 @@ func (ec *executionContext) _ChannelOverrideTemplateEdge(ctx context.Context, se
 	return out
 }
 
+var channelPerformanceStatImplementors = []string{"ChannelPerformanceStat"}
+
+func (ec *executionContext) _ChannelPerformanceStat(ctx context.Context, sel ast.SelectionSet, obj *ChannelPerformanceStat) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelPerformanceStatImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelPerformanceStat")
+		case "date":
+			out.Values[i] = ec._ChannelPerformanceStat_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelId":
+			out.Values[i] = ec._ChannelPerformanceStat_channelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelName":
+			out.Values[i] = ec._ChannelPerformanceStat_channelName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "throughput":
+			out.Values[i] = ec._ChannelPerformanceStat_throughput(ctx, field, obj)
+		case "ttftMs":
+			out.Values[i] = ec._ChannelPerformanceStat_ttftMs(ctx, field, obj)
+		case "requestCount":
+			out.Values[i] = ec._ChannelPerformanceStat_requestCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelPoliciesImplementors = []string{"ChannelPolicies"}
 
 func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelPolicies) graphql.Marshaler {
@@ -71363,6 +71925,59 @@ func (ec *executionContext) _ModelMapping(ctx context.Context, sel ast.Selection
 			}
 		case "to":
 			out.Values[i] = ec._ModelMapping_to(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelPerformanceStatImplementors = []string{"ModelPerformanceStat"}
+
+func (ec *executionContext) _ModelPerformanceStat(ctx context.Context, sel ast.SelectionSet, obj *ModelPerformanceStat) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelPerformanceStatImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelPerformanceStat")
+		case "date":
+			out.Values[i] = ec._ModelPerformanceStat_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modelId":
+			out.Values[i] = ec._ModelPerformanceStat_modelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "throughput":
+			out.Values[i] = ec._ModelPerformanceStat_throughput(ctx, field, obj)
+		case "ttftMs":
+			out.Values[i] = ec._ModelPerformanceStat_ttftMs(ctx, field, obj)
+		case "requestCount":
+			out.Values[i] = ec._ModelPerformanceStat_requestCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -74242,6 +74857,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_fastestModels(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "modelPerformanceStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_modelPerformanceStats(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "channelPerformanceStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_channelPerformanceStats(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -82012,6 +82671,60 @@ func (ec *executionContext) unmarshalNChannelOverrideTemplateWhereInput2ᚖgithu
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNChannelPerformanceStat2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelPerformanceStatᚄ(ctx context.Context, sel ast.SelectionSet, v []*ChannelPerformanceStat) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChannelPerformanceStat2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelPerformanceStat(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNChannelPerformanceStat2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelPerformanceStat(ctx context.Context, sel ast.SelectionSet, v *ChannelPerformanceStat) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ChannelPerformanceStat(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNChannelProbe2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelProbe(ctx context.Context, sel ast.SelectionSet, v *ent.ChannelProbe) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -83347,6 +84060,60 @@ func (ec *executionContext) marshalNModelOrderField2ᚖgithubᚗcomᚋloopljᚋa
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalNModelPerformanceStat2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelPerformanceStatᚄ(ctx context.Context, sel ast.SelectionSet, v []*ModelPerformanceStat) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelPerformanceStat2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelPerformanceStat(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNModelPerformanceStat2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelPerformanceStat(ctx context.Context, sel ast.SelectionSet, v *ModelPerformanceStat) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ModelPerformanceStat(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNModelPrice2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelPrice(ctx context.Context, sel ast.SelectionSet, v objects.ModelPrice) graphql.Marshaler {

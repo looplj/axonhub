@@ -13,6 +13,9 @@
   "dashboard.charts.requestsByAPIKey": "Requests by API Key",
   "dashboard.charts.tokensByAPIKey": "Tokens by API Key",
   "dashboard.charts.channelSuccessRate": "Channel Success Rate",
+  "dashboard.charts.modelPerformance": "Models Performance",
+  "dashboard.charts.channelPerformance": "Channels Performance",
+  "dashboard.charts.performanceDescription": "Shows tokens/second and time to first token over the last 30 days across {{count}} requests.",
   "dashboard.charts.errorLoadingChart": "Error loading chart data:",
   "dashboard.charts.errorLoadingTopProjects": "Error loading top projects:",
   "dashboard.charts.errorLoadingChannelData": "Error loading channel data:",
@@ -47,6 +50,10 @@
   "dashboard.stats.reasoningTokens": "Reasoning Tokens",
   "dashboard.stats.totalTokens": "Tokens",
   "dashboard.stats.totalCost": "Cost",
+  "dashboard.stats.throughput": "tok/s",
+  "dashboard.stats.ttft": "TTFT",
+  "dashboard.stats.model": "Model",
+  "dashboard.stats.channel": "Channel",
   "dashboard.stats.input": "Input",
   "dashboard.stats.output": "Output",
   "dashboard.stats.cached": "Cached",
@@ -57,7 +64,6 @@
   "dashboard.cards.fastestPerformers.models": "Fastest Models",
   "dashboard.cards.fastestPerformers.noData": "No data available",
   "dashboard.cards.fastestPerformers.description": "Fastest {{type}} by tokens/second · {{count}} requests across top performers",
-  "dashboard.fastestPerformers.loadError": "Unable to load fastest performers. Please try again later.",
   "dashboard.cards.fastestPerformers.channelType": "channels",
   "dashboard.cards.fastestPerformers.modelType": "models"
 }

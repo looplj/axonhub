@@ -104,6 +104,25 @@ type FastestModel {
   confidenceLevel: String!
 }
 
+"""Performance statistics for a specific model on a given date"""
+type ModelPerformanceStat {
+  date: String!
+  modelId: String!
+  throughput: Float
+  ttftMs: Float
+  requestCount: Int!
+}
+
+"""Performance statistics for a specific channel on a given date"""
+type ChannelPerformanceStat {
+  date: String!
+  channelId: String!
+  channelName: String!
+  throughput: Float
+  ttftMs: Float
+  requestCount: Int!
+}
+
 input FastestChannelsInput {
   timeWindow: String!
   limit: Int = 5
@@ -122,4 +141,8 @@ extend type Query {
   channelSuccessRates: [ChannelSuccessRate!]!
   fastestChannels(input: FastestChannelsInput!): [FastestChannel!]!
   fastestModels(input: FastestChannelsInput!): [FastestModel!]!
+  """Get performance statistics for models over time"""
+  modelPerformanceStats: [ModelPerformanceStat!]!
+  """Get performance statistics for channels over time"""
+  channelPerformanceStats: [ChannelPerformanceStat!]!
 }
