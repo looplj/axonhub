@@ -448,18 +448,12 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content, 
 
 	// Anthropic's tool result doesn't have name, so we need to find it by tool call id.
 	toolCallName := lo.FromPtr(msg.ToolCallName)
-	if toolCallName == "" && toolCallID != "" {
+	if toolCallName == "" {
 		toolCallName = findToolNameByToolCallID(contents, toolCallID)
 	}
 
-	// Vertex AI doesn't support the ID field in function_response
-	var id string
-	if config == nil || config.PlatformType != PlatformVertex {
-		id = toolCallID
-	}
-
 	fp := &FunctionResponse{
-		ID:       id,
+		ID:       toolCallID,
 		Name:     toolCallName,
 		Response: responseData,
 	}

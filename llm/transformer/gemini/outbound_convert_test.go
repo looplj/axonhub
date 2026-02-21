@@ -1279,35 +1279,18 @@ func TestConvertLLMToolResultToGeminiContent_VertexAI(t *testing.T) {
 		ToolCallName: lo.ToPtr("get_weather"),
 	}
 
-	// Test with Vertex AI config - ID should be empty
-	vertexConfig := &Config{PlatformType: PlatformVertex}
-	result := convertLLMToolResultToGeminiContent(msg, req.Contents, vertexConfig)
+	// Test conversion - ID should always be set for lookup purposes
+	result := convertLLMToolResultToGeminiContent(msg, req.Contents, nil)
 	require.NotNil(t, result)
 	require.Len(t, result.Parts, 1)
 	require.NotNil(t, result.Parts[0].FunctionResponse)
-	require.Empty(t, result.Parts[0].FunctionResponse.ID, "Vertex AI should not have ID field")
+	require.Equal(t, "call_123", result.Parts[0].FunctionResponse.ID, "ID should be set for lookup")
 	require.Equal(t, "get_weather", result.Parts[0].FunctionResponse.Name)
 
-	// Test with nil config - ID should be set
-	result = convertLLMToolResultToGeminiContent(msg, req.Contents, nil)
-	require.NotNil(t, result)
-	require.Len(t, result.Parts, 1)
-	require.NotNil(t, result.Parts[0].FunctionResponse)
-	require.Equal(t, "call_123", result.Parts[0].FunctionResponse.ID, "Non-Vertex should have ID field")
-
-	// Test with regular Gemini config - ID should be set
-	regularConfig := &Config{PlatformType: ""}
-	result = convertLLMToolResultToGeminiContent(msg, req.Contents, regularConfig)
-	require.NotNil(t, result)
-	require.Len(t, result.Parts, 1)
-	require.NotNil(t, result.Parts[0].FunctionResponse)
-	require.Equal(t, "call_123", result.Parts[0].FunctionResponse.ID, "Regular Gemini should have ID field")
-
-	// Verify JSON serialization for Vertex AI - ID should be omitted
-	result = convertLLMToolResultToGeminiContent(msg, req.Contents, vertexConfig)
+	// Verify JSON serialization - ID should be present when not empty
 	jsonBytes, err := json.Marshal(result.Parts[0].FunctionResponse)
 	require.NoError(t, err)
-	require.NotContains(t, string(jsonBytes), "\"id\":", "Vertex AI JSON should not contain ID field")
+	require.Contains(t, string(jsonBytes), "\"id\":", "JSON should contain ID field")
 	require.Contains(t, string(jsonBytes), "get_weather", "JSON should contain name")
 
 	// Verify JSON serialization for non-Vertex - ID should be present
