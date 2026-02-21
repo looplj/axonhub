@@ -19,6 +19,7 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
 	req := buildBaseRequest(chatReq, config)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
+	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
 	req.Messages = convertMessages(chatReq)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
@@ -40,8 +41,18 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
 	}
 
-	if chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil {
+	// 确定 thinking 配置：adaptive > enabled > disabled
+	if chatReq.TransformerMetadata != nil && chatReq.TransformerMetadata["thinking_type"] == "adaptive" {
+		req.Thinking = &Thinking{Type: "adaptive"}
+	} else if chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil {
 		req.Thinking = buildThinking(chatReq, config)
+	}
+
+	// 设置 output_config（通过 TransformerMetadata 传递）
+	if chatReq.TransformerMetadata != nil {
+		if effort, ok := chatReq.TransformerMetadata["output_config_effort"].(string); ok && effort != "" {
+			req.OutputConfig = &OutputConfig{Effort: effort}
+		}
 	}
 
 	return req
@@ -125,6 +136,37 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	}
 
 	return anthropicTools
+}
+
+// convertToolChoiceToAnthropic converts llm.ToolChoice to Anthropic ToolChoice.
+func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
+	if src == nil {
+		return nil
+	}
+
+	// 字符串形式的 tool_choice: "auto", "none", "any", "required"
+	if src.ToolChoice != nil {
+		choice := *src.ToolChoice
+
+		// OpenAI "required" 等价于 Anthropic "any"
+		if choice == "required" {
+			choice = "any"
+		}
+
+		return &ToolChoice{
+			Type: choice,
+		}
+	}
+
+	// 命名工具形式的 tool_choice: {type: "function", function: {name: "xxx"}}
+	if src.NamedToolChoice != nil {
+		return &ToolChoice{
+			Type: "tool",
+			Name: &src.NamedToolChoice.Function.Name,
+		}
+	}
+
+	return nil
 }
 
 // convertStopSequences converts stop sequences.

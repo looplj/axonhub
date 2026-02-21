@@ -1084,6 +1084,63 @@ func TestConvertAnthropicToolToLLM(t *testing.T) {
 	}
 }
 
+func TestConvertToolChoiceFromAnthropic(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *ToolChoice
+		validate func(t *testing.T, got *llm.ToolChoice)
+	}{
+		{
+			name: "anthropic auto -> llm auto",
+			input: &ToolChoice{
+				Type: "auto",
+			},
+			validate: func(t *testing.T, got *llm.ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.NotNil(t, got.ToolChoice)
+				require.Equal(t, "auto", *got.ToolChoice)
+				require.Nil(t, got.NamedToolChoice)
+			},
+		},
+		{
+			name: "anthropic any -> llm required",
+			input: &ToolChoice{
+				Type: "any",
+			},
+			validate: func(t *testing.T, got *llm.ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.NotNil(t, got.ToolChoice)
+				require.Equal(t, "required", *got.ToolChoice)
+				require.Nil(t, got.NamedToolChoice)
+			},
+		},
+		{
+			name: "anthropic tool+name -> llm named tool choice",
+			input: &ToolChoice{
+				Type: "tool",
+				Name: lo.ToPtr("calculator"),
+			},
+			validate: func(t *testing.T, got *llm.ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Nil(t, got.ToolChoice)
+				require.NotNil(t, got.NamedToolChoice)
+				require.Equal(t, "function", got.NamedToolChoice.Type)
+				require.Equal(t, "calculator", got.NamedToolChoice.Function.Name)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertAnthropicToolChoiceToLLM(tt.input)
+			tt.validate(t, got)
+		})
+	}
+}
+
 func TestInboundTransformer_WebSearchTool(t *testing.T) {
 	transformer := NewInboundTransformer()
 
