@@ -1082,7 +1082,7 @@ func TestConvertLLMMessageToGeminiContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMMessageToGeminiContent(tt.input, nil)
+			result := convertLLMMessageToGeminiContent(tt.input)
 			tt.validate(t, result)
 		})
 	}
@@ -1244,7 +1244,7 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMToolResultToGeminiContent(tt.input, tt.req.Contents, nil)
+			result := convertLLMToolResultToGeminiContent(tt.input, tt.req.Contents)
 			tt.validate(t, result)
 		})
 	}
@@ -1280,7 +1280,7 @@ func TestConvertLLMToolResultToGeminiContent_VertexAI(t *testing.T) {
 	}
 
 	// Test conversion - ID should always be set for lookup purposes
-	result := convertLLMToolResultToGeminiContent(msg, req.Contents, nil)
+	result := convertLLMToolResultToGeminiContent(msg, req.Contents)
 	require.NotNil(t, result)
 	require.Len(t, result.Parts, 1)
 	require.NotNil(t, result.Parts[0].FunctionResponse)
@@ -1292,59 +1292,6 @@ func TestConvertLLMToolResultToGeminiContent_VertexAI(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(jsonBytes), "\"id\":", "JSON should contain ID field")
 	require.Contains(t, string(jsonBytes), "get_weather", "JSON should contain name")
-
-	// Verify JSON serialization for non-Vertex - ID should be present
-	result = convertLLMToolResultToGeminiContent(msg, req.Contents, nil)
-	jsonBytes, err = json.Marshal(result.Parts[0].FunctionResponse)
-	require.NoError(t, err)
-	require.Contains(t, string(jsonBytes), "\"id\":", "Non-Vertex JSON should contain ID field")
-}
-
-func TestConvertLLMMessageToGeminiContent_VertexAI(t *testing.T) {
-	// Test that Vertex AI doesn't include ID field in function call
-	msg := &llm.Message{
-		Role: "assistant",
-		ToolCalls: []llm.ToolCall{
-			{
-				ID:   "call_123",
-				Type: "function",
-				Function: llm.FunctionCall{
-					Name:      "get_weather",
-					Arguments: `{"city": "Paris"}`,
-				},
-			},
-		},
-	}
-
-	// Test with Vertex AI config - ID should be kept in struct for lookup purposes
-	// but won't be serialized due to omitempty when ID is empty in FunctionResponse
-	vertexConfig := &Config{PlatformType: PlatformVertex}
-	result := convertLLMMessageToGeminiContent(msg, vertexConfig)
-	require.NotNil(t, result)
-	require.Len(t, result.Parts, 1)
-	require.NotNil(t, result.Parts[0].FunctionCall)
-	require.Equal(t, "call_123", result.Parts[0].FunctionCall.ID, "ID should be kept for lookup purposes")
-	require.Equal(t, "get_weather", result.Parts[0].FunctionCall.Name)
-
-	// Verify JSON serialization omits ID when empty
-	jsonBytes, err := json.Marshal(result.Parts[0].FunctionCall)
-	require.NoError(t, err)
-	require.Contains(t, string(jsonBytes), "get_weather")
-
-	// Test with nil config - ID should be set
-	result = convertLLMMessageToGeminiContent(msg, nil)
-	require.NotNil(t, result)
-	require.Len(t, result.Parts, 1)
-	require.NotNil(t, result.Parts[0].FunctionCall)
-	require.Equal(t, "call_123", result.Parts[0].FunctionCall.ID, "Non-Vertex should have ID field in function call")
-
-	// Test with regular Gemini config - ID should be set
-	regularConfig := &Config{PlatformType: ""}
-	result = convertLLMMessageToGeminiContent(msg, regularConfig)
-	require.NotNil(t, result)
-	require.Len(t, result.Parts, 1)
-	require.NotNil(t, result.Parts[0].FunctionCall)
-	require.Equal(t, "call_123", result.Parts[0].FunctionCall.ID, "Regular Gemini should have ID field in function call")
 }
 
 func TestConvertLLMToGeminiRequest_MultipleToolMessages(t *testing.T) {
@@ -1870,7 +1817,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMMessageToGeminiContent(tt.input, nil)
+			result := convertLLMMessageToGeminiContent(tt.input)
 			tt.validate(t, result)
 		})
 	}

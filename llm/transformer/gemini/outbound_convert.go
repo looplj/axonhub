@@ -213,17 +213,15 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 		case "tool":
 			// Tool response - need to find the corresponding function call
 			// Group consecutive tool messages into a single Content entry
-			toolContent := convertLLMToolResultToGeminiContent(&msg, contents, config)
-			if toolContent != nil {
-				if isPreviousContentToolResponse(contents) {
-					contents[len(contents)-1].Parts = append(contents[len(contents)-1].Parts, toolContent.Parts...)
-				} else {
-					contents = append(contents, toolContent)
-				}
+			toolContent := convertLLMToolResultToGeminiContent(&msg, contents)
+			if isPreviousContentToolResponse(contents) {
+				contents[len(contents)-1].Parts = append(contents[len(contents)-1].Parts, toolContent.Parts...)
+			} else {
+				contents = append(contents, toolContent)
 			}
 
 		default:
-			content := convertLLMMessageToGeminiContent(&msg, config)
+			content := convertLLMMessageToGeminiContent(&msg)
 			if content != nil {
 				contents = append(contents, content)
 			}
@@ -310,7 +308,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 }
 
 // convertLLMMessageToGeminiContent converts an LLM Message to Gemini Content.
-func convertLLMMessageToGeminiContent(msg *llm.Message, config *Config) *Content {
+func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 	if msg == nil {
 		return nil
 	}
@@ -435,7 +433,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message, config *Config) *Content
 }
 
 // convertLLMToolResultToGeminiContent converts an LLM tool message to Gemini Content.
-func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content, config *Config) *Content {
+func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) *Content {
 	content := &Content{
 		Role: "user", // Function responses come from user role in Gemini
 	}
