@@ -386,16 +386,9 @@ func convertLLMMessageToGeminiContent(msg *llm.Message, config *Config) *Content
 			_ = json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
 		}
 
-		// Vertex AI doesn't support the ID field in function_call
-		// Only set ID for non-Vertex platforms
-		var id string
-		if config == nil || config.PlatformType != PlatformVertex {
-			id = toolCall.ID
-		}
-
 		part := &Part{
 			FunctionCall: &FunctionCall{
-				ID:   id,
+				ID:   toolCall.ID,
 				Name: toolCall.Function.Name,
 				Args: args,
 			},

@@ -1302,6 +1302,19 @@ func TestConvertLLMToolResultToGeminiContent_VertexAI(t *testing.T) {
 	require.Len(t, result.Parts, 1)
 	require.NotNil(t, result.Parts[0].FunctionResponse)
 	require.Equal(t, "call_123", result.Parts[0].FunctionResponse.ID, "Regular Gemini should have ID field")
+
+	// Verify JSON serialization for Vertex AI - ID should be omitted
+	result = convertLLMToolResultToGeminiContent(msg, req.Contents, vertexConfig)
+	jsonBytes, err := json.Marshal(result.Parts[0].FunctionResponse)
+	require.NoError(t, err)
+	require.NotContains(t, string(jsonBytes), "\"id\":", "Vertex AI JSON should not contain ID field")
+	require.Contains(t, string(jsonBytes), "get_weather", "JSON should contain name")
+
+	// Verify JSON serialization for non-Vertex - ID should be present
+	result = convertLLMToolResultToGeminiContent(msg, req.Contents, nil)
+	jsonBytes, err = json.Marshal(result.Parts[0].FunctionResponse)
+	require.NoError(t, err)
+	require.Contains(t, string(jsonBytes), "\"id\":", "Non-Vertex JSON should contain ID field")
 }
 
 func TestConvertLLMMessageToGeminiContent_VertexAI(t *testing.T) {
@@ -1320,14 +1333,20 @@ func TestConvertLLMMessageToGeminiContent_VertexAI(t *testing.T) {
 		},
 	}
 
-	// Test with Vertex AI config - ID should be empty
+	// Test with Vertex AI config - ID should be kept in struct for lookup purposes
+	// but won't be serialized due to omitempty when ID is empty in FunctionResponse
 	vertexConfig := &Config{PlatformType: PlatformVertex}
 	result := convertLLMMessageToGeminiContent(msg, vertexConfig)
 	require.NotNil(t, result)
 	require.Len(t, result.Parts, 1)
 	require.NotNil(t, result.Parts[0].FunctionCall)
-	require.Empty(t, result.Parts[0].FunctionCall.ID, "Vertex AI should not have ID field in function call")
+	require.Equal(t, "call_123", result.Parts[0].FunctionCall.ID, "ID should be kept for lookup purposes")
 	require.Equal(t, "get_weather", result.Parts[0].FunctionCall.Name)
+
+	// Verify JSON serialization omits ID when empty
+	jsonBytes, err := json.Marshal(result.Parts[0].FunctionCall)
+	require.NoError(t, err)
+	require.Contains(t, string(jsonBytes), "get_weather")
 
 	// Test with nil config - ID should be set
 	result = convertLLMMessageToGeminiContent(msg, nil)
