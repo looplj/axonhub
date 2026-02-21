@@ -328,7 +328,7 @@ func convertAnthropicToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 	switch src.Type {
 	case "auto", "none":
 		return &llm.ToolChoice{
-			ToolChoice: &src.Type,
+			ToolChoice: new(src.Type),
 		}
 	case "any":
 		// Anthropic "any" 等价于 OpenAI "required"
