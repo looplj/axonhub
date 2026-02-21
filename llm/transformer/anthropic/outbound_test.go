@@ -735,10 +735,12 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
-					// Note: Tool choice is not directly supported in current implementation
-					// but should not cause errors
 					require.NotNil(t, anthropicReq.Tools)
 					require.Len(t, anthropicReq.Tools, 1)
+					require.NotNil(t, anthropicReq.ToolChoice)
+					require.Equal(t, "tool", anthropicReq.ToolChoice.Type)
+					require.NotNil(t, anthropicReq.ToolChoice.Name)
+					require.Equal(t, "calculator", *anthropicReq.ToolChoice.Name)
 
 					// Verify beta header is NOT set for regular function tools
 					require.Empty(t, result.Headers.Get("Anthropic-Beta"))

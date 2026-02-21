@@ -293,13 +293,61 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		}
 	}
 
+	// Convert tool_choice
+	if anthropicReq.ToolChoice != nil {
+		chatReq.ToolChoice = convertAnthropicToolChoiceToLLM(anthropicReq.ToolChoice)
+	}
+
 	// Convert thinking configuration to reasoning effort and preserve budget
-	if anthropicReq.Thinking != nil && anthropicReq.Thinking.Type == "enabled" {
-		chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(anthropicReq.Thinking.BudgetTokens)
-		chatReq.ReasoningBudget = lo.ToPtr(anthropicReq.Thinking.BudgetTokens)
+	if anthropicReq.Thinking != nil {
+		switch anthropicReq.Thinking.Type {
+		case "enabled":
+			chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(anthropicReq.Thinking.BudgetTokens)
+			chatReq.ReasoningBudget = lo.ToPtr(anthropicReq.Thinking.BudgetTokens)
+		case "adaptive":
+			// Adaptive thinking doesn't require a budget; preserve the type marker via TransformerMetadata.
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "adaptive"
+		}
+	}
+
+	// Convert output_config
+	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
+		chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
 	}
 
 	return chatReq, nil
+}
+
+// convertAnthropicToolChoiceToLLM converts Anthropic ToolChoice to llm.ToolChoice.
+func convertAnthropicToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
+	if src == nil {
+		return nil
+	}
+
+	switch src.Type {
+	case "auto", "none":
+		return &llm.ToolChoice{
+			ToolChoice: lo.ToPtr(src.Type),
+		}
+	case "any":
+		// Anthropic "any" is equivalent to OpenAI "required"
+		return &llm.ToolChoice{
+			ToolChoice: lo.ToPtr("required"),
+		}
+	case "tool":
+		if src.Name != nil {
+			return &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type: "function",
+					Function: llm.ToolFunction{
+						Name: *src.Name,
+					},
+				},
+			}
+		}
+	}
+
+	return nil
 }
 
 func convertToAnthropicResponse(chatResp *llm.Response) *Message {

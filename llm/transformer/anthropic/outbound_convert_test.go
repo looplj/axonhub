@@ -42,6 +42,99 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	require.Equal(t, int64(30), result.Usage.TotalTokens)
 }
 
+func TestConvertToolChoiceToAnthropic(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *llm.ToolChoice
+		validate func(t *testing.T, got *ToolChoice)
+	}{
+		{
+			name: "auto -> auto",
+			input: &llm.ToolChoice{
+				ToolChoice: lo.ToPtr("auto"),
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "auto", got.Type)
+				require.Nil(t, got.Name)
+			},
+		},
+		{
+			name: "none -> none",
+			input: &llm.ToolChoice{
+				ToolChoice: lo.ToPtr("none"),
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "none", got.Type)
+				require.Nil(t, got.Name)
+			},
+		},
+		{
+			name: "required -> any",
+			input: &llm.ToolChoice{
+				ToolChoice: lo.ToPtr("required"),
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "any", got.Type)
+				require.Nil(t, got.Name)
+			},
+		},
+		{
+			name: "named function -> tool + name",
+			input: &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type: "function",
+					Function: llm.ToolFunction{
+						Name: "calculator",
+					},
+				},
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "tool", got.Type)
+				require.NotNil(t, got.Name)
+				require.Equal(t, "calculator", *got.Name)
+			},
+		},
+		{
+			name:  "nil -> nil",
+			input: nil,
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.Nil(t, got)
+			},
+		},
+		{
+			name: "named function with empty name -> nil",
+			input: &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type: "function",
+					Function: llm.ToolFunction{
+						Name: "",
+					},
+				},
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.Nil(t, got)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertToolChoiceToAnthropic(tt.input)
+			tt.validate(t, got)
+		})
+	}
+}
+
 func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 

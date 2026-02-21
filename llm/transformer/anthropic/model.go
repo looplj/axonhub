@@ -82,6 +82,9 @@ type MessageRequest struct {
 	// Thinking is an optional thinking configuration.
 	Thinking *Thinking `json:"thinking,omitempty"`
 
+	// OutputConfig is an optional output configuration.
+	OutputConfig *OutputConfig `json:"output_config,omitempty"`
+
 	// Tools is an optional array of tools.
 	Tools []Tool `json:"tools,omitempty"`
 	// ToolChoice is an optional tool choice configuration.
@@ -140,9 +143,24 @@ type SystemPromptPart struct {
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
+// TransformerMetadataKeyThinkingType is the key for storing thinking type in TransformerMetadata.
+const TransformerMetadataKeyThinkingType = "thinking_type"
+
+// TransformerMetadataKeyOutputConfigEffort is the key for storing output config effort in TransformerMetadata.
+const TransformerMetadataKeyOutputConfigEffort = "output_config_effort"
+
 type Thinking struct {
-	Type         string `json:"type"          validate:"required,oneof=enabled disabled"`
-	BudgetTokens int64  `json:"budget_tokens" validate:"required_if=Type enabled"`
+	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
+	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`
+}
+
+// OutputConfig represents Anthropic output configuration.
+// See: https://platform.claude.com/docs/en/build-with-claude/effort
+type OutputConfig struct {
+	// Effort controls the overall effort level for the response.
+	// Any of "low", "medium", "high", "max".
+	// "max" is only supported by claude-opus-4-6.
+	Effort string `json:"effort,omitempty" validate:"omitempty,oneof=low medium high max"`
 }
 
 type ToolChoice struct {

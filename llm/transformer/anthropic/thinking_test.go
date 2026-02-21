@@ -529,6 +529,233 @@ func TestThinkingBudgetToReasoningEffort(t *testing.T) {
 	}
 }
 
+func TestThinking_AdaptiveOutbound(t *testing.T) {
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		validate func(t *testing.T, anthropicReq *MessageRequest)
+	}{
+		{
+			name: "metadata thinking_type=adaptive -> Thinking{Type: adaptive} and omit budget_tokens",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ReasoningEffort: "high",
+				ReasoningBudget: lo.ToPtr(int64(30000)),
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyThinkingType: "adaptive",
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "adaptive", anthropicReq.Thinking.Type)
+
+				thinkingJSON, err := json.Marshal(anthropicReq.Thinking)
+				require.NoError(t, err)
+				require.JSONEq(t, `{"type":"adaptive"}`, string(thinkingJSON))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			anthropicReq := convertToAnthropicRequest(tt.chatReq)
+			tt.validate(t, anthropicReq)
+		})
+	}
+}
+
+func TestThinking_AdaptiveInbound(t *testing.T) {
+	tests := []struct {
+		name         string
+		anthropicReq *MessageRequest
+		validate     func(t *testing.T, chatReq *llm.Request)
+	}{
+		{
+			name: "Thinking{Type: adaptive} -> TransformerMetadata thinking_type=adaptive",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				Thinking: &Thinking{Type: "adaptive"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				require.Equal(t, "adaptive", chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType])
+				require.Empty(t, chatReq.ReasoningEffort)
+				require.Nil(t, chatReq.ReasoningBudget)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chatReq, err := convertToLLMRequest(tt.anthropicReq)
+			require.NoError(t, err)
+			tt.validate(t, chatReq)
+		})
+	}
+}
+
+func TestThinking_AdaptiveJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		thinking Thinking
+		validate func(t *testing.T, data []byte)
+	}{
+		{
+			name: "adaptive marshal omits budget_tokens",
+			thinking: Thinking{
+				Type: "adaptive",
+			},
+			validate: func(t *testing.T, data []byte) {
+				t.Helper()
+				require.JSONEq(t, `{"type":"adaptive"}`, string(data))
+
+				var decoded Thinking
+				err := json.Unmarshal(data, &decoded)
+				require.NoError(t, err)
+				require.Equal(t, "adaptive", decoded.Type)
+				require.Equal(t, int64(0), decoded.BudgetTokens)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.thinking)
+			require.NoError(t, err)
+			tt.validate(t, data)
+		})
+	}
+}
+
+func TestOutputConfig_Outbound(t *testing.T) {
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		validate func(t *testing.T, anthropicReq *MessageRequest)
+	}{
+		{
+			name: "TransformerMetadata output_config_effort=max -> OutputConfig{Effort:max}",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyOutputConfigEffort: "max",
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, anthropicReq.OutputConfig)
+				require.Equal(t, "max", anthropicReq.OutputConfig.Effort)
+			},
+		},
+		{
+			name: "without output_config metadata -> OutputConfig nil",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.Nil(t, anthropicReq.OutputConfig)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			anthropicReq := convertToAnthropicRequest(tt.chatReq)
+			tt.validate(t, anthropicReq)
+		})
+	}
+}
+
+func TestOutputConfig_Inbound(t *testing.T) {
+	tests := []struct {
+		name         string
+		anthropicReq *MessageRequest
+		validate     func(t *testing.T, chatReq *llm.Request)
+	}{
+		{
+			name: "OutputConfig effort=high -> TransformerMetadata output_config_effort=high",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				OutputConfig: &OutputConfig{Effort: "high"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				require.Equal(t, "high", chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
+			},
+		},
+		{
+			name: "without output_config -> TransformerMetadata has no output_config_effort",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				_, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort]
+				require.False(t, ok)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chatReq, err := convertToLLMRequest(tt.anthropicReq)
+			require.NoError(t, err)
+			tt.validate(t, chatReq)
+		})
+	}
+}
+
 func TestInboundTransformer_RedactedThinkingInRequest(t *testing.T) {
 	const (
 		thinking     = "Let me analyze this step by step..."

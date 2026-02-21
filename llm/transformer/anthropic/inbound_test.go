@@ -320,6 +320,82 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 			expectError: true,
 		},
+		{
+			name: "thinking enabled without budget_tokens",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 16000,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"thinking": {"type": "enabled"}
+				}`),
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid output_config effort value",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 1024,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"output_config": {"effort": "banana"}
+				}`),
+			},
+			expectError: true,
+		},
+		{
+			name: "tool_choice type tool without name",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 1024,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"tools": [{"name": "calculator", "description": "calc", "input_schema": {"type": "object"}}],
+					"tool_choice": {"type": "tool"}
+				}`),
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid thinking type",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 16000,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"thinking": {"type": "banana"}
+				}`),
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid tool_choice type",
+			httpReq: &httpclient.Request{
+				Headers: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: []byte(`{
+					"model": "claude-sonnet-4-5-20250929",
+					"max_tokens": 1024,
+					"messages": [{"role": "user", "content": "Hello"}],
+					"tool_choice": {"type": "banana"}
+				}`),
+			},
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1080,6 +1156,76 @@ func TestConvertAnthropicToolToLLM(t *testing.T) {
 				require.Equal(t, tt.expected.WebSearch.BlockedDomains, result.WebSearch.BlockedDomains)
 				require.Equal(t, tt.expected.WebSearch.UserLocation, result.WebSearch.UserLocation)
 			}
+		})
+	}
+}
+
+func TestConvertToolChoiceFromAnthropic(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *ToolChoice
+		validate func(t *testing.T, got *llm.ToolChoice)
+	}{
+		{
+			name: "anthropic auto -> llm auto",
+			input: &ToolChoice{
+				Type: "auto",
+			},
+			validate: func(t *testing.T, got *llm.ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.NotNil(t, got.ToolChoice)
+				require.Equal(t, "auto", *got.ToolChoice)
+				require.Nil(t, got.NamedToolChoice)
+			},
+		},
+		{
+			name: "anthropic none -> llm none",
+			input: &ToolChoice{
+				Type: "none",
+			},
+			validate: func(t *testing.T, got *llm.ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.NotNil(t, got.ToolChoice)
+				require.Equal(t, "none", *got.ToolChoice)
+				require.Nil(t, got.NamedToolChoice)
+			},
+		},
+		{
+			name: "anthropic any -> llm required",
+			input: &ToolChoice{
+				Type: "any",
+			},
+			validate: func(t *testing.T, got *llm.ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.NotNil(t, got.ToolChoice)
+				require.Equal(t, "required", *got.ToolChoice)
+				require.Nil(t, got.NamedToolChoice)
+			},
+		},
+		{
+			name: "anthropic tool+name -> llm named tool choice",
+			input: &ToolChoice{
+				Type: "tool",
+				Name: lo.ToPtr("calculator"),
+			},
+			validate: func(t *testing.T, got *llm.ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Nil(t, got.ToolChoice)
+				require.NotNil(t, got.NamedToolChoice)
+				require.Equal(t, "function", got.NamedToolChoice.Type)
+				require.Equal(t, "calculator", got.NamedToolChoice.Function.Name)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertAnthropicToolChoiceToLLM(tt.input)
+			tt.validate(t, got)
 		})
 	}
 }

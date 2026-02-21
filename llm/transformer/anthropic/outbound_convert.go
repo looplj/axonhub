@@ -19,6 +19,7 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
 	req := buildBaseRequest(chatReq, config)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
+	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
 	req.Messages = convertMessages(chatReq)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
@@ -40,8 +41,22 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
 	}
 
-	if chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil {
+	// Determine thinking config priority: adaptive > enabled > disabled
+	if chatReq.TransformerMetadata != nil {
+		if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok && v == "adaptive" {
+			req.Thinking = &Thinking{Type: "adaptive"}
+		}
+	}
+
+	if req.Thinking == nil && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
 		req.Thinking = buildThinking(chatReq, config)
+	}
+
+	// Restore output_config from TransformerMetadata
+	if chatReq.TransformerMetadata != nil {
+		if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
+			req.OutputConfig = &OutputConfig{Effort: effort}
+		}
 	}
 
 	return req
@@ -125,6 +140,37 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	}
 
 	return anthropicTools
+}
+
+// convertToolChoiceToAnthropic converts llm.ToolChoice to Anthropic ToolChoice.
+func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
+	if src == nil {
+		return nil
+	}
+
+	// String-form tool_choice: "auto", "none", "any", "required"
+	if src.ToolChoice != nil {
+		choice := *src.ToolChoice
+
+		// OpenAI "required" is equivalent to Anthropic "any"
+		if choice == "required" {
+			choice = "any"
+		}
+
+		return &ToolChoice{
+			Type: choice,
+		}
+	}
+
+	// Named tool_choice: {type: "function", function: {name: "xxx"}}
+	if src.NamedToolChoice != nil && src.NamedToolChoice.Function.Name != "" {
+		return &ToolChoice{
+			Type: "tool",
+			Name: lo.ToPtr(src.NamedToolChoice.Function.Name),
+		}
+	}
+
+	return nil
 }
 
 // convertStopSequences converts stop sequences.
