@@ -2,15 +2,16 @@ package tools
 
 import (
 	"context"
-	_ "embed"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"text/template"
 
 	"github.com/google/jsonschema-go/jsonschema"
-	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/skills"
+
+	_ "embed"
+
+	"github.com/looplj/axonhub/axon/agent"
 )
 
 //go:embed skill.md
@@ -31,7 +32,9 @@ type SkillTool struct {
 // NewSkillTool creates a new skill execution tool.
 // dirs should be provided in priority order: workspace dir first, then global dir.
 func NewSkillTool(dirs ...string) *SkillTool {
-	return &SkillTool{dirs: dirs}
+	return &SkillTool{
+		dirs: dirs,
+	}
 }
 
 type skillInput struct {
@@ -39,43 +42,35 @@ type skillInput struct {
 	Args  string `json:"args,omitempty"`
 }
 
+var skillParameters = jsonschema.Schema{
+	Schema: "https://json-schema.org/draft/2020-12/schema",
+	Type:   "object",
+	Properties: map[string]*jsonschema.Schema{
+		"skill": {
+			Type:        "string",
+			MinLength:   new(1),
+			Description: "The skill name to invoke (e.g., \"pdf\", \"commit\", \"ms-office-suite:pdf\")",
+		},
+		"args": {
+			Type:        "string",
+			Description: "Optional arguments to pass to the skill",
+		},
+	},
+	Required: []string{"skill"},
+}
+
 func (t *SkillTool) Definition() agent.ToolDefinition {
 	return agent.ToolDefinition{
 		Name:        "Skill",
 		Description: skillDescription,
-		Parameters: jsonschema.Schema{
-			Schema: "https://json-schema.org/draft/2020-12/schema",
-			Type:   "object",
-			Properties: map[string]*jsonschema.Schema{
-				"skill": {
-					Type:        "string",
-					Description: "The skill name to invoke (e.g., \"pdf\", \"commit\", \"ms-office-suite:pdf\")",
-				},
-				"args": {
-					Type:        "string",
-					Description: "Optional arguments to pass to the skill",
-				},
-			},
-			Required: []string{"skill"},
-		},
+		Parameters:  skillParameters,
 	}
 }
 
-func (t *SkillTool) Execute(_ context.Context, arguments json.RawMessage) agent.ToolResult {
-	var input skillInput
-	if err := json.Unmarshal(arguments, &input); err != nil {
-		return ErrorResult(fmt.Errorf("invalid arguments: %w", err))
-	}
-
-	if input.Skill == "" {
-		return ErrorResult(fmt.Errorf("skill name is required"))
-	}
-
-	// Support fully qualified names like "ms-office-suite:pdf"
+func (t *SkillTool) Execute(ctx context.Context, input skillInput) agent.ToolResult {
 	parts := strings.SplitN(input.Skill, ":", 2)
 	skillName := parts[len(parts)-1]
 
-	// Use skills.Get to find the skill
 	result, err := skills.Get(skills.GetOptions{
 		Skill: skillName,
 		Dirs:  t.dirs,
@@ -84,7 +79,6 @@ func (t *SkillTool) Execute(_ context.Context, arguments json.RawMessage) agent.
 		return ErrorResult(fmt.Errorf("skill %q not found: %w", input.Skill, err))
 	}
 
-	// Build the result with skill content using template
 	data := struct {
 		Name    string
 		Dir     string

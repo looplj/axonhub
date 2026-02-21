@@ -2,12 +2,13 @@ package tools
 
 import (
 	"context"
-	_ "embed"
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
+
+	_ "embed"
+
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/pkg/glob"
 )
@@ -32,38 +33,32 @@ type globInput struct {
 	Path    string `json:"path,omitempty"`
 }
 
+var globParameters = jsonschema.Schema{
+	Schema: "https://json-schema.org/draft/2020-12/schema",
+	Type:   "object",
+	Properties: map[string]*jsonschema.Schema{
+		"pattern": {
+			Type:        "string",
+			MinLength:   new(1),
+			Description: "The glob pattern to match files against",
+		},
+		"path": {
+			Type:        "string",
+			Description: "The directory to search in. Defaults to workspace root.",
+		},
+	},
+	Required: []string{"pattern"},
+}
+
 func (t *GlobTool) Definition() agent.ToolDefinition {
 	return agent.ToolDefinition{
 		Name:        "Glob",
 		Description: globDescription,
-		Parameters: jsonschema.Schema{
-			Schema: "https://json-schema.org/draft/2020-12/schema",
-			Type:   "object",
-			Properties: map[string]*jsonschema.Schema{
-				"pattern": {
-					Type:        "string",
-					Description: "The glob pattern to match files against",
-				},
-				"path": {
-					Type:        "string",
-					Description: "The directory to search in. Defaults to workspace root.",
-				},
-			},
-			Required: []string{"pattern"},
-		},
+		Parameters:  globParameters,
 	}
 }
 
-func (t *GlobTool) Execute(ctx context.Context, arguments json.RawMessage) agent.ToolResult {
-	var input globInput
-	if err := json.Unmarshal(arguments, &input); err != nil {
-		return ErrorResult(fmt.Errorf("invalid arguments: %w", err))
-	}
-
-	if input.Pattern == "" {
-		return ErrorResult(fmt.Errorf("pattern is required"))
-	}
-
+func (t *GlobTool) Execute(ctx context.Context, input globInput) agent.ToolResult {
 	searchPath := t.workspace
 	if input.Path != "" {
 		resolved, err := validatePath(input.Path, t.workspace, t.restrict)

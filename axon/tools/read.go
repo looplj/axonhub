@@ -2,14 +2,15 @@ package tools
 
 import (
 	"context"
-	_ "embed"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
+
+	_ "embed"
+
 	"github.com/looplj/axonhub/axon/agent"
 )
 
@@ -22,7 +23,10 @@ type ReadTool struct {
 }
 
 func NewReadTool(workspace string, restrict bool) *ReadTool {
-	return &ReadTool{workspace: workspace, restrict: restrict}
+	return &ReadTool{
+		workspace: workspace,
+		restrict:  restrict,
+	}
 }
 
 type readInput struct {
@@ -30,39 +34,38 @@ type readInput struct {
 	ReadRange []int  `json:"read_range,omitempty"`
 }
 
+var readParameters = jsonschema.Schema{
+	Schema: "https://json-schema.org/draft/2020-12/schema",
+	Type:   "object",
+	Properties: map[string]*jsonschema.Schema{
+		"path": {
+			Type:        "string",
+			MinLength:   new(1),
+			Description: "Path to the file or directory to read",
+		},
+		"read_range": {
+			Type:        "array",
+			Description: "Line range [start, end] (1-indexed)",
+			Items: &jsonschema.Schema{
+				Type:    "integer",
+				Minimum: new(1.0),
+			},
+			MinItems: new(2),
+			MaxItems: new(2),
+		},
+	},
+	Required: []string{"path"},
+}
+
 func (t *ReadTool) Definition() agent.ToolDefinition {
 	return agent.ToolDefinition{
 		Name:        "Read",
 		Description: readDescription,
-		Parameters: jsonschema.Schema{
-			Schema: "https://json-schema.org/draft/2020-12/schema",
-			Type:   "object",
-			Properties: map[string]*jsonschema.Schema{
-				"path": {
-					Type:        "string",
-					Description: "Path to the file or directory to read",
-				},
-				"read_range": {
-					Type:        "array",
-					Description: "Line range [start, end] (1-indexed)",
-					Items: &jsonschema.Schema{
-						Type: "integer",
-					},
-					MinItems: new(2),
-					MaxItems: new(2),
-				},
-			},
-			Required: []string{"path"},
-		},
+		Parameters:  readParameters,
 	}
 }
 
-func (t *ReadTool) Execute(_ context.Context, arguments json.RawMessage) agent.ToolResult {
-	var input readInput
-	if err := json.Unmarshal(arguments, &input); err != nil {
-		return ErrorResult(fmt.Errorf("invalid arguments: %w", err))
-	}
-
+func (t *ReadTool) Execute(ctx context.Context, input readInput) agent.ToolResult {
 	path, err := validatePath(input.Path, t.workspace, t.restrict)
 	if err != nil {
 		return ErrorResult(err)

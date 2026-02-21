@@ -2,11 +2,11 @@ package tools
 
 import (
 	"context"
-	_ "embed"
-	"encoding/json"
-	"fmt"
 
 	"github.com/google/jsonschema-go/jsonschema"
+
+	_ "embed"
+
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/pkg/grep"
 )
@@ -20,7 +20,10 @@ type GrepTool struct {
 }
 
 func NewGrepTool(workspace string, restrict bool) *GrepTool {
-	return &GrepTool{workspace: workspace, restrict: restrict}
+	return &GrepTool{
+		workspace: workspace,
+		restrict:  restrict,
+	}
 }
 
 type grepInput struct {
@@ -40,83 +43,86 @@ type grepInput struct {
 	Literal    bool   `json:"literal,omitempty"`
 }
 
+var grepParameters = jsonschema.Schema{
+	Schema: "https://json-schema.org/draft/2020-12/schema",
+	Type:   "object",
+	Properties: map[string]*jsonschema.Schema{
+		"pattern": {
+			Type:        "string",
+			MinLength:   new(1),
+			Description: "The regular expression pattern to search for in file contents",
+		},
+		"path": {
+			Type:        "string",
+			Description: "File or directory to search in. Defaults to workspace root.",
+		},
+		"glob": {
+			Type:        "string",
+			Description: "Glob pattern to filter files (e.g. \"*.js\", \"*.{ts,tsx}\")",
+		},
+		"output_mode": {
+			Type:        "string",
+			Description: "Output mode: \"content\" shows matching lines, \"files_with_matches\" shows file paths, \"count\" shows match counts. Defaults to \"files_with_matches\".",
+			Enum:        []any{"content", "files_with_matches", "count"},
+		},
+		"before": {
+			Type:        "integer",
+			Minimum:     new(0.0),
+			Description: "Number of lines to show before each match. Requires output_mode: \"content\".",
+		},
+		"after": {
+			Type:        "integer",
+			Minimum:     new(0.0),
+			Description: "Number of lines to show after each match. Requires output_mode: \"content\".",
+		},
+		"context": {
+			Type:        "integer",
+			Minimum:     new(0.0),
+			Description: "Number of lines to show before and after each match. Requires output_mode: \"content\".",
+		},
+		"line_number": {
+			Type:        "boolean",
+			Description: "Show line numbers in output. Requires output_mode: \"content\". Defaults to true.",
+		},
+		"ignore_case": {
+			Type:        "boolean",
+			Description: "Case insensitive search",
+		},
+		"type": {
+			Type:        "string",
+			Description: "File type to search (e.g., js, py, go, rust)",
+		},
+		"head_limit": {
+			Type:        "integer",
+			Minimum:     new(0.0),
+			Description: "Limit output to first N lines/entries. Defaults to 0 (unlimited).",
+		},
+		"offset": {
+			Type:        "integer",
+			Minimum:     new(0.0),
+			Description: "Skip first N lines/entries before applying head_limit. Defaults to 0.",
+		},
+		"multiline": {
+			Type:        "boolean",
+			Description: "Enable multiline mode where patterns can span lines. Default: false.",
+		},
+		"literal": {
+			Type:        "boolean",
+			Description: "Treat the pattern as a literal string instead of a regex. Default: false.",
+		},
+	},
+	Required: []string{"pattern"},
+}
+
 func (t *GrepTool) Definition() agent.ToolDefinition {
 	return agent.ToolDefinition{
 		Name:        "Grep",
 		Description: grepDescription,
-		Parameters: jsonschema.Schema{
-			Schema: "https://json-schema.org/draft/2020-12/schema",
-			Type:   "object",
-			Properties: map[string]*jsonschema.Schema{
-				"pattern": {
-					Type:        "string",
-					Description: "The regular expression pattern to search for in file contents",
-				},
-				"path": {
-					Type:        "string",
-					Description: "File or directory to search in. Defaults to workspace root.",
-				},
-				"glob": {
-					Type:        "string",
-					Description: "Glob pattern to filter files (e.g. \"*.js\", \"*.{ts,tsx}\")",
-				},
-				"output_mode": {
-					Type:        "string",
-					Description: "Output mode: \"content\" shows matching lines, \"files_with_matches\" shows file paths, \"count\" shows match counts. Defaults to \"files_with_matches\".",
-					Enum:        []any{"content", "files_with_matches", "count"},
-				},
-				"before": {
-					Type:        "number",
-					Description: "Number of lines to show before each match. Requires output_mode: \"content\".",
-				},
-				"after": {
-					Type:        "number",
-					Description: "Number of lines to show after each match. Requires output_mode: \"content\".",
-				},
-				"context": {
-					Type:        "number",
-					Description: "Number of lines to show before and after each match. Requires output_mode: \"content\".",
-				},
-				"line_number": {
-					Type:        "boolean",
-					Description: "Show line numbers in output. Requires output_mode: \"content\". Defaults to true.",
-				},
-				"ignore_case": {
-					Type:        "boolean",
-					Description: "Case insensitive search",
-				},
-				"type": {
-					Type:        "string",
-					Description: "File type to search (e.g., js, py, go, rust)",
-				},
-				"head_limit": {
-					Type:        "number",
-					Description: "Limit output to first N lines/entries. Defaults to 0 (unlimited).",
-				},
-				"offset": {
-					Type:        "number",
-					Description: "Skip first N lines/entries before applying head_limit. Defaults to 0.",
-				},
-				"multiline": {
-					Type:        "boolean",
-					Description: "Enable multiline mode where patterns can span lines. Default: false.",
-				},
-				"literal": {
-					Type:        "boolean",
-					Description: "Treat the pattern as a literal string instead of a regex. Default: false.",
-				},
-			},
-			Required: []string{"pattern"},
-		},
+		Parameters:  grepParameters,
 	}
 }
 
-func (t *GrepTool) Execute(ctx context.Context, arguments json.RawMessage) agent.ToolResult {
-	var input grepInput
-	if err := json.Unmarshal(arguments, &input); err != nil {
-		return ErrorResult(fmt.Errorf("invalid arguments: %w", err))
-	}
-
+func (t *GrepTool) Execute(ctx context.Context, input grepInput) agent.ToolResult {
 	searchPath := t.workspace
 	if input.Path != "" {
 		resolved, err := validatePath(input.Path, t.workspace, t.restrict)

@@ -3,8 +3,6 @@ package tools
 import (
 	"bytes"
 	"context"
-	_ "embed"
-	"encoding/json"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -13,6 +11,9 @@ import (
 	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
+
+	_ "embed"
+
 	"github.com/looplj/axonhub/axon/agent"
 )
 
@@ -80,7 +81,10 @@ type BashTool struct {
 }
 
 func NewBashTool(workingDir string, restrict bool) *BashTool {
-	return &BashTool{workingDir: workingDir, restrict: restrict}
+	return &BashTool{
+		workingDir: workingDir,
+		restrict:   restrict,
+	}
 }
 
 type bashInput struct {
@@ -88,38 +92,32 @@ type bashInput struct {
 	Cwd     string `json:"cwd,omitempty"`
 }
 
+var bashParameters = jsonschema.Schema{
+	Schema: "https://json-schema.org/draft/2020-12/schema",
+	Type:   "object",
+	Properties: map[string]*jsonschema.Schema{
+		"command": {
+			Type:        "string",
+			MinLength:   new(1),
+			Description: "The shell command to execute",
+		},
+		"cwd": {
+			Type:        "string",
+			Description: "Working directory for the command",
+		},
+	},
+	Required: []string{"command"},
+}
+
 func (t *BashTool) Definition() agent.ToolDefinition {
 	return agent.ToolDefinition{
 		Name:        "Bash",
 		Description: bashDescription,
-		Parameters: jsonschema.Schema{
-			Schema: "https://json-schema.org/draft/2020-12/schema",
-			Type:   "object",
-			Properties: map[string]*jsonschema.Schema{
-				"command": {
-					Type:        "string",
-					Description: "The shell command to execute",
-				},
-				"cwd": {
-					Type:        "string",
-					Description: "Working directory for the command",
-				},
-			},
-			Required: []string{"command"},
-		},
+		Parameters:  bashParameters,
 	}
 }
 
-func (t *BashTool) Execute(ctx context.Context, arguments json.RawMessage) agent.ToolResult {
-	var input bashInput
-	if err := json.Unmarshal(arguments, &input); err != nil {
-		return ErrorResult(fmt.Errorf("invalid arguments: %w", err))
-	}
-
-	if input.Command == "" {
-		return ErrorResult(fmt.Errorf("command is required"))
-	}
-
+func (t *BashTool) Execute(ctx context.Context, input bashInput) agent.ToolResult {
 	for _, p := range denyPatterns {
 		if p.MatchString(input.Command) {
 			return ErrorResult(fmt.Errorf("command denied by safety filter: %s", input.Command))

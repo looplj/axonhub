@@ -57,10 +57,7 @@ func TestStreamProcessor_HandleTextComplete(t *testing.T) {
 
 	processor.accumulatedText.WriteString("Complete text")
 
-	err := processor.handleContentBlockStop(anthropic.MessageStreamEventUnion{
-		Type:  "content_block_stop",
-		Index: 0,
-	})
+	err := processor.handleContentBlockStop()
 	require.NoError(t, err)
 
 	close(events)
@@ -125,10 +122,7 @@ func TestStreamProcessor_HandleThinkingComplete(t *testing.T) {
 	processor.accumulatedThinking.WriteString("Full thinking content")
 	processor.thinkingSignature = "sig_123"
 
-	err := processor.handleContentBlockStop(anthropic.MessageStreamEventUnion{
-		Type:  "content_block_stop",
-		Index: 0,
-	})
+	err := processor.handleContentBlockStop()
 	require.NoError(t, err)
 
 	close(events)
@@ -429,10 +423,7 @@ func TestStreamProcessor_FullTextFlow(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = processor.handleContentBlockStop(anthropic.MessageStreamEventUnion{
-		Type:  "content_block_stop",
-		Index: 0,
-	})
+	err = processor.handleContentBlockStop()
 	require.NoError(t, err)
 
 	err = processor.handleMessageDelta(anthropic.MessageStreamEventUnion{

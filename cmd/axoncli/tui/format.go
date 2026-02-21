@@ -103,6 +103,23 @@ func formatToolStart(ev agent.AgentEvent) string {
 		if json.Unmarshal([]byte(ev.ToolInput), &input) == nil {
 			summary = input.Path
 		}
+	case "WebSearch":
+		var input struct {
+			Query          string   `json:"query"`
+			AllowedDomains []string `json:"allowed_domains,omitempty"`
+			BlockedDomains []string `json:"blocked_domains,omitempty"`
+		}
+		if json.Unmarshal([]byte(ev.ToolInput), &input) == nil {
+			summary = input.Query
+			if len(input.AllowedDomains) > 0 {
+				summary = fmt.Sprintf("%s (site: %s)", input.Query, strings.Join(input.AllowedDomains, ", "))
+			}
+		}
+	case "WebFetch":
+		var input struct{ Query string }
+		if json.Unmarshal([]byte(ev.ToolInput), &input) == nil {
+			summary = input.Query
+		}
 	default:
 		summary = truncateStr(ev.ToolInput, 80)
 	}

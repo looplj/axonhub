@@ -104,7 +104,7 @@ func (p *streamProcessor) handleEvent(event anthropic.MessageStreamEventUnion) e
 	case "content_block_delta":
 		return p.handleContentBlockDelta(event)
 	case "content_block_stop":
-		return p.handleContentBlockStop(event)
+		return p.handleContentBlockStop()
 	case "message_delta":
 		return p.handleMessageDelta(event)
 	case "message_stop":
@@ -172,7 +172,7 @@ func (p *streamProcessor) handleContentBlockDelta(e anthropic.MessageStreamEvent
 	return nil
 }
 
-func (p *streamProcessor) handleContentBlockStop(e anthropic.MessageStreamEventUnion) error {
+func (p *streamProcessor) handleContentBlockStop() error {
 	if p.accumulatedText.Len() > 0 {
 		text := p.accumulatedText.String()
 		p.emit(agent.StreamEvent{

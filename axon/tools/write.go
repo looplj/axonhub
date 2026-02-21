@@ -2,13 +2,14 @@ package tools
 
 import (
 	"context"
-	_ "embed"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/google/jsonschema-go/jsonschema"
+
+	_ "embed"
+
 	"github.com/looplj/axonhub/axon/agent"
 )
 
@@ -21,7 +22,10 @@ type WriteTool struct {
 }
 
 func NewWriteTool(workspace string, restrict bool) *WriteTool {
-	return &WriteTool{workspace: workspace, restrict: restrict}
+	return &WriteTool{
+		workspace: workspace,
+		restrict:  restrict,
+	}
 }
 
 type writeInput struct {
@@ -29,34 +33,32 @@ type writeInput struct {
 	Content string `json:"content"`
 }
 
+var writeParameters = jsonschema.Schema{
+	Schema: "https://json-schema.org/draft/2020-12/schema",
+	Type:   "object",
+	Properties: map[string]*jsonschema.Schema{
+		"path": {
+			Type:        "string",
+			MinLength:   new(1),
+			Description: "Path to the file to write",
+		},
+		"content": {
+			Type:        "string",
+			Description: "Content to write to the file",
+		},
+	},
+	Required: []string{"path", "content"},
+}
+
 func (t *WriteTool) Definition() agent.ToolDefinition {
 	return agent.ToolDefinition{
 		Name:        "Write",
 		Description: writeDescription,
-		Parameters: jsonschema.Schema{
-			Schema: "https://json-schema.org/draft/2020-12/schema",
-			Type:   "object",
-			Properties: map[string]*jsonschema.Schema{
-				"path": {
-					Type:        "string",
-					Description: "Path to the file to write",
-				},
-				"content": {
-					Type:        "string",
-					Description: "Content to write to the file",
-				},
-			},
-			Required: []string{"path", "content"},
-		},
+		Parameters:  writeParameters,
 	}
 }
 
-func (t *WriteTool) Execute(_ context.Context, arguments json.RawMessage) agent.ToolResult {
-	var input writeInput
-	if err := json.Unmarshal(arguments, &input); err != nil {
-		return ErrorResult(fmt.Errorf("invalid arguments: %w", err))
-	}
-
+func (t *WriteTool) Execute(ctx context.Context, input writeInput) agent.ToolResult {
 	path, err := validatePath(input.Path, t.workspace, t.restrict)
 	if err != nil {
 		return ErrorResult(err)

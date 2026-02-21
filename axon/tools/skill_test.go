@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,7 +11,6 @@ import (
 )
 
 func TestSkillTool(t *testing.T) {
-	// Create temp directory with test skill
 	tmpDir := t.TempDir()
 	skillDir := filepath.Join(tmpDir, "demo-skill")
 	require.NoError(t, os.MkdirAll(skillDir, 0755))
@@ -37,8 +35,7 @@ Follow these instructions.
 	})
 
 	t.Run("Execute success", func(t *testing.T) {
-		args, _ := json.Marshal(skillInput{Skill: "demo-skill"})
-		result := tool.Execute(context.Background(), args)
+		result := tool.Execute(context.Background(), skillInput{Skill: "demo-skill"})
 
 		assert.Nil(t, result.Error)
 		require.NotNil(t, result.Content.Text)
@@ -48,8 +45,7 @@ Follow these instructions.
 	})
 
 	t.Run("Execute with args", func(t *testing.T) {
-		args, _ := json.Marshal(skillInput{Skill: "demo-skill", Args: "-m 'test message'"})
-		result := tool.Execute(context.Background(), args)
+		result := tool.Execute(context.Background(), skillInput{Skill: "demo-skill", Args: "-m 'test message'"})
 
 		assert.Nil(t, result.Error)
 		require.NotNil(t, result.Content.Text)
@@ -57,8 +53,7 @@ Follow these instructions.
 	})
 
 	t.Run("Execute with qualified name", func(t *testing.T) {
-		args, _ := json.Marshal(skillInput{Skill: "namespace:demo-skill"})
-		result := tool.Execute(context.Background(), args)
+		result := tool.Execute(context.Background(), skillInput{Skill: "namespace:demo-skill"})
 
 		assert.Nil(t, result.Error)
 		require.NotNil(t, result.Content.Text)
@@ -66,27 +61,22 @@ Follow these instructions.
 	})
 
 	t.Run("Execute not found", func(t *testing.T) {
-		args, _ := json.Marshal(skillInput{Skill: "nonexistent"})
-		result := tool.Execute(context.Background(), args)
+		result := tool.Execute(context.Background(), skillInput{Skill: "nonexistent"})
 
 		assert.Error(t, result.Error)
 		assert.Contains(t, result.Error.Error(), "not found")
 	})
 
 	t.Run("Execute empty skill name", func(t *testing.T) {
-		args, _ := json.Marshal(skillInput{Skill: ""})
-		result := tool.Execute(context.Background(), args)
+		result := tool.Execute(context.Background(), skillInput{Skill: ""})
 
 		assert.Error(t, result.Error)
-		assert.Contains(t, result.Error.Error(), "required")
 	})
 }
 
 func TestSkillToolListSkills(t *testing.T) {
-	// Create temp directory with multiple skills
 	tmpDir := t.TempDir()
 
-	// Create first skill
 	skill1Dir := filepath.Join(tmpDir, "skill-one")
 	require.NoError(t, os.MkdirAll(skill1Dir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(skill1Dir, "SKILL.md"), []byte(`---
@@ -96,7 +86,6 @@ description: First skill
 # Skill One
 `), 0644))
 
-	// Create second skill
 	skill2Dir := filepath.Join(tmpDir, "skill-two")
 	require.NoError(t, os.MkdirAll(skill2Dir, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(skill2Dir, "SKILL.md"), []byte(`---

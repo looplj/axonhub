@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/axon/bus"
 	axonconf "github.com/looplj/axonhub/axon/conf"
 	clawcontext "github.com/looplj/axonhub/axon/context"
+	"github.com/looplj/axonhub/axon/pkg/search"
 	"github.com/looplj/axonhub/axon/provider/reloadable"
 	"github.com/looplj/axonhub/axon/thread"
 	"github.com/looplj/axonhub/axon/tools"
@@ -152,14 +153,16 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 		SystemPrompt:  systemPrompt,
 	}, provider, agent.WithBus(eventBus), agent.WithLogger(logger))
 
-	a.RegisterTool(tools.NewReadTool(workspaceDir, false))
-	a.RegisterTool(tools.NewWriteTool(workspaceDir, false))
-	a.RegisterTool(tools.NewEditTool(workspaceDir, false))
-	a.RegisterTool(tools.NewBashTool(workspaceDir, false))
-	a.RegisterTool(tools.NewGrepTool(workspaceDir, false))
-	a.RegisterTool(tools.NewGlobTool(workspaceDir, false))
-	a.RegisterTool(tools.NewSkillTool(filepath.Join(workspaceDir, "skills"), filepath.Join(configDir, "skills")))
-	a.RegisterTool(clitools.NewAxonHelpTool())
+	a.RegisterTool(tools.NewAgentTool(tools.NewReadTool(workspaceDir, false)))
+	a.RegisterTool(tools.NewAgentTool(tools.NewWriteTool(workspaceDir, false)))
+	a.RegisterTool(tools.NewAgentTool(tools.NewEditTool(workspaceDir, false)))
+	a.RegisterTool(tools.NewAgentTool(tools.NewBashTool(workspaceDir, false)))
+	a.RegisterTool(tools.NewAgentTool(tools.NewGrepTool(workspaceDir, false)))
+	a.RegisterTool(tools.NewAgentTool(tools.NewGlobTool(workspaceDir, false)))
+	a.RegisterTool(tools.NewAgentTool(tools.NewSkillTool(filepath.Join(workspaceDir, "skills"), filepath.Join(configDir, "skills"))))
+	a.RegisterTool(tools.NewAgentTool(tools.NewWebSearchTool(search.NewDuckDuckGoProvider())))
+	a.RegisterTool(tools.NewAgentTool(tools.NewWebFetchTool()))
+	a.RegisterTool(tools.NewAgentTool(clitools.NewAxonHelpTool()))
 
 	store := axonconf.NewStore(cfg)
 	loader := axonconf.NewViperLoader[conf.Config](axonconf.ViperLoaderOptions{

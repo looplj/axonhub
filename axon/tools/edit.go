@@ -2,13 +2,14 @@ package tools
 
 import (
 	"context"
-	_ "embed"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
+
+	_ "embed"
+
 	"github.com/looplj/axonhub/axon/agent"
 )
 
@@ -21,7 +22,10 @@ type EditTool struct {
 }
 
 func NewEditTool(workspace string, restrict bool) *EditTool {
-	return &EditTool{workspace: workspace, restrict: restrict}
+	return &EditTool{
+		workspace: workspace,
+		restrict:  restrict,
+	}
 }
 
 type editInput struct {
@@ -31,42 +35,41 @@ type editInput struct {
 	ReplaceAll bool   `json:"replace_all,omitempty"`
 }
 
+var editParameters = jsonschema.Schema{
+	Schema: "https://json-schema.org/draft/2020-12/schema",
+	Type:   "object",
+	Properties: map[string]*jsonschema.Schema{
+		"path": {
+			Type:        "string",
+			MinLength:   new(1),
+			Description: "Path to the file to edit",
+		},
+		"old_text": {
+			Type:        "string",
+			MinLength:   new(1),
+			Description: "Text to search for in the file",
+		},
+		"new_text": {
+			Type:        "string",
+			Description: "Text to replace old_text with",
+		},
+		"replace_all": {
+			Type:        "boolean",
+			Description: "If true, replace all occurrences of old_text. Defaults to false",
+		},
+	},
+	Required: []string{"path", "old_text", "new_text"},
+}
+
 func (t *EditTool) Definition() agent.ToolDefinition {
 	return agent.ToolDefinition{
 		Name:        "Edit",
 		Description: editDescription,
-		Parameters: jsonschema.Schema{
-			Schema: "https://json-schema.org/draft/2020-12/schema",
-			Type:   "object",
-			Properties: map[string]*jsonschema.Schema{
-				"path": {
-					Type:        "string",
-					Description: "Path to the file to edit",
-				},
-				"old_text": {
-					Type:        "string",
-					Description: "Text to search for in the file",
-				},
-				"new_text": {
-					Type:        "string",
-					Description: "Text to replace old_text with",
-				},
-				"replace_all": {
-					Type:        "boolean",
-					Description: "If true, replace all occurrences of old_text. Defaults to false",
-				},
-			},
-			Required: []string{"path", "old_text", "new_text"},
-		},
+		Parameters:  editParameters,
 	}
 }
 
-func (t *EditTool) Execute(_ context.Context, arguments json.RawMessage) agent.ToolResult {
-	var input editInput
-	if err := json.Unmarshal(arguments, &input); err != nil {
-		return ErrorResult(fmt.Errorf("invalid arguments: %w", err))
-	}
-
+func (t *EditTool) Execute(ctx context.Context, input editInput) agent.ToolResult {
 	path, err := validatePath(input.Path, t.workspace, t.restrict)
 	if err != nil {
 		return ErrorResult(err)
