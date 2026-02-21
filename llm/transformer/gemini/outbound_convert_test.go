@@ -1250,6 +1250,114 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 	}
 }
 
+func TestConvertLLMToolResultToGeminiContent_VertexAI(t *testing.T) {
+	// Test that Vertex AI doesn't include ID field in function response
+	req := &GenerateContentRequest{
+		Contents: []*Content{
+			{
+				Role: "model",
+				Parts: []*Part{
+					{
+						FunctionCall: &FunctionCall{
+							ID:   "call_123",
+							Name: "get_weather",
+							Args: map[string]any{"city": "Paris"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	toolID := "call_123"
+	msg := &llm.Message{
+		Role: "tool",
+		Content: llm.MessageContent{
+			Content: lo.ToPtr(`{"temperature": 22}`),
+		},
+		ToolCallID:   &toolID,
+		ToolCallName: lo.ToPtr("get_weather"),
+	}
+
+	// Test conversion - ID should always be set for lookup purposes
+	result := convertLLMToolResultToGeminiContent(msg, req.Contents)
+	require.NotNil(t, result)
+	require.Len(t, result.Parts, 1)
+	require.NotNil(t, result.Parts[0].FunctionResponse)
+	require.Equal(t, "call_123", result.Parts[0].FunctionResponse.ID, "ID should be set for lookup")
+	require.Equal(t, "get_weather", result.Parts[0].FunctionResponse.Name)
+
+	// Verify JSON serialization - ID should be present when not empty
+	jsonBytes, err := json.Marshal(result.Parts[0].FunctionResponse)
+	require.NoError(t, err)
+	require.Contains(t, string(jsonBytes), "\"id\":", "JSON should contain ID field")
+	require.Contains(t, string(jsonBytes), "get_weather", "JSON should contain name")
+}
+
+func TestConvertLLMToGeminiRequest_MultipleToolMessages(t *testing.T) {
+	// Test that multiple tool messages are grouped into a single Content entry
+	llmReq := &llm.Request{
+		Model: "gemini-2.5-flash",
+		Messages: []llm.Message{
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: lo.ToPtr("What's the weather and news?")},
+			},
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_weather",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "get_weather",
+							Arguments: `{"city": "Paris"}`,
+						},
+					},
+					{
+						ID:   "call_news",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "get_news",
+							Arguments: `{"category": "tech"}`,
+						},
+					},
+				},
+			},
+			{
+				Role: "tool",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(`{"temperature": 22}`),
+				},
+				ToolCallID:   lo.ToPtr("call_weather"),
+				ToolCallName: lo.ToPtr("get_weather"),
+			},
+			{
+				Role: "tool",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(`{"headlines": ["AI breakthrough"]}`),
+				},
+				ToolCallID:   lo.ToPtr("call_news"),
+				ToolCallName: lo.ToPtr("get_news"),
+			},
+		},
+	}
+
+	result := convertLLMToGeminiRequest(llmReq)
+
+	// Should have: user message, assistant with function calls, user with grouped function responses
+	require.Len(t, result.Contents, 3)
+
+	// Last content should be user role with 2 function response parts
+	lastContent := result.Contents[len(result.Contents)-1]
+	require.Equal(t, "user", lastContent.Role)
+	require.Len(t, lastContent.Parts, 2)
+	require.NotNil(t, lastContent.Parts[0].FunctionResponse)
+	require.NotNil(t, lastContent.Parts[1].FunctionResponse)
+	require.Equal(t, "get_weather", lastContent.Parts[0].FunctionResponse.Name)
+	require.Equal(t, "get_news", lastContent.Parts[1].FunctionResponse.Name)
+}
+
 // =============================================================================
 // Basic Tests for convertGeminiToLLMResponse
 // =============================================================================

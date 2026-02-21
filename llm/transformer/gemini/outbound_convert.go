@@ -212,9 +212,12 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 		case "tool":
 			// Tool response - need to find the corresponding function call
-			content := convertLLMToolResultToGeminiContent(&msg, contents)
-			if content != nil {
-				contents = append(contents, content)
+			// Group consecutive tool messages into a single Content entry
+			toolContent := convertLLMToolResultToGeminiContent(&msg, contents)
+			if isPreviousContentToolResponse(contents) {
+				contents[len(contents)-1].Parts = append(contents[len(contents)-1].Parts, toolContent.Parts...)
+			} else {
+				contents = append(contents, toolContent)
 			}
 
 		default:
@@ -444,15 +447,18 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
 	}
 
-	fp := &FunctionResponse{
-		ID:       lo.FromPtr(msg.ToolCallID),
-		Name:     lo.FromPtr(msg.ToolCallName),
-		Response: responseData,
+	toolCallID := lo.FromPtr(msg.ToolCallID)
+
+	// Anthropic's tool result doesn't have name, so we need to find it by tool call id.
+	toolCallName := lo.FromPtr(msg.ToolCallName)
+	if toolCallName == "" {
+		toolCallName = findToolNameByToolCallID(contents, toolCallID)
 	}
 
-	// Anthropic‘s tool result doesn't have name, so we need to find it by tool call id.
-	if fp.Name == "" && fp.ID != "" {
-		fp.Name = findToolNameByToolCallID(contents, fp.ID)
+	fp := &FunctionResponse{
+		ID:       toolCallID,
+		Name:     toolCallName,
+		Response: responseData,
 	}
 
 	content.Parts = []*Part{
@@ -472,6 +478,19 @@ func findToolNameByToolCallID(contents []*Content, id string) string {
 	}
 
 	return ""
+}
+
+// isPreviousContentToolResponse checks if the last content entry is a tool response
+// (user role with functionResponse parts) for grouping consecutive tool messages.
+func isPreviousContentToolResponse(contents []*Content) bool {
+	if len(contents) == 0 {
+		return false
+	}
+	lastContent := contents[len(contents)-1]
+	if lastContent.Role != "user" || len(lastContent.Parts) == 0 {
+		return false
+	}
+	return lastContent.Parts[0].FunctionResponse != nil
 }
 
 // convertGeminiToLLMResponse converts Gemini GenerateContentResponse to unified Response.

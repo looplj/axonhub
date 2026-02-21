@@ -119,8 +119,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("%w: messages are required,%v", transformer.ErrInvalidRequest, llmReq.Messages)
 	}
 
-	// Convert to Gemini request format
-	geminiReq := convertLLMToGeminiRequest(llmReq)
+	// Convert to Gemini request format with config
+	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
+
+	// Clear function call/response IDs for Vertex AI (not supported)
+	if t.config.PlatformType == PlatformVertex {
+		clearFunctionIDsForVertexAI(geminiReq)
+	}
 
 	body, err := json.Marshal(geminiReq)
 	if err != nil {
@@ -274,4 +279,20 @@ func (t *OutboundTransformer) SetAPIKey(apiKey string) {
 // SetBaseURL updates the base URL.
 func (t *OutboundTransformer) SetBaseURL(baseURL string) {
 	t.config.BaseURL = baseURL
+}
+
+// clearFunctionIDsForVertexAI clears the ID field from all FunctionCall and FunctionResponse
+// parts in the request. Vertex AI does not support the ID field in function_call or
+// function_response objects.
+func clearFunctionIDsForVertexAI(req *GenerateContentRequest) {
+	for _, content := range req.Contents {
+		for _, part := range content.Parts {
+			if part.FunctionCall != nil {
+				part.FunctionCall.ID = ""
+			}
+			if part.FunctionResponse != nil {
+				part.FunctionResponse.ID = ""
+			}
+		}
+	}
 }
