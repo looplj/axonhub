@@ -15,6 +15,7 @@ import (
 // streamState tracks state across streaming events.
 type streamState struct {
 	toolCallIndex int
+	hasToolCall   bool
 }
 
 // TransformStream transforms the HTTP stream response to the unified response format.
@@ -68,9 +69,53 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 		return nil, transformer.ErrInvalidResponse
 	}
 
+	var finishReason string
+	if len(resp.Candidates) > 0 {
+		finishReason = resp.Candidates[0].FinishReason
+	}
+
+	// WORKAROUND: Check if response has empty/nil content when STOP is received
+	// This can happen when Gemini hits context limits or gets confused in long conversations
+	hasEmptyContent := false
+	if len(resp.Candidates) > 0 && resp.Candidates[0].Content != nil {
+		hasOnlyEmptyText := true
+		for _, part := range resp.Candidates[0].Content.Parts {
+			if part.FunctionCall != nil || part.FunctionResponse != nil || part.InlineData != nil {
+				hasOnlyEmptyText = false
+				break
+			}
+			if part.Text != "" {
+				hasOnlyEmptyText = false
+				break
+			}
+		}
+		if hasOnlyEmptyText {
+			hasEmptyContent = true
+		}
+	}
+
+	// WORKAROUND: If STOP with empty content but we saw tool calls earlier, force hasToolCall
+	// This helps when Gemini returns STOP prematurely in long tool-using conversations
+	if finishReason == "STOP" && hasEmptyContent && state.hasToolCall {
+		// Force accumulatedHasToolCall to be used
+		resp.Candidates[0].FinishReason = "STOP" // Ensure it's set for conversion
+	}
+
+	// WORKAROUND: Check if request has unresponded tool calls and we're getting STOP
+	// This handles the case where Gemini returns STOP prematurely across separate requests
+	if finishReason == "STOP" && !state.hasToolCall {
+		if t.hasUnrespondedToolCalls() {
+			state.hasToolCall = true
+		}
+	}
+
 	// Convert to unified response format (streaming) with tool call index tracking
-	llmResp, nextIndex := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex)
+	// Pass accumulated hasToolCall state and update it if this chunk contains tool calls
+	llmResp, nextIndex, chunkHasToolCall := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex, state.hasToolCall)
 	state.toolCallIndex = nextIndex
+	if chunkHasToolCall {
+		state.hasToolCall = true
+	}
 
 	return llmResp, nil
 }

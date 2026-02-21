@@ -953,5 +953,107 @@ func mustMarshal(v any) []byte {
 	return data
 }
 
+// TestOutboundTransformer_TransformStream_ToolCallThenStop tests the scenario where
+// tool calls arrive in one chunk, and the STOP finish reason arrives in a separate chunk
+// without tool calls (common in Vertex AI streaming).
+func TestOutboundTransformer_TransformStream_ToolCallThenStop(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:      DefaultBaseURL,
+			APIVersion:   DefaultAPIVersion,
+			PlatformType: PlatformVertex, // Vertex AI platform
+		},
+	}
+
+	// Simulate Vertex AI streaming scenario:
+	// Chunk 1: Tool call (no finish reason yet)
+	// Chunk 2: Empty text with STOP finish reason
+	events := []*httpclient.StreamEvent{
+		{
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-vertex-tool-1",
+				ModelVersion: "gemini-3-pro-preview",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call-task-1",
+										Name: "task",
+										Args: map[string]any{"command": "ls"},
+									},
+								},
+							},
+						},
+						// No finish reason yet
+					},
+				},
+			}),
+		},
+		{
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID:   "resp-vertex-tool-1",
+				ModelVersion: "gemini-3-pro-preview",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{Text: ""}, // Empty text part (Vertex AI behavior)
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			}),
+		},
+	}
+
+	// Create a stream from the events
+	inputStream := streams.SliceStream(events)
+
+	// Transform the stream
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+	require.NotNil(t, outputStream)
+
+	// Collect results
+	var results []*llm.Response
+
+	for outputStream.Next() {
+		resp := outputStream.Current()
+		if resp != nil {
+			results = append(results, resp)
+		}
+	}
+
+	require.NoError(t, outputStream.Err())
+
+	// Filter out [DONE] response
+	var chunkResults []*llm.Response
+	for _, r := range results {
+		if r.Object != "[DONE]" {
+			chunkResults = append(chunkResults, r)
+		}
+	}
+
+	// Verify we have 2 chunks
+	require.Len(t, chunkResults, 2, "Should have 2 chunks (tool call + STOP)")
+
+	// First chunk: tool call
+	require.Len(t, chunkResults[0].Choices[0].Delta.ToolCalls, 1)
+	require.Equal(t, "task", chunkResults[0].Choices[0].Delta.ToolCalls[0].Function.Name)
+	require.Nil(t, chunkResults[0].Choices[0].FinishReason, "First chunk should not have finish reason")
+
+	// Second chunk: STOP should be converted to "tool_calls" because we saw tool calls earlier
+	require.NotNil(t, chunkResults[1].Choices[0].FinishReason, "Second chunk should have finish reason")
+	require.Equal(t, "tool_calls", *chunkResults[1].Choices[0].FinishReason,
+		"STOP should be converted to tool_calls when tool calls were seen in previous chunks")
+}
+
 // Ensure lo is used to satisfy linter.
 var _ = lo.ToPtr[string]
