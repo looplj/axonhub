@@ -42,9 +42,13 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	}
 
 	// Determine thinking config priority: adaptive > enabled > disabled
-	if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok && v == "adaptive" {
-		req.Thinking = &Thinking{Type: "adaptive"}
-	} else if chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil {
+	if chatReq.TransformerMetadata != nil {
+		if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok && v == "adaptive" {
+			req.Thinking = &Thinking{Type: "adaptive"}
+		}
+	}
+
+	if req.Thinking == nil && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
 		req.Thinking = buildThinking(chatReq, config)
 	}
 
@@ -162,7 +166,7 @@ func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
 	if src.NamedToolChoice != nil && src.NamedToolChoice.Function.Name != "" {
 		return &ToolChoice{
 			Type: "tool",
-			Name: new(src.NamedToolChoice.Function.Name),
+			Name: lo.ToPtr(src.NamedToolChoice.Function.Name),
 		}
 	}
 
