@@ -307,13 +307,13 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		case "adaptive":
 			// adaptive thinking 不需要 budget，但需要传递类型标记
 			// 使用 TransformerMetadata 保留 adaptive 类型信息
-			chatReq.TransformerMetadata["thinking_type"] = "adaptive"
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "adaptive"
 		}
 	}
 
 	// Convert output_config
 	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
-		chatReq.TransformerMetadata["output_config_effort"] = anthropicReq.OutputConfig.Effort
+		chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
 	}
 
 	return chatReq, nil

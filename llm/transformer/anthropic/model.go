@@ -143,6 +143,12 @@ type SystemPromptPart struct {
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
+// TransformerMetadataKeyThinkingType is the key for storing thinking type in TransformerMetadata.
+const TransformerMetadataKeyThinkingType = "thinking_type"
+
+// TransformerMetadataKeyOutputConfigEffort is the key for storing output config effort in TransformerMetadata.
+const TransformerMetadataKeyOutputConfigEffort = "output_config_effort"
+
 type Thinking struct {
 	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
 	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`
@@ -154,7 +160,7 @@ type OutputConfig struct {
 	// Effort controls the overall effort level for the response.
 	// Any of "low", "medium", "high", "max".
 	// "max" is only supported by claude-opus-4-6.
-	Effort string `json:"effort,omitempty"`
+	Effort string `json:"effort,omitempty" validate:"omitempty,oneof=low medium high max"`
 }
 
 type ToolChoice struct {

@@ -551,7 +551,7 @@ func TestThinking_AdaptiveOutbound(t *testing.T) {
 				ReasoningEffort: "high",
 				ReasoningBudget: lo.ToPtr(int64(30000)),
 				TransformerMetadata: map[string]any{
-					"thinking_type": "adaptive",
+					TransformerMetadataKeyThinkingType: "adaptive",
 				},
 			},
 			validate: func(t *testing.T, anthropicReq *MessageRequest) {
@@ -598,7 +598,7 @@ func TestThinking_AdaptiveInbound(t *testing.T) {
 			validate: func(t *testing.T, chatReq *llm.Request) {
 				t.Helper()
 				require.NotNil(t, chatReq.TransformerMetadata)
-				require.Equal(t, "adaptive", chatReq.TransformerMetadata["thinking_type"])
+				require.Equal(t, "adaptive", chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType])
 				require.Empty(t, chatReq.ReasoningEffort)
 				require.Nil(t, chatReq.ReasoningBudget)
 			},
@@ -665,7 +665,7 @@ func TestOutputConfig_Outbound(t *testing.T) {
 					},
 				},
 				TransformerMetadata: map[string]any{
-					"output_config_effort": "max",
+					TransformerMetadataKeyOutputConfigEffort: "max",
 				},
 			},
 			validate: func(t *testing.T, anthropicReq *MessageRequest) {
@@ -723,7 +723,7 @@ func TestOutputConfig_Inbound(t *testing.T) {
 			validate: func(t *testing.T, chatReq *llm.Request) {
 				t.Helper()
 				require.NotNil(t, chatReq.TransformerMetadata)
-				require.Equal(t, "high", chatReq.TransformerMetadata["output_config_effort"])
+				require.Equal(t, "high", chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
 			},
 		},
 		{
@@ -741,7 +741,7 @@ func TestOutputConfig_Inbound(t *testing.T) {
 			validate: func(t *testing.T, chatReq *llm.Request) {
 				t.Helper()
 				require.NotNil(t, chatReq.TransformerMetadata)
-				_, ok := chatReq.TransformerMetadata["output_config_effort"]
+				_, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort]
 				require.False(t, ok)
 			},
 		},

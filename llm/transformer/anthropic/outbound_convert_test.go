@@ -110,6 +110,21 @@ func TestConvertToolChoiceToAnthropic(t *testing.T) {
 				require.Nil(t, got)
 			},
 		},
+		{
+			name: "named function with empty name -> nil",
+			input: &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type: "function",
+					Function: llm.ToolFunction{
+						Name: "",
+					},
+				},
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.Nil(t, got)
+			},
+		},
 	}
 
 	for _, tt := range tests {

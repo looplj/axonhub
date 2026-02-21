@@ -1104,6 +1104,19 @@ func TestConvertToolChoiceFromAnthropic(t *testing.T) {
 			},
 		},
 		{
+			name: "anthropic none -> llm none",
+			input: &ToolChoice{
+				Type: "none",
+			},
+			validate: func(t *testing.T, got *llm.ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.NotNil(t, got.ToolChoice)
+				require.Equal(t, "none", *got.ToolChoice)
+				require.Nil(t, got.NamedToolChoice)
+			},
+		},
+		{
 			name: "anthropic any -> llm required",
 			input: &ToolChoice{
 				Type: "any",

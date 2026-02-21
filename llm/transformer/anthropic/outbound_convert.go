@@ -42,7 +42,7 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	}
 
 	// 确定 thinking 配置：adaptive > enabled > disabled
-	if chatReq.TransformerMetadata != nil && chatReq.TransformerMetadata["thinking_type"] == "adaptive" {
+	if chatReq.TransformerMetadata != nil && chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] == "adaptive" {
 		req.Thinking = &Thinking{Type: "adaptive"}
 	} else if chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil {
 		req.Thinking = buildThinking(chatReq, config)
@@ -50,7 +50,7 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 
 	// 设置 output_config（通过 TransformerMetadata 传递）
 	if chatReq.TransformerMetadata != nil {
-		if effort, ok := chatReq.TransformerMetadata["output_config_effort"].(string); ok && effort != "" {
+		if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
 			req.OutputConfig = &OutputConfig{Effort: effort}
 		}
 	}
@@ -159,7 +159,7 @@ func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
 	}
 
 	// 命名工具形式的 tool_choice: {type: "function", function: {name: "xxx"}}
-	if src.NamedToolChoice != nil {
+	if src.NamedToolChoice != nil && src.NamedToolChoice.Function.Name != "" {
 		return &ToolChoice{
 			Type: "tool",
 			Name: &src.NamedToolChoice.Function.Name,
