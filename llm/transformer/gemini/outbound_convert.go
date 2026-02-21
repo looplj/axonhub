@@ -212,13 +212,13 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 		case "tool":
 			// Tool response - need to find the corresponding function call
-			content := convertLLMToolResultToGeminiContent(&msg, contents)
+			content := convertLLMToolResultToGeminiContent(&msg, contents, config)
 			if content != nil {
 				contents = append(contents, content)
 			}
 
 		default:
-			content := convertLLMMessageToGeminiContent(&msg)
+			content := convertLLMMessageToGeminiContent(&msg, config)
 			if content != nil {
 				contents = append(contents, content)
 			}
@@ -305,7 +305,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 }
 
 // convertLLMMessageToGeminiContent converts an LLM Message to Gemini Content.
-func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
+func convertLLMMessageToGeminiContent(msg *llm.Message, config *Config) *Content {
 	if msg == nil {
 		return nil
 	}
@@ -386,9 +386,16 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 			_ = json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
 		}
 
+		// Vertex AI doesn't support the ID field in function_call
+		// Only set ID for non-Vertex platforms
+		var id string
+		if config == nil || config.PlatformType != PlatformVertex {
+			id = toolCall.ID
+		}
+
 		part := &Part{
 			FunctionCall: &FunctionCall{
-				ID:   toolCall.ID,
+				ID:   id,
 				Name: toolCall.Function.Name,
 				Args: args,
 			},
@@ -430,7 +437,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 }
 
 // convertLLMToolResultToGeminiContent converts an LLM tool message to Gemini Content.
-func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) *Content {
+func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content, config *Config) *Content {
 	content := &Content{
 		Role: "user", // Function responses come from user role in Gemini
 	}
@@ -444,15 +451,24 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
 	}
 
-	fp := &FunctionResponse{
-		ID:       lo.FromPtr(msg.ToolCallID),
-		Name:     lo.FromPtr(msg.ToolCallName),
-		Response: responseData,
+	toolCallID := lo.FromPtr(msg.ToolCallID)
+
+	// Anthropic's tool result doesn't have name, so we need to find it by tool call id.
+	toolCallName := lo.FromPtr(msg.ToolCallName)
+	if toolCallName == "" && toolCallID != "" {
+		toolCallName = findToolNameByToolCallID(contents, toolCallID)
 	}
 
-	// Anthropic‘s tool result doesn't have name, so we need to find it by tool call id.
-	if fp.Name == "" && fp.ID != "" {
-		fp.Name = findToolNameByToolCallID(contents, fp.ID)
+	// Vertex AI doesn't support the ID field in function_response
+	var id string
+	if config == nil || config.PlatformType != PlatformVertex {
+		id = toolCallID
+	}
+
+	fp := &FunctionResponse{
+		ID:       id,
+		Name:     toolCallName,
+		Response: responseData,
 	}
 
 	content.Parts = []*Part{

@@ -119,8 +119,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("%w: messages are required,%v", transformer.ErrInvalidRequest, llmReq.Messages)
 	}
 
-	// Convert to Gemini request format
-	geminiReq := convertLLMToGeminiRequest(llmReq)
+	// Convert to Gemini request format with config
+	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
 
 	body, err := json.Marshal(geminiReq)
 	if err != nil {

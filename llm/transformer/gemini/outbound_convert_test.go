@@ -1082,7 +1082,7 @@ func TestConvertLLMMessageToGeminiContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMMessageToGeminiContent(tt.input)
+			result := convertLLMMessageToGeminiContent(tt.input, nil)
 			tt.validate(t, result)
 		})
 	}
@@ -1244,10 +1244,105 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMToolResultToGeminiContent(tt.input, tt.req.Contents)
+			result := convertLLMToolResultToGeminiContent(tt.input, tt.req.Contents, nil)
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestConvertLLMToolResultToGeminiContent_VertexAI(t *testing.T) {
+	// Test that Vertex AI doesn't include ID field in function response
+	req := &GenerateContentRequest{
+		Contents: []*Content{
+			{
+				Role: "model",
+				Parts: []*Part{
+					{
+						FunctionCall: &FunctionCall{
+							ID:   "call_123",
+							Name: "get_weather",
+							Args: map[string]any{"city": "Paris"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	toolID := "call_123"
+	msg := &llm.Message{
+		Role: "tool",
+		Content: llm.MessageContent{
+			Content: lo.ToPtr(`{"temperature": 22}`),
+		},
+		ToolCallID:   &toolID,
+		ToolCallName: lo.ToPtr("get_weather"),
+	}
+
+	// Test with Vertex AI config - ID should be empty
+	vertexConfig := &Config{PlatformType: PlatformVertex}
+	result := convertLLMToolResultToGeminiContent(msg, req.Contents, vertexConfig)
+	require.NotNil(t, result)
+	require.Len(t, result.Parts, 1)
+	require.NotNil(t, result.Parts[0].FunctionResponse)
+	require.Empty(t, result.Parts[0].FunctionResponse.ID, "Vertex AI should not have ID field")
+	require.Equal(t, "get_weather", result.Parts[0].FunctionResponse.Name)
+
+	// Test with nil config - ID should be set
+	result = convertLLMToolResultToGeminiContent(msg, req.Contents, nil)
+	require.NotNil(t, result)
+	require.Len(t, result.Parts, 1)
+	require.NotNil(t, result.Parts[0].FunctionResponse)
+	require.Equal(t, "call_123", result.Parts[0].FunctionResponse.ID, "Non-Vertex should have ID field")
+
+	// Test with regular Gemini config - ID should be set
+	regularConfig := &Config{PlatformType: ""}
+	result = convertLLMToolResultToGeminiContent(msg, req.Contents, regularConfig)
+	require.NotNil(t, result)
+	require.Len(t, result.Parts, 1)
+	require.NotNil(t, result.Parts[0].FunctionResponse)
+	require.Equal(t, "call_123", result.Parts[0].FunctionResponse.ID, "Regular Gemini should have ID field")
+}
+
+func TestConvertLLMMessageToGeminiContent_VertexAI(t *testing.T) {
+	// Test that Vertex AI doesn't include ID field in function call
+	msg := &llm.Message{
+		Role: "assistant",
+		ToolCalls: []llm.ToolCall{
+			{
+				ID:   "call_123",
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      "get_weather",
+					Arguments: `{"city": "Paris"}`,
+				},
+			},
+		},
+	}
+
+	// Test with Vertex AI config - ID should be empty
+	vertexConfig := &Config{PlatformType: PlatformVertex}
+	result := convertLLMMessageToGeminiContent(msg, vertexConfig)
+	require.NotNil(t, result)
+	require.Len(t, result.Parts, 1)
+	require.NotNil(t, result.Parts[0].FunctionCall)
+	require.Empty(t, result.Parts[0].FunctionCall.ID, "Vertex AI should not have ID field in function call")
+	require.Equal(t, "get_weather", result.Parts[0].FunctionCall.Name)
+
+	// Test with nil config - ID should be set
+	result = convertLLMMessageToGeminiContent(msg, nil)
+	require.NotNil(t, result)
+	require.Len(t, result.Parts, 1)
+	require.NotNil(t, result.Parts[0].FunctionCall)
+	require.Equal(t, "call_123", result.Parts[0].FunctionCall.ID, "Non-Vertex should have ID field in function call")
+
+	// Test with regular Gemini config - ID should be set
+	regularConfig := &Config{PlatformType: ""}
+	result = convertLLMMessageToGeminiContent(msg, regularConfig)
+	require.NotNil(t, result)
+	require.Len(t, result.Parts, 1)
+	require.NotNil(t, result.Parts[0].FunctionCall)
+	require.Equal(t, "call_123", result.Parts[0].FunctionCall.ID, "Regular Gemini should have ID field in function call")
 }
 
 // =============================================================================
@@ -1709,7 +1804,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMMessageToGeminiContent(tt.input)
+			result := convertLLMMessageToGeminiContent(tt.input, nil)
 			tt.validate(t, result)
 		})
 	}
