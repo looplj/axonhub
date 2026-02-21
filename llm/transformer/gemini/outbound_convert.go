@@ -498,7 +498,7 @@ func isPreviousContentToolResponse(contents []*Content) bool {
 // convertGeminiToLLMResponse converts Gemini GenerateContentResponse to unified Response.
 // When isStream is true, it sets Delta instead of Message in choices.
 func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bool) *llm.Response {
-	resp, _, _ := convertGeminiToLLMResponseWithState(geminiResp, isStream, 0, false)
+	resp, _ := convertGeminiToLLMResponseWithState(geminiResp, isStream, 0)
 	return resp
 }
 
@@ -506,8 +506,8 @@ func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bo
 const TransformerMetadataKeyGroundingMetadata = "gemini_grounding_metadata"
 
 // convertGeminiToLLMResponseWithState converts Gemini response with tool call index tracking.
-// Returns the response, the next tool call index to use, and whether any tool calls were seen in this chunk.
-func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int, hasToolCall bool) (*llm.Response, int, bool) {
+// Returns the response and the next tool call index to use.
+func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int) (*llm.Response, int) {
 	resp := &llm.Response{
 		ID:          geminiResp.ResponseID,
 		Model:       geminiResp.ModelVersion,
@@ -531,12 +531,11 @@ func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, is
 	// Convert candidates to choices
 	choices := make([]llm.Choice, 0, len(geminiResp.Candidates))
 	nextToolCallIndex := toolCallIndexOffset
-	chunkHasToolCall := false
 
 	for _, candidate := range geminiResp.Candidates {
 		var choice llm.Choice
 
-		choice, nextToolCallIndex, chunkHasToolCall = convertGeminiCandidateToLLMChoiceWithState(candidate, isStream, nextToolCallIndex, hasToolCall)
+		choice, nextToolCallIndex = convertGeminiCandidateToLLMChoiceWithState(candidate, isStream, nextToolCallIndex)
 
 		// Store GroundingMetadata in Choice.TransformerMetadata if present
 		if candidate.GroundingMetadata != nil {
@@ -553,134 +552,130 @@ func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, is
 	resp.Choices = choices
 	resp.Usage = convertToLLMUsage(geminiResp.UsageMetadata)
 
-	return resp, nextToolCallIndex, chunkHasToolCall
+	return resp, nextToolCallIndex
 }
 
 // convertGeminiCandidateToLLMChoiceWithState converts a Gemini Candidate to an LLM Choice with tool call index tracking.
-// Returns the choice, the next tool call index to use, and whether any tool calls were seen in this chunk.
-func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream bool, toolCallIndexOffset int, accumulatedHasToolCall bool) (llm.Choice, int, bool) {
+// Returns the choice and the next tool call index to use.
+func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream bool, toolCallIndexOffset int) (llm.Choice, int) {
 	choice := llm.Choice{
 		Index: int(candidate.Index),
 	}
 
-	var chunkHasToolCall bool
+	var hasToolCall bool
 
 	nextToolCallIndex := toolCallIndexOffset
 
-	// Handle case where content is nil - still need to convert finish reason with accumulated state
-	if candidate.Content == nil {
-		choice.FinishReason = convertGeminiFinishReasonToLLM(candidate.FinishReason, accumulatedHasToolCall)
-		return choice, nextToolCallIndex, chunkHasToolCall
-	}
-
-	msg := &llm.Message{
-		Role: "assistant",
-	}
-
-	var (
-		textParts        []string
-		contentParts     []llm.MessageContentPart
-		toolCalls        []llm.ToolCall
-		reasoningContent string
-	)
-
-	for _, part := range candidate.Content.Parts {
-		if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
-			msg.ReasoningSignature = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
+	if candidate.Content != nil {
+		msg := &llm.Message{
+			Role: "assistant",
 		}
 
-		switch {
-		case part.Text != "":
-			if part.Thought {
-				reasoningContent = part.Text
-			} else {
-				textParts = append(textParts, part.Text)
+		var (
+			textParts        []string
+			contentParts     []llm.MessageContentPart
+			toolCalls        []llm.ToolCall
+			reasoningContent string
+		)
+
+		for _, part := range candidate.Content.Parts {
+			if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
+				msg.ReasoningSignature = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
 			}
 
-		case part.InlineData != nil:
-			// Convert inline data based on MIME type
-			dataURL := xurl.BuildDataURL(part.InlineData.MIMEType, part.InlineData.Data, true)
+			switch {
+			case part.Text != "":
+				if part.Thought {
+					reasoningContent = part.Text
+				} else {
+					textParts = append(textParts, part.Text)
+				}
 
-			if isDocumentMIMEType(part.InlineData.MIMEType) {
-				// Document type (PDF, Word, etc.)
-				contentParts = append(contentParts, llm.MessageContentPart{
-					Type: "document",
-					Document: &llm.DocumentURL{
-						URL:      dataURL,
-						MIMEType: part.InlineData.MIMEType,
+			case part.InlineData != nil:
+				// Convert inline data based on MIME type
+				dataURL := xurl.BuildDataURL(part.InlineData.MIMEType, part.InlineData.Data, true)
+
+				if isDocumentMIMEType(part.InlineData.MIMEType) {
+					// Document type (PDF, Word, etc.)
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type: "document",
+						Document: &llm.DocumentURL{
+							URL:      dataURL,
+							MIMEType: part.InlineData.MIMEType,
+						},
+					})
+				} else {
+					// Image type
+					contentParts = append(contentParts, llm.MessageContentPart{
+						Type: "image_url",
+						ImageURL: &llm.ImageURL{
+							URL: dataURL,
+						},
+					})
+				}
+
+			case part.FunctionCall != nil:
+				argsJSON, _ := json.Marshal(part.FunctionCall.Args)
+				tc := llm.ToolCall{
+					Index: nextToolCallIndex,
+					ID:    part.FunctionCall.ID,
+					Type:  "function",
+					Function: llm.FunctionCall{
+						Name:      part.FunctionCall.Name,
+						Arguments: string(argsJSON),
 					},
-				})
-			} else {
-				// Image type
-				contentParts = append(contentParts, llm.MessageContentPart{
-					Type: "image_url",
-					ImageURL: &llm.ImageURL{
-						URL: dataURL,
-					},
-				})
+				}
+				// Gemini may response empty tool call ID.
+				if tc.ID == "" {
+					tc.ID = uuid.NewString()
+				}
+
+				toolCalls = append(toolCalls, tc)
+				nextToolCallIndex++
+			}
+		}
+
+		// Set content - prefer multipart if we have images
+		if len(contentParts) > 0 {
+			// Add text parts to content parts
+			for _, text := range textParts {
+				contentParts = append([]llm.MessageContentPart{{
+					Type: "text",
+					Text: lo.ToPtr(text),
+				}}, contentParts...)
 			}
 
-		case part.FunctionCall != nil:
-			argsJSON, _ := json.Marshal(part.FunctionCall.Args)
-			tc := llm.ToolCall{
-				Index: nextToolCallIndex,
-				ID:    part.FunctionCall.ID,
-				Type:  "function",
-				Function: llm.FunctionCall{
-					Name:      part.FunctionCall.Name,
-					Arguments: string(argsJSON),
-				},
+			msg.Content = llm.MessageContent{
+				MultipleContent: contentParts,
 			}
-			// Gemini may response empty tool call ID.
-			if tc.ID == "" {
-				tc.ID = uuid.NewString()
+		} else if len(textParts) > 0 {
+			allText := strings.Join(textParts, "")
+			msg.Content = llm.MessageContent{
+				Content: &allText,
 			}
+		}
 
-			toolCalls = append(toolCalls, tc)
-			nextToolCallIndex++
+		// Set tool calls
+		if len(toolCalls) > 0 {
+			hasToolCall = true
+			msg.ToolCalls = toolCalls
+		}
+
+		// Set reasoning content
+		if reasoningContent != "" {
+			msg.ReasoningContent = &reasoningContent
+		}
+
+		// Set Delta for streaming, Message for non-streaming
+		if isStream {
+			choice.Delta = msg
+		} else {
+			choice.Message = msg
 		}
 	}
 
-	// Set content - prefer multipart if we have images
-	if len(contentParts) > 0 {
-		// Add text parts to content parts
-		for _, text := range textParts {
-			contentParts = append([]llm.MessageContentPart{{
-				Type: "text",
-				Text: lo.ToPtr(text),
-			}}, contentParts...)
-		}
+	// Convert finish reason
+	choice.FinishReason = convertGeminiFinishReasonToLLM(candidate.FinishReason, hasToolCall)
 
-		msg.Content = llm.MessageContent{
-			MultipleContent: contentParts,
-		}
-	} else if len(textParts) > 0 {
-		allText := strings.Join(textParts, "")
-		msg.Content = llm.MessageContent{
-			Content: &allText,
-		}
-	}
-
-	// Set tool calls
-	if len(toolCalls) > 0 {
-		chunkHasToolCall = true
-		msg.ToolCalls = toolCalls
-	}
-
-	// Set reasoning content
-	if reasoningContent != "" {
-		msg.ReasoningContent = &reasoningContent
-	}
-
-	// Set Delta for streaming, Message for non-streaming
-	if isStream {
-		choice.Delta = msg
-	} else {
-		choice.Message = msg
-	}
-
-	// Convert finish reason - use accumulated hasToolCall (from previous chunks) OR chunkHasToolCall (from current chunk)
-	choice.FinishReason = convertGeminiFinishReasonToLLM(candidate.FinishReason, accumulatedHasToolCall || chunkHasToolCall)
-
-	return choice, nextToolCallIndex, chunkHasToolCall
+	return choice, nextToolCallIndex
 }

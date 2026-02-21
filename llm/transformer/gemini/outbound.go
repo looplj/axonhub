@@ -44,8 +44,7 @@ type Config struct {
 
 // OutboundTransformer implements transformer.Outbound for Gemini format.
 type OutboundTransformer struct {
-	config       Config
-	lastMessages []llm.Message // Store last request messages to check for unresponded tool calls
+	config Config
 }
 
 // NewOutboundTransformer creates a new Gemini OutboundTransformer with legacy parameters.
@@ -96,44 +95,6 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatGeminiContents
 }
 
-// hasUnrespondedToolCalls checks if the request has function calls without corresponding responses.
-// This is used to detect when Gemini returns STOP prematurely.
-func (t *OutboundTransformer) hasUnrespondedToolCalls() bool {
-	if len(t.lastMessages) == 0 {
-		return false
-	}
-
-	// Track which tool calls have been responded to
-	respondedToolCalls := make(map[string]bool)
-	pendingToolCalls := make(map[string]bool)
-
-	for _, msg := range t.lastMessages {
-		switch msg.Role {
-		case "assistant":
-			// Assistant messages with tool calls add to pending
-			for _, tc := range msg.ToolCalls {
-				if tc.ID != "" {
-					pendingToolCalls[tc.ID] = true
-				}
-			}
-		case "tool":
-			// Tool responses mark tool calls as responded
-			if msg.ToolCallID != nil && *msg.ToolCallID != "" {
-				respondedToolCalls[*msg.ToolCallID] = true
-			}
-		}
-	}
-
-	// Check if there are pending tool calls that haven't been responded to
-	for toolCallID := range pendingToolCalls {
-		if !respondedToolCalls[toolCallID] {
-			return true
-		}
-	}
-
-	return false
-}
-
 // TransformRequest transforms the unified request to Gemini HTTP request.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
@@ -157,10 +118,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required,%v", transformer.ErrInvalidRequest, llmReq.Messages)
 	}
-
-	// Store messages for checking unresponded tool calls in streaming
-	t.lastMessages = make([]llm.Message, len(llmReq.Messages))
-	copy(t.lastMessages, llmReq.Messages)
 
 	// Convert to Gemini request format with config
 	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
