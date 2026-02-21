@@ -2,6 +2,7 @@ package qb
 
 import (
 	"fmt"
+	"strconv"
 )
 
 // DailyThroughputQueryType identifies the type of daily throughput query to build.
@@ -151,73 +152,71 @@ func throughputCalculationSQL(seTable string) string {
 // Applies date filtering and per-day limit using ROW_NUMBER() window partitioned by date.
 func buildDailyRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, limit int, startDatePlaceholder string) string {
 	throughputSQL := throughputCalculationSQL("se")
-	return fmt.Sprintf(`
-WITH successful_execs AS (
-    SELECT
-        request_id,
-        channel_id,
-        metrics_latency_ms,
-        metrics_first_token_latency_ms,
-        stream,
-        created_at,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
-    FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= %s
-),
-daily_stats AS (
-    SELECT
-        %s as date,
-        %s as id,
-        %s,
-        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-        COUNT(DISTINCT se.request_id) as request_count,
-        %s as throughput,
-        ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s DESC) as daily_rn
-    FROM successful_execs se
-    JOIN usage_logs ul ON se.request_id = ul.request_id
-    %s
-    WHERE se.rn = 1
-    GROUP BY %s, %s
-)
-SELECT date, id, %s, tokens_count, request_count, throughput
-FROM daily_stats
-WHERE daily_rn <= %d
-ORDER BY date DESC, throughput DESC`, startDatePlaceholder, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, dateExpr, config.GroupByFields, config.NameAlias, limit)
+	return "WITH successful_execs AS (\n" +
+		"    SELECT\n" +
+		"        request_id,\n" +
+		"        channel_id,\n" +
+		"        metrics_latency_ms,\n" +
+		"        metrics_first_token_latency_ms,\n" +
+		"        stream,\n" +
+		"        created_at,\n" +
+		"        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn\n" +
+		"    FROM request_executions\n" +
+		"    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= " + startDatePlaceholder + "\n" +
+		"),\n" +
+		"daily_stats AS (\n" +
+		"    SELECT\n" +
+		"        " + dateExpr + " as date,\n" +
+		"        " + config.IDColumn + " as id,\n" +
+		"        " + config.NameColumn + ",\n" +
+		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
+		"        " + throughputSQL + " as throughput,\n" +
+		"        ROW_NUMBER() OVER (PARTITION BY " + dateExpr + " ORDER BY " + throughputSQL + " DESC) as daily_rn\n" +
+		"    FROM successful_execs se\n" +
+		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
+		"    " + config.JoinClause + "\n" +
+		"    WHERE se.rn = 1\n" +
+		"    GROUP BY " + dateExpr + ", " + config.GroupByFields + "\n" +
+		")\n" +
+		"SELECT date, id, " + config.NameAlias + ", tokens_count, request_count, throughput\n" +
+		"FROM daily_stats\n" +
+		"WHERE daily_rn <= " + strconv.Itoa(limit) + "\n" +
+		"ORDER BY date DESC, throughput DESC"
 }
 
 // buildDailyMaxIDQuery constructs a daily throughput query using MAX(id) subquery.
 // Applies date filtering and per-day limit using ROW_NUMBER() window partitioned by date.
 func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limit int, startDatePlaceholder string) string {
 	throughputSQL := throughputCalculationSQL("se")
-	return fmt.Sprintf(`
-WITH ranked_execs AS (
-    SELECT
-        %s as date,
-        %s as id,
-        %s,
-        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
-        COUNT(DISTINCT se.request_id) as request_count,
-        %s as throughput,
-        ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s DESC) as daily_rn
-    FROM request_executions se
-    JOIN usage_logs ul ON se.request_id = ul.request_id
-    %s
-    WHERE se.status = 'completed'
-        AND se.metrics_latency_ms > 0
-        AND se.created_at >= %s
-        AND se.id = (
-            SELECT MAX(re2.id)
-            FROM request_executions re2
-            WHERE re2.request_id = se.request_id
-                AND re2.status = 'completed'
-                AND re2.metrics_latency_ms > 0
-        )
-    GROUP BY %s, %s
-)
-SELECT date, id, %s, tokens_count, request_count, throughput
-FROM ranked_execs
-WHERE daily_rn <= %d
-ORDER BY date DESC, throughput DESC`, dateExpr, config.IDColumn, config.NameColumn, throughputSQL, dateExpr, throughputSQL, config.JoinClause, startDatePlaceholder, dateExpr, config.GroupByFields, config.NameAlias, limit)
+	return "WITH ranked_execs AS (\n" +
+		"    SELECT\n" +
+		"        " + dateExpr + " as date,\n" +
+		"        " + config.IDColumn + " as id,\n" +
+		"        " + config.NameColumn + ",\n" +
+		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
+		"        " + throughputSQL + " as throughput,\n" +
+		"        ROW_NUMBER() OVER (PARTITION BY " + dateExpr + " ORDER BY " + throughputSQL + " DESC) as daily_rn\n" +
+		"    FROM request_executions se\n" +
+		"    JOIN usage_logs ul ON se.request_id = ul.request_id\n" +
+		"    " + config.JoinClause + "\n" +
+		"    WHERE se.status = 'completed'\n" +
+		"        AND se.metrics_latency_ms > 0\n" +
+		"        AND se.created_at >= " + startDatePlaceholder + "\n" +
+		"        AND se.id = (\n" +
+		"            SELECT MAX(re2.id)\n" +
+		"            FROM request_executions re2\n" +
+		"            WHERE re2.request_id = se.request_id\n" +
+		"                AND re2.status = 'completed'\n" +
+		"                AND re2.metrics_latency_ms > 0\n" +
+		"        )\n" +
+		"    GROUP BY " + dateExpr + ", " + config.GroupByFields + "\n" +
+		")\n" +
+		"SELECT date, id, " + config.NameAlias + ", tokens_count, request_count, throughput\n" +
+		"FROM ranked_execs\n" +
+		"WHERE daily_rn <= " + strconv.Itoa(limit) + "\n" +
+		"ORDER BY date DESC, throughput DESC"
 }
 
 // BuildDailyPerformanceStatsQuery constructs a SQL query for daily performance statistics

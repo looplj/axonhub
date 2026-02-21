@@ -552,6 +552,26 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			},
 		},
 		{
+			name:          "model query with sqlite3 and MaxID mode",
+			dialect:       "sqlite3",
+			timezone:      "UTC",
+			offsetSeconds: 0,
+			queryType:     DailyThroughputByModel,
+			placeholder:   "?",
+			mode:          ThroughputModeMaxID,
+			wantContains: []string{
+				"MAX(se2.id)",
+				"latest_execs",
+				"JOIN requests r ON se.request_id = r.id",
+				"r.model_id",
+				"strftime",
+			},
+			wantNotContains: []string{
+				"successful_execs",
+				"ROW_NUMBER() OVER (PARTITION BY request_id",
+			},
+		},
+		{
 			name:          "model query with postgresql dialect alias",
 			dialect:       "postgresql",
 			timezone:      "Europe/London",
