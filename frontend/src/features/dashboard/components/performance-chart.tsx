@@ -260,7 +260,7 @@ export function PerformanceChart({
       name: dateObj.toLocaleDateString(locale, {
         month: '2-digit',
         day: '2-digit',
-        timeZone: timezone,
+        timeZone: 'UTC',
       }),
     };
 
