@@ -11,6 +11,8 @@
   "requests.columns.roles": "Roles",
   "requests.columns.noRoles": "No roles",
   "requests.columns.details": "Details",
+  "requests.columns.status": "Status",
+  "requests.columns.createdAt": "Created At",
   "requests.columns.cost": "Cost",
   "requests.columns.costLabel": "cost",
   "requests.columns.latency": "Latency",

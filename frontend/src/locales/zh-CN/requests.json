@@ -11,6 +11,8 @@
   "requests.columns.roles": "角色",
   "requests.columns.noRoles": "无角色",
   "requests.columns.details": "详情",
+  "requests.columns.status": "状态",
+  "requests.columns.createdAt": "创建时间",
   "requests.columns.cost": "成本",
   "requests.columns.costLabel": "成本",
   "requests.columns.latency": "耗时",
