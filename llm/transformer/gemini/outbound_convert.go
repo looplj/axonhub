@@ -215,12 +215,9 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 			// Group consecutive tool messages into a single Content entry
 			toolContent := convertLLMToolResultToGeminiContent(&msg, contents, config)
 			if toolContent != nil {
-				// Check if previous content was also a tool response (user role with functionResponse parts)
-				if len(contents) > 0 && contents[len(contents)-1].Role == "user" && len(contents[len(contents)-1].Parts) > 0 && contents[len(contents)-1].Parts[0].FunctionResponse != nil {
-					// Append to existing tool content
+				if isPreviousContentToolResponse(contents) {
 					contents[len(contents)-1].Parts = append(contents[len(contents)-1].Parts, toolContent.Parts...)
 				} else {
-					// Create new content entry
 					contents = append(contents, toolContent)
 				}
 			}
@@ -483,6 +480,19 @@ func findToolNameByToolCallID(contents []*Content, id string) string {
 	}
 
 	return ""
+}
+
+// isPreviousContentToolResponse checks if the last content entry is a tool response
+// (user role with functionResponse parts) for grouping consecutive tool messages.
+func isPreviousContentToolResponse(contents []*Content) bool {
+	if len(contents) == 0 {
+		return false
+	}
+	lastContent := contents[len(contents)-1]
+	if lastContent.Role != "user" || len(lastContent.Parts) == 0 {
+		return false
+	}
+	return lastContent.Parts[0].FunctionResponse != nil
 }
 
 // convertGeminiToLLMResponse converts Gemini GenerateContentResponse to unified Response.
