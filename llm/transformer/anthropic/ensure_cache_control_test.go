@@ -120,7 +120,7 @@ func TestEnsureCacheControl_ZeroBreakpoints_AutoInjects(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// tools 最后一个被注入
 		assert.Nil(t, req.Tools[0].CacheControl)
@@ -150,7 +150,7 @@ func TestEnsureCacheControl_ZeroBreakpoints_AutoInjects(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, 1, countCacheControls(req))
 	})
 
@@ -162,7 +162,7 @@ func TestEnsureCacheControl_ZeroBreakpoints_AutoInjects(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// tools 结构锚点 + 1 个消息锚点
 		assert.Equal(t, 2, countCacheControls(req))
@@ -186,7 +186,7 @@ func TestEnsureCacheControl_ZeroBreakpoints_AutoInjects(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// 会话末尾（最后一条消息）优先注入
 		require.Len(t, req.Messages[2].Content.MultipleContent, 1)
@@ -206,7 +206,7 @@ func TestEnsureCacheControl_WithinLimit_NoModification(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, 2, countCacheControls(req))
 	})
 
@@ -233,7 +233,7 @@ func TestEnsureCacheControl_WithinLimit_NoModification(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, 3, countCacheControls(req))
 	})
 }
@@ -247,7 +247,7 @@ func TestEnsureCacheControl_ExistingBreakpoints_KeepAsIs(t *testing.T) {
 		},
 	}
 
-	ensureCacheControl(req)
+	optimizeCacheControl(req)
 	assert.Equal(t, 1, countCacheControls(req))
 }
 
@@ -286,7 +286,7 @@ func TestEnsureCacheControl_ExceedsLimit_TrimToLastFour(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// strict 模式按新策略重建：结构锚点 + 会话末尾消息锚点。
 		assert.Nil(t, req.Tools[0].CacheControl)
@@ -329,7 +329,7 @@ func TestEnsureCacheControl_ExceedsLimit_TrimToLastFour(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, 3, countCacheControls(req))
 		assert.Nil(t, req.Tools[0].CacheControl)
 		assert.NotNil(t, req.Tools[1].CacheControl)
@@ -359,7 +359,7 @@ func TestEnsureCacheControl_AdaptiveBreakpoints_ByBlockDensity(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		assert.Equal(t, 2, countCacheControls(req))
 
@@ -388,7 +388,7 @@ func TestEnsureCacheControl_AdaptiveBreakpoints_ByBlockDensity(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, 2, countCacheControls(req))
 	})
 
@@ -406,7 +406,7 @@ func TestEnsureCacheControl_AdaptiveBreakpoints_ByBlockDensity(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		assert.Equal(t, 2, countCacheControls(req))
 
@@ -435,7 +435,7 @@ func TestEnsureCacheControl_SystemPromptStringForm(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// System.Prompt 应被归一化为 MultiplePrompts，并注入 cache_control
 		assert.Nil(t, req.System.Prompt)
@@ -455,7 +455,7 @@ func TestEnsureCacheControl_SystemPromptStringForm(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		assert.Nil(t, req.System.Prompt)
 		require.Len(t, req.System.MultiplePrompts, 1)
@@ -475,7 +475,7 @@ func TestEnsureCacheControl_EdgeCases(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, 1, countCacheControls(req))
 	})
 
@@ -488,7 +488,7 @@ func TestEnsureCacheControl_EdgeCases(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, 1, countCacheControls(req))
 	})
 }
@@ -528,7 +528,7 @@ func TestEnsureCacheControl_StructuralAnchors(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// tools 最后一个应被补齐
 		assert.NotNil(t, req.Tools[1].CacheControl)
@@ -553,7 +553,7 @@ func TestEnsureCacheControl_StructuralAnchors(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, "ephemeral", req.Tools[1].CacheControl.Type)
 		assert.Nil(t, req.Tools[0].CacheControl)
 	})
@@ -575,7 +575,7 @@ func TestEnsureCacheControl_StructuralAnchors(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		assert.NotNil(t, req.Tools[1].CacheControl)
 		require.NotNil(t, req.System)
@@ -601,7 +601,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Nil(t, req.Messages[0].Content.MultipleContent[0].CacheControl)
 		assert.NotNil(t, req.Messages[0].Content.MultipleContent[1].CacheControl)
 		assert.Equal(t, 1, countCacheControls(req))
@@ -620,7 +620,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Nil(t, req.Messages[0].Content.MultipleContent[0].CacheControl)
 	})
 
@@ -655,7 +655,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// thinking 块绝不能有 cache_control
 		thinkingBlock := req.Messages[1].Content.MultipleContent[0]
@@ -681,7 +681,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// thinking 块上的 cache_control 应被清理
 		assert.Nil(t, req.Messages[0].Content.MultipleContent[0].CacheControl)
@@ -705,7 +705,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// thinking 块不计入可缓存密度，30 个 text 块 → desired = 2
 		// 所有 cache_control 应只在 text 块上
@@ -748,7 +748,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// thinking 和 redacted_thinking 块都不能有 cache_control
 		assert.Nil(t, req.Messages[1].Content.MultipleContent[0].CacheControl)
@@ -773,7 +773,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// redacted_thinking 块上的 cache_control 应被清理
 		assert.Nil(t, req.Messages[0].Content.MultipleContent[0].CacheControl)
@@ -798,7 +798,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// redacted_thinking 块不计入可缓存密度，30 个 text 块 → desired = 2
 		for _, block := range req.Messages[0].Content.MultipleContent {
@@ -830,7 +830,7 @@ func TestEnsureCacheControl_ThinkingBlocks(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		for _, block := range req.Messages[0].Content.MultipleContent {
 			if block.Type == "thinking" {
@@ -871,7 +871,7 @@ func TestEnsureCacheControl_Regression(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 
 		// thinking 块不应有 cache_control
 		assert.Nil(t, req.Messages[1].Content.MultipleContent[0].CacheControl)
@@ -909,7 +909,7 @@ func TestEnsureCacheControl_Regression(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.LessOrEqual(t, countCacheControls(req), maxCacheControlBreakpoints)
 	})
 
@@ -928,10 +928,10 @@ func TestEnsureCacheControl_Regression(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		firstCount := countCacheControls(req)
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		secondCount := countCacheControls(req)
 
 		assert.Equal(t, firstCount, secondCount)
@@ -976,7 +976,7 @@ func TestEnsureCacheControl_OpenCodePluginScenario(t *testing.T) {
 			},
 		}
 
-		ensureCacheControl(req)
+		optimizeCacheControl(req)
 		assert.Equal(t, 3, countCacheControls(req))
 	})
 }

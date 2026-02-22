@@ -7,14 +7,14 @@ const (
 	adaptiveCacheControlBlockWindow = 20
 )
 
-// ensureCacheControl 统一自动修复 cache_control：
+// optimizeCacheControl 统一自动修复 cache_control：
 //   - strict mode：先清空全部断点，再按固定规划重建，避免历史断点造成抖动
 //   - 强制结构锚点：tools(last) + system(last)
 //   - 消息锚点策略：短内容 1 个、长内容 2 个（受 4 个上限约束）
 //   - 消息首选“最后一条消息的最后一个可缓存块”，更贴近官方示例
 //   - 第 2 个消息锚点优先落在“距离末尾约 20 块”的窗口边界
 //   - thinking 与空 text 不允许打点
-func ensureCacheControl(req *MessageRequest) {
+func optimizeCacheControl(req *MessageRequest) {
 	// 统一归一化：将 Content 字符串形式转为 MultipleContent 数组，
 	// 后续所有函数只处理数组格式，消除隐式结构改写副作用。
 	normalizeMessageContents(req)
