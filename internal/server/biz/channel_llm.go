@@ -30,6 +30,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/nanogpt"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
+	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
 	"github.com/looplj/axonhub/llm/transformer/xai"
@@ -556,6 +557,58 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			return nil, fmt.Errorf("failed to create codex outbound transformer: %w", err)
 		}
 
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeGithubCopilot:
+		// GitHub Copilot requires OAuth credentials with device flow
+		if !c.Credentials.IsOAuth() {
+			return nil, fmt.Errorf("missing oauth credentials for channel %s", c.Name)
+		}
+
+		credsJSON := strings.TrimSpace(c.Credentials.APIKey)
+		if c.Credentials.OAuth != nil {
+			o := c.Credentials.OAuth
+
+			creds, err := (&oauth.OAuthCredentials{
+				AccessToken:  o.AccessToken,
+				RefreshToken: o.RefreshToken,
+				ClientID:     o.ClientID,
+				ExpiresAt:    o.ExpiresAt,
+				TokenType:    o.TokenType,
+				Scopes:       o.Scopes,
+			}).ToJSON()
+			if err != nil {
+				return nil, fmt.Errorf("failed to encode github_copilot oauth credentials: %w", err)
+			}
+
+			credsJSON = creds
+		}
+
+		creds, err := oauth.ParseCredentialsJSON(credsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse github_copilot oauth credentials: %w", err)
+		}
+
+		// Create CopilotTokenProvider with the token exchanger
+		p := copilot.NewTokenProvider(copilot.TokenProviderParams{
+			Credentials:    creds,
+			HTTPClient:     httpClient,
+			TokenExchanger: svc.copilotTokenExchanger,
+		})
+
+		// For now, use a placeholder transformer that will be created in Wave 3
+		// The transformer will use the CopilotTokenProvider for token management
+		// TODO(Wave 3): Replace with proper copilot.NewOutboundTransformer
+		_ = p // Use p to avoid unused variable error
+		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create github_copilot outbound transformer: %w", err)
+		}
 		ch.Outbound = transformer
 
 		return ch, nil

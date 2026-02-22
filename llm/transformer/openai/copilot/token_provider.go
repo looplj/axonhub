@@ -1,0 +1,87 @@
+package copilot
+
+import (
+	"context"
+	"errors"
+	"sync"
+
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
+)
+
+// TokenExchanger defines the interface for exchanging OAuth access tokens for Copilot tokens.
+// This interface is typically implemented by biz.CopilotTokenExchanger.
+type TokenExchanger interface {
+	// GetToken returns a Copilot token for the given access token.
+	// It handles caching internally and returns the token with its expiration timestamp.
+	GetToken(ctx context.Context, accessToken string) (string, int64, error)
+}
+
+// CopilotTokenProvider manages OAuth2 credentials and exchanges them for Copilot tokens.
+// Unlike standard OAuth providers that use refresh tokens, Copilot uses a two-step flow:
+// 1. Device flow -> access_token (stored in OAuthCredentials)
+// 2. Token exchange -> copilot_token (via TokenExchanger)
+type CopilotTokenProvider struct {
+	httpClient     *httpclient.HttpClient
+	tokenExchanger TokenExchanger
+	credentials    *oauth.OAuthCredentials
+	mu             sync.RWMutex
+}
+
+// TokenProviderParams contains the parameters for creating a new CopilotTokenProvider.
+type TokenProviderParams struct {
+	Credentials    *oauth.OAuthCredentials
+	HTTPClient     *httpclient.HttpClient
+	TokenExchanger TokenExchanger
+}
+
+// NewTokenProvider creates a new CopilotTokenProvider instance.
+// It wraps a TokenExchanger to handle the token exchange lifecycle.
+func NewTokenProvider(params TokenProviderParams) *CopilotTokenProvider {
+	return &CopilotTokenProvider{
+		httpClient:     params.HTTPClient,
+		tokenExchanger: params.TokenExchanger,
+		credentials:    params.Credentials,
+	}
+}
+
+// GetToken returns a valid Copilot token.
+// If the cached copilot token is expired or missing, it exchanges the access token for a new one.
+// This method implements the token provider interface used by the Copilot outbound transformer.
+func (p *CopilotTokenProvider) GetToken(ctx context.Context) (string, error) {
+	p.mu.RLock()
+	creds := p.credentials
+	p.mu.RUnlock()
+
+	if creds == nil {
+		return "", errors.New("credentials is nil")
+	}
+
+	if creds.AccessToken == "" {
+		return "", errors.New("access token is empty")
+	}
+
+	// The TokenExchanger handles caching internally
+	// It returns cached token if valid, or exchanges for a new one if expired
+	token, _, err := p.tokenExchanger.GetToken(ctx, creds.AccessToken)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+// UpdateCredentials updates the stored OAuth credentials.
+// This is called when new credentials are obtained (e.g., after device flow completes).
+func (p *CopilotTokenProvider) UpdateCredentials(creds *oauth.OAuthCredentials) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.credentials = creds
+}
+
+// GetCredentials returns the current OAuth credentials.
+func (p *CopilotTokenProvider) GetCredentials() *oauth.OAuthCredentials {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.credentials
+}

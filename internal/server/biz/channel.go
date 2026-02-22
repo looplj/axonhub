@@ -88,6 +88,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		channelErrorCounts: make(map[int]map[int]int),
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
+		copilotTokenExchanger: NewCopilotTokenExchanger(nil),
 	}
 
 	svc.initChannelPerformances(context.Background())
@@ -167,6 +168,9 @@ type ChannelService struct {
 
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
+
+	// copilotTokenExchanger handles OAuth access token to Copilot token exchange
+	copilotTokenExchanger *CopilotTokenExchanger
 }
 
 func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
