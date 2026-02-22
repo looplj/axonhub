@@ -41,6 +41,9 @@ function ApiKeysContent() {
     }
     if (activeTab !== 'all') {
       where.typeIn = [activeTab];
+    } else {
+      // Exclude agent type API keys by default
+      where.typeIn = ['user', 'service_account'];
     }
     if (statusFilter.length > 0) {
       where.statusIn = statusFilter;

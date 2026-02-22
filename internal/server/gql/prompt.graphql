@@ -1,4 +1,5 @@
 enum PromptActionType {
+  noop
   prepend
   append
 }

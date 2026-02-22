@@ -113,9 +113,9 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AgentBootstrap          func(childComplexity int, agentID objects.GUID) int
+		AgentBootstrap          func(childComplexity int) int
 		PullAgentMessages       func(childComplexity int, input PullAgentMessagesInput) int
-		PullAgentMessagesToUser func(childComplexity int, agentID objects.GUID, threadID string, afterSequence *int, limit *int) int
+		PullAgentMessagesToUser func(childComplexity int, threadID string, afterSequence *int, limit *int) int
 	}
 }
 
@@ -127,9 +127,9 @@ type MutationResolver interface {
 	AckAgentMessages(ctx context.Context, input AckAgentMessagesInput) (bool, error)
 }
 type QueryResolver interface {
-	AgentBootstrap(ctx context.Context, agentID objects.GUID) (*AgentBootstrap, error)
+	AgentBootstrap(ctx context.Context) (*AgentBootstrap, error)
 	PullAgentMessages(ctx context.Context, input PullAgentMessagesInput) ([]*AgentMessage, error)
-	PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, threadID string, afterSequence *int, limit *int) ([]*AgentMessage, error)
+	PullAgentMessagesToUser(ctx context.Context, threadID string, afterSequence *int, limit *int) ([]*AgentMessage, error)
 }
 
 type executableSchema struct {
@@ -429,12 +429,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		args, err := ec.field_Query_agentBootstrap_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.AgentBootstrap(childComplexity, args["agentID"].(objects.GUID)), true
+		return e.complexity.Query.AgentBootstrap(childComplexity), true
 	case "Query.pullAgentMessages":
 		if e.complexity.Query.PullAgentMessages == nil {
 			break
@@ -456,7 +451,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.PullAgentMessagesToUser(childComplexity, args["agentID"].(objects.GUID), args["threadID"].(string), args["afterSequence"].(*int), args["limit"].(*int)), true
+		return e.complexity.Query.PullAgentMessagesToUser(childComplexity, args["threadID"].(string), args["afterSequence"].(*int), args["limit"].(*int)), true
 
 	}
 	return 0, false
@@ -654,40 +649,24 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_agentBootstrap_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "agentID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
-	if err != nil {
-		return nil, err
-	}
-	args["agentID"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_pullAgentMessagesToUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "agentID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "threadID", ec.unmarshalNString2string)
 	if err != nil {
 		return nil, err
 	}
-	args["agentID"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "threadID", ec.unmarshalNString2string)
+	args["threadID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["threadID"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
+	args["afterSequence"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["afterSequence"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
-	if err != nil {
-		return nil, err
-	}
-	args["limit"] = arg3
+	args["limit"] = arg2
 	return args, nil
 }
 
@@ -2065,8 +2044,7 @@ func (ec *executionContext) _Query_agentBootstrap(ctx context.Context, field gra
 		field,
 		ec.fieldContext_Query_agentBootstrap,
 		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().AgentBootstrap(ctx, fc.Args["agentID"].(objects.GUID))
+			return ec.resolvers.Query().AgentBootstrap(ctx)
 		},
 		nil,
 		ec.marshalNAgentBootstrap2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentBootstrap,
@@ -2075,7 +2053,7 @@ func (ec *executionContext) _Query_agentBootstrap(ctx context.Context, field gra
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_agentBootstrap(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_agentBootstrap(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -2104,17 +2082,6 @@ func (ec *executionContext) fieldContext_Query_agentBootstrap(ctx context.Contex
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AgentBootstrap", field.Name)
 		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_agentBootstrap_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -2188,7 +2155,7 @@ func (ec *executionContext) _Query_pullAgentMessagesToUser(ctx context.Context, 
 		ec.fieldContext_Query_pullAgentMessagesToUser,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().PullAgentMessagesToUser(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["threadID"].(string), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
+			return ec.resolvers.Query().PullAgentMessagesToUser(ctx, fc.Args["threadID"].(string), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
 		},
 		nil,
 		ec.marshalNAgentMessage2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentMessageᚄ,
@@ -3802,20 +3769,13 @@ func (ec *executionContext) unmarshalInputAckAgentMessagesInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "instanceID", "messageIDs"}
+	fieldsInOrder := [...]string{"instanceID", "messageIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "agentID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AgentID = data
 		case "instanceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -3843,20 +3803,13 @@ func (ec *executionContext) unmarshalInputHeartbeatAgentInstanceInput(ctx contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "instanceID"}
+	fieldsInOrder := [...]string{"instanceID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "agentID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AgentID = data
 		case "instanceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -3881,20 +3834,13 @@ func (ec *executionContext) unmarshalInputPullAgentMessagesInput(ctx context.Con
 		asMap["limit"] = 50
 	}
 
-	fieldsInOrder := [...]string{"agentID", "instanceID", "threadID", "afterSequence", "limit"}
+	fieldsInOrder := [...]string{"instanceID", "threadID", "afterSequence", "limit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "agentID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AgentID = data
 		case "instanceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -3936,20 +3882,13 @@ func (ec *executionContext) unmarshalInputPushAgentMessageInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "instanceID", "threadID", "text"}
+	fieldsInOrder := [...]string{"instanceID", "threadID", "text"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "agentID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AgentID = data
 		case "instanceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -3984,20 +3923,13 @@ func (ec *executionContext) unmarshalInputRegisterAgentInstanceInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "instanceID", "name", "platform", "version"}
+	fieldsInOrder := [...]string{"instanceID", "name", "platform", "version"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "agentID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AgentID = data
 		case "instanceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -4039,20 +3971,13 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "threadID", "text"}
+	fieldsInOrder := [...]string{"threadID", "text"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "agentID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AgentID = data
 		case "threadID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threadID"))
 			data, err := ec.unmarshalNString2string(ctx, v)

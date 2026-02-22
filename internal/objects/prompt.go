@@ -3,6 +3,9 @@ package objects
 type PromptActionType string
 
 const (
+	// PromptActionTypeNoop is the action to do nothing.
+	PromptActionTypeNoop PromptActionType = "noop"
+
 	// PromptActionTypePrepend is the action to prepend the prompt before the request messages.
 	PromptActionTypePrepend PromptActionType = "prepend"
 

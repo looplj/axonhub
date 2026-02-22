@@ -43,7 +43,7 @@ func (Prompt) Fields() []ent.Field {
 			Comment("Project ID that this prompt belongs to").Annotations(
 			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput)),
 		field.Enum("type").
-			Values("agent_system", "system").
+			Values("agent", "system").
 			Optional().
 			Default("system").
 			Comment("Prompt type"),

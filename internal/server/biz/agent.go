@@ -61,12 +61,7 @@ func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput
 		return CreateAgentResult{}, fmt.Errorf("user not found in context")
 	}
 
-	skillsPolicy := objects.AgentSkillsPolicy{Add: "open"}
-	if input.SkillsPolicy != nil && input.SkillsPolicy.Add != "" {
-		skillsPolicy.Add = input.SkillsPolicy.Add
-	}
-
-	result, err := RunInTransaction(ctx, svc.AbstractService, func(txCtx context.Context) (CreateAgentResult, error) {
+	return RunInTransaction(ctx, svc.AbstractService, func(txCtx context.Context) (CreateAgentResult, error) {
 		client := svc.entFromContext(txCtx)
 
 		promptName := fmt.Sprintf("agent:%s", input.Name)
@@ -76,7 +71,7 @@ func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput
 		systemPrompt, err := authz.RunWithSystemBypass(txCtx, "create-agent-prompt", func(bypassCtx context.Context) (*ent.Prompt, error) {
 			return client.Prompt.Create().
 				SetProjectID(projectID).
-				SetType(prompt.TypeAgentSystem).
+				SetType(prompt.TypeAgent).
 				SetName(promptName).
 				SetDescription(promptDescription).
 				SetRole(promptRole).
@@ -84,7 +79,7 @@ func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput
 				SetStatus(prompt.StatusDisabled).
 				SetOrder(0).
 				SetSettings(objects.PromptSettings{
-					Action: objects.PromptAction{Type: objects.PromptActionTypePrepend},
+					Action: objects.PromptAction{Type: objects.PromptActionTypeNoop},
 				}).
 				Save(bypassCtx)
 		})
@@ -137,12 +132,6 @@ func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput
 			APIKey: svcKey,
 		}, nil
 	})
-
-	if err != nil {
-		return CreateAgentResult{}, err
-	}
-
-	return result, nil
 }
 
 type UpdateAgentInput struct {
@@ -167,7 +156,7 @@ func (svc *AgentService) UpdateAgent(ctx context.Context, id int, input UpdateAg
 	if err := svc.RunInTransaction(ctx, func(txCtx context.Context) error {
 		client := svc.entFromContext(txCtx)
 
-		agentEntity, err := client.Agent.Query().
+		entity, err := client.Agent.Query().
 			Where(
 				agent.IDEQ(id),
 				agent.ProjectIDEQ(projectID),
@@ -179,7 +168,7 @@ func (svc *AgentService) UpdateAgent(ctx context.Context, id int, input UpdateAg
 
 		if input.SystemPrompt != nil {
 			if _, err := authz.RunWithSystemBypass(txCtx, "update-agent-prompt", func(bypassCtx context.Context) (*ent.Prompt, error) {
-				return client.Prompt.UpdateOneID(agentEntity.PromptID).
+				return client.Prompt.UpdateOneID(entity.PromptID).
 					Where(prompt.ProjectIDEQ(projectID)).
 					SetContent(*input.SystemPrompt).
 					Save(bypassCtx)
@@ -188,7 +177,7 @@ func (svc *AgentService) UpdateAgent(ctx context.Context, id int, input UpdateAg
 			}
 		}
 
-		update := client.Agent.UpdateOneID(agentEntity.ID).
+		update := client.Agent.UpdateOneID(entity.ID).
 			Where(agent.ProjectIDEQ(projectID)).
 			SetNillableName(input.Name).
 			SetNillableDescription(input.Description).

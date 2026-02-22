@@ -1,0 +1,41 @@
+
+query AgentBootstrap {
+  agentBootstrap {
+    agentID
+    agentName
+    model
+    systemPrompt
+    tools { name description parameters config }
+    skills { name content entrypoint args }
+    builtinTools { name enabled order config }
+  }
+}
+
+mutation RegisterAgentInstance($input: RegisterAgentInstanceInput!) {
+  registerAgentInstance(input: $input) {
+    instanceID
+  }
+}
+
+mutation HeartbeatAgentInstance($input: HeartbeatAgentInstanceInput!) {
+  heartbeatAgentInstance(input: $input)
+}
+
+query PullAgentMessages($input: PullAgentMessagesInput!) {
+  pullAgentMessages(input: $input) {
+    id
+    threadID
+    text
+    sequence
+  }
+}
+
+mutation AckAgentMessages($input: AckAgentMessagesInput!) {
+  ackAgentMessages(input: $input)
+}
+
+mutation PushAgentMessage($input: PushAgentMessageInput!) {
+  pushAgentMessage(input: $input) {
+    id
+  }
+}

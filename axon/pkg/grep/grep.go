@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -84,11 +85,15 @@ type Result struct {
 }
 
 type Searcher struct {
-	workspace string
+	fsys fs.FS
 }
 
 func NewSearcher(workspace string) *Searcher {
-	return &Searcher{workspace: workspace}
+	return &Searcher{fsys: os.DirFS(workspace)}
+}
+
+func NewSearcherWithFS(fsys fs.FS) *Searcher {
+	return &Searcher{fsys: fsys}
 }
 
 func (s *Searcher) Search(ctx context.Context, opts Options) (*Result, error) {
@@ -96,7 +101,7 @@ func (s *Searcher) Search(ctx context.Context, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("pattern is required")
 	}
 
-	searchPath := s.workspace
+	searchPath := "."
 	if opts.Path != "" {
 		searchPath = opts.Path
 	}
@@ -197,7 +202,7 @@ func (s *Searcher) searchFile(path string, re *regexp.Regexp, opts Options, outp
 		return s.searchFileMultiline(path, re, opts, outputMode)
 	}
 
-	f, err := os.Open(path)
+	f, err := s.fsys.Open(path)
 	if err != nil {
 		return nil
 	}
@@ -238,7 +243,13 @@ func (s *Searcher) searchFile(path string, re *regexp.Regexp, opts Options, outp
 }
 
 func (s *Searcher) searchFileMultiline(path string, re *regexp.Regexp, opts Options, outputMode string) []string {
-	data, err := os.ReadFile(path)
+	f, err := s.fsys.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil
 	}
@@ -336,7 +347,7 @@ func (s *Searcher) formatContentMatches(path string, lines []string, matchIdxs [
 }
 
 func (s *Searcher) collectFiles(ctx context.Context, root string, globs []string, typeExts []string) ([]string, error) {
-	info, err := os.Stat(root)
+	info, err := fs.Stat(s.fsys, root)
 	if err != nil {
 		return nil, fmt.Errorf("cannot access %q: %w", root, err)
 	}
@@ -346,7 +357,7 @@ func (s *Searcher) collectFiles(ctx context.Context, root string, globs []string
 	}
 
 	var files []string
-	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(s.fsys, root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -357,7 +368,7 @@ func (s *Searcher) collectFiles(ctx context.Context, root string, globs []string
 
 		if d.IsDir() {
 			if SkipDirs[d.Name()] {
-				return filepath.SkipDir
+				return fs.SkipDir
 			}
 			return nil
 		}
@@ -380,6 +391,9 @@ func (s *Searcher) collectFiles(ctx context.Context, root string, globs []string
 		if len(globs) > 0 {
 			name := d.Name()
 			relPath, _ := filepath.Rel(root, path)
+			if relPath == "." {
+				relPath = name
+			}
 			matched := false
 			for _, g := range globs {
 				if ok, _ := filepath.Match(g, name); ok {

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
 import { Agent } from '../data/schema';
 
-type DialogType = 'create' | 'edit' | 'delete' | 'viewKey' | null;
+type DialogType = 'delete' | 'viewKey' | null;
 
 interface AgentsContextType {
   open: DialogType;

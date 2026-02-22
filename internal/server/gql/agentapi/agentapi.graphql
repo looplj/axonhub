@@ -49,7 +49,6 @@ enum AgentMessageStatus { pending acked expired }
 enum AgentMessageSenderType { user runtime system }
 
 input RegisterAgentInstanceInput {
-  agentID: ID!
   instanceID: String!
   name: String
   platform: String
@@ -64,18 +63,15 @@ type AgentInstance {
 }
 
 input HeartbeatAgentInstanceInput {
-  agentID: ID!
   instanceID: String!
 }
 
 input SendAgentMessageInput {
-  agentID: ID!
   threadID: String!
   text: String!
 }
 
 input PushAgentMessageInput {
-  agentID: ID!
   instanceID: String!
   threadID: String!
   text: String!
@@ -94,7 +90,6 @@ type AgentMessage {
 }
 
 input PullAgentMessagesInput {
-  agentID: ID!
   instanceID: String!
   threadID: String!
   afterSequence: Int
@@ -102,15 +97,14 @@ input PullAgentMessagesInput {
 }
 
 input AckAgentMessagesInput {
-  agentID: ID!
   instanceID: String!
   messageIDs: [ID!]!
 }
 
 type Query {
-  agentBootstrap(agentID: ID!): AgentBootstrap!
+  agentBootstrap: AgentBootstrap!
   pullAgentMessages(input: PullAgentMessagesInput!): [AgentMessage!]!
-  pullAgentMessagesToUser(agentID: ID!, threadID: String!, afterSequence: Int, limit: Int = 50): [AgentMessage!]!
+  pullAgentMessagesToUser(threadID: String!, afterSequence: Int, limit: Int = 50): [AgentMessage!]!
 }
 
 type Mutation {
@@ -121,4 +115,3 @@ type Mutation {
   pushAgentMessage(input: PushAgentMessageInput!): AgentMessage!
   ackAgentMessages(input: AckAgentMessagesInput!): Boolean!
 }
-

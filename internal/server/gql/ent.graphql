@@ -5007,7 +5007,7 @@ enum PromptStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/prompt
 PromptType is enum for the field type
 """
 enum PromptType @goModel(model: "github.com/looplj/axonhub/internal/ent/prompt.Type") {
-  agent_system
+  agent
   system
 }
 type PromptVersion implements Node {

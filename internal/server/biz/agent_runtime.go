@@ -126,6 +126,29 @@ type AckAgentMessagesInput struct {
 	MessageIDs []int
 }
 
+func (s *AgentRuntimeService) GetAgentIDFromAPIKey(ctx context.Context) (int, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return 0, fmt.Errorf("agent api key not found in context")
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-get-agent-id", func(bypassCtx context.Context) (int, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		return a.ID, nil
+	})
+}
+
 func (s *AgentRuntimeService) AgentBootstrap(ctx context.Context, agentID int) (*AgentBootstrap, error) {
 	apiKey, ok := contexts.GetAPIKey(ctx)
 	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {

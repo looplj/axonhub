@@ -13,7 +13,6 @@ import (
 )
 
 type AckAgentMessagesInput struct {
-	AgentID    objects.GUID    `json:"agentID"`
 	InstanceID string          `json:"instanceID"`
 	MessageIDs []*objects.GUID `json:"messageIDs"`
 }
@@ -75,40 +74,35 @@ type AgentToolDefinition struct {
 }
 
 type HeartbeatAgentInstanceInput struct {
-	AgentID    objects.GUID `json:"agentID"`
-	InstanceID string       `json:"instanceID"`
+	InstanceID string `json:"instanceID"`
 }
 
 type Mutation struct {
 }
 
 type PullAgentMessagesInput struct {
-	AgentID       objects.GUID `json:"agentID"`
-	InstanceID    string       `json:"instanceID"`
-	ThreadID      string       `json:"threadID"`
-	AfterSequence *int         `json:"afterSequence,omitempty"`
-	Limit         *int         `json:"limit,omitempty"`
+	InstanceID    string `json:"instanceID"`
+	ThreadID      string `json:"threadID"`
+	AfterSequence *int   `json:"afterSequence,omitempty"`
+	Limit         *int   `json:"limit,omitempty"`
 }
 
 type PushAgentMessageInput struct {
-	AgentID    objects.GUID `json:"agentID"`
-	InstanceID string       `json:"instanceID"`
-	ThreadID   string       `json:"threadID"`
-	Text       string       `json:"text"`
+	InstanceID string `json:"instanceID"`
+	ThreadID   string `json:"threadID"`
+	Text       string `json:"text"`
 }
 
 type RegisterAgentInstanceInput struct {
-	AgentID    objects.GUID `json:"agentID"`
-	InstanceID string       `json:"instanceID"`
-	Name       *string      `json:"name,omitempty"`
-	Platform   *string      `json:"platform,omitempty"`
-	Version    *string      `json:"version,omitempty"`
+	InstanceID string  `json:"instanceID"`
+	Name       *string `json:"name,omitempty"`
+	Platform   *string `json:"platform,omitempty"`
+	Version    *string `json:"version,omitempty"`
 }
 
 type SendAgentMessageInput struct {
-	AgentID  objects.GUID `json:"agentID"`
-	ThreadID string       `json:"threadID"`
-	Text     string       `json:"text"`
+	ThreadID string `json:"threadID"`
+	Text     string `json:"text"`
 }
 
 type AgentMessageDirection string

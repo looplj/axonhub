@@ -16,11 +16,21 @@ const AGENT_DETAIL_QUERY = `
         description
         status
         model
-        agentBuiltinTools
-        skillsPolicy
+        agentBuiltinTools {
+          name
+          enabled
+          order
+          config
+        }
+        skillsPolicy {
+          add
+        }
         prompt {
           id
           content
+        }
+        apiKey {
+          key
         }
         instances(first: $instancesFirst) {
           edges {
@@ -82,6 +92,7 @@ type AgentDetail = {
   agentBuiltinTools: any;
   skillsPolicy: any;
   prompt?: { id?: string; content?: string } | null;
+  apiKey?: { key?: string } | null;
   instances?: {
     edges?: { node: AgentInstanceNode }[];
     totalCount?: number;

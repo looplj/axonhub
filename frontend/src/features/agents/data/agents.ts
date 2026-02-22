@@ -20,8 +20,15 @@ const AGENTS_QUERY = `
           description
           status
           model
-          agentBuiltinTools
-          skillsPolicy
+          agentBuiltinTools {
+            name
+            enabled
+            order
+            config
+          }
+          skillsPolicy {
+            add
+          }
           prompt {
             id
             content
@@ -52,8 +59,15 @@ const CREATE_AGENT_MUTATION = `
       description
       status
       model
-      agentBuiltinTools
-      skillsPolicy
+      agentBuiltinTools {
+        name
+        enabled
+        order
+        config
+      }
+      skillsPolicy {
+        add
+      }
       prompt {
         id
         content
@@ -74,8 +88,15 @@ const UPDATE_AGENT_MUTATION = `
       description
       status
       model
-      agentBuiltinTools
-      skillsPolicy
+      agentBuiltinTools {
+        name
+        enabled
+        order
+        config
+      }
+      skillsPolicy {
+        add
+      }
       prompt {
         id
         content

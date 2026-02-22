@@ -13,7 +13,7 @@ function ProtectedAgentDetail() {
   );
 }
 
-export const Route = createFileRoute('/_authenticated/project/agents/$agentId')({
+export const Route = createFileRoute('/_authenticated/project/agents/$agentId/')({
   component: ProtectedAgentDetail,
 });
 

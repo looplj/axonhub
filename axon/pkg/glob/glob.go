@@ -8,11 +8,18 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/looplj/axonhub/axon/pkg/grep"
 )
 
 const MaxResults = 200
+
+var SkipDirs = map[string]bool{
+	".git":         true,
+	"node_modules": true,
+	".hg":          true,
+	".svn":         true,
+	"__pycache__":  true,
+	".DS_Store":    true,
+}
 
 type Options struct {
 	Pattern string
@@ -25,11 +32,15 @@ type Result struct {
 }
 
 type Globber struct {
-	workspace string
+	fsys fs.FS
 }
 
 func NewGlobber(workspace string) *Globber {
-	return &Globber{workspace: workspace}
+	return &Globber{fsys: os.DirFS(workspace)}
+}
+
+func NewGlobberWithFS(fsys fs.FS) *Globber {
+	return &Globber{fsys: fsys}
 }
 
 func (g *Globber) Glob(ctx context.Context, opts Options) (*Result, error) {
@@ -37,12 +48,12 @@ func (g *Globber) Glob(ctx context.Context, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("pattern is required")
 	}
 
-	searchPath := g.workspace
+	searchPath := "."
 	if opts.Path != "" {
 		searchPath = opts.Path
 	}
 
-	info, err := os.Stat(searchPath)
+	info, err := fs.Stat(g.fsys, searchPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot access %q: %w", searchPath, err)
 	}
@@ -57,7 +68,7 @@ func (g *Globber) Glob(ctx context.Context, opts Options) (*Result, error) {
 
 	var matches []fileEntry
 
-	err = filepath.WalkDir(searchPath, func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(g.fsys, searchPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -66,8 +77,8 @@ func (g *Globber) Glob(ctx context.Context, opts Options) (*Result, error) {
 		}
 
 		if d.IsDir() {
-			if grep.SkipDirs[d.Name()] {
-				return filepath.SkipDir
+			if SkipDirs[d.Name()] {
+				return fs.SkipDir
 			}
 			return nil
 		}
@@ -76,7 +87,7 @@ func (g *Globber) Glob(ctx context.Context, opts Options) (*Result, error) {
 			return nil
 		}
 
-		relPath, _ := filepath.Rel(searchPath, path)
+		relPath, _ := filepathRel(searchPath, path)
 		if Match(opts.Pattern, relPath) {
 			info, infoErr := d.Info()
 			var modTime int64
@@ -114,11 +125,25 @@ func (g *Globber) Glob(ctx context.Context, opts Options) (*Result, error) {
 	return &Result{Matches: paths, Truncated: truncated}, nil
 }
 
+func filepathRel(base, target string) (string, error) {
+	if base == "." {
+		return target, nil
+	}
+	if strings.HasPrefix(target, base+"/") {
+		return target[len(base)+1:], nil
+	}
+	return target, nil
+}
+
 func Match(pattern, path string) bool {
-	pattern = filepath.ToSlash(pattern)
-	path = filepath.ToSlash(path)
+	pattern = toSlash(pattern)
+	path = toSlash(path)
 
 	return doMatch(pattern, path)
+}
+
+func toSlash(s string) string {
+	return strings.ReplaceAll(s, "\\", "/")
 }
 
 func doMatch(pattern, path string) bool {

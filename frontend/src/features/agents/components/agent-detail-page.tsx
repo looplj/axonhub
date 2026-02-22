@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeft, MessageSquare, Activity } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Activity, Server, Clock, MessageSquareText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
@@ -24,7 +24,7 @@ export function AgentDetailPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const navigate = useNavigate();
-  const { agentId } = useParams({ from: '/_authenticated/project/agents/$agentId' as any }) as { agentId: string };
+  const { agentId } = useParams({ from: '/_authenticated/project/agents/$agentId/' as any }) as { agentId: string };
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
 
   const { data: agent, isLoading, refetch } = useAgentDetail(agentId);
@@ -110,9 +110,11 @@ export function AgentDetailPage() {
                   {agent.name} <span className='text-muted-foreground font-normal'>#{extractNumberID(agent.id) || agent.id}</span>
                 </h1>
                 <div className='mt-1 flex items-center gap-2'>
-                  <p className='text-muted-foreground text-xs'>{createdAtLabel}</p>
-                  <span className='text-muted-foreground text-xs'>•</span>
-                  <p className='text-muted-foreground text-xs'>{agent.status}</p>
+                  <p className='text-xs text-muted-foreground'>{createdAtLabel}</p>
+                  <span className='text-xs text-muted-foreground'>•</span>
+                  <Badge variant={agent.status === 'enabled' ? 'default' : 'secondary'} className='h-5 px-1.5 text-[10px] uppercase'>
+                    {agent.status}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -134,114 +136,122 @@ export function AgentDetailPage() {
       </Header>
 
       <Main className='flex-1 overflow-hidden'>
-        <div className='flex h-full flex-col gap-4 overflow-y-auto p-6'>
-          <Card className='border-0 shadow-sm'>
-            <CardHeader className='pb-3'>
-              <CardTitle className='text-base'>Instances</CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='flex flex-wrap items-center gap-2'>
-                <Badge variant={onlineCount > 0 ? 'default' : 'secondary'}>
-                  {onlineCount}/{instances.length} online
-                </Badge>
-                <div className='text-muted-foreground text-xs'>threshold</div>
-                <div className='flex items-center gap-2'>
-                  <Button
-                    type='button'
-                    size='sm'
-                    variant={onlineThresholdSeconds === 10 ? 'default' : 'outline'}
-                    onClick={() => setOnlineThresholdSeconds(10)}
-                  >
-                    10s
-                  </Button>
-                  <Button
-                    type='button'
-                    size='sm'
-                    variant={onlineThresholdSeconds === 30 ? 'default' : 'outline'}
-                    onClick={() => setOnlineThresholdSeconds(30)}
-                  >
-                    30s
-                  </Button>
-                  <Button
-                    type='button'
-                    size='sm'
-                    variant={onlineThresholdSeconds === 60 ? 'default' : 'outline'}
-                    onClick={() => setOnlineThresholdSeconds(60)}
-                  >
-                    60s
-                  </Button>
+        <div className='h-full overflow-y-auto p-6'>
+          <div className='container mx-auto flex max-w-7xl flex-col gap-6'>
+            <Card className='border-0 shadow-sm'>
+              <CardHeader className='pb-3'>
+                <div className='flex items-center justify-between'>
+                  <CardTitle className='flex items-center gap-2 text-base'>
+                    <Server className='h-4 w-4' />
+                    Instances
+                  </CardTitle>
+                  <div className='flex items-center gap-2'>
+                    <div className='flex items-center gap-1 text-xs text-muted-foreground'>
+                      <Clock className='h-3 w-3' />
+                      <span>Threshold:</span>
+                    </div>
+                    <div className='flex items-center gap-1'>
+                      {[10, 30, 60].map((sec) => (
+                        <Button
+                          key={sec}
+                          type='button'
+                          size='sm'
+                          variant={onlineThresholdSeconds === sec ? 'default' : 'ghost'}
+                          onClick={() => setOnlineThresholdSeconds(sec)}
+                          className='h-7 px-2 text-xs'
+                        >
+                          {sec}s
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div className='flex items-center gap-2'>
+                  <Badge variant={onlineCount > 0 ? 'default' : 'secondary'}>
+                    {onlineCount}/{instances.length} online
+                  </Badge>
+                </div>
 
-              {instances.length === 0 ? (
-                <div className='text-muted-foreground text-sm'>No instances registered.</div>
-              ) : (
-                <div className='space-y-2'>
-                  {instances.map((inst) => {
-                    const online = isInstanceOnline(inst.lastHeartbeatAt, onlineThresholdSeconds * 1000);
-                    return (
-                      <div key={inst.id} className='flex flex-wrap items-center justify-between gap-2 rounded-md border p-3'>
-                        <div className='flex min-w-0 items-center gap-3'>
-                          <span className={`h-2.5 w-2.5 rounded-full ${online ? 'bg-green-500' : 'bg-zinc-400'}`} />
-                          <div className='min-w-0'>
-                            <div className='truncate text-sm font-medium'>{inst.name || inst.instanceID}</div>
-                            <div className='text-muted-foreground truncate text-xs'>
-                              {inst.platform || '-'} • {inst.version || '-'} • {inst.instanceID}
+                {instances.length === 0 ? (
+                  <div className='text-sm text-muted-foreground'>No instances registered.</div>
+                ) : (
+                  <div className='space-y-2'>
+                    {instances.map((inst) => {
+                      const online = isInstanceOnline(inst.lastHeartbeatAt, onlineThresholdSeconds * 1000);
+                      return (
+                        <div
+                          key={inst.id}
+                          className='flex flex-wrap items-center justify-between gap-2 rounded-md border border-transparent bg-muted/30 p-3 transition-colors hover:bg-muted/50'
+                        >
+                          <div className='flex min-w-0 items-center gap-3'>
+                            <span className={`h-2.5 w-2.5 rounded-full ${online ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                            <div className='min-w-0'>
+                              <div className='truncate text-sm font-medium'>{inst.name || inst.instanceID}</div>
+                              <div className='truncate text-xs text-muted-foreground'>
+                                {inst.platform || '-'} • {inst.version || '-'} • {inst.instanceID}
+                              </div>
                             </div>
                           </div>
+                          <div className='text-xs text-muted-foreground'>
+                            {inst.lastHeartbeatAt
+                              ? `${formatDistanceToNow(new Date(inst.lastHeartbeatAt), { addSuffix: true, locale })}`
+                              : '-'}
+                          </div>
                         </div>
-                        <div className='text-muted-foreground text-xs'>
-                          {inst.lastHeartbeatAt
-                            ? `${formatDistanceToNow(new Date(inst.lastHeartbeatAt), { addSuffix: true, locale })}`
-                            : '-'}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card className='border-0 shadow-sm'>
-            <CardHeader className='pb-3'>
-              <div className='flex items-center justify-between gap-2'>
-                <CardTitle className='text-base'>Threads</CardTitle>
-                <Button size='sm' onClick={startNewThread}>
-                  New
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className='space-y-2'>
-              {threadsLoading ? (
-                <div className='text-muted-foreground text-sm'>{t('common.loading')}</div>
-              ) : threads.length === 0 ? (
-                <div className='text-muted-foreground text-sm'>No threads yet. Create one to start chatting.</div>
-              ) : (
-                <div className='space-y-2'>
-                  {threads.map((th) => (
-                    <button
-                      key={th.threadID}
-                      type='button'
-                      className='hover:bg-accent flex w-full items-center justify-between gap-2 rounded-md border p-3 text-left transition-colors'
-                      onClick={() =>
-                        navigate({
-                          to: '/project/agents/$agentId/threads/$threadId' as any,
-                          params: { agentId: agent.id, threadId: th.threadID } as any,
-                        })
-                      }
-                    >
-                      <div className='min-w-0'>
-                        <div className='truncate text-sm font-medium'>{th.threadID}</div>
-                        <div className='text-muted-foreground text-xs'>{format(new Date(th.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}</div>
-                      </div>
-                      <div className='text-muted-foreground text-xs'>Open</div>
-                    </button>
-                  ))}
+            <Card className='border-0 shadow-sm'>
+              <CardHeader className='pb-3'>
+                <div className='flex items-center justify-between gap-2'>
+                  <CardTitle className='flex items-center gap-2 text-base'>
+                    <MessageSquareText className='h-4 w-4' />
+                    Threads
+                  </CardTitle>
+                  <Button size='sm' onClick={startNewThread}>
+                    New
+                  </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className='space-y-2'>
+                {threadsLoading ? (
+                  <div className='text-sm text-muted-foreground'>{t('common.loading')}</div>
+                ) : threads.length === 0 ? (
+                  <div className='text-sm text-muted-foreground'>No threads yet. Create one to start chatting.</div>
+                ) : (
+                  <div className='space-y-2'>
+                    {threads.map((th) => (
+                      <button
+                        key={th.threadID}
+                        type='button'
+                        className='flex w-full items-center justify-between gap-2 rounded-md border border-transparent bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50'
+                        onClick={() =>
+                          navigate({
+                            to: '/project/agents/$agentId/threads/$threadId' as any,
+                            params: { agentId: agent.id, threadId: th.threadID } as any,
+                          })
+                        }
+                      >
+                        <div className='min-w-0'>
+                          <div className='truncate text-sm font-medium'>{th.threadID}</div>
+                          <div className='text-xs text-muted-foreground'>
+                            {format(new Date(th.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}
+                          </div>
+                        </div>
+                        <div className='text-xs text-muted-foreground'>Open</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </Main>
     </div>

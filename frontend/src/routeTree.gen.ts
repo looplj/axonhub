@@ -50,7 +50,9 @@ import { Route as AuthenticatedProjectAgentsIndexRouteImport } from './routes/_a
 import { Route as AuthenticatedProjectTracesTraceIdRouteImport } from './routes/_authenticated/project/traces/$traceId'
 import { Route as AuthenticatedProjectThreadsThreadIdRouteImport } from './routes/_authenticated/project/threads/$threadId'
 import { Route as AuthenticatedProjectRequestsRequestIdRouteImport } from './routes/_authenticated/project/requests/$requestId'
-import { Route as AuthenticatedProjectAgentsAgentIdRouteImport } from './routes/_authenticated/project/agents/$agentId'
+import { Route as AuthenticatedProjectAgentsCreateRouteImport } from './routes/_authenticated/project/agents/create'
+import { Route as AuthenticatedProjectAgentsAgentIdIndexRouteImport } from './routes/_authenticated/project/agents/$agentId/index'
+import { Route as AuthenticatedProjectAgentsAgentIdEditRouteImport } from './routes/_authenticated/project/agents/$agentId/edit'
 import { Route as AuthenticatedProjectAgentsAgentIdThreadsThreadIdRouteImport } from './routes/_authenticated/project/agents/$agentId/threads/$threadId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -283,17 +285,29 @@ const AuthenticatedProjectRequestsRequestIdRoute =
     path: '/project/requests/$requestId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedProjectAgentsAgentIdRoute =
-  AuthenticatedProjectAgentsAgentIdRouteImport.update({
-    id: '/project/agents/$agentId',
-    path: '/project/agents/$agentId',
+const AuthenticatedProjectAgentsCreateRoute =
+  AuthenticatedProjectAgentsCreateRouteImport.update({
+    id: '/project/agents/create',
+    path: '/project/agents/create',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProjectAgentsAgentIdIndexRoute =
+  AuthenticatedProjectAgentsAgentIdIndexRouteImport.update({
+    id: '/project/agents/$agentId/',
+    path: '/project/agents/$agentId/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProjectAgentsAgentIdEditRoute =
+  AuthenticatedProjectAgentsAgentIdEditRouteImport.update({
+    id: '/project/agents/$agentId/edit',
+    path: '/project/agents/$agentId/edit',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute =
   AuthenticatedProjectAgentsAgentIdThreadsThreadIdRouteImport.update({
-    id: '/threads/$threadId',
-    path: '/threads/$threadId',
-    getParentRoute: () => AuthenticatedProjectAgentsAgentIdRoute,
+    id: '/project/agents/$agentId/threads/$threadId',
+    path: '/project/agents/$agentId/threads/$threadId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -325,7 +339,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/system': typeof AuthenticatedSystemIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
-  '/project/agents/$agentId': typeof AuthenticatedProjectAgentsAgentIdRouteWithChildren
+  '/project/agents/create': typeof AuthenticatedProjectAgentsCreateRoute
   '/project/requests/$requestId': typeof AuthenticatedProjectRequestsRequestIdRoute
   '/project/threads/$threadId': typeof AuthenticatedProjectThreadsThreadIdRoute
   '/project/traces/$traceId': typeof AuthenticatedProjectTracesTraceIdRoute
@@ -338,6 +352,8 @@ export interface FileRoutesByFullPath {
   '/project/threads': typeof AuthenticatedProjectThreadsIndexRoute
   '/project/traces': typeof AuthenticatedProjectTracesIndexRoute
   '/project/users': typeof AuthenticatedProjectUsersIndexRoute
+  '/project/agents/$agentId/edit': typeof AuthenticatedProjectAgentsAgentIdEditRoute
+  '/project/agents/$agentId': typeof AuthenticatedProjectAgentsAgentIdIndexRoute
   '/project/agents/$agentId/threads/$threadId': typeof AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute
 }
 export interface FileRoutesByTo {
@@ -368,7 +384,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/system': typeof AuthenticatedSystemIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
-  '/project/agents/$agentId': typeof AuthenticatedProjectAgentsAgentIdRouteWithChildren
+  '/project/agents/create': typeof AuthenticatedProjectAgentsCreateRoute
   '/project/requests/$requestId': typeof AuthenticatedProjectRequestsRequestIdRoute
   '/project/threads/$threadId': typeof AuthenticatedProjectThreadsThreadIdRoute
   '/project/traces/$traceId': typeof AuthenticatedProjectTracesTraceIdRoute
@@ -381,6 +397,8 @@ export interface FileRoutesByTo {
   '/project/threads': typeof AuthenticatedProjectThreadsIndexRoute
   '/project/traces': typeof AuthenticatedProjectTracesIndexRoute
   '/project/users': typeof AuthenticatedProjectUsersIndexRoute
+  '/project/agents/$agentId/edit': typeof AuthenticatedProjectAgentsAgentIdEditRoute
+  '/project/agents/$agentId': typeof AuthenticatedProjectAgentsAgentIdIndexRoute
   '/project/agents/$agentId/threads/$threadId': typeof AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute
 }
 export interface FileRoutesById {
@@ -414,7 +432,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/system/': typeof AuthenticatedSystemIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
-  '/_authenticated/project/agents/$agentId': typeof AuthenticatedProjectAgentsAgentIdRouteWithChildren
+  '/_authenticated/project/agents/create': typeof AuthenticatedProjectAgentsCreateRoute
   '/_authenticated/project/requests/$requestId': typeof AuthenticatedProjectRequestsRequestIdRoute
   '/_authenticated/project/threads/$threadId': typeof AuthenticatedProjectThreadsThreadIdRoute
   '/_authenticated/project/traces/$traceId': typeof AuthenticatedProjectTracesTraceIdRoute
@@ -427,6 +445,8 @@ export interface FileRoutesById {
   '/_authenticated/project/threads/': typeof AuthenticatedProjectThreadsIndexRoute
   '/_authenticated/project/traces/': typeof AuthenticatedProjectTracesIndexRoute
   '/_authenticated/project/users/': typeof AuthenticatedProjectUsersIndexRoute
+  '/_authenticated/project/agents/$agentId/edit': typeof AuthenticatedProjectAgentsAgentIdEditRoute
+  '/_authenticated/project/agents/$agentId/': typeof AuthenticatedProjectAgentsAgentIdIndexRoute
   '/_authenticated/project/agents/$agentId/threads/$threadId': typeof AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute
 }
 export interface FileRouteTypes {
@@ -460,7 +480,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/system'
     | '/users'
-    | '/project/agents/$agentId'
+    | '/project/agents/create'
     | '/project/requests/$requestId'
     | '/project/threads/$threadId'
     | '/project/traces/$traceId'
@@ -473,6 +493,8 @@ export interface FileRouteTypes {
     | '/project/threads'
     | '/project/traces'
     | '/project/users'
+    | '/project/agents/$agentId/edit'
+    | '/project/agents/$agentId'
     | '/project/agents/$agentId/threads/$threadId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -503,7 +525,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system'
     | '/users'
-    | '/project/agents/$agentId'
+    | '/project/agents/create'
     | '/project/requests/$requestId'
     | '/project/threads/$threadId'
     | '/project/traces/$traceId'
@@ -516,6 +538,8 @@ export interface FileRouteTypes {
     | '/project/threads'
     | '/project/traces'
     | '/project/users'
+    | '/project/agents/$agentId/edit'
+    | '/project/agents/$agentId'
     | '/project/agents/$agentId/threads/$threadId'
   id:
     | '__root__'
@@ -548,7 +572,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/'
     | '/_authenticated/system/'
     | '/_authenticated/users/'
-    | '/_authenticated/project/agents/$agentId'
+    | '/_authenticated/project/agents/create'
     | '/_authenticated/project/requests/$requestId'
     | '/_authenticated/project/threads/$threadId'
     | '/_authenticated/project/traces/$traceId'
@@ -561,6 +585,8 @@ export interface FileRouteTypes {
     | '/_authenticated/project/threads/'
     | '/_authenticated/project/traces/'
     | '/_authenticated/project/users/'
+    | '/_authenticated/project/agents/$agentId/edit'
+    | '/_authenticated/project/agents/$agentId/'
     | '/_authenticated/project/agents/$agentId/threads/$threadId'
   fileRoutesById: FileRoutesById
 }
@@ -866,19 +892,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectRequestsRequestIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/project/agents/$agentId': {
-      id: '/_authenticated/project/agents/$agentId'
+    '/_authenticated/project/agents/create': {
+      id: '/_authenticated/project/agents/create'
+      path: '/project/agents/create'
+      fullPath: '/project/agents/create'
+      preLoaderRoute: typeof AuthenticatedProjectAgentsCreateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/project/agents/$agentId/': {
+      id: '/_authenticated/project/agents/$agentId/'
       path: '/project/agents/$agentId'
       fullPath: '/project/agents/$agentId'
-      preLoaderRoute: typeof AuthenticatedProjectAgentsAgentIdRouteImport
+      preLoaderRoute: typeof AuthenticatedProjectAgentsAgentIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/project/agents/$agentId/edit': {
+      id: '/_authenticated/project/agents/$agentId/edit'
+      path: '/project/agents/$agentId/edit'
+      fullPath: '/project/agents/$agentId/edit'
+      preLoaderRoute: typeof AuthenticatedProjectAgentsAgentIdEditRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/project/agents/$agentId/threads/$threadId': {
       id: '/_authenticated/project/agents/$agentId/threads/$threadId'
-      path: '/threads/$threadId'
+      path: '/project/agents/$agentId/threads/$threadId'
       fullPath: '/project/agents/$agentId/threads/$threadId'
       preLoaderRoute: typeof AuthenticatedProjectAgentsAgentIdThreadsThreadIdRouteImport
-      parentRoute: typeof AuthenticatedProjectAgentsAgentIdRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
@@ -906,21 +946,6 @@ const AuthenticatedSettingsRouteRouteWithChildren =
     AuthenticatedSettingsRouteRouteChildren,
   )
 
-interface AuthenticatedProjectAgentsAgentIdRouteChildren {
-  AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute: typeof AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute
-}
-
-const AuthenticatedProjectAgentsAgentIdRouteChildren: AuthenticatedProjectAgentsAgentIdRouteChildren =
-  {
-    AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute:
-      AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute,
-  }
-
-const AuthenticatedProjectAgentsAgentIdRouteWithChildren =
-  AuthenticatedProjectAgentsAgentIdRoute._addFileChildren(
-    AuthenticatedProjectAgentsAgentIdRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedPermissionRoute: typeof AuthenticatedPermissionRoute
@@ -936,7 +961,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRolesIndexRoute: typeof AuthenticatedRolesIndexRoute
   AuthenticatedSystemIndexRoute: typeof AuthenticatedSystemIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
-  AuthenticatedProjectAgentsAgentIdRoute: typeof AuthenticatedProjectAgentsAgentIdRouteWithChildren
+  AuthenticatedProjectAgentsCreateRoute: typeof AuthenticatedProjectAgentsCreateRoute
   AuthenticatedProjectRequestsRequestIdRoute: typeof AuthenticatedProjectRequestsRequestIdRoute
   AuthenticatedProjectThreadsThreadIdRoute: typeof AuthenticatedProjectThreadsThreadIdRoute
   AuthenticatedProjectTracesTraceIdRoute: typeof AuthenticatedProjectTracesTraceIdRoute
@@ -949,6 +974,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProjectThreadsIndexRoute: typeof AuthenticatedProjectThreadsIndexRoute
   AuthenticatedProjectTracesIndexRoute: typeof AuthenticatedProjectTracesIndexRoute
   AuthenticatedProjectUsersIndexRoute: typeof AuthenticatedProjectUsersIndexRoute
+  AuthenticatedProjectAgentsAgentIdEditRoute: typeof AuthenticatedProjectAgentsAgentIdEditRoute
+  AuthenticatedProjectAgentsAgentIdIndexRoute: typeof AuthenticatedProjectAgentsAgentIdIndexRoute
+  AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute: typeof AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -966,8 +994,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRolesIndexRoute: AuthenticatedRolesIndexRoute,
   AuthenticatedSystemIndexRoute: AuthenticatedSystemIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
-  AuthenticatedProjectAgentsAgentIdRoute:
-    AuthenticatedProjectAgentsAgentIdRouteWithChildren,
+  AuthenticatedProjectAgentsCreateRoute: AuthenticatedProjectAgentsCreateRoute,
   AuthenticatedProjectRequestsRequestIdRoute:
     AuthenticatedProjectRequestsRequestIdRoute,
   AuthenticatedProjectThreadsThreadIdRoute:
@@ -985,6 +1012,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProjectThreadsIndexRoute: AuthenticatedProjectThreadsIndexRoute,
   AuthenticatedProjectTracesIndexRoute: AuthenticatedProjectTracesIndexRoute,
   AuthenticatedProjectUsersIndexRoute: AuthenticatedProjectUsersIndexRoute,
+  AuthenticatedProjectAgentsAgentIdEditRoute:
+    AuthenticatedProjectAgentsAgentIdEditRoute,
+  AuthenticatedProjectAgentsAgentIdIndexRoute:
+    AuthenticatedProjectAgentsAgentIdIndexRoute,
+  AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute:
+    AuthenticatedProjectAgentsAgentIdThreadsThreadIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

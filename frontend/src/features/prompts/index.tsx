@@ -42,12 +42,14 @@ function PromptsContent() {
   const debouncedNameFilter = useDebounce(nameFilter, 300);
 
   const whereClause = (() => {
+    const where: Record<string, unknown> = {
+      // Exclude agent type prompts by default
+      typeNotIn: ['agent'],
+    };
     if (debouncedNameFilter) {
-      return {
-        nameContainsFold: debouncedNameFilter,
-      };
+      where.nameContainsFold = debouncedNameFilter;
     }
-    return undefined;
+    return where;
   })();
 
   const currentOrderBy = (() => {
@@ -157,7 +159,7 @@ export default function PromptsManagement() {
         <div className='flex flex-1 items-center justify-between'>
           <div>
             <h2 className='text-xl font-bold tracking-tight'>{t('prompts.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('prompts.description')}</p>
+            <p className='text-muted-foreground text-sm'>{t('prompts.description')}</p>
           </div>
           <ActionButtons />
         </div>

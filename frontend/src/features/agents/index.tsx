@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SortingState } from '@tanstack/react-table';
 import { IconPlus } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from '@tanstack/react-router';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -9,7 +10,7 @@ import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { Button } from '@/components/ui/button';
 import { PermissionGuard } from '@/components/permission-guard';
-import AgentsProvider, { useAgents } from './context/agents-context';
+import AgentsProvider from './context/agents-context';
 import { useQueryAgents } from './data/agents';
 import { createColumns } from './components/agents-columns';
 import { AgentsTable } from './components/agents-table';
@@ -18,7 +19,6 @@ import { AgentsDialogs } from './components/agents-dialogs';
 function AgentsContent() {
   const { t } = useTranslation();
   const { hasScope } = usePermissions();
-  const { setOpen } = useAgents();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'agents-table-page-size',
@@ -108,30 +108,27 @@ function AgentsContent() {
       />
 
       <AgentsDialogs />
-
-      <PermissionGuard requiredScope='write_agents'>
-        <div className='fixed bottom-6 right-6'>
-          <Button onClick={() => setOpen('create')} className='shadow-lg'>
-            <IconPlus className='mr-2 h-4 w-4' />
-            {t('agents.actions.create')}
-          </Button>
-        </div>
-      </PermissionGuard>
     </div>
   );
 }
 
 export default function AgentsManagement() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
     <AgentsProvider>
       <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
+        <div className='flex w-full flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-0'>
+          <div className='min-w-0'>
             <h2 className='text-xl font-bold tracking-tight'>{t('agents.title')}</h2>
             <p className='text-sm text-muted-foreground'>{t('agents.description')}</p>
           </div>
+          <PermissionGuard requiredScope='write_agents'>
+            <Button className='shrink-0 space-x-1' onClick={() => navigate({ to: '/project/agents/create' as any })}>
+              <span>{t('agents.actions.create')}</span> <IconPlus size={18} />
+            </Button>
+          </PermissionGuard>
         </div>
       </Header>
 

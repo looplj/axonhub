@@ -639,7 +639,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "project_id", Type: field.TypeInt},
-		{Name: "type", Type: field.TypeEnum, Nullable: true, Enums: []string{"agent_system", "system"}, Default: "system"},
+		{Name: "type", Type: field.TypeEnum, Nullable: true, Enums: []string{"agent", "system"}, Default: "system"},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "role", Type: field.TypeString},

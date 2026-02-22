@@ -13,6 +13,7 @@ import {
 import { PermissionGuard } from '@/components/permission-guard';
 import { useAgents } from '../context/agents-context';
 import type { Agent } from '../data/schema';
+import { View } from 'lucide-react';
 
 interface DataTableRowActionsProps {
   row: Row<Agent>;
@@ -34,16 +35,16 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
         <DropdownMenuItem onClick={() => navigate({ to: '/project/agents/$agentId' as any, params: { agentId: agent.id } as any })}>
+           <View className='mr-2 h-4 w-4' />
           {t('agents.actions.view')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <PermissionGuard requiredScope='write_agents'>
           <>
             <DropdownMenuItem
-              onClick={() => {
-                setCurrentRow(agent);
-                setOpen('edit');
-              }}
+              onClick={() =>
+                navigate({ to: '/project/agents/$agentId/edit' as any, params: { agentId: agent.id } as any })
+              }
             >
               <IconEdit className='mr-2 h-4 w-4' />
               {t('common.buttons.edit')}

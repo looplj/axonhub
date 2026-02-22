@@ -1,0 +1,158 @@
+package conf
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	axonconf "github.com/looplj/axonhub/axon/conf"
+	"gopkg.in/yaml.v3"
+)
+
+const FileName = "config.yml"
+
+type Config struct {
+	BaseURL           string        `yaml:"base_url"`
+	APIKey            string        `yaml:"api_key"`
+	Model             string        `yaml:"model"`
+	InstanceID        string        `yaml:"instance_id"`
+	PollInterval      time.Duration `yaml:"poll_interval"`
+	HeartbeatInterval time.Duration `yaml:"heartbeat_interval"`
+	Debug             bool          `yaml:"debug"`
+}
+
+func DefaultConfig() Config {
+	return Config{
+		PollInterval:      2 * time.Second,
+		HeartbeatInterval: 10 * time.Second,
+	}
+}
+
+func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
+	cfg := DefaultConfig()
+	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
+		ConfigName:     "config",
+		ConfigType:     "yml",
+		SearchPaths:    []string{".axonclaw"},
+		AllowMissing:   true,
+		EnvPrefix:      "AXONCLAW",
+		EnvKeyReplacer: strings.NewReplacer(".", "_"),
+		UnmarshalTag:   "yaml",
+	})
+	res, err := loader.Load(context.Background())
+	if err != nil {
+		return Config{}, err
+	}
+	if res.Value.BaseURL != "" {
+		cfg.BaseURL = res.Value.BaseURL
+	}
+	if res.Value.APIKey != "" {
+		cfg.APIKey = res.Value.APIKey
+	}
+	if res.Value.Model != "" {
+		cfg.Model = res.Value.Model
+	}
+	if res.Value.InstanceID != "" {
+		cfg.InstanceID = res.Value.InstanceID
+	}
+	if res.Value.PollInterval > 0 {
+		cfg.PollInterval = res.Value.PollInterval
+	}
+	if res.Value.HeartbeatInterval > 0 {
+		cfg.HeartbeatInterval = res.Value.HeartbeatInterval
+	}
+	if res.Value.Debug {
+		cfg.Debug = res.Value.Debug
+	}
+
+	finalBaseURL := strings.TrimSpace(baseURL)
+	finalAPIKey := strings.TrimSpace(apiKey)
+
+	needSave := false
+	if finalBaseURL != "" {
+		cfg.BaseURL = finalBaseURL
+		needSave = true
+	}
+	if finalAPIKey != "" {
+		cfg.APIKey = finalAPIKey
+		needSave = true
+	}
+
+	if cfg.InstanceID == "" {
+		cfg.InstanceID = generateInstanceID()
+		needSave = true
+	}
+
+	if needSave {
+		if err := SaveConfig(cfg); err != nil {
+			return Config{}, fmt.Errorf("save config: %w", err)
+		}
+	}
+
+	if strings.TrimSpace(cfg.BaseURL) == "" || strings.TrimSpace(cfg.APIKey) == "" {
+		return Config{}, newMissingConfigError(cfg.BaseURL, cfg.APIKey)
+	}
+
+	return cfg, nil
+}
+
+func newMissingConfigError(baseURL, apiKey string) error {
+	var missing []string
+	if strings.TrimSpace(baseURL) == "" {
+		missing = append(missing, "base_url")
+	}
+	if strings.TrimSpace(apiKey) == "" {
+		missing = append(missing, "api_key")
+	}
+
+	path := filepath.Join(".", FileName)
+	example := strings.TrimSpace(`
+base_url: https://your-axonhub-server.com
+api_key: your-agent-api-key
+`) + "\n"
+
+	if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
+		return fmt.Errorf(
+			"missing required settings: %s (create %s in current directory, or pass flags -base-url/-api-key)\n\n%s",
+			strings.Join(missing, ", "),
+			path,
+			example,
+		)
+	}
+	return fmt.Errorf("missing required settings: %s (config: %s)", strings.Join(missing, ", "), path)
+}
+
+func SaveConfig(cfg Config) error {
+	path := filepath.Join(".", FileName)
+	var existing Config
+	if data, err := os.ReadFile(path); err == nil {
+		yaml.Unmarshal(data, &existing)
+	}
+
+	if cfg.BaseURL != "" {
+		existing.BaseURL = cfg.BaseURL
+	}
+	if cfg.APIKey != "" {
+		existing.APIKey = cfg.APIKey
+	}
+	if cfg.InstanceID != "" {
+		existing.InstanceID = cfg.InstanceID
+	}
+
+	data, err := yaml.Marshal(&existing)
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+func generateInstanceID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}

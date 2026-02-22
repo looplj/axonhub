@@ -1,3 +1,2 @@
-export const builtinToolOptions = ['bash', 'edit', 'glob', 'grep', 'memory', 'read', 'skill', 'write'] as const;
+export const builtinToolOptions = ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'Skill', 'MemoryAdd', 'MemoryGet', 'MemorySearch', 'MemoryList', 'MemoryDelete'] as const;
 export type BuiltinToolName = (typeof builtinToolOptions)[number];
-
