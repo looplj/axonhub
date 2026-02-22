@@ -105,6 +105,11 @@ var blockedHeaders = map[string]bool{
 	"Sec-Ch-Ua":          true,
 	"Sec-Ch-Ua-Mobile":   true,
 	"Sec-Ch-Ua-Platform": true,
+
+	// AxonHub customized headers that should not be forwarded to upstream to avoid recognition.
+	// NOTE: user customized trace/thread headers will be sent to upstream.
+	"Ah-Trace-Id":  true,
+	"Ah-Thread-Id": true,
 }
 
 var sensitiveHeaders = map[string]bool{
