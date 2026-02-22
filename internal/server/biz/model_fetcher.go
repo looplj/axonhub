@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
+	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 )
 
 // ModelFetcher handles fetching models from provider APIs.
@@ -53,7 +54,7 @@ func (f *ModelFetcher) getDefaultModels(channelType string) []ModelIdentify {
 }
 
 func (f *ModelFetcher) getDefaultModelsByType(typ channel.Type) []ModelIdentify {
-	//nolint:exhaustive // only support codex and claudecode for now.
+	//nolint:exhaustive // only support antigravity, codex, claudecode, and github_copilot for now.
 	switch typ {
 	case channel.TypeAntigravity:
 		return lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
@@ -61,6 +62,8 @@ func (f *ModelFetcher) getDefaultModelsByType(typ channel.Type) []ModelIdentify 
 		return lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeClaudecode:
 		return lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+	case channel.TypeGithubCopilot:
+		return lo.Map(copilot.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	default:
 		return nil
 	}
