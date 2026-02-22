@@ -597,14 +597,10 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			TokenExchanger: svc.copilotTokenExchanger,
 		})
 
-		// For now, use a placeholder transformer that will be created in Wave 3
-		// The transformer will use the CopilotTokenProvider for token management
-		// TODO(Wave 3): Replace with proper copilot.NewOutboundTransformer
-		_ = p // Use p to avoid unused variable error
-		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:   openai.PlatformOpenAI,
-			BaseURL:        c.BaseURL,
-			APIKeyProvider: getAPIKeyProvider(ch),
+		// Create the Copilot outbound transformer with LiteLLM headers
+		transformer, err := copilot.NewOutboundTransformer(copilot.OutboundTransformerParams{
+			TokenProvider: p,
+			BaseURL:       c.BaseURL,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create github_copilot outbound transformer: %w", err)
