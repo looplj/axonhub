@@ -992,6 +992,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const channelType = form.getValues('type');
     const baseURL = form.getValues('baseURL');
     const apiKeys = form.getValues('credentials.apiKeys');
+    const oauthApiKey = form.getValues('credentials.apiKey');
 
     if (!channelType || !baseURL) {
       return;
@@ -999,7 +1000,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     try {
       // Extract first API key from the array
-      const firstApiKey = apiKeys?.find((key) => key.trim().length > 0) || '';
+      let firstApiKey = apiKeys?.find((key) => key.trim().length > 0) || '';
+
+      // For OAuth-based providers, use credentials.apiKey if apiKeys is empty
+      if (!firstApiKey && oauthApiKey) {
+        // oauthApiKey may be a JSON string (for OAuth tokens), extract the access_token
+        try {
+          const parsed = JSON.parse(oauthApiKey);
+          if (parsed.access_token) {
+            firstApiKey = parsed.access_token;
+          } else {
+            firstApiKey = oauthApiKey;
+          }
+        } catch {
+          // Not JSON, use as-is
+          firstApiKey = oauthApiKey;
+        }
+      }
 
       const result = await fetchModels.mutateAsync({
         channelType,
