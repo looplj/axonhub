@@ -3,14 +3,12 @@ package biz
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
@@ -80,25 +78,6 @@ func (s *VideoService) DeleteTask(ctx context.Context, requestID int) error {
 	_ = s.RequestService.UpdateRequestStatus(ctx, requestID, request.StatusCanceled)
 
 	return nil
-}
-
-func (s *VideoService) ListTasks(ctx context.Context, channelID int, query url.Values) (*httpclient.Response, error) {
-	ch, err := s.ChannelService.GetChannel(ctx, channelID)
-	if err != nil {
-		return nil, err
-	}
-
-	outbound, ok := ch.Outbound.(transformer.VideoTaskListOutbound)
-	if !ok {
-		return nil, fmt.Errorf("%w: channel does not support video list", ErrInternal)
-	}
-
-	httpReq, err := outbound.BuildListVideoTasksRequest(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-
-	return ch.HTTPClient.Do(ctx, httpReq)
 }
 
 func (s *VideoService) loadTask(ctx context.Context, requestID int) (*ent.Request, *Channel, transformer.VideoTaskOutbound, error) {

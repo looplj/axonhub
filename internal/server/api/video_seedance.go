@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -133,37 +132,6 @@ func (h *SeedanceVideoHandlers) GetTask(c *gin.Context) {
 		contentType = ct
 	}
 	c.Data(httpResp.StatusCode, contentType, httpResp.Body)
-}
-
-func (h *SeedanceVideoHandlers) ListTasks(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	channelIDStr := c.Query("channel_id")
-	if channelIDStr == "" {
-		channelIDStr = c.GetHeader("X-Channel-ID")
-	}
-
-	channelID, err := strconv.Atoi(channelIDStr)
-	if err != nil || channelID <= 0 {
-		JSONError(c, http.StatusBadRequest, errors.New("channel_id is required"))
-		return
-	}
-
-	query := url.Values(c.Request.URL.Query())
-	// Do not forward channel selection meta params.
-	query.Del("channel_id")
-
-	resp, err := h.VideoService.ListTasks(ctx, channelID, query)
-	if err != nil {
-		JSONError(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	contentType := "application/json"
-	if ct := resp.Headers.Get("Content-Type"); ct != "" {
-		contentType = ct
-	}
-	c.Data(resp.StatusCode, contentType, resp.Body)
 }
 
 func (h *SeedanceVideoHandlers) DeleteTask(c *gin.Context) {

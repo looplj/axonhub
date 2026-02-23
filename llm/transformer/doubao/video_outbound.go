@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -291,30 +290,6 @@ func (t *OutboundTransformer) BuildDeleteVideoTaskRequest(ctx context.Context, p
 	}, nil
 }
 
-// BuildListVideoTasksRequest implements transformer.VideoTaskListOutbound.
-func (t *OutboundTransformer) BuildListVideoTasksRequest(ctx context.Context, query url.Values) (*httpclient.Request, error) {
-	apiKey := t.APIKeyProvider.Get(ctx)
-	authConfig := &httpclient.AuthConfig{
-		Type:   httpclient.AuthTypeBearer,
-		APIKey: apiKey,
-	}
-
-	req := &httpclient.Request{
-		Method:      http.MethodGet,
-		URL:         t.BaseURL + "/contents/generations/tasks",
-		Headers:     http.Header{"Accept": []string{"application/json"}},
-		Auth:        authConfig,
-		RequestType: llm.RequestTypeVideo.String(),
-		APIFormat:   llm.APIFormatSeedanceVideo.String(),
-		Query:       query,
-	}
-
-	// Avoid leaking OpenAI query params from inbound requests if any.
-	req.SkipInboundQueryMerge = true
-
-	return req, nil
-}
-
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	// Delegate to wrapped OpenAI transformer for non-video requests.
 	if httpResp == nil || httpResp.Request == nil || httpResp.Request.RequestType != llm.RequestTypeVideo.String() {
@@ -372,5 +347,4 @@ func llmReqModelOrFallback(httpResp *httpclient.Response) string {
 
 var (
 	_ transformer.VideoTaskOutbound     = (*OutboundTransformer)(nil)
-	_ transformer.VideoTaskListOutbound = (*OutboundTransformer)(nil)
 )

@@ -507,30 +507,28 @@ Inbound transformer 将 Seedance 格式直接映射为统一 `VideoRequest` (几
 
 ### 6.3 VideoOutbound 扩展接口
 
-查询和删除不经过标准 pipeline，由 outbound transformer 封装完整操作 (构造请求 + 发送 + 解析响应):
+查询和删除不经过标准 pipeline，采用 **Transformer 构造请求 + Service 使用 channel.HTTPClient 执行 + Transformer 解析响应** 的方式。
 
 ```go path=null start=null
-// VideoOutbound 扩展 Outbound，提供视频任务查询/删除能力
-type VideoOutbound interface {
-    Outbound
+// VideoTaskOutbound 扩展 Outbound，提供视频任务查询/删除能力（仅负责 Build/Parse）
+type VideoTaskOutbound interface {
+    BuildGetVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
+    ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.VideoResponse, error)
 
-    // GetVideoTask 查询视频任务状态
-    GetVideoTask(ctx context.Context, providerTaskID string) (*llm.VideoResponse, error)
-
-    // DeleteVideoTask 删除/取消视频任务
-    DeleteVideoTask(ctx context.Context, providerTaskID string) error
+    BuildDeleteVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
 }
 ```
 
-实现时 transformer 内部持有 httpClient 和 auth 配置，调用方无需传入。
 Handler 通过类型断言使用:
 
 ```go path=null start=null
-videoOutbound, ok := ch.Outbound.(transformer.VideoOutbound)
+videoOutbound, ok := ch.Outbound.(transformer.VideoTaskOutbound)
 if !ok {
     return fmt.Errorf("channel does not support video operations")
 }
-resp, err := videoOutbound.GetVideoTask(ctx, req.ExternalID)
+httpReq, _ := videoOutbound.BuildGetVideoTaskRequest(ctx, req.ExternalID)
+httpResp, _ := ch.HTTPClient.Do(ctx, httpReq)
+resp, err := videoOutbound.ParseGetVideoTaskResponse(ctx, httpResp)
 ```
 
 ## 7. Handler 和路由

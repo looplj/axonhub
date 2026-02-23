@@ -167,7 +167,6 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		seedanceGroup := apiGroup.Group("/seedance/v3")
 		seedanceGroup.POST("/contents/generations/tasks", handlers.SeedanceVideo.CreateTask)
 		seedanceGroup.GET("/contents/generations/tasks/:id", handlers.SeedanceVideo.GetTask)
-		seedanceGroup.GET("/contents/generations/tasks", handlers.SeedanceVideo.ListTasks)
 		seedanceGroup.DELETE("/contents/generations/tasks/:id", handlers.SeedanceVideo.DeleteTask)
 	}
 

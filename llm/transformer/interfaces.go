@@ -2,7 +2,6 @@ package transformer
 
 import (
 	"context"
-	"net/url"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -67,10 +66,4 @@ type VideoTaskOutbound interface {
 	ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.VideoResponse, error)
 
 	BuildDeleteVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
-}
-
-// VideoTaskListOutbound is an optional extension interface for outbound transformers that support
-// listing video tasks.
-type VideoTaskListOutbound interface {
-	BuildListVideoTasksRequest(ctx context.Context, query url.Values) (*httpclient.Request, error)
 }
