@@ -1498,7 +1498,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <div className='col-span-2' />
                           <div className='space-y-4 md:col-span-6'>
                             <CopilotDeviceFlow
-                              existingCredentials={form.watch('credentials.apiKey')}
                               onSuccess={(token) => {
                                 // Store as OAuth JSON format expected by backend
                                 const oauthCredentials = JSON.stringify({
