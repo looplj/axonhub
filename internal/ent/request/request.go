@@ -58,6 +58,14 @@ const (
 	FieldMetricsLatencyMs = "metrics_latency_ms"
 	// FieldMetricsFirstTokenLatencyMs holds the string denoting the metrics_first_token_latency_ms field in the database.
 	FieldMetricsFirstTokenLatencyMs = "metrics_first_token_latency_ms"
+	// FieldVideoSaved holds the string denoting the video_saved field in the database.
+	FieldVideoSaved = "video_saved"
+	// FieldVideoStorageID holds the string denoting the video_storage_id field in the database.
+	FieldVideoStorageID = "video_storage_id"
+	// FieldVideoStorageKey holds the string denoting the video_storage_key field in the database.
+	FieldVideoStorageKey = "video_storage_key"
+	// FieldVideoSavedAt holds the string denoting the video_saved_at field in the database.
+	FieldVideoSavedAt = "video_saved_at"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
 	EdgeAPIKey = "api_key"
 	// EdgeProject holds the string denoting the project edge name in mutations.
@@ -148,6 +156,10 @@ var Columns = []string{
 	FieldClientIP,
 	FieldMetricsLatencyMs,
 	FieldMetricsFirstTokenLatencyMs,
+	FieldVideoSaved,
+	FieldVideoStorageID,
+	FieldVideoStorageKey,
+	FieldVideoSavedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -182,6 +194,8 @@ var (
 	DefaultStream bool
 	// DefaultClientIP holds the default value on creation for the "client_ip" field.
 	DefaultClientIP string
+	// DefaultVideoSaved holds the default value on creation for the "video_saved" field.
+	DefaultVideoSaved bool
 )
 
 // Source defines the type for the "source" enum field.
@@ -323,6 +337,26 @@ func ByMetricsLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 // ByMetricsFirstTokenLatencyMs orders the results by the metrics_first_token_latency_ms field.
 func ByMetricsFirstTokenLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMetricsFirstTokenLatencyMs, opts...).ToFunc()
+}
+
+// ByVideoSaved orders the results by the video_saved field.
+func ByVideoSaved(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVideoSaved, opts...).ToFunc()
+}
+
+// ByVideoStorageID orders the results by the video_storage_id field.
+func ByVideoStorageID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVideoStorageID, opts...).ToFunc()
+}
+
+// ByVideoStorageKey orders the results by the video_storage_key field.
+func ByVideoStorageKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVideoStorageKey, opts...).ToFunc()
+}
+
+// ByVideoSavedAt orders the results by the video_saved_at field.
+func ByVideoSavedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVideoSavedAt, opts...).ToFunc()
 }
 
 // ByAPIKeyField orders the results by api_key field.

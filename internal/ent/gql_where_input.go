@@ -5324,6 +5324,51 @@ type RequestWhereInput struct {
 	MetricsFirstTokenLatencyMsIsNil  bool    `json:"metricsFirstTokenLatencyMsIsNil,omitempty"`
 	MetricsFirstTokenLatencyMsNotNil bool    `json:"metricsFirstTokenLatencyMsNotNil,omitempty"`
 
+	// "video_saved" field predicates.
+	VideoSaved    *bool `json:"videoSaved,omitempty"`
+	VideoSavedNEQ *bool `json:"videoSavedNEQ,omitempty"`
+
+	// "video_storage_id" field predicates.
+	VideoStorageID       *int  `json:"videoStorageID,omitempty"`
+	VideoStorageIDNEQ    *int  `json:"videoStorageIDNEQ,omitempty"`
+	VideoStorageIDIn     []int `json:"videoStorageIDIn,omitempty"`
+	VideoStorageIDNotIn  []int `json:"videoStorageIDNotIn,omitempty"`
+	VideoStorageIDGT     *int  `json:"videoStorageIDGT,omitempty"`
+	VideoStorageIDGTE    *int  `json:"videoStorageIDGTE,omitempty"`
+	VideoStorageIDLT     *int  `json:"videoStorageIDLT,omitempty"`
+	VideoStorageIDLTE    *int  `json:"videoStorageIDLTE,omitempty"`
+	VideoStorageIDIsNil  bool  `json:"videoStorageIDIsNil,omitempty"`
+	VideoStorageIDNotNil bool  `json:"videoStorageIDNotNil,omitempty"`
+
+	// "video_storage_key" field predicates.
+	VideoStorageKey             *string  `json:"videoStorageKey,omitempty"`
+	VideoStorageKeyNEQ          *string  `json:"videoStorageKeyNEQ,omitempty"`
+	VideoStorageKeyIn           []string `json:"videoStorageKeyIn,omitempty"`
+	VideoStorageKeyNotIn        []string `json:"videoStorageKeyNotIn,omitempty"`
+	VideoStorageKeyGT           *string  `json:"videoStorageKeyGT,omitempty"`
+	VideoStorageKeyGTE          *string  `json:"videoStorageKeyGTE,omitempty"`
+	VideoStorageKeyLT           *string  `json:"videoStorageKeyLT,omitempty"`
+	VideoStorageKeyLTE          *string  `json:"videoStorageKeyLTE,omitempty"`
+	VideoStorageKeyContains     *string  `json:"videoStorageKeyContains,omitempty"`
+	VideoStorageKeyHasPrefix    *string  `json:"videoStorageKeyHasPrefix,omitempty"`
+	VideoStorageKeyHasSuffix    *string  `json:"videoStorageKeyHasSuffix,omitempty"`
+	VideoStorageKeyIsNil        bool     `json:"videoStorageKeyIsNil,omitempty"`
+	VideoStorageKeyNotNil       bool     `json:"videoStorageKeyNotNil,omitempty"`
+	VideoStorageKeyEqualFold    *string  `json:"videoStorageKeyEqualFold,omitempty"`
+	VideoStorageKeyContainsFold *string  `json:"videoStorageKeyContainsFold,omitempty"`
+
+	// "video_saved_at" field predicates.
+	VideoSavedAt       *time.Time  `json:"videoSavedAt,omitempty"`
+	VideoSavedAtNEQ    *time.Time  `json:"videoSavedAtNEQ,omitempty"`
+	VideoSavedAtIn     []time.Time `json:"videoSavedAtIn,omitempty"`
+	VideoSavedAtNotIn  []time.Time `json:"videoSavedAtNotIn,omitempty"`
+	VideoSavedAtGT     *time.Time  `json:"videoSavedAtGT,omitempty"`
+	VideoSavedAtGTE    *time.Time  `json:"videoSavedAtGTE,omitempty"`
+	VideoSavedAtLT     *time.Time  `json:"videoSavedAtLT,omitempty"`
+	VideoSavedAtLTE    *time.Time  `json:"videoSavedAtLTE,omitempty"`
+	VideoSavedAtIsNil  bool        `json:"videoSavedAtIsNil,omitempty"`
+	VideoSavedAtNotNil bool        `json:"videoSavedAtNotNil,omitempty"`
+
 	// "api_key" edge predicates.
 	HasAPIKey     *bool               `json:"hasAPIKey,omitempty"`
 	HasAPIKeyWith []*APIKeyWhereInput `json:"hasAPIKeyWith,omitempty"`
@@ -5831,6 +5876,117 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.MetricsFirstTokenLatencyMsNotNil {
 		predicates = append(predicates, request.MetricsFirstTokenLatencyMsNotNil())
+	}
+	if i.VideoSaved != nil {
+		predicates = append(predicates, request.VideoSavedEQ(*i.VideoSaved))
+	}
+	if i.VideoSavedNEQ != nil {
+		predicates = append(predicates, request.VideoSavedNEQ(*i.VideoSavedNEQ))
+	}
+	if i.VideoStorageID != nil {
+		predicates = append(predicates, request.VideoStorageIDEQ(*i.VideoStorageID))
+	}
+	if i.VideoStorageIDNEQ != nil {
+		predicates = append(predicates, request.VideoStorageIDNEQ(*i.VideoStorageIDNEQ))
+	}
+	if len(i.VideoStorageIDIn) > 0 {
+		predicates = append(predicates, request.VideoStorageIDIn(i.VideoStorageIDIn...))
+	}
+	if len(i.VideoStorageIDNotIn) > 0 {
+		predicates = append(predicates, request.VideoStorageIDNotIn(i.VideoStorageIDNotIn...))
+	}
+	if i.VideoStorageIDGT != nil {
+		predicates = append(predicates, request.VideoStorageIDGT(*i.VideoStorageIDGT))
+	}
+	if i.VideoStorageIDGTE != nil {
+		predicates = append(predicates, request.VideoStorageIDGTE(*i.VideoStorageIDGTE))
+	}
+	if i.VideoStorageIDLT != nil {
+		predicates = append(predicates, request.VideoStorageIDLT(*i.VideoStorageIDLT))
+	}
+	if i.VideoStorageIDLTE != nil {
+		predicates = append(predicates, request.VideoStorageIDLTE(*i.VideoStorageIDLTE))
+	}
+	if i.VideoStorageIDIsNil {
+		predicates = append(predicates, request.VideoStorageIDIsNil())
+	}
+	if i.VideoStorageIDNotNil {
+		predicates = append(predicates, request.VideoStorageIDNotNil())
+	}
+	if i.VideoStorageKey != nil {
+		predicates = append(predicates, request.VideoStorageKeyEQ(*i.VideoStorageKey))
+	}
+	if i.VideoStorageKeyNEQ != nil {
+		predicates = append(predicates, request.VideoStorageKeyNEQ(*i.VideoStorageKeyNEQ))
+	}
+	if len(i.VideoStorageKeyIn) > 0 {
+		predicates = append(predicates, request.VideoStorageKeyIn(i.VideoStorageKeyIn...))
+	}
+	if len(i.VideoStorageKeyNotIn) > 0 {
+		predicates = append(predicates, request.VideoStorageKeyNotIn(i.VideoStorageKeyNotIn...))
+	}
+	if i.VideoStorageKeyGT != nil {
+		predicates = append(predicates, request.VideoStorageKeyGT(*i.VideoStorageKeyGT))
+	}
+	if i.VideoStorageKeyGTE != nil {
+		predicates = append(predicates, request.VideoStorageKeyGTE(*i.VideoStorageKeyGTE))
+	}
+	if i.VideoStorageKeyLT != nil {
+		predicates = append(predicates, request.VideoStorageKeyLT(*i.VideoStorageKeyLT))
+	}
+	if i.VideoStorageKeyLTE != nil {
+		predicates = append(predicates, request.VideoStorageKeyLTE(*i.VideoStorageKeyLTE))
+	}
+	if i.VideoStorageKeyContains != nil {
+		predicates = append(predicates, request.VideoStorageKeyContains(*i.VideoStorageKeyContains))
+	}
+	if i.VideoStorageKeyHasPrefix != nil {
+		predicates = append(predicates, request.VideoStorageKeyHasPrefix(*i.VideoStorageKeyHasPrefix))
+	}
+	if i.VideoStorageKeyHasSuffix != nil {
+		predicates = append(predicates, request.VideoStorageKeyHasSuffix(*i.VideoStorageKeyHasSuffix))
+	}
+	if i.VideoStorageKeyIsNil {
+		predicates = append(predicates, request.VideoStorageKeyIsNil())
+	}
+	if i.VideoStorageKeyNotNil {
+		predicates = append(predicates, request.VideoStorageKeyNotNil())
+	}
+	if i.VideoStorageKeyEqualFold != nil {
+		predicates = append(predicates, request.VideoStorageKeyEqualFold(*i.VideoStorageKeyEqualFold))
+	}
+	if i.VideoStorageKeyContainsFold != nil {
+		predicates = append(predicates, request.VideoStorageKeyContainsFold(*i.VideoStorageKeyContainsFold))
+	}
+	if i.VideoSavedAt != nil {
+		predicates = append(predicates, request.VideoSavedAtEQ(*i.VideoSavedAt))
+	}
+	if i.VideoSavedAtNEQ != nil {
+		predicates = append(predicates, request.VideoSavedAtNEQ(*i.VideoSavedAtNEQ))
+	}
+	if len(i.VideoSavedAtIn) > 0 {
+		predicates = append(predicates, request.VideoSavedAtIn(i.VideoSavedAtIn...))
+	}
+	if len(i.VideoSavedAtNotIn) > 0 {
+		predicates = append(predicates, request.VideoSavedAtNotIn(i.VideoSavedAtNotIn...))
+	}
+	if i.VideoSavedAtGT != nil {
+		predicates = append(predicates, request.VideoSavedAtGT(*i.VideoSavedAtGT))
+	}
+	if i.VideoSavedAtGTE != nil {
+		predicates = append(predicates, request.VideoSavedAtGTE(*i.VideoSavedAtGTE))
+	}
+	if i.VideoSavedAtLT != nil {
+		predicates = append(predicates, request.VideoSavedAtLT(*i.VideoSavedAtLT))
+	}
+	if i.VideoSavedAtLTE != nil {
+		predicates = append(predicates, request.VideoSavedAtLTE(*i.VideoSavedAtLTE))
+	}
+	if i.VideoSavedAtIsNil {
+		predicates = append(predicates, request.VideoSavedAtIsNil())
+	}
+	if i.VideoSavedAtNotNil {
+		predicates = append(predicates, request.VideoSavedAtNotNil())
 	}
 
 	if i.HasAPIKey != nil {

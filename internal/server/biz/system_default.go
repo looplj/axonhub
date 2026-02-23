@@ -52,3 +52,10 @@ var defaultAutoBackupSettings = AutoBackupSettings{
 	IncludeModelPrices: true,
 	RetentionDays:      30,
 }
+
+var defaultVideoStorageSettings = VideoStorageSettings{
+	Enabled:             false,
+	DataStorageID:       0,
+	ScanIntervalMinutes: 1,
+	ScanLimit:           50,
+}

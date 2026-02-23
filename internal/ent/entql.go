@@ -322,6 +322,10 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldClientIP:                   {Type: field.TypeString, Column: request.FieldClientIP},
 			request.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: request.FieldMetricsLatencyMs},
 			request.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: request.FieldMetricsFirstTokenLatencyMs},
+			request.FieldVideoSaved:                 {Type: field.TypeBool, Column: request.FieldVideoSaved},
+			request.FieldVideoStorageID:             {Type: field.TypeInt, Column: request.FieldVideoStorageID},
+			request.FieldVideoStorageKey:            {Type: field.TypeString, Column: request.FieldVideoStorageKey},
+			request.FieldVideoSavedAt:               {Type: field.TypeTime, Column: request.FieldVideoSavedAt},
 		},
 	}
 	graph.Nodes[12] = &sqlgraph.Node{
@@ -2752,6 +2756,26 @@ func (f *RequestFilter) WhereMetricsLatencyMs(p entql.Int64P) {
 // WhereMetricsFirstTokenLatencyMs applies the entql int64 predicate on the metrics_first_token_latency_ms field.
 func (f *RequestFilter) WhereMetricsFirstTokenLatencyMs(p entql.Int64P) {
 	f.Where(p.Field(request.FieldMetricsFirstTokenLatencyMs))
+}
+
+// WhereVideoSaved applies the entql bool predicate on the video_saved field.
+func (f *RequestFilter) WhereVideoSaved(p entql.BoolP) {
+	f.Where(p.Field(request.FieldVideoSaved))
+}
+
+// WhereVideoStorageID applies the entql int predicate on the video_storage_id field.
+func (f *RequestFilter) WhereVideoStorageID(p entql.IntP) {
+	f.Where(p.Field(request.FieldVideoStorageID))
+}
+
+// WhereVideoStorageKey applies the entql string predicate on the video_storage_key field.
+func (f *RequestFilter) WhereVideoStorageKey(p entql.StringP) {
+	f.Where(p.Field(request.FieldVideoStorageKey))
+}
+
+// WhereVideoSavedAt applies the entql time.Time predicate on the video_saved_at field.
+func (f *RequestFilter) WhereVideoSavedAt(p entql.TimeP) {
+	f.Where(p.Field(request.FieldVideoSavedAt))
 }
 
 // WhereHasAPIKey applies a predicate to check if query has an edge api_key.

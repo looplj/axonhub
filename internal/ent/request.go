@@ -64,6 +64,14 @@ type Request struct {
 	MetricsLatencyMs *int64 `json:"metrics_latency_ms,omitempty"`
 	// MetricsFirstTokenLatencyMs holds the value of the "metrics_first_token_latency_ms" field.
 	MetricsFirstTokenLatencyMs *int64 `json:"metrics_first_token_latency_ms,omitempty"`
+	// whether the generated video has been saved to external storage
+	VideoSaved bool `json:"video_saved,omitempty"`
+	// data storage id used to save the video file
+	VideoStorageID *int `json:"video_storage_id,omitempty"`
+	// storage key/path of the saved video file
+	VideoStorageKey *string `json:"video_storage_key,omitempty"`
+	// when the video file was saved
+	VideoSavedAt *time.Time `json:"video_saved_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
 	Edges        RequestEdges `json:"edges"`
@@ -176,13 +184,13 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case request.FieldRequestHeaders, request.FieldRequestBody, request.FieldResponseBody, request.FieldResponseChunks:
 			values[i] = new([]byte)
-		case request.FieldStream:
+		case request.FieldStream, request.FieldVideoSaved:
 			values[i] = new(sql.NullBool)
-		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs:
+		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldVideoStorageID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP:
+		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldVideoStorageKey:
 			values[i] = new(sql.NullString)
-		case request.FieldCreatedAt, request.FieldUpdatedAt:
+		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldVideoSavedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -335,6 +343,33 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				_m.MetricsFirstTokenLatencyMs = new(int64)
 				*_m.MetricsFirstTokenLatencyMs = value.Int64
 			}
+		case request.FieldVideoSaved:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field video_saved", values[i])
+			} else if value.Valid {
+				_m.VideoSaved = value.Bool
+			}
+		case request.FieldVideoStorageID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field video_storage_id", values[i])
+			} else if value.Valid {
+				_m.VideoStorageID = new(int)
+				*_m.VideoStorageID = int(value.Int64)
+			}
+		case request.FieldVideoStorageKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field video_storage_key", values[i])
+			} else if value.Valid {
+				_m.VideoStorageKey = new(string)
+				*_m.VideoStorageKey = value.String
+			}
+		case request.FieldVideoSavedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field video_saved_at", values[i])
+			} else if value.Valid {
+				_m.VideoSavedAt = new(time.Time)
+				*_m.VideoSavedAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -468,6 +503,24 @@ func (_m *Request) String() string {
 	if v := _m.MetricsFirstTokenLatencyMs; v != nil {
 		builder.WriteString("metrics_first_token_latency_ms=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("video_saved=")
+	builder.WriteString(fmt.Sprintf("%v", _m.VideoSaved))
+	builder.WriteString(", ")
+	if v := _m.VideoStorageID; v != nil {
+		builder.WriteString("video_storage_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.VideoStorageKey; v != nil {
+		builder.WriteString("video_storage_key=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.VideoSavedAt; v != nil {
+		builder.WriteString("video_saved_at=")
+		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteByte(')')
 	return builder.String()

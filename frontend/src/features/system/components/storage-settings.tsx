@@ -18,6 +18,7 @@ import {
   useUpdateDefaultDataStorage,
   CleanupOption,
 } from '../data/system';
+import { VideoStorageSettings } from './video-storage-settings';
 
 export function StorageSettings() {
   const { t } = useTranslation();
@@ -164,6 +165,8 @@ export function StorageSettings() {
           )}
         </CardContent>
       </Card>
+
+      <VideoStorageSettings />
 
       {/* Storage Policy */}
       <Card>

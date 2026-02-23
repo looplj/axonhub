@@ -3410,6 +3410,26 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldMetricsFirstTokenLatencyMs)
 				fieldSeen[request.FieldMetricsFirstTokenLatencyMs] = struct{}{}
 			}
+		case "videoSaved":
+			if _, ok := fieldSeen[request.FieldVideoSaved]; !ok {
+				selectedFields = append(selectedFields, request.FieldVideoSaved)
+				fieldSeen[request.FieldVideoSaved] = struct{}{}
+			}
+		case "videoStorageID":
+			if _, ok := fieldSeen[request.FieldVideoStorageID]; !ok {
+				selectedFields = append(selectedFields, request.FieldVideoStorageID)
+				fieldSeen[request.FieldVideoStorageID] = struct{}{}
+			}
+		case "videoStorageKey":
+			if _, ok := fieldSeen[request.FieldVideoStorageKey]; !ok {
+				selectedFields = append(selectedFields, request.FieldVideoStorageKey)
+				fieldSeen[request.FieldVideoStorageKey] = struct{}{}
+			}
+		case "videoSavedAt":
+			if _, ok := fieldSeen[request.FieldVideoSavedAt]; !ok {
+				selectedFields = append(selectedFields, request.FieldVideoSavedAt)
+				fieldSeen[request.FieldVideoSavedAt] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:

@@ -661,5 +661,7 @@ MVP 中每次查询都透传到 provider，后续改为 AxonHub 后台 worker �
 ### 11.4 视频托管
 
 - Provider 返回的 video_url 通常有过期时间
-- 后续可支持自动下载并上传到 AxonHub 配置的对象存储 (S3/OSS)
+- AxonHub 可通过「视频存储(Video Storage)」定时扫描已完成的视频请求，将视频下载并保存到非数据库存储（FS/S3/GCS/WebDAV），避免链接过期
+- 去重方式：使用 `Request.video_saved` / `Request.video_storage_id` / `Request.video_storage_key` / `Request.video_saved_at` 标记已落盘的任务；worker 每次只扫描 `video_saved=false` 的记录，保存成功后置为 `true`，从而不会重复下载
+- 扫描范围：仅处理 `format in (openai/video, seedance/video)` 且 `status in (processing, completed)` 的请求；如果 `response_body` 里已缓存 `video_url` 则直接下载，否则最多向下游 provider 查询一次刷新快照，再按 `status=succeeded` 决定是否下载
 - 对外提供持久化的下载链接

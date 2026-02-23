@@ -125,6 +125,26 @@ func MetricsFirstTokenLatencyMs(v int64) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldMetricsFirstTokenLatencyMs, v))
 }
 
+// VideoSaved applies equality check predicate on the "video_saved" field. It's identical to VideoSavedEQ.
+func VideoSaved(v bool) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldVideoSaved, v))
+}
+
+// VideoStorageID applies equality check predicate on the "video_storage_id" field. It's identical to VideoStorageIDEQ.
+func VideoStorageID(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldVideoStorageID, v))
+}
+
+// VideoStorageKey applies equality check predicate on the "video_storage_key" field. It's identical to VideoStorageKeyEQ.
+func VideoStorageKey(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldVideoStorageKey, v))
+}
+
+// VideoSavedAt applies equality check predicate on the "video_saved_at" field. It's identical to VideoSavedAtEQ.
+func VideoSavedAt(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldVideoSavedAt, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldCreatedAt, v))
@@ -793,6 +813,191 @@ func MetricsFirstTokenLatencyMsIsNil() predicate.Request {
 // MetricsFirstTokenLatencyMsNotNil applies the NotNil predicate on the "metrics_first_token_latency_ms" field.
 func MetricsFirstTokenLatencyMsNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldMetricsFirstTokenLatencyMs))
+}
+
+// VideoSavedEQ applies the EQ predicate on the "video_saved" field.
+func VideoSavedEQ(v bool) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldVideoSaved, v))
+}
+
+// VideoSavedNEQ applies the NEQ predicate on the "video_saved" field.
+func VideoSavedNEQ(v bool) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldVideoSaved, v))
+}
+
+// VideoStorageIDEQ applies the EQ predicate on the "video_storage_id" field.
+func VideoStorageIDEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldVideoStorageID, v))
+}
+
+// VideoStorageIDNEQ applies the NEQ predicate on the "video_storage_id" field.
+func VideoStorageIDNEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldVideoStorageID, v))
+}
+
+// VideoStorageIDIn applies the In predicate on the "video_storage_id" field.
+func VideoStorageIDIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldVideoStorageID, vs...))
+}
+
+// VideoStorageIDNotIn applies the NotIn predicate on the "video_storage_id" field.
+func VideoStorageIDNotIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldVideoStorageID, vs...))
+}
+
+// VideoStorageIDGT applies the GT predicate on the "video_storage_id" field.
+func VideoStorageIDGT(v int) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldVideoStorageID, v))
+}
+
+// VideoStorageIDGTE applies the GTE predicate on the "video_storage_id" field.
+func VideoStorageIDGTE(v int) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldVideoStorageID, v))
+}
+
+// VideoStorageIDLT applies the LT predicate on the "video_storage_id" field.
+func VideoStorageIDLT(v int) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldVideoStorageID, v))
+}
+
+// VideoStorageIDLTE applies the LTE predicate on the "video_storage_id" field.
+func VideoStorageIDLTE(v int) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldVideoStorageID, v))
+}
+
+// VideoStorageIDIsNil applies the IsNil predicate on the "video_storage_id" field.
+func VideoStorageIDIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldVideoStorageID))
+}
+
+// VideoStorageIDNotNil applies the NotNil predicate on the "video_storage_id" field.
+func VideoStorageIDNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldVideoStorageID))
+}
+
+// VideoStorageKeyEQ applies the EQ predicate on the "video_storage_key" field.
+func VideoStorageKeyEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyNEQ applies the NEQ predicate on the "video_storage_key" field.
+func VideoStorageKeyNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyIn applies the In predicate on the "video_storage_key" field.
+func VideoStorageKeyIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldVideoStorageKey, vs...))
+}
+
+// VideoStorageKeyNotIn applies the NotIn predicate on the "video_storage_key" field.
+func VideoStorageKeyNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldVideoStorageKey, vs...))
+}
+
+// VideoStorageKeyGT applies the GT predicate on the "video_storage_key" field.
+func VideoStorageKeyGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyGTE applies the GTE predicate on the "video_storage_key" field.
+func VideoStorageKeyGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyLT applies the LT predicate on the "video_storage_key" field.
+func VideoStorageKeyLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyLTE applies the LTE predicate on the "video_storage_key" field.
+func VideoStorageKeyLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyContains applies the Contains predicate on the "video_storage_key" field.
+func VideoStorageKeyContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyHasPrefix applies the HasPrefix predicate on the "video_storage_key" field.
+func VideoStorageKeyHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyHasSuffix applies the HasSuffix predicate on the "video_storage_key" field.
+func VideoStorageKeyHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyIsNil applies the IsNil predicate on the "video_storage_key" field.
+func VideoStorageKeyIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldVideoStorageKey))
+}
+
+// VideoStorageKeyNotNil applies the NotNil predicate on the "video_storage_key" field.
+func VideoStorageKeyNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldVideoStorageKey))
+}
+
+// VideoStorageKeyEqualFold applies the EqualFold predicate on the "video_storage_key" field.
+func VideoStorageKeyEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldVideoStorageKey, v))
+}
+
+// VideoStorageKeyContainsFold applies the ContainsFold predicate on the "video_storage_key" field.
+func VideoStorageKeyContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldVideoStorageKey, v))
+}
+
+// VideoSavedAtEQ applies the EQ predicate on the "video_saved_at" field.
+func VideoSavedAtEQ(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldVideoSavedAt, v))
+}
+
+// VideoSavedAtNEQ applies the NEQ predicate on the "video_saved_at" field.
+func VideoSavedAtNEQ(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldVideoSavedAt, v))
+}
+
+// VideoSavedAtIn applies the In predicate on the "video_saved_at" field.
+func VideoSavedAtIn(vs ...time.Time) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldVideoSavedAt, vs...))
+}
+
+// VideoSavedAtNotIn applies the NotIn predicate on the "video_saved_at" field.
+func VideoSavedAtNotIn(vs ...time.Time) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldVideoSavedAt, vs...))
+}
+
+// VideoSavedAtGT applies the GT predicate on the "video_saved_at" field.
+func VideoSavedAtGT(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldVideoSavedAt, v))
+}
+
+// VideoSavedAtGTE applies the GTE predicate on the "video_saved_at" field.
+func VideoSavedAtGTE(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldVideoSavedAt, v))
+}
+
+// VideoSavedAtLT applies the LT predicate on the "video_saved_at" field.
+func VideoSavedAtLT(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldVideoSavedAt, v))
+}
+
+// VideoSavedAtLTE applies the LTE predicate on the "video_saved_at" field.
+func VideoSavedAtLTE(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldVideoSavedAt, v))
+}
+
+// VideoSavedAtIsNil applies the IsNil predicate on the "video_saved_at" field.
+func VideoSavedAtIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldVideoSavedAt))
+}
+
+// VideoSavedAtNotNil applies the NotNil predicate on the "video_saved_at" field.
+func VideoSavedAtNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldVideoSavedAt))
 }
 
 // HasAPIKey applies the HasEdge predicate on the "api_key" edge.

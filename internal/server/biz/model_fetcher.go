@@ -76,12 +76,6 @@ func (f *ModelFetcher) tryReturnDefaultModels(channelType string) (*FetchModelsR
 }
 
 func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsResult, error) {
-	if input.ChannelType == channel.TypeVolcengine.String() {
-		return &FetchModelsResult{
-			Models: []ModelIdentify{},
-		}, nil
-	}
-
 	if result, ok := f.tryReturnDefaultModels(input.ChannelType); ok {
 		return result, nil
 	}
@@ -342,6 +336,9 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 	case channelType == channel.TypeZai || channelType == channel.TypeZhipu:
 		baseURL = strings.TrimSuffix(baseURL, "/v4")
 		return baseURL + "/v4/models", headers
+	case channelType == channel.TypeDoubao || channelType == channel.TypeVolcengine:
+		baseURL = strings.TrimSuffix(baseURL, "/v3")
+		return baseURL + "/v3/models", headers
 	case channelType.IsAnthropicLike():
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
 		baseURL = strings.TrimSuffix(baseURL, "/claude")

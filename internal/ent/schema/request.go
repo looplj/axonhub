@@ -92,6 +92,26 @@ func (Request) Fields() []ent.Field {
 		field.Int64("metrics_latency_ms").Optional().Nillable(),
 		// First token latency in milliseconds (only for streaming requests)
 		field.Int64("metrics_first_token_latency_ms").Optional().Nillable(),
+
+		// VideoSaved indicates whether the generated video has been downloaded and saved to external storage.
+		field.Bool("video_saved").
+			Default(false).
+			Comment("whether the generated video has been saved to external storage"),
+		// VideoStorageID is the data storage ID used to save the generated video file.
+		field.Int("video_storage_id").
+			Optional().
+			Nillable().
+			Comment("data storage id used to save the video file"),
+		// VideoStorageKey is the object key/path of the saved video in the data storage.
+		field.String("video_storage_key").
+			Optional().
+			Nillable().
+			Comment("storage key/path of the saved video file"),
+		// VideoSavedAt is the timestamp when the video file is saved.
+		field.Time("video_saved_at").
+			Optional().
+			Nillable().
+			Comment("when the video file was saved"),
 	}
 }
 

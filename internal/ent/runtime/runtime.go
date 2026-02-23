@@ -490,6 +490,10 @@ func init() {
 	requestDescClientIP := requestFields[15].Descriptor()
 	// request.DefaultClientIP holds the default value on creation for the client_ip field.
 	request.DefaultClientIP = requestDescClientIP.Default.(string)
+	// requestDescVideoSaved is the schema descriptor for video_saved field.
+	requestDescVideoSaved := requestFields[18].Descriptor()
+	// request.DefaultVideoSaved holds the default value on creation for the video_saved field.
+	request.DefaultVideoSaved = requestDescVideoSaved.Default.(bool)
 	requestexecutionMixin := schema.RequestExecution{}.Mixin()
 	requestexecutionMixinFields0 := requestexecutionMixin[0].Fields()
 	_ = requestexecutionMixinFields0

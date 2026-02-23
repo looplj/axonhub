@@ -1540,6 +1540,22 @@ input CreateRequestInput {
   clientIP: String
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
+  """
+  whether the generated video has been saved to external storage
+  """
+  videoSaved: Boolean
+  """
+  data storage id used to save the video file
+  """
+  videoStorageID: Int
+  """
+  storage key/path of the saved video file
+  """
+  videoStorageKey: String
+  """
+  when the video file was saved
+  """
+  videoSavedAt: Time
   apiKeyID: ID
   projectID: ID!
   traceID: ID
@@ -3638,6 +3654,22 @@ type Request implements Node {
   clientIP: String!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
+  """
+  whether the generated video has been saved to external storage
+  """
+  videoSaved: Boolean!
+  """
+  data storage id used to save the video file
+  """
+  videoStorageID: Int
+  """
+  storage key/path of the saved video file
+  """
+  videoStorageKey: String
+  """
+  when the video file was saved
+  """
+  videoSavedAt: Time
   apiKey: APIKey
   project: Project!
   trace: Trace
@@ -4258,6 +4290,55 @@ input RequestWhereInput {
   metricsFirstTokenLatencyMsLTE: Int
   metricsFirstTokenLatencyMsIsNil: Boolean
   metricsFirstTokenLatencyMsNotNil: Boolean
+  """
+  video_saved field predicates
+  """
+  videoSaved: Boolean
+  videoSavedNEQ: Boolean
+  """
+  video_storage_id field predicates
+  """
+  videoStorageID: Int
+  videoStorageIDNEQ: Int
+  videoStorageIDIn: [Int!]
+  videoStorageIDNotIn: [Int!]
+  videoStorageIDGT: Int
+  videoStorageIDGTE: Int
+  videoStorageIDLT: Int
+  videoStorageIDLTE: Int
+  videoStorageIDIsNil: Boolean
+  videoStorageIDNotNil: Boolean
+  """
+  video_storage_key field predicates
+  """
+  videoStorageKey: String
+  videoStorageKeyNEQ: String
+  videoStorageKeyIn: [String!]
+  videoStorageKeyNotIn: [String!]
+  videoStorageKeyGT: String
+  videoStorageKeyGTE: String
+  videoStorageKeyLT: String
+  videoStorageKeyLTE: String
+  videoStorageKeyContains: String
+  videoStorageKeyHasPrefix: String
+  videoStorageKeyHasSuffix: String
+  videoStorageKeyIsNil: Boolean
+  videoStorageKeyNotNil: Boolean
+  videoStorageKeyEqualFold: String
+  videoStorageKeyContainsFold: String
+  """
+  video_saved_at field predicates
+  """
+  videoSavedAt: Time
+  videoSavedAtNEQ: Time
+  videoSavedAtIn: [Time!]
+  videoSavedAtNotIn: [Time!]
+  videoSavedAtGT: Time
+  videoSavedAtGTE: Time
+  videoSavedAtLT: Time
+  videoSavedAtLTE: Time
+  videoSavedAtIsNil: Boolean
+  videoSavedAtNotNil: Boolean
   """
   api_key edge predicates
   """
@@ -5193,6 +5274,25 @@ input UpdateRequestInput {
   clearMetricsLatencyMs: Boolean
   metricsFirstTokenLatencyMs: Int
   clearMetricsFirstTokenLatencyMs: Boolean
+  """
+  whether the generated video has been saved to external storage
+  """
+  videoSaved: Boolean
+  """
+  data storage id used to save the video file
+  """
+  videoStorageID: Int
+  clearVideoStorageID: Boolean
+  """
+  storage key/path of the saved video file
+  """
+  videoStorageKey: String
+  clearVideoStorageKey: Boolean
+  """
+  when the video file was saved
+  """
+  videoSavedAt: Time
+  clearVideoSavedAt: Boolean
   channelID: ID
   clearChannel: Boolean
 }
