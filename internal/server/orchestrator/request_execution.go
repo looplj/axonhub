@@ -156,6 +156,10 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 		if modelID := m.outbound.GetCurrentModelID(); modelID != "" {
 			logFields = append(logFields, log.String("model_id", modelID))
 		}
+		// Add response body for HTTP errors to help debug 400 errors
+		if httpErr, ok := xerrors.As[*httpclient.Error](err); ok && len(httpErr.Body) > 0 {
+			logFields = append(logFields, log.ByteString("response_body", httpErr.Body))
+		}
 
 		log.Warn(ctx, "request process failed", logFields...)
 	}

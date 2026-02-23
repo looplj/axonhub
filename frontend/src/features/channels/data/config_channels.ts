@@ -474,7 +474,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   github_copilot: {
     channelType: 'github_copilot',
     baseURL: 'https://api.githubcopilot.com',
-    defaultModels: ['gpt-4o', 'gpt-4o-mini', 'claude-3.5-sonnet', 'o1', 'o3-mini'],
+    defaultModels: [],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-[#6e40c9] text-white border-[#6e40c9]',
     icon: Github,

@@ -145,6 +145,11 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		if !c.Credentials.IsOAuth() && len(enabledKeys) == 0 {
 			return nil, fmt.Errorf("missing credentials: oauth or api key required for channel %s", c.Name)
 		}
+	case channel.TypeGithubCopilot:
+		// GitHub Copilot requires OAuth credentials with device flow (strict OAuth only)
+		if !c.Credentials.IsOAuth() {
+			return nil, fmt.Errorf("missing oauth credentials for channel %s", c.Name)
+		}
 	case channel.TypeAntigravity:
 		// Antigravity transformer currently consumes the single legacy APIKey field directly.
 		if strings.TrimSpace(c.Credentials.APIKey) == "" {

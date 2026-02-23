@@ -311,7 +311,7 @@ export const createChannelInputSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity';
+    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
     const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
     const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
 
@@ -342,10 +342,12 @@ export const createChannelInputSchema = z
           return;
         }
 
+        // GitHub Copilot only requires access_token, others may require refresh_token
+        const isCopilot = data.type === 'github_copilot';
         const parsed = z
           .object({
             access_token: z.string().min(1),
-            refresh_token: z.string().min(1),
+            refresh_token: isCopilot ? z.string().optional() : z.string().min(1),
           })
           .safeParse(json);
 
@@ -416,7 +418,7 @@ export const updateChannelInputSchema = z
     orderingWeight: z.number().optional(),
   })
   .superRefine((data, ctx) => {
-    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity';
+    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
 
     if (isOAuthType) {
       if (!data.credentials) return;
@@ -438,10 +440,12 @@ export const updateChannelInputSchema = z
           return;
         }
 
+        // GitHub Copilot only requires access_token, others may require refresh_token
+        const isCopilot = data.type === 'github_copilot';
         const parsed = z
           .object({
             access_token: z.string().min(1),
-            refresh_token: z.string().min(1),
+            refresh_token: isCopilot ? z.string().optional() : z.string().min(1),
           })
           .safeParse(json);
 

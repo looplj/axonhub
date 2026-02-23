@@ -1,7 +1,7 @@
 import { apiRequest } from '@/lib/api-client'
 
 export interface DeviceFlowStartResult {
-  device_code: string
+  session_id: string
   user_code: string
   verification_uri: string
   expires_in: number
@@ -10,11 +10,14 @@ export interface DeviceFlowStartResult {
 
 export interface DeviceFlowPollResult {
   access_token?: string
-  error?: string
+  token_type?: string
+  scope?: string
+  status?: string
+  message?: string
 }
 
 export interface DeviceFlowPollInput {
-  device_code: string
+  session_id: string
 }
 
 export async function copilotOAuthStart(headers?: Record<string, string>): Promise<DeviceFlowStartResult> {

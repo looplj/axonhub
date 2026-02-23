@@ -21,24 +21,24 @@ import (
 const (
 	// DefaultCopilotBaseURL is the base URL for GitHub Copilot API.
 	DefaultCopilotBaseURL = "https://api.githubcopilot.com"
-
-	// CopilotChatCompletionsEndpoint is the endpoint for chat completions.
 	CopilotChatCompletionsEndpoint = "/chat/completions"
-
-	// LiteLLM-style editor headers (from litellm/llms/github_copilot/common_utils.py)
 	EditorVersionHeader        = "editor-version"
 	EditorPluginVersionHeader  = "editor-plugin-version"
 	UserAgentHeader            = "user-agent"
-	XInitiatorHeader           = "x-initiator"
-	OpenAIIntentHeader         = "Openai-Intent"
+	OpenAIIntentHeader         = "openai-intent"
+	CopilotIntegrationIDHeader = "copilot-integration-id"
+	GitHubAPIVersionHeader     = "x-github-api-version"
+	RequestIDHeader            = "x-request-id"
+	VSCodeUserAgentLibHeader   = "x-vscode-user-agent-library-version"
 	CopilotVisionRequestHeader = "Copilot-Vision-Request"
-
-	// Default editor header values (VSCode pattern)
-	DefaultEditorVersion       = "vscode/1.85.0"
-	DefaultEditorPluginVersion = "copilot-chat/0.11.0"
-	DefaultUserAgent           = "GitHubCopilotChat/0.11.0"
-	DefaultInitiator           = "github/copilot"
-	DefaultOpenAIIntent        = "conversation"
+	// Default editor header values (VSCode pattern) - from LiteLLM
+	DefaultEditorVersion       = "vscode/1.95.0"
+	DefaultEditorPluginVersion = "copilot-chat/0.26.7"
+	DefaultUserAgent           = "GitHubCopilotChat/0.26.7"
+	DefaultOpenAIIntent        = "conversation-panel"
+	DefaultCopilotIntegrationID = "vscode-chat"
+	DefaultGitHubAPIVersion    = "2025-04-01"
+	DefaultVSCodeUserAgentLib  = "electron-fetch"
 )
 
 // TokenProvider defines the interface for getting Copilot tokens.
@@ -134,8 +134,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	headers.Set(EditorVersionHeader, DefaultEditorVersion)
 	headers.Set(EditorPluginVersionHeader, DefaultEditorPluginVersion)
 	headers.Set(UserAgentHeader, DefaultUserAgent)
-	headers.Set(XInitiatorHeader, DefaultInitiator)
+	headers.Set(CopilotIntegrationIDHeader, DefaultCopilotIntegrationID)
 	headers.Set(OpenAIIntentHeader, DefaultOpenAIIntent)
+	headers.Set(GitHubAPIVersionHeader, DefaultGitHubAPIVersion)
+	headers.Set(VSCodeUserAgentLibHeader, DefaultVSCodeUserAgentLib)
 
 	// Add vision header if request contains image content.
 	if hasVisionContent(llmReq) {
@@ -200,7 +202,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 
 	// Check for HTTP error status codes.
 	if httpResp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
+		return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, string(httpResp.Body))
 	}
 
 	// Check for empty response body.

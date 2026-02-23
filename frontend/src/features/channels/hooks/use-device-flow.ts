@@ -23,11 +23,12 @@ export interface UseDeviceFlowOptions {
 export interface UseDeviceFlowState {
   userCode: string | null;
   verificationUri: string | null;
-  deviceCode: string | null;
+  sessionId: string | null;
   expiresAt: number | null;
   interval: number;
   isPolling: boolean;
   error: string | null;
+  isComplete: boolean;
 }
 
 export interface UseDeviceFlowActions {
@@ -72,11 +73,12 @@ export function useDeviceFlow(
 
   const [userCode, setUserCode] = useState<string | null>(null);
   const [verificationUri, setVerificationUri] = useState<string | null>(null);
-  const [deviceCode, setDeviceCode] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [interval, setInterval] = useState(5);
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
 
   const pollingIntervalRef = useRef<number | null>(null);
   const currentIntervalRef = useRef(5);
@@ -105,12 +107,12 @@ export function useDeviceFlow(
 
       setUserCode(result.user_code);
       setVerificationUri(result.verification_uri);
-      setDeviceCode(result.device_code);
+      setSessionId(result.session_id);
       setExpiresAt(Date.now() + result.expires_in * 1000);
       setInterval(result.interval);
       currentIntervalRef.current = result.interval;
 
-      poll(result.device_code, result.interval, Date.now() + result.expires_in * 1000);
+      poll(result.session_id, result.interval, Date.now() + result.expires_in * 1000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(errorMessage);
@@ -120,7 +122,7 @@ export function useDeviceFlow(
   }, [projectId, t]);
 
   const poll = useCallback(
-    async (code: string, pollInterval: number, expiry: number) => {
+    async (sessionId: string, pollInterval: number, expiry: number) => {
       if (!projectId) {
         return;
       }
@@ -144,26 +146,31 @@ export function useDeviceFlow(
 
         try {
           const result: DeviceFlowPollResult = await copilotOAuthPoll(
-            { device_code: code },
+            { session_id: sessionId },
             { 'X-Project-ID': projectId }
           );
 
+          console.log('[DeviceFlow] Poll result:', result);
+
           if (result.access_token) {
+            console.log('[DeviceFlow] Got access token, calling onSuccess');
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
             }
             setIsPolling(false);
+            setIsComplete(true);
 
             if (onSuccess) {
               onSuccess(result.access_token);
             }
 
             toast.success(t('channels.dialogs.oauth.messages.credentialsImported'));
-          } else if (result.error) {
-            if (result.error === 'authorization_pending') {
+          } else if (result.status) {
+            if (result.status === 'pending') {
+              // Authorization still pending, continue polling
               return;
-            } else if (result.error === 'slow_down') {
+            } else if (result.status === 'slow_down') {
               const newInterval = currentIntervalRef.current * 2;
               currentIntervalRef.current = newInterval;
               setInterval(newInterval);
@@ -173,16 +180,17 @@ export function useDeviceFlow(
               }
               // @ts-expect-error - setInterval return type mismatch between browser and Node.js types
               pollingIntervalRef.current = window.setInterval(() => {
-                poll(code, newInterval, expiry);
+                poll(sessionId, newInterval, expiry);
               }, newInterval * 1000);
             } else {
+              // Other error statuses
               if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
                 pollingIntervalRef.current = null;
               }
               setIsPolling(false);
-              setError(result.error);
-              toast.error(result.error);
+              setError(result.message || result.status);
+              toast.error(result.message || result.status);
             }
           }
         } catch (err) {
@@ -207,22 +215,24 @@ export function useDeviceFlow(
     }
     setUserCode(null);
     setVerificationUri(null);
-    setDeviceCode(null);
+    setSessionId(null);
     setExpiresAt(null);
     setInterval(5);
     currentIntervalRef.current = 5;
     setIsPolling(false);
     setError(null);
+    setIsComplete(false);
   }, []);
 
   return {
     userCode,
     verificationUri,
-    deviceCode,
+    sessionId,
     expiresAt,
     interval,
     isPolling,
     error,
+    isComplete,
     start,
     reset,
   };

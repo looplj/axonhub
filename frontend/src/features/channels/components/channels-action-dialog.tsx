@@ -55,6 +55,7 @@ import {
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { ManualModelBadge } from './manual-model-badge';
+import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ProxyType } from './channels-proxy-dialog';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 
@@ -564,6 +565,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isCodexType = (selectedType || derivedChannelType) === 'codex';
   const isAntigravityType = (selectedType || derivedChannelType) === 'antigravity';
   const isClaudeCodeType = (selectedType || derivedChannelType) === 'claudecode';
+  const isCopilotType = (selectedType || derivedChannelType) === 'github_copilot';
 
   useEffect(() => {
     // Only force stream: 'require' for new Codex channels, not when editing existing ones
@@ -1032,7 +1034,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const apiKeys = form.watch('credentials.apiKeys');
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
 
-    if (isCodexType || isAntigravityType) {
+    if (isCodexType || isAntigravityType || isCopilotType) {
       return !!baseURL;
     }
 
@@ -1474,6 +1476,27 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </FormItem>
                       )}
 
+                      {isCopilotType && (
+                        <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <div className='col-span-2' />
+                          <div className='space-y-4 md:col-span-6'>
+                            <CopilotDeviceFlow
+                              onSuccess={(token) => {
+                                // Store as OAuth JSON format expected by backend
+                                const oauthCredentials = JSON.stringify({
+                                  access_token: token,
+                                  token_type: 'bearer',
+                                });
+                                form.setValue('credentials.apiKey', oauthCredentials, { shouldValidate: false });
+                              }}
+                              onError={(error) => {
+                                toast.error(error);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <FormField
                         control={form.control}
                         name='name'
@@ -1562,7 +1585,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
-                      {(!(isCodexType || isClaudeCodeType) || authMode === 'third-party') &&
+                      {(!(isCodexType || isClaudeCodeType || isCopilotType) || authMode === 'third-party') &&
                         selectedProvider !== 'antigravity' &&
                         selectedType !== 'anthropic_gcp' && (
                           <FormField

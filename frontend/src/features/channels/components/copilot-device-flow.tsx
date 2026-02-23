@@ -95,7 +95,7 @@ export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps
     );
   }
 
-  if (!deviceFlow.userCode && !deviceFlow.isPolling) {
+  if (deviceFlow.isComplete) {
     return (
       <Card className="border-green-500">
         <CardHeader>
@@ -136,6 +136,7 @@ export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps
               </span>
             </div>
             <Button
+              type="button"
               onClick={handleCopyCode}
               variant="outline"
               size="icon"
@@ -148,6 +149,7 @@ export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps
 
         <div className="space-y-2">
           <Button
+            type="button"
             onClick={handleOpenGitHub}
             className="w-full"
             size="lg"
@@ -170,6 +172,7 @@ export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps
         </div>
 
         <Button
+          type="button"
           onClick={handleReset}
           variant="ghost"
           size="sm"
