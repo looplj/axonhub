@@ -1,5 +1,6 @@
 scalar Time
 scalar JSONRawMessage
+scalar JSONRawMessageInput
 
 enum AgentSkillAddPolicy {
   open
@@ -47,12 +48,14 @@ type AgentBootstrap {
 enum AgentMessageDirection { to_runtime to_user }
 enum AgentMessageStatus { pending acked expired }
 enum AgentMessageSenderType { user runtime system }
+enum AgentMessageKind { chat approval_request approval_result system_event }
 
 input RegisterAgentInstanceInput {
   instanceID: String!
   name: String
   platform: String
   version: String
+  threadID: String
 }
 
 type AgentInstance {
@@ -66,24 +69,36 @@ input HeartbeatAgentInstanceInput {
   instanceID: String!
 }
 
+# SendAgentMessageInput is used when a user sends a message to the agent.
+# No instanceID is needed as the message is broadcast to all agent instances.
+# Direction: to_agent, SenderType: user
 input SendAgentMessageInput {
-  threadID: String!
   text: String!
+  content: JSONRawMessageInput
+  kind: AgentMessageKind = chat
+  correlationID: String = ""
 }
 
+# PushAgentMessageInput is used when an agent instance pushes a message to the user.
+# The instanceID is required to identify which agent instance is sending the message.
+# Direction: to_user, SenderType: agent
 input PushAgentMessageInput {
   instanceID: String!
-  threadID: String!
   text: String!
+  content: JSONRawMessageInput
+  kind: AgentMessageKind = chat
+  correlationID: String = ""
 }
 
 type AgentMessage {
   id: ID!
   agentID: ID!
-  threadID: String!
   direction: AgentMessageDirection!
   senderType: AgentMessageSenderType!
   text: String!
+  content: JSONRawMessage!
+  kind: AgentMessageKind!
+  correlationID: String!
   sequence: Int!
   status: AgentMessageStatus!
   createdAt: Time!
@@ -91,9 +106,10 @@ type AgentMessage {
 
 input PullAgentMessagesInput {
   instanceID: String!
-  threadID: String!
   afterSequence: Int
   limit: Int = 50
+  kindIn: [AgentMessageKind!]
+  correlationID: String
 }
 
 input AckAgentMessagesInput {
@@ -104,14 +120,18 @@ input AckAgentMessagesInput {
 type Query {
   agentBootstrap: AgentBootstrap!
   pullAgentMessages(input: PullAgentMessagesInput!): [AgentMessage!]!
-  pullAgentMessagesToUser(threadID: String!, afterSequence: Int, limit: Int = 50): [AgentMessage!]!
+  pullAgentMessagesToUser(afterSequence: Int, limit: Int = 50): [AgentMessage!]!
 }
 
 type Mutation {
   registerAgentInstance(input: RegisterAgentInstanceInput!): AgentInstance!
   heartbeatAgentInstance(input: HeartbeatAgentInstanceInput!): Boolean!
 
+  # Send a message from user to agent (Direction: to_agent, SenderType: user)
   sendAgentMessage(input: SendAgentMessageInput!): AgentMessage!
+  # Push a message from agent instance to user (Direction: to_user, SenderType: agent)
   pushAgentMessage(input: PushAgentMessageInput!): AgentMessage!
+  # Acknowledge messages have been received/processed by an agent instance.
+  # Updates message status from 'pending' to 'acked'.
   ackAgentMessages(input: AckAgentMessagesInput!): Boolean!
 }

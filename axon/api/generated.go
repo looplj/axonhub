@@ -150,6 +150,22 @@ func (v *AgentBootstrapResponse) GetAgentBootstrap() *AgentBootstrapAgentBootstr
 	return v.AgentBootstrap
 }
 
+type AgentMessageKind string
+
+const (
+	AgentMessageKindChat            AgentMessageKind = "chat"
+	AgentMessageKindApprovalRequest AgentMessageKind = "approval_request"
+	AgentMessageKindApprovalResult  AgentMessageKind = "approval_result"
+	AgentMessageKindSystemEvent     AgentMessageKind = "system_event"
+)
+
+var AllAgentMessageKind = []AgentMessageKind{
+	AgentMessageKindChat,
+	AgentMessageKindApprovalRequest,
+	AgentMessageKindApprovalResult,
+	AgentMessageKindSystemEvent,
+}
+
 type HeartbeatAgentInstanceInput struct {
 	InstanceID string `json:"instanceID"`
 }
@@ -168,17 +184,15 @@ func (v *HeartbeatAgentInstanceResponse) GetHeartbeatAgentInstance() bool {
 }
 
 type PullAgentMessagesInput struct {
-	InstanceID    string `json:"instanceID"`
-	ThreadID      string `json:"threadID"`
-	AfterSequence *int   `json:"afterSequence"`
-	Limit         *int   `json:"limit"`
+	InstanceID    string             `json:"instanceID"`
+	AfterSequence *int               `json:"afterSequence"`
+	Limit         *int               `json:"limit"`
+	KindIn        []AgentMessageKind `json:"kindIn"`
+	CorrelationID *string            `json:"correlationID"`
 }
 
 // GetInstanceID returns PullAgentMessagesInput.InstanceID, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesInput) GetInstanceID() string { return v.InstanceID }
-
-// GetThreadID returns PullAgentMessagesInput.ThreadID, and is useful for accessing the field via an interface.
-func (v *PullAgentMessagesInput) GetThreadID() string { return v.ThreadID }
 
 // GetAfterSequence returns PullAgentMessagesInput.AfterSequence, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesInput) GetAfterSequence() *int { return v.AfterSequence }
@@ -186,22 +200,40 @@ func (v *PullAgentMessagesInput) GetAfterSequence() *int { return v.AfterSequenc
 // GetLimit returns PullAgentMessagesInput.Limit, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesInput) GetLimit() *int { return v.Limit }
 
+// GetKindIn returns PullAgentMessagesInput.KindIn, and is useful for accessing the field via an interface.
+func (v *PullAgentMessagesInput) GetKindIn() []AgentMessageKind { return v.KindIn }
+
+// GetCorrelationID returns PullAgentMessagesInput.CorrelationID, and is useful for accessing the field via an interface.
+func (v *PullAgentMessagesInput) GetCorrelationID() *string { return v.CorrelationID }
+
 // PullAgentMessagesPullAgentMessagesAgentMessage includes the requested fields of the GraphQL type AgentMessage.
 type PullAgentMessagesPullAgentMessagesAgentMessage struct {
-	Id       string `json:"id"`
-	ThreadID string `json:"threadID"`
-	Text     string `json:"text"`
-	Sequence int    `json:"sequence"`
+	Id            string           `json:"id"`
+	Text          string           `json:"text"`
+	Kind          AgentMessageKind `json:"kind"`
+	CorrelationID string           `json:"correlationID"`
+	Content       json.RawMessage  `json:"content"`
+	Sequence      int              `json:"sequence"`
 }
 
 // GetId returns PullAgentMessagesPullAgentMessagesAgentMessage.Id, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetId() string { return v.Id }
 
-// GetThreadID returns PullAgentMessagesPullAgentMessagesAgentMessage.ThreadID, and is useful for accessing the field via an interface.
-func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetThreadID() string { return v.ThreadID }
-
 // GetText returns PullAgentMessagesPullAgentMessagesAgentMessage.Text, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetText() string { return v.Text }
+
+// GetKind returns PullAgentMessagesPullAgentMessagesAgentMessage.Kind, and is useful for accessing the field via an interface.
+func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetKind() AgentMessageKind { return v.Kind }
+
+// GetCorrelationID returns PullAgentMessagesPullAgentMessagesAgentMessage.CorrelationID, and is useful for accessing the field via an interface.
+func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetCorrelationID() string {
+	return v.CorrelationID
+}
+
+// GetContent returns PullAgentMessagesPullAgentMessagesAgentMessage.Content, and is useful for accessing the field via an interface.
+func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetContent() json.RawMessage {
+	return v.Content
+}
 
 // GetSequence returns PullAgentMessagesPullAgentMessagesAgentMessage.Sequence, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetSequence() int { return v.Sequence }
@@ -217,19 +249,27 @@ func (v *PullAgentMessagesResponse) GetPullAgentMessages() []*PullAgentMessagesP
 }
 
 type PushAgentMessageInput struct {
-	InstanceID string `json:"instanceID"`
-	ThreadID   string `json:"threadID"`
-	Text       string `json:"text"`
+	InstanceID    string            `json:"instanceID"`
+	Text          string            `json:"text"`
+	Content       *json.RawMessage  `json:"content"`
+	Kind          *AgentMessageKind `json:"kind"`
+	CorrelationID *string           `json:"correlationID"`
 }
 
 // GetInstanceID returns PushAgentMessageInput.InstanceID, and is useful for accessing the field via an interface.
 func (v *PushAgentMessageInput) GetInstanceID() string { return v.InstanceID }
 
-// GetThreadID returns PushAgentMessageInput.ThreadID, and is useful for accessing the field via an interface.
-func (v *PushAgentMessageInput) GetThreadID() string { return v.ThreadID }
-
 // GetText returns PushAgentMessageInput.Text, and is useful for accessing the field via an interface.
 func (v *PushAgentMessageInput) GetText() string { return v.Text }
+
+// GetContent returns PushAgentMessageInput.Content, and is useful for accessing the field via an interface.
+func (v *PushAgentMessageInput) GetContent() *json.RawMessage { return v.Content }
+
+// GetKind returns PushAgentMessageInput.Kind, and is useful for accessing the field via an interface.
+func (v *PushAgentMessageInput) GetKind() *AgentMessageKind { return v.Kind }
+
+// GetCorrelationID returns PushAgentMessageInput.CorrelationID, and is useful for accessing the field via an interface.
+func (v *PushAgentMessageInput) GetCorrelationID() *string { return v.CorrelationID }
 
 // PushAgentMessagePushAgentMessage includes the requested fields of the GraphQL type AgentMessage.
 type PushAgentMessagePushAgentMessage struct {
@@ -254,6 +294,7 @@ type RegisterAgentInstanceInput struct {
 	Name       *string `json:"name"`
 	Platform   *string `json:"platform"`
 	Version    *string `json:"version"`
+	ThreadID   *string `json:"threadID"`
 }
 
 // GetInstanceID returns RegisterAgentInstanceInput.InstanceID, and is useful for accessing the field via an interface.
@@ -267,6 +308,9 @@ func (v *RegisterAgentInstanceInput) GetPlatform() *string { return v.Platform }
 
 // GetVersion returns RegisterAgentInstanceInput.Version, and is useful for accessing the field via an interface.
 func (v *RegisterAgentInstanceInput) GetVersion() *string { return v.Version }
+
+// GetThreadID returns RegisterAgentInstanceInput.ThreadID, and is useful for accessing the field via an interface.
+func (v *RegisterAgentInstanceInput) GetThreadID() *string { return v.ThreadID }
 
 // RegisterAgentInstanceRegisterAgentInstance includes the requested fields of the GraphQL type AgentInstance.
 type RegisterAgentInstanceRegisterAgentInstance struct {
@@ -446,8 +490,10 @@ const PullAgentMessages_Operation = `
 query PullAgentMessages ($input: PullAgentMessagesInput!) {
 	pullAgentMessages(input: $input) {
 		id
-		threadID
 		text
+		kind
+		correlationID
+		content
 		sequence
 	}
 }

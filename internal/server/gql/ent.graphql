@@ -388,7 +388,7 @@ type Agent implements Node {
     """
     where: AgentInstanceWhereInput
   ): AgentInstanceConnection!
-  threadBindings(
+  threads(
     """
     Returns the elements in the list that come after the specified cursor.
     """
@@ -542,6 +542,37 @@ type AgentInstance implements Node {
   """
   lastHeartbeatAt: Time!
   agent: Agent!
+  messages(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentMessages returned from the connection.
+    """
+    orderBy: AgentMessageOrder
+
+    """
+    Filtering options for AgentMessages returned from the connection.
+    """
+    where: AgentMessageWhereInput
+  ): AgentMessageConnection!
 }
 """
 A connection to a list of items.
@@ -732,6 +763,11 @@ input AgentInstanceWhereInput {
   """
   hasAgent: Boolean
   hasAgentWith: [AgentWhereInput!]
+  """
+  messages edge predicates
+  """
+  hasMessages: Boolean
+  hasMessagesWith: [AgentMessageWhereInput!]
 }
 type AgentMemory implements Node {
   id: ID!
@@ -930,7 +966,10 @@ type AgentMessage implements Node {
   updatedAt: Time!
   projectID: Int!
   agentID: ID!
-  threadRowID: ID!
+  """
+  Agent instance ID if the message is from an agent
+  """
+  agentInstanceID: ID!
   """
   Message direction
   """
@@ -944,17 +983,25 @@ type AgentMessage implements Node {
   """
   senderID: Int
   """
+  Message kind for operator/runtime routing
+  """
+  kind: AgentMessageKind!
+  """
+  Correlation ID for request/response matching (e.g. approval request id)
+  """
+  correlationID: String!
+  """
   Message content (JSON)
   """
   content: JSONRawMessage!
   status: AgentMessageStatus!
   """
-  Monotonic sequence in the thread
+  Monotonic sequence for the agent
   """
   sequence: Int!
   expiresAt: Time
   agent: Agent!
-  thread: Thread!
+  agentInstance: AgentInstance!
 }
 """
 A connection to a list of items.
@@ -977,7 +1024,7 @@ type AgentMessageConnection {
 AgentMessageDirection is enum for the field direction
 """
 enum AgentMessageDirection @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.Direction") {
-  to_runtime
+  to_agent
   to_user
 }
 """
@@ -992,6 +1039,15 @@ type AgentMessageEdge {
   A cursor for use in pagination.
   """
   cursor: Cursor!
+}
+"""
+AgentMessageKind is enum for the field kind
+"""
+enum AgentMessageKind @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.Kind") {
+  chat
+  approval_request
+  approval_result
+  system_event
 }
 """
 Ordering options for AgentMessage connections
@@ -1018,7 +1074,7 @@ AgentMessageSenderType is enum for the field sender_type
 """
 enum AgentMessageSenderType @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.SenderType") {
   user
-  runtime
+  agent
   system
 }
 """
@@ -1089,12 +1145,12 @@ input AgentMessageWhereInput {
   agentIDIn: [ID!]
   agentIDNotIn: [ID!]
   """
-  thread_row_id field predicates
+  agent_instance_id field predicates
   """
-  threadRowID: ID
-  threadRowIDNEQ: ID
-  threadRowIDIn: [ID!]
-  threadRowIDNotIn: [ID!]
+  agentInstanceID: ID
+  agentInstanceIDNEQ: ID
+  agentInstanceIDIn: [ID!]
+  agentInstanceIDNotIn: [ID!]
   """
   direction field predicates
   """
@@ -1122,6 +1178,29 @@ input AgentMessageWhereInput {
   senderIDLTE: Int
   senderIDIsNil: Boolean
   senderIDNotNil: Boolean
+  """
+  kind field predicates
+  """
+  kind: AgentMessageKind
+  kindNEQ: AgentMessageKind
+  kindIn: [AgentMessageKind!]
+  kindNotIn: [AgentMessageKind!]
+  """
+  correlation_id field predicates
+  """
+  correlationID: String
+  correlationIDNEQ: String
+  correlationIDIn: [String!]
+  correlationIDNotIn: [String!]
+  correlationIDGT: String
+  correlationIDGTE: String
+  correlationIDLT: String
+  correlationIDLTE: String
+  correlationIDContains: String
+  correlationIDHasPrefix: String
+  correlationIDHasSuffix: String
+  correlationIDEqualFold: String
+  correlationIDContainsFold: String
   """
   status field predicates
   """
@@ -1159,10 +1238,10 @@ input AgentMessageWhereInput {
   hasAgent: Boolean
   hasAgentWith: [AgentWhereInput!]
   """
-  thread edge predicates
+  agent_instance edge predicates
   """
-  hasThread: Boolean
-  hasThreadWith: [ThreadWhereInput!]
+  hasAgentInstance: Boolean
+  hasAgentInstanceWith: [AgentInstanceWhereInput!]
 }
 """
 Ordering options for Agent connections
@@ -1381,7 +1460,7 @@ type AgentThread implements Node {
   updatedAt: Time!
   projectID: Int!
   agentID: ID!
-  threadRowID: ID!
+  threadID: ID!
   agent: Agent!
   thread: Thread!
 }
@@ -1495,12 +1574,12 @@ input AgentThreadWhereInput {
   agentIDIn: [ID!]
   agentIDNotIn: [ID!]
   """
-  thread_row_id field predicates
+  thread_id field predicates
   """
-  threadRowID: ID
-  threadRowIDNEQ: ID
-  threadRowIDIn: [ID!]
-  threadRowIDNotIn: [ID!]
+  threadID: ID
+  threadIDNEQ: ID
+  threadIDIn: [ID!]
+  threadIDNotIn: [ID!]
   """
   agent edge predicates
   """
@@ -1839,10 +1918,10 @@ input AgentWhereInput {
   hasInstances: Boolean
   hasInstancesWith: [AgentInstanceWhereInput!]
   """
-  thread_bindings edge predicates
+  threads edge predicates
   """
-  hasThreadBindings: Boolean
-  hasThreadBindingsWith: [AgentThreadWhereInput!]
+  hasThreads: Boolean
+  hasThreadsWith: [AgentThreadWhereInput!]
   """
   messages edge predicates
   """
@@ -3046,17 +3125,25 @@ input CreateAgentMessageInput {
   """
   senderID: Int
   """
+  Message kind for operator/runtime routing
+  """
+  kind: AgentMessageKind
+  """
+  Correlation ID for request/response matching (e.g. approval request id)
+  """
+  correlationID: String
+  """
   Message content (JSON)
   """
   content: JSONRawMessageInput
   status: AgentMessageStatus
   """
-  Monotonic sequence in the thread
+  Monotonic sequence for the agent
   """
   sequence: Int!
   expiresAt: Time
   agentID: ID!
-  threadID: ID!
+  agentInstanceID: ID!
 }
 """
 CreateAgentSkillInput is used for create AgentSkill object.
@@ -7874,37 +7961,6 @@ type Thread implements Node {
     """
     where: AgentThreadWhereInput
   ): AgentThreadConnection!
-  agentMessages(
-    """
-    Returns the elements in the list that come after the specified cursor.
-    """
-    after: Cursor
-
-    """
-    Returns the first _n_ elements from the list.
-    """
-    first: Int
-
-    """
-    Returns the elements in the list that come before the specified cursor.
-    """
-    before: Cursor
-
-    """
-    Returns the last _n_ elements from the list.
-    """
-    last: Int
-
-    """
-    Ordering options for AgentMessages returned from the connection.
-    """
-    orderBy: AgentMessageOrder
-
-    """
-    Filtering options for AgentMessages returned from the connection.
-    """
-    where: AgentMessageWhereInput
-  ): AgentMessageConnection!
 }
 """
 A connection to a list of items.
@@ -8035,11 +8091,6 @@ input ThreadWhereInput {
   """
   hasAgentThreads: Boolean
   hasAgentThreadsWith: [AgentThreadWhereInput!]
-  """
-  agent_messages edge predicates
-  """
-  hasAgentMessages: Boolean
-  hasAgentMessagesWith: [AgentMessageWhereInput!]
 }
 """
 The builtin Time type
@@ -8563,13 +8614,21 @@ input UpdateAgentMessageInput {
   senderID: Int
   clearSenderID: Boolean
   """
+  Message kind for operator/runtime routing
+  """
+  kind: AgentMessageKind
+  """
+  Correlation ID for request/response matching (e.g. approval request id)
+  """
+  correlationID: String
+  """
   Message content (JSON)
   """
   content: JSONRawMessageInput
   appendContent: JSONRawMessageInput
   status: AgentMessageStatus
   """
-  Monotonic sequence in the thread
+  Monotonic sequence for the agent
   """
   sequence: Int
   expiresAt: Time

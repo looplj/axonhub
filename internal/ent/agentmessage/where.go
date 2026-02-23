@@ -80,14 +80,19 @@ func AgentID(v int) predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldEQ(FieldAgentID, v))
 }
 
-// ThreadRowID applies equality check predicate on the "thread_row_id" field. It's identical to ThreadRowIDEQ.
-func ThreadRowID(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldEQ(FieldThreadRowID, v))
+// AgentInstanceID applies equality check predicate on the "agent_instance_id" field. It's identical to AgentInstanceIDEQ.
+func AgentInstanceID(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldAgentInstanceID, v))
 }
 
 // SenderID applies equality check predicate on the "sender_id" field. It's identical to SenderIDEQ.
 func SenderID(v int) predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldEQ(FieldSenderID, v))
+}
+
+// CorrelationID applies equality check predicate on the "correlation_id" field. It's identical to CorrelationIDEQ.
+func CorrelationID(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldCorrelationID, v))
 }
 
 // Sequence applies equality check predicate on the "sequence" field. It's identical to SequenceEQ.
@@ -280,24 +285,24 @@ func AgentIDNotIn(vs ...int) predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldNotIn(FieldAgentID, vs...))
 }
 
-// ThreadRowIDEQ applies the EQ predicate on the "thread_row_id" field.
-func ThreadRowIDEQ(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldEQ(FieldThreadRowID, v))
+// AgentInstanceIDEQ applies the EQ predicate on the "agent_instance_id" field.
+func AgentInstanceIDEQ(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldAgentInstanceID, v))
 }
 
-// ThreadRowIDNEQ applies the NEQ predicate on the "thread_row_id" field.
-func ThreadRowIDNEQ(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldNEQ(FieldThreadRowID, v))
+// AgentInstanceIDNEQ applies the NEQ predicate on the "agent_instance_id" field.
+func AgentInstanceIDNEQ(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNEQ(FieldAgentInstanceID, v))
 }
 
-// ThreadRowIDIn applies the In predicate on the "thread_row_id" field.
-func ThreadRowIDIn(vs ...int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldIn(FieldThreadRowID, vs...))
+// AgentInstanceIDIn applies the In predicate on the "agent_instance_id" field.
+func AgentInstanceIDIn(vs ...int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldIn(FieldAgentInstanceID, vs...))
 }
 
-// ThreadRowIDNotIn applies the NotIn predicate on the "thread_row_id" field.
-func ThreadRowIDNotIn(vs ...int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldNotIn(FieldThreadRowID, vs...))
+// AgentInstanceIDNotIn applies the NotIn predicate on the "agent_instance_id" field.
+func AgentInstanceIDNotIn(vs ...int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNotIn(FieldAgentInstanceID, vs...))
 }
 
 // DirectionEQ applies the EQ predicate on the "direction" field.
@@ -388,6 +393,91 @@ func SenderIDIsNil() predicate.AgentMessage {
 // SenderIDNotNil applies the NotNil predicate on the "sender_id" field.
 func SenderIDNotNil() predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldNotNull(FieldSenderID))
+}
+
+// KindEQ applies the EQ predicate on the "kind" field.
+func KindEQ(v Kind) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldKind, v))
+}
+
+// KindNEQ applies the NEQ predicate on the "kind" field.
+func KindNEQ(v Kind) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNEQ(FieldKind, v))
+}
+
+// KindIn applies the In predicate on the "kind" field.
+func KindIn(vs ...Kind) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldIn(FieldKind, vs...))
+}
+
+// KindNotIn applies the NotIn predicate on the "kind" field.
+func KindNotIn(vs ...Kind) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNotIn(FieldKind, vs...))
+}
+
+// CorrelationIDEQ applies the EQ predicate on the "correlation_id" field.
+func CorrelationIDEQ(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldCorrelationID, v))
+}
+
+// CorrelationIDNEQ applies the NEQ predicate on the "correlation_id" field.
+func CorrelationIDNEQ(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNEQ(FieldCorrelationID, v))
+}
+
+// CorrelationIDIn applies the In predicate on the "correlation_id" field.
+func CorrelationIDIn(vs ...string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldIn(FieldCorrelationID, vs...))
+}
+
+// CorrelationIDNotIn applies the NotIn predicate on the "correlation_id" field.
+func CorrelationIDNotIn(vs ...string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNotIn(FieldCorrelationID, vs...))
+}
+
+// CorrelationIDGT applies the GT predicate on the "correlation_id" field.
+func CorrelationIDGT(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldGT(FieldCorrelationID, v))
+}
+
+// CorrelationIDGTE applies the GTE predicate on the "correlation_id" field.
+func CorrelationIDGTE(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldGTE(FieldCorrelationID, v))
+}
+
+// CorrelationIDLT applies the LT predicate on the "correlation_id" field.
+func CorrelationIDLT(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldLT(FieldCorrelationID, v))
+}
+
+// CorrelationIDLTE applies the LTE predicate on the "correlation_id" field.
+func CorrelationIDLTE(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldLTE(FieldCorrelationID, v))
+}
+
+// CorrelationIDContains applies the Contains predicate on the "correlation_id" field.
+func CorrelationIDContains(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldContains(FieldCorrelationID, v))
+}
+
+// CorrelationIDHasPrefix applies the HasPrefix predicate on the "correlation_id" field.
+func CorrelationIDHasPrefix(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldHasPrefix(FieldCorrelationID, v))
+}
+
+// CorrelationIDHasSuffix applies the HasSuffix predicate on the "correlation_id" field.
+func CorrelationIDHasSuffix(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldHasSuffix(FieldCorrelationID, v))
+}
+
+// CorrelationIDEqualFold applies the EqualFold predicate on the "correlation_id" field.
+func CorrelationIDEqualFold(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEqualFold(FieldCorrelationID, v))
+}
+
+// CorrelationIDContainsFold applies the ContainsFold predicate on the "correlation_id" field.
+func CorrelationIDContainsFold(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldContainsFold(FieldCorrelationID, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.
@@ -523,21 +613,21 @@ func HasAgentWith(preds ...predicate.Agent) predicate.AgentMessage {
 	})
 }
 
-// HasThread applies the HasEdge predicate on the "thread" edge.
-func HasThread() predicate.AgentMessage {
+// HasAgentInstance applies the HasEdge predicate on the "agent_instance" edge.
+func HasAgentInstance() predicate.AgentMessage {
 	return predicate.AgentMessage(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, ThreadTable, ThreadColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, AgentInstanceTable, AgentInstanceColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasThreadWith applies the HasEdge predicate on the "thread" edge with a given conditions (other predicates).
-func HasThreadWith(preds ...predicate.Thread) predicate.AgentMessage {
+// HasAgentInstanceWith applies the HasEdge predicate on the "agent_instance" edge with a given conditions (other predicates).
+func HasAgentInstanceWith(preds ...predicate.AgentInstance) predicate.AgentMessage {
 	return predicate.AgentMessage(func(s *sql.Selector) {
-		step := newThreadStep()
+		step := newAgentInstanceStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

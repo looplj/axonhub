@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -28,8 +27,7 @@ import (
 type AgentRuntimeServiceParams struct {
 	fx.In
 
-	Ent           *ent.Client
-	ThreadService *ThreadService
+	Ent *ent.Client
 }
 
 // AgentRuntimeService provides APIs for the runtime agent endpoint (/agent/v1/graphql).
@@ -37,8 +35,6 @@ type AgentRuntimeServiceParams struct {
 // uses system bypass for DB access to avoid coupling to Ent privacy rules.
 type AgentRuntimeService struct {
 	*AbstractService
-
-	threadService *ThreadService
 }
 
 func NewAgentRuntimeService(params AgentRuntimeServiceParams) *AgentRuntimeService {
@@ -46,7 +42,6 @@ func NewAgentRuntimeService(params AgentRuntimeServiceParams) *AgentRuntimeServi
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		threadService: params.ThreadService,
 	}
 }
 
@@ -81,14 +76,17 @@ type AgentBootstrap struct {
 type AgentMessageView struct {
 	ID         int
 	AgentID    int
-	ThreadID   string
 	Direction  agentmessage.Direction
 	SenderType agentmessage.SenderType
 	SenderID   *int
-	Text       string
-	Sequence   int64
-	Status     agentmessage.Status
-	CreatedAt  time.Time
+	Kind       agentmessage.Kind
+	// CorrelationID ties messages together (e.g. approval request + result).
+	CorrelationID string
+	Content       objects.JSONRawMessage
+	Text          string
+	Sequence      int64
+	Status        agentmessage.Status
+	CreatedAt     time.Time
 }
 
 type RegisterAgentInstanceInput struct {
@@ -97,33 +95,57 @@ type RegisterAgentInstanceInput struct {
 	Name       *string
 	Platform   *string
 	Version    *string
+	ThreadID   *string
 }
 
 type SendAgentMessageInput struct {
-	AgentID  int
-	ThreadID string
-	Text     string
+	AgentID       int
+	InstanceID    string
+	Text          string
+	Content       *objects.JSONRawMessage
+	Kind          *agentmessage.Kind
+	CorrelationID *string
 }
 
 type PushAgentMessageInput struct {
-	AgentID    int
-	InstanceID string
-	ThreadID   string
-	Text       string
+	AgentID       int
+	InstanceID    string
+	Text          string
+	Content       *objects.JSONRawMessage
+	Kind          *agentmessage.Kind
+	CorrelationID *string
 }
 
 type PullAgentMessagesInput struct {
 	AgentID       int
 	InstanceID    string
-	ThreadID      string
 	AfterSequence *int64
 	Limit         int
+	KindIn        []agentmessage.Kind
+	CorrelationID *string
 }
 
 type AckAgentMessagesInput struct {
 	AgentID    int
 	InstanceID string
 	MessageIDs []int
+}
+
+type ResolveApprovalCommandInput struct {
+	AgentID   int
+	RequestID string
+	Granted   bool
+	Scope     string // once|thread|workspace
+	Reason    *string
+}
+
+type AgentApprovalRequestView struct {
+	ID            int
+	AgentID       int
+	CorrelationID string
+	Content       objects.JSONRawMessage
+	Sequence      int64
+	CreatedAt     time.Time
 }
 
 func (s *AgentRuntimeService) GetAgentIDFromAPIKey(ctx context.Context) (int, error) {
@@ -279,7 +301,7 @@ func (s *AgentRuntimeService) AgentBootstrap(ctx context.Context, agentID int) (
 	})
 }
 
-func (s *AgentRuntimeService) SendAgentMessageAsUser(ctx context.Context, userID int, agentID int, threadID string, text string) (*AgentMessageView, error) {
+func (s *AgentRuntimeService) SendAgentMessageAsUser(ctx context.Context, userID int, agentID int, instanceID string, text string) (*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -299,29 +321,25 @@ func (s *AgentRuntimeService) SendAgentMessageAsUser(ctx context.Context, userID
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		th, err := s.threadService.GetOrCreateThread(bypassCtx, projectID, threadID)
+		inst, err := client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(a.ID),
+				agentinstance.InstanceIDEQ(instanceID),
+				agentinstance.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get or create thread: %w", err)
+			return nil, fmt.Errorf("failed to load agent instance: %w", err)
 		}
 
-		if _, err := client.AgentThread.Create().
-			SetProjectID(projectID).
-			SetAgentID(a.ID).
-			SetThreadRowID(th.ID).
-			Save(bypassCtx); err != nil {
-			if !ent.IsConstraintError(err) {
-				return nil, fmt.Errorf("failed to bind agent thread: %w", err)
-			}
-		}
-
-		raw, err := json.Marshal(agentTextMessageContent{Type: "text", Text: text})
+		raw, err := marshalMessageContent("text", text, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal message content: %w", err)
 		}
 
 		var msg *ent.AgentMessage
 		for attempt := 0; attempt < 3; attempt++ {
-			nextSeq, err := s.nextSequence(bypassCtx, a.ID, th.ID)
+			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -329,10 +347,12 @@ func (s *AgentRuntimeService) SendAgentMessageAsUser(ctx context.Context, userID
 			created, err := client.AgentMessage.Create().
 				SetProjectID(projectID).
 				SetAgentID(a.ID).
-				SetThreadRowID(th.ID).
-				SetDirection(agentmessage.DirectionToRuntime).
+				SetAgentInstanceID(inst.ID).
+				SetDirection(agentmessage.DirectionToAgent).
 				SetSenderType(agentmessage.SenderTypeUser).
 				SetSenderID(userID).
+				SetKind(agentmessage.KindChat).
+				SetCorrelationID("").
 				SetContent(objects.JSONRawMessage(raw)).
 				SetStatus(agentmessage.StatusPending).
 				SetSequence(nextSeq).
@@ -353,21 +373,23 @@ func (s *AgentRuntimeService) SendAgentMessageAsUser(ctx context.Context, userID
 		}
 
 		return &AgentMessageView{
-			ID:         msg.ID,
-			AgentID:    a.ID,
-			ThreadID:   th.ThreadID,
-			Direction:  msg.Direction,
-			SenderType: msg.SenderType,
-			SenderID:   lo.ToPtr(userID),
-			Text:       text,
-			Sequence:   msg.Sequence,
-			Status:     msg.Status,
-			CreatedAt:  msg.CreatedAt,
+			ID:            msg.ID,
+			AgentID:       a.ID,
+			Direction:     msg.Direction,
+			SenderType:    msg.SenderType,
+			SenderID:      new(userID),
+			Kind:          msg.Kind,
+			CorrelationID: msg.CorrelationID,
+			Content:       msg.Content,
+			Text:          text,
+			Sequence:      msg.Sequence,
+			Status:        msg.Status,
+			CreatedAt:     msg.CreatedAt,
 		}, nil
 	})
 }
 
-func (s *AgentRuntimeService) PullAgentMessagesToUserAsAdmin(ctx context.Context, agentID int, threadID string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+func (s *AgentRuntimeService) PullAgentMessagesToUserAsAdmin(ctx context.Context, agentID int, instanceID *string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -394,27 +416,31 @@ func (s *AgentRuntimeService) PullAgentMessagesToUserAsAdmin(ctx context.Context
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		th, err := client.Thread.Query().
-			Where(thread.ProjectIDEQ(projectID), thread.ThreadIDEQ(threadID)).
-			Only(bypassCtx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return []*AgentMessageView{}, nil
-			}
-			return nil, fmt.Errorf("failed to load thread: %w", err)
-		}
-
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
-				agentmessage.ThreadRowIDEQ(th.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
 			Limit(limit).
-			WithThread()
+			Where(func(s *sql.Selector) {})
+
+		if instanceID != nil && *instanceID != "" {
+			inst, err := client.AgentInstance.Query().
+				Where(
+					agentinstance.AgentIDEQ(a.ID),
+					agentinstance.InstanceIDEQ(*instanceID),
+					agentinstance.DeletedAtEQ(0),
+				).
+				Only(bypassCtx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load agent instance: %w", err)
+			}
+
+			q = q.Where(agentmessage.AgentInstanceIDEQ(inst.ID))
+		}
 
 		if afterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*afterSequence))
@@ -427,27 +453,21 @@ func (s *AgentRuntimeService) PullAgentMessagesToUserAsAdmin(ctx context.Context
 
 		out := make([]*AgentMessageView, 0, len(items))
 		for _, m := range items {
-			if m.Edges.Thread == nil {
-				continue
-			}
-
-			text := ""
-			var content agentTextMessageContent
-			if len(m.Content) > 0 && json.Unmarshal(m.Content, &content) == nil {
-				text = content.Text
-			}
+			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:         m.ID,
-				AgentID:    a.ID,
-				ThreadID:   m.Edges.Thread.ThreadID,
-				Direction:  m.Direction,
-				SenderType: m.SenderType,
-				SenderID:   m.SenderID,
-				Text:       text,
-				Sequence:   m.Sequence,
-				Status:     m.Status,
-				CreatedAt:  m.CreatedAt,
+				ID:            m.ID,
+				AgentID:       a.ID,
+				Direction:     m.Direction,
+				SenderType:    m.SenderType,
+				SenderID:      m.SenderID,
+				Kind:          m.Kind,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Text:          text,
+				Sequence:      m.Sequence,
+				Status:        m.Status,
+				CreatedAt:     m.CreatedAt,
 			})
 		}
 
@@ -455,7 +475,72 @@ func (s *AgentRuntimeService) PullAgentMessagesToUserAsAdmin(ctx context.Context
 	})
 }
 
-func (s *AgentRuntimeService) ListAgentThreadMessagesAsAdmin(ctx context.Context, agentID int, threadID string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+func (s *AgentRuntimeService) PullAgentApprovalRequestsAsAdmin(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentApprovalRequestView, error) {
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("project id not found in context")
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+
+	if limit > 200 {
+		limit = 200
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-admin-pull-approval-requests", func(bypassCtx context.Context) ([]*AgentApprovalRequestView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		q := client.AgentMessage.Query().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.DeletedAtEQ(0),
+			).
+			Order(agentmessage.BySequence()).
+			Limit(limit).
+			Where(func(s *sql.Selector) {})
+
+		if afterSequence != nil {
+			q = q.Where(agentmessage.SequenceGT(*afterSequence))
+		}
+
+		items, err := q.All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query approval requests: %w", err)
+		}
+
+		out := make([]*AgentApprovalRequestView, 0, len(items))
+		for _, m := range items {
+			out = append(out, &AgentApprovalRequestView{
+				ID:            m.ID,
+				AgentID:       a.ID,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Sequence:      m.Sequence,
+				CreatedAt:     m.CreatedAt,
+			})
+		}
+
+		return out, nil
+	})
+}
+
+func (s *AgentRuntimeService) ListAgentMessagesAsAdmin(ctx context.Context, agentID int, instanceID *string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -464,6 +549,7 @@ func (s *AgentRuntimeService) ListAgentThreadMessagesAsAdmin(ctx context.Context
 	if limit <= 0 {
 		limit = 200
 	}
+
 	if limit > 500 {
 		limit = 500
 	}
@@ -482,25 +568,29 @@ func (s *AgentRuntimeService) ListAgentThreadMessagesAsAdmin(ctx context.Context
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		th, err := client.Thread.Query().
-			Where(thread.ProjectIDEQ(projectID), thread.ThreadIDEQ(threadID)).
-			Only(bypassCtx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return []*AgentMessageView{}, nil
-			}
-			return nil, fmt.Errorf("failed to load thread: %w", err)
-		}
-
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
-				agentmessage.ThreadRowIDEQ(th.ID),
 				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
 			Limit(limit).
-			WithThread()
+			Where(func(s *sql.Selector) {})
+
+		if instanceID != nil && *instanceID != "" {
+			inst, err := client.AgentInstance.Query().
+				Where(
+					agentinstance.AgentIDEQ(a.ID),
+					agentinstance.InstanceIDEQ(*instanceID),
+					agentinstance.DeletedAtEQ(0),
+				).
+				Only(bypassCtx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load agent instance: %w", err)
+			}
+
+			q = q.Where(agentmessage.AgentInstanceIDEQ(inst.ID))
+		}
 
 		if afterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*afterSequence))
@@ -513,27 +603,21 @@ func (s *AgentRuntimeService) ListAgentThreadMessagesAsAdmin(ctx context.Context
 
 		out := make([]*AgentMessageView, 0, len(items))
 		for _, m := range items {
-			if m.Edges.Thread == nil {
-				continue
-			}
-
-			text := ""
-			var content agentTextMessageContent
-			if len(m.Content) > 0 && json.Unmarshal(m.Content, &content) == nil {
-				text = content.Text
-			}
+			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:         m.ID,
-				AgentID:    a.ID,
-				ThreadID:   m.Edges.Thread.ThreadID,
-				Direction:  m.Direction,
-				SenderType: m.SenderType,
-				SenderID:   m.SenderID,
-				Text:       text,
-				Sequence:   m.Sequence,
-				Status:     m.Status,
-				CreatedAt:  m.CreatedAt,
+				ID:            m.ID,
+				AgentID:       a.ID,
+				Direction:     m.Direction,
+				SenderType:    m.SenderType,
+				SenderID:      m.SenderID,
+				Kind:          m.Kind,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Text:          text,
+				Sequence:      m.Sequence,
+				Status:        m.Status,
+				CreatedAt:     m.CreatedAt,
 			})
 		}
 
@@ -541,63 +625,124 @@ func (s *AgentRuntimeService) ListAgentThreadMessagesAsAdmin(ctx context.Context
 	})
 }
 
-type AgentThreadSummaryView struct {
-	ThreadID  string
-	CreatedAt time.Time
-}
-
-func (s *AgentRuntimeService) ListAgentThreadsAsAdmin(ctx context.Context, agentID int, limit int) ([]AgentThreadSummaryView, error) {
+func (s *AgentRuntimeService) ResolveApprovalAsUser(ctx context.Context, userID int, input ResolveApprovalCommandInput) (bool, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
-		return nil, fmt.Errorf("project id not found in context")
+		return false, fmt.Errorf("project id not found in context")
 	}
 
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > 200 {
-		limit = 200
+	// Normalize scope value.
+	scope := input.Scope
+	if scope == "" {
+		scope = "once"
 	}
 
-	return authz.RunWithSystemBypass(ctx, "agent-admin-list-threads", func(bypassCtx context.Context) ([]AgentThreadSummaryView, error) {
+	switch scope {
+	case "once", "thread", "workspace":
+	default:
+		return false, fmt.Errorf("invalid approval scope: %q", scope)
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-admin-resolve-approval", func(bypassCtx context.Context) (bool, error) {
 		client := s.entFromContext(bypassCtx)
 
 		a, err := client.Agent.Query().
 			Where(
-				agent.IDEQ(agentID),
+				agent.IDEQ(input.AgentID),
 				agent.ProjectIDEQ(projectID),
 				agent.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load agent: %w", err)
+			return false, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		items, err := client.AgentThread.Query().
+		// Ensure there is a pending approval_request to resolve (prevents arbitrary injection).
+		approvalReq, err := client.AgentMessage.Query().
 			Where(
-				agentthread.AgentIDEQ(a.ID),
-				agentthread.ProjectIDEQ(projectID),
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.CorrelationIDEQ(input.RequestID),
+				agentmessage.DeletedAtEQ(0),
 			).
-			Order(agentthread.ByCreatedAt(sql.OrderDesc())).
-			Limit(limit).
-			WithThread().
-			All(bypassCtx)
+			Only(bypassCtx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query agent threads: %w", err)
+			if ent.IsNotFound(err) {
+				return false, fmt.Errorf("approval request not found or already resolved")
+			}
+
+			return false, fmt.Errorf("failed to query approval request: %w", err)
 		}
 
-		out := make([]AgentThreadSummaryView, 0, len(items))
-		for _, it := range items {
-			if it.Edges.Thread == nil {
+		payload := map[string]any{
+			"type":       "approval_result",
+			"request_id": input.RequestID,
+			"granted":    input.Granted,
+			"scope":      scope,
+		}
+		if input.Reason != nil && *input.Reason != "" {
+			payload["reason"] = *input.Reason
+		}
+
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return false, fmt.Errorf("marshal approval result: %w", err)
+		}
+
+		var resultMsg *ent.AgentMessage
+
+		for attempt := range 3 {
+			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
+			if err != nil {
+				return false, err
+			}
+
+			created, err := client.AgentMessage.Create().
+				SetProjectID(projectID).
+				SetAgentID(a.ID).
+				SetAgentInstanceID(approvalReq.AgentInstanceID).
+				SetDirection(agentmessage.DirectionToAgent).
+				SetSenderType(agentmessage.SenderTypeUser).
+				SetSenderID(userID).
+				SetKind(agentmessage.KindApprovalResult).
+				SetCorrelationID(input.RequestID).
+				SetContent(objects.JSONRawMessage(raw)).
+				SetStatus(agentmessage.StatusPending).
+				SetSequence(nextSeq).
+				Save(bypassCtx)
+			if err == nil {
+				resultMsg = created
+				break
+			}
+
+			if ent.IsConstraintError(err) && attempt < 2 {
 				continue
 			}
-			out = append(out, AgentThreadSummaryView{
-				ThreadID:  it.Edges.Thread.ThreadID,
-				CreatedAt: it.CreatedAt,
-			})
+
+			return false, fmt.Errorf("create approval result: %w", err)
 		}
 
-		return out, nil
+		if resultMsg == nil {
+			return false, fmt.Errorf("create approval result: no message created")
+		}
+
+		// Mark request as resolved to avoid repeated approvals.
+		_, _ = client.AgentMessage.Update().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.ProjectIDEQ(projectID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.CorrelationIDEQ(input.RequestID),
+				agentmessage.DeletedAtEQ(0),
+			).
+			SetStatus(agentmessage.StatusAcked).
+			Save(bypassCtx)
+
+		return true, nil
 	})
 }
 
@@ -646,7 +791,18 @@ func (s *AgentRuntimeService) RegisterAgentInstance(ctx context.Context, input R
 				upd.SetVersion(*input.Version)
 			}
 
-			return upd.Save(bypassCtx)
+			inst, err := upd.Save(bypassCtx)
+			if err != nil {
+				return nil, err
+			}
+
+			if input.ThreadID != nil && *input.ThreadID != "" {
+				if err := s.createAgentThread(bypassCtx, client, projectID, input.AgentID, *input.ThreadID); err != nil {
+					return nil, err
+				}
+			}
+
+			return inst, nil
 		}
 		if !ent.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to query agent instance: %w", err)
@@ -671,7 +827,6 @@ func (s *AgentRuntimeService) RegisterAgentInstance(ctx context.Context, input R
 		created, err := create.Save(bypassCtx)
 		if err != nil {
 			if ent.IsConstraintError(err) {
-				// Retry as update when concurrent register happens.
 				existing, getErr := client.AgentInstance.Query().
 					Where(
 						agentinstance.AgentIDEQ(input.AgentID),
@@ -682,15 +837,96 @@ func (s *AgentRuntimeService) RegisterAgentInstance(ctx context.Context, input R
 				if getErr != nil {
 					return nil, fmt.Errorf("failed to reload agent instance after conflict: %w", getErr)
 				}
-				return client.AgentInstance.UpdateOneID(existing.ID).
+
+				inst, err := client.AgentInstance.UpdateOneID(existing.ID).
 					SetLastHeartbeatAt(now).
 					Save(bypassCtx)
+				if err != nil {
+					return nil, err
+				}
+
+				if input.ThreadID != nil && *input.ThreadID != "" {
+					if err := s.createAgentThread(bypassCtx, client, projectID, input.AgentID, *input.ThreadID); err != nil {
+						return nil, err
+					}
+				}
+
+				return inst, nil
 			}
 			return nil, fmt.Errorf("failed to create agent instance: %w", err)
 		}
 
+		if input.ThreadID != nil && *input.ThreadID != "" {
+			if err := s.createAgentThread(bypassCtx, client, projectID, input.AgentID, *input.ThreadID); err != nil {
+				return nil, err
+			}
+		}
+
 		return created, nil
 	})
+}
+
+func (s *AgentRuntimeService) createAgentThread(ctx context.Context, client *ent.Client, projectID int, agentID int, threadID string) error {
+	t, err := client.Thread.Query().
+		Where(
+			thread.ThreadIDEQ(threadID),
+			thread.ProjectIDEQ(projectID),
+		).
+		Only(ctx)
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			return fmt.Errorf("failed to query thread: %w", err)
+		}
+
+		t, err = client.Thread.Create().
+			SetThreadID(threadID).
+			SetProjectID(projectID).
+			Save(ctx)
+		if err != nil {
+			if ent.IsConstraintError(err) {
+				t, err = client.Thread.Query().
+					Where(
+						thread.ThreadIDEQ(threadID),
+						thread.ProjectIDEQ(projectID),
+					).
+					Only(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to reload thread after conflict: %w", err)
+				}
+			} else {
+				return fmt.Errorf("failed to create thread: %w", err)
+			}
+		}
+	}
+
+	exists, err := client.AgentThread.Query().
+		Where(
+			agentthread.AgentIDEQ(agentID),
+			agentthread.ThreadIDEQ(t.ID),
+		).
+		Exist(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query agent thread: %w", err)
+	}
+
+	if exists {
+		return nil
+	}
+
+	_, err = client.AgentThread.Create().
+		SetProjectID(projectID).
+		SetAgentID(agentID).
+		SetThreadID(t.ID).
+		Save(ctx)
+	if err != nil {
+		if ent.IsConstraintError(err) {
+			return nil
+		}
+
+		return fmt.Errorf("failed to create agent thread: %w", err)
+	}
+
+	return nil
 }
 
 func (s *AgentRuntimeService) HeartbeatAgentInstance(ctx context.Context, agentID int, instanceID string) (bool, error) {
@@ -738,22 +974,83 @@ type agentTextMessageContent struct {
 	Text string `json:"text"`
 }
 
+func marshalMessageContent(typ string, text string, payload any) (objects.JSONRawMessage, error) {
+	type base struct {
+		Type string `json:"type"`
+		Text string `json:"text,omitempty"`
+	}
+
+	if typ == "" {
+		typ = "text"
+	}
+
+	if typ == "text" {
+		raw, err := json.Marshal(agentTextMessageContent{Type: typ, Text: text})
+		return objects.JSONRawMessage(raw), err
+	}
+	// For non-text messages, allow payload to carry structured fields.
+	// The caller must ensure payload is JSON-safe and redacted.
+	if payload == nil {
+		raw, err := json.Marshal(base{Type: typ, Text: text})
+		return objects.JSONRawMessage(raw), err
+	}
+
+	raw, err := json.Marshal(payload)
+
+	return objects.JSONRawMessage(raw), err
+}
+
+func extractTextFromMessageContent(raw objects.JSONRawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+
+	var content agentTextMessageContent
+	if err := json.Unmarshal(raw, &content); err != nil {
+		return ""
+	}
+
+	return content.Text
+}
+
 func (s *AgentRuntimeService) SendAgentMessage(ctx context.Context, input SendAgentMessageInput) (*AgentMessageView, error) {
-	return s.createMessage(ctx, input.AgentID, nil, input.ThreadID, input.Text, agentmessage.DirectionToRuntime, agentmessage.SenderTypeUser)
+	kind := agentmessage.KindChat
+	if input.Kind != nil && *input.Kind != "" {
+		kind = *input.Kind
+	}
+
+	corr := ""
+	if input.CorrelationID != nil {
+		corr = *input.CorrelationID
+	}
+
+	return s.createMessage(ctx, input.AgentID, input.InstanceID, input.Text, input.Content, agentmessage.DirectionToAgent, agentmessage.SenderTypeUser, kind, corr)
 }
 
 func (s *AgentRuntimeService) PushAgentMessage(ctx context.Context, input PushAgentMessageInput) (*AgentMessageView, error) {
-	return s.createMessage(ctx, input.AgentID, &input.InstanceID, input.ThreadID, input.Text, agentmessage.DirectionToUser, agentmessage.SenderTypeRuntime)
+	kind := agentmessage.KindChat
+	if input.Kind != nil && *input.Kind != "" {
+		kind = *input.Kind
+	}
+
+	corr := ""
+	if input.CorrelationID != nil {
+		corr = *input.CorrelationID
+	}
+
+	return s.createMessage(ctx, input.AgentID, input.InstanceID, input.Text, input.Content, agentmessage.DirectionToUser, agentmessage.SenderTypeAgent, kind, corr)
 }
 
 func (s *AgentRuntimeService) createMessage(
 	ctx context.Context,
 	agentID int,
-	instanceID *string,
-	threadID string,
+	instanceID string,
 	text string,
+	content *objects.JSONRawMessage,
 	direction agentmessage.Direction,
 	senderType agentmessage.SenderType,
+	kind agentmessage.Kind,
+	correlationID string,
 ) (*AgentMessageView, error) {
 	apiKey, ok := contexts.GetAPIKey(ctx)
 	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
@@ -778,44 +1075,34 @@ func (s *AgentRuntimeService) createMessage(
 		}
 
 		var senderID *int
-		if instanceID != nil {
-			inst, err := client.AgentInstance.Query().
-				Where(
-					agentinstance.AgentIDEQ(a.ID),
-					agentinstance.InstanceIDEQ(*instanceID),
-					agentinstance.DeletedAtEQ(0),
-				).
-				Only(bypassCtx)
+
+		inst, err := client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(a.ID),
+				agentinstance.InstanceIDEQ(instanceID),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent instance: %w", err)
+		}
+
+		senderID = &inst.ID
+
+		raw := objects.JSONRawMessage(nil)
+		if content != nil && len(*content) > 0 && string(*content) != "null" {
+			raw = *content
+		} else {
+			b, err := marshalMessageContent("text", text, nil)
 			if err != nil {
-				return nil, fmt.Errorf("failed to load agent instance: %w", err)
+				return nil, fmt.Errorf("failed to marshal message content: %w", err)
 			}
-			senderID = &inst.ID
-		}
 
-		th, err := s.threadService.GetOrCreateThread(bypassCtx, projectID, threadID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get or create thread: %w", err)
-		}
-
-		// Ensure thread binding exists.
-		if _, err := client.AgentThread.Create().
-			SetProjectID(projectID).
-			SetAgentID(a.ID).
-			SetThreadRowID(th.ID).
-			Save(bypassCtx); err != nil {
-			if !ent.IsConstraintError(err) {
-				return nil, fmt.Errorf("failed to bind agent thread: %w", err)
-			}
-		}
-
-		raw, err := json.Marshal(agentTextMessageContent{Type: "text", Text: text})
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal message content: %w", err)
+			raw = b
 		}
 
 		var msg *ent.AgentMessage
 		for attempt := 0; attempt < 3; attempt++ {
-			nextSeq, err := s.nextSequence(bypassCtx, a.ID, th.ID)
+			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -823,11 +1110,13 @@ func (s *AgentRuntimeService) createMessage(
 			created, err := client.AgentMessage.Create().
 				SetProjectID(projectID).
 				SetAgentID(a.ID).
-				SetThreadRowID(th.ID).
+				SetAgentInstanceID(*senderID).
 				SetDirection(direction).
 				SetSenderType(senderType).
 				SetNillableSenderID(senderID).
-				SetContent(objects.JSONRawMessage(raw)).
+				SetKind(kind).
+				SetCorrelationID(correlationID).
+				SetContent(raw).
 				SetStatus(agentmessage.StatusPending).
 				SetSequence(nextSeq).
 				Save(bypassCtx)
@@ -846,28 +1135,34 @@ func (s *AgentRuntimeService) createMessage(
 			return nil, fmt.Errorf("failed to create message: no message created")
 		}
 
+		viewText := extractTextFromMessageContent(msg.Content)
+		if viewText == "" {
+			viewText = text
+		}
+
 		return &AgentMessageView{
-			ID:         msg.ID,
-			AgentID:    a.ID,
-			ThreadID:   th.ThreadID,
-			Direction:  msg.Direction,
-			SenderType: msg.SenderType,
-			SenderID:   senderID,
-			Text:       text,
-			Sequence:   msg.Sequence,
-			Status:     msg.Status,
-			CreatedAt:  msg.CreatedAt,
+			ID:            msg.ID,
+			AgentID:       a.ID,
+			Direction:     msg.Direction,
+			SenderType:    msg.SenderType,
+			SenderID:      senderID,
+			Kind:          msg.Kind,
+			CorrelationID: msg.CorrelationID,
+			Content:       msg.Content,
+			Text:          viewText,
+			Sequence:      msg.Sequence,
+			Status:        msg.Status,
+			CreatedAt:     msg.CreatedAt,
 		}, nil
 	})
 }
 
-func (s *AgentRuntimeService) nextSequence(ctx context.Context, agentID int, threadRowID int) (int64, error) {
+func (s *AgentRuntimeService) nextSequence(ctx context.Context, agentID int) (int64, error) {
 	client := s.entFromContext(ctx)
 
 	last, err := client.AgentMessage.Query().
 		Where(
 			agentmessage.AgentIDEQ(agentID),
-			agentmessage.ThreadRowIDEQ(threadRowID),
 		).
 		Order(agentmessage.BySequence(sql.OrderDesc())).
 		First(ctx)
@@ -922,28 +1217,24 @@ func (s *AgentRuntimeService) PullAgentMessages(ctx context.Context, input PullA
 			return nil, fmt.Errorf("failed to load agent instance: %w", err)
 		}
 
-		th, err := client.Thread.Query().
-			Where(thread.ProjectIDEQ(projectID), thread.ThreadIDEQ(input.ThreadID)).
-			Only(bypassCtx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return []*AgentMessageView{}, nil
-			}
-			return nil, fmt.Errorf("failed to load thread: %w", err)
-		}
-
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
-				agentmessage.ThreadRowIDEQ(th.ID),
-				agentmessage.DirectionEQ(agentmessage.DirectionToRuntime),
+				agentmessage.DirectionEQ(agentmessage.DirectionToAgent),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
 			Limit(limit).
-			WithThread()
+			Where(func(s *sql.Selector) {})
 
+		if len(input.KindIn) > 0 {
+			q = q.Where(agentmessage.KindIn(input.KindIn...))
+		}
+
+		if input.CorrelationID != nil && *input.CorrelationID != "" {
+			q = q.Where(agentmessage.CorrelationIDEQ(*input.CorrelationID))
+		}
 		if input.AfterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*input.AfterSequence))
 		}
@@ -955,27 +1246,21 @@ func (s *AgentRuntimeService) PullAgentMessages(ctx context.Context, input PullA
 
 		out := make([]*AgentMessageView, 0, len(items))
 		for _, m := range items {
-			if m.Edges.Thread == nil {
-				continue
-			}
-
-			text := ""
-			var content agentTextMessageContent
-			if len(m.Content) > 0 && json.Unmarshal(m.Content, &content) == nil {
-				text = content.Text
-			}
+			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:         m.ID,
-				AgentID:    a.ID,
-				ThreadID:   m.Edges.Thread.ThreadID,
-				Direction:  m.Direction,
-				SenderType: m.SenderType,
-				SenderID:   m.SenderID,
-				Text:       text,
-				Sequence:   m.Sequence,
-				Status:     m.Status,
-				CreatedAt:  m.CreatedAt,
+				ID:            m.ID,
+				AgentID:       a.ID,
+				Direction:     m.Direction,
+				SenderType:    m.SenderType,
+				SenderID:      m.SenderID,
+				Kind:          m.Kind,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Text:          text,
+				Sequence:      m.Sequence,
+				Status:        m.Status,
+				CreatedAt:     m.CreatedAt,
 			})
 		}
 
@@ -983,7 +1268,7 @@ func (s *AgentRuntimeService) PullAgentMessages(ctx context.Context, input PullA
 	})
 }
 
-func (s *AgentRuntimeService) PullAgentMessagesToUser(ctx context.Context, agentID int, threadID string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+func (s *AgentRuntimeService) PullAgentMessagesToUser(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
 	apiKey, ok := contexts.GetAPIKey(ctx)
 	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
 		return nil, fmt.Errorf("agent api key not found in context")
@@ -1012,27 +1297,16 @@ func (s *AgentRuntimeService) PullAgentMessagesToUser(ctx context.Context, agent
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		th, err := client.Thread.Query().
-			Where(thread.ProjectIDEQ(projectID), thread.ThreadIDEQ(threadID)).
-			Only(bypassCtx)
-		if err != nil {
-			if ent.IsNotFound(err) {
-				return []*AgentMessageView{}, nil
-			}
-			return nil, fmt.Errorf("failed to load thread: %w", err)
-		}
-
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
-				agentmessage.ThreadRowIDEQ(th.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.KindEQ(agentmessage.KindChat),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
-			Limit(limit).
-			WithThread()
+			Limit(limit)
 
 		if afterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*afterSequence))
@@ -1045,27 +1319,21 @@ func (s *AgentRuntimeService) PullAgentMessagesToUser(ctx context.Context, agent
 
 		out := make([]*AgentMessageView, 0, len(items))
 		for _, m := range items {
-			if m.Edges.Thread == nil {
-				continue
-			}
-
-			text := ""
-			var content agentTextMessageContent
-			if len(m.Content) > 0 && json.Unmarshal(m.Content, &content) == nil {
-				text = content.Text
-			}
+			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:         m.ID,
-				AgentID:    a.ID,
-				ThreadID:   m.Edges.Thread.ThreadID,
-				Direction:  m.Direction,
-				SenderType: m.SenderType,
-				SenderID:   m.SenderID,
-				Text:       text,
-				Sequence:   m.Sequence,
-				Status:     m.Status,
-				CreatedAt:  m.CreatedAt,
+				ID:            m.ID,
+				AgentID:       a.ID,
+				Direction:     m.Direction,
+				SenderType:    m.SenderType,
+				SenderID:      m.SenderID,
+				Kind:          m.Kind,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Text:          text,
+				Sequence:      m.Sequence,
+				Status:        m.Status,
+				CreatedAt:     m.CreatedAt,
 			})
 		}
 
@@ -1100,6 +1368,68 @@ func (s *AgentRuntimeService) AckAgentMessages(ctx context.Context, input AckAge
 			return 0, fmt.Errorf("failed to load agent: %w", err)
 		}
 
+		_, err = client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(a.ID),
+				agentinstance.InstanceIDEQ(input.InstanceID),
+				agentinstance.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent instance: %w", err)
+		}
+
+		affected, err := client.AgentMessage.Update().
+			Where(
+				agentmessage.IDIn(input.MessageIDs...),
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.ProjectIDEQ(projectID),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.DeletedAtEQ(0),
+			).
+			SetStatus(agentmessage.StatusAcked).
+			Save(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to ack messages: %w", err)
+		}
+
+		return affected, nil
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// AckAgentMessagesAsUser acknowledges messages as a user (for Web UI).
+// Unlike AckAgentMessages which requires agent API key, this method uses user authentication.
+func (s *AgentRuntimeService) AckAgentMessagesAsUser(ctx context.Context, userID int, input AckAgentMessagesInput) (bool, error) {
+	if len(input.MessageIDs) == 0 {
+		return true, nil
+	}
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return false, fmt.Errorf("project id not found in context")
+	}
+
+	_, err := authz.RunWithSystemBypass(ctx, "agent-user-ack-messages", func(bypassCtx context.Context) (int, error) {
+		client := s.entFromContext(bypassCtx)
+
+		// Verify agent exists and belongs to project
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(input.AgentID),
+				agent.ProjectIDEQ(projectID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		// Verify instance exists
 		_, err = client.AgentInstance.Query().
 			Where(
 				agentinstance.AgentIDEQ(a.ID),

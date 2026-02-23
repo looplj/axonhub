@@ -238,19 +238,19 @@ func (_c *AgentCreate) AddInstances(v ...*AgentInstance) *AgentCreate {
 	return _c.AddInstanceIDs(ids...)
 }
 
-// AddThreadBindingIDs adds the "thread_bindings" edge to the AgentThread entity by IDs.
-func (_c *AgentCreate) AddThreadBindingIDs(ids ...int) *AgentCreate {
-	_c.mutation.AddThreadBindingIDs(ids...)
+// AddThreadIDs adds the "threads" edge to the AgentThread entity by IDs.
+func (_c *AgentCreate) AddThreadIDs(ids ...int) *AgentCreate {
+	_c.mutation.AddThreadIDs(ids...)
 	return _c
 }
 
-// AddThreadBindings adds the "thread_bindings" edges to the AgentThread entity.
-func (_c *AgentCreate) AddThreadBindings(v ...*AgentThread) *AgentCreate {
+// AddThreads adds the "threads" edges to the AgentThread entity.
+func (_c *AgentCreate) AddThreads(v ...*AgentThread) *AgentCreate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _c.AddThreadBindingIDs(ids...)
+	return _c.AddThreadIDs(ids...)
 }
 
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
@@ -598,12 +598,12 @@ func (_c *AgentCreate) createSpec() (*Agent, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.ThreadBindingsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ThreadsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   agent.ThreadBindingsTable,
-			Columns: []string{agent.ThreadBindingsColumn},
+			Table:   agent.ThreadsTable,
+			Columns: []string{agent.ThreadsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),

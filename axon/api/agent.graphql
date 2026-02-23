@@ -24,8 +24,10 @@ mutation HeartbeatAgentInstance($input: HeartbeatAgentInstanceInput!) {
 query PullAgentMessages($input: PullAgentMessagesInput!) {
   pullAgentMessages(input: $input) {
     id
-    threadID
     text
+    kind
+    correlationID
+    content
     sequence
   }
 }

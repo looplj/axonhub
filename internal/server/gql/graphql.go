@@ -20,7 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
-	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -45,6 +44,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gql/logging"
 )
 
 type Dependencies struct {
@@ -116,7 +116,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
-	gqlSrv.Use(&loggingTracer{})
+	gqlSrv.Use(&logging.LoggingTracer{})
 	gqlSrv.Use(entgql.Transactioner{
 		TxOpener: deps.Ent,
 		// Skip transaction for TestChannel mutation to avoid transaction conflicts
@@ -158,7 +158,6 @@ var guidTypeToNodeType = map[string]string{
 	ent.TypeAgentTool:               agenttool.Table,
 	ent.TypeAgentSkill:              agentskill.Table,
 	ent.TypeAgentInstance:           agentinstance.Table,
-	ent.TypeAgentThread:             agentthread.Table,
 	ent.TypeAgentMessage:            agentmessage.Table,
 	ent.TypeAgentMemory:             agentmemory.Table,
 }

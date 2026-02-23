@@ -27,8 +27,8 @@ type AgentThread struct {
 	ProjectID int `json:"project_id,omitempty"`
 	// AgentID holds the value of the "agent_id" field.
 	AgentID int `json:"agent_id,omitempty"`
-	// ThreadRowID holds the value of the "thread_row_id" field.
-	ThreadRowID int `json:"thread_row_id,omitempty"`
+	// ThreadID holds the value of the "thread_id" field.
+	ThreadID int `json:"thread_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AgentThreadQuery when eager-loading is set.
 	Edges        AgentThreadEdges `json:"edges"`
@@ -75,7 +75,7 @@ func (*AgentThread) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case agentthread.FieldID, agentthread.FieldProjectID, agentthread.FieldAgentID, agentthread.FieldThreadRowID:
+		case agentthread.FieldID, agentthread.FieldProjectID, agentthread.FieldAgentID, agentthread.FieldThreadID:
 			values[i] = new(sql.NullInt64)
 		case agentthread.FieldCreatedAt, agentthread.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -124,11 +124,11 @@ func (_m *AgentThread) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.AgentID = int(value.Int64)
 			}
-		case agentthread.FieldThreadRowID:
+		case agentthread.FieldThreadID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field thread_row_id", values[i])
+				return fmt.Errorf("unexpected type %T for field thread_id", values[i])
 			} else if value.Valid {
-				_m.ThreadRowID = int(value.Int64)
+				_m.ThreadID = int(value.Int64)
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -188,8 +188,8 @@ func (_m *AgentThread) String() string {
 	builder.WriteString("agent_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AgentID))
 	builder.WriteString(", ")
-	builder.WriteString("thread_row_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ThreadRowID))
+	builder.WriteString("thread_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ThreadID))
 	builder.WriteByte(')')
 	return builder.String()
 }

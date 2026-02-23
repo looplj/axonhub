@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
-	"github.com/looplj/axonhub/cmd/axonclaw/api"
+	"github.com/google/uuid"
+	"github.com/looplj/axonhub/axon/api"
 )
 
 type Result struct {
@@ -17,6 +18,7 @@ type Result struct {
 	AgentName    string
 	Model        string
 	SystemPrompt string
+	ThreadID     string
 	Tools        []*api.AgentBootstrapAgentBootstrapToolsAgentToolDefinition
 	Skills       []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition
 	BuiltinTools []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
@@ -27,7 +29,6 @@ type SystemPromptData struct {
 	Timezone   string
 	OS         string
 	Workspace  string
-	ThreadID   string
 	AgentID    string
 	AgentName  string
 	InstanceID string
@@ -70,6 +71,7 @@ func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Res
 		AgentName:    bootstrap.AgentName,
 		Model:        model,
 		SystemPrompt: systemPrompt,
+		ThreadID:     fmt.Sprintf("th-%s", uuid.New().String()),
 		Tools:        bootstrap.Tools,
 		Skills:       bootstrap.Skills,
 		BuiltinTools: bootstrap.BuiltinTools,

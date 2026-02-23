@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 )
 
@@ -112,9 +113,45 @@ func (_u *AgentInstanceUpdate) SetNillableLastHeartbeatAt(v *time.Time) *AgentIn
 	return _u
 }
 
+// AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
+func (_u *AgentInstanceUpdate) AddMessageIDs(ids ...int) *AgentInstanceUpdate {
+	_u.mutation.AddMessageIDs(ids...)
+	return _u
+}
+
+// AddMessages adds the "messages" edges to the AgentMessage entity.
+func (_u *AgentInstanceUpdate) AddMessages(v ...*AgentMessage) *AgentInstanceUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMessageIDs(ids...)
+}
+
 // Mutation returns the AgentInstanceMutation object of the builder.
 func (_u *AgentInstanceUpdate) Mutation() *AgentInstanceMutation {
 	return _u.mutation
+}
+
+// ClearMessages clears all "messages" edges to the AgentMessage entity.
+func (_u *AgentInstanceUpdate) ClearMessages() *AgentInstanceUpdate {
+	_u.mutation.ClearMessages()
+	return _u
+}
+
+// RemoveMessageIDs removes the "messages" edge to AgentMessage entities by IDs.
+func (_u *AgentInstanceUpdate) RemoveMessageIDs(ids ...int) *AgentInstanceUpdate {
+	_u.mutation.RemoveMessageIDs(ids...)
+	return _u
+}
+
+// RemoveMessages removes "messages" edges to AgentMessage entities.
+func (_u *AgentInstanceUpdate) RemoveMessages(v ...*AgentMessage) *AgentInstanceUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMessageIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -205,6 +242,51 @@ func (_u *AgentInstanceUpdate) sqlSave(ctx context.Context) (_node int, err erro
 	}
 	if value, ok := _u.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
+	}
+	if _u.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessagesTable,
+			Columns: []string{agentinstance.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMessagesIDs(); len(nodes) > 0 && !_u.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessagesTable,
+			Columns: []string{agentinstance.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MessagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessagesTable,
+			Columns: []string{agentinstance.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -311,9 +393,45 @@ func (_u *AgentInstanceUpdateOne) SetNillableLastHeartbeatAt(v *time.Time) *Agen
 	return _u
 }
 
+// AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
+func (_u *AgentInstanceUpdateOne) AddMessageIDs(ids ...int) *AgentInstanceUpdateOne {
+	_u.mutation.AddMessageIDs(ids...)
+	return _u
+}
+
+// AddMessages adds the "messages" edges to the AgentMessage entity.
+func (_u *AgentInstanceUpdateOne) AddMessages(v ...*AgentMessage) *AgentInstanceUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMessageIDs(ids...)
+}
+
 // Mutation returns the AgentInstanceMutation object of the builder.
 func (_u *AgentInstanceUpdateOne) Mutation() *AgentInstanceMutation {
 	return _u.mutation
+}
+
+// ClearMessages clears all "messages" edges to the AgentMessage entity.
+func (_u *AgentInstanceUpdateOne) ClearMessages() *AgentInstanceUpdateOne {
+	_u.mutation.ClearMessages()
+	return _u
+}
+
+// RemoveMessageIDs removes the "messages" edge to AgentMessage entities by IDs.
+func (_u *AgentInstanceUpdateOne) RemoveMessageIDs(ids ...int) *AgentInstanceUpdateOne {
+	_u.mutation.RemoveMessageIDs(ids...)
+	return _u
+}
+
+// RemoveMessages removes "messages" edges to AgentMessage entities.
+func (_u *AgentInstanceUpdateOne) RemoveMessages(v ...*AgentMessage) *AgentInstanceUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMessageIDs(ids...)
 }
 
 // Where appends a list predicates to the AgentInstanceUpdate builder.
@@ -434,6 +552,51 @@ func (_u *AgentInstanceUpdateOne) sqlSave(ctx context.Context) (_node *AgentInst
 	}
 	if value, ok := _u.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
+	}
+	if _u.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessagesTable,
+			Columns: []string{agentinstance.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMessagesIDs(); len(nodes) > 0 && !_u.mutation.MessagesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessagesTable,
+			Columns: []string{agentinstance.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MessagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessagesTable,
+			Columns: []string{agentinstance.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &AgentInstance{config: _u.config}

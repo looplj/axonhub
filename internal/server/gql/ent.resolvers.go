@@ -133,12 +133,9 @@ func (r *agentMessageResolver) AgentID(ctx context.Context, obj *ent.AgentMessag
 	}, nil
 }
 
-// ThreadRowID is the resolver for the threadRowID field.
-func (r *agentMessageResolver) ThreadRowID(ctx context.Context, obj *ent.AgentMessage) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeThread,
-		ID:   obj.ThreadRowID,
-	}, nil
+// AgentInstanceID is the resolver for the agentInstanceID field.
+func (r *agentMessageResolver) AgentInstanceID(ctx context.Context, obj *ent.AgentMessage) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: AgentInstanceID - agentInstanceID"))
 }
 
 // ID is the resolver for the id field.
@@ -175,26 +172,17 @@ func (r *agentSkillResolver) SkillID(ctx context.Context, obj *ent.AgentSkill) (
 
 // ID is the resolver for the id field.
 func (r *agentThreadResolver) ID(ctx context.Context, obj *ent.AgentThread) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeAgentThread,
-		ID:   obj.ID,
-	}, nil
+	panic(fmt.Errorf("not implemented: ID - id"))
 }
 
 // AgentID is the resolver for the agentID field.
 func (r *agentThreadResolver) AgentID(ctx context.Context, obj *ent.AgentThread) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeAgent,
-		ID:   obj.AgentID,
-	}, nil
+	panic(fmt.Errorf("not implemented: AgentID - agentID"))
 }
 
-// ThreadRowID is the resolver for the threadRowID field.
-func (r *agentThreadResolver) ThreadRowID(ctx context.Context, obj *ent.AgentThread) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeThread,
-		ID:   obj.ThreadRowID,
-	}, nil
+// ThreadID is the resolver for the threadID field.
+func (r *agentThreadResolver) ThreadID(ctx context.Context, obj *ent.AgentThread) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ThreadID - threadID"))
 }
 
 // ID is the resolver for the id field.
@@ -613,18 +601,7 @@ func (r *queryResolver) AgentSkills(ctx context.Context, after *entgql.Cursor[in
 
 // AgentThreads is the resolver for the agentThreads field.
 func (r *queryResolver) AgentThreads(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentThreadOrder, where *ent.AgentThreadWhereInput) (*ent.AgentThreadConnection, error) {
-	if err := validatePaginationArgs(first, last); err != nil {
-		return nil, err
-	}
-
-	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
-		orderBy.Field = ent.DefaultAgentThreadOrder.Field
-	}
-
-	return r.client.AgentThread.Query().Paginate(ctx, after, first, before, last,
-		ent.WithAgentThreadOrder(orderBy),
-		ent.WithAgentThreadFilter(where.Filter),
-	)
+	panic(fmt.Errorf("not implemented: AgentThreads - agentThreads"))
 }
 
 // AgentTools is the resolver for the agentTools field.

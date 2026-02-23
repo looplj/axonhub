@@ -681,21 +681,21 @@ func HasInstancesWith(preds ...predicate.AgentInstance) predicate.Agent {
 	})
 }
 
-// HasThreadBindings applies the HasEdge predicate on the "thread_bindings" edge.
-func HasThreadBindings() predicate.Agent {
+// HasThreads applies the HasEdge predicate on the "threads" edge.
+func HasThreads() predicate.Agent {
 	return predicate.Agent(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, ThreadBindingsTable, ThreadBindingsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, ThreadsTable, ThreadsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasThreadBindingsWith applies the HasEdge predicate on the "thread_bindings" edge with a given conditions (other predicates).
-func HasThreadBindingsWith(preds ...predicate.AgentThread) predicate.Agent {
+// HasThreadsWith applies the HasEdge predicate on the "threads" edge with a given conditions (other predicates).
+func HasThreadsWith(preds ...predicate.AgentThread) predicate.Agent {
 	return predicate.Agent(func(s *sql.Selector) {
-		step := newThreadBindingsStep()
+		step := newThreadsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

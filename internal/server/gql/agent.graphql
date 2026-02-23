@@ -42,6 +42,17 @@ extend type Mutation {
   Web UI uses this to relay messages to axonclaw via pull+ack.
   """
   sendAgentMessage(input: SendAgentMessageInput!): AgentChatMessage!
+
+  """
+  Resolve a pending approval request by publishing an approval_result message to the runtime.
+  """
+  resolveApproval(input: ResolveApprovalInput!): Boolean!
+
+  """
+  Acknowledge messages have been received by the user.
+  Updates message status from 'pending' to 'acked'.
+  """
+  ackAgentMessages(input: AckAgentMessagesInput!): Boolean!
 }
 
 """
@@ -50,40 +61,67 @@ Minimal message view for Agent thread chat in Web UI.
 type AgentChatMessage {
   id: ID!
   agentID: ID!
-  threadID: String!
   direction: AgentMessageDirection!
   senderType: AgentMessageSenderType!
   senderID: Int
+  kind: AgentMessageKind!
+  correlationID: String!
+  content: JSONRawMessage!
   text: String!
   sequence: Int!
   status: AgentMessageStatus!
   createdAt: Time!
 }
 
+"""
+Approval request view for IM/Web operator surfaces.
+
+Backed by agent_messages(kind=approval_request, direction=to_user, status=pending).
+"""
+type AgentApprovalRequestMessage {
+  id: ID!
+  agentID: ID!
+  correlationID: String!
+  content: JSONRawMessage!
+  sequence: Int!
+  createdAt: Time!
+}
+
 input SendAgentMessageInput {
   agentID: ID!
-  threadID: String!
+  instanceID: String!
   text: String!
+}
+
+enum ApprovalScope { once thread workspace }
+
+input ResolveApprovalInput {
+  agentID: ID!
+  requestID: String!
+  granted: Boolean!
+  scope: ApprovalScope = once
+  reason: String
+}
+
+input AckAgentMessagesInput {
+  agentID: ID!
+  instanceID: String!
+  messageIDs: [ID!]!
 }
 
 extend type Query {
   """
-  Pull pending messages from runtime to user for a thread (direction=to_user, status=pending).
+  Pull pending messages from runtime to user (direction=to_user, status=pending).
   """
-  pullAgentMessagesToUser(agentID: ID!, threadID: String!, afterSequence: Int, limit: Int = 50): [AgentChatMessage!]!
+  pullAgentMessagesToUser(agentID: ID!, instanceID: String, afterSequence: Int, limit: Int = 50): [AgentChatMessage!]!
 
   """
-  List messages for an agent thread (both directions), ordered by sequence asc.
+  Pull pending approval requests (kind=approval_request, direction=to_user, status=pending).
   """
-  agentThreadMessages(agentID: ID!, threadID: String!, afterSequence: Int, limit: Int = 200): [AgentChatMessage!]!
+  pullAgentApprovalRequests(agentID: ID!, afterSequence: Int, limit: Int = 50): [AgentApprovalRequestMessage!]!
 
   """
-  List threads that have been bound to the agent (via AgentThread table).
+  List messages for an agent (both directions), ordered by sequence asc.
   """
-  agentThreadSummaries(agentID: ID!, first: Int = 50): [AgentThreadSummary!]!
-}
-
-type AgentThreadSummary {
-  threadID: String!
-  createdAt: Time!
+  agentChatMessages(agentID: ID!, instanceID: String, afterSequence: Int, limit: Int = 200): [AgentChatMessage!]!
 }

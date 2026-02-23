@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
 )
 
 // AgentInstanceCreate is the builder for creating a AgentInstance entity.
@@ -134,6 +135,21 @@ func (_c *AgentInstanceCreate) SetLastHeartbeatAt(v time.Time) *AgentInstanceCre
 // SetAgent sets the "agent" edge to the Agent entity.
 func (_c *AgentInstanceCreate) SetAgent(v *Agent) *AgentInstanceCreate {
 	return _c.SetAgentID(v.ID)
+}
+
+// AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
+func (_c *AgentInstanceCreate) AddMessageIDs(ids ...int) *AgentInstanceCreate {
+	_c.mutation.AddMessageIDs(ids...)
+	return _c
+}
+
+// AddMessages adds the "messages" edges to the AgentMessage entity.
+func (_c *AgentInstanceCreate) AddMessages(v ...*AgentMessage) *AgentInstanceCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMessageIDs(ids...)
 }
 
 // Mutation returns the AgentInstanceMutation object of the builder.
@@ -319,6 +335,22 @@ func (_c *AgentInstanceCreate) createSpec() (*AgentInstance, *sqlgraph.CreateSpe
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.AgentID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.MessagesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessagesTable,
+			Columns: []string{agentinstance.MessagesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

@@ -11,8 +11,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -31,19 +31,23 @@ type AgentMessage struct {
 	ProjectID int `json:"project_id,omitempty"`
 	// AgentID holds the value of the "agent_id" field.
 	AgentID int `json:"agent_id,omitempty"`
-	// ThreadRowID holds the value of the "thread_row_id" field.
-	ThreadRowID int `json:"thread_row_id,omitempty"`
+	// Agent instance ID if the message is from an agent
+	AgentInstanceID int `json:"agent_instance_id,omitempty"`
 	// Message direction
 	Direction agentmessage.Direction `json:"direction,omitempty"`
 	// Message sender type
 	SenderType agentmessage.SenderType `json:"sender_type,omitempty"`
 	// Sender ID, user_id or agent_instance_id
 	SenderID *int `json:"sender_id,omitempty"`
+	// Message kind for operator/runtime routing
+	Kind agentmessage.Kind `json:"kind,omitempty"`
+	// Correlation ID for request/response matching (e.g. approval request id)
+	CorrelationID string `json:"correlation_id,omitempty"`
 	// Message content (JSON)
 	Content objects.JSONRawMessage `json:"content,omitempty"`
 	// Status holds the value of the "status" field.
 	Status agentmessage.Status `json:"status,omitempty"`
-	// Monotonic sequence in the thread
+	// Monotonic sequence for the agent
 	Sequence int64 `json:"sequence,omitempty"`
 	// ExpiresAt holds the value of the "expires_at" field.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
@@ -57,8 +61,8 @@ type AgentMessage struct {
 type AgentMessageEdges struct {
 	// Agent holds the value of the agent edge.
 	Agent *Agent `json:"agent,omitempty"`
-	// Thread holds the value of the thread edge.
-	Thread *Thread `json:"thread,omitempty"`
+	// AgentInstance holds the value of the agent_instance edge.
+	AgentInstance *AgentInstance `json:"agent_instance,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
@@ -77,15 +81,15 @@ func (e AgentMessageEdges) AgentOrErr() (*Agent, error) {
 	return nil, &NotLoadedError{edge: "agent"}
 }
 
-// ThreadOrErr returns the Thread value or an error if the edge
+// AgentInstanceOrErr returns the AgentInstance value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e AgentMessageEdges) ThreadOrErr() (*Thread, error) {
-	if e.Thread != nil {
-		return e.Thread, nil
+func (e AgentMessageEdges) AgentInstanceOrErr() (*AgentInstance, error) {
+	if e.AgentInstance != nil {
+		return e.AgentInstance, nil
 	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: thread.Label}
+		return nil, &NotFoundError{label: agentinstance.Label}
 	}
-	return nil, &NotLoadedError{edge: "thread"}
+	return nil, &NotLoadedError{edge: "agent_instance"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -95,9 +99,9 @@ func (*AgentMessage) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case agentmessage.FieldContent:
 			values[i] = new([]byte)
-		case agentmessage.FieldID, agentmessage.FieldDeletedAt, agentmessage.FieldProjectID, agentmessage.FieldAgentID, agentmessage.FieldThreadRowID, agentmessage.FieldSenderID, agentmessage.FieldSequence:
+		case agentmessage.FieldID, agentmessage.FieldDeletedAt, agentmessage.FieldProjectID, agentmessage.FieldAgentID, agentmessage.FieldAgentInstanceID, agentmessage.FieldSenderID, agentmessage.FieldSequence:
 			values[i] = new(sql.NullInt64)
-		case agentmessage.FieldDirection, agentmessage.FieldSenderType, agentmessage.FieldStatus:
+		case agentmessage.FieldDirection, agentmessage.FieldSenderType, agentmessage.FieldKind, agentmessage.FieldCorrelationID, agentmessage.FieldStatus:
 			values[i] = new(sql.NullString)
 		case agentmessage.FieldCreatedAt, agentmessage.FieldUpdatedAt, agentmessage.FieldExpiresAt:
 			values[i] = new(sql.NullTime)
@@ -152,11 +156,11 @@ func (_m *AgentMessage) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.AgentID = int(value.Int64)
 			}
-		case agentmessage.FieldThreadRowID:
+		case agentmessage.FieldAgentInstanceID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field thread_row_id", values[i])
+				return fmt.Errorf("unexpected type %T for field agent_instance_id", values[i])
 			} else if value.Valid {
-				_m.ThreadRowID = int(value.Int64)
+				_m.AgentInstanceID = int(value.Int64)
 			}
 		case agentmessage.FieldDirection:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -176,6 +180,18 @@ func (_m *AgentMessage) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.SenderID = new(int)
 				*_m.SenderID = int(value.Int64)
+			}
+		case agentmessage.FieldKind:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field kind", values[i])
+			} else if value.Valid {
+				_m.Kind = agentmessage.Kind(value.String)
+			}
+		case agentmessage.FieldCorrelationID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field correlation_id", values[i])
+			} else if value.Valid {
+				_m.CorrelationID = value.String
 			}
 		case agentmessage.FieldContent:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -222,9 +238,9 @@ func (_m *AgentMessage) QueryAgent() *AgentQuery {
 	return NewAgentMessageClient(_m.config).QueryAgent(_m)
 }
 
-// QueryThread queries the "thread" edge of the AgentMessage entity.
-func (_m *AgentMessage) QueryThread() *ThreadQuery {
-	return NewAgentMessageClient(_m.config).QueryThread(_m)
+// QueryAgentInstance queries the "agent_instance" edge of the AgentMessage entity.
+func (_m *AgentMessage) QueryAgentInstance() *AgentInstanceQuery {
+	return NewAgentMessageClient(_m.config).QueryAgentInstance(_m)
 }
 
 // Update returns a builder for updating this AgentMessage.
@@ -265,8 +281,8 @@ func (_m *AgentMessage) String() string {
 	builder.WriteString("agent_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AgentID))
 	builder.WriteString(", ")
-	builder.WriteString("thread_row_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ThreadRowID))
+	builder.WriteString("agent_instance_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AgentInstanceID))
 	builder.WriteString(", ")
 	builder.WriteString("direction=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Direction))
@@ -278,6 +294,12 @@ func (_m *AgentMessage) String() string {
 		builder.WriteString("sender_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("kind=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Kind))
+	builder.WriteString(", ")
+	builder.WriteString("correlation_id=")
+	builder.WriteString(_m.CorrelationID)
 	builder.WriteString(", ")
 	builder.WriteString("content=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Content))

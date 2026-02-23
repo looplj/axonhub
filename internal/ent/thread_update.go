@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/thread"
@@ -82,21 +81,6 @@ func (_u *ThreadUpdate) AddAgentThreads(v ...*AgentThread) *ThreadUpdate {
 	return _u.AddAgentThreadIDs(ids...)
 }
 
-// AddAgentMessageIDs adds the "agent_messages" edge to the AgentMessage entity by IDs.
-func (_u *ThreadUpdate) AddAgentMessageIDs(ids ...int) *ThreadUpdate {
-	_u.mutation.AddAgentMessageIDs(ids...)
-	return _u
-}
-
-// AddAgentMessages adds the "agent_messages" edges to the AgentMessage entity.
-func (_u *ThreadUpdate) AddAgentMessages(v ...*AgentMessage) *ThreadUpdate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddAgentMessageIDs(ids...)
-}
-
 // Mutation returns the ThreadMutation object of the builder.
 func (_u *ThreadUpdate) Mutation() *ThreadMutation {
 	return _u.mutation
@@ -142,27 +126,6 @@ func (_u *ThreadUpdate) RemoveAgentThreads(v ...*AgentThread) *ThreadUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAgentThreadIDs(ids...)
-}
-
-// ClearAgentMessages clears all "agent_messages" edges to the AgentMessage entity.
-func (_u *ThreadUpdate) ClearAgentMessages() *ThreadUpdate {
-	_u.mutation.ClearAgentMessages()
-	return _u
-}
-
-// RemoveAgentMessageIDs removes the "agent_messages" edge to AgentMessage entities by IDs.
-func (_u *ThreadUpdate) RemoveAgentMessageIDs(ids ...int) *ThreadUpdate {
-	_u.mutation.RemoveAgentMessageIDs(ids...)
-	return _u
-}
-
-// RemoveAgentMessages removes "agent_messages" edges to AgentMessage entities.
-func (_u *ThreadUpdate) RemoveAgentMessages(v ...*AgentMessage) *ThreadUpdate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveAgentMessageIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -329,51 +292,6 @@ func (_u *ThreadUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.AgentMessagesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   thread.AgentMessagesTable,
-			Columns: []string{thread.AgentMessagesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedAgentMessagesIDs(); len(nodes) > 0 && !_u.mutation.AgentMessagesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   thread.AgentMessagesTable,
-			Columns: []string{thread.AgentMessagesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.AgentMessagesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   thread.AgentMessagesTable,
-			Columns: []string{thread.AgentMessagesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -446,21 +364,6 @@ func (_u *ThreadUpdateOne) AddAgentThreads(v ...*AgentThread) *ThreadUpdateOne {
 	return _u.AddAgentThreadIDs(ids...)
 }
 
-// AddAgentMessageIDs adds the "agent_messages" edge to the AgentMessage entity by IDs.
-func (_u *ThreadUpdateOne) AddAgentMessageIDs(ids ...int) *ThreadUpdateOne {
-	_u.mutation.AddAgentMessageIDs(ids...)
-	return _u
-}
-
-// AddAgentMessages adds the "agent_messages" edges to the AgentMessage entity.
-func (_u *ThreadUpdateOne) AddAgentMessages(v ...*AgentMessage) *ThreadUpdateOne {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddAgentMessageIDs(ids...)
-}
-
 // Mutation returns the ThreadMutation object of the builder.
 func (_u *ThreadUpdateOne) Mutation() *ThreadMutation {
 	return _u.mutation
@@ -506,27 +409,6 @@ func (_u *ThreadUpdateOne) RemoveAgentThreads(v ...*AgentThread) *ThreadUpdateOn
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAgentThreadIDs(ids...)
-}
-
-// ClearAgentMessages clears all "agent_messages" edges to the AgentMessage entity.
-func (_u *ThreadUpdateOne) ClearAgentMessages() *ThreadUpdateOne {
-	_u.mutation.ClearAgentMessages()
-	return _u
-}
-
-// RemoveAgentMessageIDs removes the "agent_messages" edge to AgentMessage entities by IDs.
-func (_u *ThreadUpdateOne) RemoveAgentMessageIDs(ids ...int) *ThreadUpdateOne {
-	_u.mutation.RemoveAgentMessageIDs(ids...)
-	return _u
-}
-
-// RemoveAgentMessages removes "agent_messages" edges to AgentMessage entities.
-func (_u *ThreadUpdateOne) RemoveAgentMessages(v ...*AgentMessage) *ThreadUpdateOne {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveAgentMessageIDs(ids...)
 }
 
 // Where appends a list predicates to the ThreadUpdate builder.
@@ -716,51 +598,6 @@ func (_u *ThreadUpdateOne) sqlSave(ctx context.Context) (_node *Thread, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.AgentMessagesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   thread.AgentMessagesTable,
-			Columns: []string{thread.AgentMessagesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedAgentMessagesIDs(); len(nodes) > 0 && !_u.mutation.AgentMessagesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   thread.AgentMessagesTable,
-			Columns: []string{thread.AgentMessagesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.AgentMessagesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   thread.AgentMessagesTable,
-			Columns: []string{thread.AgentMessagesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

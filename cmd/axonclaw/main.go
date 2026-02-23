@@ -12,21 +12,33 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/google/uuid"
 	"github.com/looplj/axonhub/axon/agent"
+	"github.com/looplj/axonhub/axon/api"
+	"github.com/looplj/axonhub/axon/bus"
+	"github.com/looplj/axonhub/axon/permission"
+	"github.com/looplj/axonhub/axon/permission/approval"
+	"github.com/looplj/axonhub/axon/permission/grant"
+	"github.com/looplj/axonhub/axon/permission/policy"
 	"github.com/looplj/axonhub/axon/provider/anthropic"
-	"github.com/looplj/axonhub/cmd/axonclaw/api"
+	"github.com/looplj/axonhub/axon/thread"
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 	"github.com/looplj/axonhub/cmd/axonclaw/runner"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-const defaultMaxIterations = 30
+const (
+	logsDirName    = "logs"
+	threadsDirName = "threads"
+)
+
+type loggerCloser func()
 
 func main() {
 	var (
 		baseURL = flag.String("base-url", "", "AxonHub base URL")
 		apiKey  = flag.String("api-key", "", "Agent API key")
+		debug   = flag.Bool("debug", false, "Enable debug logging")
 	)
 	flag.Parse()
 
@@ -34,20 +46,10 @@ func main() {
 	if err != nil {
 		fatalf("%v", err)
 	}
+	wd := mustGetwd()
 
-	var logger *slog.Logger
-	if cfg.Debug {
-		logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		}))
-	} else {
-		logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
-		}))
-	}
-
-	ws := mustGetwd()
-	threadID := uuid.New().String()
+	logger, closeLogger := mustInitLogger(wd, *debug)
+	defer closeLogger()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -55,8 +57,7 @@ func main() {
 	gqlClient := api.NewClient(cfg.BaseURL, cfg.APIKey)
 
 	boot, err := bootstrap.Do(ctx, gqlClient, bootstrap.SystemPromptData{
-		Workspace:  ws,
-		ThreadID:   threadID,
+		Workspace:  wd,
 		InstanceID: cfg.InstanceID,
 	})
 	if err != nil {
@@ -69,8 +70,7 @@ func main() {
 		"instance_id", cfg.InstanceID,
 		"base_url", cfg.BaseURL,
 		"model", boot.Model,
-		"thread", threadID,
-		"workspace", ws,
+		"workspace", wd,
 	)
 
 	provider := anthropic.New(strings.TrimRight(cfg.BaseURL, "/")+"/anthropic", cfg.APIKey)
@@ -81,6 +81,7 @@ func main() {
 
 	if _, err := api.RegisterAgentInstance(ctx, gqlClient, &api.RegisterAgentInstanceInput{
 		InstanceID: cfg.InstanceID,
+		ThreadID:   &boot.ThreadID,
 		Name:       &name,
 		Platform:   &platform,
 		Version:    &version,
@@ -88,20 +89,75 @@ func main() {
 		fatalf("register instance failed: %v", err)
 	}
 
-	threadWorkspace := filepath.Join(ws, "threads", threadID)
-	if err := os.MkdirAll(threadWorkspace, 0o755); err != nil {
-		fatalf("create thread workspace: %v", err)
+	axonclawDir := filepath.Join(wd, ".axonclaw")
+	threadsDir := filepath.Join(axonclawDir, threadsDirName)
+	if err := os.MkdirAll(threadsDir, 0o755); err != nil {
+		fatalf("cannot create threads directory: %v", err)
 	}
 
-	a := agent.New(agent.Config{
-		Model:         boot.Model,
-		MaxIterations: defaultMaxIterations,
-		SystemPrompt:  boot.SystemPrompt,
-	}, provider)
+	threadStore, err := thread.NewJSONLStore(threadsDir)
+	if err != nil {
+		fatalf("failed to initialize thread store: %v", err)
+	}
+	threadMgr := thread.NewManager(threadStore)
 
-	runner.RegisterToolsFromBootstrap(a, threadWorkspace, ws, boot, logger)
+	eventBus := bus.New(
+		bus.WithRecover(logger),
+		bus.WithTracing(),
+	)
+	defer eventBus.Close()
 
-	r := runner.New(logger, gqlClient, a, cfg, threadID)
+	eventBus.Subscribe(agent.TopicAgentEvent, bus.TypedHandler(func(_ context.Context, _ bus.Event, ev agent.AgentEvent) error {
+		switch ev.Type {
+		case agent.EventMessageAdded:
+			if ev.Message != nil {
+				threadMgr.AddMessage(boot.ThreadID, *ev.Message)
+			}
+		case agent.EventToolStart:
+			logger.Debug("tool started", "tool", ev.ToolName)
+		case agent.EventToolEnd:
+			if ev.Result != nil && ev.Result.Error != nil {
+				logger.Warn("tool failed", "tool", ev.ToolName, "error", ev.Result.Error)
+			}
+		case agent.EventError:
+			logger.Error("agent error", "error", ev.Error)
+		}
+		return nil
+	}))
+
+	grantsStore := grant.NewMemoryStore(grant.NewLocalFileStore(wd))
+	if err := grantsStore.LoadWorkspace(wd); err != nil {
+		fatalf("load workspace grants: %v", err)
+	}
+
+	pdoc, err := conf.LoadOrCreatePolicy(wd)
+	if err != nil {
+		fatalf("load policy: %v", err)
+	}
+	eng, err := policy.New(pdoc)
+	if err != nil {
+		fatalf("build policy engine: %v", err)
+	}
+
+	remoteApprover := approval.NewRemoteApprover(logger, gqlClient, cfg.InstanceID, cfg.PollInterval)
+	permEvaluator := permission.NewEvaluator(permission.EvaluatorOptions{
+		Logger:   logger,
+		Policy:   eng,
+		Approver: remoteApprover,
+		Grants:   grantsStore,
+	})
+
+	r := runner.New(runner.NewOptions{
+		Logger:        logger,
+		Client:        gqlClient,
+		Provider:      provider,
+		Config:        cfg,
+		Workspace:     wd,
+		Boot:          boot,
+		ThreadMgr:     threadMgr,
+		PermEvaluator: permEvaluator,
+		Bus:           eventBus,
+	})
 	if err := r.Run(ctx); err != nil {
 		if err != context.Canceled {
 			logger.Error("runner stopped with error", "error", err)
@@ -121,4 +177,28 @@ func mustGetwd() string {
 func fatalf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "Error: "+format+"\n", args...)
 	os.Exit(1)
+}
+
+func mustInitLogger(wd string, debug bool) (*slog.Logger, loggerCloser) {
+	logsDir := filepath.Join(wd, ".axonclaw", logsDirName)
+	if err := os.MkdirAll(logsDir, 0o755); err != nil {
+		fatalf("cannot create logs directory: %v", err)
+	}
+
+	logFilePath := filepath.Join(logsDir, "axonclaw.log")
+	ljLogger := &lumberjack.Logger{
+		Filename:   logFilePath,
+		MaxSize:    10,
+		MaxAge:     7,
+		MaxBackups: 3,
+		LocalTime:  true,
+	}
+
+	level := slog.LevelInfo
+	if debug {
+		level = slog.LevelDebug
+	}
+
+	logger := slog.New(slog.NewTextHandler(ljLogger, &slog.HandlerOptions{Level: level}))
+	return logger, func() { ljLogger.Close() }
 }

@@ -19,7 +19,6 @@ const FileName = "config.yml"
 type Config struct {
 	BaseURL           string        `yaml:"base_url"`
 	APIKey            string        `yaml:"api_key"`
-	Model             string        `yaml:"model"`
 	InstanceID        string        `yaml:"instance_id"`
 	PollInterval      time.Duration `yaml:"poll_interval"`
 	HeartbeatInterval time.Duration `yaml:"heartbeat_interval"`
@@ -53,9 +52,6 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 	}
 	if res.Value.APIKey != "" {
 		cfg.APIKey = res.Value.APIKey
-	}
-	if res.Value.Model != "" {
-		cfg.Model = res.Value.Model
 	}
 	if res.Value.InstanceID != "" {
 		cfg.InstanceID = res.Value.InstanceID
@@ -110,7 +106,8 @@ func newMissingConfigError(baseURL, apiKey string) error {
 		missing = append(missing, "api_key")
 	}
 
-	path := filepath.Join(".", FileName)
+	configDir := ".axonclaw"
+	path := filepath.Join(configDir, FileName)
 	example := strings.TrimSpace(`
 base_url: https://your-axonhub-server.com
 api_key: your-agent-api-key
@@ -118,9 +115,9 @@ api_key: your-agent-api-key
 
 	if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
 		return fmt.Errorf(
-			"missing required settings: %s (create %s in current directory, or pass flags -base-url/-api-key)\n\n%s",
+			"missing required settings: %s (create %s in .axonclaw directory, or pass flags -base-url/-api-key)\n\n%s",
 			strings.Join(missing, ", "),
-			path,
+			FileName,
 			example,
 		)
 	}
@@ -128,7 +125,11 @@ api_key: your-agent-api-key
 }
 
 func SaveConfig(cfg Config) error {
-	path := filepath.Join(".", FileName)
+	configDir := ".axonclaw"
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		return fmt.Errorf("create config directory: %w", err)
+	}
+	path := filepath.Join(configDir, FileName)
 	var existing Config
 	if data, err := os.ReadFile(path); err == nil {
 		yaml.Unmarshal(data, &existing)

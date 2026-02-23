@@ -13,22 +13,22 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
-	"github.com/looplj/axonhub/internal/ent/thread"
 )
 
 // AgentMessageQuery is the builder for querying AgentMessage entities.
 type AgentMessageQuery struct {
 	config
-	ctx        *QueryContext
-	order      []agentmessage.OrderOption
-	inters     []Interceptor
-	predicates []predicate.AgentMessage
-	withAgent  *AgentQuery
-	withThread *ThreadQuery
-	loadTotal  []func(context.Context, []*AgentMessage) error
-	modifiers  []func(*sql.Selector)
+	ctx               *QueryContext
+	order             []agentmessage.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.AgentMessage
+	withAgent         *AgentQuery
+	withAgentInstance *AgentInstanceQuery
+	loadTotal         []func(context.Context, []*AgentMessage) error
+	modifiers         []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -87,9 +87,9 @@ func (_q *AgentMessageQuery) QueryAgent() *AgentQuery {
 	return query
 }
 
-// QueryThread chains the current query on the "thread" edge.
-func (_q *AgentMessageQuery) QueryThread() *ThreadQuery {
-	query := (&ThreadClient{config: _q.config}).Query()
+// QueryAgentInstance chains the current query on the "agent_instance" edge.
+func (_q *AgentMessageQuery) QueryAgentInstance() *AgentInstanceQuery {
+	query := (&AgentInstanceClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -100,8 +100,8 @@ func (_q *AgentMessageQuery) QueryThread() *ThreadQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(agentmessage.Table, agentmessage.FieldID, selector),
-			sqlgraph.To(thread.Table, thread.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, agentmessage.ThreadTable, agentmessage.ThreadColumn),
+			sqlgraph.To(agentinstance.Table, agentinstance.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, agentmessage.AgentInstanceTable, agentmessage.AgentInstanceColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -296,13 +296,13 @@ func (_q *AgentMessageQuery) Clone() *AgentMessageQuery {
 		return nil
 	}
 	return &AgentMessageQuery{
-		config:     _q.config,
-		ctx:        _q.ctx.Clone(),
-		order:      append([]agentmessage.OrderOption{}, _q.order...),
-		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.AgentMessage{}, _q.predicates...),
-		withAgent:  _q.withAgent.Clone(),
-		withThread: _q.withThread.Clone(),
+		config:            _q.config,
+		ctx:               _q.ctx.Clone(),
+		order:             append([]agentmessage.OrderOption{}, _q.order...),
+		inters:            append([]Interceptor{}, _q.inters...),
+		predicates:        append([]predicate.AgentMessage{}, _q.predicates...),
+		withAgent:         _q.withAgent.Clone(),
+		withAgentInstance: _q.withAgentInstance.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -321,14 +321,14 @@ func (_q *AgentMessageQuery) WithAgent(opts ...func(*AgentQuery)) *AgentMessageQ
 	return _q
 }
 
-// WithThread tells the query-builder to eager-load the nodes that are connected to
-// the "thread" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *AgentMessageQuery) WithThread(opts ...func(*ThreadQuery)) *AgentMessageQuery {
-	query := (&ThreadClient{config: _q.config}).Query()
+// WithAgentInstance tells the query-builder to eager-load the nodes that are connected to
+// the "agent_instance" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *AgentMessageQuery) WithAgentInstance(opts ...func(*AgentInstanceQuery)) *AgentMessageQuery {
+	query := (&AgentInstanceClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withThread = query
+	_q.withAgentInstance = query
 	return _q
 }
 
@@ -418,7 +418,7 @@ func (_q *AgentMessageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 		_spec       = _q.querySpec()
 		loadedTypes = [2]bool{
 			_q.withAgent != nil,
-			_q.withThread != nil,
+			_q.withAgentInstance != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -448,9 +448,9 @@ func (_q *AgentMessageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 			return nil, err
 		}
 	}
-	if query := _q.withThread; query != nil {
-		if err := _q.loadThread(ctx, query, nodes, nil,
-			func(n *AgentMessage, e *Thread) { n.Edges.Thread = e }); err != nil {
+	if query := _q.withAgentInstance; query != nil {
+		if err := _q.loadAgentInstance(ctx, query, nodes, nil,
+			func(n *AgentMessage, e *AgentInstance) { n.Edges.AgentInstance = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -491,11 +491,11 @@ func (_q *AgentMessageQuery) loadAgent(ctx context.Context, query *AgentQuery, n
 	}
 	return nil
 }
-func (_q *AgentMessageQuery) loadThread(ctx context.Context, query *ThreadQuery, nodes []*AgentMessage, init func(*AgentMessage), assign func(*AgentMessage, *Thread)) error {
+func (_q *AgentMessageQuery) loadAgentInstance(ctx context.Context, query *AgentInstanceQuery, nodes []*AgentMessage, init func(*AgentMessage), assign func(*AgentMessage, *AgentInstance)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*AgentMessage)
 	for i := range nodes {
-		fk := nodes[i].ThreadRowID
+		fk := nodes[i].AgentInstanceID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -504,7 +504,7 @@ func (_q *AgentMessageQuery) loadThread(ctx context.Context, query *ThreadQuery,
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(thread.IDIn(ids...))
+	query.Where(agentinstance.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
@@ -512,7 +512,7 @@ func (_q *AgentMessageQuery) loadThread(ctx context.Context, query *ThreadQuery,
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "thread_row_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "agent_instance_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -552,8 +552,8 @@ func (_q *AgentMessageQuery) querySpec() *sqlgraph.QuerySpec {
 		if _q.withAgent != nil {
 			_spec.Node.AddColumnOnce(agentmessage.FieldAgentID)
 		}
-		if _q.withThread != nil {
-			_spec.Node.AddColumnOnce(agentmessage.FieldThreadRowID)
+		if _q.withAgentInstance != nil {
+			_spec.Node.AddColumnOnce(agentmessage.FieldAgentInstanceID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

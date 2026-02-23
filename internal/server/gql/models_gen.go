@@ -44,23 +44,32 @@ type AddUserToProjectInput struct {
 	RoleIDs   []*objects.GUID `json:"roleIDs,omitempty"`
 }
 
-// Minimal message view for Agent thread chat in Web UI.
-type AgentChatMessage struct {
-	ID         objects.GUID            `json:"id"`
-	AgentID    objects.GUID            `json:"agentID"`
-	ThreadID   string                  `json:"threadID"`
-	Direction  agentmessage.Direction  `json:"direction"`
-	SenderType agentmessage.SenderType `json:"senderType"`
-	SenderID   *int                    `json:"senderID,omitempty"`
-	Text       string                  `json:"text"`
-	Sequence   int                     `json:"sequence"`
-	Status     agentmessage.Status     `json:"status"`
-	CreatedAt  time.Time               `json:"createdAt"`
+// Approval request view for IM/Web operator surfaces.
+//
+// Backed by agent_messages(kind=approval_request, direction=to_user, status=pending).
+type AgentApprovalRequestMessage struct {
+	ID            objects.GUID           `json:"id"`
+	AgentID       objects.GUID           `json:"agentID"`
+	CorrelationID string                 `json:"correlationID"`
+	Content       objects.JSONRawMessage `json:"content"`
+	Sequence      int                    `json:"sequence"`
+	CreatedAt     time.Time              `json:"createdAt"`
 }
 
-type AgentThreadSummary struct {
-	ThreadID  string    `json:"threadID"`
-	CreatedAt time.Time `json:"createdAt"`
+// Minimal message view for Agent thread chat in Web UI.
+type AgentChatMessage struct {
+	ID            objects.GUID            `json:"id"`
+	AgentID       objects.GUID            `json:"agentID"`
+	Direction     agentmessage.Direction  `json:"direction"`
+	SenderType    agentmessage.SenderType `json:"senderType"`
+	SenderID      *int                    `json:"senderID,omitempty"`
+	Kind          agentmessage.Kind       `json:"kind"`
+	CorrelationID string                  `json:"correlationID"`
+	Content       objects.JSONRawMessage  `json:"content"`
+	Text          string                  `json:"text"`
+	Sequence      int                     `json:"sequence"`
+	Status        agentmessage.Status     `json:"status"`
+	CreatedAt     time.Time               `json:"createdAt"`
 }
 
 type ApplyChannelOverrideTemplateInput struct {
@@ -273,6 +282,14 @@ type RequestStatsByModel struct {
 	Count   int    `json:"count"`
 }
 
+type ResolveApprovalInput struct {
+	AgentID   objects.GUID   `json:"agentID"`
+	RequestID string         `json:"requestID"`
+	Granted   bool           `json:"granted"`
+	Scope     *ApprovalScope `json:"scope,omitempty"`
+	Reason    *string        `json:"reason,omitempty"`
+}
+
 type RestorePayload struct {
 	Success bool    `json:"success"`
 	Message *string `json:"message,omitempty"`
@@ -400,6 +417,63 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type ApprovalScope string
+
+const (
+	ApprovalScopeOnce      ApprovalScope = "once"
+	ApprovalScopeThread    ApprovalScope = "thread"
+	ApprovalScopeWorkspace ApprovalScope = "workspace"
+)
+
+var AllApprovalScope = []ApprovalScope{
+	ApprovalScopeOnce,
+	ApprovalScopeThread,
+	ApprovalScopeWorkspace,
+}
+
+func (e ApprovalScope) IsValid() bool {
+	switch e {
+	case ApprovalScopeOnce, ApprovalScopeThread, ApprovalScopeWorkspace:
+		return true
+	}
+	return false
+}
+
+func (e ApprovalScope) String() string {
+	return string(e)
+}
+
+func (e *ApprovalScope) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ApprovalScope(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ApprovalScope", str)
+	}
+	return nil
+}
+
+func (e ApprovalScope) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ApprovalScope) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ApprovalScope) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type OverrideApplyMode string

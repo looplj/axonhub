@@ -878,15 +878,15 @@ func (c *AgentClient) QueryInstances(_m *Agent) *AgentInstanceQuery {
 	return query
 }
 
-// QueryThreadBindings queries the thread_bindings edge of a Agent.
-func (c *AgentClient) QueryThreadBindings(_m *Agent) *AgentThreadQuery {
+// QueryThreads queries the threads edge of a Agent.
+func (c *AgentClient) QueryThreads(_m *Agent) *AgentThreadQuery {
 	query := (&AgentThreadClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(agent.Table, agent.FieldID, id),
 			sqlgraph.To(agentthread.Table, agentthread.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, agent.ThreadBindingsTable, agent.ThreadBindingsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, agent.ThreadsTable, agent.ThreadsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1070,6 +1070,22 @@ func (c *AgentInstanceClient) QueryAgent(_m *AgentInstance) *AgentQuery {
 			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, id),
 			sqlgraph.To(agent.Table, agent.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, agentinstance.AgentTable, agentinstance.AgentColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMessages queries the messages edge of a AgentInstance.
+func (c *AgentInstanceClient) QueryMessages(_m *AgentInstance) *AgentMessageQuery {
+	query := (&AgentMessageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, id),
+			sqlgraph.To(agentmessage.Table, agentmessage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, agentinstance.MessagesTable, agentinstance.MessagesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1379,15 +1395,15 @@ func (c *AgentMessageClient) QueryAgent(_m *AgentMessage) *AgentQuery {
 	return query
 }
 
-// QueryThread queries the thread edge of a AgentMessage.
-func (c *AgentMessageClient) QueryThread(_m *AgentMessage) *ThreadQuery {
-	query := (&ThreadClient{config: c.config}).Query()
+// QueryAgentInstance queries the agent_instance edge of a AgentMessage.
+func (c *AgentMessageClient) QueryAgentInstance(_m *AgentMessage) *AgentInstanceQuery {
+	query := (&AgentInstanceClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(agentmessage.Table, agentmessage.FieldID, id),
-			sqlgraph.To(thread.Table, thread.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, agentmessage.ThreadTable, agentmessage.ThreadColumn),
+			sqlgraph.To(agentinstance.Table, agentinstance.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, agentmessage.AgentInstanceTable, agentmessage.AgentInstanceColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -5135,22 +5151,6 @@ func (c *ThreadClient) QueryAgentThreads(_m *Thread) *AgentThreadQuery {
 			sqlgraph.From(thread.Table, thread.FieldID, id),
 			sqlgraph.To(agentthread.Table, agentthread.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, thread.AgentThreadsTable, thread.AgentThreadsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryAgentMessages queries the agent_messages edge of a Thread.
-func (c *ThreadClient) QueryAgentMessages(_m *Thread) *AgentMessageQuery {
-	query := (&AgentMessageClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(thread.Table, thread.FieldID, id),
-			sqlgraph.To(agentmessage.Table, agentmessage.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, thread.AgentMessagesTable, thread.AgentMessagesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

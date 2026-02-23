@@ -29,14 +29,18 @@ const (
 	FieldProjectID = "project_id"
 	// FieldAgentID holds the string denoting the agent_id field in the database.
 	FieldAgentID = "agent_id"
-	// FieldThreadRowID holds the string denoting the thread_row_id field in the database.
-	FieldThreadRowID = "thread_row_id"
+	// FieldAgentInstanceID holds the string denoting the agent_instance_id field in the database.
+	FieldAgentInstanceID = "agent_instance_id"
 	// FieldDirection holds the string denoting the direction field in the database.
 	FieldDirection = "direction"
 	// FieldSenderType holds the string denoting the sender_type field in the database.
 	FieldSenderType = "sender_type"
 	// FieldSenderID holds the string denoting the sender_id field in the database.
 	FieldSenderID = "sender_id"
+	// FieldKind holds the string denoting the kind field in the database.
+	FieldKind = "kind"
+	// FieldCorrelationID holds the string denoting the correlation_id field in the database.
+	FieldCorrelationID = "correlation_id"
 	// FieldContent holds the string denoting the content field in the database.
 	FieldContent = "content"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -47,8 +51,8 @@ const (
 	FieldExpiresAt = "expires_at"
 	// EdgeAgent holds the string denoting the agent edge name in mutations.
 	EdgeAgent = "agent"
-	// EdgeThread holds the string denoting the thread edge name in mutations.
-	EdgeThread = "thread"
+	// EdgeAgentInstance holds the string denoting the agent_instance edge name in mutations.
+	EdgeAgentInstance = "agent_instance"
 	// Table holds the table name of the agentmessage in the database.
 	Table = "agent_messages"
 	// AgentTable is the table that holds the agent relation/edge.
@@ -58,13 +62,13 @@ const (
 	AgentInverseTable = "agents"
 	// AgentColumn is the table column denoting the agent relation/edge.
 	AgentColumn = "agent_id"
-	// ThreadTable is the table that holds the thread relation/edge.
-	ThreadTable = "agent_messages"
-	// ThreadInverseTable is the table name for the Thread entity.
-	// It exists in this package in order to avoid circular dependency with the "thread" package.
-	ThreadInverseTable = "threads"
-	// ThreadColumn is the table column denoting the thread relation/edge.
-	ThreadColumn = "thread_row_id"
+	// AgentInstanceTable is the table that holds the agent_instance relation/edge.
+	AgentInstanceTable = "agent_messages"
+	// AgentInstanceInverseTable is the table name for the AgentInstance entity.
+	// It exists in this package in order to avoid circular dependency with the "agentinstance" package.
+	AgentInstanceInverseTable = "agent_instances"
+	// AgentInstanceColumn is the table column denoting the agent_instance relation/edge.
+	AgentInstanceColumn = "agent_instance_id"
 )
 
 // Columns holds all SQL columns for agentmessage fields.
@@ -75,10 +79,12 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldProjectID,
 	FieldAgentID,
-	FieldThreadRowID,
+	FieldAgentInstanceID,
 	FieldDirection,
 	FieldSenderType,
 	FieldSenderID,
+	FieldKind,
+	FieldCorrelationID,
 	FieldContent,
 	FieldStatus,
 	FieldSequence,
@@ -112,6 +118,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
+	// DefaultCorrelationID holds the default value on creation for the "correlation_id" field.
+	DefaultCorrelationID string
 	// DefaultContent holds the default value on creation for the "content" field.
 	DefaultContent objects.JSONRawMessage
 )
@@ -121,8 +129,8 @@ type Direction string
 
 // Direction values.
 const (
-	DirectionToRuntime Direction = "to_runtime"
-	DirectionToUser    Direction = "to_user"
+	DirectionToAgent Direction = "to_agent"
+	DirectionToUser  Direction = "to_user"
 )
 
 func (d Direction) String() string {
@@ -132,7 +140,7 @@ func (d Direction) String() string {
 // DirectionValidator is a validator for the "direction" field enum values. It is called by the builders before save.
 func DirectionValidator(d Direction) error {
 	switch d {
-	case DirectionToRuntime, DirectionToUser:
+	case DirectionToAgent, DirectionToUser:
 		return nil
 	default:
 		return fmt.Errorf("agentmessage: invalid enum value for direction field: %q", d)
@@ -144,9 +152,9 @@ type SenderType string
 
 // SenderType values.
 const (
-	SenderTypeUser    SenderType = "user"
-	SenderTypeRuntime SenderType = "runtime"
-	SenderTypeSystem  SenderType = "system"
+	SenderTypeUser   SenderType = "user"
+	SenderTypeAgent  SenderType = "agent"
+	SenderTypeSystem SenderType = "system"
 )
 
 func (st SenderType) String() string {
@@ -156,10 +164,38 @@ func (st SenderType) String() string {
 // SenderTypeValidator is a validator for the "sender_type" field enum values. It is called by the builders before save.
 func SenderTypeValidator(st SenderType) error {
 	switch st {
-	case SenderTypeUser, SenderTypeRuntime, SenderTypeSystem:
+	case SenderTypeUser, SenderTypeAgent, SenderTypeSystem:
 		return nil
 	default:
 		return fmt.Errorf("agentmessage: invalid enum value for sender_type field: %q", st)
+	}
+}
+
+// Kind defines the type for the "kind" enum field.
+type Kind string
+
+// KindChat is the default value of the Kind enum.
+const DefaultKind = KindChat
+
+// Kind values.
+const (
+	KindChat            Kind = "chat"
+	KindApprovalRequest Kind = "approval_request"
+	KindApprovalResult  Kind = "approval_result"
+	KindSystemEvent     Kind = "system_event"
+)
+
+func (k Kind) String() string {
+	return string(k)
+}
+
+// KindValidator is a validator for the "kind" field enum values. It is called by the builders before save.
+func KindValidator(k Kind) error {
+	switch k {
+	case KindChat, KindApprovalRequest, KindApprovalResult, KindSystemEvent:
+		return nil
+	default:
+		return fmt.Errorf("agentmessage: invalid enum value for kind field: %q", k)
 	}
 }
 
@@ -223,9 +259,9 @@ func ByAgentID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAgentID, opts...).ToFunc()
 }
 
-// ByThreadRowID orders the results by the thread_row_id field.
-func ByThreadRowID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldThreadRowID, opts...).ToFunc()
+// ByAgentInstanceID orders the results by the agent_instance_id field.
+func ByAgentInstanceID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAgentInstanceID, opts...).ToFunc()
 }
 
 // ByDirection orders the results by the direction field.
@@ -241,6 +277,16 @@ func BySenderType(opts ...sql.OrderTermOption) OrderOption {
 // BySenderID orders the results by the sender_id field.
 func BySenderID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSenderID, opts...).ToFunc()
+}
+
+// ByKind orders the results by the kind field.
+func ByKind(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldKind, opts...).ToFunc()
+}
+
+// ByCorrelationID orders the results by the correlation_id field.
+func ByCorrelationID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCorrelationID, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.
@@ -265,10 +311,10 @@ func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
-// ByThreadField orders the results by thread field.
-func ByThreadField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByAgentInstanceField orders the results by agent_instance field.
+func ByAgentInstanceField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newThreadStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newAgentInstanceStep(), sql.OrderByField(field, opts...))
 	}
 }
 func newAgentStep() *sqlgraph.Step {
@@ -278,11 +324,11 @@ func newAgentStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2O, true, AgentTable, AgentColumn),
 	)
 }
-func newThreadStep() *sqlgraph.Step {
+func newAgentInstanceStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(ThreadInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, ThreadTable, ThreadColumn),
+		sqlgraph.To(AgentInstanceInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, AgentInstanceTable, AgentInstanceColumn),
 	)
 }
 
@@ -318,6 +364,24 @@ func (e *SenderType) UnmarshalGQL(val interface{}) error {
 	*e = SenderType(str)
 	if err := SenderTypeValidator(*e); err != nil {
 		return fmt.Errorf("%s is not a valid SenderType", str)
+	}
+	return nil
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Kind) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Kind) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Kind(str)
+	if err := KindValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Kind", str)
 	}
 	return nil
 }

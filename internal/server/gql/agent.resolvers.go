@@ -52,7 +52,7 @@ func (r *mutationResolver) SendAgentMessage(ctx context.Context, input biz.SendA
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	view, err := r.agentRuntimeService.SendAgentMessageAsUser(ctx, user.ID, input.AgentID, input.ThreadID, input.Text)
+	view, err := r.agentRuntimeService.SendAgentMessageAsUser(ctx, user.ID, input.AgentID, input.InstanceID, input.Text)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +60,47 @@ func (r *mutationResolver) SendAgentMessage(ctx context.Context, input biz.SendA
 	return mapAgentChatMessage(view), nil
 }
 
+// ResolveApproval is the resolver for the resolveApproval field.
+func (r *mutationResolver) ResolveApproval(ctx context.Context, input ResolveApprovalInput) (bool, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeWriteAgents); err != nil {
+		return false, err
+	}
+
+	user, ok := contexts.GetUser(ctx)
+	if !ok || user == nil {
+		return false, fmt.Errorf("user not found in context")
+	}
+
+	scope := "once"
+	if input.Scope != nil {
+		scope = string(*input.Scope)
+	}
+
+	return r.agentRuntimeService.ResolveApprovalAsUser(ctx, user.ID, biz.ResolveApprovalCommandInput{
+		AgentID:   input.AgentID.ID,
+		RequestID: input.RequestID,
+		Granted:   input.Granted,
+		Scope:     scope,
+		Reason:    input.Reason,
+	})
+}
+
+// AckAgentMessages is the resolver for the ackAgentMessages field.
+func (r *mutationResolver) AckAgentMessages(ctx context.Context, input biz.AckAgentMessagesInput) (bool, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeWriteAgents); err != nil {
+		return false, err
+	}
+
+	user, ok := contexts.GetUser(ctx)
+	if !ok || user == nil {
+		return false, fmt.Errorf("user not found in context")
+	}
+
+	return r.agentRuntimeService.AckAgentMessagesAsUser(ctx, user.ID, input)
+}
+
 // PullAgentMessagesToUser is the resolver for the pullAgentMessagesToUser field.
-func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, threadID string, afterSequence *int, limit *int) ([]*AgentChatMessage, error) {
+func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, instanceID *string, afterSequence *int, limit *int) ([]*AgentChatMessage, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeReadAgents); err != nil {
 		return nil, err
 	}
@@ -77,7 +116,7 @@ func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, agentID obj
 		lim = *limit
 	}
 
-	views, err := r.agentRuntimeService.PullAgentMessagesToUserAsAdmin(ctx, agentID.ID, threadID, after, lim)
+	views, err := r.agentRuntimeService.PullAgentMessagesToUserAsAdmin(ctx, agentID.ID, instanceID, after, lim)
 	if err != nil {
 		return nil, err
 	}
@@ -89,13 +128,43 @@ func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, agentID obj
 	return out, nil
 }
 
-// AgentThreadMessages is the resolver for the agentThreadMessages field.
-func (r *queryResolver) AgentThreadMessages(ctx context.Context, agentID objects.GUID, threadID string, afterSequence *int, limit *int) ([]*AgentChatMessage, error) {
+// PullAgentApprovalRequests is the resolver for the pullAgentApprovalRequests field.
+func (r *queryResolver) PullAgentApprovalRequests(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentApprovalRequestMessage, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeReadAgents); err != nil {
 		return nil, err
 	}
 
 	var after *int64
+	if afterSequence != nil {
+		v := int64(*afterSequence)
+		after = &v
+	}
+
+	lim := 50
+	if limit != nil {
+		lim = *limit
+	}
+
+	views, err := r.agentRuntimeService.PullAgentApprovalRequestsAsAdmin(ctx, agentID.ID, after, lim)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*AgentApprovalRequestMessage, 0, len(views))
+	for _, v := range views {
+		out = append(out, mapAgentApprovalRequestMessage(v))
+	}
+	return out, nil
+}
+
+// AgentChatMessages is the resolver for the agentChatMessages field.
+func (r *queryResolver) AgentChatMessages(ctx context.Context, agentID objects.GUID, instanceID *string, afterSequence *int, limit *int) ([]*AgentChatMessage, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeReadAgents); err != nil {
+		return nil, err
+	}
+
+	var after *int64
+
 	if afterSequence != nil {
 		v := int64(*afterSequence)
 		after = &v
@@ -106,7 +175,7 @@ func (r *queryResolver) AgentThreadMessages(ctx context.Context, agentID objects
 		lim = *limit
 	}
 
-	views, err := r.agentRuntimeService.ListAgentThreadMessagesAsAdmin(ctx, agentID.ID, threadID, after, lim)
+	views, err := r.agentRuntimeService.ListAgentMessagesAsAdmin(ctx, agentID.ID, instanceID, after, lim)
 	if err != nil {
 		return nil, err
 	}
@@ -115,31 +184,6 @@ func (r *queryResolver) AgentThreadMessages(ctx context.Context, agentID objects
 	for _, v := range views {
 		out = append(out, mapAgentChatMessage(v))
 	}
-	return out, nil
-}
 
-// AgentThreadSummaries is the resolver for the agentThreadSummaries field.
-func (r *queryResolver) AgentThreadSummaries(ctx context.Context, agentID objects.GUID, first *int) ([]*AgentThreadSummary, error) {
-	if err := authz.RequireScope(ctx, scopes.ScopeReadAgents); err != nil {
-		return nil, err
-	}
-
-	lim := 50
-	if first != nil {
-		lim = *first
-	}
-
-	items, err := r.agentRuntimeService.ListAgentThreadsAsAdmin(ctx, agentID.ID, lim)
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]*AgentThreadSummary, 0, len(items))
-	for _, it := range items {
-		out = append(out, &AgentThreadSummary{
-			ThreadID:  it.ThreadID,
-			CreatedAt: it.CreatedAt,
-		})
-	}
 	return out, nil
 }

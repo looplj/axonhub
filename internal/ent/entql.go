@@ -150,19 +150,21 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "AgentMessage",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			agentmessage.FieldCreatedAt:   {Type: field.TypeTime, Column: agentmessage.FieldCreatedAt},
-			agentmessage.FieldUpdatedAt:   {Type: field.TypeTime, Column: agentmessage.FieldUpdatedAt},
-			agentmessage.FieldDeletedAt:   {Type: field.TypeInt, Column: agentmessage.FieldDeletedAt},
-			agentmessage.FieldProjectID:   {Type: field.TypeInt, Column: agentmessage.FieldProjectID},
-			agentmessage.FieldAgentID:     {Type: field.TypeInt, Column: agentmessage.FieldAgentID},
-			agentmessage.FieldThreadRowID: {Type: field.TypeInt, Column: agentmessage.FieldThreadRowID},
-			agentmessage.FieldDirection:   {Type: field.TypeEnum, Column: agentmessage.FieldDirection},
-			agentmessage.FieldSenderType:  {Type: field.TypeEnum, Column: agentmessage.FieldSenderType},
-			agentmessage.FieldSenderID:    {Type: field.TypeInt, Column: agentmessage.FieldSenderID},
-			agentmessage.FieldContent:     {Type: field.TypeJSON, Column: agentmessage.FieldContent},
-			agentmessage.FieldStatus:      {Type: field.TypeEnum, Column: agentmessage.FieldStatus},
-			agentmessage.FieldSequence:    {Type: field.TypeInt64, Column: agentmessage.FieldSequence},
-			agentmessage.FieldExpiresAt:   {Type: field.TypeTime, Column: agentmessage.FieldExpiresAt},
+			agentmessage.FieldCreatedAt:       {Type: field.TypeTime, Column: agentmessage.FieldCreatedAt},
+			agentmessage.FieldUpdatedAt:       {Type: field.TypeTime, Column: agentmessage.FieldUpdatedAt},
+			agentmessage.FieldDeletedAt:       {Type: field.TypeInt, Column: agentmessage.FieldDeletedAt},
+			agentmessage.FieldProjectID:       {Type: field.TypeInt, Column: agentmessage.FieldProjectID},
+			agentmessage.FieldAgentID:         {Type: field.TypeInt, Column: agentmessage.FieldAgentID},
+			agentmessage.FieldAgentInstanceID: {Type: field.TypeInt, Column: agentmessage.FieldAgentInstanceID},
+			agentmessage.FieldDirection:       {Type: field.TypeEnum, Column: agentmessage.FieldDirection},
+			agentmessage.FieldSenderType:      {Type: field.TypeEnum, Column: agentmessage.FieldSenderType},
+			agentmessage.FieldSenderID:        {Type: field.TypeInt, Column: agentmessage.FieldSenderID},
+			agentmessage.FieldKind:            {Type: field.TypeEnum, Column: agentmessage.FieldKind},
+			agentmessage.FieldCorrelationID:   {Type: field.TypeString, Column: agentmessage.FieldCorrelationID},
+			agentmessage.FieldContent:         {Type: field.TypeJSON, Column: agentmessage.FieldContent},
+			agentmessage.FieldStatus:          {Type: field.TypeEnum, Column: agentmessage.FieldStatus},
+			agentmessage.FieldSequence:        {Type: field.TypeInt64, Column: agentmessage.FieldSequence},
+			agentmessage.FieldExpiresAt:       {Type: field.TypeTime, Column: agentmessage.FieldExpiresAt},
 		},
 	}
 	graph.Nodes[5] = &sqlgraph.Node{
@@ -198,11 +200,11 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "AgentThread",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			agentthread.FieldCreatedAt:   {Type: field.TypeTime, Column: agentthread.FieldCreatedAt},
-			agentthread.FieldUpdatedAt:   {Type: field.TypeTime, Column: agentthread.FieldUpdatedAt},
-			agentthread.FieldProjectID:   {Type: field.TypeInt, Column: agentthread.FieldProjectID},
-			agentthread.FieldAgentID:     {Type: field.TypeInt, Column: agentthread.FieldAgentID},
-			agentthread.FieldThreadRowID: {Type: field.TypeInt, Column: agentthread.FieldThreadRowID},
+			agentthread.FieldCreatedAt: {Type: field.TypeTime, Column: agentthread.FieldCreatedAt},
+			agentthread.FieldUpdatedAt: {Type: field.TypeTime, Column: agentthread.FieldUpdatedAt},
+			agentthread.FieldProjectID: {Type: field.TypeInt, Column: agentthread.FieldProjectID},
+			agentthread.FieldAgentID:   {Type: field.TypeInt, Column: agentthread.FieldAgentID},
+			agentthread.FieldThreadID:  {Type: field.TypeInt, Column: agentthread.FieldThreadID},
 		},
 	}
 	graph.Nodes[7] = &sqlgraph.Node{
@@ -905,12 +907,12 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"AgentInstance",
 	)
 	graph.MustAddE(
-		"thread_bindings",
+		"threads",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   agent.ThreadBindingsTable,
-			Columns: []string{agent.ThreadBindingsColumn},
+			Table:   agent.ThreadsTable,
+			Columns: []string{agent.ThreadsColumn},
 			Bidi:    false,
 		},
 		"Agent",
@@ -953,6 +955,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Agent",
 	)
 	graph.MustAddE(
+		"messages",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessagesTable,
+			Columns: []string{agentinstance.MessagesColumn},
+			Bidi:    false,
+		},
+		"AgentInstance",
+		"AgentMessage",
+	)
+	graph.MustAddE(
 		"agent",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -977,16 +991,16 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Agent",
 	)
 	graph.MustAddE(
-		"thread",
+		"agent_instance",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agentmessage.ThreadTable,
-			Columns: []string{agentmessage.ThreadColumn},
+			Table:   agentmessage.AgentInstanceTable,
+			Columns: []string{agentmessage.AgentInstanceColumn},
 			Bidi:    false,
 		},
 		"AgentMessage",
-		"Thread",
+		"AgentInstance",
 	)
 	graph.MustAddE(
 		"agent",
@@ -1781,18 +1795,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"AgentThread",
 	)
 	graph.MustAddE(
-		"agent_messages",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   thread.AgentMessagesTable,
-			Columns: []string{thread.AgentMessagesColumn},
-			Bidi:    false,
-		},
-		"Thread",
-		"AgentMessage",
-	)
-	graph.MustAddE(
 		"project",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -2431,14 +2433,14 @@ func (f *AgentFilter) WhereHasInstancesWith(preds ...predicate.AgentInstance) {
 	})))
 }
 
-// WhereHasThreadBindings applies a predicate to check if query has an edge thread_bindings.
-func (f *AgentFilter) WhereHasThreadBindings() {
-	f.Where(entql.HasEdge("thread_bindings"))
+// WhereHasThreads applies a predicate to check if query has an edge threads.
+func (f *AgentFilter) WhereHasThreads() {
+	f.Where(entql.HasEdge("threads"))
 }
 
-// WhereHasThreadBindingsWith applies a predicate to check if query has an edge thread_bindings with a given conditions (other predicates).
-func (f *AgentFilter) WhereHasThreadBindingsWith(preds ...predicate.AgentThread) {
-	f.Where(entql.HasEdgeWith("thread_bindings", sqlgraph.WrapFunc(func(s *sql.Selector) {
+// WhereHasThreadsWith applies a predicate to check if query has an edge threads with a given conditions (other predicates).
+func (f *AgentFilter) WhereHasThreadsWith(preds ...predicate.AgentThread) {
+	f.Where(entql.HasEdgeWith("threads", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -2571,6 +2573,20 @@ func (f *AgentInstanceFilter) WhereHasAgent() {
 // WhereHasAgentWith applies a predicate to check if query has an edge agent with a given conditions (other predicates).
 func (f *AgentInstanceFilter) WhereHasAgentWith(preds ...predicate.Agent) {
 	f.Where(entql.HasEdgeWith("agent", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasMessages applies a predicate to check if query has an edge messages.
+func (f *AgentInstanceFilter) WhereHasMessages() {
+	f.Where(entql.HasEdge("messages"))
+}
+
+// WhereHasMessagesWith applies a predicate to check if query has an edge messages with a given conditions (other predicates).
+func (f *AgentInstanceFilter) WhereHasMessagesWith(preds ...predicate.AgentMessage) {
+	f.Where(entql.HasEdgeWith("messages", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -2736,9 +2752,9 @@ func (f *AgentMessageFilter) WhereAgentID(p entql.IntP) {
 	f.Where(p.Field(agentmessage.FieldAgentID))
 }
 
-// WhereThreadRowID applies the entql int predicate on the thread_row_id field.
-func (f *AgentMessageFilter) WhereThreadRowID(p entql.IntP) {
-	f.Where(p.Field(agentmessage.FieldThreadRowID))
+// WhereAgentInstanceID applies the entql int predicate on the agent_instance_id field.
+func (f *AgentMessageFilter) WhereAgentInstanceID(p entql.IntP) {
+	f.Where(p.Field(agentmessage.FieldAgentInstanceID))
 }
 
 // WhereDirection applies the entql string predicate on the direction field.
@@ -2754,6 +2770,16 @@ func (f *AgentMessageFilter) WhereSenderType(p entql.StringP) {
 // WhereSenderID applies the entql int predicate on the sender_id field.
 func (f *AgentMessageFilter) WhereSenderID(p entql.IntP) {
 	f.Where(p.Field(agentmessage.FieldSenderID))
+}
+
+// WhereKind applies the entql string predicate on the kind field.
+func (f *AgentMessageFilter) WhereKind(p entql.StringP) {
+	f.Where(p.Field(agentmessage.FieldKind))
+}
+
+// WhereCorrelationID applies the entql string predicate on the correlation_id field.
+func (f *AgentMessageFilter) WhereCorrelationID(p entql.StringP) {
+	f.Where(p.Field(agentmessage.FieldCorrelationID))
 }
 
 // WhereContent applies the entql json.RawMessage predicate on the content field.
@@ -2790,14 +2816,14 @@ func (f *AgentMessageFilter) WhereHasAgentWith(preds ...predicate.Agent) {
 	})))
 }
 
-// WhereHasThread applies a predicate to check if query has an edge thread.
-func (f *AgentMessageFilter) WhereHasThread() {
-	f.Where(entql.HasEdge("thread"))
+// WhereHasAgentInstance applies a predicate to check if query has an edge agent_instance.
+func (f *AgentMessageFilter) WhereHasAgentInstance() {
+	f.Where(entql.HasEdge("agent_instance"))
 }
 
-// WhereHasThreadWith applies a predicate to check if query has an edge thread with a given conditions (other predicates).
-func (f *AgentMessageFilter) WhereHasThreadWith(preds ...predicate.Thread) {
-	f.Where(entql.HasEdgeWith("thread", sqlgraph.WrapFunc(func(s *sql.Selector) {
+// WhereHasAgentInstanceWith applies a predicate to check if query has an edge agent_instance with a given conditions (other predicates).
+func (f *AgentMessageFilter) WhereHasAgentInstanceWith(preds ...predicate.AgentInstance) {
+	f.Where(entql.HasEdgeWith("agent_instance", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -2991,9 +3017,9 @@ func (f *AgentThreadFilter) WhereAgentID(p entql.IntP) {
 	f.Where(p.Field(agentthread.FieldAgentID))
 }
 
-// WhereThreadRowID applies the entql int predicate on the thread_row_id field.
-func (f *AgentThreadFilter) WhereThreadRowID(p entql.IntP) {
-	f.Where(p.Field(agentthread.FieldThreadRowID))
+// WhereThreadID applies the entql int predicate on the thread_id field.
+func (f *AgentThreadFilter) WhereThreadID(p entql.IntP) {
+	f.Where(p.Field(agentthread.FieldThreadID))
 }
 
 // WhereHasAgent applies a predicate to check if query has an edge agent.
@@ -5557,20 +5583,6 @@ func (f *ThreadFilter) WhereHasAgentThreads() {
 // WhereHasAgentThreadsWith applies a predicate to check if query has an edge agent_threads with a given conditions (other predicates).
 func (f *ThreadFilter) WhereHasAgentThreadsWith(preds ...predicate.AgentThread) {
 	f.Where(entql.HasEdgeWith("agent_threads", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
-// WhereHasAgentMessages applies a predicate to check if query has an edge agent_messages.
-func (f *ThreadFilter) WhereHasAgentMessages() {
-	f.Where(entql.HasEdge("agent_messages"))
-}
-
-// WhereHasAgentMessagesWith applies a predicate to check if query has an edge agent_messages with a given conditions (other predicates).
-func (f *ThreadFilter) WhereHasAgentMessagesWith(preds ...predicate.AgentMessage) {
-	f.Where(entql.HasEdgeWith("agent_messages", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

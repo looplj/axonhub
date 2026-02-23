@@ -10,6 +10,8 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -27,6 +29,7 @@ func (r *mutationResolver) RegisterAgentInstance(ctx context.Context, input Regi
 		Name:       input.Name,
 		Platform:   input.Platform,
 		Version:    input.Version,
+		ThreadID:   input.ThreadID,
 	})
 	if err != nil {
 		return nil, err
@@ -58,9 +61,17 @@ func (r *mutationResolver) SendAgentMessage(ctx context.Context, input SendAgent
 	}
 
 	view, err := r.agentRuntimeService.SendAgentMessage(ctx, biz.SendAgentMessageInput{
-		AgentID:  agentID,
-		ThreadID: input.ThreadID,
-		Text:     input.Text,
+		AgentID: agentID,
+		Text:    input.Text,
+		Content: func() *objects.JSONRawMessage {
+			if len(input.Content) == 0 || string(input.Content) == "null" {
+				return nil
+			}
+
+			return &input.Content
+		}(),
+		Kind:          (*agentmessage.Kind)(input.Kind),
+		CorrelationID: input.CorrelationID,
 	})
 	if err != nil {
 		return nil, err
@@ -71,6 +82,9 @@ func (r *mutationResolver) SendAgentMessage(ctx context.Context, input SendAgent
 
 // PushAgentMessage is the resolver for the pushAgentMessage field.
 func (r *mutationResolver) PushAgentMessage(ctx context.Context, input PushAgentMessageInput) (*AgentMessage, error) {
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "PushAgentMessage", log.Any("input", input))
+	}
 	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
@@ -79,8 +93,24 @@ func (r *mutationResolver) PushAgentMessage(ctx context.Context, input PushAgent
 	view, err := r.agentRuntimeService.PushAgentMessage(ctx, biz.PushAgentMessageInput{
 		AgentID:    agentID,
 		InstanceID: input.InstanceID,
-		ThreadID:   input.ThreadID,
 		Text:       input.Text,
+		Content: func() *objects.JSONRawMessage {
+			if len(input.Content) == 0 || string(input.Content) == "null" {
+				return nil
+			}
+
+			return &input.Content
+		}(),
+		Kind: func() *agentmessage.Kind {
+			if input.Kind == nil {
+				return nil
+			}
+
+			k := agentmessage.Kind(*input.Kind)
+
+			return &k
+		}(),
+		CorrelationID: input.CorrelationID,
 	})
 	if err != nil {
 		return nil, err
@@ -202,12 +232,18 @@ func (r *queryResolver) PullAgentMessages(ctx context.Context, input PullAgentMe
 		lim = *input.Limit
 	}
 
+	kindIn := make([]agentmessage.Kind, 0, len(input.KindIn))
+	for _, k := range input.KindIn {
+		kindIn = append(kindIn, agentmessage.Kind(k))
+	}
+
 	views, err := r.agentRuntimeService.PullAgentMessages(ctx, biz.PullAgentMessagesInput{
 		AgentID:       agentID,
 		InstanceID:    input.InstanceID,
-		ThreadID:      input.ThreadID,
 		AfterSequence: after,
 		Limit:         lim,
+		KindIn:        kindIn,
+		CorrelationID: input.CorrelationID,
 	})
 	if err != nil {
 		return nil, err
@@ -221,7 +257,7 @@ func (r *queryResolver) PullAgentMessages(ctx context.Context, input PullAgentMe
 }
 
 // PullAgentMessagesToUser is the resolver for the pullAgentMessagesToUser field.
-func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, threadID string, afterSequence *int, limit *int) ([]*AgentMessage, error) {
+func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, afterSequence *int, limit *int) ([]*AgentMessage, error) {
 	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
@@ -238,7 +274,7 @@ func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, threadID st
 		lim = *limit
 	}
 
-	views, err := r.agentRuntimeService.PullAgentMessagesToUser(ctx, agentID, threadID, after, lim)
+	views, err := r.agentRuntimeService.PullAgentMessagesToUser(ctx, agentID, after, lim)
 	if err != nil {
 		return nil, err
 	}
@@ -256,5 +292,7 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
+type (
+	mutationResolver struct{ *Resolver }
+	queryResolver    struct{ *Resolver }
+)

@@ -70,6 +70,10 @@ func (AgentInstance) Edges() []ent.Edge {
 			Immutable().
 			Required().
 			Unique(),
+		edge.To("messages", AgentMessage.Type).Annotations(
+			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			entgql.RelayConnection(),
+		),
 	}
 }
 
@@ -95,4 +99,3 @@ func (AgentInstance) Policy() ent.Policy {
 		},
 	}
 }
-

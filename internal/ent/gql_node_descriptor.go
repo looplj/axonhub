@@ -368,9 +368,9 @@ func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
 	}
 	node.Edges[7] = &Edge{
 		Type: "AgentThread",
-		Name: "thread_bindings",
+		Name: "threads",
 	}
-	err = _m.QueryThreadBindings().
+	err = _m.QueryThreads().
 		Select(agentthread.FieldID).
 		Scan(ctx, &node.Edges[7].IDs)
 	if err != nil {
@@ -405,7 +405,7 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "AgentInstance",
 		Fields: make([]*Field, 9),
-		Edges:  make([]*Edge, 1),
+		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -487,6 +487,16 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 	err = _m.QueryAgent().
 		Select(agent.FieldID).
 		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "AgentMessage",
+		Name: "messages",
+	}
+	err = _m.QueryMessages().
+		Select(agentmessage.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
 	if err != nil {
 		return nil, err
 	}
@@ -576,7 +586,7 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "AgentMessage",
-		Fields: make([]*Field, 12),
+		Fields: make([]*Field, 14),
 		Edges:  make([]*Edge, 2),
 	}
 	var buf []byte
@@ -612,12 +622,12 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "agent_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.ThreadRowID); err != nil {
+	if buf, err = json.Marshal(_m.AgentInstanceID); err != nil {
 		return nil, err
 	}
 	node.Fields[4] = &Field{
 		Type:  "int",
-		Name:  "thread_row_id",
+		Name:  "agent_instance_id",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.Direction); err != nil {
@@ -644,10 +654,26 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "sender_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Content); err != nil {
+	if buf, err = json.Marshal(_m.Kind); err != nil {
 		return nil, err
 	}
 	node.Fields[8] = &Field{
+		Type:  "agentmessage.Kind",
+		Name:  "kind",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.CorrelationID); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "string",
+		Name:  "correlation_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Content); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
 		Type:  "objects.JSONRawMessage",
 		Name:  "content",
 		Value: string(buf),
@@ -655,7 +681,7 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Status); err != nil {
 		return nil, err
 	}
-	node.Fields[9] = &Field{
+	node.Fields[11] = &Field{
 		Type:  "agentmessage.Status",
 		Name:  "status",
 		Value: string(buf),
@@ -663,7 +689,7 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Sequence); err != nil {
 		return nil, err
 	}
-	node.Fields[10] = &Field{
+	node.Fields[12] = &Field{
 		Type:  "int64",
 		Name:  "sequence",
 		Value: string(buf),
@@ -671,7 +697,7 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.ExpiresAt); err != nil {
 		return nil, err
 	}
-	node.Fields[11] = &Field{
+	node.Fields[13] = &Field{
 		Type:  "time.Time",
 		Name:  "expires_at",
 		Value: string(buf),
@@ -687,11 +713,11 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Edges[1] = &Edge{
-		Type: "Thread",
-		Name: "thread",
+		Type: "AgentInstance",
+		Name: "agent_instance",
 	}
-	err = _m.QueryThread().
-		Select(thread.FieldID).
+	err = _m.QueryAgentInstance().
+		Select(agentinstance.FieldID).
 		Scan(ctx, &node.Edges[1].IDs)
 	if err != nil {
 		return nil, err
@@ -846,12 +872,12 @@ func (_m *AgentThread) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "agent_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.ThreadRowID); err != nil {
+	if buf, err = json.Marshal(_m.ThreadID); err != nil {
 		return nil, err
 	}
 	node.Fields[4] = &Field{
 		Type:  "int",
-		Name:  "thread_row_id",
+		Name:  "thread_id",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{
@@ -3083,7 +3109,7 @@ func (_m *Thread) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "Thread",
 		Fields: make([]*Field, 4),
-		Edges:  make([]*Edge, 4),
+		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -3145,16 +3171,6 @@ func (_m *Thread) Node(ctx context.Context) (node *Node, err error) {
 	err = _m.QueryAgentThreads().
 		Select(agentthread.FieldID).
 		Scan(ctx, &node.Edges[2].IDs)
-	if err != nil {
-		return nil, err
-	}
-	node.Edges[3] = &Edge{
-		Type: "AgentMessage",
-		Name: "agent_messages",
-	}
-	err = _m.QueryAgentMessages().
-		Select(agentmessage.FieldID).
-		Scan(ctx, &node.Edges[3].IDs)
 	if err != nil {
 		return nil, err
 	}

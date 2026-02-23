@@ -206,15 +206,17 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "project_id", Type: field.TypeInt},
-		{Name: "direction", Type: field.TypeEnum, Enums: []string{"to_runtime", "to_user"}},
-		{Name: "sender_type", Type: field.TypeEnum, Enums: []string{"user", "runtime", "system"}},
+		{Name: "direction", Type: field.TypeEnum, Enums: []string{"to_agent", "to_user"}},
+		{Name: "sender_type", Type: field.TypeEnum, Enums: []string{"user", "agent", "system"}},
 		{Name: "sender_id", Type: field.TypeInt, Nullable: true},
+		{Name: "kind", Type: field.TypeEnum, Enums: []string{"chat", "approval_request", "approval_result", "system_event"}, Default: "chat"},
+		{Name: "correlation_id", Type: field.TypeString, Default: ""},
 		{Name: "content", Type: field.TypeJSON},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "acked", "expired"}, Default: "pending"},
 		{Name: "sequence", Type: field.TypeInt64},
 		{Name: "expires_at", Type: field.TypeTime, Nullable: true},
 		{Name: "agent_id", Type: field.TypeInt},
-		{Name: "thread_row_id", Type: field.TypeInt},
+		{Name: "agent_instance_id", Type: field.TypeInt},
 	}
 	// AgentMessagesTable holds the schema information for the "agent_messages" table.
 	AgentMessagesTable = &schema.Table{
@@ -224,27 +226,32 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "agent_messages_agents_messages",
-				Columns:    []*schema.Column{AgentMessagesColumns[12]},
+				Columns:    []*schema.Column{AgentMessagesColumns[14]},
 				RefColumns: []*schema.Column{AgentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "agent_messages_threads_agent_messages",
-				Columns:    []*schema.Column{AgentMessagesColumns[13]},
-				RefColumns: []*schema.Column{ThreadsColumns[0]},
+				Symbol:     "agent_messages_agent_instances_messages",
+				Columns:    []*schema.Column{AgentMessagesColumns[15]},
+				RefColumns: []*schema.Column{AgentInstancesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "agent_messages_by_agent_id_thread_row_id_sequence",
+				Name:    "agent_messages_by_agent_id_sequence",
 				Unique:  true,
-				Columns: []*schema.Column{AgentMessagesColumns[12], AgentMessagesColumns[13], AgentMessagesColumns[10], AgentMessagesColumns[3]},
+				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[12], AgentMessagesColumns[3]},
 			},
 			{
 				Name:    "agent_messages_by_agent_id_status_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{AgentMessagesColumns[12], AgentMessagesColumns[9], AgentMessagesColumns[3], AgentMessagesColumns[1]},
+				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[15], AgentMessagesColumns[11], AgentMessagesColumns[3], AgentMessagesColumns[1]},
+			},
+			{
+				Name:    "agent_messages_by_agent_id_correlation_id",
+				Unique:  false,
+				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[9], AgentMessagesColumns[3]},
 			},
 		},
 	}
@@ -306,7 +313,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "agent_id", Type: field.TypeInt},
-		{Name: "thread_row_id", Type: field.TypeInt},
+		{Name: "thread_id", Type: field.TypeInt},
 	}
 	// AgentThreadsTable holds the schema information for the "agent_threads" table.
 	AgentThreadsTable = &schema.Table{
@@ -315,7 +322,7 @@ var (
 		PrimaryKey: []*schema.Column{AgentThreadsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "agent_threads_agents_thread_bindings",
+				Symbol:     "agent_threads_agents_threads",
 				Columns:    []*schema.Column{AgentThreadsColumns[4]},
 				RefColumns: []*schema.Column{AgentsColumns[0]},
 				OnDelete:   schema.NoAction,
@@ -329,7 +336,7 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "agent_threads_by_agent_id_thread_row_id",
+				Name:    "agent_threads_by_agent_id_thread_id",
 				Unique:  true,
 				Columns: []*schema.Column{AgentThreadsColumns[4], AgentThreadsColumns[5]},
 			},
@@ -1406,7 +1413,7 @@ func init() {
 	AgentInstancesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMemoriesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[0].RefTable = AgentsTable
-	AgentMessagesTable.ForeignKeys[1].RefTable = ThreadsTable
+	AgentMessagesTable.ForeignKeys[1].RefTable = AgentInstancesTable
 	AgentSkillsTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentSkillsTable.ForeignKeys[1].RefTable = ProjectsTable
 	AgentSkillsTable.ForeignKeys[2].RefTable = SkillsTable

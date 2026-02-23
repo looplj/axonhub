@@ -23,8 +23,8 @@ const (
 	FieldProjectID = "project_id"
 	// FieldAgentID holds the string denoting the agent_id field in the database.
 	FieldAgentID = "agent_id"
-	// FieldThreadRowID holds the string denoting the thread_row_id field in the database.
-	FieldThreadRowID = "thread_row_id"
+	// FieldThreadID holds the string denoting the thread_id field in the database.
+	FieldThreadID = "thread_id"
 	// EdgeAgent holds the string denoting the agent edge name in mutations.
 	EdgeAgent = "agent"
 	// EdgeThread holds the string denoting the thread edge name in mutations.
@@ -44,7 +44,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "thread" package.
 	ThreadInverseTable = "threads"
 	// ThreadColumn is the table column denoting the thread relation/edge.
-	ThreadColumn = "thread_row_id"
+	ThreadColumn = "thread_id"
 )
 
 // Columns holds all SQL columns for agentthread fields.
@@ -54,7 +54,7 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldProjectID,
 	FieldAgentID,
-	FieldThreadRowID,
+	FieldThreadID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -111,9 +111,9 @@ func ByAgentID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAgentID, opts...).ToFunc()
 }
 
-// ByThreadRowID orders the results by the thread_row_id field.
-func ByThreadRowID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldThreadRowID, opts...).ToFunc()
+// ByThreadID orders the results by the thread_id field.
+func ByThreadID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldThreadID, opts...).ToFunc()
 }
 
 // ByAgentField orders the results by agent field.

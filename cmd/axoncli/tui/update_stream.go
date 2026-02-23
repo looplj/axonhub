@@ -65,9 +65,7 @@ func (m Model) handleAgentEvent(ev agent.AgentEvent) (tea.Model, tea.Cmd) {
 		}
 	case agent.EventMessageAdded:
 		if ev.Message != nil {
-			if m.threadMgr != nil {
-				m.threadMgr.AddMessage(m.threadID, *ev.Message)
-			}
+			m.threadMgr.AddMessage(m.threadID, *ev.Message)
 			if ev.Message.Role == agent.RoleAssistant && ev.Message.Content != nil {
 				if line := formatAssistantMessage(*ev.Message, m.width); line != "" {
 					m.appendLine(line)
@@ -136,9 +134,7 @@ func (m *Model) handleStreamEvent(ev agent.AgentEvent) (tea.Model, tea.Cmd) {
 	case agent.EventToolCallComplete:
 	case agent.EventMessageAdded:
 		if ev.Message != nil {
-			if m.threadMgr != nil {
-				m.threadMgr.AddMessage(m.threadID, *ev.Message)
-			}
+			m.threadMgr.AddMessage(m.threadID, *ev.Message)
 		}
 	case agent.EventToolSkipped:
 		m.appendLine(fmt.Sprintf("  ⏭ Skipped tool: %s", ev.ToolName))

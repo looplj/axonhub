@@ -24,8 +24,8 @@ func (AgentThread) Mixin() []ent.Mixin {
 
 func (AgentThread) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("agent_id", "thread_row_id").
-			StorageKey("agent_threads_by_agent_id_thread_row_id").
+		index.Fields("agent_id", "thread_id").
+			StorageKey("agent_threads_by_agent_id_thread_id").
 			Unique(),
 	}
 }
@@ -36,7 +36,7 @@ func (AgentThread) Fields() []ent.Field {
 			Immutable(),
 		field.Int("agent_id").
 			Immutable(),
-		field.Int("thread_row_id").
+		field.Int("thread_id").
 			Immutable(),
 	}
 }
@@ -44,14 +44,14 @@ func (AgentThread) Fields() []ent.Field {
 func (AgentThread) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("agent", Agent.Type).
-			Ref("thread_bindings").
+			Ref("threads").
 			Field("agent_id").
 			Immutable().
 			Required().
 			Unique(),
 		edge.From("thread", Thread.Type).
 			Ref("agent_threads").
-			Field("thread_row_id").
+			Field("thread_id").
 			Immutable().
 			Required().
 			Unique(),

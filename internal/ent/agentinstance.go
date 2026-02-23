@@ -48,11 +48,15 @@ type AgentInstance struct {
 type AgentInstanceEdges struct {
 	// Agent holds the value of the agent edge.
 	Agent *Agent `json:"agent,omitempty"`
+	// Messages holds the value of the messages edge.
+	Messages []*AgentMessage `json:"messages,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 	// totalCount holds the count of the edges above.
-	totalCount [1]map[string]int
+	totalCount [2]map[string]int
+
+	namedMessages map[string][]*AgentMessage
 }
 
 // AgentOrErr returns the Agent value or an error if the edge
@@ -64,6 +68,15 @@ func (e AgentInstanceEdges) AgentOrErr() (*Agent, error) {
 		return nil, &NotFoundError{label: agent.Label}
 	}
 	return nil, &NotLoadedError{edge: "agent"}
+}
+
+// MessagesOrErr returns the Messages value or an error if the edge
+// was not loaded in eager-loading.
+func (e AgentInstanceEdges) MessagesOrErr() ([]*AgentMessage, error) {
+	if e.loadedTypes[1] {
+		return e.Messages, nil
+	}
+	return nil, &NotLoadedError{edge: "messages"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -176,6 +189,11 @@ func (_m *AgentInstance) QueryAgent() *AgentQuery {
 	return NewAgentInstanceClient(_m.config).QueryAgent(_m)
 }
 
+// QueryMessages queries the "messages" edge of the AgentInstance entity.
+func (_m *AgentInstance) QueryMessages() *AgentMessageQuery {
+	return NewAgentInstanceClient(_m.config).QueryMessages(_m)
+}
+
 // Update returns a builder for updating this AgentInstance.
 // Note that you need to call AgentInstance.Unwrap() before calling this method if this AgentInstance
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -230,6 +248,30 @@ func (_m *AgentInstance) String() string {
 	builder.WriteString(_m.LastHeartbeatAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
+}
+
+// NamedMessages returns the Messages named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *AgentInstance) NamedMessages(name string) ([]*AgentMessage, error) {
+	if _m.Edges.namedMessages == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedMessages[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *AgentInstance) appendNamedMessages(name string, edges ...*AgentMessage) {
+	if _m.Edges.namedMessages == nil {
+		_m.Edges.namedMessages = make(map[string][]*AgentMessage)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedMessages[name] = []*AgentMessage{}
+	} else {
+		_m.Edges.namedMessages[name] = append(_m.Edges.namedMessages[name], edges...)
+	}
 }
 
 // AgentInstances is a parsable slice of AgentInstance.

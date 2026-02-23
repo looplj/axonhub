@@ -608,6 +608,29 @@ func HasAgentWith(preds ...predicate.Agent) predicate.AgentInstance {
 	})
 }
 
+// HasMessages applies the HasEdge predicate on the "messages" edge.
+func HasMessages() predicate.AgentInstance {
+	return predicate.AgentInstance(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, MessagesTable, MessagesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMessagesWith applies the HasEdge predicate on the "messages" edge with a given conditions (other predicates).
+func HasMessagesWith(preds ...predicate.AgentMessage) predicate.AgentInstance {
+	return predicate.AgentInstance(func(s *sql.Selector) {
+		step := newMessagesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.AgentInstance) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.AndPredicates(predicates...))

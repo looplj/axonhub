@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
-import { usePermissions } from '@/hooks/usePermissions';
 
 const AGENT_DETAIL_QUERY = `
   query GetAgentDetail($id: ID!, $instancesFirst: Int) {
@@ -59,15 +58,6 @@ const AGENT_DETAIL_QUERY = `
   }
 `;
 
-const AGENT_THREADS_QUERY = `
-  query GetAgentThreadSummaries($agentID: ID!, $first: Int) {
-    agentThreadSummaries(agentID: $agentID, first: $first) {
-      threadID
-      createdAt
-    }
-  }
-`;
-
 type AgentInstanceNode = {
   id: string;
   instanceID: string;
@@ -99,11 +89,6 @@ type AgentDetail = {
   } | null;
 };
 
-type ThreadNode = {
-  threadID: string;
-  createdAt: string | Date;
-};
-
 export function useAgentDetail(id: string) {
   const selectedProjectId = useSelectedProjectId();
 
@@ -116,25 +101,5 @@ export function useAgentDetail(id: string) {
       return data.node;
     },
     enabled: Boolean(selectedProjectId && id),
-  });
-}
-
-export function useAgentThreads(agentId: string) {
-  const selectedProjectId = useSelectedProjectId();
-  const { hasScope } = usePermissions();
-  const canReadThreads = hasScope('read_agents');
-
-  return useQuery({
-    queryKey: ['agentThreads', agentId, selectedProjectId],
-    queryFn: async () => {
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const data = await graphqlRequest<{ agentThreadSummaries: ThreadNode[] }>(
-        AGENT_THREADS_QUERY,
-        { agentID: agentId, first: 50 },
-        headers
-      );
-      return data.agentThreadSummaries ?? [];
-    },
-    enabled: Boolean(selectedProjectId && agentId && canReadThreads),
   });
 }

@@ -29,8 +29,6 @@ const (
 	EdgeTraces = "traces"
 	// EdgeAgentThreads holds the string denoting the agent_threads edge name in mutations.
 	EdgeAgentThreads = "agent_threads"
-	// EdgeAgentMessages holds the string denoting the agent_messages edge name in mutations.
-	EdgeAgentMessages = "agent_messages"
 	// Table holds the table name of the thread in the database.
 	Table = "threads"
 	// ProjectTable is the table that holds the project relation/edge.
@@ -53,14 +51,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "agentthread" package.
 	AgentThreadsInverseTable = "agent_threads"
 	// AgentThreadsColumn is the table column denoting the agent_threads relation/edge.
-	AgentThreadsColumn = "thread_row_id"
-	// AgentMessagesTable is the table that holds the agent_messages relation/edge.
-	AgentMessagesTable = "agent_messages"
-	// AgentMessagesInverseTable is the table name for the AgentMessage entity.
-	// It exists in this package in order to avoid circular dependency with the "agentmessage" package.
-	AgentMessagesInverseTable = "agent_messages"
-	// AgentMessagesColumn is the table column denoting the agent_messages relation/edge.
-	AgentMessagesColumn = "thread_row_id"
+	AgentThreadsColumn = "thread_id"
 )
 
 // Columns holds all SQL columns for thread fields.
@@ -160,20 +151,6 @@ func ByAgentThreads(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newAgentThreadsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-
-// ByAgentMessagesCount orders the results by agent_messages count.
-func ByAgentMessagesCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newAgentMessagesStep(), opts...)
-	}
-}
-
-// ByAgentMessages orders the results by agent_messages terms.
-func ByAgentMessages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newAgentMessagesStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
 func newProjectStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -193,12 +170,5 @@ func newAgentThreadsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AgentThreadsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, AgentThreadsTable, AgentThreadsColumn),
-	)
-}
-func newAgentMessagesStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(AgentMessagesInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, AgentMessagesTable, AgentMessagesColumn),
 	)
 }

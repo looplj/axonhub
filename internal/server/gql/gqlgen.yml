@@ -581,3 +581,9 @@ models:
   DeleteDisabledAPIKeysPayload:
     model:
       - github.com/looplj/axonhub/internal/server/biz.DeleteDisabledAPIKeysResult
+  SendAgentMessageInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.SendAgentMessageInput
+  AckAgentMessagesInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AckAgentMessagesInput

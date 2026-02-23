@@ -136,7 +136,7 @@ func (Agent) Edges() []ent.Edge {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
-		edge.To("thread_bindings", AgentThread.Type).
+		edge.To("threads", AgentThread.Type).
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),

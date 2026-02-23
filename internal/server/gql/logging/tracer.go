@@ -1,4 +1,4 @@
-package gql
+package logging
 
 import (
 	"context"
@@ -11,22 +11,22 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 )
 
-type loggingTracer struct{}
+type LoggingTracer struct{}
 
 var _ interface {
 	graphql.HandlerExtension
 	graphql.ResponseInterceptor
-} = &loggingTracer{}
+} = &LoggingTracer{}
 
-func (t *loggingTracer) ExtensionName() string {
+func (t *LoggingTracer) ExtensionName() string {
 	return "logging_tracer"
 }
 
-func (t *loggingTracer) Validate(schema graphql.ExecutableSchema) error {
+func (t *LoggingTracer) Validate(schema graphql.ExecutableSchema) error {
 	return nil
 }
 
-func (t *loggingTracer) InterceptResponse(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
+func (t *LoggingTracer) InterceptResponse(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
 	if graphql.HasOperationContext(ctx) {
 		opCtx := graphql.GetOperationContext(ctx)
 		ctx = tracing.WithOperationName(ctx, opCtx.OperationName)

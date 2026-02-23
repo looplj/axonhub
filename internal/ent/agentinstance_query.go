@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math"
@@ -14,19 +15,22 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 )
 
 // AgentInstanceQuery is the builder for querying AgentInstance entities.
 type AgentInstanceQuery struct {
 	config
-	ctx        *QueryContext
-	order      []agentinstance.OrderOption
-	inters     []Interceptor
-	predicates []predicate.AgentInstance
-	withAgent  *AgentQuery
-	loadTotal  []func(context.Context, []*AgentInstance) error
-	modifiers  []func(*sql.Selector)
+	ctx               *QueryContext
+	order             []agentinstance.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.AgentInstance
+	withAgent         *AgentQuery
+	withMessages      *AgentMessageQuery
+	loadTotal         []func(context.Context, []*AgentInstance) error
+	modifiers         []func(*sql.Selector)
+	withNamedMessages map[string]*AgentMessageQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -78,6 +82,28 @@ func (_q *AgentInstanceQuery) QueryAgent() *AgentQuery {
 			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, selector),
 			sqlgraph.To(agent.Table, agent.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, agentinstance.AgentTable, agentinstance.AgentColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMessages chains the current query on the "messages" edge.
+func (_q *AgentInstanceQuery) QueryMessages() *AgentMessageQuery {
+	query := (&AgentMessageClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, selector),
+			sqlgraph.To(agentmessage.Table, agentmessage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, agentinstance.MessagesTable, agentinstance.MessagesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -272,12 +298,13 @@ func (_q *AgentInstanceQuery) Clone() *AgentInstanceQuery {
 		return nil
 	}
 	return &AgentInstanceQuery{
-		config:     _q.config,
-		ctx:        _q.ctx.Clone(),
-		order:      append([]agentinstance.OrderOption{}, _q.order...),
-		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.AgentInstance{}, _q.predicates...),
-		withAgent:  _q.withAgent.Clone(),
+		config:       _q.config,
+		ctx:          _q.ctx.Clone(),
+		order:        append([]agentinstance.OrderOption{}, _q.order...),
+		inters:       append([]Interceptor{}, _q.inters...),
+		predicates:   append([]predicate.AgentInstance{}, _q.predicates...),
+		withAgent:    _q.withAgent.Clone(),
+		withMessages: _q.withMessages.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -293,6 +320,17 @@ func (_q *AgentInstanceQuery) WithAgent(opts ...func(*AgentQuery)) *AgentInstanc
 		opt(query)
 	}
 	_q.withAgent = query
+	return _q
+}
+
+// WithMessages tells the query-builder to eager-load the nodes that are connected to
+// the "messages" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *AgentInstanceQuery) WithMessages(opts ...func(*AgentMessageQuery)) *AgentInstanceQuery {
+	query := (&AgentMessageClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withMessages = query
 	return _q
 }
 
@@ -380,8 +418,9 @@ func (_q *AgentInstanceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	var (
 		nodes       = []*AgentInstance{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withAgent != nil,
+			_q.withMessages != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -408,6 +447,20 @@ func (_q *AgentInstanceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	if query := _q.withAgent; query != nil {
 		if err := _q.loadAgent(ctx, query, nodes, nil,
 			func(n *AgentInstance, e *Agent) { n.Edges.Agent = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withMessages; query != nil {
+		if err := _q.loadMessages(ctx, query, nodes,
+			func(n *AgentInstance) { n.Edges.Messages = []*AgentMessage{} },
+			func(n *AgentInstance, e *AgentMessage) { n.Edges.Messages = append(n.Edges.Messages, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedMessages {
+		if err := _q.loadMessages(ctx, query, nodes,
+			func(n *AgentInstance) { n.appendNamedMessages(name) },
+			func(n *AgentInstance, e *AgentMessage) { n.appendNamedMessages(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -445,6 +498,36 @@ func (_q *AgentInstanceQuery) loadAgent(ctx context.Context, query *AgentQuery, 
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (_q *AgentInstanceQuery) loadMessages(ctx context.Context, query *AgentMessageQuery, nodes []*AgentInstance, init func(*AgentInstance), assign func(*AgentInstance, *AgentMessage)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*AgentInstance)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(agentmessage.FieldAgentInstanceID)
+	}
+	query.Where(predicate.AgentMessage(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(agentinstance.MessagesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.AgentInstanceID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "agent_instance_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -543,6 +626,20 @@ func (_q *AgentInstanceQuery) sqlQuery(ctx context.Context) *sql.Selector {
 func (_q *AgentInstanceQuery) Modify(modifiers ...func(s *sql.Selector)) *AgentInstanceSelect {
 	_q.modifiers = append(_q.modifiers, modifiers...)
 	return _q.Select()
+}
+
+// WithNamedMessages tells the query-builder to eager-load the nodes that are connected to the "messages"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *AgentInstanceQuery) WithNamedMessages(name string, opts ...func(*AgentMessageQuery)) *AgentInstanceQuery {
+	query := (&AgentMessageClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedMessages == nil {
+		_q.withNamedMessages = make(map[string]*AgentMessageQuery)
+	}
+	_q.withNamedMessages[name] = query
+	return _q
 }
 
 // AgentInstanceGroupBy is the group-by builder for AgentInstance entities.

@@ -10,14 +10,30 @@ import (
 	"time"
 )
 
+type StoreMode int
+
+const (
+	ModeGlobal StoreMode = iota
+	ModeLocal
+)
+
 type FileStore struct {
 	BaseDir string
+	Mode    StoreMode
 }
 
 type fileFormat struct {
 	Version   int       `json:"version"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Keys      []string  `json:"keys"`
+}
+
+func NewGlobalFileStore(baseDir string) FileStore {
+	return FileStore{BaseDir: baseDir, Mode: ModeGlobal}
+}
+
+func NewLocalFileStore(workspaceDir string) FileStore {
+	return FileStore{BaseDir: workspaceDir, Mode: ModeLocal}
 }
 
 func (s FileStore) Load(workspace string) (map[string]struct{}, error) {
@@ -78,9 +94,16 @@ func (s FileStore) pathForWorkspace(workspace string) (string, error) {
 	if s.BaseDir == "" {
 		return "", fmt.Errorf("grant: BaseDir is empty")
 	}
-	ws := filepath.Clean(workspace)
-	hash := workspaceHash(ws)
-	return filepath.Join(s.BaseDir, "workspaces", hash+".json"), nil
+	switch s.Mode {
+	case ModeLocal:
+		return filepath.Join(s.BaseDir, ".axonclaw", "permission", "grants.json"), nil
+	case ModeGlobal:
+		ws := filepath.Clean(workspace)
+		hash := workspaceHash(ws)
+		return filepath.Join(s.BaseDir, "workspaces", hash+".json"), nil
+	default:
+		return "", fmt.Errorf("grant: unknown store mode %d", s.Mode)
+	}
 }
 
 func workspaceHash(ws string) string {

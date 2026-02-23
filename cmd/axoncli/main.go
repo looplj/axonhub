@@ -19,7 +19,7 @@ import (
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/bus"
 	axonconf "github.com/looplj/axonhub/axon/conf"
-	clawcontext "github.com/looplj/axonhub/axon/context"
+	axoncontext "github.com/looplj/axonhub/axon/context"
 	"github.com/looplj/axonhub/axon/permission"
 	"github.com/looplj/axonhub/axon/permission/approval"
 	"github.com/looplj/axonhub/axon/permission/grant"
@@ -183,7 +183,7 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 
 	approver := approval.NewInProcessService()
 
-	grants := grant.NewMemoryStore(grant.FileStore{BaseDir: filepath.Join(configDir, "permission")})
+	grants := grant.NewMemoryStore(grant.NewGlobalFileStore(filepath.Join(configDir, "permission")))
 	if err := grants.LoadWorkspace(workspaceDir); err != nil {
 		return fmt.Errorf("failed to load workspace grants: %w", err)
 	}
@@ -249,7 +249,7 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	ctx = clawcontext.WithThreadID(ctx, threadID)
+	ctx = axoncontext.WithThreadID(ctx, threadID)
 	ctx = agent.WithWorkspace(ctx, workspaceDir)
 	defer cancel()
 

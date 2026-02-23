@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/axon/bus"
+	axoncontext "github.com/looplj/axonhub/axon/context"
 	clawcontext "github.com/looplj/axonhub/axon/context"
 )
 
@@ -35,8 +36,10 @@ type Config struct {
 	Model string
 	// MaxIterations limits tool-call loops (0 means unlimited).
 	MaxIterations int
-	// SystemPrompt is the base system prompt.
+	// SystemPrompt is the base system prompt (deprecated, use SystemPrompts).
 	SystemPrompt string
+	// SystemPrompts is an array of system prompts that will be joined together.
+	SystemPrompts []string
 }
 
 // Agent orchestrates LLM interactions with tool execution.
@@ -405,24 +408,46 @@ func (a *Agent) PublishRequest(ctx context.Context, content Content) error {
 }
 
 // buildMessages constructs the message list for an LLM call, prepending
-// the system prompt if configured.
+// the system prompts if configured.
 func (a *Agent) buildMessages(cfg Config) []Message {
 	a.msgMu.RLock()
 	history := make([]Message, len(a.messages))
 	copy(history, a.messages)
 	a.msgMu.RUnlock()
 
-	if cfg.SystemPrompt == "" {
+	systemPrompts := a.buildSystemPrompts(cfg)
+	if len(systemPrompts) == 0 {
 		return history
 	}
 
-	messages := make([]Message, 0, len(history)+1)
-	messages = append(messages, Message{
-		Role:    RoleSystem,
-		Content: &Content{Text: &cfg.SystemPrompt},
-	})
+	messages := make([]Message, 0, len(systemPrompts)+len(history))
+	for _, prompt := range systemPrompts {
+		messages = append(messages, Message{
+			Role:    RoleSystem,
+			Content: &Content{Text: &prompt},
+		})
+	}
 	messages = append(messages, history...)
 	return messages
+}
+
+// buildSystemPrompts builds the system prompts from Config.
+// It supports both SystemPrompt (deprecated) and SystemPrompts.
+// Returns a slice of non-empty system prompt strings.
+func (a *Agent) buildSystemPrompts(cfg Config) []string {
+	var prompts []string
+
+	if cfg.SystemPrompt != "" {
+		prompts = append(prompts, cfg.SystemPrompt)
+	}
+
+	for _, p := range cfg.SystemPrompts {
+		if p != "" {
+			prompts = append(prompts, p)
+		}
+	}
+
+	return prompts
 }
 
 func (a *Agent) nextRequestIndex() int {
@@ -993,14 +1018,6 @@ func (b *toolCallBuilder) buildJSON() string {
 	return result
 }
 
-func joinStrings(parts []string) string {
-	result := ""
-	for _, part := range parts {
-		result += part
-	}
-	return result
-}
-
 type ctxKey string
 
 const workspaceCtxKey ctxKey = "workspace"
@@ -1017,7 +1034,7 @@ func workspaceFromContext(ctx context.Context) string {
 func (a *Agent) runAfterMiddlewares(ctx context.Context, tc ToolUse, toolErr error, mws []Middleware) {
 	for i := len(mws) - 1; i >= 0; i-- {
 		req := ToolRequest{
-			ThreadID:   clawcontext.ThreadID(ctx),
+			ThreadID:   axoncontext.ThreadID(ctx),
 			Workspace:  workspaceFromContext(ctx),
 			ToolCallID: tc.ID,
 			ToolName:   tc.Name,

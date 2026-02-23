@@ -224,16 +224,18 @@ func (c *AgentMemoryUpdateOne) SetInput(i UpdateAgentMemoryInput) *AgentMemoryUp
 
 // CreateAgentMessageInput represents a mutation input for creating agentmessages.
 type CreateAgentMessageInput struct {
-	ProjectID  int
-	Direction  agentmessage.Direction
-	SenderType agentmessage.SenderType
-	SenderID   *int
-	Content    objects.JSONRawMessage
-	Status     *agentmessage.Status
-	Sequence   int64
-	ExpiresAt  *time.Time
-	AgentID    int
-	ThreadID   int
+	ProjectID       int
+	Direction       agentmessage.Direction
+	SenderType      agentmessage.SenderType
+	SenderID        *int
+	Kind            *agentmessage.Kind
+	CorrelationID   *string
+	Content         objects.JSONRawMessage
+	Status          *agentmessage.Status
+	Sequence        int64
+	ExpiresAt       *time.Time
+	AgentID         int
+	AgentInstanceID int
 }
 
 // Mutate applies the CreateAgentMessageInput on the AgentMessageMutation builder.
@@ -243,6 +245,12 @@ func (i *CreateAgentMessageInput) Mutate(m *AgentMessageMutation) {
 	m.SetSenderType(i.SenderType)
 	if v := i.SenderID; v != nil {
 		m.SetSenderID(*v)
+	}
+	if v := i.Kind; v != nil {
+		m.SetKind(*v)
+	}
+	if v := i.CorrelationID; v != nil {
+		m.SetCorrelationID(*v)
 	}
 	if v := i.Content; v != nil {
 		m.SetContent(v)
@@ -255,7 +263,7 @@ func (i *CreateAgentMessageInput) Mutate(m *AgentMessageMutation) {
 		m.SetExpiresAt(*v)
 	}
 	m.SetAgentID(i.AgentID)
-	m.SetThreadID(i.ThreadID)
+	m.SetAgentInstanceID(i.AgentInstanceID)
 }
 
 // SetInput applies the change-set in the CreateAgentMessageInput on the AgentMessageCreate builder.
@@ -270,6 +278,8 @@ type UpdateAgentMessageInput struct {
 	SenderType     *agentmessage.SenderType
 	ClearSenderID  bool
 	SenderID       *int
+	Kind           *agentmessage.Kind
+	CorrelationID  *string
 	Content        objects.JSONRawMessage
 	AppendContent  objects.JSONRawMessage
 	Status         *agentmessage.Status
@@ -291,6 +301,12 @@ func (i *UpdateAgentMessageInput) Mutate(m *AgentMessageMutation) {
 	}
 	if v := i.SenderID; v != nil {
 		m.SetSenderID(*v)
+	}
+	if v := i.Kind; v != nil {
+		m.SetKind(*v)
+	}
+	if v := i.CorrelationID; v != nil {
+		m.SetCorrelationID(*v)
 	}
 	if v := i.Content; v != nil {
 		m.SetContent(v)

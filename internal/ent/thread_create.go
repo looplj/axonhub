@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/thread"
@@ -99,21 +98,6 @@ func (_c *ThreadCreate) AddAgentThreads(v ...*AgentThread) *ThreadCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddAgentThreadIDs(ids...)
-}
-
-// AddAgentMessageIDs adds the "agent_messages" edge to the AgentMessage entity by IDs.
-func (_c *ThreadCreate) AddAgentMessageIDs(ids ...int) *ThreadCreate {
-	_c.mutation.AddAgentMessageIDs(ids...)
-	return _c
-}
-
-// AddAgentMessages adds the "agent_messages" edges to the AgentMessage entity.
-func (_c *ThreadCreate) AddAgentMessages(v ...*AgentMessage) *ThreadCreate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddAgentMessageIDs(ids...)
 }
 
 // Mutation returns the ThreadMutation object of the builder.
@@ -268,22 +252,6 @@ func (_c *ThreadCreate) createSpec() (*Thread, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.AgentMessagesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   thread.AgentMessagesTable,
-			Columns: []string{thread.AgentMessagesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

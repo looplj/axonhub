@@ -266,8 +266,12 @@ func init() {
 	agentmessageDescDeletedAt := agentmessageMixinFields1[0].Descriptor()
 	// agentmessage.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	agentmessage.DefaultDeletedAt = agentmessageDescDeletedAt.Default.(int)
+	// agentmessageDescCorrelationID is the schema descriptor for correlation_id field.
+	agentmessageDescCorrelationID := agentmessageFields[7].Descriptor()
+	// agentmessage.DefaultCorrelationID holds the default value on creation for the correlation_id field.
+	agentmessage.DefaultCorrelationID = agentmessageDescCorrelationID.Default.(string)
 	// agentmessageDescContent is the schema descriptor for content field.
-	agentmessageDescContent := agentmessageFields[6].Descriptor()
+	agentmessageDescContent := agentmessageFields[8].Descriptor()
 	// agentmessage.DefaultContent holds the default value on creation for the content field.
 	agentmessage.DefaultContent = agentmessageDescContent.Default.(objects.JSONRawMessage)
 	agentskillMixin := schema.AgentSkill{}.Mixin()

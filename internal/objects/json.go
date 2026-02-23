@@ -56,6 +56,24 @@ func (m *JSONRawMessage) UnmarshalGQL(v any) error {
 		return nil
 	case *map[string]any:
 		return json.Unmarshal(*m, v)
+	case map[string]any:
+		data, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+
+		*m = append((*m)[0:0], data...)
+
+		return nil
+	case []any:
+		data, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+
+		*m = append((*m)[0:0], data...)
+
+		return nil
 	}
 
 	return nil

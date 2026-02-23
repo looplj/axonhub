@@ -14,6 +14,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gql/logging"
 )
 
 type GraphqlHandler struct {
@@ -42,10 +43,10 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
-	// gqlSrv.Use(&loggingTracer{})
 	gqlSrv.Use(entgql.Transactioner{
 		TxOpener: deps.Ent,
 	})
+	gqlSrv.Use(&logging.LoggingTracer{})
 
 	return &GraphqlHandler{
 		Graphql:    gqlSrv,

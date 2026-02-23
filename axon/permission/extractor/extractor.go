@@ -168,6 +168,8 @@ func CapabilityForTool(toolName string) []string {
 		return []string{"net.search"}
 	case "Skill":
 		return []string{"skill.run"}
+	case "ReplyMessage":
+		return []string{"message.reply"}
 	default:
 		if strings.HasPrefix(toolName, "Memory") {
 			switch toolName {

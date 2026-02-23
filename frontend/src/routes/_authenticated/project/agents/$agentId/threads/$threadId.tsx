@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ProjectGuard } from '@/components/project-guard';
 import { RouteGuard } from '@/components/route-guard';
-import { AgentThreadChatPage } from '@/features/agents/components/agent-thread-chat-page';
+import { AgentChatPage } from '@/features/agents/components/agent-chat-page';
 
 function ProtectedAgentThreadChat() {
   return (
     <ProjectGuard>
       <RouteGuard requiredScopes={['read_agents']}>
-        <AgentThreadChatPage />
+        <AgentChatPage />
       </RouteGuard>
     </ProjectGuard>
   );

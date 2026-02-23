@@ -44,15 +44,17 @@ type AgentInstance struct {
 }
 
 type AgentMessage struct {
-	ID         objects.GUID           `json:"id"`
-	AgentID    objects.GUID           `json:"agentID"`
-	ThreadID   string                 `json:"threadID"`
-	Direction  AgentMessageDirection  `json:"direction"`
-	SenderType AgentMessageSenderType `json:"senderType"`
-	Text       string                 `json:"text"`
-	Sequence   int                    `json:"sequence"`
-	Status     AgentMessageStatus     `json:"status"`
-	CreatedAt  time.Time              `json:"createdAt"`
+	ID            objects.GUID           `json:"id"`
+	AgentID       objects.GUID           `json:"agentID"`
+	Direction     AgentMessageDirection  `json:"direction"`
+	SenderType    AgentMessageSenderType `json:"senderType"`
+	Text          string                 `json:"text"`
+	Content       objects.JSONRawMessage `json:"content"`
+	Kind          AgentMessageKind       `json:"kind"`
+	CorrelationID string                 `json:"correlationID"`
+	Sequence      int                    `json:"sequence"`
+	Status        AgentMessageStatus     `json:"status"`
+	CreatedAt     time.Time              `json:"createdAt"`
 }
 
 type AgentSkillDefinition struct {
@@ -81,16 +83,19 @@ type Mutation struct {
 }
 
 type PullAgentMessagesInput struct {
-	InstanceID    string `json:"instanceID"`
-	ThreadID      string `json:"threadID"`
-	AfterSequence *int   `json:"afterSequence,omitempty"`
-	Limit         *int   `json:"limit,omitempty"`
+	InstanceID    string             `json:"instanceID"`
+	AfterSequence *int               `json:"afterSequence,omitempty"`
+	Limit         *int               `json:"limit,omitempty"`
+	KindIn        []AgentMessageKind `json:"kindIn,omitempty"`
+	CorrelationID *string            `json:"correlationID,omitempty"`
 }
 
 type PushAgentMessageInput struct {
-	InstanceID string `json:"instanceID"`
-	ThreadID   string `json:"threadID"`
-	Text       string `json:"text"`
+	InstanceID    string                 `json:"instanceID"`
+	Text          string                 `json:"text"`
+	Content       objects.JSONRawMessage `json:"content,omitempty"`
+	Kind          *AgentMessageKind      `json:"kind,omitempty"`
+	CorrelationID *string                `json:"correlationID,omitempty"`
 }
 
 type RegisterAgentInstanceInput struct {
@@ -98,11 +103,14 @@ type RegisterAgentInstanceInput struct {
 	Name       *string `json:"name,omitempty"`
 	Platform   *string `json:"platform,omitempty"`
 	Version    *string `json:"version,omitempty"`
+	ThreadID   *string `json:"threadID,omitempty"`
 }
 
 type SendAgentMessageInput struct {
-	ThreadID string `json:"threadID"`
-	Text     string `json:"text"`
+	Text          string                 `json:"text"`
+	Content       objects.JSONRawMessage `json:"content,omitempty"`
+	Kind          *AgentMessageKind      `json:"kind,omitempty"`
+	CorrelationID *string                `json:"correlationID,omitempty"`
 }
 
 type AgentMessageDirection string
@@ -155,6 +163,65 @@ func (e *AgentMessageDirection) UnmarshalJSON(b []byte) error {
 }
 
 func (e AgentMessageDirection) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type AgentMessageKind string
+
+const (
+	AgentMessageKindChat            AgentMessageKind = "chat"
+	AgentMessageKindApprovalRequest AgentMessageKind = "approval_request"
+	AgentMessageKindApprovalResult  AgentMessageKind = "approval_result"
+	AgentMessageKindSystemEvent     AgentMessageKind = "system_event"
+)
+
+var AllAgentMessageKind = []AgentMessageKind{
+	AgentMessageKindChat,
+	AgentMessageKindApprovalRequest,
+	AgentMessageKindApprovalResult,
+	AgentMessageKindSystemEvent,
+}
+
+func (e AgentMessageKind) IsValid() bool {
+	switch e {
+	case AgentMessageKindChat, AgentMessageKindApprovalRequest, AgentMessageKindApprovalResult, AgentMessageKindSystemEvent:
+		return true
+	}
+	return false
+}
+
+func (e AgentMessageKind) String() string {
+	return string(e)
+}
+
+func (e *AgentMessageKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AgentMessageKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AgentMessageKind", str)
+	}
+	return nil
+}
+
+func (e AgentMessageKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AgentMessageKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AgentMessageKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

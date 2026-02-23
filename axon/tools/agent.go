@@ -43,7 +43,7 @@ func (w *AgentTool[I]) Definition() agent.ToolDefinition {
 func (w *AgentTool[I]) Execute(ctx context.Context, arguments json.RawMessage) agent.ToolResult {
 	var obj map[string]any
 	if err := json.Unmarshal(arguments, &obj); err != nil {
-		return ErrorResult(fmt.Errorf("%w: invalid arguments", err))
+		return ErrorResult(fmt.Errorf("%w: caused by %w", ErrInvalidArguments, err))
 	}
 
 	if obj == nil {

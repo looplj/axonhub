@@ -641,9 +641,9 @@ type AgentWhereInput struct {
 	HasInstances     *bool                      `json:"hasInstances,omitempty"`
 	HasInstancesWith []*AgentInstanceWhereInput `json:"hasInstancesWith,omitempty"`
 
-	// "thread_bindings" edge predicates.
-	HasThreadBindings     *bool                    `json:"hasThreadBindings,omitempty"`
-	HasThreadBindingsWith []*AgentThreadWhereInput `json:"hasThreadBindingsWith,omitempty"`
+	// "threads" edge predicates.
+	HasThreads     *bool                    `json:"hasThreads,omitempty"`
+	HasThreadsWith []*AgentThreadWhereInput `json:"hasThreadsWith,omitempty"`
 
 	// "messages" edge predicates.
 	HasMessages     *bool                     `json:"hasMessages,omitempty"`
@@ -1101,23 +1101,23 @@ func (i *AgentWhereInput) P() (predicate.Agent, error) {
 		}
 		predicates = append(predicates, agent.HasInstancesWith(with...))
 	}
-	if i.HasThreadBindings != nil {
-		p := agent.HasThreadBindings()
-		if !*i.HasThreadBindings {
+	if i.HasThreads != nil {
+		p := agent.HasThreads()
+		if !*i.HasThreads {
 			p = agent.Not(p)
 		}
 		predicates = append(predicates, p)
 	}
-	if len(i.HasThreadBindingsWith) > 0 {
-		with := make([]predicate.AgentThread, 0, len(i.HasThreadBindingsWith))
-		for _, w := range i.HasThreadBindingsWith {
+	if len(i.HasThreadsWith) > 0 {
+		with := make([]predicate.AgentThread, 0, len(i.HasThreadsWith))
+		for _, w := range i.HasThreadsWith {
 			p, err := w.P()
 			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasThreadBindingsWith'", err)
+				return nil, fmt.Errorf("%w: field 'HasThreadsWith'", err)
 			}
 			with = append(with, p)
 		}
-		predicates = append(predicates, agent.HasThreadBindingsWith(with...))
+		predicates = append(predicates, agent.HasThreadsWith(with...))
 	}
 	if i.HasMessages != nil {
 		p := agent.HasMessages()
@@ -1291,6 +1291,10 @@ type AgentInstanceWhereInput struct {
 	// "agent" edge predicates.
 	HasAgent     *bool              `json:"hasAgent,omitempty"`
 	HasAgentWith []*AgentWhereInput `json:"hasAgentWith,omitempty"`
+
+	// "messages" edge predicates.
+	HasMessages     *bool                     `json:"hasMessages,omitempty"`
+	HasMessagesWith []*AgentMessageWhereInput `json:"hasMessagesWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -1670,6 +1674,24 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, agentinstance.HasAgentWith(with...))
+	}
+	if i.HasMessages != nil {
+		p := agentinstance.HasMessages()
+		if !*i.HasMessages {
+			p = agentinstance.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasMessagesWith) > 0 {
+		with := make([]predicate.AgentMessage, 0, len(i.HasMessagesWith))
+		for _, w := range i.HasMessagesWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasMessagesWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, agentinstance.HasMessagesWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -2170,11 +2192,11 @@ type AgentMessageWhereInput struct {
 	AgentIDIn    []int `json:"agentIDIn,omitempty"`
 	AgentIDNotIn []int `json:"agentIDNotIn,omitempty"`
 
-	// "thread_row_id" field predicates.
-	ThreadRowID      *int  `json:"threadRowID,omitempty"`
-	ThreadRowIDNEQ   *int  `json:"threadRowIDNEQ,omitempty"`
-	ThreadRowIDIn    []int `json:"threadRowIDIn,omitempty"`
-	ThreadRowIDNotIn []int `json:"threadRowIDNotIn,omitempty"`
+	// "agent_instance_id" field predicates.
+	AgentInstanceID      *int  `json:"agentInstanceID,omitempty"`
+	AgentInstanceIDNEQ   *int  `json:"agentInstanceIDNEQ,omitempty"`
+	AgentInstanceIDIn    []int `json:"agentInstanceIDIn,omitempty"`
+	AgentInstanceIDNotIn []int `json:"agentInstanceIDNotIn,omitempty"`
 
 	// "direction" field predicates.
 	Direction      *agentmessage.Direction  `json:"direction,omitempty"`
@@ -2199,6 +2221,27 @@ type AgentMessageWhereInput struct {
 	SenderIDLTE    *int  `json:"senderIDLTE,omitempty"`
 	SenderIDIsNil  bool  `json:"senderIDIsNil,omitempty"`
 	SenderIDNotNil bool  `json:"senderIDNotNil,omitempty"`
+
+	// "kind" field predicates.
+	Kind      *agentmessage.Kind  `json:"kind,omitempty"`
+	KindNEQ   *agentmessage.Kind  `json:"kindNEQ,omitempty"`
+	KindIn    []agentmessage.Kind `json:"kindIn,omitempty"`
+	KindNotIn []agentmessage.Kind `json:"kindNotIn,omitempty"`
+
+	// "correlation_id" field predicates.
+	CorrelationID             *string  `json:"correlationID,omitempty"`
+	CorrelationIDNEQ          *string  `json:"correlationIDNEQ,omitempty"`
+	CorrelationIDIn           []string `json:"correlationIDIn,omitempty"`
+	CorrelationIDNotIn        []string `json:"correlationIDNotIn,omitempty"`
+	CorrelationIDGT           *string  `json:"correlationIDGT,omitempty"`
+	CorrelationIDGTE          *string  `json:"correlationIDGTE,omitempty"`
+	CorrelationIDLT           *string  `json:"correlationIDLT,omitempty"`
+	CorrelationIDLTE          *string  `json:"correlationIDLTE,omitempty"`
+	CorrelationIDContains     *string  `json:"correlationIDContains,omitempty"`
+	CorrelationIDHasPrefix    *string  `json:"correlationIDHasPrefix,omitempty"`
+	CorrelationIDHasSuffix    *string  `json:"correlationIDHasSuffix,omitempty"`
+	CorrelationIDEqualFold    *string  `json:"correlationIDEqualFold,omitempty"`
+	CorrelationIDContainsFold *string  `json:"correlationIDContainsFold,omitempty"`
 
 	// "status" field predicates.
 	Status      *agentmessage.Status  `json:"status,omitempty"`
@@ -2232,9 +2275,9 @@ type AgentMessageWhereInput struct {
 	HasAgent     *bool              `json:"hasAgent,omitempty"`
 	HasAgentWith []*AgentWhereInput `json:"hasAgentWith,omitempty"`
 
-	// "thread" edge predicates.
-	HasThread     *bool               `json:"hasThread,omitempty"`
-	HasThreadWith []*ThreadWhereInput `json:"hasThreadWith,omitempty"`
+	// "agent_instance" edge predicates.
+	HasAgentInstance     *bool                      `json:"hasAgentInstance,omitempty"`
+	HasAgentInstanceWith []*AgentInstanceWhereInput `json:"hasAgentInstanceWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -2416,17 +2459,17 @@ func (i *AgentMessageWhereInput) P() (predicate.AgentMessage, error) {
 	if len(i.AgentIDNotIn) > 0 {
 		predicates = append(predicates, agentmessage.AgentIDNotIn(i.AgentIDNotIn...))
 	}
-	if i.ThreadRowID != nil {
-		predicates = append(predicates, agentmessage.ThreadRowIDEQ(*i.ThreadRowID))
+	if i.AgentInstanceID != nil {
+		predicates = append(predicates, agentmessage.AgentInstanceIDEQ(*i.AgentInstanceID))
 	}
-	if i.ThreadRowIDNEQ != nil {
-		predicates = append(predicates, agentmessage.ThreadRowIDNEQ(*i.ThreadRowIDNEQ))
+	if i.AgentInstanceIDNEQ != nil {
+		predicates = append(predicates, agentmessage.AgentInstanceIDNEQ(*i.AgentInstanceIDNEQ))
 	}
-	if len(i.ThreadRowIDIn) > 0 {
-		predicates = append(predicates, agentmessage.ThreadRowIDIn(i.ThreadRowIDIn...))
+	if len(i.AgentInstanceIDIn) > 0 {
+		predicates = append(predicates, agentmessage.AgentInstanceIDIn(i.AgentInstanceIDIn...))
 	}
-	if len(i.ThreadRowIDNotIn) > 0 {
-		predicates = append(predicates, agentmessage.ThreadRowIDNotIn(i.ThreadRowIDNotIn...))
+	if len(i.AgentInstanceIDNotIn) > 0 {
+		predicates = append(predicates, agentmessage.AgentInstanceIDNotIn(i.AgentInstanceIDNotIn...))
 	}
 	if i.Direction != nil {
 		predicates = append(predicates, agentmessage.DirectionEQ(*i.Direction))
@@ -2481,6 +2524,57 @@ func (i *AgentMessageWhereInput) P() (predicate.AgentMessage, error) {
 	}
 	if i.SenderIDNotNil {
 		predicates = append(predicates, agentmessage.SenderIDNotNil())
+	}
+	if i.Kind != nil {
+		predicates = append(predicates, agentmessage.KindEQ(*i.Kind))
+	}
+	if i.KindNEQ != nil {
+		predicates = append(predicates, agentmessage.KindNEQ(*i.KindNEQ))
+	}
+	if len(i.KindIn) > 0 {
+		predicates = append(predicates, agentmessage.KindIn(i.KindIn...))
+	}
+	if len(i.KindNotIn) > 0 {
+		predicates = append(predicates, agentmessage.KindNotIn(i.KindNotIn...))
+	}
+	if i.CorrelationID != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDEQ(*i.CorrelationID))
+	}
+	if i.CorrelationIDNEQ != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDNEQ(*i.CorrelationIDNEQ))
+	}
+	if len(i.CorrelationIDIn) > 0 {
+		predicates = append(predicates, agentmessage.CorrelationIDIn(i.CorrelationIDIn...))
+	}
+	if len(i.CorrelationIDNotIn) > 0 {
+		predicates = append(predicates, agentmessage.CorrelationIDNotIn(i.CorrelationIDNotIn...))
+	}
+	if i.CorrelationIDGT != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDGT(*i.CorrelationIDGT))
+	}
+	if i.CorrelationIDGTE != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDGTE(*i.CorrelationIDGTE))
+	}
+	if i.CorrelationIDLT != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDLT(*i.CorrelationIDLT))
+	}
+	if i.CorrelationIDLTE != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDLTE(*i.CorrelationIDLTE))
+	}
+	if i.CorrelationIDContains != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDContains(*i.CorrelationIDContains))
+	}
+	if i.CorrelationIDHasPrefix != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDHasPrefix(*i.CorrelationIDHasPrefix))
+	}
+	if i.CorrelationIDHasSuffix != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDHasSuffix(*i.CorrelationIDHasSuffix))
+	}
+	if i.CorrelationIDEqualFold != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDEqualFold(*i.CorrelationIDEqualFold))
+	}
+	if i.CorrelationIDContainsFold != nil {
+		predicates = append(predicates, agentmessage.CorrelationIDContainsFold(*i.CorrelationIDContainsFold))
 	}
 	if i.Status != nil {
 		predicates = append(predicates, agentmessage.StatusEQ(*i.Status))
@@ -2567,23 +2661,23 @@ func (i *AgentMessageWhereInput) P() (predicate.AgentMessage, error) {
 		}
 		predicates = append(predicates, agentmessage.HasAgentWith(with...))
 	}
-	if i.HasThread != nil {
-		p := agentmessage.HasThread()
-		if !*i.HasThread {
+	if i.HasAgentInstance != nil {
+		p := agentmessage.HasAgentInstance()
+		if !*i.HasAgentInstance {
 			p = agentmessage.Not(p)
 		}
 		predicates = append(predicates, p)
 	}
-	if len(i.HasThreadWith) > 0 {
-		with := make([]predicate.Thread, 0, len(i.HasThreadWith))
-		for _, w := range i.HasThreadWith {
+	if len(i.HasAgentInstanceWith) > 0 {
+		with := make([]predicate.AgentInstance, 0, len(i.HasAgentInstanceWith))
+		for _, w := range i.HasAgentInstanceWith {
 			p, err := w.P()
 			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasThreadWith'", err)
+				return nil, fmt.Errorf("%w: field 'HasAgentInstanceWith'", err)
 			}
 			with = append(with, p)
 		}
-		predicates = append(predicates, agentmessage.HasThreadWith(with...))
+		predicates = append(predicates, agentmessage.HasAgentInstanceWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -3058,11 +3152,11 @@ type AgentThreadWhereInput struct {
 	AgentIDIn    []int `json:"agentIDIn,omitempty"`
 	AgentIDNotIn []int `json:"agentIDNotIn,omitempty"`
 
-	// "thread_row_id" field predicates.
-	ThreadRowID      *int  `json:"threadRowID,omitempty"`
-	ThreadRowIDNEQ   *int  `json:"threadRowIDNEQ,omitempty"`
-	ThreadRowIDIn    []int `json:"threadRowIDIn,omitempty"`
-	ThreadRowIDNotIn []int `json:"threadRowIDNotIn,omitempty"`
+	// "thread_id" field predicates.
+	ThreadID      *int  `json:"threadID,omitempty"`
+	ThreadIDNEQ   *int  `json:"threadIDNEQ,omitempty"`
+	ThreadIDIn    []int `json:"threadIDIn,omitempty"`
+	ThreadIDNotIn []int `json:"threadIDNotIn,omitempty"`
 
 	// "agent" edge predicates.
 	HasAgent     *bool              `json:"hasAgent,omitempty"`
@@ -3252,17 +3346,17 @@ func (i *AgentThreadWhereInput) P() (predicate.AgentThread, error) {
 	if len(i.AgentIDNotIn) > 0 {
 		predicates = append(predicates, agentthread.AgentIDNotIn(i.AgentIDNotIn...))
 	}
-	if i.ThreadRowID != nil {
-		predicates = append(predicates, agentthread.ThreadRowIDEQ(*i.ThreadRowID))
+	if i.ThreadID != nil {
+		predicates = append(predicates, agentthread.ThreadIDEQ(*i.ThreadID))
 	}
-	if i.ThreadRowIDNEQ != nil {
-		predicates = append(predicates, agentthread.ThreadRowIDNEQ(*i.ThreadRowIDNEQ))
+	if i.ThreadIDNEQ != nil {
+		predicates = append(predicates, agentthread.ThreadIDNEQ(*i.ThreadIDNEQ))
 	}
-	if len(i.ThreadRowIDIn) > 0 {
-		predicates = append(predicates, agentthread.ThreadRowIDIn(i.ThreadRowIDIn...))
+	if len(i.ThreadIDIn) > 0 {
+		predicates = append(predicates, agentthread.ThreadIDIn(i.ThreadIDIn...))
 	}
-	if len(i.ThreadRowIDNotIn) > 0 {
-		predicates = append(predicates, agentthread.ThreadRowIDNotIn(i.ThreadRowIDNotIn...))
+	if len(i.ThreadIDNotIn) > 0 {
+		predicates = append(predicates, agentthread.ThreadIDNotIn(i.ThreadIDNotIn...))
 	}
 
 	if i.HasAgent != nil {
@@ -12146,10 +12240,6 @@ type ThreadWhereInput struct {
 	// "agent_threads" edge predicates.
 	HasAgentThreads     *bool                    `json:"hasAgentThreads,omitempty"`
 	HasAgentThreadsWith []*AgentThreadWhereInput `json:"hasAgentThreadsWith,omitempty"`
-
-	// "agent_messages" edge predicates.
-	HasAgentMessages     *bool                     `json:"hasAgentMessages,omitempty"`
-	HasAgentMessagesWith []*AgentMessageWhereInput `json:"hasAgentMessagesWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -12400,24 +12490,6 @@ func (i *ThreadWhereInput) P() (predicate.Thread, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, thread.HasAgentThreadsWith(with...))
-	}
-	if i.HasAgentMessages != nil {
-		p := thread.HasAgentMessages()
-		if !*i.HasAgentMessages {
-			p = thread.Not(p)
-		}
-		predicates = append(predicates, p)
-	}
-	if len(i.HasAgentMessagesWith) > 0 {
-		with := make([]predicate.AgentMessage, 0, len(i.HasAgentMessagesWith))
-		for _, w := range i.HasAgentMessagesWith {
-			p, err := w.P()
-			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasAgentMessagesWith'", err)
-			}
-			with = append(with, p)
-		}
-		predicates = append(predicates, thread.HasAgentMessagesWith(with...))
 	}
 	switch len(predicates) {
 	case 0:

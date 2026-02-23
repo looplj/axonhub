@@ -495,7 +495,7 @@ func (_q *AgentThreadQuery) loadThread(ctx context.Context, query *ThreadQuery, 
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*AgentThread)
 	for i := range nodes {
-		fk := nodes[i].ThreadRowID
+		fk := nodes[i].ThreadID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -512,7 +512,7 @@ func (_q *AgentThreadQuery) loadThread(ctx context.Context, query *ThreadQuery, 
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "thread_row_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "thread_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -553,7 +553,7 @@ func (_q *AgentThreadQuery) querySpec() *sqlgraph.QuerySpec {
 			_spec.Node.AddColumnOnce(agentthread.FieldAgentID)
 		}
 		if _q.withThread != nil {
-			_spec.Node.AddColumnOnce(agentthread.FieldThreadRowID)
+			_spec.Node.AddColumnOnce(agentthread.FieldThreadID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

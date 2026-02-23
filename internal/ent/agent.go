@@ -71,8 +71,8 @@ type AgentEdges struct {
 	SkillBindings []*AgentSkill `json:"skill_bindings,omitempty"`
 	// Instances holds the value of the instances edge.
 	Instances []*AgentInstance `json:"instances,omitempty"`
-	// ThreadBindings holds the value of the thread_bindings edge.
-	ThreadBindings []*AgentThread `json:"thread_bindings,omitempty"`
+	// Threads holds the value of the threads edge.
+	Threads []*AgentThread `json:"threads,omitempty"`
 	// Messages holds the value of the messages edge.
 	Messages []*AgentMessage `json:"messages,omitempty"`
 	// Memories holds the value of the memories edge.
@@ -83,12 +83,12 @@ type AgentEdges struct {
 	// totalCount holds the count of the edges above.
 	totalCount [10]map[string]int
 
-	namedToolBindings   map[string][]*AgentTool
-	namedSkillBindings  map[string][]*AgentSkill
-	namedInstances      map[string][]*AgentInstance
-	namedThreadBindings map[string][]*AgentThread
-	namedMessages       map[string][]*AgentMessage
-	namedMemories       map[string][]*AgentMemory
+	namedToolBindings  map[string][]*AgentTool
+	namedSkillBindings map[string][]*AgentSkill
+	namedInstances     map[string][]*AgentInstance
+	namedThreads       map[string][]*AgentThread
+	namedMessages      map[string][]*AgentMessage
+	namedMemories      map[string][]*AgentMemory
 }
 
 // ProjectOrErr returns the Project value or an error if the edge
@@ -162,13 +162,13 @@ func (e AgentEdges) InstancesOrErr() ([]*AgentInstance, error) {
 	return nil, &NotLoadedError{edge: "instances"}
 }
 
-// ThreadBindingsOrErr returns the ThreadBindings value or an error if the edge
+// ThreadsOrErr returns the Threads value or an error if the edge
 // was not loaded in eager-loading.
-func (e AgentEdges) ThreadBindingsOrErr() ([]*AgentThread, error) {
+func (e AgentEdges) ThreadsOrErr() ([]*AgentThread, error) {
 	if e.loadedTypes[7] {
-		return e.ThreadBindings, nil
+		return e.Threads, nil
 	}
-	return nil, &NotLoadedError{edge: "thread_bindings"}
+	return nil, &NotLoadedError{edge: "threads"}
 }
 
 // MessagesOrErr returns the Messages value or an error if the edge
@@ -353,9 +353,9 @@ func (_m *Agent) QueryInstances() *AgentInstanceQuery {
 	return NewAgentClient(_m.config).QueryInstances(_m)
 }
 
-// QueryThreadBindings queries the "thread_bindings" edge of the Agent entity.
-func (_m *Agent) QueryThreadBindings() *AgentThreadQuery {
-	return NewAgentClient(_m.config).QueryThreadBindings(_m)
+// QueryThreads queries the "threads" edge of the Agent entity.
+func (_m *Agent) QueryThreads() *AgentThreadQuery {
+	return NewAgentClient(_m.config).QueryThreads(_m)
 }
 
 // QueryMessages queries the "messages" edge of the Agent entity.
@@ -505,27 +505,27 @@ func (_m *Agent) appendNamedInstances(name string, edges ...*AgentInstance) {
 	}
 }
 
-// NamedThreadBindings returns the ThreadBindings named value or an error if the edge was not
+// NamedThreads returns the Threads named value or an error if the edge was not
 // loaded in eager-loading with this name.
-func (_m *Agent) NamedThreadBindings(name string) ([]*AgentThread, error) {
-	if _m.Edges.namedThreadBindings == nil {
+func (_m *Agent) NamedThreads(name string) ([]*AgentThread, error) {
+	if _m.Edges.namedThreads == nil {
 		return nil, &NotLoadedError{edge: name}
 	}
-	nodes, ok := _m.Edges.namedThreadBindings[name]
+	nodes, ok := _m.Edges.namedThreads[name]
 	if !ok {
 		return nil, &NotLoadedError{edge: name}
 	}
 	return nodes, nil
 }
 
-func (_m *Agent) appendNamedThreadBindings(name string, edges ...*AgentThread) {
-	if _m.Edges.namedThreadBindings == nil {
-		_m.Edges.namedThreadBindings = make(map[string][]*AgentThread)
+func (_m *Agent) appendNamedThreads(name string, edges ...*AgentThread) {
+	if _m.Edges.namedThreads == nil {
+		_m.Edges.namedThreads = make(map[string][]*AgentThread)
 	}
 	if len(edges) == 0 {
-		_m.Edges.namedThreadBindings[name] = []*AgentThread{}
+		_m.Edges.namedThreads[name] = []*AgentThread{}
 	} else {
-		_m.Edges.namedThreadBindings[name] = append(_m.Edges.namedThreadBindings[name], edges...)
+		_m.Edges.namedThreads[name] = append(_m.Edges.namedThreads[name], edges...)
 	}
 }
 

@@ -113,6 +113,34 @@ func (_u *AgentMessageUpdate) ClearSenderID() *AgentMessageUpdate {
 	return _u
 }
 
+// SetKind sets the "kind" field.
+func (_u *AgentMessageUpdate) SetKind(v agentmessage.Kind) *AgentMessageUpdate {
+	_u.mutation.SetKind(v)
+	return _u
+}
+
+// SetNillableKind sets the "kind" field if the given value is not nil.
+func (_u *AgentMessageUpdate) SetNillableKind(v *agentmessage.Kind) *AgentMessageUpdate {
+	if v != nil {
+		_u.SetKind(*v)
+	}
+	return _u
+}
+
+// SetCorrelationID sets the "correlation_id" field.
+func (_u *AgentMessageUpdate) SetCorrelationID(v string) *AgentMessageUpdate {
+	_u.mutation.SetCorrelationID(v)
+	return _u
+}
+
+// SetNillableCorrelationID sets the "correlation_id" field if the given value is not nil.
+func (_u *AgentMessageUpdate) SetNillableCorrelationID(v *string) *AgentMessageUpdate {
+	if v != nil {
+		_u.SetCorrelationID(*v)
+	}
+	return _u
+}
+
 // SetContent sets the "content" field.
 func (_u *AgentMessageUpdate) SetContent(v objects.JSONRawMessage) *AgentMessageUpdate {
 	_u.mutation.SetContent(v)
@@ -239,6 +267,11 @@ func (_u *AgentMessageUpdate) check() error {
 			return &ValidationError{Name: "sender_type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.sender_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Kind(); ok {
+		if err := agentmessage.KindValidator(v); err != nil {
+			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.kind": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := agentmessage.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.status": %w`, err)}
@@ -247,8 +280,8 @@ func (_u *AgentMessageUpdate) check() error {
 	if _u.mutation.AgentCleared() && len(_u.mutation.AgentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "AgentMessage.agent"`)
 	}
-	if _u.mutation.ThreadCleared() && len(_u.mutation.ThreadIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "AgentMessage.thread"`)
+	if _u.mutation.AgentInstanceCleared() && len(_u.mutation.AgentInstanceIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "AgentMessage.agent_instance"`)
 	}
 	return nil
 }
@@ -294,6 +327,12 @@ func (_u *AgentMessageUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if _u.mutation.SenderIDCleared() {
 		_spec.ClearField(agentmessage.FieldSenderID, field.TypeInt)
+	}
+	if value, ok := _u.mutation.Kind(); ok {
+		_spec.SetField(agentmessage.FieldKind, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.CorrelationID(); ok {
+		_spec.SetField(agentmessage.FieldCorrelationID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Content(); ok {
 		_spec.SetField(agentmessage.FieldContent, field.TypeJSON, value)
@@ -419,6 +458,34 @@ func (_u *AgentMessageUpdateOne) AddSenderID(v int) *AgentMessageUpdateOne {
 // ClearSenderID clears the value of the "sender_id" field.
 func (_u *AgentMessageUpdateOne) ClearSenderID() *AgentMessageUpdateOne {
 	_u.mutation.ClearSenderID()
+	return _u
+}
+
+// SetKind sets the "kind" field.
+func (_u *AgentMessageUpdateOne) SetKind(v agentmessage.Kind) *AgentMessageUpdateOne {
+	_u.mutation.SetKind(v)
+	return _u
+}
+
+// SetNillableKind sets the "kind" field if the given value is not nil.
+func (_u *AgentMessageUpdateOne) SetNillableKind(v *agentmessage.Kind) *AgentMessageUpdateOne {
+	if v != nil {
+		_u.SetKind(*v)
+	}
+	return _u
+}
+
+// SetCorrelationID sets the "correlation_id" field.
+func (_u *AgentMessageUpdateOne) SetCorrelationID(v string) *AgentMessageUpdateOne {
+	_u.mutation.SetCorrelationID(v)
+	return _u
+}
+
+// SetNillableCorrelationID sets the "correlation_id" field if the given value is not nil.
+func (_u *AgentMessageUpdateOne) SetNillableCorrelationID(v *string) *AgentMessageUpdateOne {
+	if v != nil {
+		_u.SetCorrelationID(*v)
+	}
 	return _u
 }
 
@@ -561,6 +628,11 @@ func (_u *AgentMessageUpdateOne) check() error {
 			return &ValidationError{Name: "sender_type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.sender_type": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Kind(); ok {
+		if err := agentmessage.KindValidator(v); err != nil {
+			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.kind": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := agentmessage.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.status": %w`, err)}
@@ -569,8 +641,8 @@ func (_u *AgentMessageUpdateOne) check() error {
 	if _u.mutation.AgentCleared() && len(_u.mutation.AgentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "AgentMessage.agent"`)
 	}
-	if _u.mutation.ThreadCleared() && len(_u.mutation.ThreadIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "AgentMessage.thread"`)
+	if _u.mutation.AgentInstanceCleared() && len(_u.mutation.AgentInstanceIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "AgentMessage.agent_instance"`)
 	}
 	return nil
 }
@@ -633,6 +705,12 @@ func (_u *AgentMessageUpdateOne) sqlSave(ctx context.Context) (_node *AgentMessa
 	}
 	if _u.mutation.SenderIDCleared() {
 		_spec.ClearField(agentmessage.FieldSenderID, field.TypeInt)
+	}
+	if value, ok := _u.mutation.Kind(); ok {
+		_spec.SetField(agentmessage.FieldKind, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.CorrelationID(); ok {
+		_spec.SetField(agentmessage.FieldCorrelationID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Content(); ok {
 		_spec.SetField(agentmessage.FieldContent, field.TypeJSON, value)

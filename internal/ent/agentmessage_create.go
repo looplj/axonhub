@@ -12,8 +12,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -79,9 +79,9 @@ func (_c *AgentMessageCreate) SetAgentID(v int) *AgentMessageCreate {
 	return _c
 }
 
-// SetThreadRowID sets the "thread_row_id" field.
-func (_c *AgentMessageCreate) SetThreadRowID(v int) *AgentMessageCreate {
-	_c.mutation.SetThreadRowID(v)
+// SetAgentInstanceID sets the "agent_instance_id" field.
+func (_c *AgentMessageCreate) SetAgentInstanceID(v int) *AgentMessageCreate {
+	_c.mutation.SetAgentInstanceID(v)
 	return _c
 }
 
@@ -107,6 +107,34 @@ func (_c *AgentMessageCreate) SetSenderID(v int) *AgentMessageCreate {
 func (_c *AgentMessageCreate) SetNillableSenderID(v *int) *AgentMessageCreate {
 	if v != nil {
 		_c.SetSenderID(*v)
+	}
+	return _c
+}
+
+// SetKind sets the "kind" field.
+func (_c *AgentMessageCreate) SetKind(v agentmessage.Kind) *AgentMessageCreate {
+	_c.mutation.SetKind(v)
+	return _c
+}
+
+// SetNillableKind sets the "kind" field if the given value is not nil.
+func (_c *AgentMessageCreate) SetNillableKind(v *agentmessage.Kind) *AgentMessageCreate {
+	if v != nil {
+		_c.SetKind(*v)
+	}
+	return _c
+}
+
+// SetCorrelationID sets the "correlation_id" field.
+func (_c *AgentMessageCreate) SetCorrelationID(v string) *AgentMessageCreate {
+	_c.mutation.SetCorrelationID(v)
+	return _c
+}
+
+// SetNillableCorrelationID sets the "correlation_id" field if the given value is not nil.
+func (_c *AgentMessageCreate) SetNillableCorrelationID(v *string) *AgentMessageCreate {
+	if v != nil {
+		_c.SetCorrelationID(*v)
 	}
 	return _c
 }
@@ -156,15 +184,9 @@ func (_c *AgentMessageCreate) SetAgent(v *Agent) *AgentMessageCreate {
 	return _c.SetAgentID(v.ID)
 }
 
-// SetThreadID sets the "thread" edge to the Thread entity by ID.
-func (_c *AgentMessageCreate) SetThreadID(id int) *AgentMessageCreate {
-	_c.mutation.SetThreadID(id)
-	return _c
-}
-
-// SetThread sets the "thread" edge to the Thread entity.
-func (_c *AgentMessageCreate) SetThread(v *Thread) *AgentMessageCreate {
-	return _c.SetThreadID(v.ID)
+// SetAgentInstance sets the "agent_instance" edge to the AgentInstance entity.
+func (_c *AgentMessageCreate) SetAgentInstance(v *AgentInstance) *AgentMessageCreate {
+	return _c.SetAgentInstanceID(v.ID)
 }
 
 // Mutation returns the AgentMessageMutation object of the builder.
@@ -222,6 +244,14 @@ func (_c *AgentMessageCreate) defaults() error {
 		v := agentmessage.DefaultDeletedAt
 		_c.mutation.SetDeletedAt(v)
 	}
+	if _, ok := _c.mutation.Kind(); !ok {
+		v := agentmessage.DefaultKind
+		_c.mutation.SetKind(v)
+	}
+	if _, ok := _c.mutation.CorrelationID(); !ok {
+		v := agentmessage.DefaultCorrelationID
+		_c.mutation.SetCorrelationID(v)
+	}
 	if _, ok := _c.mutation.Content(); !ok {
 		v := agentmessage.DefaultContent
 		_c.mutation.SetContent(v)
@@ -250,8 +280,8 @@ func (_c *AgentMessageCreate) check() error {
 	if _, ok := _c.mutation.AgentID(); !ok {
 		return &ValidationError{Name: "agent_id", err: errors.New(`ent: missing required field "AgentMessage.agent_id"`)}
 	}
-	if _, ok := _c.mutation.ThreadRowID(); !ok {
-		return &ValidationError{Name: "thread_row_id", err: errors.New(`ent: missing required field "AgentMessage.thread_row_id"`)}
+	if _, ok := _c.mutation.AgentInstanceID(); !ok {
+		return &ValidationError{Name: "agent_instance_id", err: errors.New(`ent: missing required field "AgentMessage.agent_instance_id"`)}
 	}
 	if _, ok := _c.mutation.Direction(); !ok {
 		return &ValidationError{Name: "direction", err: errors.New(`ent: missing required field "AgentMessage.direction"`)}
@@ -268,6 +298,17 @@ func (_c *AgentMessageCreate) check() error {
 		if err := agentmessage.SenderTypeValidator(v); err != nil {
 			return &ValidationError{Name: "sender_type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.sender_type": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Kind(); !ok {
+		return &ValidationError{Name: "kind", err: errors.New(`ent: missing required field "AgentMessage.kind"`)}
+	}
+	if v, ok := _c.mutation.Kind(); ok {
+		if err := agentmessage.KindValidator(v); err != nil {
+			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.kind": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.CorrelationID(); !ok {
+		return &ValidationError{Name: "correlation_id", err: errors.New(`ent: missing required field "AgentMessage.correlation_id"`)}
 	}
 	if _, ok := _c.mutation.Content(); !ok {
 		return &ValidationError{Name: "content", err: errors.New(`ent: missing required field "AgentMessage.content"`)}
@@ -286,8 +327,8 @@ func (_c *AgentMessageCreate) check() error {
 	if len(_c.mutation.AgentIDs()) == 0 {
 		return &ValidationError{Name: "agent", err: errors.New(`ent: missing required edge "AgentMessage.agent"`)}
 	}
-	if len(_c.mutation.ThreadIDs()) == 0 {
-		return &ValidationError{Name: "thread", err: errors.New(`ent: missing required edge "AgentMessage.thread"`)}
+	if len(_c.mutation.AgentInstanceIDs()) == 0 {
+		return &ValidationError{Name: "agent_instance", err: errors.New(`ent: missing required edge "AgentMessage.agent_instance"`)}
 	}
 	return nil
 }
@@ -344,6 +385,14 @@ func (_c *AgentMessageCreate) createSpec() (*AgentMessage, *sqlgraph.CreateSpec)
 		_spec.SetField(agentmessage.FieldSenderID, field.TypeInt, value)
 		_node.SenderID = &value
 	}
+	if value, ok := _c.mutation.Kind(); ok {
+		_spec.SetField(agentmessage.FieldKind, field.TypeEnum, value)
+		_node.Kind = value
+	}
+	if value, ok := _c.mutation.CorrelationID(); ok {
+		_spec.SetField(agentmessage.FieldCorrelationID, field.TypeString, value)
+		_node.CorrelationID = value
+	}
 	if value, ok := _c.mutation.Content(); ok {
 		_spec.SetField(agentmessage.FieldContent, field.TypeJSON, value)
 		_node.Content = value
@@ -377,21 +426,21 @@ func (_c *AgentMessageCreate) createSpec() (*AgentMessage, *sqlgraph.CreateSpec)
 		_node.AgentID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.ThreadIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.AgentInstanceIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agentmessage.ThreadTable,
-			Columns: []string{agentmessage.ThreadColumn},
+			Table:   agentmessage.AgentInstanceTable,
+			Columns: []string{agentmessage.AgentInstanceColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(thread.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(agentinstance.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.ThreadRowID = nodes[0]
+		_node.AgentInstanceID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -524,6 +573,30 @@ func (u *AgentMessageUpsert) ClearSenderID() *AgentMessageUpsert {
 	return u
 }
 
+// SetKind sets the "kind" field.
+func (u *AgentMessageUpsert) SetKind(v agentmessage.Kind) *AgentMessageUpsert {
+	u.Set(agentmessage.FieldKind, v)
+	return u
+}
+
+// UpdateKind sets the "kind" field to the value that was provided on create.
+func (u *AgentMessageUpsert) UpdateKind() *AgentMessageUpsert {
+	u.SetExcluded(agentmessage.FieldKind)
+	return u
+}
+
+// SetCorrelationID sets the "correlation_id" field.
+func (u *AgentMessageUpsert) SetCorrelationID(v string) *AgentMessageUpsert {
+	u.Set(agentmessage.FieldCorrelationID, v)
+	return u
+}
+
+// UpdateCorrelationID sets the "correlation_id" field to the value that was provided on create.
+func (u *AgentMessageUpsert) UpdateCorrelationID() *AgentMessageUpsert {
+	u.SetExcluded(agentmessage.FieldCorrelationID)
+	return u
+}
+
 // SetContent sets the "content" field.
 func (u *AgentMessageUpsert) SetContent(v objects.JSONRawMessage) *AgentMessageUpsert {
 	u.Set(agentmessage.FieldContent, v)
@@ -604,8 +677,8 @@ func (u *AgentMessageUpsertOne) UpdateNewValues() *AgentMessageUpsertOne {
 		if _, exists := u.create.mutation.AgentID(); exists {
 			s.SetIgnore(agentmessage.FieldAgentID)
 		}
-		if _, exists := u.create.mutation.ThreadRowID(); exists {
-			s.SetIgnore(agentmessage.FieldThreadRowID)
+		if _, exists := u.create.mutation.AgentInstanceID(); exists {
+			s.SetIgnore(agentmessage.FieldAgentInstanceID)
 		}
 	}))
 	return u
@@ -726,6 +799,34 @@ func (u *AgentMessageUpsertOne) UpdateSenderID() *AgentMessageUpsertOne {
 func (u *AgentMessageUpsertOne) ClearSenderID() *AgentMessageUpsertOne {
 	return u.Update(func(s *AgentMessageUpsert) {
 		s.ClearSenderID()
+	})
+}
+
+// SetKind sets the "kind" field.
+func (u *AgentMessageUpsertOne) SetKind(v agentmessage.Kind) *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.SetKind(v)
+	})
+}
+
+// UpdateKind sets the "kind" field to the value that was provided on create.
+func (u *AgentMessageUpsertOne) UpdateKind() *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.UpdateKind()
+	})
+}
+
+// SetCorrelationID sets the "correlation_id" field.
+func (u *AgentMessageUpsertOne) SetCorrelationID(v string) *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.SetCorrelationID(v)
+	})
+}
+
+// UpdateCorrelationID sets the "correlation_id" field to the value that was provided on create.
+func (u *AgentMessageUpsertOne) UpdateCorrelationID() *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.UpdateCorrelationID()
 	})
 }
 
@@ -984,8 +1085,8 @@ func (u *AgentMessageUpsertBulk) UpdateNewValues() *AgentMessageUpsertBulk {
 			if _, exists := b.mutation.AgentID(); exists {
 				s.SetIgnore(agentmessage.FieldAgentID)
 			}
-			if _, exists := b.mutation.ThreadRowID(); exists {
-				s.SetIgnore(agentmessage.FieldThreadRowID)
+			if _, exists := b.mutation.AgentInstanceID(); exists {
+				s.SetIgnore(agentmessage.FieldAgentInstanceID)
 			}
 		}
 	}))
@@ -1107,6 +1208,34 @@ func (u *AgentMessageUpsertBulk) UpdateSenderID() *AgentMessageUpsertBulk {
 func (u *AgentMessageUpsertBulk) ClearSenderID() *AgentMessageUpsertBulk {
 	return u.Update(func(s *AgentMessageUpsert) {
 		s.ClearSenderID()
+	})
+}
+
+// SetKind sets the "kind" field.
+func (u *AgentMessageUpsertBulk) SetKind(v agentmessage.Kind) *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.SetKind(v)
+	})
+}
+
+// UpdateKind sets the "kind" field to the value that was provided on create.
+func (u *AgentMessageUpsertBulk) UpdateKind() *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.UpdateKind()
+	})
+}
+
+// SetCorrelationID sets the "correlation_id" field.
+func (u *AgentMessageUpsertBulk) SetCorrelationID(v string) *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.SetCorrelationID(v)
+	})
+}
+
+// UpdateCorrelationID sets the "correlation_id" field to the value that was provided on create.
+func (u *AgentMessageUpsertBulk) UpdateCorrelationID() *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.UpdateCorrelationID()
 	})
 }
 

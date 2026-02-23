@@ -75,9 +75,9 @@ func AgentID(v int) predicate.AgentThread {
 	return predicate.AgentThread(sql.FieldEQ(FieldAgentID, v))
 }
 
-// ThreadRowID applies equality check predicate on the "thread_row_id" field. It's identical to ThreadRowIDEQ.
-func ThreadRowID(v int) predicate.AgentThread {
-	return predicate.AgentThread(sql.FieldEQ(FieldThreadRowID, v))
+// ThreadID applies equality check predicate on the "thread_id" field. It's identical to ThreadIDEQ.
+func ThreadID(v int) predicate.AgentThread {
+	return predicate.AgentThread(sql.FieldEQ(FieldThreadID, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -220,24 +220,24 @@ func AgentIDNotIn(vs ...int) predicate.AgentThread {
 	return predicate.AgentThread(sql.FieldNotIn(FieldAgentID, vs...))
 }
 
-// ThreadRowIDEQ applies the EQ predicate on the "thread_row_id" field.
-func ThreadRowIDEQ(v int) predicate.AgentThread {
-	return predicate.AgentThread(sql.FieldEQ(FieldThreadRowID, v))
+// ThreadIDEQ applies the EQ predicate on the "thread_id" field.
+func ThreadIDEQ(v int) predicate.AgentThread {
+	return predicate.AgentThread(sql.FieldEQ(FieldThreadID, v))
 }
 
-// ThreadRowIDNEQ applies the NEQ predicate on the "thread_row_id" field.
-func ThreadRowIDNEQ(v int) predicate.AgentThread {
-	return predicate.AgentThread(sql.FieldNEQ(FieldThreadRowID, v))
+// ThreadIDNEQ applies the NEQ predicate on the "thread_id" field.
+func ThreadIDNEQ(v int) predicate.AgentThread {
+	return predicate.AgentThread(sql.FieldNEQ(FieldThreadID, v))
 }
 
-// ThreadRowIDIn applies the In predicate on the "thread_row_id" field.
-func ThreadRowIDIn(vs ...int) predicate.AgentThread {
-	return predicate.AgentThread(sql.FieldIn(FieldThreadRowID, vs...))
+// ThreadIDIn applies the In predicate on the "thread_id" field.
+func ThreadIDIn(vs ...int) predicate.AgentThread {
+	return predicate.AgentThread(sql.FieldIn(FieldThreadID, vs...))
 }
 
-// ThreadRowIDNotIn applies the NotIn predicate on the "thread_row_id" field.
-func ThreadRowIDNotIn(vs ...int) predicate.AgentThread {
-	return predicate.AgentThread(sql.FieldNotIn(FieldThreadRowID, vs...))
+// ThreadIDNotIn applies the NotIn predicate on the "thread_id" field.
+func ThreadIDNotIn(vs ...int) predicate.AgentThread {
+	return predicate.AgentThread(sql.FieldNotIn(FieldThreadID, vs...))
 }
 
 // HasAgent applies the HasEdge predicate on the "agent" edge.

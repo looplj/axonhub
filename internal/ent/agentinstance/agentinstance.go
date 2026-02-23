@@ -37,6 +37,8 @@ const (
 	FieldLastHeartbeatAt = "last_heartbeat_at"
 	// EdgeAgent holds the string denoting the agent edge name in mutations.
 	EdgeAgent = "agent"
+	// EdgeMessages holds the string denoting the messages edge name in mutations.
+	EdgeMessages = "messages"
 	// Table holds the table name of the agentinstance in the database.
 	Table = "agent_instances"
 	// AgentTable is the table that holds the agent relation/edge.
@@ -46,6 +48,13 @@ const (
 	AgentInverseTable = "agents"
 	// AgentColumn is the table column denoting the agent relation/edge.
 	AgentColumn = "agent_id"
+	// MessagesTable is the table that holds the messages relation/edge.
+	MessagesTable = "agent_messages"
+	// MessagesInverseTable is the table name for the AgentMessage entity.
+	// It exists in this package in order to avoid circular dependency with the "agentmessage" package.
+	MessagesInverseTable = "agent_messages"
+	// MessagesColumn is the table column denoting the messages relation/edge.
+	MessagesColumn = "agent_instance_id"
 )
 
 // Columns holds all SQL columns for agentinstance fields.
@@ -162,10 +171,31 @@ func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newAgentStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByMessagesCount orders the results by messages count.
+func ByMessagesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMessagesStep(), opts...)
+	}
+}
+
+// ByMessages orders the results by messages terms.
+func ByMessages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMessagesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newAgentStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AgentInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, AgentTable, AgentColumn),
+	)
+}
+func newMessagesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MessagesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, MessagesTable, MessagesColumn),
 	)
 }

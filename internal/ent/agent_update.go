@@ -191,19 +191,19 @@ func (_u *AgentUpdate) AddInstances(v ...*AgentInstance) *AgentUpdate {
 	return _u.AddInstanceIDs(ids...)
 }
 
-// AddThreadBindingIDs adds the "thread_bindings" edge to the AgentThread entity by IDs.
-func (_u *AgentUpdate) AddThreadBindingIDs(ids ...int) *AgentUpdate {
-	_u.mutation.AddThreadBindingIDs(ids...)
+// AddThreadIDs adds the "threads" edge to the AgentThread entity by IDs.
+func (_u *AgentUpdate) AddThreadIDs(ids ...int) *AgentUpdate {
+	_u.mutation.AddThreadIDs(ids...)
 	return _u
 }
 
-// AddThreadBindings adds the "thread_bindings" edges to the AgentThread entity.
-func (_u *AgentUpdate) AddThreadBindings(v ...*AgentThread) *AgentUpdate {
+// AddThreads adds the "threads" edges to the AgentThread entity.
+func (_u *AgentUpdate) AddThreads(v ...*AgentThread) *AgentUpdate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddThreadBindingIDs(ids...)
+	return _u.AddThreadIDs(ids...)
 }
 
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
@@ -304,25 +304,25 @@ func (_u *AgentUpdate) RemoveInstances(v ...*AgentInstance) *AgentUpdate {
 	return _u.RemoveInstanceIDs(ids...)
 }
 
-// ClearThreadBindings clears all "thread_bindings" edges to the AgentThread entity.
-func (_u *AgentUpdate) ClearThreadBindings() *AgentUpdate {
-	_u.mutation.ClearThreadBindings()
+// ClearThreads clears all "threads" edges to the AgentThread entity.
+func (_u *AgentUpdate) ClearThreads() *AgentUpdate {
+	_u.mutation.ClearThreads()
 	return _u
 }
 
-// RemoveThreadBindingIDs removes the "thread_bindings" edge to AgentThread entities by IDs.
-func (_u *AgentUpdate) RemoveThreadBindingIDs(ids ...int) *AgentUpdate {
-	_u.mutation.RemoveThreadBindingIDs(ids...)
+// RemoveThreadIDs removes the "threads" edge to AgentThread entities by IDs.
+func (_u *AgentUpdate) RemoveThreadIDs(ids ...int) *AgentUpdate {
+	_u.mutation.RemoveThreadIDs(ids...)
 	return _u
 }
 
-// RemoveThreadBindings removes "thread_bindings" edges to AgentThread entities.
-func (_u *AgentUpdate) RemoveThreadBindings(v ...*AgentThread) *AgentUpdate {
+// RemoveThreads removes "threads" edges to AgentThread entities.
+func (_u *AgentUpdate) RemoveThreads(v ...*AgentThread) *AgentUpdate {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveThreadBindingIDs(ids...)
+	return _u.RemoveThreadIDs(ids...)
 }
 
 // ClearMessages clears all "messages" edges to the AgentMessage entity.
@@ -616,12 +616,12 @@ func (_u *AgentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.ThreadBindingsCleared() {
+	if _u.mutation.ThreadsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   agent.ThreadBindingsTable,
-			Columns: []string{agent.ThreadBindingsColumn},
+			Table:   agent.ThreadsTable,
+			Columns: []string{agent.ThreadsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),
@@ -629,12 +629,12 @@ func (_u *AgentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedThreadBindingsIDs(); len(nodes) > 0 && !_u.mutation.ThreadBindingsCleared() {
+	if nodes := _u.mutation.RemovedThreadsIDs(); len(nodes) > 0 && !_u.mutation.ThreadsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   agent.ThreadBindingsTable,
-			Columns: []string{agent.ThreadBindingsColumn},
+			Table:   agent.ThreadsTable,
+			Columns: []string{agent.ThreadsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),
@@ -645,12 +645,12 @@ func (_u *AgentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.ThreadBindingsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ThreadsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   agent.ThreadBindingsTable,
-			Columns: []string{agent.ThreadBindingsColumn},
+			Table:   agent.ThreadsTable,
+			Columns: []string{agent.ThreadsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),
@@ -927,19 +927,19 @@ func (_u *AgentUpdateOne) AddInstances(v ...*AgentInstance) *AgentUpdateOne {
 	return _u.AddInstanceIDs(ids...)
 }
 
-// AddThreadBindingIDs adds the "thread_bindings" edge to the AgentThread entity by IDs.
-func (_u *AgentUpdateOne) AddThreadBindingIDs(ids ...int) *AgentUpdateOne {
-	_u.mutation.AddThreadBindingIDs(ids...)
+// AddThreadIDs adds the "threads" edge to the AgentThread entity by IDs.
+func (_u *AgentUpdateOne) AddThreadIDs(ids ...int) *AgentUpdateOne {
+	_u.mutation.AddThreadIDs(ids...)
 	return _u
 }
 
-// AddThreadBindings adds the "thread_bindings" edges to the AgentThread entity.
-func (_u *AgentUpdateOne) AddThreadBindings(v ...*AgentThread) *AgentUpdateOne {
+// AddThreads adds the "threads" edges to the AgentThread entity.
+func (_u *AgentUpdateOne) AddThreads(v ...*AgentThread) *AgentUpdateOne {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddThreadBindingIDs(ids...)
+	return _u.AddThreadIDs(ids...)
 }
 
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
@@ -1040,25 +1040,25 @@ func (_u *AgentUpdateOne) RemoveInstances(v ...*AgentInstance) *AgentUpdateOne {
 	return _u.RemoveInstanceIDs(ids...)
 }
 
-// ClearThreadBindings clears all "thread_bindings" edges to the AgentThread entity.
-func (_u *AgentUpdateOne) ClearThreadBindings() *AgentUpdateOne {
-	_u.mutation.ClearThreadBindings()
+// ClearThreads clears all "threads" edges to the AgentThread entity.
+func (_u *AgentUpdateOne) ClearThreads() *AgentUpdateOne {
+	_u.mutation.ClearThreads()
 	return _u
 }
 
-// RemoveThreadBindingIDs removes the "thread_bindings" edge to AgentThread entities by IDs.
-func (_u *AgentUpdateOne) RemoveThreadBindingIDs(ids ...int) *AgentUpdateOne {
-	_u.mutation.RemoveThreadBindingIDs(ids...)
+// RemoveThreadIDs removes the "threads" edge to AgentThread entities by IDs.
+func (_u *AgentUpdateOne) RemoveThreadIDs(ids ...int) *AgentUpdateOne {
+	_u.mutation.RemoveThreadIDs(ids...)
 	return _u
 }
 
-// RemoveThreadBindings removes "thread_bindings" edges to AgentThread entities.
-func (_u *AgentUpdateOne) RemoveThreadBindings(v ...*AgentThread) *AgentUpdateOne {
+// RemoveThreads removes "threads" edges to AgentThread entities.
+func (_u *AgentUpdateOne) RemoveThreads(v ...*AgentThread) *AgentUpdateOne {
 	ids := make([]int, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveThreadBindingIDs(ids...)
+	return _u.RemoveThreadIDs(ids...)
 }
 
 // ClearMessages clears all "messages" edges to the AgentMessage entity.
@@ -1382,12 +1382,12 @@ func (_u *AgentUpdateOne) sqlSave(ctx context.Context) (_node *Agent, err error)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.ThreadBindingsCleared() {
+	if _u.mutation.ThreadsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   agent.ThreadBindingsTable,
-			Columns: []string{agent.ThreadBindingsColumn},
+			Table:   agent.ThreadsTable,
+			Columns: []string{agent.ThreadsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),
@@ -1395,12 +1395,12 @@ func (_u *AgentUpdateOne) sqlSave(ctx context.Context) (_node *Agent, err error)
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedThreadBindingsIDs(); len(nodes) > 0 && !_u.mutation.ThreadBindingsCleared() {
+	if nodes := _u.mutation.RemovedThreadsIDs(); len(nodes) > 0 && !_u.mutation.ThreadsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   agent.ThreadBindingsTable,
-			Columns: []string{agent.ThreadBindingsColumn},
+			Table:   agent.ThreadsTable,
+			Columns: []string{agent.ThreadsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),
@@ -1411,12 +1411,12 @@ func (_u *AgentUpdateOne) sqlSave(ctx context.Context) (_node *Agent, err error)
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.ThreadBindingsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ThreadsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
-			Table:   agent.ThreadBindingsTable,
-			Columns: []string{agent.ThreadBindingsColumn},
+			Table:   agent.ThreadsTable,
+			Columns: []string{agent.ThreadsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),

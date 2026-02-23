@@ -64,21 +64,15 @@ func (_c *AgentThreadCreate) SetAgentID(v int) *AgentThreadCreate {
 	return _c
 }
 
-// SetThreadRowID sets the "thread_row_id" field.
-func (_c *AgentThreadCreate) SetThreadRowID(v int) *AgentThreadCreate {
-	_c.mutation.SetThreadRowID(v)
+// SetThreadID sets the "thread_id" field.
+func (_c *AgentThreadCreate) SetThreadID(v int) *AgentThreadCreate {
+	_c.mutation.SetThreadID(v)
 	return _c
 }
 
 // SetAgent sets the "agent" edge to the Agent entity.
 func (_c *AgentThreadCreate) SetAgent(v *Agent) *AgentThreadCreate {
 	return _c.SetAgentID(v.ID)
-}
-
-// SetThreadID sets the "thread" edge to the Thread entity by ID.
-func (_c *AgentThreadCreate) SetThreadID(id int) *AgentThreadCreate {
-	_c.mutation.SetThreadID(id)
-	return _c
 }
 
 // SetThread sets the "thread" edge to the Thread entity.
@@ -154,8 +148,8 @@ func (_c *AgentThreadCreate) check() error {
 	if _, ok := _c.mutation.AgentID(); !ok {
 		return &ValidationError{Name: "agent_id", err: errors.New(`ent: missing required field "AgentThread.agent_id"`)}
 	}
-	if _, ok := _c.mutation.ThreadRowID(); !ok {
-		return &ValidationError{Name: "thread_row_id", err: errors.New(`ent: missing required field "AgentThread.thread_row_id"`)}
+	if _, ok := _c.mutation.ThreadID(); !ok {
+		return &ValidationError{Name: "thread_id", err: errors.New(`ent: missing required field "AgentThread.thread_id"`)}
 	}
 	if len(_c.mutation.AgentIDs()) == 0 {
 		return &ValidationError{Name: "agent", err: errors.New(`ent: missing required edge "AgentThread.agent"`)}
@@ -233,7 +227,7 @@ func (_c *AgentThreadCreate) createSpec() (*AgentThread, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.ThreadRowID = nodes[0]
+		_node.ThreadID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -320,8 +314,8 @@ func (u *AgentThreadUpsertOne) UpdateNewValues() *AgentThreadUpsertOne {
 		if _, exists := u.create.mutation.AgentID(); exists {
 			s.SetIgnore(agentthread.FieldAgentID)
 		}
-		if _, exists := u.create.mutation.ThreadRowID(); exists {
-			s.SetIgnore(agentthread.FieldThreadRowID)
+		if _, exists := u.create.mutation.ThreadID(); exists {
+			s.SetIgnore(agentthread.FieldThreadID)
 		}
 	}))
 	return u
@@ -553,8 +547,8 @@ func (u *AgentThreadUpsertBulk) UpdateNewValues() *AgentThreadUpsertBulk {
 			if _, exists := b.mutation.AgentID(); exists {
 				s.SetIgnore(agentthread.FieldAgentID)
 			}
-			if _, exists := b.mutation.ThreadRowID(); exists {
-				s.SetIgnore(agentthread.FieldThreadRowID)
+			if _, exists := b.mutation.ThreadID(); exists {
+				s.SetIgnore(agentthread.FieldThreadID)
 			}
 		}
 	}))

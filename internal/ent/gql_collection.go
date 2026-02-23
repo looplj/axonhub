@@ -656,7 +656,7 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 				*wq = *query
 			})
 
-		case "threadBindings":
+		case "threads":
 			var (
 				alias = field.Alias
 				path  = append(path, alias)
@@ -688,9 +688,9 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
-							s.Where(sql.InValues(s.C(agent.ThreadBindingsColumn), ids...))
+							s.Where(sql.InValues(s.C(agent.ThreadsColumn), ids...))
 						})
-						if err := query.GroupBy(agent.ThreadBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+						if err := query.GroupBy(agent.ThreadsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
 							return err
 						}
 						m := make(map[int]int, len(v))
@@ -709,7 +709,7 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 				} else {
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
 						for i := range nodes {
-							n := len(nodes[i].Edges.ThreadBindings)
+							n := len(nodes[i].Edges.Threads)
 							if nodes[i].Edges.totalCount[7] == nil {
 								nodes[i].Edges.totalCount[7] = make(map[string]int)
 							}
@@ -735,13 +735,13 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 				if oneNode {
 					pager.applyOrder(query.Limit(limit))
 				} else {
-					modify := entgql.LimitPerRow(agent.ThreadBindingsColumn, limit, pager.orderExpr(query))
+					modify := entgql.LimitPerRow(agent.ThreadsColumn, limit, pager.orderExpr(query))
 					query.modifiers = append(query.modifiers, modify)
 				}
 			} else {
 				query = pager.applyOrder(query)
 			}
-			_q.WithNamedThreadBindings(alias, func(wq *AgentThreadQuery) {
+			_q.WithNamedThreads(alias, func(wq *AgentThreadQuery) {
 				*wq = *query
 			})
 
@@ -1081,6 +1081,95 @@ func (_q *AgentInstanceQuery) collectField(ctx context.Context, oneNode bool, op
 				selectedFields = append(selectedFields, agentinstance.FieldAgentID)
 				fieldSeen[agentinstance.FieldAgentID] = struct{}{}
 			}
+
+		case "messages":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentMessageClient{config: _q.config}).Query()
+			)
+			args := newAgentMessagePaginateArgs(fieldArgs(ctx, new(AgentMessageWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentMessagePager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*AgentInstance) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"agent_instance_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(agentinstance.MessagesColumn), ids...))
+						})
+						if err := query.GroupBy(agentinstance.MessagesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[1] == nil {
+								nodes[i].Edges.totalCount[1] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[1][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*AgentInstance) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Messages)
+							if nodes[i].Edges.totalCount[1] == nil {
+								nodes[i].Edges.totalCount[1] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[1][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentmessageImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(agentinstance.MessagesColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedMessages(alias, func(wq *AgentMessageQuery) {
+				*wq = *query
+			})
 		case "createdAt":
 			if _, ok := fieldSeen[agentinstance.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, agentinstance.FieldCreatedAt)
@@ -1360,19 +1449,19 @@ func (_q *AgentMessageQuery) collectField(ctx context.Context, oneNode bool, opC
 				fieldSeen[agentmessage.FieldAgentID] = struct{}{}
 			}
 
-		case "thread":
+		case "agentInstance":
 			var (
 				alias = field.Alias
 				path  = append(path, alias)
-				query = (&ThreadClient{config: _q.config}).Query()
+				query = (&AgentInstanceClient{config: _q.config}).Query()
 			)
-			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, threadImplementors)...); err != nil {
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentinstanceImplementors)...); err != nil {
 				return err
 			}
-			_q.withThread = query
-			if _, ok := fieldSeen[agentmessage.FieldThreadRowID]; !ok {
-				selectedFields = append(selectedFields, agentmessage.FieldThreadRowID)
-				fieldSeen[agentmessage.FieldThreadRowID] = struct{}{}
+			_q.withAgentInstance = query
+			if _, ok := fieldSeen[agentmessage.FieldAgentInstanceID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldAgentInstanceID)
+				fieldSeen[agentmessage.FieldAgentInstanceID] = struct{}{}
 			}
 		case "createdAt":
 			if _, ok := fieldSeen[agentmessage.FieldCreatedAt]; !ok {
@@ -1394,10 +1483,10 @@ func (_q *AgentMessageQuery) collectField(ctx context.Context, oneNode bool, opC
 				selectedFields = append(selectedFields, agentmessage.FieldAgentID)
 				fieldSeen[agentmessage.FieldAgentID] = struct{}{}
 			}
-		case "threadRowID":
-			if _, ok := fieldSeen[agentmessage.FieldThreadRowID]; !ok {
-				selectedFields = append(selectedFields, agentmessage.FieldThreadRowID)
-				fieldSeen[agentmessage.FieldThreadRowID] = struct{}{}
+		case "agentInstanceID":
+			if _, ok := fieldSeen[agentmessage.FieldAgentInstanceID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldAgentInstanceID)
+				fieldSeen[agentmessage.FieldAgentInstanceID] = struct{}{}
 			}
 		case "direction":
 			if _, ok := fieldSeen[agentmessage.FieldDirection]; !ok {
@@ -1413,6 +1502,16 @@ func (_q *AgentMessageQuery) collectField(ctx context.Context, oneNode bool, opC
 			if _, ok := fieldSeen[agentmessage.FieldSenderID]; !ok {
 				selectedFields = append(selectedFields, agentmessage.FieldSenderID)
 				fieldSeen[agentmessage.FieldSenderID] = struct{}{}
+			}
+		case "kind":
+			if _, ok := fieldSeen[agentmessage.FieldKind]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldKind)
+				fieldSeen[agentmessage.FieldKind] = struct{}{}
+			}
+		case "correlationID":
+			if _, ok := fieldSeen[agentmessage.FieldCorrelationID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldCorrelationID)
+				fieldSeen[agentmessage.FieldCorrelationID] = struct{}{}
 			}
 		case "content":
 			if _, ok := fieldSeen[agentmessage.FieldContent]; !ok {
@@ -1713,9 +1812,9 @@ func (_q *AgentThreadQuery) collectField(ctx context.Context, oneNode bool, opCt
 				return err
 			}
 			_q.withThread = query
-			if _, ok := fieldSeen[agentthread.FieldThreadRowID]; !ok {
-				selectedFields = append(selectedFields, agentthread.FieldThreadRowID)
-				fieldSeen[agentthread.FieldThreadRowID] = struct{}{}
+			if _, ok := fieldSeen[agentthread.FieldThreadID]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldThreadID)
+				fieldSeen[agentthread.FieldThreadID] = struct{}{}
 			}
 		case "createdAt":
 			if _, ok := fieldSeen[agentthread.FieldCreatedAt]; !ok {
@@ -1737,10 +1836,10 @@ func (_q *AgentThreadQuery) collectField(ctx context.Context, oneNode bool, opCt
 				selectedFields = append(selectedFields, agentthread.FieldAgentID)
 				fieldSeen[agentthread.FieldAgentID] = struct{}{}
 			}
-		case "threadRowID":
-			if _, ok := fieldSeen[agentthread.FieldThreadRowID]; !ok {
-				selectedFields = append(selectedFields, agentthread.FieldThreadRowID)
-				fieldSeen[agentthread.FieldThreadRowID] = struct{}{}
+		case "threadID":
+			if _, ok := fieldSeen[agentthread.FieldThreadID]; !ok {
+				selectedFields = append(selectedFields, agentthread.FieldThreadID)
+				fieldSeen[agentthread.FieldThreadID] = struct{}{}
 			}
 		case "id":
 		case "__typename":
@@ -7336,7 +7435,7 @@ func (_q *ThreadQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int `sql:"thread_row_id"`
+							NodeID int `sql:"thread_id"`
 							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {
@@ -7394,95 +7493,6 @@ func (_q *ThreadQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 				query = pager.applyOrder(query)
 			}
 			_q.WithNamedAgentThreads(alias, func(wq *AgentThreadQuery) {
-				*wq = *query
-			})
-
-		case "agentMessages":
-			var (
-				alias = field.Alias
-				path  = append(path, alias)
-				query = (&AgentMessageClient{config: _q.config}).Query()
-			)
-			args := newAgentMessagePaginateArgs(fieldArgs(ctx, new(AgentMessageWhereInput), path...))
-			if err := validateFirstLast(args.first, args.last); err != nil {
-				return fmt.Errorf("validate first and last in path %q: %w", path, err)
-			}
-			pager, err := newAgentMessagePager(args.opts, args.last != nil)
-			if err != nil {
-				return fmt.Errorf("create new pager in path %q: %w", path, err)
-			}
-			if query, err = pager.applyFilter(query); err != nil {
-				return err
-			}
-			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
-			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
-				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
-				if hasPagination || ignoredEdges {
-					query := query.Clone()
-					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Thread) error {
-						ids := make([]driver.Value, len(nodes))
-						for i := range nodes {
-							ids[i] = nodes[i].ID
-						}
-						var v []struct {
-							NodeID int `sql:"thread_row_id"`
-							Count  int `sql:"count"`
-						}
-						query.Where(func(s *sql.Selector) {
-							s.Where(sql.InValues(s.C(thread.AgentMessagesColumn), ids...))
-						})
-						if err := query.GroupBy(thread.AgentMessagesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
-							return err
-						}
-						m := make(map[int]int, len(v))
-						for i := range v {
-							m[v[i].NodeID] = v[i].Count
-						}
-						for i := range nodes {
-							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[3] == nil {
-								nodes[i].Edges.totalCount[3] = make(map[string]int)
-							}
-							nodes[i].Edges.totalCount[3][alias] = n
-						}
-						return nil
-					})
-				} else {
-					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Thread) error {
-						for i := range nodes {
-							n := len(nodes[i].Edges.AgentMessages)
-							if nodes[i].Edges.totalCount[3] == nil {
-								nodes[i].Edges.totalCount[3] = make(map[string]int)
-							}
-							nodes[i].Edges.totalCount[3][alias] = n
-						}
-						return nil
-					})
-				}
-			}
-			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
-				continue
-			}
-			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
-				return err
-			}
-			path = append(path, edgesField, nodeField)
-			if field := collectedField(ctx, path...); field != nil {
-				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentmessageImplementors)...); err != nil {
-					return err
-				}
-			}
-			if limit := paginateLimit(args.first, args.last); limit > 0 {
-				if oneNode {
-					pager.applyOrder(query.Limit(limit))
-				} else {
-					modify := entgql.LimitPerRow(thread.AgentMessagesColumn, limit, pager.orderExpr(query))
-					query.modifiers = append(query.modifiers, modify)
-				}
-			} else {
-				query = pager.applyOrder(query)
-			}
-			_q.WithNamedAgentMessages(alias, func(wq *AgentMessageQuery) {
 				*wq = *query
 			})
 		case "createdAt":

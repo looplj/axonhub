@@ -12,7 +12,7 @@ import { Main } from '@/components/layout/main';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { extractNumberID } from '@/lib/utils';
-import { useAgentDetail, useAgentThreads } from '../data/agent-detail';
+import { useAgentDetail } from '../data/agent-detail';
 
 function isInstanceOnline(lastHeartbeatAt: string | Date, thresholdMs: number) {
   const t = new Date(lastHeartbeatAt).getTime();
@@ -28,7 +28,6 @@ export function AgentDetailPage() {
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
 
   const { data: agent, isLoading, refetch } = useAgentDetail(agentId);
-  const { data: threads, isLoading: threadsLoading, refetch: refetchThreads } = useAgentThreads(agentId);
   const [onlineThresholdSeconds, setOnlineThresholdSeconds] = useState(30);
 
   const instances = useMemo(() => agent?.instances?.edges?.map((e) => e.node) ?? [], [agent?.instances?.edges]);
@@ -39,16 +38,6 @@ export function AgentDetailPage() {
 
   const handleBack = () => {
     navigate({ to: '/project/agents' as any, search: getSearchParams() as any });
-  };
-
-  const startNewThread = () => {
-    const random = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? (crypto as any).randomUUID() : String(Date.now());
-    const newThreadID = `agent-${extractNumberID(agentId)}-${random}`;
-
-    navigate({
-      to: '/project/agents/$agentId/threads/$threadId' as any,
-      params: { agentId, threadId: newThreadID } as any,
-    });
   };
 
   if (isLoading) {
@@ -93,8 +82,8 @@ export function AgentDetailPage() {
 
   return (
     <div className='flex h-screen flex-col'>
-      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'>
-        <div className='flex items-center justify-between'>
+      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur h-auto min-h-16 py-3'>
+        <div className='flex w-full items-center justify-between'>
           <div className='flex items-center space-x-4'>
             <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
               <ArrowLeft className='mr-2 h-4 w-4' />
@@ -120,18 +109,15 @@ export function AgentDetailPage() {
             </div>
           </div>
 
-          <div className='flex items-center gap-2'>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => {
-                refetch();
-                refetchThreads();
-              }}
-            >
-              {t('common.refresh')}
-            </Button>
-          </div>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => {
+              refetch();
+            }}
+          >
+            {t('common.refresh')}
+          </Button>
         </div>
       </Header>
 
@@ -194,10 +180,20 @@ export function AgentDetailPage() {
                               </div>
                             </div>
                           </div>
-                          <div className='text-xs text-muted-foreground'>
-                            {inst.lastHeartbeatAt
-                              ? `${formatDistanceToNow(new Date(inst.lastHeartbeatAt), { addSuffix: true, locale })}`
-                              : '-'}
+                          <div className='flex items-center gap-3'>
+                            <div className='text-xs text-muted-foreground'>
+                              {inst.lastHeartbeatAt
+                                ? `${formatDistanceToNow(new Date(inst.lastHeartbeatAt), { addSuffix: true, locale })}`
+                                : '-'}
+                            </div>
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              className='h-7 w-7 p-0'
+                              onClick={() => navigate({ to: '/project/agents/$agentId/threads/$threadId' as any, params: { agentId, threadId: inst.instanceID } as any })}
+                            >
+                              <MessageSquareText className='h-4 w-4' />
+                            </Button>
                           </div>
                         </div>
                       );
@@ -207,50 +203,7 @@ export function AgentDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className='border-0 shadow-sm'>
-              <CardHeader className='pb-3'>
-                <div className='flex items-center justify-between gap-2'>
-                  <CardTitle className='flex items-center gap-2 text-base'>
-                    <MessageSquareText className='h-4 w-4' />
-                    Threads
-                  </CardTitle>
-                  <Button size='sm' onClick={startNewThread}>
-                    New
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className='space-y-2'>
-                {threadsLoading ? (
-                  <div className='text-sm text-muted-foreground'>{t('common.loading')}</div>
-                ) : threads.length === 0 ? (
-                  <div className='text-sm text-muted-foreground'>No threads yet. Create one to start chatting.</div>
-                ) : (
-                  <div className='space-y-2'>
-                    {threads.map((th) => (
-                      <button
-                        key={th.threadID}
-                        type='button'
-                        className='flex w-full items-center justify-between gap-2 rounded-md border border-transparent bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50'
-                        onClick={() =>
-                          navigate({
-                            to: '/project/agents/$agentId/threads/$threadId' as any,
-                            params: { agentId: agent.id, threadId: th.threadID } as any,
-                          })
-                        }
-                      >
-                        <div className='min-w-0'>
-                          <div className='truncate text-sm font-medium'>{th.threadID}</div>
-                          <div className='text-xs text-muted-foreground'>
-                            {format(new Date(th.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}
-                          </div>
-                        </div>
-                        <div className='text-xs text-muted-foreground'>Open</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+
           </div>
         </div>
       </Main>

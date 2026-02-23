@@ -30,28 +30,28 @@ import (
 // AgentQuery is the builder for querying Agent entities.
 type AgentQuery struct {
 	config
-	ctx                     *QueryContext
-	order                   []agent.OrderOption
-	inters                  []Interceptor
-	predicates              []predicate.Agent
-	withProject             *ProjectQuery
-	withOwnerUser           *UserQuery
-	withPrompt              *PromptQuery
-	withAPIKey              *APIKeyQuery
-	withToolBindings        *AgentToolQuery
-	withSkillBindings       *AgentSkillQuery
-	withInstances           *AgentInstanceQuery
-	withThreadBindings      *AgentThreadQuery
-	withMessages            *AgentMessageQuery
-	withMemories            *AgentMemoryQuery
-	loadTotal               []func(context.Context, []*Agent) error
-	modifiers               []func(*sql.Selector)
-	withNamedToolBindings   map[string]*AgentToolQuery
-	withNamedSkillBindings  map[string]*AgentSkillQuery
-	withNamedInstances      map[string]*AgentInstanceQuery
-	withNamedThreadBindings map[string]*AgentThreadQuery
-	withNamedMessages       map[string]*AgentMessageQuery
-	withNamedMemories       map[string]*AgentMemoryQuery
+	ctx                    *QueryContext
+	order                  []agent.OrderOption
+	inters                 []Interceptor
+	predicates             []predicate.Agent
+	withProject            *ProjectQuery
+	withOwnerUser          *UserQuery
+	withPrompt             *PromptQuery
+	withAPIKey             *APIKeyQuery
+	withToolBindings       *AgentToolQuery
+	withSkillBindings      *AgentSkillQuery
+	withInstances          *AgentInstanceQuery
+	withThreads            *AgentThreadQuery
+	withMessages           *AgentMessageQuery
+	withMemories           *AgentMemoryQuery
+	loadTotal              []func(context.Context, []*Agent) error
+	modifiers              []func(*sql.Selector)
+	withNamedToolBindings  map[string]*AgentToolQuery
+	withNamedSkillBindings map[string]*AgentSkillQuery
+	withNamedInstances     map[string]*AgentInstanceQuery
+	withNamedThreads       map[string]*AgentThreadQuery
+	withNamedMessages      map[string]*AgentMessageQuery
+	withNamedMemories      map[string]*AgentMemoryQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -242,8 +242,8 @@ func (_q *AgentQuery) QueryInstances() *AgentInstanceQuery {
 	return query
 }
 
-// QueryThreadBindings chains the current query on the "thread_bindings" edge.
-func (_q *AgentQuery) QueryThreadBindings() *AgentThreadQuery {
+// QueryThreads chains the current query on the "threads" edge.
+func (_q *AgentQuery) QueryThreads() *AgentThreadQuery {
 	query := (&AgentThreadClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -256,7 +256,7 @@ func (_q *AgentQuery) QueryThreadBindings() *AgentThreadQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(agent.Table, agent.FieldID, selector),
 			sqlgraph.To(agentthread.Table, agentthread.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, agent.ThreadBindingsTable, agent.ThreadBindingsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, agent.ThreadsTable, agent.ThreadsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -495,21 +495,21 @@ func (_q *AgentQuery) Clone() *AgentQuery {
 		return nil
 	}
 	return &AgentQuery{
-		config:             _q.config,
-		ctx:                _q.ctx.Clone(),
-		order:              append([]agent.OrderOption{}, _q.order...),
-		inters:             append([]Interceptor{}, _q.inters...),
-		predicates:         append([]predicate.Agent{}, _q.predicates...),
-		withProject:        _q.withProject.Clone(),
-		withOwnerUser:      _q.withOwnerUser.Clone(),
-		withPrompt:         _q.withPrompt.Clone(),
-		withAPIKey:         _q.withAPIKey.Clone(),
-		withToolBindings:   _q.withToolBindings.Clone(),
-		withSkillBindings:  _q.withSkillBindings.Clone(),
-		withInstances:      _q.withInstances.Clone(),
-		withThreadBindings: _q.withThreadBindings.Clone(),
-		withMessages:       _q.withMessages.Clone(),
-		withMemories:       _q.withMemories.Clone(),
+		config:            _q.config,
+		ctx:               _q.ctx.Clone(),
+		order:             append([]agent.OrderOption{}, _q.order...),
+		inters:            append([]Interceptor{}, _q.inters...),
+		predicates:        append([]predicate.Agent{}, _q.predicates...),
+		withProject:       _q.withProject.Clone(),
+		withOwnerUser:     _q.withOwnerUser.Clone(),
+		withPrompt:        _q.withPrompt.Clone(),
+		withAPIKey:        _q.withAPIKey.Clone(),
+		withToolBindings:  _q.withToolBindings.Clone(),
+		withSkillBindings: _q.withSkillBindings.Clone(),
+		withInstances:     _q.withInstances.Clone(),
+		withThreads:       _q.withThreads.Clone(),
+		withMessages:      _q.withMessages.Clone(),
+		withMemories:      _q.withMemories.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -594,14 +594,14 @@ func (_q *AgentQuery) WithInstances(opts ...func(*AgentInstanceQuery)) *AgentQue
 	return _q
 }
 
-// WithThreadBindings tells the query-builder to eager-load the nodes that are connected to
-// the "thread_bindings" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *AgentQuery) WithThreadBindings(opts ...func(*AgentThreadQuery)) *AgentQuery {
+// WithThreads tells the query-builder to eager-load the nodes that are connected to
+// the "threads" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *AgentQuery) WithThreads(opts ...func(*AgentThreadQuery)) *AgentQuery {
 	query := (&AgentThreadClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withThreadBindings = query
+	_q.withThreads = query
 	return _q
 }
 
@@ -719,7 +719,7 @@ func (_q *AgentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Agent,
 			_q.withToolBindings != nil,
 			_q.withSkillBindings != nil,
 			_q.withInstances != nil,
-			_q.withThreadBindings != nil,
+			_q.withThreads != nil,
 			_q.withMessages != nil,
 			_q.withMemories != nil,
 		}
@@ -790,10 +790,10 @@ func (_q *AgentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Agent,
 			return nil, err
 		}
 	}
-	if query := _q.withThreadBindings; query != nil {
-		if err := _q.loadThreadBindings(ctx, query, nodes,
-			func(n *Agent) { n.Edges.ThreadBindings = []*AgentThread{} },
-			func(n *Agent, e *AgentThread) { n.Edges.ThreadBindings = append(n.Edges.ThreadBindings, e) }); err != nil {
+	if query := _q.withThreads; query != nil {
+		if err := _q.loadThreads(ctx, query, nodes,
+			func(n *Agent) { n.Edges.Threads = []*AgentThread{} },
+			func(n *Agent, e *AgentThread) { n.Edges.Threads = append(n.Edges.Threads, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -832,10 +832,10 @@ func (_q *AgentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Agent,
 			return nil, err
 		}
 	}
-	for name, query := range _q.withNamedThreadBindings {
-		if err := _q.loadThreadBindings(ctx, query, nodes,
-			func(n *Agent) { n.appendNamedThreadBindings(name) },
-			func(n *Agent, e *AgentThread) { n.appendNamedThreadBindings(name, e) }); err != nil {
+	for name, query := range _q.withNamedThreads {
+		if err := _q.loadThreads(ctx, query, nodes,
+			func(n *Agent) { n.appendNamedThreads(name) },
+			func(n *Agent, e *AgentThread) { n.appendNamedThreads(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1067,7 +1067,7 @@ func (_q *AgentQuery) loadInstances(ctx context.Context, query *AgentInstanceQue
 	}
 	return nil
 }
-func (_q *AgentQuery) loadThreadBindings(ctx context.Context, query *AgentThreadQuery, nodes []*Agent, init func(*Agent), assign func(*Agent, *AgentThread)) error {
+func (_q *AgentQuery) loadThreads(ctx context.Context, query *AgentThreadQuery, nodes []*Agent, init func(*Agent), assign func(*Agent, *AgentThread)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int]*Agent)
 	for i := range nodes {
@@ -1081,7 +1081,7 @@ func (_q *AgentQuery) loadThreadBindings(ctx context.Context, query *AgentThread
 		query.ctx.AppendFieldOnce(agentthread.FieldAgentID)
 	}
 	query.Where(predicate.AgentThread(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(agent.ThreadBindingsColumn), fks...))
+		s.Where(sql.InValues(s.C(agent.ThreadsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -1305,17 +1305,17 @@ func (_q *AgentQuery) WithNamedInstances(name string, opts ...func(*AgentInstanc
 	return _q
 }
 
-// WithNamedThreadBindings tells the query-builder to eager-load the nodes that are connected to the "thread_bindings"
+// WithNamedThreads tells the query-builder to eager-load the nodes that are connected to the "threads"
 // edge with the given name. The optional arguments are used to configure the query builder of the edge.
-func (_q *AgentQuery) WithNamedThreadBindings(name string, opts ...func(*AgentThreadQuery)) *AgentQuery {
+func (_q *AgentQuery) WithNamedThreads(name string, opts ...func(*AgentThreadQuery)) *AgentQuery {
 	query := (&AgentThreadClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	if _q.withNamedThreadBindings == nil {
-		_q.withNamedThreadBindings = make(map[string]*AgentThreadQuery)
+	if _q.withNamedThreads == nil {
+		_q.withNamedThreads = make(map[string]*AgentThreadQuery)
 	}
-	_q.withNamedThreadBindings[name] = query
+	_q.withNamedThreads[name] = query
 	return _q
 }
 

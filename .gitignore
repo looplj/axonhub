@@ -155,3 +155,5 @@ locales_backup
 # Chunkhound local database
 .chunkhound/
 .superset/
+.axonclaw/
+.axoncli/

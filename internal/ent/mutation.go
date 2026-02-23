@@ -1327,9 +1327,9 @@ type AgentMutation struct {
 	instances                 map[int]struct{}
 	removedinstances          map[int]struct{}
 	clearedinstances          bool
-	thread_bindings           map[int]struct{}
-	removedthread_bindings    map[int]struct{}
-	clearedthread_bindings    bool
+	threads                   map[int]struct{}
+	removedthreads            map[int]struct{}
+	clearedthreads            bool
 	messages                  map[int]struct{}
 	removedmessages           map[int]struct{}
 	clearedmessages           bool
@@ -2225,58 +2225,58 @@ func (m *AgentMutation) ResetInstances() {
 	m.removedinstances = nil
 }
 
-// AddThreadBindingIDs adds the "thread_bindings" edge to the AgentThread entity by ids.
-func (m *AgentMutation) AddThreadBindingIDs(ids ...int) {
-	if m.thread_bindings == nil {
-		m.thread_bindings = make(map[int]struct{})
+// AddThreadIDs adds the "threads" edge to the AgentThread entity by ids.
+func (m *AgentMutation) AddThreadIDs(ids ...int) {
+	if m.threads == nil {
+		m.threads = make(map[int]struct{})
 	}
 	for i := range ids {
-		m.thread_bindings[ids[i]] = struct{}{}
+		m.threads[ids[i]] = struct{}{}
 	}
 }
 
-// ClearThreadBindings clears the "thread_bindings" edge to the AgentThread entity.
-func (m *AgentMutation) ClearThreadBindings() {
-	m.clearedthread_bindings = true
+// ClearThreads clears the "threads" edge to the AgentThread entity.
+func (m *AgentMutation) ClearThreads() {
+	m.clearedthreads = true
 }
 
-// ThreadBindingsCleared reports if the "thread_bindings" edge to the AgentThread entity was cleared.
-func (m *AgentMutation) ThreadBindingsCleared() bool {
-	return m.clearedthread_bindings
+// ThreadsCleared reports if the "threads" edge to the AgentThread entity was cleared.
+func (m *AgentMutation) ThreadsCleared() bool {
+	return m.clearedthreads
 }
 
-// RemoveThreadBindingIDs removes the "thread_bindings" edge to the AgentThread entity by IDs.
-func (m *AgentMutation) RemoveThreadBindingIDs(ids ...int) {
-	if m.removedthread_bindings == nil {
-		m.removedthread_bindings = make(map[int]struct{})
+// RemoveThreadIDs removes the "threads" edge to the AgentThread entity by IDs.
+func (m *AgentMutation) RemoveThreadIDs(ids ...int) {
+	if m.removedthreads == nil {
+		m.removedthreads = make(map[int]struct{})
 	}
 	for i := range ids {
-		delete(m.thread_bindings, ids[i])
-		m.removedthread_bindings[ids[i]] = struct{}{}
+		delete(m.threads, ids[i])
+		m.removedthreads[ids[i]] = struct{}{}
 	}
 }
 
-// RemovedThreadBindings returns the removed IDs of the "thread_bindings" edge to the AgentThread entity.
-func (m *AgentMutation) RemovedThreadBindingsIDs() (ids []int) {
-	for id := range m.removedthread_bindings {
+// RemovedThreads returns the removed IDs of the "threads" edge to the AgentThread entity.
+func (m *AgentMutation) RemovedThreadsIDs() (ids []int) {
+	for id := range m.removedthreads {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// ThreadBindingsIDs returns the "thread_bindings" edge IDs in the mutation.
-func (m *AgentMutation) ThreadBindingsIDs() (ids []int) {
-	for id := range m.thread_bindings {
+// ThreadsIDs returns the "threads" edge IDs in the mutation.
+func (m *AgentMutation) ThreadsIDs() (ids []int) {
+	for id := range m.threads {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// ResetThreadBindings resets all changes to the "thread_bindings" edge.
-func (m *AgentMutation) ResetThreadBindings() {
-	m.thread_bindings = nil
-	m.clearedthread_bindings = false
-	m.removedthread_bindings = nil
+// ResetThreads resets all changes to the "threads" edge.
+func (m *AgentMutation) ResetThreads() {
+	m.threads = nil
+	m.clearedthreads = false
+	m.removedthreads = nil
 }
 
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by ids.
@@ -2761,8 +2761,8 @@ func (m *AgentMutation) AddedEdges() []string {
 	if m.instances != nil {
 		edges = append(edges, agent.EdgeInstances)
 	}
-	if m.thread_bindings != nil {
-		edges = append(edges, agent.EdgeThreadBindings)
+	if m.threads != nil {
+		edges = append(edges, agent.EdgeThreads)
 	}
 	if m.messages != nil {
 		edges = append(edges, agent.EdgeMessages)
@@ -2811,9 +2811,9 @@ func (m *AgentMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case agent.EdgeThreadBindings:
-		ids := make([]ent.Value, 0, len(m.thread_bindings))
-		for id := range m.thread_bindings {
+	case agent.EdgeThreads:
+		ids := make([]ent.Value, 0, len(m.threads))
+		for id := range m.threads {
 			ids = append(ids, id)
 		}
 		return ids
@@ -2845,8 +2845,8 @@ func (m *AgentMutation) RemovedEdges() []string {
 	if m.removedinstances != nil {
 		edges = append(edges, agent.EdgeInstances)
 	}
-	if m.removedthread_bindings != nil {
-		edges = append(edges, agent.EdgeThreadBindings)
+	if m.removedthreads != nil {
+		edges = append(edges, agent.EdgeThreads)
 	}
 	if m.removedmessages != nil {
 		edges = append(edges, agent.EdgeMessages)
@@ -2879,9 +2879,9 @@ func (m *AgentMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case agent.EdgeThreadBindings:
-		ids := make([]ent.Value, 0, len(m.removedthread_bindings))
-		for id := range m.removedthread_bindings {
+	case agent.EdgeThreads:
+		ids := make([]ent.Value, 0, len(m.removedthreads))
+		for id := range m.removedthreads {
 			ids = append(ids, id)
 		}
 		return ids
@@ -2925,8 +2925,8 @@ func (m *AgentMutation) ClearedEdges() []string {
 	if m.clearedinstances {
 		edges = append(edges, agent.EdgeInstances)
 	}
-	if m.clearedthread_bindings {
-		edges = append(edges, agent.EdgeThreadBindings)
+	if m.clearedthreads {
+		edges = append(edges, agent.EdgeThreads)
 	}
 	if m.clearedmessages {
 		edges = append(edges, agent.EdgeMessages)
@@ -2955,8 +2955,8 @@ func (m *AgentMutation) EdgeCleared(name string) bool {
 		return m.clearedskill_bindings
 	case agent.EdgeInstances:
 		return m.clearedinstances
-	case agent.EdgeThreadBindings:
-		return m.clearedthread_bindings
+	case agent.EdgeThreads:
+		return m.clearedthreads
 	case agent.EdgeMessages:
 		return m.clearedmessages
 	case agent.EdgeMemories:
@@ -3010,8 +3010,8 @@ func (m *AgentMutation) ResetEdge(name string) error {
 	case agent.EdgeInstances:
 		m.ResetInstances()
 		return nil
-	case agent.EdgeThreadBindings:
-		m.ResetThreadBindings()
+	case agent.EdgeThreads:
+		m.ResetThreads()
 		return nil
 	case agent.EdgeMessages:
 		m.ResetMessages()
@@ -3043,6 +3043,9 @@ type AgentInstanceMutation struct {
 	clearedFields     map[string]struct{}
 	agent             *int
 	clearedagent      bool
+	messages          map[int]struct{}
+	removedmessages   map[int]struct{}
+	clearedmessages   bool
 	done              bool
 	oldValue          func(context.Context) (*AgentInstance, error)
 	predicates        []predicate.AgentInstance
@@ -3573,6 +3576,60 @@ func (m *AgentInstanceMutation) ResetAgent() {
 	m.clearedagent = false
 }
 
+// AddMessageIDs adds the "messages" edge to the AgentMessage entity by ids.
+func (m *AgentInstanceMutation) AddMessageIDs(ids ...int) {
+	if m.messages == nil {
+		m.messages = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.messages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMessages clears the "messages" edge to the AgentMessage entity.
+func (m *AgentInstanceMutation) ClearMessages() {
+	m.clearedmessages = true
+}
+
+// MessagesCleared reports if the "messages" edge to the AgentMessage entity was cleared.
+func (m *AgentInstanceMutation) MessagesCleared() bool {
+	return m.clearedmessages
+}
+
+// RemoveMessageIDs removes the "messages" edge to the AgentMessage entity by IDs.
+func (m *AgentInstanceMutation) RemoveMessageIDs(ids ...int) {
+	if m.removedmessages == nil {
+		m.removedmessages = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.messages, ids[i])
+		m.removedmessages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMessages returns the removed IDs of the "messages" edge to the AgentMessage entity.
+func (m *AgentInstanceMutation) RemovedMessagesIDs() (ids []int) {
+	for id := range m.removedmessages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MessagesIDs returns the "messages" edge IDs in the mutation.
+func (m *AgentInstanceMutation) MessagesIDs() (ids []int) {
+	for id := range m.messages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMessages resets all changes to the "messages" edge.
+func (m *AgentInstanceMutation) ResetMessages() {
+	m.messages = nil
+	m.clearedmessages = false
+	m.removedmessages = nil
+}
+
 // Where appends a list predicates to the AgentInstanceMutation builder.
 func (m *AgentInstanceMutation) Where(ps ...predicate.AgentInstance) {
 	m.predicates = append(m.predicates, ps...)
@@ -3886,9 +3943,12 @@ func (m *AgentInstanceMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AgentInstanceMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.agent != nil {
 		edges = append(edges, agentinstance.EdgeAgent)
+	}
+	if m.messages != nil {
+		edges = append(edges, agentinstance.EdgeMessages)
 	}
 	return edges
 }
@@ -3901,27 +3961,47 @@ func (m *AgentInstanceMutation) AddedIDs(name string) []ent.Value {
 		if id := m.agent; id != nil {
 			return []ent.Value{*id}
 		}
+	case agentinstance.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.messages))
+		for id := range m.messages {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AgentInstanceMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removedmessages != nil {
+		edges = append(edges, agentinstance.EdgeMessages)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *AgentInstanceMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case agentinstance.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.removedmessages))
+		for id := range m.removedmessages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AgentInstanceMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedagent {
 		edges = append(edges, agentinstance.EdgeAgent)
+	}
+	if m.clearedmessages {
+		edges = append(edges, agentinstance.EdgeMessages)
 	}
 	return edges
 }
@@ -3932,6 +4012,8 @@ func (m *AgentInstanceMutation) EdgeCleared(name string) bool {
 	switch name {
 	case agentinstance.EdgeAgent:
 		return m.clearedagent
+	case agentinstance.EdgeMessages:
+		return m.clearedmessages
 	}
 	return false
 }
@@ -3953,6 +4035,9 @@ func (m *AgentInstanceMutation) ResetEdge(name string) error {
 	switch name {
 	case agentinstance.EdgeAgent:
 		m.ResetAgent()
+		return nil
+	case agentinstance.EdgeMessages:
+		m.ResetMessages()
 		return nil
 	}
 	return fmt.Errorf("unknown AgentInstance edge %s", name)
@@ -4810,33 +4895,35 @@ func (m *AgentMemoryMutation) ResetEdge(name string) error {
 // AgentMessageMutation represents an operation that mutates the AgentMessage nodes in the graph.
 type AgentMessageMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	created_at    *time.Time
-	updated_at    *time.Time
-	deleted_at    *int
-	adddeleted_at *int
-	project_id    *int
-	addproject_id *int
-	direction     *agentmessage.Direction
-	sender_type   *agentmessage.SenderType
-	sender_id     *int
-	addsender_id  *int
-	content       *objects.JSONRawMessage
-	appendcontent objects.JSONRawMessage
-	status        *agentmessage.Status
-	sequence      *int64
-	addsequence   *int64
-	expires_at    *time.Time
-	clearedFields map[string]struct{}
-	agent         *int
-	clearedagent  bool
-	thread        *int
-	clearedthread bool
-	done          bool
-	oldValue      func(context.Context) (*AgentMessage, error)
-	predicates    []predicate.AgentMessage
+	op                    Op
+	typ                   string
+	id                    *int
+	created_at            *time.Time
+	updated_at            *time.Time
+	deleted_at            *int
+	adddeleted_at         *int
+	project_id            *int
+	addproject_id         *int
+	direction             *agentmessage.Direction
+	sender_type           *agentmessage.SenderType
+	sender_id             *int
+	addsender_id          *int
+	kind                  *agentmessage.Kind
+	correlation_id        *string
+	content               *objects.JSONRawMessage
+	appendcontent         objects.JSONRawMessage
+	status                *agentmessage.Status
+	sequence              *int64
+	addsequence           *int64
+	expires_at            *time.Time
+	clearedFields         map[string]struct{}
+	agent                 *int
+	clearedagent          bool
+	agent_instance        *int
+	clearedagent_instance bool
+	done                  bool
+	oldValue              func(context.Context) (*AgentMessage, error)
+	predicates            []predicate.AgentMessage
 }
 
 var _ ent.Mutation = (*AgentMessageMutation)(nil)
@@ -5157,40 +5244,40 @@ func (m *AgentMessageMutation) ResetAgentID() {
 	m.agent = nil
 }
 
-// SetThreadRowID sets the "thread_row_id" field.
-func (m *AgentMessageMutation) SetThreadRowID(i int) {
-	m.thread = &i
+// SetAgentInstanceID sets the "agent_instance_id" field.
+func (m *AgentMessageMutation) SetAgentInstanceID(i int) {
+	m.agent_instance = &i
 }
 
-// ThreadRowID returns the value of the "thread_row_id" field in the mutation.
-func (m *AgentMessageMutation) ThreadRowID() (r int, exists bool) {
-	v := m.thread
+// AgentInstanceID returns the value of the "agent_instance_id" field in the mutation.
+func (m *AgentMessageMutation) AgentInstanceID() (r int, exists bool) {
+	v := m.agent_instance
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldThreadRowID returns the old "thread_row_id" field's value of the AgentMessage entity.
+// OldAgentInstanceID returns the old "agent_instance_id" field's value of the AgentMessage entity.
 // If the AgentMessage object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AgentMessageMutation) OldThreadRowID(ctx context.Context) (v int, err error) {
+func (m *AgentMessageMutation) OldAgentInstanceID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldThreadRowID is only allowed on UpdateOne operations")
+		return v, errors.New("OldAgentInstanceID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldThreadRowID requires an ID field in the mutation")
+		return v, errors.New("OldAgentInstanceID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldThreadRowID: %w", err)
+		return v, fmt.Errorf("querying old value for OldAgentInstanceID: %w", err)
 	}
-	return oldValue.ThreadRowID, nil
+	return oldValue.AgentInstanceID, nil
 }
 
-// ResetThreadRowID resets all changes to the "thread_row_id" field.
-func (m *AgentMessageMutation) ResetThreadRowID() {
-	m.thread = nil
+// ResetAgentInstanceID resets all changes to the "agent_instance_id" field.
+func (m *AgentMessageMutation) ResetAgentInstanceID() {
+	m.agent_instance = nil
 }
 
 // SetDirection sets the "direction" field.
@@ -5333,6 +5420,78 @@ func (m *AgentMessageMutation) ResetSenderID() {
 	m.sender_id = nil
 	m.addsender_id = nil
 	delete(m.clearedFields, agentmessage.FieldSenderID)
+}
+
+// SetKind sets the "kind" field.
+func (m *AgentMessageMutation) SetKind(a agentmessage.Kind) {
+	m.kind = &a
+}
+
+// Kind returns the value of the "kind" field in the mutation.
+func (m *AgentMessageMutation) Kind() (r agentmessage.Kind, exists bool) {
+	v := m.kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKind returns the old "kind" field's value of the AgentMessage entity.
+// If the AgentMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AgentMessageMutation) OldKind(ctx context.Context) (v agentmessage.Kind, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKind: %w", err)
+	}
+	return oldValue.Kind, nil
+}
+
+// ResetKind resets all changes to the "kind" field.
+func (m *AgentMessageMutation) ResetKind() {
+	m.kind = nil
+}
+
+// SetCorrelationID sets the "correlation_id" field.
+func (m *AgentMessageMutation) SetCorrelationID(s string) {
+	m.correlation_id = &s
+}
+
+// CorrelationID returns the value of the "correlation_id" field in the mutation.
+func (m *AgentMessageMutation) CorrelationID() (r string, exists bool) {
+	v := m.correlation_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCorrelationID returns the old "correlation_id" field's value of the AgentMessage entity.
+// If the AgentMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AgentMessageMutation) OldCorrelationID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCorrelationID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCorrelationID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCorrelationID: %w", err)
+	}
+	return oldValue.CorrelationID, nil
+}
+
+// ResetCorrelationID resets all changes to the "correlation_id" field.
+func (m *AgentMessageMutation) ResetCorrelationID() {
+	m.correlation_id = nil
 }
 
 // SetContent sets the "content" field.
@@ -5554,44 +5713,31 @@ func (m *AgentMessageMutation) ResetAgent() {
 	m.clearedagent = false
 }
 
-// SetThreadID sets the "thread" edge to the Thread entity by id.
-func (m *AgentMessageMutation) SetThreadID(id int) {
-	m.thread = &id
+// ClearAgentInstance clears the "agent_instance" edge to the AgentInstance entity.
+func (m *AgentMessageMutation) ClearAgentInstance() {
+	m.clearedagent_instance = true
+	m.clearedFields[agentmessage.FieldAgentInstanceID] = struct{}{}
 }
 
-// ClearThread clears the "thread" edge to the Thread entity.
-func (m *AgentMessageMutation) ClearThread() {
-	m.clearedthread = true
-	m.clearedFields[agentmessage.FieldThreadRowID] = struct{}{}
+// AgentInstanceCleared reports if the "agent_instance" edge to the AgentInstance entity was cleared.
+func (m *AgentMessageMutation) AgentInstanceCleared() bool {
+	return m.clearedagent_instance
 }
 
-// ThreadCleared reports if the "thread" edge to the Thread entity was cleared.
-func (m *AgentMessageMutation) ThreadCleared() bool {
-	return m.clearedthread
-}
-
-// ThreadID returns the "thread" edge ID in the mutation.
-func (m *AgentMessageMutation) ThreadID() (id int, exists bool) {
-	if m.thread != nil {
-		return *m.thread, true
-	}
-	return
-}
-
-// ThreadIDs returns the "thread" edge IDs in the mutation.
+// AgentInstanceIDs returns the "agent_instance" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// ThreadID instead. It exists only for internal usage by the builders.
-func (m *AgentMessageMutation) ThreadIDs() (ids []int) {
-	if id := m.thread; id != nil {
+// AgentInstanceID instead. It exists only for internal usage by the builders.
+func (m *AgentMessageMutation) AgentInstanceIDs() (ids []int) {
+	if id := m.agent_instance; id != nil {
 		ids = append(ids, *id)
 	}
 	return
 }
 
-// ResetThread resets all changes to the "thread" edge.
-func (m *AgentMessageMutation) ResetThread() {
-	m.thread = nil
-	m.clearedthread = false
+// ResetAgentInstance resets all changes to the "agent_instance" edge.
+func (m *AgentMessageMutation) ResetAgentInstance() {
+	m.agent_instance = nil
+	m.clearedagent_instance = false
 }
 
 // Where appends a list predicates to the AgentMessageMutation builder.
@@ -5628,7 +5774,7 @@ func (m *AgentMessageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AgentMessageMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, agentmessage.FieldCreatedAt)
 	}
@@ -5644,8 +5790,8 @@ func (m *AgentMessageMutation) Fields() []string {
 	if m.agent != nil {
 		fields = append(fields, agentmessage.FieldAgentID)
 	}
-	if m.thread != nil {
-		fields = append(fields, agentmessage.FieldThreadRowID)
+	if m.agent_instance != nil {
+		fields = append(fields, agentmessage.FieldAgentInstanceID)
 	}
 	if m.direction != nil {
 		fields = append(fields, agentmessage.FieldDirection)
@@ -5655,6 +5801,12 @@ func (m *AgentMessageMutation) Fields() []string {
 	}
 	if m.sender_id != nil {
 		fields = append(fields, agentmessage.FieldSenderID)
+	}
+	if m.kind != nil {
+		fields = append(fields, agentmessage.FieldKind)
+	}
+	if m.correlation_id != nil {
+		fields = append(fields, agentmessage.FieldCorrelationID)
 	}
 	if m.content != nil {
 		fields = append(fields, agentmessage.FieldContent)
@@ -5686,14 +5838,18 @@ func (m *AgentMessageMutation) Field(name string) (ent.Value, bool) {
 		return m.ProjectID()
 	case agentmessage.FieldAgentID:
 		return m.AgentID()
-	case agentmessage.FieldThreadRowID:
-		return m.ThreadRowID()
+	case agentmessage.FieldAgentInstanceID:
+		return m.AgentInstanceID()
 	case agentmessage.FieldDirection:
 		return m.Direction()
 	case agentmessage.FieldSenderType:
 		return m.SenderType()
 	case agentmessage.FieldSenderID:
 		return m.SenderID()
+	case agentmessage.FieldKind:
+		return m.Kind()
+	case agentmessage.FieldCorrelationID:
+		return m.CorrelationID()
 	case agentmessage.FieldContent:
 		return m.Content()
 	case agentmessage.FieldStatus:
@@ -5721,14 +5877,18 @@ func (m *AgentMessageMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldProjectID(ctx)
 	case agentmessage.FieldAgentID:
 		return m.OldAgentID(ctx)
-	case agentmessage.FieldThreadRowID:
-		return m.OldThreadRowID(ctx)
+	case agentmessage.FieldAgentInstanceID:
+		return m.OldAgentInstanceID(ctx)
 	case agentmessage.FieldDirection:
 		return m.OldDirection(ctx)
 	case agentmessage.FieldSenderType:
 		return m.OldSenderType(ctx)
 	case agentmessage.FieldSenderID:
 		return m.OldSenderID(ctx)
+	case agentmessage.FieldKind:
+		return m.OldKind(ctx)
+	case agentmessage.FieldCorrelationID:
+		return m.OldCorrelationID(ctx)
 	case agentmessage.FieldContent:
 		return m.OldContent(ctx)
 	case agentmessage.FieldStatus:
@@ -5781,12 +5941,12 @@ func (m *AgentMessageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAgentID(v)
 		return nil
-	case agentmessage.FieldThreadRowID:
+	case agentmessage.FieldAgentInstanceID:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetThreadRowID(v)
+		m.SetAgentInstanceID(v)
 		return nil
 	case agentmessage.FieldDirection:
 		v, ok := value.(agentmessage.Direction)
@@ -5808,6 +5968,20 @@ func (m *AgentMessageMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSenderID(v)
+		return nil
+	case agentmessage.FieldKind:
+		v, ok := value.(agentmessage.Kind)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKind(v)
+		return nil
+	case agentmessage.FieldCorrelationID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCorrelationID(v)
 		return nil
 	case agentmessage.FieldContent:
 		v, ok := value.(objects.JSONRawMessage)
@@ -5967,8 +6141,8 @@ func (m *AgentMessageMutation) ResetField(name string) error {
 	case agentmessage.FieldAgentID:
 		m.ResetAgentID()
 		return nil
-	case agentmessage.FieldThreadRowID:
-		m.ResetThreadRowID()
+	case agentmessage.FieldAgentInstanceID:
+		m.ResetAgentInstanceID()
 		return nil
 	case agentmessage.FieldDirection:
 		m.ResetDirection()
@@ -5978,6 +6152,12 @@ func (m *AgentMessageMutation) ResetField(name string) error {
 		return nil
 	case agentmessage.FieldSenderID:
 		m.ResetSenderID()
+		return nil
+	case agentmessage.FieldKind:
+		m.ResetKind()
+		return nil
+	case agentmessage.FieldCorrelationID:
+		m.ResetCorrelationID()
 		return nil
 	case agentmessage.FieldContent:
 		m.ResetContent()
@@ -6001,8 +6181,8 @@ func (m *AgentMessageMutation) AddedEdges() []string {
 	if m.agent != nil {
 		edges = append(edges, agentmessage.EdgeAgent)
 	}
-	if m.thread != nil {
-		edges = append(edges, agentmessage.EdgeThread)
+	if m.agent_instance != nil {
+		edges = append(edges, agentmessage.EdgeAgentInstance)
 	}
 	return edges
 }
@@ -6015,8 +6195,8 @@ func (m *AgentMessageMutation) AddedIDs(name string) []ent.Value {
 		if id := m.agent; id != nil {
 			return []ent.Value{*id}
 		}
-	case agentmessage.EdgeThread:
-		if id := m.thread; id != nil {
+	case agentmessage.EdgeAgentInstance:
+		if id := m.agent_instance; id != nil {
 			return []ent.Value{*id}
 		}
 	}
@@ -6041,8 +6221,8 @@ func (m *AgentMessageMutation) ClearedEdges() []string {
 	if m.clearedagent {
 		edges = append(edges, agentmessage.EdgeAgent)
 	}
-	if m.clearedthread {
-		edges = append(edges, agentmessage.EdgeThread)
+	if m.clearedagent_instance {
+		edges = append(edges, agentmessage.EdgeAgentInstance)
 	}
 	return edges
 }
@@ -6053,8 +6233,8 @@ func (m *AgentMessageMutation) EdgeCleared(name string) bool {
 	switch name {
 	case agentmessage.EdgeAgent:
 		return m.clearedagent
-	case agentmessage.EdgeThread:
-		return m.clearedthread
+	case agentmessage.EdgeAgentInstance:
+		return m.clearedagent_instance
 	}
 	return false
 }
@@ -6066,8 +6246,8 @@ func (m *AgentMessageMutation) ClearEdge(name string) error {
 	case agentmessage.EdgeAgent:
 		m.ClearAgent()
 		return nil
-	case agentmessage.EdgeThread:
-		m.ClearThread()
+	case agentmessage.EdgeAgentInstance:
+		m.ClearAgentInstance()
 		return nil
 	}
 	return fmt.Errorf("unknown AgentMessage unique edge %s", name)
@@ -6080,8 +6260,8 @@ func (m *AgentMessageMutation) ResetEdge(name string) error {
 	case agentmessage.EdgeAgent:
 		m.ResetAgent()
 		return nil
-	case agentmessage.EdgeThread:
-		m.ResetThread()
+	case agentmessage.EdgeAgentInstance:
+		m.ResetAgentInstance()
 		return nil
 	}
 	return fmt.Errorf("unknown AgentMessage edge %s", name)
@@ -7348,13 +7528,13 @@ func (m *AgentThreadMutation) ResetAgentID() {
 	m.agent = nil
 }
 
-// SetThreadRowID sets the "thread_row_id" field.
-func (m *AgentThreadMutation) SetThreadRowID(i int) {
+// SetThreadID sets the "thread_id" field.
+func (m *AgentThreadMutation) SetThreadID(i int) {
 	m.thread = &i
 }
 
-// ThreadRowID returns the value of the "thread_row_id" field in the mutation.
-func (m *AgentThreadMutation) ThreadRowID() (r int, exists bool) {
+// ThreadID returns the value of the "thread_id" field in the mutation.
+func (m *AgentThreadMutation) ThreadID() (r int, exists bool) {
 	v := m.thread
 	if v == nil {
 		return
@@ -7362,25 +7542,25 @@ func (m *AgentThreadMutation) ThreadRowID() (r int, exists bool) {
 	return *v, true
 }
 
-// OldThreadRowID returns the old "thread_row_id" field's value of the AgentThread entity.
+// OldThreadID returns the old "thread_id" field's value of the AgentThread entity.
 // If the AgentThread object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AgentThreadMutation) OldThreadRowID(ctx context.Context) (v int, err error) {
+func (m *AgentThreadMutation) OldThreadID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldThreadRowID is only allowed on UpdateOne operations")
+		return v, errors.New("OldThreadID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldThreadRowID requires an ID field in the mutation")
+		return v, errors.New("OldThreadID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldThreadRowID: %w", err)
+		return v, fmt.Errorf("querying old value for OldThreadID: %w", err)
 	}
-	return oldValue.ThreadRowID, nil
+	return oldValue.ThreadID, nil
 }
 
-// ResetThreadRowID resets all changes to the "thread_row_id" field.
-func (m *AgentThreadMutation) ResetThreadRowID() {
+// ResetThreadID resets all changes to the "thread_id" field.
+func (m *AgentThreadMutation) ResetThreadID() {
 	m.thread = nil
 }
 
@@ -7411,28 +7591,15 @@ func (m *AgentThreadMutation) ResetAgent() {
 	m.clearedagent = false
 }
 
-// SetThreadID sets the "thread" edge to the Thread entity by id.
-func (m *AgentThreadMutation) SetThreadID(id int) {
-	m.thread = &id
-}
-
 // ClearThread clears the "thread" edge to the Thread entity.
 func (m *AgentThreadMutation) ClearThread() {
 	m.clearedthread = true
-	m.clearedFields[agentthread.FieldThreadRowID] = struct{}{}
+	m.clearedFields[agentthread.FieldThreadID] = struct{}{}
 }
 
 // ThreadCleared reports if the "thread" edge to the Thread entity was cleared.
 func (m *AgentThreadMutation) ThreadCleared() bool {
 	return m.clearedthread
-}
-
-// ThreadID returns the "thread" edge ID in the mutation.
-func (m *AgentThreadMutation) ThreadID() (id int, exists bool) {
-	if m.thread != nil {
-		return *m.thread, true
-	}
-	return
 }
 
 // ThreadIDs returns the "thread" edge IDs in the mutation.
@@ -7499,7 +7666,7 @@ func (m *AgentThreadMutation) Fields() []string {
 		fields = append(fields, agentthread.FieldAgentID)
 	}
 	if m.thread != nil {
-		fields = append(fields, agentthread.FieldThreadRowID)
+		fields = append(fields, agentthread.FieldThreadID)
 	}
 	return fields
 }
@@ -7517,8 +7684,8 @@ func (m *AgentThreadMutation) Field(name string) (ent.Value, bool) {
 		return m.ProjectID()
 	case agentthread.FieldAgentID:
 		return m.AgentID()
-	case agentthread.FieldThreadRowID:
-		return m.ThreadRowID()
+	case agentthread.FieldThreadID:
+		return m.ThreadID()
 	}
 	return nil, false
 }
@@ -7536,8 +7703,8 @@ func (m *AgentThreadMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldProjectID(ctx)
 	case agentthread.FieldAgentID:
 		return m.OldAgentID(ctx)
-	case agentthread.FieldThreadRowID:
-		return m.OldThreadRowID(ctx)
+	case agentthread.FieldThreadID:
+		return m.OldThreadID(ctx)
 	}
 	return nil, fmt.Errorf("unknown AgentThread field %s", name)
 }
@@ -7575,12 +7742,12 @@ func (m *AgentThreadMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAgentID(v)
 		return nil
-	case agentthread.FieldThreadRowID:
+	case agentthread.FieldThreadID:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetThreadRowID(v)
+		m.SetThreadID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown AgentThread field %s", name)
@@ -7658,8 +7825,8 @@ func (m *AgentThreadMutation) ResetField(name string) error {
 	case agentthread.FieldAgentID:
 		m.ResetAgentID()
 		return nil
-	case agentthread.FieldThreadRowID:
-		m.ResetThreadRowID()
+	case agentthread.FieldThreadID:
+		m.ResetThreadID()
 		return nil
 	}
 	return fmt.Errorf("unknown AgentThread field %s", name)
@@ -28913,27 +29080,24 @@ func (m *SystemMutation) ResetEdge(name string) error {
 // ThreadMutation represents an operation that mutates the Thread nodes in the graph.
 type ThreadMutation struct {
 	config
-	op                    Op
-	typ                   string
-	id                    *int
-	created_at            *time.Time
-	updated_at            *time.Time
-	thread_id             *string
-	clearedFields         map[string]struct{}
-	project               *int
-	clearedproject        bool
-	traces                map[int]struct{}
-	removedtraces         map[int]struct{}
-	clearedtraces         bool
-	agent_threads         map[int]struct{}
-	removedagent_threads  map[int]struct{}
-	clearedagent_threads  bool
-	agent_messages        map[int]struct{}
-	removedagent_messages map[int]struct{}
-	clearedagent_messages bool
-	done                  bool
-	oldValue              func(context.Context) (*Thread, error)
-	predicates            []predicate.Thread
+	op                   Op
+	typ                  string
+	id                   *int
+	created_at           *time.Time
+	updated_at           *time.Time
+	thread_id            *string
+	clearedFields        map[string]struct{}
+	project              *int
+	clearedproject       bool
+	traces               map[int]struct{}
+	removedtraces        map[int]struct{}
+	clearedtraces        bool
+	agent_threads        map[int]struct{}
+	removedagent_threads map[int]struct{}
+	clearedagent_threads bool
+	done                 bool
+	oldValue             func(context.Context) (*Thread, error)
+	predicates           []predicate.Thread
 }
 
 var _ ent.Mutation = (*ThreadMutation)(nil)
@@ -29313,60 +29477,6 @@ func (m *ThreadMutation) ResetAgentThreads() {
 	m.removedagent_threads = nil
 }
 
-// AddAgentMessageIDs adds the "agent_messages" edge to the AgentMessage entity by ids.
-func (m *ThreadMutation) AddAgentMessageIDs(ids ...int) {
-	if m.agent_messages == nil {
-		m.agent_messages = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.agent_messages[ids[i]] = struct{}{}
-	}
-}
-
-// ClearAgentMessages clears the "agent_messages" edge to the AgentMessage entity.
-func (m *ThreadMutation) ClearAgentMessages() {
-	m.clearedagent_messages = true
-}
-
-// AgentMessagesCleared reports if the "agent_messages" edge to the AgentMessage entity was cleared.
-func (m *ThreadMutation) AgentMessagesCleared() bool {
-	return m.clearedagent_messages
-}
-
-// RemoveAgentMessageIDs removes the "agent_messages" edge to the AgentMessage entity by IDs.
-func (m *ThreadMutation) RemoveAgentMessageIDs(ids ...int) {
-	if m.removedagent_messages == nil {
-		m.removedagent_messages = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.agent_messages, ids[i])
-		m.removedagent_messages[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedAgentMessages returns the removed IDs of the "agent_messages" edge to the AgentMessage entity.
-func (m *ThreadMutation) RemovedAgentMessagesIDs() (ids []int) {
-	for id := range m.removedagent_messages {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// AgentMessagesIDs returns the "agent_messages" edge IDs in the mutation.
-func (m *ThreadMutation) AgentMessagesIDs() (ids []int) {
-	for id := range m.agent_messages {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetAgentMessages resets all changes to the "agent_messages" edge.
-func (m *ThreadMutation) ResetAgentMessages() {
-	m.agent_messages = nil
-	m.clearedagent_messages = false
-	m.removedagent_messages = nil
-}
-
 // Where appends a list predicates to the ThreadMutation builder.
 func (m *ThreadMutation) Where(ps ...predicate.Thread) {
 	m.predicates = append(m.predicates, ps...)
@@ -29554,7 +29664,7 @@ func (m *ThreadMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ThreadMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	if m.project != nil {
 		edges = append(edges, thread.EdgeProject)
 	}
@@ -29563,9 +29673,6 @@ func (m *ThreadMutation) AddedEdges() []string {
 	}
 	if m.agent_threads != nil {
 		edges = append(edges, thread.EdgeAgentThreads)
-	}
-	if m.agent_messages != nil {
-		edges = append(edges, thread.EdgeAgentMessages)
 	}
 	return edges
 }
@@ -29590,27 +29697,18 @@ func (m *ThreadMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case thread.EdgeAgentMessages:
-		ids := make([]ent.Value, 0, len(m.agent_messages))
-		for id := range m.agent_messages {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ThreadMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	if m.removedtraces != nil {
 		edges = append(edges, thread.EdgeTraces)
 	}
 	if m.removedagent_threads != nil {
 		edges = append(edges, thread.EdgeAgentThreads)
-	}
-	if m.removedagent_messages != nil {
-		edges = append(edges, thread.EdgeAgentMessages)
 	}
 	return edges
 }
@@ -29631,19 +29729,13 @@ func (m *ThreadMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case thread.EdgeAgentMessages:
-		ids := make([]ent.Value, 0, len(m.removedagent_messages))
-		for id := range m.removedagent_messages {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ThreadMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	if m.clearedproject {
 		edges = append(edges, thread.EdgeProject)
 	}
@@ -29652,9 +29744,6 @@ func (m *ThreadMutation) ClearedEdges() []string {
 	}
 	if m.clearedagent_threads {
 		edges = append(edges, thread.EdgeAgentThreads)
-	}
-	if m.clearedagent_messages {
-		edges = append(edges, thread.EdgeAgentMessages)
 	}
 	return edges
 }
@@ -29669,8 +29758,6 @@ func (m *ThreadMutation) EdgeCleared(name string) bool {
 		return m.clearedtraces
 	case thread.EdgeAgentThreads:
 		return m.clearedagent_threads
-	case thread.EdgeAgentMessages:
-		return m.clearedagent_messages
 	}
 	return false
 }
@@ -29698,9 +29785,6 @@ func (m *ThreadMutation) ResetEdge(name string) error {
 		return nil
 	case thread.EdgeAgentThreads:
 		m.ResetAgentThreads()
-		return nil
-	case thread.EdgeAgentMessages:
-		m.ResetAgentMessages()
 		return nil
 	}
 	return fmt.Errorf("unknown Thread edge %s", name)

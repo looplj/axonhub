@@ -59,8 +59,8 @@ const (
 	EdgeSkillBindings = "skill_bindings"
 	// EdgeInstances holds the string denoting the instances edge name in mutations.
 	EdgeInstances = "instances"
-	// EdgeThreadBindings holds the string denoting the thread_bindings edge name in mutations.
-	EdgeThreadBindings = "thread_bindings"
+	// EdgeThreads holds the string denoting the threads edge name in mutations.
+	EdgeThreads = "threads"
 	// EdgeMessages holds the string denoting the messages edge name in mutations.
 	EdgeMessages = "messages"
 	// EdgeMemories holds the string denoting the memories edge name in mutations.
@@ -116,13 +116,13 @@ const (
 	InstancesInverseTable = "agent_instances"
 	// InstancesColumn is the table column denoting the instances relation/edge.
 	InstancesColumn = "agent_id"
-	// ThreadBindingsTable is the table that holds the thread_bindings relation/edge.
-	ThreadBindingsTable = "agent_threads"
-	// ThreadBindingsInverseTable is the table name for the AgentThread entity.
+	// ThreadsTable is the table that holds the threads relation/edge.
+	ThreadsTable = "agent_threads"
+	// ThreadsInverseTable is the table name for the AgentThread entity.
 	// It exists in this package in order to avoid circular dependency with the "agentthread" package.
-	ThreadBindingsInverseTable = "agent_threads"
-	// ThreadBindingsColumn is the table column denoting the thread_bindings relation/edge.
-	ThreadBindingsColumn = "agent_id"
+	ThreadsInverseTable = "agent_threads"
+	// ThreadsColumn is the table column denoting the threads relation/edge.
+	ThreadsColumn = "agent_id"
 	// MessagesTable is the table that holds the messages relation/edge.
 	MessagesTable = "agent_messages"
 	// MessagesInverseTable is the table name for the AgentMessage entity.
@@ -354,17 +354,17 @@ func ByInstances(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
-// ByThreadBindingsCount orders the results by thread_bindings count.
-func ByThreadBindingsCount(opts ...sql.OrderTermOption) OrderOption {
+// ByThreadsCount orders the results by threads count.
+func ByThreadsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newThreadBindingsStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newThreadsStep(), opts...)
 	}
 }
 
-// ByThreadBindings orders the results by thread_bindings terms.
-func ByThreadBindings(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByThreads orders the results by threads terms.
+func ByThreads(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newThreadBindingsStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newThreadsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -444,11 +444,11 @@ func newInstancesStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.O2M, false, InstancesTable, InstancesColumn),
 	)
 }
-func newThreadBindingsStep() *sqlgraph.Step {
+func newThreadsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(ThreadBindingsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, ThreadBindingsTable, ThreadBindingsColumn),
+		sqlgraph.To(ThreadsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ThreadsTable, ThreadsColumn),
 	)
 }
 func newMessagesStep() *sqlgraph.Step {

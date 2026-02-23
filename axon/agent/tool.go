@@ -3,12 +3,12 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
-	"github.com/samber/lo"
 )
 
 type Middleware interface {
@@ -48,9 +48,38 @@ type ToolResult struct {
 	Error   error
 }
 
+type toolResultJSON struct {
+	Content Content `json:"content"`
+	Error   string  `json:"error,omitempty"`
+}
+
+func (r ToolResult) MarshalJSON() ([]byte, error) {
+	var errMsg string
+	if r.Error != nil {
+		errMsg = r.Error.Error()
+	}
+	return json.Marshal(toolResultJSON{
+		Content: r.Content,
+		Error:   errMsg,
+	})
+}
+
+func (r *ToolResult) UnmarshalJSON(data []byte) error {
+	var tmp toolResultJSON
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+	r.Content = tmp.Content
+	if tmp.Error != "" {
+		r.Error = errors.New(tmp.Error)
+	}
+	return nil
+}
+
 // ToolRegistry manages available tools.
 type ToolRegistry struct {
 	tools     map[string]Tool
+	order     []string
 	validator map[string]ToolValidator
 	mu        sync.RWMutex
 }
@@ -63,6 +92,7 @@ type ToolValidator interface {
 func NewToolRegistry() *ToolRegistry {
 	return &ToolRegistry{
 		tools:     make(map[string]Tool),
+		order:     make([]string, 0),
 		validator: make(map[string]ToolValidator),
 	}
 }
@@ -72,7 +102,12 @@ func NewToolRegistry() *ToolRegistry {
 func (r *ToolRegistry) Register(tool Tool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.tools[tool.Definition().Name] = tool
+
+	name := tool.Definition().Name
+	if _, exists := r.tools[name]; !exists {
+		r.order = append(r.order, name)
+	}
+	r.tools[name] = tool
 
 	def := tool.Definition()
 
@@ -91,20 +126,26 @@ func (r *ToolRegistry) Get(name string) (Tool, bool) {
 	return t, ok
 }
 
-// List returns all registered tool names.
+// List returns all registered tool names in order of registration.
 func (r *ToolRegistry) List() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return lo.Keys(r.tools)
+	result := make([]string, len(r.order))
+	copy(result, r.order)
+	return result
 }
 
-// Definitions returns all registered tool definitions.
+// Definitions returns all registered tool definitions in order of registration.
 func (r *ToolRegistry) Definitions() []ToolDefinition {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return lo.Map(lo.Values(r.tools), func(t Tool, _ int) ToolDefinition {
-		return t.Definition()
-	})
+	result := make([]ToolDefinition, 0, len(r.order))
+	for _, name := range r.order {
+		if tool, ok := r.tools[name]; ok {
+			result = append(result, tool.Definition())
+		}
+	}
+	return result
 }
 
 // ValidateArguments validates the arguments against the tool's schema.
