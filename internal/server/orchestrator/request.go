@@ -7,6 +7,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -45,6 +46,18 @@ func (m *persistRequestMiddleware) OnInboundLlmRequest(ctx context.Context, llmR
 	}
 
 	m.inbound.state.Request = request
+
+	// Attach AxonHub request ID for downstream transformers (e.g., async task APIs).
+	if llmRequest != nil {
+		if llmRequest.TransformerMetadata == nil {
+			llmRequest.TransformerMetadata = make(map[string]any)
+		}
+
+		// Don't overwrite if already set by caller.
+		if _, ok := llmRequest.TransformerMetadata["axonhub_request_id"]; !ok {
+			llmRequest.TransformerMetadata["axonhub_request_id"] = request.ID
+		}
+	}
 
 	return llmRequest, nil
 }
@@ -111,6 +124,24 @@ func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, htt
 		if state.Perf.Stream && state.Perf.FirstTokenTime != nil {
 			metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
 		}
+	}
+
+	// Video generation is async: initial response contains provider task id, but task may not be completed.
+	// Keep request in processing status and store provider task id in external_id.
+	if llmResp.RequestType == llm.RequestTypeVideo {
+		err := state.RequestService.UpdateRequestStatusExternalIDAndResponseBody(
+			persistCtx,
+			state.Request.ID,
+			request.StatusProcessing,
+			llmResp.ID,
+			httpResp.Body,
+			metrics,
+		)
+		if err != nil {
+			log.Warn(persistCtx, "Failed to update video request status to processing", log.Cause(err))
+		}
+
+		return httpResp, nil
 	}
 
 	err := state.RequestService.UpdateRequestCompleted(persistCtx, state.Request.ID, llmResp.ID, httpResp.Body, metrics)

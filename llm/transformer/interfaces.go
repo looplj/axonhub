@@ -2,6 +2,7 @@ package transformer
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -57,4 +58,19 @@ type Outbound interface {
 	// e.g: the user request with OpenAI format, but the provider response with Claude format, the chunks is the Claude response format, the AggregateStreamChunks will convert
 	// the chunks to the OpenAI chat completion response format.
 	AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
+}
+
+// VideoTaskOutbound is an optional extension interface for outbound transformers that support
+// video task query/delete operations (async task model).
+type VideoTaskOutbound interface {
+	BuildGetVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
+	ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.VideoResponse, error)
+
+	BuildDeleteVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
+}
+
+// VideoTaskListOutbound is an optional extension interface for outbound transformers that support
+// listing video tasks.
+type VideoTaskListOutbound interface {
+	BuildListVideoTasksRequest(ctx context.Context, query url.Values) (*httpclient.Request, error)
 }
