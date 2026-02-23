@@ -13,17 +13,17 @@ import { useDeviceFlow } from '../hooks/use-device-flow';
 interface CopilotDeviceFlowProps {
   onSuccess: (credentials: string) => void;
   onError?: (error: string) => void;
+  existingCredentials?: string;
 }
 
-export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps) {
+export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: CopilotDeviceFlowProps) {
   const { t } = useTranslation();
   const projectId = useSelectedProjectId();
-
+  const hasExistingCredentials = existingCredentials && existingCredentials.trim().length > 0;
   const deviceFlow = useDeviceFlow({
     projectId,
     onSuccess,
   });
-
   useEffect(() => {
     if (deviceFlow.error && onError) {
       onError(deviceFlow.error);
@@ -39,6 +39,40 @@ export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps
   const handleReset = () => {
     deviceFlow.reset();
   };
+
+  const handleReconnect = () => {
+    deviceFlow.reset();
+    deviceFlow.start();
+  };
+
+  // Show already authenticated state
+  if (hasExistingCredentials && !deviceFlow.userCode && !deviceFlow.isComplete && !deviceFlow.error) {
+    return (
+      <div className='mt-3 space-y-2'>
+        <div className='rounded-md border border-green-500/50 bg-green-50/10 p-3'>
+          <div className='flex items-center gap-2 text-green-600'>
+            <CheckCircle2 className='h-5 w-5' />
+            <span className='font-medium'>
+              {t('channels.dialogs.github_copilot.messages.alreadyConnected')}
+            </span>
+          </div>
+          <p className='text-muted-foreground mt-1 text-xs'>
+            {t('channels.dialogs.github_copilot.messages.credentialsStored')}
+          </p>
+          <Button
+            type='button'
+            onClick={handleReconnect}
+            variant='outline'
+            size='sm'
+            className='mt-2'
+          >
+            <RefreshCw className='mr-2 h-4 w-4' />
+            {t('channels.dialogs.github_copilot.buttons.reauthenticate')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Show completed state
   if (deviceFlow.isComplete) {
