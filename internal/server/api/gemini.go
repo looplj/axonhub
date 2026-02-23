@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
@@ -59,7 +58,7 @@ func (handlers *GeminiHandlers) GenerateContent(c *gin.Context) {
 	alt := c.Query("alt")
 	switch alt {
 	case "sse":
-		handlers.ChatCompletionHandlers.WithStreamWriter(WriteGeminiSSEStream).ChatCompletion(c)
+		handlers.ChatCompletionHandlers.WithStreamWriter(WriteSSEStream).ChatCompletion(c)
 	default:
 		handlers.ChatCompletionHandlers.WithStreamWriter(WriteGeminiStream).ChatCompletion(c)
 	}
@@ -113,60 +112,6 @@ func WriteGeminiStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 			}
 		}
 	}
-}
-
-// WriteGeminiSSEStream
-// Gemini js sdk need more whitespace after data: to work properly.
-// This prepends a space to each data payload to ensure compatibility.
-func WriteGeminiSSEStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent]) {
-	ctx := c.Request.Context()
-	clientDisconnected := false
-
-	defer func() {
-		if clientDisconnected {
-			log.Warn(ctx, "Client disconnected")
-		}
-	}()
-
-	c.Header("Content-Type", sse.ContentType)
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-
-	for {
-		select {
-		case <-ctx.Done():
-			clientDisconnected = true
-
-			log.Warn(ctx, "Context done, stopping stream")
-
-			return
-		default:
-			if stream.Next() {
-				cur := stream.Current()
-				c.SSEvent(cur.Type, prependSpace(cur.Data))
-				log.Debug(ctx, "write stream event", log.Any("event", cur))
-				c.Writer.Flush()
-			} else {
-				if stream.Err() != nil {
-					log.Error(ctx, "Error in stream", log.Cause(stream.Err()))
-					c.SSEvent("error", stream.Err())
-				}
-
-				c.Writer.Flush()
-
-				return
-			}
-		}
-	}
-}
-
-// prependSpace adds a leading space to the data payload for Gemini JS SDK compatibility.
-func prependSpace(b []byte) []byte {
-	result := make([]byte, len(b)+1)
-	result[0] = ' '
-	copy(result[1:], b)
-
-	return result
 }
 
 // GeminiModel represents a model in the list models response.
