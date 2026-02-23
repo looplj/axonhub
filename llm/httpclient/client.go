@@ -273,6 +273,11 @@ func BuildHttpRequest(
 		httpReq.Header.Del(k)
 	}
 
+	// Set Content-Type header if specified in request
+	if request.ContentType != "" {
+		httpReq.Header.Set("Content-Type", request.ContentType)
+	}
+
 	if request.Auth != nil {
 		err = applyAuth(httpReq.Header, request.Auth)
 		if err != nil {

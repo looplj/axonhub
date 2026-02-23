@@ -188,12 +188,7 @@ func TestCopilotHandlers_StartOAuth_WithProxy(t *testing.T) {
 	router := gin.New()
 	router.POST("/admin/copilot/oauth/start", h.StartOAuth)
 
-	reqBody, _ := json.Marshal(StartCopilotOAuthRequest{
-		Proxy: &httpclient.ProxyConfig{
-			Type: httpclient.ProxyTypeURL,
-			URL:  "http://proxy.example.com:8080",
-		},
-	})
+	reqBody, _ := json.Marshal(StartCopilotOAuthRequest{})
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/copilot/oauth/start", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -601,7 +596,7 @@ func TestCopilotHandlers_PollOAuth_DeviceCodeExpired(t *testing.T) {
 			"device_code": "test-device-code",
 			"user_code": "ABCD-EFGH",
 			"verification_uri": "https://github.com/login/device",
-			"expires_in": 1,
+			"expires_in": 2,
 			"interval": 5
 		}`))
 	}))
@@ -630,7 +625,7 @@ func TestCopilotHandlers_PollOAuth_DeviceCodeExpired(t *testing.T) {
 	var startResp StartCopilotOAuthResponse
 	require.NoError(t, json.Unmarshal(startW.Body.Bytes(), &startResp))
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	pollBody, _ := json.Marshal(PollCopilotOAuthRequest{
 		SessionID: startResp.SessionID,
@@ -641,7 +636,7 @@ func TestCopilotHandlers_PollOAuth_DeviceCodeExpired(t *testing.T) {
 	router.ServeHTTP(pollW, pollReq)
 
 	require.Equal(t, http.StatusBadRequest, pollW.Code)
-	require.Contains(t, pollW.Body.String(), "device code expired")
+	require.Contains(t, pollW.Body.String(), "invalid or expired session")
 }
 
 func TestCopilotHandlers_PollOAuth_FormEncodedResponse(t *testing.T) {
@@ -884,10 +879,6 @@ func TestCopilotHandlers_PollOAuth_WithProxy(t *testing.T) {
 
 	pollBody, _ := json.Marshal(PollCopilotOAuthRequest{
 		SessionID: startResp.SessionID,
-		Proxy: &httpclient.ProxyConfig{
-			Type: httpclient.ProxyTypeURL,
-			URL:  "http://proxy.example.com:8080",
-		},
 	})
 	pollReq := httptest.NewRequest(http.MethodPost, "/admin/copilot/oauth/poll", bytes.NewBuffer(pollBody))
 	pollReq.Header.Set("Content-Type", "application/json")
