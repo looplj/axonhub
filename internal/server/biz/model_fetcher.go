@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/samber/lo"
 
@@ -22,8 +24,11 @@ import (
 
 // ModelFetcher handles fetching models from provider APIs.
 type ModelFetcher struct {
-	httpClient     *httpclient.HttpClient
-	channelService *ChannelService
+	httpClient            *httpclient.HttpClient
+	channelService        *ChannelService
+	copilotModelsCache    []ModelIdentify
+	copilotCacheMu        sync.RWMutex
+	copilotCacheTimestamp time.Time
 }
 
 // NewModelFetcher creates a new ModelFetcher instance.
@@ -63,10 +68,91 @@ func (f *ModelFetcher) getDefaultModelsByType(typ channel.Type) []ModelIdentify 
 	case channel.TypeClaudecode:
 		return lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeGithubCopilot:
-		return lo.Map(copilot.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+		return f.fetchCopilotModels()
 	default:
 		return nil
 	}
+}
+
+// copilotModelsCacheDuration is the duration to cache Copilot models.
+const copilotModelsCacheDuration = 1 * time.Hour
+
+// providerConfResponse represents the structure of the PublicProviderConf JSON.
+type providerConfResponse struct {
+	Providers map[string]struct {
+		Models []struct {
+			ID string `json:"id"`
+		} `json:"models"`
+	} `json:"providers"`
+}
+
+// fetchCopilotModels fetches GitHub Copilot models from PublicProviderConf with caching.
+func (f *ModelFetcher) fetchCopilotModels() []ModelIdentify {
+	f.copilotCacheMu.RLock()
+	if len(f.copilotModelsCache) > 0 && time.Since(f.copilotCacheTimestamp) < copilotModelsCacheDuration {
+		models := f.copilotModelsCache
+		f.copilotCacheMu.RUnlock()
+		return models
+	}
+	f.copilotCacheMu.RUnlock()
+
+	f.copilotCacheMu.Lock()
+	defer f.copilotCacheMu.Unlock()
+
+	// Double-check after acquiring write lock
+	if len(f.copilotModelsCache) > 0 && time.Since(f.copilotCacheTimestamp) < copilotModelsCacheDuration {
+		return f.copilotModelsCache
+	}
+
+	models := f.fetchCopilotModelsFromSource()
+	if len(models) > 0 {
+		f.copilotModelsCache = models
+		f.copilotCacheTimestamp = time.Now()
+	}
+
+	return models
+}
+
+// fetchCopilotModelsFromSource fetches models from PublicProviderConf.
+func (f *ModelFetcher) fetchCopilotModelsFromSource() []ModelIdentify {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req := &httpclient.Request{
+		Method: http.MethodGet,
+		URL:    copilot.ProviderConfURL,
+		Headers: http.Header{
+			"Accept": []string{"application/json"},
+		},
+	}
+
+	resp, err := f.httpClient.Do(ctx, req)
+	if err != nil {
+		return nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	var conf providerConfResponse
+	if err := json.Unmarshal(resp.Body, &conf); err != nil {
+		return nil
+	}
+
+	provider, ok := conf.Providers[copilot.ProviderID]
+	if !ok {
+		return nil
+	}
+
+	models := make([]ModelIdentify, 0, len(provider.Models))
+	for _, model := range provider.Models {
+		if model.ID != "" {
+			models = append(models, ModelIdentify{ID: model.ID})
+		}
+	}
+
+	return models
 }
 
 func (f *ModelFetcher) tryReturnDefaultModels(channelType string) (*FetchModelsResult, bool) {
