@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Copy, ExternalLink, Loader2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Copy, ExternalLink, Loader2, CheckCircle2, AlertCircle, RefreshCw, Link2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -12,11 +12,13 @@ import { useDeviceFlow } from '../hooks/use-device-flow';
 interface CopilotDeviceFlowProps {
   onSuccess: (credentials: string) => void;
   onError?: (error: string) => void;
+  existingCredentials?: string;
 }
 
-export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps) {
+export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: CopilotDeviceFlowProps) {
   const { t } = useTranslation();
   const projectId = useSelectedProjectId();
+  const [showReconnect, setShowReconnect] = useState(false);
 
   const deviceFlow = useDeviceFlow({
     projectId,
@@ -28,6 +30,10 @@ export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps
       onError(deviceFlow.error);
     }
   }, [deviceFlow.error, onError]);
+
+  // Check if already connected with valid credentials
+  const hasExistingCredentials = existingCredentials && existingCredentials.trim().length > 0;
+  const isConnected = hasExistingCredentials && !deviceFlow.userCode && !deviceFlow.isPolling && !deviceFlow.error && !deviceFlow.isComplete;
 
   const handleCopyCode = async () => {
     if (deviceFlow.userCode) {
@@ -48,15 +54,56 @@ export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps
 
   const handleReset = () => {
     deviceFlow.reset();
+    setShowReconnect(false);
   };
+
+  const handleReconnect = () => {
+    setShowReconnect(true);
+    deviceFlow.start();
+  };
+
+  // Show connected state when credentials exist and no active flow
+  if (isConnected && !showReconnect) {
+    return (
+      <Card className='border-green-500/50 bg-green-50/10'>
+        <CardHeader className='text-center pb-4'>
+          <CardTitle className='text-lg flex items-center justify-center gap-2 text-green-600'>
+            <CheckCircle2 className='h-5 w-5' />
+            {t('channels.dialogs.github_copilot.messages.alreadyConnected')}
+          </CardTitle>
+          <CardDescription>
+            {t('channels.dialogs.github_copilot.messages.credentialsStored')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='flex justify-center'>
+          <Button
+            onClick={handleReconnect}
+            variant='outline'
+            size='lg'
+            className='min-w-[200px]'
+          >
+            <RefreshCw className='mr-2 h-4 w-4' />
+            {t('channels.dialogs.github_copilot.buttons.reauthenticate')}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!deviceFlow.userCode && !deviceFlow.isPolling && !deviceFlow.error) {
     return (
       <Card className="border-2 border-dashed">
         <CardHeader className="text-center pb-4">
-          <CardTitle className="text-lg">{t('channels.dialogs.github_copilot.buttons.startOAuth')}</CardTitle>
+          <CardTitle className="text-lg flex items-center justify-center gap-2">
+            <Link2 className="h-5 w-5" />
+            {hasExistingCredentials
+              ? t('channels.dialogs.github_copilot.buttons.reconnect')
+              : t('channels.dialogs.github_copilot.buttons.startOAuth')}
+          </CardTitle>
           <CardDescription>
-            Connect your GitHub account to enable Copilot access
+            {hasExistingCredentials
+              ? t('channels.dialogs.github_copilot.messages.reconnectDescription')
+              : t('channels.dialogs.github_copilot.messages.connectDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center">
@@ -66,7 +113,9 @@ export function CopilotDeviceFlow({ onSuccess, onError }: CopilotDeviceFlowProps
             size="lg"
             className="min-w-[200px]"
           >
-            {t('channels.dialogs.github_copilot.buttons.startOAuth')}
+            {hasExistingCredentials
+              ? t('channels.dialogs.github_copilot.buttons.reconnect')
+              : t('channels.dialogs.github_copilot.buttons.startOAuth')}
           </Button>
         </CardContent>
       </Card>
