@@ -116,7 +116,6 @@ export function useDeviceFlow(
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(errorMessage);
-      toast.error(errorMessage);
       setIsPolling(false);
     }
   }, [projectId, t]);
@@ -140,7 +139,6 @@ export function useDeviceFlow(
           }
           setIsPolling(false);
           setError(t('channels.dialogs.oauth.errors.deviceFlowExpired'));
-          toast.error(t('channels.dialogs.oauth.errors.deviceFlowExpired'));
           return;
         }
 
@@ -150,10 +148,7 @@ export function useDeviceFlow(
             { 'X-Project-ID': projectId }
           );
 
-          console.log('[DeviceFlow] Poll result:', result);
-
           if (result.access_token) {
-            console.log('[DeviceFlow] Got access token, calling onSuccess');
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
@@ -190,7 +185,6 @@ export function useDeviceFlow(
               }
               setIsPolling(false);
               setError(result.message || result.status);
-              toast.error(result.message || result.status);
             }
           }
         } catch (err) {
@@ -201,7 +195,6 @@ export function useDeviceFlow(
           }
           setIsPolling(false);
           setError(errorMessage);
-          toast.error(errorMessage);
         }
       }, pollInterval * 1000);
     },

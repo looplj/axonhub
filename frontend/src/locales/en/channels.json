@@ -244,6 +244,7 @@
   "channels.dialogs.oauth.errors.projectRequired": "Please select a project first",
   "channels.dialogs.oauth.errors.sessionMissing": "Missing OAuth session",
   "channels.dialogs.oauth.errors.callbackUrlRequired": "Please paste the callback URL",
+  "channels.dialogs.oauth.errors.deviceFlowExpired": "Device flow expired. Please try again.",
   "channels.dialogs.oauth.messages.credentialsImported": "Credentials imported successfully",
   "channels.dialogs.codex.errors.bulkCreateUnsupported": "Codex channel does not support bulk create",
   "channels.dialogs.codex.messages.credentialsImported": "Codex credentials imported",

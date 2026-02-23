@@ -247,6 +247,7 @@
   "channels.dialogs.oauth.errors.projectRequired": "请先选择项目",
   "channels.dialogs.oauth.errors.sessionMissing": "OAuth 会话已过期或不存在",
   "channels.dialogs.oauth.errors.callbackUrlRequired": "请粘贴回调 URL",
+  "channels.dialogs.oauth.errors.deviceFlowExpired": "设备流已过期，请重试。",
   "channels.dialogs.oauth.messages.credentialsImported": "凭证已成功导入",
   "channels.dialogs.codex.errors.bulkCreateUnsupported": "Codex 渠道不支持批量创建",
   "channels.dialogs.codex.messages.credentialsImported": "Codex 凭证已导入",
