@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { ExternalLink, Loader2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Copy, ExternalLink, Loader2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -140,6 +140,20 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
                   {deviceFlow.userCode}
                 </span>
               </div>
+              <Button
+                type='button'
+                onClick={() => {
+                  if (deviceFlow.userCode) {
+                    navigator.clipboard.writeText(deviceFlow.userCode);
+                    toast.success(t('channels.messages.credentialsCopied'));
+                  }
+                }}
+                variant='outline'
+                size='icon'
+                title='Copy code'
+              >
+                <Copy className='h-4 w-4' />
+              </Button>
             </div>
           </div>
 
