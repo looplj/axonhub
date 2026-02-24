@@ -202,84 +202,84 @@ func (_u *RequestUpdate) ClearMetricsFirstTokenLatencyMs() *RequestUpdate {
 	return _u
 }
 
-// SetVideoSaved sets the "video_saved" field.
-func (_u *RequestUpdate) SetVideoSaved(v bool) *RequestUpdate {
-	_u.mutation.SetVideoSaved(v)
+// SetContentSaved sets the "content_saved" field.
+func (_u *RequestUpdate) SetContentSaved(v bool) *RequestUpdate {
+	_u.mutation.SetContentSaved(v)
 	return _u
 }
 
-// SetNillableVideoSaved sets the "video_saved" field if the given value is not nil.
-func (_u *RequestUpdate) SetNillableVideoSaved(v *bool) *RequestUpdate {
+// SetNillableContentSaved sets the "content_saved" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableContentSaved(v *bool) *RequestUpdate {
 	if v != nil {
-		_u.SetVideoSaved(*v)
+		_u.SetContentSaved(*v)
 	}
 	return _u
 }
 
-// SetVideoStorageID sets the "video_storage_id" field.
-func (_u *RequestUpdate) SetVideoStorageID(v int) *RequestUpdate {
-	_u.mutation.ResetVideoStorageID()
-	_u.mutation.SetVideoStorageID(v)
+// SetContentStorageID sets the "content_storage_id" field.
+func (_u *RequestUpdate) SetContentStorageID(v int) *RequestUpdate {
+	_u.mutation.ResetContentStorageID()
+	_u.mutation.SetContentStorageID(v)
 	return _u
 }
 
-// SetNillableVideoStorageID sets the "video_storage_id" field if the given value is not nil.
-func (_u *RequestUpdate) SetNillableVideoStorageID(v *int) *RequestUpdate {
+// SetNillableContentStorageID sets the "content_storage_id" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableContentStorageID(v *int) *RequestUpdate {
 	if v != nil {
-		_u.SetVideoStorageID(*v)
+		_u.SetContentStorageID(*v)
 	}
 	return _u
 }
 
-// AddVideoStorageID adds value to the "video_storage_id" field.
-func (_u *RequestUpdate) AddVideoStorageID(v int) *RequestUpdate {
-	_u.mutation.AddVideoStorageID(v)
+// AddContentStorageID adds value to the "content_storage_id" field.
+func (_u *RequestUpdate) AddContentStorageID(v int) *RequestUpdate {
+	_u.mutation.AddContentStorageID(v)
 	return _u
 }
 
-// ClearVideoStorageID clears the value of the "video_storage_id" field.
-func (_u *RequestUpdate) ClearVideoStorageID() *RequestUpdate {
-	_u.mutation.ClearVideoStorageID()
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (_u *RequestUpdate) ClearContentStorageID() *RequestUpdate {
+	_u.mutation.ClearContentStorageID()
 	return _u
 }
 
-// SetVideoStorageKey sets the "video_storage_key" field.
-func (_u *RequestUpdate) SetVideoStorageKey(v string) *RequestUpdate {
-	_u.mutation.SetVideoStorageKey(v)
+// SetContentStorageKey sets the "content_storage_key" field.
+func (_u *RequestUpdate) SetContentStorageKey(v string) *RequestUpdate {
+	_u.mutation.SetContentStorageKey(v)
 	return _u
 }
 
-// SetNillableVideoStorageKey sets the "video_storage_key" field if the given value is not nil.
-func (_u *RequestUpdate) SetNillableVideoStorageKey(v *string) *RequestUpdate {
+// SetNillableContentStorageKey sets the "content_storage_key" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableContentStorageKey(v *string) *RequestUpdate {
 	if v != nil {
-		_u.SetVideoStorageKey(*v)
+		_u.SetContentStorageKey(*v)
 	}
 	return _u
 }
 
-// ClearVideoStorageKey clears the value of the "video_storage_key" field.
-func (_u *RequestUpdate) ClearVideoStorageKey() *RequestUpdate {
-	_u.mutation.ClearVideoStorageKey()
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (_u *RequestUpdate) ClearContentStorageKey() *RequestUpdate {
+	_u.mutation.ClearContentStorageKey()
 	return _u
 }
 
-// SetVideoSavedAt sets the "video_saved_at" field.
-func (_u *RequestUpdate) SetVideoSavedAt(v time.Time) *RequestUpdate {
-	_u.mutation.SetVideoSavedAt(v)
+// SetContentSavedAt sets the "content_saved_at" field.
+func (_u *RequestUpdate) SetContentSavedAt(v time.Time) *RequestUpdate {
+	_u.mutation.SetContentSavedAt(v)
 	return _u
 }
 
-// SetNillableVideoSavedAt sets the "video_saved_at" field if the given value is not nil.
-func (_u *RequestUpdate) SetNillableVideoSavedAt(v *time.Time) *RequestUpdate {
+// SetNillableContentSavedAt sets the "content_saved_at" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableContentSavedAt(v *time.Time) *RequestUpdate {
 	if v != nil {
-		_u.SetVideoSavedAt(*v)
+		_u.SetContentSavedAt(*v)
 	}
 	return _u
 }
 
-// ClearVideoSavedAt clears the value of the "video_saved_at" field.
-func (_u *RequestUpdate) ClearVideoSavedAt() *RequestUpdate {
-	_u.mutation.ClearVideoSavedAt()
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (_u *RequestUpdate) ClearContentSavedAt() *RequestUpdate {
+	_u.mutation.ClearContentSavedAt()
 	return _u
 }
 
@@ -507,29 +507,29 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.MetricsFirstTokenLatencyMsCleared() {
 		_spec.ClearField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64)
 	}
-	if value, ok := _u.mutation.VideoSaved(); ok {
-		_spec.SetField(request.FieldVideoSaved, field.TypeBool, value)
+	if value, ok := _u.mutation.ContentSaved(); ok {
+		_spec.SetField(request.FieldContentSaved, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.VideoStorageID(); ok {
-		_spec.SetField(request.FieldVideoStorageID, field.TypeInt, value)
+	if value, ok := _u.mutation.ContentStorageID(); ok {
+		_spec.SetField(request.FieldContentStorageID, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedVideoStorageID(); ok {
-		_spec.AddField(request.FieldVideoStorageID, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedContentStorageID(); ok {
+		_spec.AddField(request.FieldContentStorageID, field.TypeInt, value)
 	}
-	if _u.mutation.VideoStorageIDCleared() {
-		_spec.ClearField(request.FieldVideoStorageID, field.TypeInt)
+	if _u.mutation.ContentStorageIDCleared() {
+		_spec.ClearField(request.FieldContentStorageID, field.TypeInt)
 	}
-	if value, ok := _u.mutation.VideoStorageKey(); ok {
-		_spec.SetField(request.FieldVideoStorageKey, field.TypeString, value)
+	if value, ok := _u.mutation.ContentStorageKey(); ok {
+		_spec.SetField(request.FieldContentStorageKey, field.TypeString, value)
 	}
-	if _u.mutation.VideoStorageKeyCleared() {
-		_spec.ClearField(request.FieldVideoStorageKey, field.TypeString)
+	if _u.mutation.ContentStorageKeyCleared() {
+		_spec.ClearField(request.FieldContentStorageKey, field.TypeString)
 	}
-	if value, ok := _u.mutation.VideoSavedAt(); ok {
-		_spec.SetField(request.FieldVideoSavedAt, field.TypeTime, value)
+	if value, ok := _u.mutation.ContentSavedAt(); ok {
+		_spec.SetField(request.FieldContentSavedAt, field.TypeTime, value)
 	}
-	if _u.mutation.VideoSavedAtCleared() {
-		_spec.ClearField(request.FieldVideoSavedAt, field.TypeTime)
+	if _u.mutation.ContentSavedAtCleared() {
+		_spec.ClearField(request.FieldContentSavedAt, field.TypeTime)
 	}
 	if _u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -840,84 +840,84 @@ func (_u *RequestUpdateOne) ClearMetricsFirstTokenLatencyMs() *RequestUpdateOne 
 	return _u
 }
 
-// SetVideoSaved sets the "video_saved" field.
-func (_u *RequestUpdateOne) SetVideoSaved(v bool) *RequestUpdateOne {
-	_u.mutation.SetVideoSaved(v)
+// SetContentSaved sets the "content_saved" field.
+func (_u *RequestUpdateOne) SetContentSaved(v bool) *RequestUpdateOne {
+	_u.mutation.SetContentSaved(v)
 	return _u
 }
 
-// SetNillableVideoSaved sets the "video_saved" field if the given value is not nil.
-func (_u *RequestUpdateOne) SetNillableVideoSaved(v *bool) *RequestUpdateOne {
+// SetNillableContentSaved sets the "content_saved" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableContentSaved(v *bool) *RequestUpdateOne {
 	if v != nil {
-		_u.SetVideoSaved(*v)
+		_u.SetContentSaved(*v)
 	}
 	return _u
 }
 
-// SetVideoStorageID sets the "video_storage_id" field.
-func (_u *RequestUpdateOne) SetVideoStorageID(v int) *RequestUpdateOne {
-	_u.mutation.ResetVideoStorageID()
-	_u.mutation.SetVideoStorageID(v)
+// SetContentStorageID sets the "content_storage_id" field.
+func (_u *RequestUpdateOne) SetContentStorageID(v int) *RequestUpdateOne {
+	_u.mutation.ResetContentStorageID()
+	_u.mutation.SetContentStorageID(v)
 	return _u
 }
 
-// SetNillableVideoStorageID sets the "video_storage_id" field if the given value is not nil.
-func (_u *RequestUpdateOne) SetNillableVideoStorageID(v *int) *RequestUpdateOne {
+// SetNillableContentStorageID sets the "content_storage_id" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableContentStorageID(v *int) *RequestUpdateOne {
 	if v != nil {
-		_u.SetVideoStorageID(*v)
+		_u.SetContentStorageID(*v)
 	}
 	return _u
 }
 
-// AddVideoStorageID adds value to the "video_storage_id" field.
-func (_u *RequestUpdateOne) AddVideoStorageID(v int) *RequestUpdateOne {
-	_u.mutation.AddVideoStorageID(v)
+// AddContentStorageID adds value to the "content_storage_id" field.
+func (_u *RequestUpdateOne) AddContentStorageID(v int) *RequestUpdateOne {
+	_u.mutation.AddContentStorageID(v)
 	return _u
 }
 
-// ClearVideoStorageID clears the value of the "video_storage_id" field.
-func (_u *RequestUpdateOne) ClearVideoStorageID() *RequestUpdateOne {
-	_u.mutation.ClearVideoStorageID()
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (_u *RequestUpdateOne) ClearContentStorageID() *RequestUpdateOne {
+	_u.mutation.ClearContentStorageID()
 	return _u
 }
 
-// SetVideoStorageKey sets the "video_storage_key" field.
-func (_u *RequestUpdateOne) SetVideoStorageKey(v string) *RequestUpdateOne {
-	_u.mutation.SetVideoStorageKey(v)
+// SetContentStorageKey sets the "content_storage_key" field.
+func (_u *RequestUpdateOne) SetContentStorageKey(v string) *RequestUpdateOne {
+	_u.mutation.SetContentStorageKey(v)
 	return _u
 }
 
-// SetNillableVideoStorageKey sets the "video_storage_key" field if the given value is not nil.
-func (_u *RequestUpdateOne) SetNillableVideoStorageKey(v *string) *RequestUpdateOne {
+// SetNillableContentStorageKey sets the "content_storage_key" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableContentStorageKey(v *string) *RequestUpdateOne {
 	if v != nil {
-		_u.SetVideoStorageKey(*v)
+		_u.SetContentStorageKey(*v)
 	}
 	return _u
 }
 
-// ClearVideoStorageKey clears the value of the "video_storage_key" field.
-func (_u *RequestUpdateOne) ClearVideoStorageKey() *RequestUpdateOne {
-	_u.mutation.ClearVideoStorageKey()
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (_u *RequestUpdateOne) ClearContentStorageKey() *RequestUpdateOne {
+	_u.mutation.ClearContentStorageKey()
 	return _u
 }
 
-// SetVideoSavedAt sets the "video_saved_at" field.
-func (_u *RequestUpdateOne) SetVideoSavedAt(v time.Time) *RequestUpdateOne {
-	_u.mutation.SetVideoSavedAt(v)
+// SetContentSavedAt sets the "content_saved_at" field.
+func (_u *RequestUpdateOne) SetContentSavedAt(v time.Time) *RequestUpdateOne {
+	_u.mutation.SetContentSavedAt(v)
 	return _u
 }
 
-// SetNillableVideoSavedAt sets the "video_saved_at" field if the given value is not nil.
-func (_u *RequestUpdateOne) SetNillableVideoSavedAt(v *time.Time) *RequestUpdateOne {
+// SetNillableContentSavedAt sets the "content_saved_at" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableContentSavedAt(v *time.Time) *RequestUpdateOne {
 	if v != nil {
-		_u.SetVideoSavedAt(*v)
+		_u.SetContentSavedAt(*v)
 	}
 	return _u
 }
 
-// ClearVideoSavedAt clears the value of the "video_saved_at" field.
-func (_u *RequestUpdateOne) ClearVideoSavedAt() *RequestUpdateOne {
-	_u.mutation.ClearVideoSavedAt()
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (_u *RequestUpdateOne) ClearContentSavedAt() *RequestUpdateOne {
+	_u.mutation.ClearContentSavedAt()
 	return _u
 }
 
@@ -1175,29 +1175,29 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	if _u.mutation.MetricsFirstTokenLatencyMsCleared() {
 		_spec.ClearField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64)
 	}
-	if value, ok := _u.mutation.VideoSaved(); ok {
-		_spec.SetField(request.FieldVideoSaved, field.TypeBool, value)
+	if value, ok := _u.mutation.ContentSaved(); ok {
+		_spec.SetField(request.FieldContentSaved, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.VideoStorageID(); ok {
-		_spec.SetField(request.FieldVideoStorageID, field.TypeInt, value)
+	if value, ok := _u.mutation.ContentStorageID(); ok {
+		_spec.SetField(request.FieldContentStorageID, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedVideoStorageID(); ok {
-		_spec.AddField(request.FieldVideoStorageID, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedContentStorageID(); ok {
+		_spec.AddField(request.FieldContentStorageID, field.TypeInt, value)
 	}
-	if _u.mutation.VideoStorageIDCleared() {
-		_spec.ClearField(request.FieldVideoStorageID, field.TypeInt)
+	if _u.mutation.ContentStorageIDCleared() {
+		_spec.ClearField(request.FieldContentStorageID, field.TypeInt)
 	}
-	if value, ok := _u.mutation.VideoStorageKey(); ok {
-		_spec.SetField(request.FieldVideoStorageKey, field.TypeString, value)
+	if value, ok := _u.mutation.ContentStorageKey(); ok {
+		_spec.SetField(request.FieldContentStorageKey, field.TypeString, value)
 	}
-	if _u.mutation.VideoStorageKeyCleared() {
-		_spec.ClearField(request.FieldVideoStorageKey, field.TypeString)
+	if _u.mutation.ContentStorageKeyCleared() {
+		_spec.ClearField(request.FieldContentStorageKey, field.TypeString)
 	}
-	if value, ok := _u.mutation.VideoSavedAt(); ok {
-		_spec.SetField(request.FieldVideoSavedAt, field.TypeTime, value)
+	if value, ok := _u.mutation.ContentSavedAt(); ok {
+		_spec.SetField(request.FieldContentSavedAt, field.TypeTime, value)
 	}
-	if _u.mutation.VideoSavedAtCleared() {
-		_spec.ClearField(request.FieldVideoSavedAt, field.TypeTime)
+	if _u.mutation.ContentSavedAtCleared() {
+		_spec.ClearField(request.FieldContentSavedAt, field.TypeTime)
 	}
 	if _u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{

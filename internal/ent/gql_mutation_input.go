@@ -691,10 +691,10 @@ type CreateRequestInput struct {
 	ClientIP                   *string
 	MetricsLatencyMs           *int64
 	MetricsFirstTokenLatencyMs *int64
-	VideoSaved                 *bool
-	VideoStorageID             *int
-	VideoStorageKey            *string
-	VideoSavedAt               *time.Time
+	ContentSaved               *bool
+	ContentStorageID           *int
+	ContentStorageKey          *string
+	ContentSavedAt             *time.Time
 	APIKeyID                   *int
 	ProjectID                  int
 	TraceID                    *int
@@ -739,17 +739,17 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.MetricsFirstTokenLatencyMs; v != nil {
 		m.SetMetricsFirstTokenLatencyMs(*v)
 	}
-	if v := i.VideoSaved; v != nil {
-		m.SetVideoSaved(*v)
+	if v := i.ContentSaved; v != nil {
+		m.SetContentSaved(*v)
 	}
-	if v := i.VideoStorageID; v != nil {
-		m.SetVideoStorageID(*v)
+	if v := i.ContentStorageID; v != nil {
+		m.SetContentStorageID(*v)
 	}
-	if v := i.VideoStorageKey; v != nil {
-		m.SetVideoStorageKey(*v)
+	if v := i.ContentStorageKey; v != nil {
+		m.SetContentStorageKey(*v)
 	}
-	if v := i.VideoSavedAt; v != nil {
-		m.SetVideoSavedAt(*v)
+	if v := i.ContentSavedAt; v != nil {
+		m.SetContentSavedAt(*v)
 	}
 	if v := i.APIKeyID; v != nil {
 		m.SetAPIKeyID(*v)
@@ -790,13 +790,13 @@ type UpdateRequestInput struct {
 	MetricsLatencyMs                *int64
 	ClearMetricsFirstTokenLatencyMs bool
 	MetricsFirstTokenLatencyMs      *int64
-	VideoSaved                      *bool
-	ClearVideoStorageID             bool
-	VideoStorageID                  *int
-	ClearVideoStorageKey            bool
-	VideoStorageKey                 *string
-	ClearVideoSavedAt               bool
-	VideoSavedAt                    *time.Time
+	ContentSaved                    *bool
+	ClearContentStorageID           bool
+	ContentStorageID                *int
+	ClearContentStorageKey          bool
+	ContentStorageKey               *string
+	ClearContentSavedAt             bool
+	ContentSavedAt                  *time.Time
 	ClearChannel                    bool
 	ChannelID                       *int
 }
@@ -851,26 +851,26 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.MetricsFirstTokenLatencyMs; v != nil {
 		m.SetMetricsFirstTokenLatencyMs(*v)
 	}
-	if v := i.VideoSaved; v != nil {
-		m.SetVideoSaved(*v)
+	if v := i.ContentSaved; v != nil {
+		m.SetContentSaved(*v)
 	}
-	if i.ClearVideoStorageID {
-		m.ClearVideoStorageID()
+	if i.ClearContentStorageID {
+		m.ClearContentStorageID()
 	}
-	if v := i.VideoStorageID; v != nil {
-		m.SetVideoStorageID(*v)
+	if v := i.ContentStorageID; v != nil {
+		m.SetContentStorageID(*v)
 	}
-	if i.ClearVideoStorageKey {
-		m.ClearVideoStorageKey()
+	if i.ClearContentStorageKey {
+		m.ClearContentStorageKey()
 	}
-	if v := i.VideoStorageKey; v != nil {
-		m.SetVideoStorageKey(*v)
+	if v := i.ContentStorageKey; v != nil {
+		m.SetContentStorageKey(*v)
 	}
-	if i.ClearVideoSavedAt {
-		m.ClearVideoSavedAt()
+	if i.ClearContentSavedAt {
+		m.ClearContentSavedAt()
 	}
-	if v := i.VideoSavedAt; v != nil {
-		m.SetVideoSavedAt(*v)
+	if v := i.ContentSavedAt; v != nil {
+		m.SetContentSavedAt(*v)
 	}
 	if i.ClearChannel {
 		m.ClearChannel()

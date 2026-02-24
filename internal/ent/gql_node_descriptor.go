@@ -1452,36 +1452,36 @@ func (_m *Request) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "metrics_first_token_latency_ms",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.VideoSaved); err != nil {
+	if buf, err = json.Marshal(_m.ContentSaved); err != nil {
 		return nil, err
 	}
 	node.Fields[20] = &Field{
 		Type:  "bool",
-		Name:  "video_saved",
+		Name:  "content_saved",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.VideoStorageID); err != nil {
+	if buf, err = json.Marshal(_m.ContentStorageID); err != nil {
 		return nil, err
 	}
 	node.Fields[21] = &Field{
 		Type:  "int",
-		Name:  "video_storage_id",
+		Name:  "content_storage_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.VideoStorageKey); err != nil {
+	if buf, err = json.Marshal(_m.ContentStorageKey); err != nil {
 		return nil, err
 	}
 	node.Fields[22] = &Field{
 		Type:  "string",
-		Name:  "video_storage_key",
+		Name:  "content_storage_key",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.VideoSavedAt); err != nil {
+	if buf, err = json.Marshal(_m.ContentSavedAt); err != nil {
 		return nil, err
 	}
 	node.Fields[23] = &Field{
 		Type:  "time.Time",
-		Name:  "video_saved_at",
+		Name:  "content_saved_at",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

@@ -322,10 +322,10 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldClientIP:                   {Type: field.TypeString, Column: request.FieldClientIP},
 			request.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: request.FieldMetricsLatencyMs},
 			request.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: request.FieldMetricsFirstTokenLatencyMs},
-			request.FieldVideoSaved:                 {Type: field.TypeBool, Column: request.FieldVideoSaved},
-			request.FieldVideoStorageID:             {Type: field.TypeInt, Column: request.FieldVideoStorageID},
-			request.FieldVideoStorageKey:            {Type: field.TypeString, Column: request.FieldVideoStorageKey},
-			request.FieldVideoSavedAt:               {Type: field.TypeTime, Column: request.FieldVideoSavedAt},
+			request.FieldContentSaved:               {Type: field.TypeBool, Column: request.FieldContentSaved},
+			request.FieldContentStorageID:           {Type: field.TypeInt, Column: request.FieldContentStorageID},
+			request.FieldContentStorageKey:          {Type: field.TypeString, Column: request.FieldContentStorageKey},
+			request.FieldContentSavedAt:             {Type: field.TypeTime, Column: request.FieldContentSavedAt},
 		},
 	}
 	graph.Nodes[12] = &sqlgraph.Node{
@@ -2758,24 +2758,24 @@ func (f *RequestFilter) WhereMetricsFirstTokenLatencyMs(p entql.Int64P) {
 	f.Where(p.Field(request.FieldMetricsFirstTokenLatencyMs))
 }
 
-// WhereVideoSaved applies the entql bool predicate on the video_saved field.
-func (f *RequestFilter) WhereVideoSaved(p entql.BoolP) {
-	f.Where(p.Field(request.FieldVideoSaved))
+// WhereContentSaved applies the entql bool predicate on the content_saved field.
+func (f *RequestFilter) WhereContentSaved(p entql.BoolP) {
+	f.Where(p.Field(request.FieldContentSaved))
 }
 
-// WhereVideoStorageID applies the entql int predicate on the video_storage_id field.
-func (f *RequestFilter) WhereVideoStorageID(p entql.IntP) {
-	f.Where(p.Field(request.FieldVideoStorageID))
+// WhereContentStorageID applies the entql int predicate on the content_storage_id field.
+func (f *RequestFilter) WhereContentStorageID(p entql.IntP) {
+	f.Where(p.Field(request.FieldContentStorageID))
 }
 
-// WhereVideoStorageKey applies the entql string predicate on the video_storage_key field.
-func (f *RequestFilter) WhereVideoStorageKey(p entql.StringP) {
-	f.Where(p.Field(request.FieldVideoStorageKey))
+// WhereContentStorageKey applies the entql string predicate on the content_storage_key field.
+func (f *RequestFilter) WhereContentStorageKey(p entql.StringP) {
+	f.Where(p.Field(request.FieldContentStorageKey))
 }
 
-// WhereVideoSavedAt applies the entql time.Time predicate on the video_saved_at field.
-func (f *RequestFilter) WhereVideoSavedAt(p entql.TimeP) {
-	f.Where(p.Field(request.FieldVideoSavedAt))
+// WhereContentSavedAt applies the entql time.Time predicate on the content_saved_at field.
+func (f *RequestFilter) WhereContentSavedAt(p entql.TimeP) {
+	f.Where(p.Field(request.FieldContentSavedAt))
 }
 
 // WhereHasAPIKey applies a predicate to check if query has an edge api_key.

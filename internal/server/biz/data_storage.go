@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -507,6 +508,45 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 		return key, nil
 	default:
 		return "", fmt.Errorf("unsupported storage type: %s", ds.Type)
+	}
+}
+
+// SaveDataFromReader streams data from a reader to the specified data storage.
+// It returns the storage key and the number of bytes written.
+// Database storage is not supported because it requires the full data as a string.
+func (s *DataStorageService) SaveDataFromReader(ctx context.Context, ds *ent.DataStorage, key string, r io.Reader) (string, int64, error) {
+	switch ds.Type {
+	case datastorage.TypeDatabase:
+		return "", 0, fmt.Errorf("database storage does not support streaming writes")
+	case datastorage.TypeFs, datastorage.TypeS3, datastorage.TypeGcs, datastorage.TypeWebdav:
+		fs, err := s.GetFileSystem(ctx, ds)
+		if err != nil {
+			return "", 0, fmt.Errorf("failed to get file system: %w", err)
+		}
+
+		if ds.Type == datastorage.TypeFs {
+			key = filepath.FromSlash(key)
+			if err := fs.MkdirAll(filepath.Dir(key), 0o777); err != nil {
+				return "", 0, fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+			}
+		} else if isS3PathStyle(ds) {
+			key = strings.TrimPrefix(key, "/")
+		}
+
+		f, err := fs.Create(key)
+		if err != nil {
+			return "", 0, fmt.Errorf("failed to create file: %w, key: %s", err, key)
+		}
+		defer f.Close()
+
+		n, err := io.Copy(f, r)
+		if err != nil {
+			return "", 0, fmt.Errorf("failed to write file: %w, key: %s", err, key)
+		}
+
+		return key, n, nil
+	default:
+		return "", 0, fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}
 }
 

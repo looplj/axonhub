@@ -262,58 +262,58 @@ func (_c *RequestCreate) SetNillableMetricsFirstTokenLatencyMs(v *int64) *Reques
 	return _c
 }
 
-// SetVideoSaved sets the "video_saved" field.
-func (_c *RequestCreate) SetVideoSaved(v bool) *RequestCreate {
-	_c.mutation.SetVideoSaved(v)
+// SetContentSaved sets the "content_saved" field.
+func (_c *RequestCreate) SetContentSaved(v bool) *RequestCreate {
+	_c.mutation.SetContentSaved(v)
 	return _c
 }
 
-// SetNillableVideoSaved sets the "video_saved" field if the given value is not nil.
-func (_c *RequestCreate) SetNillableVideoSaved(v *bool) *RequestCreate {
+// SetNillableContentSaved sets the "content_saved" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableContentSaved(v *bool) *RequestCreate {
 	if v != nil {
-		_c.SetVideoSaved(*v)
+		_c.SetContentSaved(*v)
 	}
 	return _c
 }
 
-// SetVideoStorageID sets the "video_storage_id" field.
-func (_c *RequestCreate) SetVideoStorageID(v int) *RequestCreate {
-	_c.mutation.SetVideoStorageID(v)
+// SetContentStorageID sets the "content_storage_id" field.
+func (_c *RequestCreate) SetContentStorageID(v int) *RequestCreate {
+	_c.mutation.SetContentStorageID(v)
 	return _c
 }
 
-// SetNillableVideoStorageID sets the "video_storage_id" field if the given value is not nil.
-func (_c *RequestCreate) SetNillableVideoStorageID(v *int) *RequestCreate {
+// SetNillableContentStorageID sets the "content_storage_id" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableContentStorageID(v *int) *RequestCreate {
 	if v != nil {
-		_c.SetVideoStorageID(*v)
+		_c.SetContentStorageID(*v)
 	}
 	return _c
 }
 
-// SetVideoStorageKey sets the "video_storage_key" field.
-func (_c *RequestCreate) SetVideoStorageKey(v string) *RequestCreate {
-	_c.mutation.SetVideoStorageKey(v)
+// SetContentStorageKey sets the "content_storage_key" field.
+func (_c *RequestCreate) SetContentStorageKey(v string) *RequestCreate {
+	_c.mutation.SetContentStorageKey(v)
 	return _c
 }
 
-// SetNillableVideoStorageKey sets the "video_storage_key" field if the given value is not nil.
-func (_c *RequestCreate) SetNillableVideoStorageKey(v *string) *RequestCreate {
+// SetNillableContentStorageKey sets the "content_storage_key" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableContentStorageKey(v *string) *RequestCreate {
 	if v != nil {
-		_c.SetVideoStorageKey(*v)
+		_c.SetContentStorageKey(*v)
 	}
 	return _c
 }
 
-// SetVideoSavedAt sets the "video_saved_at" field.
-func (_c *RequestCreate) SetVideoSavedAt(v time.Time) *RequestCreate {
-	_c.mutation.SetVideoSavedAt(v)
+// SetContentSavedAt sets the "content_saved_at" field.
+func (_c *RequestCreate) SetContentSavedAt(v time.Time) *RequestCreate {
+	_c.mutation.SetContentSavedAt(v)
 	return _c
 }
 
-// SetNillableVideoSavedAt sets the "video_saved_at" field if the given value is not nil.
-func (_c *RequestCreate) SetNillableVideoSavedAt(v *time.Time) *RequestCreate {
+// SetNillableContentSavedAt sets the "content_saved_at" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableContentSavedAt(v *time.Time) *RequestCreate {
 	if v != nil {
-		_c.SetVideoSavedAt(*v)
+		_c.SetContentSavedAt(*v)
 	}
 	return _c
 }
@@ -444,9 +444,9 @@ func (_c *RequestCreate) defaults() error {
 		v := request.DefaultClientIP
 		_c.mutation.SetClientIP(v)
 	}
-	if _, ok := _c.mutation.VideoSaved(); !ok {
-		v := request.DefaultVideoSaved
-		_c.mutation.SetVideoSaved(v)
+	if _, ok := _c.mutation.ContentSaved(); !ok {
+		v := request.DefaultContentSaved
+		_c.mutation.SetContentSaved(v)
 	}
 	return nil
 }
@@ -493,8 +493,8 @@ func (_c *RequestCreate) check() error {
 	if _, ok := _c.mutation.ClientIP(); !ok {
 		return &ValidationError{Name: "client_ip", err: errors.New(`ent: missing required field "Request.client_ip"`)}
 	}
-	if _, ok := _c.mutation.VideoSaved(); !ok {
-		return &ValidationError{Name: "video_saved", err: errors.New(`ent: missing required field "Request.video_saved"`)}
+	if _, ok := _c.mutation.ContentSaved(); !ok {
+		return &ValidationError{Name: "content_saved", err: errors.New(`ent: missing required field "Request.content_saved"`)}
 	}
 	if len(_c.mutation.ProjectIDs()) == 0 {
 		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Request.project"`)}
@@ -586,21 +586,21 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_spec.SetField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
 		_node.MetricsFirstTokenLatencyMs = &value
 	}
-	if value, ok := _c.mutation.VideoSaved(); ok {
-		_spec.SetField(request.FieldVideoSaved, field.TypeBool, value)
-		_node.VideoSaved = value
+	if value, ok := _c.mutation.ContentSaved(); ok {
+		_spec.SetField(request.FieldContentSaved, field.TypeBool, value)
+		_node.ContentSaved = value
 	}
-	if value, ok := _c.mutation.VideoStorageID(); ok {
-		_spec.SetField(request.FieldVideoStorageID, field.TypeInt, value)
-		_node.VideoStorageID = &value
+	if value, ok := _c.mutation.ContentStorageID(); ok {
+		_spec.SetField(request.FieldContentStorageID, field.TypeInt, value)
+		_node.ContentStorageID = &value
 	}
-	if value, ok := _c.mutation.VideoStorageKey(); ok {
-		_spec.SetField(request.FieldVideoStorageKey, field.TypeString, value)
-		_node.VideoStorageKey = &value
+	if value, ok := _c.mutation.ContentStorageKey(); ok {
+		_spec.SetField(request.FieldContentStorageKey, field.TypeString, value)
+		_node.ContentStorageKey = &value
 	}
-	if value, ok := _c.mutation.VideoSavedAt(); ok {
-		_spec.SetField(request.FieldVideoSavedAt, field.TypeTime, value)
-		_node.VideoSavedAt = &value
+	if value, ok := _c.mutation.ContentSavedAt(); ok {
+		_spec.SetField(request.FieldContentSavedAt, field.TypeTime, value)
+		_node.ContentSavedAt = &value
 	}
 	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -933,75 +933,75 @@ func (u *RequestUpsert) ClearMetricsFirstTokenLatencyMs() *RequestUpsert {
 	return u
 }
 
-// SetVideoSaved sets the "video_saved" field.
-func (u *RequestUpsert) SetVideoSaved(v bool) *RequestUpsert {
-	u.Set(request.FieldVideoSaved, v)
+// SetContentSaved sets the "content_saved" field.
+func (u *RequestUpsert) SetContentSaved(v bool) *RequestUpsert {
+	u.Set(request.FieldContentSaved, v)
 	return u
 }
 
-// UpdateVideoSaved sets the "video_saved" field to the value that was provided on create.
-func (u *RequestUpsert) UpdateVideoSaved() *RequestUpsert {
-	u.SetExcluded(request.FieldVideoSaved)
+// UpdateContentSaved sets the "content_saved" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateContentSaved() *RequestUpsert {
+	u.SetExcluded(request.FieldContentSaved)
 	return u
 }
 
-// SetVideoStorageID sets the "video_storage_id" field.
-func (u *RequestUpsert) SetVideoStorageID(v int) *RequestUpsert {
-	u.Set(request.FieldVideoStorageID, v)
+// SetContentStorageID sets the "content_storage_id" field.
+func (u *RequestUpsert) SetContentStorageID(v int) *RequestUpsert {
+	u.Set(request.FieldContentStorageID, v)
 	return u
 }
 
-// UpdateVideoStorageID sets the "video_storage_id" field to the value that was provided on create.
-func (u *RequestUpsert) UpdateVideoStorageID() *RequestUpsert {
-	u.SetExcluded(request.FieldVideoStorageID)
+// UpdateContentStorageID sets the "content_storage_id" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateContentStorageID() *RequestUpsert {
+	u.SetExcluded(request.FieldContentStorageID)
 	return u
 }
 
-// AddVideoStorageID adds v to the "video_storage_id" field.
-func (u *RequestUpsert) AddVideoStorageID(v int) *RequestUpsert {
-	u.Add(request.FieldVideoStorageID, v)
+// AddContentStorageID adds v to the "content_storage_id" field.
+func (u *RequestUpsert) AddContentStorageID(v int) *RequestUpsert {
+	u.Add(request.FieldContentStorageID, v)
 	return u
 }
 
-// ClearVideoStorageID clears the value of the "video_storage_id" field.
-func (u *RequestUpsert) ClearVideoStorageID() *RequestUpsert {
-	u.SetNull(request.FieldVideoStorageID)
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (u *RequestUpsert) ClearContentStorageID() *RequestUpsert {
+	u.SetNull(request.FieldContentStorageID)
 	return u
 }
 
-// SetVideoStorageKey sets the "video_storage_key" field.
-func (u *RequestUpsert) SetVideoStorageKey(v string) *RequestUpsert {
-	u.Set(request.FieldVideoStorageKey, v)
+// SetContentStorageKey sets the "content_storage_key" field.
+func (u *RequestUpsert) SetContentStorageKey(v string) *RequestUpsert {
+	u.Set(request.FieldContentStorageKey, v)
 	return u
 }
 
-// UpdateVideoStorageKey sets the "video_storage_key" field to the value that was provided on create.
-func (u *RequestUpsert) UpdateVideoStorageKey() *RequestUpsert {
-	u.SetExcluded(request.FieldVideoStorageKey)
+// UpdateContentStorageKey sets the "content_storage_key" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateContentStorageKey() *RequestUpsert {
+	u.SetExcluded(request.FieldContentStorageKey)
 	return u
 }
 
-// ClearVideoStorageKey clears the value of the "video_storage_key" field.
-func (u *RequestUpsert) ClearVideoStorageKey() *RequestUpsert {
-	u.SetNull(request.FieldVideoStorageKey)
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (u *RequestUpsert) ClearContentStorageKey() *RequestUpsert {
+	u.SetNull(request.FieldContentStorageKey)
 	return u
 }
 
-// SetVideoSavedAt sets the "video_saved_at" field.
-func (u *RequestUpsert) SetVideoSavedAt(v time.Time) *RequestUpsert {
-	u.Set(request.FieldVideoSavedAt, v)
+// SetContentSavedAt sets the "content_saved_at" field.
+func (u *RequestUpsert) SetContentSavedAt(v time.Time) *RequestUpsert {
+	u.Set(request.FieldContentSavedAt, v)
 	return u
 }
 
-// UpdateVideoSavedAt sets the "video_saved_at" field to the value that was provided on create.
-func (u *RequestUpsert) UpdateVideoSavedAt() *RequestUpsert {
-	u.SetExcluded(request.FieldVideoSavedAt)
+// UpdateContentSavedAt sets the "content_saved_at" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateContentSavedAt() *RequestUpsert {
+	u.SetExcluded(request.FieldContentSavedAt)
 	return u
 }
 
-// ClearVideoSavedAt clears the value of the "video_saved_at" field.
-func (u *RequestUpsert) ClearVideoSavedAt() *RequestUpsert {
-	u.SetNull(request.FieldVideoSavedAt)
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (u *RequestUpsert) ClearContentSavedAt() *RequestUpsert {
+	u.SetNull(request.FieldContentSavedAt)
 	return u
 }
 
@@ -1269,87 +1269,87 @@ func (u *RequestUpsertOne) ClearMetricsFirstTokenLatencyMs() *RequestUpsertOne {
 	})
 }
 
-// SetVideoSaved sets the "video_saved" field.
-func (u *RequestUpsertOne) SetVideoSaved(v bool) *RequestUpsertOne {
+// SetContentSaved sets the "content_saved" field.
+func (u *RequestUpsertOne) SetContentSaved(v bool) *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.SetVideoSaved(v)
+		s.SetContentSaved(v)
 	})
 }
 
-// UpdateVideoSaved sets the "video_saved" field to the value that was provided on create.
-func (u *RequestUpsertOne) UpdateVideoSaved() *RequestUpsertOne {
+// UpdateContentSaved sets the "content_saved" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateContentSaved() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.UpdateVideoSaved()
+		s.UpdateContentSaved()
 	})
 }
 
-// SetVideoStorageID sets the "video_storage_id" field.
-func (u *RequestUpsertOne) SetVideoStorageID(v int) *RequestUpsertOne {
+// SetContentStorageID sets the "content_storage_id" field.
+func (u *RequestUpsertOne) SetContentStorageID(v int) *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.SetVideoStorageID(v)
+		s.SetContentStorageID(v)
 	})
 }
 
-// AddVideoStorageID adds v to the "video_storage_id" field.
-func (u *RequestUpsertOne) AddVideoStorageID(v int) *RequestUpsertOne {
+// AddContentStorageID adds v to the "content_storage_id" field.
+func (u *RequestUpsertOne) AddContentStorageID(v int) *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.AddVideoStorageID(v)
+		s.AddContentStorageID(v)
 	})
 }
 
-// UpdateVideoStorageID sets the "video_storage_id" field to the value that was provided on create.
-func (u *RequestUpsertOne) UpdateVideoStorageID() *RequestUpsertOne {
+// UpdateContentStorageID sets the "content_storage_id" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateContentStorageID() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.UpdateVideoStorageID()
+		s.UpdateContentStorageID()
 	})
 }
 
-// ClearVideoStorageID clears the value of the "video_storage_id" field.
-func (u *RequestUpsertOne) ClearVideoStorageID() *RequestUpsertOne {
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (u *RequestUpsertOne) ClearContentStorageID() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.ClearVideoStorageID()
+		s.ClearContentStorageID()
 	})
 }
 
-// SetVideoStorageKey sets the "video_storage_key" field.
-func (u *RequestUpsertOne) SetVideoStorageKey(v string) *RequestUpsertOne {
+// SetContentStorageKey sets the "content_storage_key" field.
+func (u *RequestUpsertOne) SetContentStorageKey(v string) *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.SetVideoStorageKey(v)
+		s.SetContentStorageKey(v)
 	})
 }
 
-// UpdateVideoStorageKey sets the "video_storage_key" field to the value that was provided on create.
-func (u *RequestUpsertOne) UpdateVideoStorageKey() *RequestUpsertOne {
+// UpdateContentStorageKey sets the "content_storage_key" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateContentStorageKey() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.UpdateVideoStorageKey()
+		s.UpdateContentStorageKey()
 	})
 }
 
-// ClearVideoStorageKey clears the value of the "video_storage_key" field.
-func (u *RequestUpsertOne) ClearVideoStorageKey() *RequestUpsertOne {
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (u *RequestUpsertOne) ClearContentStorageKey() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.ClearVideoStorageKey()
+		s.ClearContentStorageKey()
 	})
 }
 
-// SetVideoSavedAt sets the "video_saved_at" field.
-func (u *RequestUpsertOne) SetVideoSavedAt(v time.Time) *RequestUpsertOne {
+// SetContentSavedAt sets the "content_saved_at" field.
+func (u *RequestUpsertOne) SetContentSavedAt(v time.Time) *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.SetVideoSavedAt(v)
+		s.SetContentSavedAt(v)
 	})
 }
 
-// UpdateVideoSavedAt sets the "video_saved_at" field to the value that was provided on create.
-func (u *RequestUpsertOne) UpdateVideoSavedAt() *RequestUpsertOne {
+// UpdateContentSavedAt sets the "content_saved_at" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateContentSavedAt() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.UpdateVideoSavedAt()
+		s.UpdateContentSavedAt()
 	})
 }
 
-// ClearVideoSavedAt clears the value of the "video_saved_at" field.
-func (u *RequestUpsertOne) ClearVideoSavedAt() *RequestUpsertOne {
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (u *RequestUpsertOne) ClearContentSavedAt() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
-		s.ClearVideoSavedAt()
+		s.ClearContentSavedAt()
 	})
 }
 
@@ -1783,87 +1783,87 @@ func (u *RequestUpsertBulk) ClearMetricsFirstTokenLatencyMs() *RequestUpsertBulk
 	})
 }
 
-// SetVideoSaved sets the "video_saved" field.
-func (u *RequestUpsertBulk) SetVideoSaved(v bool) *RequestUpsertBulk {
+// SetContentSaved sets the "content_saved" field.
+func (u *RequestUpsertBulk) SetContentSaved(v bool) *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.SetVideoSaved(v)
+		s.SetContentSaved(v)
 	})
 }
 
-// UpdateVideoSaved sets the "video_saved" field to the value that was provided on create.
-func (u *RequestUpsertBulk) UpdateVideoSaved() *RequestUpsertBulk {
+// UpdateContentSaved sets the "content_saved" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateContentSaved() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.UpdateVideoSaved()
+		s.UpdateContentSaved()
 	})
 }
 
-// SetVideoStorageID sets the "video_storage_id" field.
-func (u *RequestUpsertBulk) SetVideoStorageID(v int) *RequestUpsertBulk {
+// SetContentStorageID sets the "content_storage_id" field.
+func (u *RequestUpsertBulk) SetContentStorageID(v int) *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.SetVideoStorageID(v)
+		s.SetContentStorageID(v)
 	})
 }
 
-// AddVideoStorageID adds v to the "video_storage_id" field.
-func (u *RequestUpsertBulk) AddVideoStorageID(v int) *RequestUpsertBulk {
+// AddContentStorageID adds v to the "content_storage_id" field.
+func (u *RequestUpsertBulk) AddContentStorageID(v int) *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.AddVideoStorageID(v)
+		s.AddContentStorageID(v)
 	})
 }
 
-// UpdateVideoStorageID sets the "video_storage_id" field to the value that was provided on create.
-func (u *RequestUpsertBulk) UpdateVideoStorageID() *RequestUpsertBulk {
+// UpdateContentStorageID sets the "content_storage_id" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateContentStorageID() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.UpdateVideoStorageID()
+		s.UpdateContentStorageID()
 	})
 }
 
-// ClearVideoStorageID clears the value of the "video_storage_id" field.
-func (u *RequestUpsertBulk) ClearVideoStorageID() *RequestUpsertBulk {
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (u *RequestUpsertBulk) ClearContentStorageID() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.ClearVideoStorageID()
+		s.ClearContentStorageID()
 	})
 }
 
-// SetVideoStorageKey sets the "video_storage_key" field.
-func (u *RequestUpsertBulk) SetVideoStorageKey(v string) *RequestUpsertBulk {
+// SetContentStorageKey sets the "content_storage_key" field.
+func (u *RequestUpsertBulk) SetContentStorageKey(v string) *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.SetVideoStorageKey(v)
+		s.SetContentStorageKey(v)
 	})
 }
 
-// UpdateVideoStorageKey sets the "video_storage_key" field to the value that was provided on create.
-func (u *RequestUpsertBulk) UpdateVideoStorageKey() *RequestUpsertBulk {
+// UpdateContentStorageKey sets the "content_storage_key" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateContentStorageKey() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.UpdateVideoStorageKey()
+		s.UpdateContentStorageKey()
 	})
 }
 
-// ClearVideoStorageKey clears the value of the "video_storage_key" field.
-func (u *RequestUpsertBulk) ClearVideoStorageKey() *RequestUpsertBulk {
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (u *RequestUpsertBulk) ClearContentStorageKey() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.ClearVideoStorageKey()
+		s.ClearContentStorageKey()
 	})
 }
 
-// SetVideoSavedAt sets the "video_saved_at" field.
-func (u *RequestUpsertBulk) SetVideoSavedAt(v time.Time) *RequestUpsertBulk {
+// SetContentSavedAt sets the "content_saved_at" field.
+func (u *RequestUpsertBulk) SetContentSavedAt(v time.Time) *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.SetVideoSavedAt(v)
+		s.SetContentSavedAt(v)
 	})
 }
 
-// UpdateVideoSavedAt sets the "video_saved_at" field to the value that was provided on create.
-func (u *RequestUpsertBulk) UpdateVideoSavedAt() *RequestUpsertBulk {
+// UpdateContentSavedAt sets the "content_saved_at" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateContentSavedAt() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.UpdateVideoSavedAt()
+		s.UpdateContentSavedAt()
 	})
 }
 
-// ClearVideoSavedAt clears the value of the "video_saved_at" field.
-func (u *RequestUpsertBulk) ClearVideoSavedAt() *RequestUpsertBulk {
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (u *RequestUpsertBulk) ClearContentSavedAt() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
-		s.ClearVideoSavedAt()
+		s.ClearContentSavedAt()
 	})
 }
 

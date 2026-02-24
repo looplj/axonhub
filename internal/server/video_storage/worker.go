@@ -138,7 +138,7 @@ func (w *Worker) scanAndSave(ctx context.Context) error {
 		Where(
 			request.StatusIn(request.StatusProcessing, request.StatusCompleted),
 			request.FormatIn(string(llm.APIFormatOpenAIVideo), string(llm.APIFormatSeedanceVideo)),
-			request.VideoSaved(false),
+			request.ContentSaved(false),
 		).
 		Order(ent.Asc(request.FieldID)).
 		Limit(limit).
@@ -160,12 +160,12 @@ func (w *Worker) scanAndSave(ctx context.Context) error {
 func (w *Worker) processOne(ctx context.Context, ds *ent.DataStorage, req *ent.Request) error {
 	var videoURL string
 
-	// First try to parse cached snapshot (if present).
-	if s, err := extractVideoURLFromResponseBody(req.ResponseBody); err == nil && strings.TrimSpace(s) != "" {
-		videoURL = s
+	// First try to parse cached snapshot (unified VideoResponse format stored by outbound transformer).
+	if v, err := extractVideoURLFromResponseBody(req.ResponseBody); err == nil && strings.TrimSpace(v) != "" {
+		videoURL = v
 	}
 
-	// If missing, poll provider once to refresh snapshot.
+	// If missing, poll provider once to refresh snapshot via outbound transformer.
 	if strings.TrimSpace(videoURL) == "" {
 		video, err := w.videoService.GetTask(ctx, req.ID)
 		if err != nil {
@@ -187,23 +187,29 @@ func (w *Worker) processOne(ctx context.Context, ds *ent.DataStorage, req *ent.R
 	downloadCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
-	data, filename, err := downloadVideo(downloadCtx, videoURL)
+	resp, filename, err := openVideoStream(downloadCtx, videoURL)
 	if err != nil {
 		return err
 	}
+	defer resp.Close()
+
+	// Limit to 512MB to avoid OOM for pathological URLs.
+	const maxBytes = 512 * 1024 * 1024
+	reader := io.LimitReader(resp, maxBytes)
 
 	storageKey := GenerateVideoKey(req.ProjectID, req.ID, filename)
 
-	if _, err := w.dataStorageService.SaveData(ctx, ds, storageKey, data); err != nil {
+	_, n, err := w.dataStorageService.SaveDataFromReader(ctx, ds, storageKey, reader)
+	if err != nil {
 		return fmt.Errorf("failed to save video to storage: %w", err)
 	}
 
 	now := xtime.UTCNow()
 	_, err = w.ent.Request.UpdateOneID(req.ID).
-		SetVideoSaved(true).
-		SetVideoStorageID(ds.ID).
-		SetVideoStorageKey(storageKey).
-		SetVideoSavedAt(now).
+		SetContentSaved(true).
+		SetContentStorageID(ds.ID).
+		SetContentStorageKey(storageKey).
+		SetContentSavedAt(now).
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update request video saved status: %w", err)
@@ -213,7 +219,7 @@ func (w *Worker) processOne(ctx context.Context, ds *ent.DataStorage, req *ent.R
 		log.Int("request_id", req.ID),
 		log.Int("data_storage_id", ds.ID),
 		log.String("key", storageKey),
-		log.Int("size", len(data)),
+		log.Int64("size", n),
 	)
 
 	return nil
@@ -228,38 +234,24 @@ func GenerateVideoKey(projectID, requestID int, filename string) string {
 	return fmt.Sprintf("/%d/requests/%d/video/%s", projectID, requestID, name)
 }
 
+// extractVideoURLFromResponseBody parses the unified VideoResponse format
+// stored by the outbound transformer to extract the video URL.
 func extractVideoURLFromResponseBody(raw []byte) (string, error) {
 	if len(raw) == 0 {
 		return "", nil
 	}
 
 	var v llm.VideoResponse
-	if err := json.Unmarshal(raw, &v); err == nil {
-		return v.VideoURL, nil
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return "", err
 	}
 
-	// Some responses may be stored in provider/raw format. Try common shapes:
-	// - OpenAI: { "video_url": "..." }
-	// - Seedance: { "content": { "video_url": "..." } }
-	var obj map[string]any
-	if err := json.Unmarshal(raw, &obj); err != nil {
-		return "", nil
-	}
-
-	if s, ok := obj["video_url"].(string); ok {
-		return s, nil
-	}
-
-	if c, ok := obj["content"].(map[string]any); ok {
-		if s, ok := c["video_url"].(string); ok {
-			return s, nil
-		}
-	}
-
-	return "", nil
+	return v.VideoURL, nil
 }
 
-func downloadVideo(ctx context.Context, url string) ([]byte, string, error) {
+// openVideoStream opens an HTTP GET to the video URL and returns the response body
+// as an io.ReadCloser for streaming. The caller must close the returned reader.
+func openVideoStream(ctx context.Context, url string) (io.ReadCloser, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create request: %w", err)
@@ -269,23 +261,14 @@ func downloadVideo(ctx context.Context, url string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to download video: %w", err)
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
 
 	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
 		return nil, "", fmt.Errorf("failed to download video: HTTP %d", resp.StatusCode)
 	}
 
-	// Limit to 512MB to avoid OOM for pathological URLs.
-	const maxBytes = 512 * 1024 * 1024
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes))
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to read video: %w", err)
-	}
-
 	filename := filenameFromResponse(resp, url)
-	return body, filename, nil
+	return resp.Body, filename, nil
 }
 
 func filenameFromResponse(resp *http.Response, fallbackURL string) string {

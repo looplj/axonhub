@@ -93,25 +93,25 @@ func (Request) Fields() []ent.Field {
 		// First token latency in milliseconds (only for streaming requests)
 		field.Int64("metrics_first_token_latency_ms").Optional().Nillable(),
 
-		// VideoSaved indicates whether the generated video has been downloaded and saved to external storage.
-		field.Bool("video_saved").
+		// ContentSaved indicates whether the generated content (e.g. video, audio) has been downloaded and saved to external storage.
+		field.Bool("content_saved").
 			Default(false).
-			Comment("whether the generated video has been saved to external storage"),
-		// VideoStorageID is the data storage ID used to save the generated video file.
-		field.Int("video_storage_id").
+			Comment("whether the generated content has been saved to external storage"),
+		// ContentStorageID is the data storage ID used to save the generated content file.
+		field.Int("content_storage_id").
 			Optional().
 			Nillable().
-			Comment("data storage id used to save the video file"),
-		// VideoStorageKey is the object key/path of the saved video in the data storage.
-		field.String("video_storage_key").
+			Comment("data storage id used to save the content file"),
+		// ContentStorageKey is the object key/path of the saved content in the data storage.
+		field.String("content_storage_key").
 			Optional().
 			Nillable().
-			Comment("storage key/path of the saved video file"),
-		// VideoSavedAt is the timestamp when the video file is saved.
-		field.Time("video_saved_at").
+			Comment("storage key/path of the saved content file"),
+		// ContentSavedAt is the timestamp when the content file is saved.
+		field.Time("content_saved_at").
 			Optional().
 			Nillable().
-			Comment("when the video file was saved"),
+			Comment("when the content file was saved"),
 	}
 }
 

@@ -64,14 +64,14 @@ type Request struct {
 	MetricsLatencyMs *int64 `json:"metrics_latency_ms,omitempty"`
 	// MetricsFirstTokenLatencyMs holds the value of the "metrics_first_token_latency_ms" field.
 	MetricsFirstTokenLatencyMs *int64 `json:"metrics_first_token_latency_ms,omitempty"`
-	// whether the generated video has been saved to external storage
-	VideoSaved bool `json:"video_saved,omitempty"`
-	// data storage id used to save the video file
-	VideoStorageID *int `json:"video_storage_id,omitempty"`
-	// storage key/path of the saved video file
-	VideoStorageKey *string `json:"video_storage_key,omitempty"`
-	// when the video file was saved
-	VideoSavedAt *time.Time `json:"video_saved_at,omitempty"`
+	// whether the generated content has been saved to external storage
+	ContentSaved bool `json:"content_saved,omitempty"`
+	// data storage id used to save the content file
+	ContentStorageID *int `json:"content_storage_id,omitempty"`
+	// storage key/path of the saved content file
+	ContentStorageKey *string `json:"content_storage_key,omitempty"`
+	// when the content file was saved
+	ContentSavedAt *time.Time `json:"content_saved_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
 	Edges        RequestEdges `json:"edges"`
@@ -184,13 +184,13 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case request.FieldRequestHeaders, request.FieldRequestBody, request.FieldResponseBody, request.FieldResponseChunks:
 			values[i] = new([]byte)
-		case request.FieldStream, request.FieldVideoSaved:
+		case request.FieldStream, request.FieldContentSaved:
 			values[i] = new(sql.NullBool)
-		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldVideoStorageID:
+		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldContentStorageID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldVideoStorageKey:
+		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
 			values[i] = new(sql.NullString)
-		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldVideoSavedAt:
+		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldContentSavedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -343,32 +343,32 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				_m.MetricsFirstTokenLatencyMs = new(int64)
 				*_m.MetricsFirstTokenLatencyMs = value.Int64
 			}
-		case request.FieldVideoSaved:
+		case request.FieldContentSaved:
 			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field video_saved", values[i])
+				return fmt.Errorf("unexpected type %T for field content_saved", values[i])
 			} else if value.Valid {
-				_m.VideoSaved = value.Bool
+				_m.ContentSaved = value.Bool
 			}
-		case request.FieldVideoStorageID:
+		case request.FieldContentStorageID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field video_storage_id", values[i])
+				return fmt.Errorf("unexpected type %T for field content_storage_id", values[i])
 			} else if value.Valid {
-				_m.VideoStorageID = new(int)
-				*_m.VideoStorageID = int(value.Int64)
+				_m.ContentStorageID = new(int)
+				*_m.ContentStorageID = int(value.Int64)
 			}
-		case request.FieldVideoStorageKey:
+		case request.FieldContentStorageKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field video_storage_key", values[i])
+				return fmt.Errorf("unexpected type %T for field content_storage_key", values[i])
 			} else if value.Valid {
-				_m.VideoStorageKey = new(string)
-				*_m.VideoStorageKey = value.String
+				_m.ContentStorageKey = new(string)
+				*_m.ContentStorageKey = value.String
 			}
-		case request.FieldVideoSavedAt:
+		case request.FieldContentSavedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field video_saved_at", values[i])
+				return fmt.Errorf("unexpected type %T for field content_saved_at", values[i])
 			} else if value.Valid {
-				_m.VideoSavedAt = new(time.Time)
-				*_m.VideoSavedAt = value.Time
+				_m.ContentSavedAt = new(time.Time)
+				*_m.ContentSavedAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -505,21 +505,21 @@ func (_m *Request) String() string {
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
-	builder.WriteString("video_saved=")
-	builder.WriteString(fmt.Sprintf("%v", _m.VideoSaved))
+	builder.WriteString("content_saved=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ContentSaved))
 	builder.WriteString(", ")
-	if v := _m.VideoStorageID; v != nil {
-		builder.WriteString("video_storage_id=")
+	if v := _m.ContentStorageID; v != nil {
+		builder.WriteString("content_storage_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
-	if v := _m.VideoStorageKey; v != nil {
-		builder.WriteString("video_storage_key=")
+	if v := _m.ContentStorageKey; v != nil {
+		builder.WriteString("content_storage_key=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")
-	if v := _m.VideoSavedAt; v != nil {
-		builder.WriteString("video_saved_at=")
+	if v := _m.ContentSavedAt; v != nil {
+		builder.WriteString("content_saved_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteByte(')')

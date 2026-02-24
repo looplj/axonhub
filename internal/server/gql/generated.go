@@ -1009,6 +1009,10 @@ type ComplexityRoot struct {
 		Channel                    func(childComplexity int) int
 		ChannelID                  func(childComplexity int) int
 		ClientIP                   func(childComplexity int) int
+		ContentSaved               func(childComplexity int) int
+		ContentSavedAt             func(childComplexity int) int
+		ContentStorageID           func(childComplexity int) int
+		ContentStorageKey          func(childComplexity int) int
 		CreatedAt                  func(childComplexity int) int
 		DataStorage                func(childComplexity int) int
 		DataStorageID              func(childComplexity int) int
@@ -1032,10 +1036,6 @@ type ComplexityRoot struct {
 		TraceID                    func(childComplexity int) int
 		UpdatedAt                  func(childComplexity int) int
 		UsageLogs                  func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
-		VideoSaved                 func(childComplexity int) int
-		VideoSavedAt               func(childComplexity int) int
-		VideoStorageID             func(childComplexity int) int
-		VideoStorageKey            func(childComplexity int) int
 	}
 
 	RequestConnection struct {
@@ -6097,6 +6097,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.ClientIP(childComplexity), true
+	case "Request.contentSaved":
+		if e.complexity.Request.ContentSaved == nil {
+			break
+		}
+
+		return e.complexity.Request.ContentSaved(childComplexity), true
+	case "Request.contentSavedAt":
+		if e.complexity.Request.ContentSavedAt == nil {
+			break
+		}
+
+		return e.complexity.Request.ContentSavedAt(childComplexity), true
+	case "Request.contentStorageID":
+		if e.complexity.Request.ContentStorageID == nil {
+			break
+		}
+
+		return e.complexity.Request.ContentStorageID(childComplexity), true
+	case "Request.contentStorageKey":
+		if e.complexity.Request.ContentStorageKey == nil {
+			break
+		}
+
+		return e.complexity.Request.ContentStorageKey(childComplexity), true
 	case "Request.createdAt":
 		if e.complexity.Request.CreatedAt == nil {
 			break
@@ -6245,30 +6269,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.UsageLogs(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.UsageLogOrder), args["where"].(*ent.UsageLogWhereInput)), true
-	case "Request.videoSaved":
-		if e.complexity.Request.VideoSaved == nil {
-			break
-		}
-
-		return e.complexity.Request.VideoSaved(childComplexity), true
-	case "Request.videoSavedAt":
-		if e.complexity.Request.VideoSavedAt == nil {
-			break
-		}
-
-		return e.complexity.Request.VideoSavedAt(childComplexity), true
-	case "Request.videoStorageID":
-		if e.complexity.Request.VideoStorageID == nil {
-			break
-		}
-
-		return e.complexity.Request.VideoStorageID(childComplexity), true
-	case "Request.videoStorageKey":
-		if e.complexity.Request.VideoStorageKey == nil {
-			break
-		}
-
-		return e.complexity.Request.VideoStorageKey(childComplexity), true
 
 	case "RequestConnection.edges":
 		if e.complexity.RequestConnection.Edges == nil {
@@ -33334,14 +33334,14 @@ func (ec *executionContext) fieldContext_Request_metricsFirstTokenLatencyMs(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _Request_videoSaved(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+func (ec *executionContext) _Request_contentSaved(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Request_videoSaved,
+		ec.fieldContext_Request_contentSaved,
 		func(ctx context.Context) (any, error) {
-			return obj.VideoSaved, nil
+			return obj.ContentSaved, nil
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -33350,7 +33350,7 @@ func (ec *executionContext) _Request_videoSaved(ctx context.Context, field graph
 	)
 }
 
-func (ec *executionContext) fieldContext_Request_videoSaved(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Request_contentSaved(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Request",
 		Field:      field,
@@ -33363,14 +33363,14 @@ func (ec *executionContext) fieldContext_Request_videoSaved(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Request_videoStorageID(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+func (ec *executionContext) _Request_contentStorageID(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Request_videoStorageID,
+		ec.fieldContext_Request_contentStorageID,
 		func(ctx context.Context) (any, error) {
-			return obj.VideoStorageID, nil
+			return obj.ContentStorageID, nil
 		},
 		nil,
 		ec.marshalOInt2ᚖint,
@@ -33379,7 +33379,7 @@ func (ec *executionContext) _Request_videoStorageID(ctx context.Context, field g
 	)
 }
 
-func (ec *executionContext) fieldContext_Request_videoStorageID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Request_contentStorageID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Request",
 		Field:      field,
@@ -33392,14 +33392,14 @@ func (ec *executionContext) fieldContext_Request_videoStorageID(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Request_videoStorageKey(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+func (ec *executionContext) _Request_contentStorageKey(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Request_videoStorageKey,
+		ec.fieldContext_Request_contentStorageKey,
 		func(ctx context.Context) (any, error) {
-			return obj.VideoStorageKey, nil
+			return obj.ContentStorageKey, nil
 		},
 		nil,
 		ec.marshalOString2ᚖstring,
@@ -33408,7 +33408,7 @@ func (ec *executionContext) _Request_videoStorageKey(ctx context.Context, field 
 	)
 }
 
-func (ec *executionContext) fieldContext_Request_videoStorageKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Request_contentStorageKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Request",
 		Field:      field,
@@ -33421,14 +33421,14 @@ func (ec *executionContext) fieldContext_Request_videoStorageKey(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Request_videoSavedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+func (ec *executionContext) _Request_contentSavedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Request_videoSavedAt,
+		ec.fieldContext_Request_contentSavedAt,
 		func(ctx context.Context) (any, error) {
-			return obj.VideoSavedAt, nil
+			return obj.ContentSavedAt, nil
 		},
 		nil,
 		ec.marshalOTime2ᚖtimeᚐTime,
@@ -33437,7 +33437,7 @@ func (ec *executionContext) _Request_videoSavedAt(ctx context.Context, field gra
 	)
 }
 
-func (ec *executionContext) fieldContext_Request_videoSavedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Request_contentSavedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Request",
 		Field:      field,
@@ -34034,14 +34034,14 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_Request_metricsFirstTokenLatencyMs(ctx, field)
-			case "videoSaved":
-				return ec.fieldContext_Request_videoSaved(ctx, field)
-			case "videoStorageID":
-				return ec.fieldContext_Request_videoStorageID(ctx, field)
-			case "videoStorageKey":
-				return ec.fieldContext_Request_videoStorageKey(ctx, field)
-			case "videoSavedAt":
-				return ec.fieldContext_Request_videoSavedAt(ctx, field)
+			case "contentSaved":
+				return ec.fieldContext_Request_contentSaved(ctx, field)
+			case "contentStorageID":
+				return ec.fieldContext_Request_contentStorageID(ctx, field)
+			case "contentStorageKey":
+				return ec.fieldContext_Request_contentStorageKey(ctx, field)
+			case "contentSavedAt":
+				return ec.fieldContext_Request_contentSavedAt(ctx, field)
 			case "apiKey":
 				return ec.fieldContext_Request_apiKey(ctx, field)
 			case "project":
@@ -34709,14 +34709,14 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_Request_metricsFirstTokenLatencyMs(ctx, field)
-			case "videoSaved":
-				return ec.fieldContext_Request_videoSaved(ctx, field)
-			case "videoStorageID":
-				return ec.fieldContext_Request_videoStorageID(ctx, field)
-			case "videoStorageKey":
-				return ec.fieldContext_Request_videoStorageKey(ctx, field)
-			case "videoSavedAt":
-				return ec.fieldContext_Request_videoSavedAt(ctx, field)
+			case "contentSaved":
+				return ec.fieldContext_Request_contentSaved(ctx, field)
+			case "contentStorageID":
+				return ec.fieldContext_Request_contentStorageID(ctx, field)
+			case "contentStorageKey":
+				return ec.fieldContext_Request_contentStorageKey(ctx, field)
+			case "contentSavedAt":
+				return ec.fieldContext_Request_contentSavedAt(ctx, field)
 			case "apiKey":
 				return ec.fieldContext_Request_apiKey(ctx, field)
 			case "project":
@@ -41728,14 +41728,14 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_metricsLatencyMs(ctx, field)
 			case "metricsFirstTokenLatencyMs":
 				return ec.fieldContext_Request_metricsFirstTokenLatencyMs(ctx, field)
-			case "videoSaved":
-				return ec.fieldContext_Request_videoSaved(ctx, field)
-			case "videoStorageID":
-				return ec.fieldContext_Request_videoStorageID(ctx, field)
-			case "videoStorageKey":
-				return ec.fieldContext_Request_videoStorageKey(ctx, field)
-			case "videoSavedAt":
-				return ec.fieldContext_Request_videoSavedAt(ctx, field)
+			case "contentSaved":
+				return ec.fieldContext_Request_contentSaved(ctx, field)
+			case "contentStorageID":
+				return ec.fieldContext_Request_contentStorageID(ctx, field)
+			case "contentStorageKey":
+				return ec.fieldContext_Request_contentStorageKey(ctx, field)
+			case "contentSavedAt":
+				return ec.fieldContext_Request_contentSavedAt(ctx, field)
 			case "apiKey":
 				return ec.fieldContext_Request_apiKey(ctx, field)
 			case "project":
@@ -51737,7 +51737,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "videoSaved", "videoStorageID", "videoStorageKey", "videoSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
+	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -51835,34 +51835,34 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.MetricsFirstTokenLatencyMs = data
-		case "videoSaved":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSaved"))
+		case "contentSaved":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSaved"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSaved = data
-		case "videoStorageID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageID"))
+			it.ContentSaved = data
+		case "contentStorageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageID"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageID = data
-		case "videoStorageKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKey"))
+			it.ContentStorageID = data
+		case "contentStorageKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKey"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKey = data
-		case "videoSavedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAt"))
+			it.ContentStorageKey = data
+		case "contentSavedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAt = data
+			it.ContentSavedAt = data
 		case "apiKeyID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -58430,7 +58430,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "videoSaved", "videoSavedNEQ", "videoStorageID", "videoStorageIDNEQ", "videoStorageIDIn", "videoStorageIDNotIn", "videoStorageIDGT", "videoStorageIDGTE", "videoStorageIDLT", "videoStorageIDLTE", "videoStorageIDIsNil", "videoStorageIDNotNil", "videoStorageKey", "videoStorageKeyNEQ", "videoStorageKeyIn", "videoStorageKeyNotIn", "videoStorageKeyGT", "videoStorageKeyGTE", "videoStorageKeyLT", "videoStorageKeyLTE", "videoStorageKeyContains", "videoStorageKeyHasPrefix", "videoStorageKeyHasSuffix", "videoStorageKeyIsNil", "videoStorageKeyNotNil", "videoStorageKeyEqualFold", "videoStorageKeyContainsFold", "videoSavedAt", "videoSavedAtNEQ", "videoSavedAtIn", "videoSavedAtNotIn", "videoSavedAtGT", "videoSavedAtGTE", "videoSavedAtLT", "videoSavedAtLTE", "videoSavedAtIsNil", "videoSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59522,265 +59522,265 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.MetricsFirstTokenLatencyMsNotNil = data
-		case "videoSaved":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSaved"))
+		case "contentSaved":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSaved"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSaved = data
-		case "videoSavedNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedNEQ"))
+			it.ContentSaved = data
+		case "contentSavedNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedNEQ"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedNEQ = data
-		case "videoStorageID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageID"))
+			it.ContentSavedNEQ = data
+		case "contentStorageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageID"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageID = data
-		case "videoStorageIDNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDNEQ"))
+			it.ContentStorageID = data
+		case "contentStorageIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDNEQ"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDNEQ = data
-		case "videoStorageIDIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDIn"))
+			it.ContentStorageIDNEQ = data
+		case "contentStorageIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDIn = data
-		case "videoStorageIDNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDNotIn"))
+			it.ContentStorageIDIn = data
+		case "contentStorageIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDNotIn"))
 			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDNotIn = data
-		case "videoStorageIDGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDGT"))
+			it.ContentStorageIDNotIn = data
+		case "contentStorageIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDGT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDGT = data
-		case "videoStorageIDGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDGTE"))
+			it.ContentStorageIDGT = data
+		case "contentStorageIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDGTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDGTE = data
-		case "videoStorageIDLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDLT"))
+			it.ContentStorageIDGTE = data
+		case "contentStorageIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDLT"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDLT = data
-		case "videoStorageIDLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDLTE"))
+			it.ContentStorageIDLT = data
+		case "contentStorageIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDLTE"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDLTE = data
-		case "videoStorageIDIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDIsNil"))
+			it.ContentStorageIDLTE = data
+		case "contentStorageIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDIsNil"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDIsNil = data
-		case "videoStorageIDNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageIDNotNil"))
+			it.ContentStorageIDIsNil = data
+		case "contentStorageIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageIDNotNil"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageIDNotNil = data
-		case "videoStorageKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKey"))
+			it.ContentStorageIDNotNil = data
+		case "contentStorageKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKey"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKey = data
-		case "videoStorageKeyNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyNEQ"))
+			it.ContentStorageKey = data
+		case "contentStorageKeyNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyNEQ"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyNEQ = data
-		case "videoStorageKeyIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyIn"))
+			it.ContentStorageKeyNEQ = data
+		case "contentStorageKeyIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyIn = data
-		case "videoStorageKeyNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyNotIn"))
+			it.ContentStorageKeyIn = data
+		case "contentStorageKeyNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyNotIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyNotIn = data
-		case "videoStorageKeyGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyGT"))
+			it.ContentStorageKeyNotIn = data
+		case "contentStorageKeyGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyGT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyGT = data
-		case "videoStorageKeyGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyGTE"))
+			it.ContentStorageKeyGT = data
+		case "contentStorageKeyGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyGTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyGTE = data
-		case "videoStorageKeyLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyLT"))
+			it.ContentStorageKeyGTE = data
+		case "contentStorageKeyLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyLT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyLT = data
-		case "videoStorageKeyLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyLTE"))
+			it.ContentStorageKeyLT = data
+		case "contentStorageKeyLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyLTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyLTE = data
-		case "videoStorageKeyContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyContains"))
+			it.ContentStorageKeyLTE = data
+		case "contentStorageKeyContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyContains = data
-		case "videoStorageKeyHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyHasPrefix"))
+			it.ContentStorageKeyContains = data
+		case "contentStorageKeyHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyHasPrefix = data
-		case "videoStorageKeyHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyHasSuffix"))
+			it.ContentStorageKeyHasPrefix = data
+		case "contentStorageKeyHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyHasSuffix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyHasSuffix = data
-		case "videoStorageKeyIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyIsNil"))
+			it.ContentStorageKeyHasSuffix = data
+		case "contentStorageKeyIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyIsNil"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyIsNil = data
-		case "videoStorageKeyNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyNotNil"))
+			it.ContentStorageKeyIsNil = data
+		case "contentStorageKeyNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyNotNil"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyNotNil = data
-		case "videoStorageKeyEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyEqualFold"))
+			it.ContentStorageKeyNotNil = data
+		case "contentStorageKeyEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyEqualFold = data
-		case "videoStorageKeyContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKeyContainsFold"))
+			it.ContentStorageKeyEqualFold = data
+		case "contentStorageKeyContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKeyContainsFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKeyContainsFold = data
-		case "videoSavedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAt"))
+			it.ContentStorageKeyContainsFold = data
+		case "contentSavedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAt = data
-		case "videoSavedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtNEQ"))
+			it.ContentSavedAt = data
+		case "contentSavedAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtNEQ"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtNEQ = data
-		case "videoSavedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtIn"))
+			it.ContentSavedAtNEQ = data
+		case "contentSavedAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtIn"))
 			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtIn = data
-		case "videoSavedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtNotIn"))
+			it.ContentSavedAtIn = data
+		case "contentSavedAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtNotIn"))
 			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtNotIn = data
-		case "videoSavedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtGT"))
+			it.ContentSavedAtNotIn = data
+		case "contentSavedAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtGT"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtGT = data
-		case "videoSavedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtGTE"))
+			it.ContentSavedAtGT = data
+		case "contentSavedAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtGTE"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtGTE = data
-		case "videoSavedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtLT"))
+			it.ContentSavedAtGTE = data
+		case "contentSavedAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtLT"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtLT = data
-		case "videoSavedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtLTE"))
+			it.ContentSavedAtLT = data
+		case "contentSavedAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtLTE"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtLTE = data
-		case "videoSavedAtIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtIsNil"))
+			it.ContentSavedAtLTE = data
+		case "contentSavedAtIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtIsNil"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtIsNil = data
-		case "videoSavedAtNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAtNotNil"))
+			it.ContentSavedAtIsNil = data
+		case "contentSavedAtNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAtNotNil"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAtNotNil = data
+			it.ContentSavedAtNotNil = data
 		case "hasAPIKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAPIKey"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -63134,7 +63134,7 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "videoSaved", "videoStorageID", "clearVideoStorageID", "videoStorageKey", "clearVideoStorageKey", "videoSavedAt", "clearVideoSavedAt", "channelID", "clearChannel"}
+	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "contentSaved", "contentStorageID", "clearContentStorageID", "contentStorageKey", "clearContentStorageKey", "contentSavedAt", "clearContentSavedAt", "channelID", "clearChannel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63253,55 +63253,55 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ClearMetricsFirstTokenLatencyMs = data
-		case "videoSaved":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSaved"))
+		case "contentSaved":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSaved"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSaved = data
-		case "videoStorageID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageID"))
+			it.ContentSaved = data
+		case "contentStorageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageID"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageID = data
-		case "clearVideoStorageID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearVideoStorageID"))
+			it.ContentStorageID = data
+		case "clearContentStorageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearContentStorageID"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ClearVideoStorageID = data
-		case "videoStorageKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoStorageKey"))
+			it.ClearContentStorageID = data
+		case "contentStorageKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentStorageKey"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoStorageKey = data
-		case "clearVideoStorageKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearVideoStorageKey"))
+			it.ContentStorageKey = data
+		case "clearContentStorageKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearContentStorageKey"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ClearVideoStorageKey = data
-		case "videoSavedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("videoSavedAt"))
+			it.ClearContentStorageKey = data
+		case "contentSavedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentSavedAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VideoSavedAt = data
-		case "clearVideoSavedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearVideoSavedAt"))
+			it.ContentSavedAt = data
+		case "clearContentSavedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearContentSavedAt"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ClearVideoSavedAt = data
+			it.ClearContentSavedAt = data
 		case "channelID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -76894,17 +76894,17 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Request_metricsLatencyMs(ctx, field, obj)
 		case "metricsFirstTokenLatencyMs":
 			out.Values[i] = ec._Request_metricsFirstTokenLatencyMs(ctx, field, obj)
-		case "videoSaved":
-			out.Values[i] = ec._Request_videoSaved(ctx, field, obj)
+		case "contentSaved":
+			out.Values[i] = ec._Request_contentSaved(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "videoStorageID":
-			out.Values[i] = ec._Request_videoStorageID(ctx, field, obj)
-		case "videoStorageKey":
-			out.Values[i] = ec._Request_videoStorageKey(ctx, field, obj)
-		case "videoSavedAt":
-			out.Values[i] = ec._Request_videoSavedAt(ctx, field, obj)
+		case "contentStorageID":
+			out.Values[i] = ec._Request_contentStorageID(ctx, field, obj)
+		case "contentStorageKey":
+			out.Values[i] = ec._Request_contentStorageKey(ctx, field, obj)
+		case "contentSavedAt":
+			out.Values[i] = ec._Request_contentSavedAt(ctx, field, obj)
 		case "apiKey":
 			field := field
 

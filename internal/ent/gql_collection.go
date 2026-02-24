@@ -3410,25 +3410,25 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldMetricsFirstTokenLatencyMs)
 				fieldSeen[request.FieldMetricsFirstTokenLatencyMs] = struct{}{}
 			}
-		case "videoSaved":
-			if _, ok := fieldSeen[request.FieldVideoSaved]; !ok {
-				selectedFields = append(selectedFields, request.FieldVideoSaved)
-				fieldSeen[request.FieldVideoSaved] = struct{}{}
+		case "contentSaved":
+			if _, ok := fieldSeen[request.FieldContentSaved]; !ok {
+				selectedFields = append(selectedFields, request.FieldContentSaved)
+				fieldSeen[request.FieldContentSaved] = struct{}{}
 			}
-		case "videoStorageID":
-			if _, ok := fieldSeen[request.FieldVideoStorageID]; !ok {
-				selectedFields = append(selectedFields, request.FieldVideoStorageID)
-				fieldSeen[request.FieldVideoStorageID] = struct{}{}
+		case "contentStorageID":
+			if _, ok := fieldSeen[request.FieldContentStorageID]; !ok {
+				selectedFields = append(selectedFields, request.FieldContentStorageID)
+				fieldSeen[request.FieldContentStorageID] = struct{}{}
 			}
-		case "videoStorageKey":
-			if _, ok := fieldSeen[request.FieldVideoStorageKey]; !ok {
-				selectedFields = append(selectedFields, request.FieldVideoStorageKey)
-				fieldSeen[request.FieldVideoStorageKey] = struct{}{}
+		case "contentStorageKey":
+			if _, ok := fieldSeen[request.FieldContentStorageKey]; !ok {
+				selectedFields = append(selectedFields, request.FieldContentStorageKey)
+				fieldSeen[request.FieldContentStorageKey] = struct{}{}
 			}
-		case "videoSavedAt":
-			if _, ok := fieldSeen[request.FieldVideoSavedAt]; !ok {
-				selectedFields = append(selectedFields, request.FieldVideoSavedAt)
-				fieldSeen[request.FieldVideoSavedAt] = struct{}{}
+		case "contentSavedAt":
+			if _, ok := fieldSeen[request.FieldContentSavedAt]; !ok {
+				selectedFields = append(selectedFields, request.FieldContentSavedAt)
+				fieldSeen[request.FieldContentSavedAt] = struct{}{}
 			}
 		case "id":
 		case "__typename":

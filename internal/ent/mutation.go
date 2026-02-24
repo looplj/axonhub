@@ -12384,11 +12384,11 @@ type RequestMutation struct {
 	addmetrics_latency_ms             *int64
 	metrics_first_token_latency_ms    *int64
 	addmetrics_first_token_latency_ms *int64
-	video_saved                       *bool
-	video_storage_id                  *int
-	addvideo_storage_id               *int
-	video_storage_key                 *string
-	video_saved_at                    *time.Time
+	content_saved                     *bool
+	content_storage_id                *int
+	addcontent_storage_id             *int
+	content_storage_key               *string
+	content_saved_at                  *time.Time
 	clearedFields                     map[string]struct{}
 	api_key                           *int
 	clearedapi_key                    bool
@@ -13464,208 +13464,208 @@ func (m *RequestMutation) ResetMetricsFirstTokenLatencyMs() {
 	delete(m.clearedFields, request.FieldMetricsFirstTokenLatencyMs)
 }
 
-// SetVideoSaved sets the "video_saved" field.
-func (m *RequestMutation) SetVideoSaved(b bool) {
-	m.video_saved = &b
+// SetContentSaved sets the "content_saved" field.
+func (m *RequestMutation) SetContentSaved(b bool) {
+	m.content_saved = &b
 }
 
-// VideoSaved returns the value of the "video_saved" field in the mutation.
-func (m *RequestMutation) VideoSaved() (r bool, exists bool) {
-	v := m.video_saved
+// ContentSaved returns the value of the "content_saved" field in the mutation.
+func (m *RequestMutation) ContentSaved() (r bool, exists bool) {
+	v := m.content_saved
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldVideoSaved returns the old "video_saved" field's value of the Request entity.
+// OldContentSaved returns the old "content_saved" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldVideoSaved(ctx context.Context) (v bool, err error) {
+func (m *RequestMutation) OldContentSaved(ctx context.Context) (v bool, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldVideoSaved is only allowed on UpdateOne operations")
+		return v, errors.New("OldContentSaved is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldVideoSaved requires an ID field in the mutation")
+		return v, errors.New("OldContentSaved requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldVideoSaved: %w", err)
+		return v, fmt.Errorf("querying old value for OldContentSaved: %w", err)
 	}
-	return oldValue.VideoSaved, nil
+	return oldValue.ContentSaved, nil
 }
 
-// ResetVideoSaved resets all changes to the "video_saved" field.
-func (m *RequestMutation) ResetVideoSaved() {
-	m.video_saved = nil
+// ResetContentSaved resets all changes to the "content_saved" field.
+func (m *RequestMutation) ResetContentSaved() {
+	m.content_saved = nil
 }
 
-// SetVideoStorageID sets the "video_storage_id" field.
-func (m *RequestMutation) SetVideoStorageID(i int) {
-	m.video_storage_id = &i
-	m.addvideo_storage_id = nil
+// SetContentStorageID sets the "content_storage_id" field.
+func (m *RequestMutation) SetContentStorageID(i int) {
+	m.content_storage_id = &i
+	m.addcontent_storage_id = nil
 }
 
-// VideoStorageID returns the value of the "video_storage_id" field in the mutation.
-func (m *RequestMutation) VideoStorageID() (r int, exists bool) {
-	v := m.video_storage_id
+// ContentStorageID returns the value of the "content_storage_id" field in the mutation.
+func (m *RequestMutation) ContentStorageID() (r int, exists bool) {
+	v := m.content_storage_id
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldVideoStorageID returns the old "video_storage_id" field's value of the Request entity.
+// OldContentStorageID returns the old "content_storage_id" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldVideoStorageID(ctx context.Context) (v *int, err error) {
+func (m *RequestMutation) OldContentStorageID(ctx context.Context) (v *int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldVideoStorageID is only allowed on UpdateOne operations")
+		return v, errors.New("OldContentStorageID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldVideoStorageID requires an ID field in the mutation")
+		return v, errors.New("OldContentStorageID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldVideoStorageID: %w", err)
+		return v, fmt.Errorf("querying old value for OldContentStorageID: %w", err)
 	}
-	return oldValue.VideoStorageID, nil
+	return oldValue.ContentStorageID, nil
 }
 
-// AddVideoStorageID adds i to the "video_storage_id" field.
-func (m *RequestMutation) AddVideoStorageID(i int) {
-	if m.addvideo_storage_id != nil {
-		*m.addvideo_storage_id += i
+// AddContentStorageID adds i to the "content_storage_id" field.
+func (m *RequestMutation) AddContentStorageID(i int) {
+	if m.addcontent_storage_id != nil {
+		*m.addcontent_storage_id += i
 	} else {
-		m.addvideo_storage_id = &i
+		m.addcontent_storage_id = &i
 	}
 }
 
-// AddedVideoStorageID returns the value that was added to the "video_storage_id" field in this mutation.
-func (m *RequestMutation) AddedVideoStorageID() (r int, exists bool) {
-	v := m.addvideo_storage_id
+// AddedContentStorageID returns the value that was added to the "content_storage_id" field in this mutation.
+func (m *RequestMutation) AddedContentStorageID() (r int, exists bool) {
+	v := m.addcontent_storage_id
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ClearVideoStorageID clears the value of the "video_storage_id" field.
-func (m *RequestMutation) ClearVideoStorageID() {
-	m.video_storage_id = nil
-	m.addvideo_storage_id = nil
-	m.clearedFields[request.FieldVideoStorageID] = struct{}{}
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (m *RequestMutation) ClearContentStorageID() {
+	m.content_storage_id = nil
+	m.addcontent_storage_id = nil
+	m.clearedFields[request.FieldContentStorageID] = struct{}{}
 }
 
-// VideoStorageIDCleared returns if the "video_storage_id" field was cleared in this mutation.
-func (m *RequestMutation) VideoStorageIDCleared() bool {
-	_, ok := m.clearedFields[request.FieldVideoStorageID]
+// ContentStorageIDCleared returns if the "content_storage_id" field was cleared in this mutation.
+func (m *RequestMutation) ContentStorageIDCleared() bool {
+	_, ok := m.clearedFields[request.FieldContentStorageID]
 	return ok
 }
 
-// ResetVideoStorageID resets all changes to the "video_storage_id" field.
-func (m *RequestMutation) ResetVideoStorageID() {
-	m.video_storage_id = nil
-	m.addvideo_storage_id = nil
-	delete(m.clearedFields, request.FieldVideoStorageID)
+// ResetContentStorageID resets all changes to the "content_storage_id" field.
+func (m *RequestMutation) ResetContentStorageID() {
+	m.content_storage_id = nil
+	m.addcontent_storage_id = nil
+	delete(m.clearedFields, request.FieldContentStorageID)
 }
 
-// SetVideoStorageKey sets the "video_storage_key" field.
-func (m *RequestMutation) SetVideoStorageKey(s string) {
-	m.video_storage_key = &s
+// SetContentStorageKey sets the "content_storage_key" field.
+func (m *RequestMutation) SetContentStorageKey(s string) {
+	m.content_storage_key = &s
 }
 
-// VideoStorageKey returns the value of the "video_storage_key" field in the mutation.
-func (m *RequestMutation) VideoStorageKey() (r string, exists bool) {
-	v := m.video_storage_key
+// ContentStorageKey returns the value of the "content_storage_key" field in the mutation.
+func (m *RequestMutation) ContentStorageKey() (r string, exists bool) {
+	v := m.content_storage_key
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldVideoStorageKey returns the old "video_storage_key" field's value of the Request entity.
+// OldContentStorageKey returns the old "content_storage_key" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldVideoStorageKey(ctx context.Context) (v *string, err error) {
+func (m *RequestMutation) OldContentStorageKey(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldVideoStorageKey is only allowed on UpdateOne operations")
+		return v, errors.New("OldContentStorageKey is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldVideoStorageKey requires an ID field in the mutation")
+		return v, errors.New("OldContentStorageKey requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldVideoStorageKey: %w", err)
+		return v, fmt.Errorf("querying old value for OldContentStorageKey: %w", err)
 	}
-	return oldValue.VideoStorageKey, nil
+	return oldValue.ContentStorageKey, nil
 }
 
-// ClearVideoStorageKey clears the value of the "video_storage_key" field.
-func (m *RequestMutation) ClearVideoStorageKey() {
-	m.video_storage_key = nil
-	m.clearedFields[request.FieldVideoStorageKey] = struct{}{}
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (m *RequestMutation) ClearContentStorageKey() {
+	m.content_storage_key = nil
+	m.clearedFields[request.FieldContentStorageKey] = struct{}{}
 }
 
-// VideoStorageKeyCleared returns if the "video_storage_key" field was cleared in this mutation.
-func (m *RequestMutation) VideoStorageKeyCleared() bool {
-	_, ok := m.clearedFields[request.FieldVideoStorageKey]
+// ContentStorageKeyCleared returns if the "content_storage_key" field was cleared in this mutation.
+func (m *RequestMutation) ContentStorageKeyCleared() bool {
+	_, ok := m.clearedFields[request.FieldContentStorageKey]
 	return ok
 }
 
-// ResetVideoStorageKey resets all changes to the "video_storage_key" field.
-func (m *RequestMutation) ResetVideoStorageKey() {
-	m.video_storage_key = nil
-	delete(m.clearedFields, request.FieldVideoStorageKey)
+// ResetContentStorageKey resets all changes to the "content_storage_key" field.
+func (m *RequestMutation) ResetContentStorageKey() {
+	m.content_storage_key = nil
+	delete(m.clearedFields, request.FieldContentStorageKey)
 }
 
-// SetVideoSavedAt sets the "video_saved_at" field.
-func (m *RequestMutation) SetVideoSavedAt(t time.Time) {
-	m.video_saved_at = &t
+// SetContentSavedAt sets the "content_saved_at" field.
+func (m *RequestMutation) SetContentSavedAt(t time.Time) {
+	m.content_saved_at = &t
 }
 
-// VideoSavedAt returns the value of the "video_saved_at" field in the mutation.
-func (m *RequestMutation) VideoSavedAt() (r time.Time, exists bool) {
-	v := m.video_saved_at
+// ContentSavedAt returns the value of the "content_saved_at" field in the mutation.
+func (m *RequestMutation) ContentSavedAt() (r time.Time, exists bool) {
+	v := m.content_saved_at
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldVideoSavedAt returns the old "video_saved_at" field's value of the Request entity.
+// OldContentSavedAt returns the old "content_saved_at" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldVideoSavedAt(ctx context.Context) (v *time.Time, err error) {
+func (m *RequestMutation) OldContentSavedAt(ctx context.Context) (v *time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldVideoSavedAt is only allowed on UpdateOne operations")
+		return v, errors.New("OldContentSavedAt is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldVideoSavedAt requires an ID field in the mutation")
+		return v, errors.New("OldContentSavedAt requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldVideoSavedAt: %w", err)
+		return v, fmt.Errorf("querying old value for OldContentSavedAt: %w", err)
 	}
-	return oldValue.VideoSavedAt, nil
+	return oldValue.ContentSavedAt, nil
 }
 
-// ClearVideoSavedAt clears the value of the "video_saved_at" field.
-func (m *RequestMutation) ClearVideoSavedAt() {
-	m.video_saved_at = nil
-	m.clearedFields[request.FieldVideoSavedAt] = struct{}{}
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (m *RequestMutation) ClearContentSavedAt() {
+	m.content_saved_at = nil
+	m.clearedFields[request.FieldContentSavedAt] = struct{}{}
 }
 
-// VideoSavedAtCleared returns if the "video_saved_at" field was cleared in this mutation.
-func (m *RequestMutation) VideoSavedAtCleared() bool {
-	_, ok := m.clearedFields[request.FieldVideoSavedAt]
+// ContentSavedAtCleared returns if the "content_saved_at" field was cleared in this mutation.
+func (m *RequestMutation) ContentSavedAtCleared() bool {
+	_, ok := m.clearedFields[request.FieldContentSavedAt]
 	return ok
 }
 
-// ResetVideoSavedAt resets all changes to the "video_saved_at" field.
-func (m *RequestMutation) ResetVideoSavedAt() {
-	m.video_saved_at = nil
-	delete(m.clearedFields, request.FieldVideoSavedAt)
+// ResetContentSavedAt resets all changes to the "content_saved_at" field.
+func (m *RequestMutation) ResetContentSavedAt() {
+	m.content_saved_at = nil
+	delete(m.clearedFields, request.FieldContentSavedAt)
 }
 
 // ClearAPIKey clears the "api_key" edge to the APIKey entity.
@@ -14006,17 +14006,17 @@ func (m *RequestMutation) Fields() []string {
 	if m.metrics_first_token_latency_ms != nil {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
 	}
-	if m.video_saved != nil {
-		fields = append(fields, request.FieldVideoSaved)
+	if m.content_saved != nil {
+		fields = append(fields, request.FieldContentSaved)
 	}
-	if m.video_storage_id != nil {
-		fields = append(fields, request.FieldVideoStorageID)
+	if m.content_storage_id != nil {
+		fields = append(fields, request.FieldContentStorageID)
 	}
-	if m.video_storage_key != nil {
-		fields = append(fields, request.FieldVideoStorageKey)
+	if m.content_storage_key != nil {
+		fields = append(fields, request.FieldContentStorageKey)
 	}
-	if m.video_saved_at != nil {
-		fields = append(fields, request.FieldVideoSavedAt)
+	if m.content_saved_at != nil {
+		fields = append(fields, request.FieldContentSavedAt)
 	}
 	return fields
 }
@@ -14066,14 +14066,14 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.MetricsLatencyMs()
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.MetricsFirstTokenLatencyMs()
-	case request.FieldVideoSaved:
-		return m.VideoSaved()
-	case request.FieldVideoStorageID:
-		return m.VideoStorageID()
-	case request.FieldVideoStorageKey:
-		return m.VideoStorageKey()
-	case request.FieldVideoSavedAt:
-		return m.VideoSavedAt()
+	case request.FieldContentSaved:
+		return m.ContentSaved()
+	case request.FieldContentStorageID:
+		return m.ContentStorageID()
+	case request.FieldContentStorageKey:
+		return m.ContentStorageKey()
+	case request.FieldContentSavedAt:
+		return m.ContentSavedAt()
 	}
 	return nil, false
 }
@@ -14123,14 +14123,14 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldMetricsLatencyMs(ctx)
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.OldMetricsFirstTokenLatencyMs(ctx)
-	case request.FieldVideoSaved:
-		return m.OldVideoSaved(ctx)
-	case request.FieldVideoStorageID:
-		return m.OldVideoStorageID(ctx)
-	case request.FieldVideoStorageKey:
-		return m.OldVideoStorageKey(ctx)
-	case request.FieldVideoSavedAt:
-		return m.OldVideoSavedAt(ctx)
+	case request.FieldContentSaved:
+		return m.OldContentSaved(ctx)
+	case request.FieldContentStorageID:
+		return m.OldContentStorageID(ctx)
+	case request.FieldContentStorageKey:
+		return m.OldContentStorageKey(ctx)
+	case request.FieldContentSavedAt:
+		return m.OldContentSavedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Request field %s", name)
 }
@@ -14280,33 +14280,33 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetMetricsFirstTokenLatencyMs(v)
 		return nil
-	case request.FieldVideoSaved:
+	case request.FieldContentSaved:
 		v, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetVideoSaved(v)
+		m.SetContentSaved(v)
 		return nil
-	case request.FieldVideoStorageID:
+	case request.FieldContentStorageID:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetVideoStorageID(v)
+		m.SetContentStorageID(v)
 		return nil
-	case request.FieldVideoStorageKey:
+	case request.FieldContentStorageKey:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetVideoStorageKey(v)
+		m.SetContentStorageKey(v)
 		return nil
-	case request.FieldVideoSavedAt:
+	case request.FieldContentSavedAt:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetVideoSavedAt(v)
+		m.SetContentSavedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)
@@ -14322,8 +14322,8 @@ func (m *RequestMutation) AddedFields() []string {
 	if m.addmetrics_first_token_latency_ms != nil {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
 	}
-	if m.addvideo_storage_id != nil {
-		fields = append(fields, request.FieldVideoStorageID)
+	if m.addcontent_storage_id != nil {
+		fields = append(fields, request.FieldContentStorageID)
 	}
 	return fields
 }
@@ -14337,8 +14337,8 @@ func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedMetricsLatencyMs()
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.AddedMetricsFirstTokenLatencyMs()
-	case request.FieldVideoStorageID:
-		return m.AddedVideoStorageID()
+	case request.FieldContentStorageID:
+		return m.AddedContentStorageID()
 	}
 	return nil, false
 }
@@ -14362,12 +14362,12 @@ func (m *RequestMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddMetricsFirstTokenLatencyMs(v)
 		return nil
-	case request.FieldVideoStorageID:
+	case request.FieldContentStorageID:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddVideoStorageID(v)
+		m.AddContentStorageID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Request numeric field %s", name)
@@ -14407,14 +14407,14 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldMetricsFirstTokenLatencyMs) {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
 	}
-	if m.FieldCleared(request.FieldVideoStorageID) {
-		fields = append(fields, request.FieldVideoStorageID)
+	if m.FieldCleared(request.FieldContentStorageID) {
+		fields = append(fields, request.FieldContentStorageID)
 	}
-	if m.FieldCleared(request.FieldVideoStorageKey) {
-		fields = append(fields, request.FieldVideoStorageKey)
+	if m.FieldCleared(request.FieldContentStorageKey) {
+		fields = append(fields, request.FieldContentStorageKey)
 	}
-	if m.FieldCleared(request.FieldVideoSavedAt) {
-		fields = append(fields, request.FieldVideoSavedAt)
+	if m.FieldCleared(request.FieldContentSavedAt) {
+		fields = append(fields, request.FieldContentSavedAt)
 	}
 	return fields
 }
@@ -14460,14 +14460,14 @@ func (m *RequestMutation) ClearField(name string) error {
 	case request.FieldMetricsFirstTokenLatencyMs:
 		m.ClearMetricsFirstTokenLatencyMs()
 		return nil
-	case request.FieldVideoStorageID:
-		m.ClearVideoStorageID()
+	case request.FieldContentStorageID:
+		m.ClearContentStorageID()
 		return nil
-	case request.FieldVideoStorageKey:
-		m.ClearVideoStorageKey()
+	case request.FieldContentStorageKey:
+		m.ClearContentStorageKey()
 		return nil
-	case request.FieldVideoSavedAt:
-		m.ClearVideoSavedAt()
+	case request.FieldContentSavedAt:
+		m.ClearContentSavedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Request nullable field %s", name)
@@ -14537,17 +14537,17 @@ func (m *RequestMutation) ResetField(name string) error {
 	case request.FieldMetricsFirstTokenLatencyMs:
 		m.ResetMetricsFirstTokenLatencyMs()
 		return nil
-	case request.FieldVideoSaved:
-		m.ResetVideoSaved()
+	case request.FieldContentSaved:
+		m.ResetContentSaved()
 		return nil
-	case request.FieldVideoStorageID:
-		m.ResetVideoStorageID()
+	case request.FieldContentStorageID:
+		m.ResetContentStorageID()
 		return nil
-	case request.FieldVideoStorageKey:
-		m.ResetVideoStorageKey()
+	case request.FieldContentStorageKey:
+		m.ResetContentStorageKey()
 		return nil
-	case request.FieldVideoSavedAt:
-		m.ResetVideoSavedAt()
+	case request.FieldContentSavedAt:
+		m.ResetContentSavedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)
