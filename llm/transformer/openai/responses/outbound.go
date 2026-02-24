@@ -244,6 +244,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal responses api response: %w", err)
 	}
 
+	// Validate that we got a valid response
+	if resp.ID == "" && resp.Model == "" && len(resp.Output) == 0 {
+		return nil, fmt.Errorf("responses api returned empty response: body=%s", string(httpResp.Body))
+	}
+
 	// Convert to unified llm.Response format
 	llmResp := &llm.Response{
 		Object:  "chat.completion",
@@ -283,29 +288,14 @@ func (t *OutboundTransformer) TransformResponse(
 			}
 		case "function_call":
 			// Function call output - aggregate all tool calls
-			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: "function",
-				Function: llm.FunctionCall{
-					Name:      outputItem.Name,
-					Arguments: outputItem.Arguments,
-				},
-			})
+			toolCalls = append(toolCalls, llm.ToolCall{ ID: outputItem.CallID, Type: "function", Function: llm.FunctionCall{ Name: outputItem.Name, Arguments: outputItem.Arguments, }, })
 		case "custom_tool_call":
 			// Custom tool call output
 			inputStr := ""
 			if outputItem.Input != nil {
 				inputStr = *outputItem.Input
 			}
-			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
-				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: outputItem.CallID,
-					Name:   outputItem.Name,
-					Input:  inputStr,
-				},
-			})
+			toolCalls = append(toolCalls, llm.ToolCall{ ID: outputItem.CallID, Type: llm.ToolTypeResponsesCustomTool, ResponseCustomToolCall: &llm.ResponseCustomToolCall{ CallID: outputItem.CallID, Name: outputItem.Name, Input: inputStr, }, })
 		case "reasoning":
 			// Handle reasoning output - convert to ReasoningContent
 			for _, summary := range outputItem.Summary {
