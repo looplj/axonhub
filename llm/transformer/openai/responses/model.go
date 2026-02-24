@@ -303,8 +303,12 @@ type TextFormat struct {
 	Type string `json:"type,omitempty"`
 	// The name of the schema (for json_schema type).
 	Name string `json:"name,omitempty"`
+	// The description of the schema (for json_schema type).
+	Description string `json:"description,omitempty"`
 	// The JSON schema (for json_schema type).
 	Schema json.RawMessage `json:"schema,omitempty"`
+	// Whether to enforce strict schema adherence (for json_schema type).
+	Strict *bool `json:"strict,omitempty"`
 }
 
 type Input struct {
@@ -636,4 +640,11 @@ type ContentItem struct {
 type Error struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+}
+
+type rawJSONSchema struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Schema      json.RawMessage `json:"schema,omitempty"`
+	Strict      *bool           `json:"strict,omitempty"`
 }

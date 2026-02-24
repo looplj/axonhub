@@ -273,6 +273,19 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		chatReq.ResponseFormat = &llm.ResponseFormat{
 			Type: req.Text.Format.Type,
 		}
+
+		// Reconstruct json_schema from TextFormat fields
+		if req.Text.Format.Type == "json_schema" && req.Text.Format.Name != "" {
+			jsonSchema := rawJSONSchema{
+				Name:        req.Text.Format.Name,
+				Description: req.Text.Format.Description,
+				Schema:      req.Text.Format.Schema,
+				Strict:      req.Text.Format.Strict,
+			}
+			if data, err := json.Marshal(jsonSchema); err == nil {
+				chatReq.ResponseFormat.JSONSchema = data
+			}
+		}
 	}
 
 	// Convert text verbosity

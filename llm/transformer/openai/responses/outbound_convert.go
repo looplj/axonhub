@@ -29,6 +29,17 @@ func convertToTextOptions(chatReq *llm.Request) *TextOptions {
 		result.Format = &TextFormat{
 			Type: chatReq.ResponseFormat.Type,
 		}
+
+		// Extract name, schema, strict, and description from json_schema
+		if chatReq.ResponseFormat.Type == "json_schema" && len(chatReq.ResponseFormat.JSONSchema) > 0 {
+			var jsonSchema rawJSONSchema
+			if err := json.Unmarshal(chatReq.ResponseFormat.JSONSchema, &jsonSchema); err == nil {
+				result.Format.Name = jsonSchema.Name
+				result.Format.Description = jsonSchema.Description
+				result.Format.Schema = jsonSchema.Schema
+				result.Format.Strict = jsonSchema.Strict
+			}
+		}
 	}
 
 	return result
@@ -251,11 +262,6 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	}
 
 	return items
-}
-
-// convertToolMessage converts a tool result message to Responses API Item format.
-func convertToolMessage(msg llm.Message) Item {
-	return convertToolMessageWithType(msg, "function_call_output")
 }
 
 func convertToolMessageWithType(msg llm.Message, itemType string) Item {
