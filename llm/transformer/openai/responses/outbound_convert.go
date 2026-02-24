@@ -337,9 +337,15 @@ func convertFunctionToTool(src llm.Tool) Tool {
 	}
 
 	// Convert parameters from json.RawMessage to map[string]any
+	// The Responses API requires additionalProperties: false for strict schema validation
 	if len(src.Function.Parameters) > 0 {
 		var params map[string]any
 		if err := json.Unmarshal(src.Function.Parameters, &params); err == nil {
+			// Ensure additionalProperties: false is set for strict validation
+			// The Responses API rejects schemas without this field explicitly set
+			if _, exists := params["additionalProperties"]; !exists {
+				params["additionalProperties"] = false
+			}
 			tool.Parameters = params
 		}
 	}

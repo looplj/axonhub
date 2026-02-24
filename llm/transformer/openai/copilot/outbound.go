@@ -435,7 +435,29 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 
 // AggregateStreamChunks aggregates streaming chunks into a complete response.
 func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	// Check if chunks are in Responses API format (used by Codex models)
+	if isResponsesAPIStream(chunks) {
+		return responses.AggregateStreamChunks(ctx, chunks)
+	}
 	return openai.AggregateStreamChunks(ctx, chunks, openai.DefaultTransformChunk)
+}
+
+// isResponsesAPIStream checks if the stream chunks are in OpenAI Responses API format.
+func isResponsesAPIStream(chunks []*httpclient.StreamEvent) bool {
+	for _, chunk := range chunks {
+		if chunk == nil || len(chunk.Data) == 0 {
+			continue
+		}
+		// Check for Responses API specific event types
+		data := string(chunk.Data)
+		if strings.Contains(data, `"type":"response.completed"`) ||
+			strings.Contains(data, `"type":"response.created"`) ||
+			strings.Contains(data, `"type":"response.in_progress"`) ||
+			strings.Contains(data, `"type":"response.output_item.added"`) {
+			return true
+		}
+	}
+	return false
 }
 
 // transformCodexResponsesRequest transforms a request for Codex models using the Responses API.
