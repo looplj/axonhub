@@ -202,3 +202,29 @@ When introducing a new provider channel, keep backend and frontend changes align
    - Add translation keys in both locale files:
      - [frontend/src/locales/en.json](../../../frontend/src/locales/en.json)
      - [frontend/src/locales/zh.json](../../../frontend/src/locales/zh.json)
+
+## Adding a Feature Page
+
+When adding a new feature page, follow these steps:
+
+1. **Create feature directory** under `frontend/src/features/<feature-name>/` with:
+   - `components/` - UI components (table, dialogs, toolbar)
+   - `context/` - React context for state management
+   - `data/` - API queries, mutations, and Zod schemas
+   - `index.tsx` - Main feature component
+
+2. **Add route** in `frontend/src/routes/_authenticated/`:
+   - System-level (Admin): `/_authenticated/<feature-name>/index.tsx` - use `RouteGuard` only
+   - Project-level: `/_authenticated/project/<feature-name>/index.tsx` - use `ProjectGuard` + `RouteGuard`
+
+3. **Add navigation** in `frontend/src/sidebar.ts`:
+   - Add to Admin group for system-level features
+   - Add to Project group for project-level features
+
+4. **Add permission** in `frontend/src/config/route-permission.ts`:
+   - System-level: add to Admin group with `scopeLevel: 'system'`
+   - Project-level: add to Project group with `scopeLevel: 'any'`
+
+5. **Add translations** in `frontend/src/locales/en/base.json` and `frontend/src/locales/zh-CN/base.json`
+
+See [agent-runtimes](../../../frontend/src/features/agent-runtimes) for a reference implementation.

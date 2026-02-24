@@ -5,7 +5,9 @@ package ent
 import (
 	"time"
 
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
@@ -92,7 +94,10 @@ type CreateAgentInstanceInput struct {
 	Platform        *string
 	Version         *string
 	LastHeartbeatAt time.Time
+	Deployment      *objects.AgentInstanceDeployment
+	Status          *agentinstance.Status
 	AgentID         int
+	RuntimeID       *int
 }
 
 // Mutate applies the CreateAgentInstanceInput on the AgentInstanceMutation builder.
@@ -109,7 +114,16 @@ func (i *CreateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
 		m.SetVersion(*v)
 	}
 	m.SetLastHeartbeatAt(i.LastHeartbeatAt)
+	if v := i.Deployment; v != nil {
+		m.SetDeployment(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
 	m.SetAgentID(i.AgentID)
+	if v := i.RuntimeID; v != nil {
+		m.SetRuntimeID(*v)
+	}
 }
 
 // SetInput applies the change-set in the CreateAgentInstanceInput on the AgentInstanceCreate builder.
@@ -124,6 +138,11 @@ type UpdateAgentInstanceInput struct {
 	Platform        *string
 	Version         *string
 	LastHeartbeatAt *time.Time
+	ClearDeployment bool
+	Deployment      *objects.AgentInstanceDeployment
+	Status          *agentinstance.Status
+	ClearRuntime    bool
+	RuntimeID       *int
 }
 
 // Mutate applies the UpdateAgentInstanceInput on the AgentInstanceMutation builder.
@@ -139,6 +158,21 @@ func (i *UpdateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
 	}
 	if v := i.LastHeartbeatAt; v != nil {
 		m.SetLastHeartbeatAt(*v)
+	}
+	if i.ClearDeployment {
+		m.ClearDeployment()
+	}
+	if v := i.Deployment; v != nil {
+		m.SetDeployment(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if i.ClearRuntime {
+		m.ClearRuntime()
+	}
+	if v := i.RuntimeID; v != nil {
+		m.SetRuntimeID(*v)
 	}
 }
 
@@ -336,6 +370,86 @@ func (c *AgentMessageUpdate) SetInput(i UpdateAgentMessageInput) *AgentMessageUp
 
 // SetInput applies the change-set in the UpdateAgentMessageInput on the AgentMessageUpdateOne builder.
 func (c *AgentMessageUpdateOne) SetInput(i UpdateAgentMessageInput) *AgentMessageUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateAgentRuntimeInput represents a mutation input for creating agentruntimes.
+type CreateAgentRuntimeInput struct {
+	Name     string
+	Type     *agentruntime.Type
+	Status   *agentruntime.Status
+	Host     *string
+	User     *string
+	Password *string
+}
+
+// Mutate applies the CreateAgentRuntimeInput on the AgentRuntimeMutation builder.
+func (i *CreateAgentRuntimeInput) Mutate(m *AgentRuntimeMutation) {
+	m.SetName(i.Name)
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.Host; v != nil {
+		m.SetHost(*v)
+	}
+	if v := i.User; v != nil {
+		m.SetUser(*v)
+	}
+	if v := i.Password; v != nil {
+		m.SetPassword(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateAgentRuntimeInput on the AgentRuntimeCreate builder.
+func (c *AgentRuntimeCreate) SetInput(i CreateAgentRuntimeInput) *AgentRuntimeCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAgentRuntimeInput represents a mutation input for updating agentruntimes.
+type UpdateAgentRuntimeInput struct {
+	Name     *string
+	Type     *agentruntime.Type
+	Status   *agentruntime.Status
+	Host     *string
+	User     *string
+	Password *string
+}
+
+// Mutate applies the UpdateAgentRuntimeInput on the AgentRuntimeMutation builder.
+func (i *UpdateAgentRuntimeInput) Mutate(m *AgentRuntimeMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.Host; v != nil {
+		m.SetHost(*v)
+	}
+	if v := i.User; v != nil {
+		m.SetUser(*v)
+	}
+	if v := i.Password; v != nil {
+		m.SetPassword(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAgentRuntimeInput on the AgentRuntimeUpdate builder.
+func (c *AgentRuntimeUpdate) SetInput(i UpdateAgentRuntimeInput) *AgentRuntimeUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAgentRuntimeInput on the AgentRuntimeUpdateOne builder.
+func (c *AgentRuntimeUpdateOne) SetInput(i UpdateAgentRuntimeInput) *AgentRuntimeUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }

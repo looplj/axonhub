@@ -941,6 +941,184 @@ sequenceDiagram
   end
 ```
 
+## 方案新增：IM-only Agent（真实 IM 平台接入，Web 可选）
+
+本节把“IM app 作为 GraphQL 客户端”的设想进一步落地成 **IM-only**：用户只需要使用现有 IM 平台（Telegram/Slack/飞书/iMessage…）即可与 Agent 对话、审批与做少量运维；Web UI 变成可选增强而非必需。
+
+对齐 OpenClaw 的做法：
+- OpenClaw 用 Gateway 统一承载 Channel 接入、鉴权、pairing/allowlist、会话隔离、审批事件流与节点能力声明。
+- AxonHub 保持“Control Plane + Gateway”的角色不变，但在 AxonHub 内部新增一层 **Channel Connector**（连接外部 IM 平台），把 IM 平台事件归一化后写入现有的 `agent_messages` 中继链路，运行时仍通过 GraphQL pull+ack 消费与回传。
+
+### 1) 目标与边界（明确 IM-only 是什么）
+
+目标：
+- 只通过 IM 平台完成：对话、审批（Human-in-the-loop）、简单运维指令（查看在线/重启实例/切换模型等可控操作）。
+- 保持现有决策：runtime 只连 AxonHub；AxonHub 不做任务编排，只做中继与审计；交互协议以 GraphQL 为中心。
+
+非目标：
+- 不追求把所有 Agent 配置编辑都搬到 IM（长 prompt/复杂 JSON 在 IM 里体验差）。IM 侧只提供“最小可用管理面”，复杂编辑仍建议 Web/CLI。
+- 不要求 IM 平台提供“实时流式 token”级别体验（可用 chunk/block streaming 近似）。
+
+### 2) 关键组件（AxonHub 增加 Channel Connector 层）
+
+新增概念：
+- Channel Connector：某个 IM 平台的接入实现（例如 telegram、slack、feishu、imessage）。
+- Channel Account：在该平台上的一个“机器人账号/应用实例”（token、回调地址、配置）。
+- Peer：会话对端（DM 用户、群、频道、话题 thread）。
+- Channel Thread：某些平台原生 thread（Slack thread_ts、飞书话题等）。
+
+推荐部署形态：
+- Connector 作为 AxonHub 进程内子系统（最简单），复用 DB、RBAC、审计与配置管理。
+- 若需要解耦，可把 Connector 拆成独立服务，但仍建议用同一套 DB/队列语义（写入 `agent_messages`，读取 `to_user` 并投递到平台）。
+
+### 3) 数据模型补充（最小增量，围绕“路由 + 幂等 + 安全”）
+
+在现有 `agent_messages`（中继）上补齐“外部 IM 路由维度”。建议把路由字段做成结构化列（便于索引与幂等），而不是全部塞进 `payload`：
+- `channel_id`：例如 `telegram|slack|feishu|imessage`
+- `channel_account_id`：哪一个 bot/app（支持同平台多账号）
+- `peer_kind`：`direct|group|channel|thread`
+- `peer_id`：平台侧稳定 ID（优先用平台原生 ID，不用 displayName）
+- `thread_ref`：平台 thread 标识（可空）
+- `external_message_id`：平台入站消息 ID（用于幂等去重）
+- `external_reply_to`：平台出站引用（可空）
+- `metadata`（json）：平台特有字段（@mention 列表、附件、反应、语言等）
+
+并补一张“pairing/allowlist 状态表”（对齐 OpenClaw 的 DM policy 语义）：
+- `channel_pairings`：`channel_id + channel_account_id + peer_id` 唯一
+  - `status`: `pending|approved|rejected|blocked`
+  - `requested_at/approved_at/expires_at`
+  - `requested_by_message_id`（便于审计）
+  - `approved_by_user_id`（对齐 AxonHub RBAC）
+  - `notes`（可选）
+
+以及一张“路由绑定表”（把某个 peer/thread 绑定到哪个 agent/thread）：
+- `channel_routes`：`channel_id + channel_account_id + peer_id + thread_ref` 唯一
+  - `agent_id`
+  - `thread_row_id`（复用现有 threads）
+  - `dm_scope`（会话隔离策略，见下）
+  - `created_at/updated_at`
+
+### 4) 安全模型（DM policy + 会话隔离 + 速率限制）
+
+对齐 OpenClaw 的“身份先于智能”：
+
+#### 4.1 DM policy（四态，默认 pairing）
+
+每个 `channel_account` 配置一个 DM policy（默认 `pairing`）：
+- `pairing`（默认）：未知 sender 首次 DM 时创建 pending pairing，并回一条“配对码/链接”；未通过前忽略其业务消息。
+- `allowlist`：未知 sender 直接拒绝（不发配对码）。
+- `open`：允许任何人 DM（必须显式配置，且建议同时启用严格 tool policy）。
+- `disabled`：忽略所有 DM。
+
+配对审批入口（任选其一，建议都支持）：
+- Web/CLI：管理员在 AxonHub 上 approve pairing（最清晰、最安全）。
+- IM 内：仅对“已在 AxonHub 登录并绑定身份”的 operator 生效，允许在 IM 卡片上点“Approve/Deny”。
+
+#### 4.2 会话隔离（secure DM mode）
+
+参考 OpenClaw 的 `session.dmScope`：
+- 默认建议：`per-channel-peer`（更安全，避免多人 DM 互相污染上下文）。
+- 若明确是单人自用，可选择：`main`（所有 DM 汇聚同一 thread，提高连续性）。
+- 多账号场景可扩展：`per-account-channel-peer`。
+
+在 AxonHub 里落地方式：
+- `channel_routes.dm_scope` 决定路由键：`(channel_id, account_id, peer_id)` 是否折叠到同一个 `thread_row_id`。
+- 允许可选 `identity_links`：把“同一个人跨平台的多个 peer”折叠到同一身份（后续增强）。
+
+#### 4.3 Operator 身份（IM-only 里的“谁能管理/审批”）
+
+避免把“点击按钮”变成匿名高危入口，建议引入 **IM Operator 绑定**（类似 OpenClaw 的 device pairing/token）：
+- 第一次在 IM 中执行管理指令（例如 `/approve`、`/agent`）时，要求用户在 Web/CLI 里生成一次性绑定码（或用已有登录态扫码），完成后把该 IM peer 绑定到 AxonHub user。
+- 绑定后才允许其在 IM 内做：审批、查看状态、切换模型等操作；未绑定用户只能聊天（且仍受 DM policy/allowlist 限制）。
+
+#### 4.4 滥用与风控
+
+每个 channel_account 建议有：
+- inbound rate limit（按 peer + 全局），防止刷屏/爆破 pairing。
+- pending pairing 上限（对齐 OpenClaw：每 channel 默认最多 3 个 pending）。
+- 群聊 requireMention/allowlist（强烈建议默认 requireMention）。
+
+### 5) 路由与幂等（保证“不会乱发/不会重复执行”）
+
+#### 5.1 入站幂等（平台消息去重）
+
+每条入站消息在写入 `agent_messages(to_runtime)` 前做幂等：
+- 幂等键建议：`(channel_id, account_id, peer_id, external_message_id)`
+- 已存在则直接 ack/忽略，避免平台重试导致重复触发 tool-call loop。
+
+#### 5.2 出站幂等（重复投递与重试）
+
+Connector 投递 IM 平台时也要幂等：
+- 记录 `agent_messages(to_user)` 与平台出站 message id 的映射（可在 `metadata` 或单独表）。
+- 若平台 API 超时/失败，按指数退避重试；重复发送要基于平台能力做去重（能 edit 就 edit，不能 edit 就标记“duplicate suppressed”并停止）。
+
+#### 5.3 路由算法（把消息送到哪个 Agent/Thread）
+
+推荐两种模式：
+- 模式 A（推荐，简单）：一个 channel_account 绑定一个 agent（即“这个 bot 就是这个 agent”），路由只需要根据 peer/thread 生成或查找 `thread_row_id`。
+- 模式 B（进阶）：一个 channel_account 路由多个 agent（通过命令 `/use <agent>`、群里 @agentName、或固定 room 绑定）。需要 `channel_routes` 支持“room→agent”映射与优先级。
+
+### 6) 端到端链路（Connector ↔ AxonHub ↔ axonclaw ↔ Connector）
+
+#### 6.1 入站（IM → runtime）
+1) Connector 接收 webhook/WS 事件（验证签名/来源 IP）。
+2) 归一化成 `InboundMessage`（text、attachments、mentions、peer、thread_ref、external_message_id）。
+3) 执行 DM/group policy（pairing/allowlist/requireMention）。
+4) 解析/创建路由：找到 `(agent_id, thread_row_id)`。
+5) 写入 `agent_messages(direction=to_runtime, kind=chat, status=pending, ...routing...)`。
+
+#### 6.2 出站（runtime → IM）
+1) axonclaw `pullAgentMessages` 拉到入站消息，构造 session key，喂给本地 agent loop。
+2) axonclaw 将回复写回 `pushAgentMessage(direction=to_user, kind=chat, ...routing...)`。
+3) Connector 订阅/轮询 `to_user`（可以是 DB 轮询、内部队列、或 GraphQL subscription），把消息投递到 IM 平台。
+4) Connector 成功投递后标记该 message 已投递（落 `delivered_at`/状态），失败则重试。
+
+注意：Connector 侧不需要“理解 agent”，只需要可靠路由与投递；上下文与工具执行始终在 axonclaw。
+
+### 7) IM 审批（把 approval 变成 IM 卡片/按钮）
+
+沿用本文前面的 `approval_request/approval_result` 方案，但补齐“平台落地细节”：
+- 对支持交互卡片的平台（飞书/Slack/Telegram inline keyboard）：把 `approval_request` 渲染成卡片，按钮回调带 `request_id`。
+- 对不支持按钮的平台：回退到“指令确认”，例如用户回复 `ALLOW <request_id> once`。
+
+统一约束（仍然重要）：
+- `approval_request.resources` 必须是 `axon/permission` 抽取后的脱敏资源，禁止直接透传原始 tool input。
+- `approval_request` 必须有 `expires_at`，超时自动拒绝并给出可读错误。
+- `approval_result` 的写入必须幂等（同一个 request_id 只能决议一次）。
+
+### 8) 输出体验（chunk/block streaming、typing indicator、长度限制）
+
+参考 OpenClaw 的 block streaming 思路，为 IM 平台提供一致体验：
+- 默认按“段落/换行”做 chunk，控制单条消息长度（按平台限制配置）。
+- 支持 coalesce：短时间内合并多个小 chunk，避免刷屏。
+- 支持 typing indicator（平台支持则发送；不支持则跳过）。
+- 对超长输出默认转为“文件/附件/链接”（如果平台支持），否则给出摘要 + 提示用户在更安全的表面查看详细日志（避免把敏感 tool 输出刷进群）。
+
+### 9) GraphQL/接口补充（让 IM 路由成为一等公民）
+
+现有草图里的 `SendAgentMessageInput / AgentMessage` 需要补充路由字段（最小建议）：
+- `channelID`, `channelAccountID`
+- `peerKind`, `peerID`, `threadRef`
+- `externalMessageID`（入站可选，出站由 Connector 写回）
+- `metadata`（json）
+
+并建议增加一个专用 mutation（给 Connector 用，内部调用也可以）：
+- `ingestChannelMessage(input)`：专门处理“IM 入站事件 → policy → 写 agent_messages(to_runtime)”。
+  - 好处：把 policy/幂等/路由集中在 AxonHub 内部，Connector 只做协议适配与签名验证。
+
+### 10) MVP 拆解（IM-only 的最小闭环）
+
+MVP-IM-1（可用闭环）：
+- 选择一个 IM 平台（建议 Telegram/Slack/飞书之一）做 Connector：入站 webhook + 出站发送。
+- 实现 dmPolicy=pairing + allowlist + requireMention（群聊）。
+- `agent_messages` 增加路由字段；实现 ingest→to_runtime→to_user→deliver 的闭环。
+- IM 审批：先做“指令确认”回退方案，平台按钮后续补。
+
+MVP-IM-2（安全与体验增强）：
+- IM operator 绑定（把审批/管理动作与 AxonHub user 绑定）。
+- block streaming + coalesce + typing indicator。
+- 更完整的幂等与重试（出站去重、失败重试、死信告警）。
+
 ## GraphQL 协议草图（v1）
 端点划分建议：
 - 管理端（Web UI，用户登录）：主站 GraphQL（现有 `axonhub.graphql` 体系）。
@@ -1155,5 +1333,192 @@ extend type Mutation {
   ackAgentMessages(input: AckAgentMessagesInput!): Boolean!
 }
 ```
+
+---
+
+## 方案新增：AgentRuntime 与 Cloudflare Sandbox 部署
+
+本节描述如何将 Agent 部署到 Cloudflare Sandbox Container，实现用户在 Web UI 点击即可部署的体验。
+
+### 1) AgentRuntime 实体设计
+
+AgentRuntime 是管理员可创建的运行时配置，支持多种部署类型（Docker、Cloudflare Sandbox）。
+
+#### 数据模型
+
+```go
+type AgentRuntime struct {
+    ID              int
+    Name            string            // Runtime name (unique)
+    Type            RuntimeType       // docker | cf_sandbox
+    Status          RuntimeStatus     // active | inactive | error
+    Endpoint        string            // Runtime endpoint URL
+    
+    // Docker 配置
+    DockerHost      string
+    DockerCertPath  string
+    DockerCAPath    string
+    DockerKeyPath   string
+    
+    // Cloudflare Sandbox 配置
+    CFAccountID     string
+    CFAPIToken      string  // Sensitive
+    CFWorkerName    string
+    CFContainerImage string
+    CFMaxInstances  int
+    CFSleepAfter    string  // e.g., "10m"
+    
+    Config          JSONRawMessage    // Runtime-specific config
+    LastError       string
+    LastHealthCheck *time.Time
+}
+```
+
+#### AgentInstance 扩展
+
+```go
+type AgentInstance struct {
+    // ... existing fields ...
+    
+    AgentRuntimeID  *int              // FK to AgentRuntime (nullable = unknown/CLI started)
+    Deployment      JSONRawMessage    // Deployment info (runtime-specific)
+    
+    // Cloudflare specific
+    CFWorkerURL     string
+    CFContainerID   string
+    
+    // Docker specific
+    DockerContainerID string
+    DockerHost      string
+}
+```
+
+### 2) Cloudflare Sandbox 部署架构
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        AxonHub (Control Plane)                          │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────────┐ │
+│  │  Web UI     │    │  GraphQL    │    │  Cloudflare Integration     │ │
+│  │  一键部署   │───▶│  API        │───▶│  - CF API Token 管理        │ │
+│  └─────────────┘    └─────────────┘    │  - Worker/Container 部署    │ │
+│                                          │  - 实例状态监控             │ │
+│                                          └─────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      │ Cloudflare REST API
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Cloudflare Edge Network                              │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                    Worker (Gateway)                              │   │
+│  │  - 路由请求到指定 Container                                      │   │
+│  │  - WebSocket 支持                                                │   │
+│  │  - 负载均衡                                                      │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                      │                                  │
+│                                      ▼                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │              Sandbox Container (axonclaw runtime)                │   │
+│  │  - 从 AxonHub 拉取 Agent 配置                                    │   │
+│  │  - 执行 Agent Loop + Tools                                       │   │
+│  │  - 通过 GraphQL 回传消息/事件                                    │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3) GraphQL API
+
+#### 创建 AgentRuntime（管理员）
+
+```graphql
+input DockerRuntimeConfigInput {
+    host: String!
+    certPath: String
+    caPath: String
+    keyPath: String
+}
+
+input CFSandboxRuntimeConfigInput {
+    accountID: String!
+    apiToken: String!
+    workerName: String!
+    containerImage: String!
+    maxInstances: Int = 1
+    sleepAfter: String = "10m"
+}
+
+input CreateAgentRuntimeInput {
+    name: String!
+    type: AgentRuntimeType!
+    endpoint: String
+    dockerConfig: DockerRuntimeConfigInput
+    cfSandboxConfig: CFSandboxRuntimeConfigInput
+}
+
+extend type Mutation {
+    createAgentRuntime(input: CreateAgentRuntimeInput!): AgentRuntime!
+    updateAgentRuntime(id: ID!, input: UpdateAgentRuntimeInput!): AgentRuntime!
+    deleteAgentRuntime(id: ID!): Boolean!
+    testAgentRuntimeConnection(id: ID!): AgentRuntimeTestResult!
+}
+
+type AgentRuntimeTestResult {
+    success: Boolean!
+    error: String
+    latency: Int
+}
+```
+
+### 4) 部署流程
+
+#### Web UI 交互
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Agent 详情页                                                        │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  Agent: my-assistant                                          │  │
+│  │  ───────────────────────────────────────────────────────────  │  │
+│  │                                                               │  │
+│  │  部署到 Cloudflare Sandbox                                    │  │
+│  │  ┌─────────────────────────────────────────────────────────┐ │  │
+│  │  │ Runtime: [cf-prod-runtime    ▼]                         │ │  │
+│  │  │ 实例名称: [my-assistant-prod          ]                 │ │  │
+│  │  │ 空闲超时: [10m        ] (容器空闲后自动休眠)            │ │  │
+│  │  │ 最大实例: [5          ] (负载均衡)                      │ │  │
+│  │  │                                                         │ │  │
+│  │  │ [  🚀 一键部署到 Cloudflare  ]                          │ │  │
+│  │  └─────────────────────────────────────────────────────────┘ │  │
+│  │                                                               │  │
+│  │  当前部署状态                                                  │  │
+│  │  ┌─────────────────────────────────────────────────────────┐ │  │
+│  │  │ 🟢 Running  https://my-assistant-prod.xxx.workers.dev   │ │  │
+│  │  │ 最后心跳: 2 分钟前                                       │ │  │
+│  │  │ [停止] [重启] [查看日志] [销毁]                          │ │  │
+│  │  └─────────────────────────────────────────────────────────┘ │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 5) 成本估算
+
+| 配置 | 月费用 |
+|------|--------|
+| Workers Paid Plan | $5/月 |
+| Container (standard-1, 10% 利用率) | ~$3/月 |
+| Container (standard-1, 24/7) | ~$30/月 |
+| R2 Storage (可选持久化) | 免费额度内 |
+
+**推荐配置**：设置 `sleepAfter = '10m'`，低频使用时成本约 $5-8/月。
+
+### 6) 实现文件
+
+- Ent Schema: [internal/ent/schema/agent_runtime.go](file:///Users/September_1/Projects/AI/axonhub/internal/ent/schema/agent_runtime.go)
+- Cloudflare Client: [internal/cloudflare/client.go](file:///Users/September_1/Projects/AI/axonhub/internal/cloudflare/client.go)
+- AgentRuntime Service: [internal/server/biz/agent_runtime_mgmt.go](file:///Users/September_1/Projects/AI/axonhub/internal/server/biz/agent_runtime_mgmt.go)
+- GraphQL Schema: [internal/server/gql/agent_runtime.graphql](file:///Users/September_1/Projects/AI/axonhub/internal/server/gql/agent_runtime.graphql)
+- Worker Gateway: [deployments/cloudflare/worker/src/index.ts](file:///Users/September_1/Projects/AI/axonhub/deployments/cloudflare/worker/src/index.ts)
+- Dockerfile: [deployments/cloudflare/Dockerfile.axonclaw](file:///Users/September_1/Projects/AI/axonhub/deployments/cloudflare/Dockerfile.axonclaw)
 
 ---

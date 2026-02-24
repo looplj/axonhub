@@ -26,7 +26,7 @@ type Dependencies struct {
 	fx.In
 
 	Ent                 *ent.Client
-	AgentRuntimeService *biz.AgentRuntimeService
+	AgentRuntimeService *biz.AgentBootstrapService
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {

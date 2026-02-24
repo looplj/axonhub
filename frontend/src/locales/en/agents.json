@@ -4,6 +4,7 @@
   "agents.actions.create": "Add Agent",
   "agents.actions.view": "View",
   "agents.actions.addTool": "Add Tool",
+  "agents.actions.deploy": "Deploy Axonclaw",
   "agents.columns.model": "Model",
   "agents.filters.filterByName": "Filter by name...",
   "agents.fields.name": "Name",
@@ -72,5 +73,16 @@
   "agents.chat.toolName": "Tool",
   "agents.chat.toolCallId": "Call ID",
   "agents.chat.parameters": "Parameters",
-  "agents.chat.expiresAt": "Expires at"
+  "agents.chat.expiresAt": "Expires at",
+  "agents.dialogs.deploy.title": "Deploy Axonclaw",
+  "agents.dialogs.deploy.description": "Deploy axonclaw to a runtime environment.",
+  "agents.dialogs.deploy.fields.runtime.label": "Runtime",
+  "agents.dialogs.deploy.fields.runtime.placeholder": "Select a runtime",
+  "agents.dialogs.deploy.fields.name.label": "Instance Name",
+  "agents.dialogs.deploy.fields.name.placeholder": "Enter instance name",
+  "agents.dialogs.deploy.fields.directory.label": "Directory (Optional)",
+  "agents.dialogs.deploy.fields.directory.placeholder": "/opt/axonclaw/instance-id",
+  "agents.dialogs.deploy.noRuntimes": "No runtimes available",
+  "agents.messages.deploySuccess": "Axonclaw deployed successfully",
+  "agents.messages.deployError": "Failed to deploy axonclaw: {{error}}"
 }

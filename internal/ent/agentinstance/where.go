@@ -80,6 +80,11 @@ func AgentID(v int) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldEQ(FieldAgentID, v))
 }
 
+// AgentRuntimeID applies equality check predicate on the "agent_runtime_id" field. It's identical to AgentRuntimeIDEQ.
+func AgentRuntimeID(v int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldAgentRuntimeID, v))
+}
+
 // InstanceID applies equality check predicate on the "instance_id" field. It's identical to InstanceIDEQ.
 func InstanceID(v string) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldEQ(FieldInstanceID, v))
@@ -283,6 +288,36 @@ func AgentIDIn(vs ...int) predicate.AgentInstance {
 // AgentIDNotIn applies the NotIn predicate on the "agent_id" field.
 func AgentIDNotIn(vs ...int) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldNotIn(FieldAgentID, vs...))
+}
+
+// AgentRuntimeIDEQ applies the EQ predicate on the "agent_runtime_id" field.
+func AgentRuntimeIDEQ(v int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldAgentRuntimeID, v))
+}
+
+// AgentRuntimeIDNEQ applies the NEQ predicate on the "agent_runtime_id" field.
+func AgentRuntimeIDNEQ(v int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNEQ(FieldAgentRuntimeID, v))
+}
+
+// AgentRuntimeIDIn applies the In predicate on the "agent_runtime_id" field.
+func AgentRuntimeIDIn(vs ...int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldIn(FieldAgentRuntimeID, vs...))
+}
+
+// AgentRuntimeIDNotIn applies the NotIn predicate on the "agent_runtime_id" field.
+func AgentRuntimeIDNotIn(vs ...int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNotIn(FieldAgentRuntimeID, vs...))
+}
+
+// AgentRuntimeIDIsNil applies the IsNil predicate on the "agent_runtime_id" field.
+func AgentRuntimeIDIsNil() predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldIsNull(FieldAgentRuntimeID))
+}
+
+// AgentRuntimeIDNotNil applies the NotNil predicate on the "agent_runtime_id" field.
+func AgentRuntimeIDNotNil() predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNotNull(FieldAgentRuntimeID))
 }
 
 // InstanceIDEQ applies the EQ predicate on the "instance_id" field.
@@ -585,6 +620,36 @@ func LastHeartbeatAtLTE(v time.Time) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldLTE(FieldLastHeartbeatAt, v))
 }
 
+// DeploymentIsNil applies the IsNil predicate on the "deployment" field.
+func DeploymentIsNil() predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldIsNull(FieldDeployment))
+}
+
+// DeploymentNotNil applies the NotNil predicate on the "deployment" field.
+func DeploymentNotNil() predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNotNull(FieldDeployment))
+}
+
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v Status) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldStatus, v))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v Status) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNEQ(FieldStatus, v))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...Status) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldIn(FieldStatus, vs...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...Status) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNotIn(FieldStatus, vs...))
+}
+
 // HasAgent applies the HasEdge predicate on the "agent" edge.
 func HasAgent() predicate.AgentInstance {
 	return predicate.AgentInstance(func(s *sql.Selector) {
@@ -600,6 +665,29 @@ func HasAgent() predicate.AgentInstance {
 func HasAgentWith(preds ...predicate.Agent) predicate.AgentInstance {
 	return predicate.AgentInstance(func(s *sql.Selector) {
 		step := newAgentStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasRuntime applies the HasEdge predicate on the "runtime" edge.
+func HasRuntime() predicate.AgentInstance {
+	return predicate.AgentInstance(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, RuntimeTable, RuntimeColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRuntimeWith applies the HasEdge predicate on the "runtime" edge with a given conditions (other predicates).
+func HasRuntimeWith(preds ...predicate.AgentRuntime) predicate.AgentInstance {
+	return predicate.AgentInstance(func(s *sql.Selector) {
+		step := newRuntimeStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

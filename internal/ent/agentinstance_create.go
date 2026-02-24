@@ -14,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // AgentInstanceCreate is the builder for creating a AgentInstance entity.
@@ -78,6 +80,20 @@ func (_c *AgentInstanceCreate) SetAgentID(v int) *AgentInstanceCreate {
 	return _c
 }
 
+// SetAgentRuntimeID sets the "agent_runtime_id" field.
+func (_c *AgentInstanceCreate) SetAgentRuntimeID(v int) *AgentInstanceCreate {
+	_c.mutation.SetAgentRuntimeID(v)
+	return _c
+}
+
+// SetNillableAgentRuntimeID sets the "agent_runtime_id" field if the given value is not nil.
+func (_c *AgentInstanceCreate) SetNillableAgentRuntimeID(v *int) *AgentInstanceCreate {
+	if v != nil {
+		_c.SetAgentRuntimeID(*v)
+	}
+	return _c
+}
+
 // SetInstanceID sets the "instance_id" field.
 func (_c *AgentInstanceCreate) SetInstanceID(v string) *AgentInstanceCreate {
 	_c.mutation.SetInstanceID(v)
@@ -132,9 +148,56 @@ func (_c *AgentInstanceCreate) SetLastHeartbeatAt(v time.Time) *AgentInstanceCre
 	return _c
 }
 
+// SetDeployment sets the "deployment" field.
+func (_c *AgentInstanceCreate) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceCreate {
+	_c.mutation.SetDeployment(v)
+	return _c
+}
+
+// SetNillableDeployment sets the "deployment" field if the given value is not nil.
+func (_c *AgentInstanceCreate) SetNillableDeployment(v *objects.AgentInstanceDeployment) *AgentInstanceCreate {
+	if v != nil {
+		_c.SetDeployment(*v)
+	}
+	return _c
+}
+
+// SetStatus sets the "status" field.
+func (_c *AgentInstanceCreate) SetStatus(v agentinstance.Status) *AgentInstanceCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *AgentInstanceCreate) SetNillableStatus(v *agentinstance.Status) *AgentInstanceCreate {
+	if v != nil {
+		_c.SetStatus(*v)
+	}
+	return _c
+}
+
 // SetAgent sets the "agent" edge to the Agent entity.
 func (_c *AgentInstanceCreate) SetAgent(v *Agent) *AgentInstanceCreate {
 	return _c.SetAgentID(v.ID)
+}
+
+// SetRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID.
+func (_c *AgentInstanceCreate) SetRuntimeID(id int) *AgentInstanceCreate {
+	_c.mutation.SetRuntimeID(id)
+	return _c
+}
+
+// SetNillableRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID if the given value is not nil.
+func (_c *AgentInstanceCreate) SetNillableRuntimeID(id *int) *AgentInstanceCreate {
+	if id != nil {
+		_c = _c.SetRuntimeID(*id)
+	}
+	return _c
+}
+
+// SetRuntime sets the "runtime" edge to the AgentRuntime entity.
+func (_c *AgentInstanceCreate) SetRuntime(v *AgentRuntime) *AgentInstanceCreate {
+	return _c.SetRuntimeID(v.ID)
 }
 
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
@@ -219,6 +282,10 @@ func (_c *AgentInstanceCreate) defaults() error {
 		v := agentinstance.DefaultVersion
 		_c.mutation.SetVersion(v)
 	}
+	if _, ok := _c.mutation.Status(); !ok {
+		v := agentinstance.DefaultStatus
+		_c.mutation.SetStatus(v)
+	}
 	return nil
 }
 
@@ -253,6 +320,14 @@ func (_c *AgentInstanceCreate) check() error {
 	}
 	if _, ok := _c.mutation.LastHeartbeatAt(); !ok {
 		return &ValidationError{Name: "last_heartbeat_at", err: errors.New(`ent: missing required field "AgentInstance.last_heartbeat_at"`)}
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "AgentInstance.status"`)}
+	}
+	if v, ok := _c.mutation.Status(); ok {
+		if err := agentinstance.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "AgentInstance.status": %w`, err)}
+		}
 	}
 	if len(_c.mutation.AgentIDs()) == 0 {
 		return &ValidationError{Name: "agent", err: errors.New(`ent: missing required edge "AgentInstance.agent"`)}
@@ -320,6 +395,14 @@ func (_c *AgentInstanceCreate) createSpec() (*AgentInstance, *sqlgraph.CreateSpe
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
 		_node.LastHeartbeatAt = value
 	}
+	if value, ok := _c.mutation.Deployment(); ok {
+		_spec.SetField(agentinstance.FieldDeployment, field.TypeJSON, value)
+		_node.Deployment = value
+	}
+	if value, ok := _c.mutation.Status(); ok {
+		_spec.SetField(agentinstance.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
+	}
 	if nodes := _c.mutation.AgentIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -335,6 +418,23 @@ func (_c *AgentInstanceCreate) createSpec() (*AgentInstance, *sqlgraph.CreateSpe
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.AgentID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.RuntimeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentinstance.RuntimeTable,
+			Columns: []string{agentinstance.RuntimeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.AgentRuntimeID = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.MessagesIDs(); len(nodes) > 0 {
@@ -435,6 +535,24 @@ func (u *AgentInstanceUpsert) AddDeletedAt(v int) *AgentInstanceUpsert {
 	return u
 }
 
+// SetAgentRuntimeID sets the "agent_runtime_id" field.
+func (u *AgentInstanceUpsert) SetAgentRuntimeID(v int) *AgentInstanceUpsert {
+	u.Set(agentinstance.FieldAgentRuntimeID, v)
+	return u
+}
+
+// UpdateAgentRuntimeID sets the "agent_runtime_id" field to the value that was provided on create.
+func (u *AgentInstanceUpsert) UpdateAgentRuntimeID() *AgentInstanceUpsert {
+	u.SetExcluded(agentinstance.FieldAgentRuntimeID)
+	return u
+}
+
+// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
+func (u *AgentInstanceUpsert) ClearAgentRuntimeID() *AgentInstanceUpsert {
+	u.SetNull(agentinstance.FieldAgentRuntimeID)
+	return u
+}
+
 // SetName sets the "name" field.
 func (u *AgentInstanceUpsert) SetName(v string) *AgentInstanceUpsert {
 	u.Set(agentinstance.FieldName, v)
@@ -480,6 +598,36 @@ func (u *AgentInstanceUpsert) SetLastHeartbeatAt(v time.Time) *AgentInstanceUpse
 // UpdateLastHeartbeatAt sets the "last_heartbeat_at" field to the value that was provided on create.
 func (u *AgentInstanceUpsert) UpdateLastHeartbeatAt() *AgentInstanceUpsert {
 	u.SetExcluded(agentinstance.FieldLastHeartbeatAt)
+	return u
+}
+
+// SetDeployment sets the "deployment" field.
+func (u *AgentInstanceUpsert) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpsert {
+	u.Set(agentinstance.FieldDeployment, v)
+	return u
+}
+
+// UpdateDeployment sets the "deployment" field to the value that was provided on create.
+func (u *AgentInstanceUpsert) UpdateDeployment() *AgentInstanceUpsert {
+	u.SetExcluded(agentinstance.FieldDeployment)
+	return u
+}
+
+// ClearDeployment clears the value of the "deployment" field.
+func (u *AgentInstanceUpsert) ClearDeployment() *AgentInstanceUpsert {
+	u.SetNull(agentinstance.FieldDeployment)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *AgentInstanceUpsert) SetStatus(v agentinstance.Status) *AgentInstanceUpsert {
+	u.Set(agentinstance.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *AgentInstanceUpsert) UpdateStatus() *AgentInstanceUpsert {
+	u.SetExcluded(agentinstance.FieldStatus)
 	return u
 }
 
@@ -572,6 +720,27 @@ func (u *AgentInstanceUpsertOne) UpdateDeletedAt() *AgentInstanceUpsertOne {
 	})
 }
 
+// SetAgentRuntimeID sets the "agent_runtime_id" field.
+func (u *AgentInstanceUpsertOne) SetAgentRuntimeID(v int) *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.SetAgentRuntimeID(v)
+	})
+}
+
+// UpdateAgentRuntimeID sets the "agent_runtime_id" field to the value that was provided on create.
+func (u *AgentInstanceUpsertOne) UpdateAgentRuntimeID() *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.UpdateAgentRuntimeID()
+	})
+}
+
+// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
+func (u *AgentInstanceUpsertOne) ClearAgentRuntimeID() *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.ClearAgentRuntimeID()
+	})
+}
+
 // SetName sets the "name" field.
 func (u *AgentInstanceUpsertOne) SetName(v string) *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
@@ -625,6 +794,41 @@ func (u *AgentInstanceUpsertOne) SetLastHeartbeatAt(v time.Time) *AgentInstanceU
 func (u *AgentInstanceUpsertOne) UpdateLastHeartbeatAt() *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
 		s.UpdateLastHeartbeatAt()
+	})
+}
+
+// SetDeployment sets the "deployment" field.
+func (u *AgentInstanceUpsertOne) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.SetDeployment(v)
+	})
+}
+
+// UpdateDeployment sets the "deployment" field to the value that was provided on create.
+func (u *AgentInstanceUpsertOne) UpdateDeployment() *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.UpdateDeployment()
+	})
+}
+
+// ClearDeployment clears the value of the "deployment" field.
+func (u *AgentInstanceUpsertOne) ClearDeployment() *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.ClearDeployment()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *AgentInstanceUpsertOne) SetStatus(v agentinstance.Status) *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *AgentInstanceUpsertOne) UpdateStatus() *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.UpdateStatus()
 	})
 }
 
@@ -883,6 +1087,27 @@ func (u *AgentInstanceUpsertBulk) UpdateDeletedAt() *AgentInstanceUpsertBulk {
 	})
 }
 
+// SetAgentRuntimeID sets the "agent_runtime_id" field.
+func (u *AgentInstanceUpsertBulk) SetAgentRuntimeID(v int) *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.SetAgentRuntimeID(v)
+	})
+}
+
+// UpdateAgentRuntimeID sets the "agent_runtime_id" field to the value that was provided on create.
+func (u *AgentInstanceUpsertBulk) UpdateAgentRuntimeID() *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.UpdateAgentRuntimeID()
+	})
+}
+
+// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
+func (u *AgentInstanceUpsertBulk) ClearAgentRuntimeID() *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.ClearAgentRuntimeID()
+	})
+}
+
 // SetName sets the "name" field.
 func (u *AgentInstanceUpsertBulk) SetName(v string) *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
@@ -936,6 +1161,41 @@ func (u *AgentInstanceUpsertBulk) SetLastHeartbeatAt(v time.Time) *AgentInstance
 func (u *AgentInstanceUpsertBulk) UpdateLastHeartbeatAt() *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
 		s.UpdateLastHeartbeatAt()
+	})
+}
+
+// SetDeployment sets the "deployment" field.
+func (u *AgentInstanceUpsertBulk) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.SetDeployment(v)
+	})
+}
+
+// UpdateDeployment sets the "deployment" field to the value that was provided on create.
+func (u *AgentInstanceUpsertBulk) UpdateDeployment() *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.UpdateDeployment()
+	})
+}
+
+// ClearDeployment clears the value of the "deployment" field.
+func (u *AgentInstanceUpsertBulk) ClearDeployment() *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.ClearDeployment()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *AgentInstanceUpsertBulk) SetStatus(v agentinstance.Status) *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *AgentInstanceUpsertBulk) UpdateStatus() *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.UpdateStatus()
 	})
 }
 

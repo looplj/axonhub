@@ -69,6 +69,7 @@ func registerTools(
 	}
 
 	a.RegisterTool(tools.NewAgentTool(NewReplyMessageTool(client, instanceID)))
+	a.RegisterTool(tools.NewAgentTool(NewAxonClawHelpTool()))
 
 	known := map[string]struct{}{}
 	for name := range enabledBuiltin {

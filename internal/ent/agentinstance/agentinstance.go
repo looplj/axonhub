@@ -3,6 +3,9 @@
 package agentinstance
 
 import (
+	"fmt"
+	"io"
+	"strconv"
 	"time"
 
 	"entgo.io/ent"
@@ -25,6 +28,8 @@ const (
 	FieldProjectID = "project_id"
 	// FieldAgentID holds the string denoting the agent_id field in the database.
 	FieldAgentID = "agent_id"
+	// FieldAgentRuntimeID holds the string denoting the agent_runtime_id field in the database.
+	FieldAgentRuntimeID = "agent_runtime_id"
 	// FieldInstanceID holds the string denoting the instance_id field in the database.
 	FieldInstanceID = "instance_id"
 	// FieldName holds the string denoting the name field in the database.
@@ -35,8 +40,14 @@ const (
 	FieldVersion = "version"
 	// FieldLastHeartbeatAt holds the string denoting the last_heartbeat_at field in the database.
 	FieldLastHeartbeatAt = "last_heartbeat_at"
+	// FieldDeployment holds the string denoting the deployment field in the database.
+	FieldDeployment = "deployment"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
 	// EdgeAgent holds the string denoting the agent edge name in mutations.
 	EdgeAgent = "agent"
+	// EdgeRuntime holds the string denoting the runtime edge name in mutations.
+	EdgeRuntime = "runtime"
 	// EdgeMessages holds the string denoting the messages edge name in mutations.
 	EdgeMessages = "messages"
 	// Table holds the table name of the agentinstance in the database.
@@ -48,6 +59,13 @@ const (
 	AgentInverseTable = "agents"
 	// AgentColumn is the table column denoting the agent relation/edge.
 	AgentColumn = "agent_id"
+	// RuntimeTable is the table that holds the runtime relation/edge.
+	RuntimeTable = "agent_instances"
+	// RuntimeInverseTable is the table name for the AgentRuntime entity.
+	// It exists in this package in order to avoid circular dependency with the "agentruntime" package.
+	RuntimeInverseTable = "agent_runtimes"
+	// RuntimeColumn is the table column denoting the runtime relation/edge.
+	RuntimeColumn = "agent_runtime_id"
 	// MessagesTable is the table that holds the messages relation/edge.
 	MessagesTable = "agent_messages"
 	// MessagesInverseTable is the table name for the AgentMessage entity.
@@ -65,11 +83,14 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldProjectID,
 	FieldAgentID,
+	FieldAgentRuntimeID,
 	FieldInstanceID,
 	FieldName,
 	FieldPlatform,
 	FieldVersion,
 	FieldLastHeartbeatAt,
+	FieldDeployment,
+	FieldStatus,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -107,6 +128,34 @@ var (
 	DefaultVersion string
 )
 
+// Status defines the type for the "status" enum field.
+type Status string
+
+// StatusRunning is the default value of the Status enum.
+const DefaultStatus = StatusRunning
+
+// Status values.
+const (
+	StatusPending Status = "pending"
+	StatusRunning Status = "running"
+	StatusStopped Status = "stopped"
+	StatusError   Status = "error"
+)
+
+func (s Status) String() string {
+	return string(s)
+}
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s Status) error {
+	switch s {
+	case StatusPending, StatusRunning, StatusStopped, StatusError:
+		return nil
+	default:
+		return fmt.Errorf("agentinstance: invalid enum value for status field: %q", s)
+	}
+}
+
 // OrderOption defines the ordering options for the AgentInstance queries.
 type OrderOption func(*sql.Selector)
 
@@ -140,6 +189,11 @@ func ByAgentID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAgentID, opts...).ToFunc()
 }
 
+// ByAgentRuntimeID orders the results by the agent_runtime_id field.
+func ByAgentRuntimeID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAgentRuntimeID, opts...).ToFunc()
+}
+
 // ByInstanceID orders the results by the instance_id field.
 func ByInstanceID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldInstanceID, opts...).ToFunc()
@@ -165,10 +219,22 @@ func ByLastHeartbeatAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastHeartbeatAt, opts...).ToFunc()
 }
 
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
 // ByAgentField orders the results by agent field.
 func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newAgentStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByRuntimeField orders the results by runtime field.
+func ByRuntimeField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRuntimeStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -192,10 +258,35 @@ func newAgentStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2O, true, AgentTable, AgentColumn),
 	)
 }
+func newRuntimeStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RuntimeInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, RuntimeTable, RuntimeColumn),
+	)
+}
 func newMessagesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(MessagesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, MessagesTable, MessagesColumn),
 	)
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Status) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Status) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Status(str)
+	if err := StatusValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Status", str)
+	}
+	return nil
 }

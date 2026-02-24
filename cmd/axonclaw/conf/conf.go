@@ -20,6 +20,7 @@ type Config struct {
 	BaseURL           string        `yaml:"base_url"`
 	APIKey            string        `yaml:"api_key"`
 	InstanceID        string        `yaml:"instance_id"`
+	Name              string        `yaml:"name"`
 	PollInterval      time.Duration `yaml:"poll_interval"`
 	HeartbeatInterval time.Duration `yaml:"heartbeat_interval"`
 	Debug             bool          `yaml:"debug"`
@@ -32,7 +33,7 @@ func DefaultConfig() Config {
 	}
 }
 
-func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
+func LoadOrSaveConfig(baseURL, apiKey, instanceID, name string) (Config, error) {
 	cfg := DefaultConfig()
 	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
 		ConfigName:     "config",
@@ -56,6 +57,9 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 	if res.Value.InstanceID != "" {
 		cfg.InstanceID = res.Value.InstanceID
 	}
+	if res.Value.Name != "" {
+		cfg.Name = res.Value.Name
+	}
 	if res.Value.PollInterval > 0 {
 		cfg.PollInterval = res.Value.PollInterval
 	}
@@ -68,6 +72,8 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 
 	finalBaseURL := strings.TrimSpace(baseURL)
 	finalAPIKey := strings.TrimSpace(apiKey)
+	finalInstanceID := strings.TrimSpace(instanceID)
+	finalName := strings.TrimSpace(name)
 
 	needSave := false
 	if finalBaseURL != "" {
@@ -76,6 +82,14 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 	}
 	if finalAPIKey != "" {
 		cfg.APIKey = finalAPIKey
+		needSave = true
+	}
+	if finalInstanceID != "" {
+		cfg.InstanceID = finalInstanceID
+		needSave = true
+	}
+	if finalName != "" {
+		cfg.Name = finalName
 		needSave = true
 	}
 
@@ -144,6 +158,9 @@ func SaveConfig(cfg Config) error {
 	if cfg.InstanceID != "" {
 		existing.InstanceID = cfg.InstanceID
 	}
+	if cfg.Name != "" {
+		existing.Name = cfg.Name
+	}
 
 	data, err := yaml.Marshal(&existing)
 	if err != nil {
@@ -156,4 +173,20 @@ func generateInstanceID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func ReadYAMLFile(path string) (map[string]any, error) {
+	return axonconf.ReadYAMLFile(path)
+}
+
+func WriteYAMLFile(path string, data map[string]any) error {
+	return axonconf.WriteYAMLFile(path, data)
+}
+
+func SetYAMLKey(path string, key string, value string) error {
+	return axonconf.SetYAMLKey(path, key, value)
+}
+
+func GetYAMLString(path string, key string) (string, bool, error) {
+	return axonconf.GetYAMLString(path, key)
 }

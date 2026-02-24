@@ -524,6 +524,13 @@ extend type Channel {
   disabledAPIKeys: [DisabledAPIKey!] @goField(forceResolver: true)
 }
 
+extend type AgentRuntime {
+  """
+  Runtime password for authentication. Sensitive: will be null if user can not access.
+  """
+  password: String @goField(forceResolver: true)
+}
+
 type Segment {
   id: ID!
   parentId: ID

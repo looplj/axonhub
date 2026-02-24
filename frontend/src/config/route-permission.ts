@@ -62,6 +62,11 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/agent-runtimes',
+        requiredScopes: ['read_agents'],
+        mode: 'hidden',
+      },
+      {
         path: '/permission-demo',
         // 权限演示页面所有用户都可以访问
       },

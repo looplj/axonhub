@@ -219,6 +219,14 @@ func (_m *AgentInstance) Agent(ctx context.Context) (*Agent, error) {
 	return result, err
 }
 
+func (_m *AgentInstance) Runtime(ctx context.Context) (*AgentRuntime, error) {
+	result, err := _m.Edges.RuntimeOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryRuntime().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
 func (_m *AgentInstance) Messages(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentMessageOrder, where *AgentMessageWhereInput,
 ) (*AgentMessageConnection, error) {
@@ -227,7 +235,7 @@ func (_m *AgentInstance) Messages(
 		WithAgentMessageFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[1][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
 	if nodes, err := _m.NamedMessages(alias); err == nil || hasTotalCount {
 		pager, err := newAgentMessagePager(opts, last != nil)
 		if err != nil {
@@ -262,6 +270,27 @@ func (_m *AgentMessage) AgentInstance(ctx context.Context) (*AgentInstance, erro
 		result, err = _m.QueryAgentInstance().Only(ctx)
 	}
 	return result, err
+}
+
+func (_m *AgentRuntime) Instances(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentInstanceOrder, where *AgentInstanceWhereInput,
+) (*AgentInstanceConnection, error) {
+	opts := []AgentInstancePaginateOption{
+		WithAgentInstanceOrder(orderBy),
+		WithAgentInstanceFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[0][alias]
+	if nodes, err := _m.NamedInstances(alias); err == nil || hasTotalCount {
+		pager, err := newAgentInstancePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentInstanceConnection{Edges: []*AgentInstanceEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryInstances().Paginate(ctx, after, first, before, last, opts...)
 }
 
 func (_m *AgentSkill) Agent(ctx context.Context) (*Agent, error) {

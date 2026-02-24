@@ -20,6 +20,12 @@ globs: frontend/**/*.ts, frontend/**/*.tsx
 
 8. DO NOT RUN LINT AND BUILD COMMANDS.
 
+## Development Guides
+
+For detailed development guides, see:
+- **Adding a Feature Page**: [docs/en/development/development.md](../../docs/en/development/development.md)
+- **Adding a Channel**: [docs/en/development/development.md](../../docs/en/development/development.md)
+
 ## i18n Rules
 
 1. MUST add i18n keys in `locales/*.json` files if creating new keys in code.

@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -181,15 +182,15 @@ func init() {
 	// agentinstance.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	agentinstance.DefaultDeletedAt = agentinstanceDescDeletedAt.Default.(int)
 	// agentinstanceDescName is the schema descriptor for name field.
-	agentinstanceDescName := agentinstanceFields[3].Descriptor()
+	agentinstanceDescName := agentinstanceFields[4].Descriptor()
 	// agentinstance.DefaultName holds the default value on creation for the name field.
 	agentinstance.DefaultName = agentinstanceDescName.Default.(string)
 	// agentinstanceDescPlatform is the schema descriptor for platform field.
-	agentinstanceDescPlatform := agentinstanceFields[4].Descriptor()
+	agentinstanceDescPlatform := agentinstanceFields[5].Descriptor()
 	// agentinstance.DefaultPlatform holds the default value on creation for the platform field.
 	agentinstance.DefaultPlatform = agentinstanceDescPlatform.Default.(string)
 	// agentinstanceDescVersion is the schema descriptor for version field.
-	agentinstanceDescVersion := agentinstanceFields[5].Descriptor()
+	agentinstanceDescVersion := agentinstanceFields[6].Descriptor()
 	// agentinstance.DefaultVersion holds the default value on creation for the version field.
 	agentinstance.DefaultVersion = agentinstanceDescVersion.Default.(string)
 	agentmemoryMixin := schema.AgentMemory{}.Mixin()
@@ -274,6 +275,53 @@ func init() {
 	agentmessageDescContent := agentmessageFields[8].Descriptor()
 	// agentmessage.DefaultContent holds the default value on creation for the content field.
 	agentmessage.DefaultContent = agentmessageDescContent.Default.(objects.JSONRawMessage)
+	agentruntimeMixin := schema.AgentRuntime{}.Mixin()
+	agentruntime.Policy = privacy.NewPolicies(schema.AgentRuntime{})
+	agentruntime.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := agentruntime.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	agentruntimeMixinHooks1 := agentruntimeMixin[1].Hooks()
+
+	agentruntime.Hooks[1] = agentruntimeMixinHooks1[0]
+	agentruntimeMixinInters1 := agentruntimeMixin[1].Interceptors()
+	agentruntime.Interceptors[0] = agentruntimeMixinInters1[0]
+	agentruntimeMixinFields0 := agentruntimeMixin[0].Fields()
+	_ = agentruntimeMixinFields0
+	agentruntimeMixinFields1 := agentruntimeMixin[1].Fields()
+	_ = agentruntimeMixinFields1
+	agentruntimeFields := schema.AgentRuntime{}.Fields()
+	_ = agentruntimeFields
+	// agentruntimeDescCreatedAt is the schema descriptor for created_at field.
+	agentruntimeDescCreatedAt := agentruntimeMixinFields0[0].Descriptor()
+	// agentruntime.DefaultCreatedAt holds the default value on creation for the created_at field.
+	agentruntime.DefaultCreatedAt = agentruntimeDescCreatedAt.Default.(func() time.Time)
+	// agentruntimeDescUpdatedAt is the schema descriptor for updated_at field.
+	agentruntimeDescUpdatedAt := agentruntimeMixinFields0[1].Descriptor()
+	// agentruntime.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	agentruntime.DefaultUpdatedAt = agentruntimeDescUpdatedAt.Default.(func() time.Time)
+	// agentruntime.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	agentruntime.UpdateDefaultUpdatedAt = agentruntimeDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// agentruntimeDescDeletedAt is the schema descriptor for deleted_at field.
+	agentruntimeDescDeletedAt := agentruntimeMixinFields1[0].Descriptor()
+	// agentruntime.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	agentruntime.DefaultDeletedAt = agentruntimeDescDeletedAt.Default.(int)
+	// agentruntimeDescHost is the schema descriptor for host field.
+	agentruntimeDescHost := agentruntimeFields[3].Descriptor()
+	// agentruntime.DefaultHost holds the default value on creation for the host field.
+	agentruntime.DefaultHost = agentruntimeDescHost.Default.(string)
+	// agentruntimeDescUser is the schema descriptor for user field.
+	agentruntimeDescUser := agentruntimeFields[4].Descriptor()
+	// agentruntime.DefaultUser holds the default value on creation for the user field.
+	agentruntime.DefaultUser = agentruntimeDescUser.Default.(string)
+	// agentruntimeDescPassword is the schema descriptor for password field.
+	agentruntimeDescPassword := agentruntimeFields[5].Descriptor()
+	// agentruntime.DefaultPassword holds the default value on creation for the password field.
+	agentruntime.DefaultPassword = agentruntimeDescPassword.Default.(string)
 	agentskillMixin := schema.AgentSkill{}.Mixin()
 	agentskill.Policy = privacy.NewPolicies(schema.AgentSkill{})
 	agentskill.Hooks[0] = func(next ent.Mutator) ent.Mutator {

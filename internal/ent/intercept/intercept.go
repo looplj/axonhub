@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -231,6 +232,33 @@ func (f TraverseAgentMessage) Traverse(ctx context.Context, q ent.Query) error {
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.AgentMessageQuery", q)
+}
+
+// The AgentRuntimeFunc type is an adapter to allow the use of ordinary function as a Querier.
+type AgentRuntimeFunc func(context.Context, *ent.AgentRuntimeQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f AgentRuntimeFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.AgentRuntimeQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.AgentRuntimeQuery", q)
+}
+
+// The TraverseAgentRuntime type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseAgentRuntime func(context.Context, *ent.AgentRuntimeQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseAgentRuntime) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseAgentRuntime) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.AgentRuntimeQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.AgentRuntimeQuery", q)
 }
 
 // The AgentSkillFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -948,6 +976,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.AgentMemoryQuery, predicate.AgentMemory, agentmemory.OrderOption]{typ: ent.TypeAgentMemory, tq: q}, nil
 	case *ent.AgentMessageQuery:
 		return &query[*ent.AgentMessageQuery, predicate.AgentMessage, agentmessage.OrderOption]{typ: ent.TypeAgentMessage, tq: q}, nil
+	case *ent.AgentRuntimeQuery:
+		return &query[*ent.AgentRuntimeQuery, predicate.AgentRuntime, agentruntime.OrderOption]{typ: ent.TypeAgentRuntime, tq: q}, nil
 	case *ent.AgentSkillQuery:
 		return &query[*ent.AgentSkillQuery, predicate.AgentSkill, agentskill.OrderOption]{typ: ent.TypeAgentSkill, tq: q}, nil
 	case *ent.AgentThreadQuery:

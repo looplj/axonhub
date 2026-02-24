@@ -3,6 +3,9 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"text/template"
@@ -22,16 +25,18 @@ type Result struct {
 	Tools        []*api.AgentBootstrapAgentBootstrapToolsAgentToolDefinition
 	Skills       []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition
 	BuiltinTools []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
+	AxonClawPath string
 }
 
 type SystemPromptData struct {
-	Date       string
-	Timezone   string
-	OS         string
-	Workspace  string
-	AgentID    string
-	AgentName  string
-	InstanceID string
+	Date         string
+	Timezone     string
+	OS           string
+	Workspace    string
+	AgentID      string
+	AgentName    string
+	InstanceID   string
+	AxonClawPath string
 }
 
 func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Result, error) {
@@ -58,6 +63,7 @@ func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Res
 	data.OS = runtime.GOOS
 	data.AgentID = bootstrap.AgentID
 	data.AgentName = bootstrap.AgentName
+	data.AxonClawPath = getAxonClawPath()
 
 	systemPrompt, err := buildSystemPrompt(bootstrap.SystemPrompt, data)
 	if err != nil {
@@ -75,6 +81,7 @@ func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Res
 		Tools:        bootstrap.Tools,
 		Skills:       bootstrap.Skills,
 		BuiltinTools: bootstrap.BuiltinTools,
+		AxonClawPath: data.AxonClawPath,
 	}, nil
 }
 
@@ -108,4 +115,17 @@ func appendSkillsToPrompt(basePrompt string, skills []*api.AgentBootstrapAgentBo
 	}
 
 	return sb.String()
+}
+
+func getAxonClawPath() string {
+	if execPath, err := os.Executable(); err == nil {
+		return execPath
+	}
+	if path, err := exec.LookPath("axonclaw"); err == nil {
+		if absPath, err := filepath.Abs(path); err == nil {
+			return absPath
+		}
+		return path
+	}
+	return "axonclaw"
 }

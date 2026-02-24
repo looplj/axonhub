@@ -41,9 +41,11 @@ cd cmd/axoncli && go test ./...  # Run CLI tests
 
 # Golang Rules
 
-1. USE github.com/samber/lo package to handle collection, slice, map, ptr, etc.
+1. DO NOT run `go build` or `make build-backend` unless explicitly asked. The server is managed by air in development and will auto-rebuild on code changes.
 
-2. DO NOT RUN golangci-lint run, I will run manually.
+2. USE github.com/samber/lo package to handle collection, slice, map, ptr, etc.
+
+3. DO NOT RUN golangci-lint run, I will run manually.
 
 # Ent Rules
 

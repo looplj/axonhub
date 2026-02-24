@@ -179,6 +179,18 @@ export function usePermissions() {
     [hasScope]
   );
 
+  // Common permission checks for agent runtime operations
+  const agentRuntimesPermissions = useMemo(
+    () => ({
+      canRead: hasScope('read_agents'),
+      canWrite: hasScope('write_agents'),
+      canCreate: hasScope('write_agents'),
+      canEdit: hasScope('write_agents'),
+      canDelete: hasScope('write_agents'),
+    }),
+    [hasScope]
+  );
+
   return {
     user,
     isOwner,
@@ -193,5 +205,6 @@ export function usePermissions() {
     apiKeyPermissions,
     modelPermissions,
     projectPermissions,
+    agentRuntimesPermissions,
   };
 }

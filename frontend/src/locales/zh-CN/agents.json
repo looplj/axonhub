@@ -4,6 +4,7 @@
   "agents.actions.create": "添加智能体",
   "agents.actions.view": "查看",
   "agents.actions.addTool": "添加工具",
+  "agents.actions.deploy": "部署 Axonclaw",
   "agents.columns.model": "模型",
   "agents.filters.filterByName": "按名称筛选...",
   "agents.fields.name": "名称",
@@ -72,5 +73,16 @@
   "agents.chat.toolName": "工具",
   "agents.chat.toolCallId": "调用 ID",
   "agents.chat.parameters": "参数",
-  "agents.chat.expiresAt": "过期时间"
+  "agents.chat.expiresAt": "过期时间",
+  "agents.dialogs.deploy.title": "部署 Axonclaw",
+  "agents.dialogs.deploy.description": "将 axonclaw 部署到运行时环境。",
+  "agents.dialogs.deploy.fields.runtime.label": "运行时",
+  "agents.dialogs.deploy.fields.runtime.placeholder": "选择运行时",
+  "agents.dialogs.deploy.fields.name.label": "实例名称",
+  "agents.dialogs.deploy.fields.name.placeholder": "输入实例名称",
+  "agents.dialogs.deploy.fields.directory.label": "目录（可选）",
+  "agents.dialogs.deploy.fields.directory.placeholder": "/opt/axonclaw/instance-id",
+  "agents.dialogs.deploy.noRuntimes": "没有可用的运行时",
+  "agents.messages.deploySuccess": "Axonclaw 部署成功",
+  "agents.messages.deployError": "部署 axonclaw 失败：{{error}}"
 }

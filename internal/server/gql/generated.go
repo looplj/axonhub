@@ -19,7 +19,9 @@ import (
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
@@ -71,6 +73,7 @@ type ResolverRoot interface {
 	AgentInstance() AgentInstanceResolver
 	AgentMemory() AgentMemoryResolver
 	AgentMessage() AgentMessageResolver
+	AgentRuntime() AgentRuntimeResolver
 	AgentSkill() AgentSkillResolver
 	AgentThread() AgentThreadResolver
 	AgentTool() AgentToolResolver
@@ -263,7 +266,9 @@ type ComplexityRoot struct {
 	AgentInstance struct {
 		Agent           func(childComplexity int) int
 		AgentID         func(childComplexity int) int
+		AgentRuntimeID  func(childComplexity int) int
 		CreatedAt       func(childComplexity int) int
+		Deployment      func(childComplexity int) int
 		ID              func(childComplexity int) int
 		InstanceID      func(childComplexity int) int
 		LastHeartbeatAt func(childComplexity int) int
@@ -271,6 +276,8 @@ type ComplexityRoot struct {
 		Name            func(childComplexity int) int
 		Platform        func(childComplexity int) int
 		ProjectID       func(childComplexity int) int
+		Runtime         func(childComplexity int) int
+		Status          func(childComplexity int) int
 		UpdatedAt       func(childComplexity int) int
 		Version         func(childComplexity int) int
 	}
@@ -279,6 +286,11 @@ type ComplexityRoot struct {
 		Edges      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
 		TotalCount func(childComplexity int) int
+	}
+
+	AgentInstanceDeployment struct {
+		Directory           func(childComplexity int) int
+		DockerContainerName func(childComplexity int) int
 	}
 
 	AgentInstanceEdge struct {
@@ -338,6 +350,36 @@ type ComplexityRoot struct {
 	AgentMessageEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	AgentRuntime struct {
+		CreatedAt func(childComplexity int) int
+		Host      func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Instances func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentInstanceOrder, where *ent.AgentInstanceWhereInput) int
+		Name      func(childComplexity int) int
+		Password  func(childComplexity int) int
+		Status    func(childComplexity int) int
+		Type      func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
+		User      func(childComplexity int) int
+	}
+
+	AgentRuntimeConnection struct {
+		Edges      func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	AgentRuntimeEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
+	AgentRuntimeTestResult struct {
+		Error   func(childComplexity int) int
+		Latency func(childComplexity int) int
+		Success func(childComplexity int) int
 	}
 
 	AgentSkill struct {
@@ -769,6 +811,12 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 	}
 
+	DeployAxonclawResult struct {
+		Error    func(childComplexity int) int
+		Instance func(childComplexity int) int
+		Success  func(childComplexity int) int
+	}
+
 	DisabledAPIKey struct {
 		DisabledAt func(childComplexity int) int
 		ErrorCode  func(childComplexity int) int
@@ -967,6 +1015,7 @@ type ComplexityRoot struct {
 		BulkArchiveModels                    func(childComplexity int, ids []*objects.GUID) int
 		BulkCreateChannels                   func(childComplexity int, input biz.BulkCreateChannelsInput) int
 		BulkCreateModels                     func(childComplexity int, inputs []*ent.CreateModelInput) int
+		BulkDeleteAgentRuntimes              func(childComplexity int, ids []*objects.GUID) int
 		BulkDeleteChannels                   func(childComplexity int, ids []*objects.GUID) int
 		BulkDeleteModels                     func(childComplexity int, ids []*objects.GUID) int
 		BulkDeletePrompts                    func(childComplexity int, ids []*objects.GUID) int
@@ -980,6 +1029,7 @@ type ComplexityRoot struct {
 		BulkEnableModels                     func(childComplexity int, ids []*objects.GUID) int
 		BulkEnablePrompts                    func(childComplexity int, ids []*objects.GUID) int
 		BulkImportChannels                   func(childComplexity int, input BulkImportChannelsInput) int
+		BulkUpdateAgentRuntimeStatus         func(childComplexity int, ids []*objects.GUID, status agentruntime.Status) int
 		BulkUpdateChannelOrdering            func(childComplexity int, input BulkUpdateChannelOrderingInput) int
 		CheckProviderQuotas                  func(childComplexity int) int
 		CompleteAutoDisableChannelOnboarding func(childComplexity int, input CompleteAutoDisableChannelOnboardingInput) int
@@ -987,6 +1037,7 @@ type ComplexityRoot struct {
 		CompleteSystemModelSettingOnboarding func(childComplexity int, input CompleteSystemModelSettingOnboardingInput) int
 		CreateAPIKey                         func(childComplexity int, input ent.CreateAPIKeyInput) int
 		CreateAgent                          func(childComplexity int, input biz.CreateAgentInput) int
+		CreateAgentRuntime                   func(childComplexity int, input ent.CreateAgentRuntimeInput) int
 		CreateChannel                        func(childComplexity int, input ent.CreateChannelInput) int
 		CreateChannelOverrideTemplate        func(childComplexity int, input ent.CreateChannelOverrideTemplateInput) int
 		CreateDataStorage                    func(childComplexity int, input ent.CreateDataStorageInput) int
@@ -996,12 +1047,14 @@ type ComplexityRoot struct {
 		CreateRole                           func(childComplexity int, input ent.CreateRoleInput) int
 		CreateUser                           func(childComplexity int, input ent.CreateUserInput) int
 		DeleteAgent                          func(childComplexity int, id objects.GUID) int
+		DeleteAgentRuntime                   func(childComplexity int, id objects.GUID) int
 		DeleteChannel                        func(childComplexity int, id objects.GUID) int
 		DeleteChannelOverrideTemplate        func(childComplexity int, id objects.GUID) int
 		DeleteDisabledChannelAPIKeys         func(childComplexity int, channelID objects.GUID, keys []string) int
 		DeleteModel                          func(childComplexity int, id objects.GUID) int
 		DeletePrompt                         func(childComplexity int, id objects.GUID) int
 		DeleteRole                           func(childComplexity int, id objects.GUID) int
+		DeployAxonclaw                       func(childComplexity int, input objects.DeployAxonclawInput) int
 		DisableChannelAPIKey                 func(childComplexity int, channelID objects.GUID, key string) int
 		EnableAllChannelAPIKeys              func(childComplexity int, channelID objects.GUID) int
 		EnableChannelAPIKey                  func(childComplexity int, channelID objects.GUID, key string) int
@@ -1012,12 +1065,15 @@ type ComplexityRoot struct {
 		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		SendAgentMessage                     func(childComplexity int, input biz.SendAgentMessageInput) int
 		SyncChannelModels                    func(childComplexity int, channelID objects.GUID, pattern *string) int
+		TestAgentRuntimeConnection           func(childComplexity int, id objects.GUID) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
 		TriggerAutoBackup                    func(childComplexity int) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
 		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
 		UpdateAPIKeyStatus                   func(childComplexity int, id objects.GUID, status apikey.Status) int
 		UpdateAgent                          func(childComplexity int, id objects.GUID, input biz.UpdateAgentInput) int
+		UpdateAgentRuntime                   func(childComplexity int, id objects.GUID, input ent.UpdateAgentRuntimeInput) int
+		UpdateAgentRuntimeStatus             func(childComplexity int, id objects.GUID, status agentruntime.Status) int
 		UpdateAutoBackupSettings             func(childComplexity int, input UpdateAutoBackupSettingsInput) int
 		UpdateBrandSettings                  func(childComplexity int, input UpdateBrandSettingsInput) int
 		UpdateChannel                        func(childComplexity int, id objects.GUID, input ent.UpdateChannelInput) int
@@ -1237,6 +1293,8 @@ type ComplexityRoot struct {
 		AgentInstances               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentInstanceOrder, where *ent.AgentInstanceWhereInput) int
 		AgentMemories                func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMemoryOrder, where *ent.AgentMemoryWhereInput) int
 		AgentMessages                func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMessageOrder, where *ent.AgentMessageWhereInput) int
+		AgentRuntime                 func(childComplexity int, id objects.GUID) int
+		AgentRuntimes                func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentRuntimeOrder, where *ent.AgentRuntimeWhereInput) int
 		AgentSkills                  func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentSkillOrder, where *ent.AgentSkillWhereInput) int
 		AgentThreads                 func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentThreadOrder, where *ent.AgentThreadWhereInput) int
 		AgentTools                   func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentToolOrder, where *ent.AgentToolWhereInput) int
@@ -1952,6 +2010,7 @@ type AgentInstanceResolver interface {
 	ID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error)
 
 	AgentID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error)
+	AgentRuntimeID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error)
 }
 type AgentMemoryResolver interface {
 	ID(ctx context.Context, obj *ent.AgentMemory) (*objects.GUID, error)
@@ -1963,6 +2022,11 @@ type AgentMessageResolver interface {
 
 	AgentID(ctx context.Context, obj *ent.AgentMessage) (*objects.GUID, error)
 	AgentInstanceID(ctx context.Context, obj *ent.AgentMessage) (*objects.GUID, error)
+}
+type AgentRuntimeResolver interface {
+	ID(ctx context.Context, obj *ent.AgentRuntime) (*objects.GUID, error)
+
+	Password(ctx context.Context, obj *ent.AgentRuntime) (*string, error)
 }
 type AgentSkillResolver interface {
 	ID(ctx context.Context, obj *ent.AgentSkill) (*objects.GUID, error)
@@ -2108,6 +2172,14 @@ type MutationResolver interface {
 	SendAgentMessage(ctx context.Context, input biz.SendAgentMessageInput) (*AgentChatMessage, error)
 	ResolveApproval(ctx context.Context, input ResolveApprovalInput) (bool, error)
 	AckAgentMessages(ctx context.Context, input biz.AckAgentMessagesInput) (bool, error)
+	CreateAgentRuntime(ctx context.Context, input ent.CreateAgentRuntimeInput) (*ent.AgentRuntime, error)
+	UpdateAgentRuntime(ctx context.Context, id objects.GUID, input ent.UpdateAgentRuntimeInput) (*ent.AgentRuntime, error)
+	UpdateAgentRuntimeStatus(ctx context.Context, id objects.GUID, status agentruntime.Status) (*ent.AgentRuntime, error)
+	DeleteAgentRuntime(ctx context.Context, id objects.GUID) (bool, error)
+	BulkDeleteAgentRuntimes(ctx context.Context, ids []*objects.GUID) (bool, error)
+	BulkUpdateAgentRuntimeStatus(ctx context.Context, ids []*objects.GUID, status agentruntime.Status) (bool, error)
+	TestAgentRuntimeConnection(ctx context.Context, id objects.GUID) (*biz.TestConnectionResult, error)
+	DeployAxonclaw(ctx context.Context, input objects.DeployAxonclawInput) (*biz.DeployAxonclawResult, error)
 	CreatePrompt(ctx context.Context, input ent.CreatePromptInput) (*ent.Prompt, error)
 	UpdatePrompt(ctx context.Context, id objects.GUID, input ent.UpdatePromptInput) (*ent.Prompt, error)
 	DeletePrompt(ctx context.Context, id objects.GUID) (bool, error)
@@ -2149,6 +2221,7 @@ type QueryResolver interface {
 	AgentInstances(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentInstanceOrder, where *ent.AgentInstanceWhereInput) (*ent.AgentInstanceConnection, error)
 	AgentMemories(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMemoryOrder, where *ent.AgentMemoryWhereInput) (*ent.AgentMemoryConnection, error)
 	AgentMessages(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMessageOrder, where *ent.AgentMessageWhereInput) (*ent.AgentMessageConnection, error)
+	AgentRuntimes(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentRuntimeOrder, where *ent.AgentRuntimeWhereInput) (*ent.AgentRuntimeConnection, error)
 	AgentSkills(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentSkillOrder, where *ent.AgentSkillWhereInput) (*ent.AgentSkillConnection, error)
 	AgentThreads(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentThreadOrder, where *ent.AgentThreadWhereInput) (*ent.AgentThreadConnection, error)
 	AgentTools(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentToolOrder, where *ent.AgentToolWhereInput) (*ent.AgentToolConnection, error)
@@ -2210,6 +2283,7 @@ type QueryResolver interface {
 	PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, instanceID *string, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
 	PullAgentApprovalRequests(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentApprovalRequestMessage, error)
 	AgentChatMessages(ctx context.Context, agentID objects.GUID, instanceID *string, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
+	AgentRuntime(ctx context.Context, id objects.GUID) (*ent.AgentRuntime, error)
 }
 type RequestResolver interface {
 	ID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
@@ -2988,12 +3062,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentInstance.AgentID(childComplexity), true
+	case "AgentInstance.agentRuntimeID":
+		if e.complexity.AgentInstance.AgentRuntimeID == nil {
+			break
+		}
+
+		return e.complexity.AgentInstance.AgentRuntimeID(childComplexity), true
 	case "AgentInstance.createdAt":
 		if e.complexity.AgentInstance.CreatedAt == nil {
 			break
 		}
 
 		return e.complexity.AgentInstance.CreatedAt(childComplexity), true
+	case "AgentInstance.deployment":
+		if e.complexity.AgentInstance.Deployment == nil {
+			break
+		}
+
+		return e.complexity.AgentInstance.Deployment(childComplexity), true
 	case "AgentInstance.id":
 		if e.complexity.AgentInstance.ID == nil {
 			break
@@ -3041,6 +3127,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentInstance.ProjectID(childComplexity), true
+	case "AgentInstance.runtime":
+		if e.complexity.AgentInstance.Runtime == nil {
+			break
+		}
+
+		return e.complexity.AgentInstance.Runtime(childComplexity), true
+	case "AgentInstance.status":
+		if e.complexity.AgentInstance.Status == nil {
+			break
+		}
+
+		return e.complexity.AgentInstance.Status(childComplexity), true
 	case "AgentInstance.updatedAt":
 		if e.complexity.AgentInstance.UpdatedAt == nil {
 			break
@@ -3072,6 +3170,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentInstanceConnection.TotalCount(childComplexity), true
+
+	case "AgentInstanceDeployment.directory":
+		if e.complexity.AgentInstanceDeployment.Directory == nil {
+			break
+		}
+
+		return e.complexity.AgentInstanceDeployment.Directory(childComplexity), true
+	case "AgentInstanceDeployment.dockerContainerName":
+		if e.complexity.AgentInstanceDeployment.DockerContainerName == nil {
+			break
+		}
+
+		return e.complexity.AgentInstanceDeployment.DockerContainerName(childComplexity), true
 
 	case "AgentInstanceEdge.cursor":
 		if e.complexity.AgentInstanceEdge.Cursor == nil {
@@ -3307,6 +3418,123 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentMessageEdge.Node(childComplexity), true
+
+	case "AgentRuntime.createdAt":
+		if e.complexity.AgentRuntime.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.CreatedAt(childComplexity), true
+	case "AgentRuntime.host":
+		if e.complexity.AgentRuntime.Host == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.Host(childComplexity), true
+	case "AgentRuntime.id":
+		if e.complexity.AgentRuntime.ID == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.ID(childComplexity), true
+	case "AgentRuntime.instances":
+		if e.complexity.AgentRuntime.Instances == nil {
+			break
+		}
+
+		args, err := ec.field_AgentRuntime_instances_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.AgentRuntime.Instances(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.AgentInstanceOrder), args["where"].(*ent.AgentInstanceWhereInput)), true
+	case "AgentRuntime.name":
+		if e.complexity.AgentRuntime.Name == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.Name(childComplexity), true
+	case "AgentRuntime.password":
+		if e.complexity.AgentRuntime.Password == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.Password(childComplexity), true
+	case "AgentRuntime.status":
+		if e.complexity.AgentRuntime.Status == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.Status(childComplexity), true
+	case "AgentRuntime.type":
+		if e.complexity.AgentRuntime.Type == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.Type(childComplexity), true
+	case "AgentRuntime.updatedAt":
+		if e.complexity.AgentRuntime.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.UpdatedAt(childComplexity), true
+	case "AgentRuntime.user":
+		if e.complexity.AgentRuntime.User == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntime.User(childComplexity), true
+
+	case "AgentRuntimeConnection.edges":
+		if e.complexity.AgentRuntimeConnection.Edges == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntimeConnection.Edges(childComplexity), true
+	case "AgentRuntimeConnection.pageInfo":
+		if e.complexity.AgentRuntimeConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntimeConnection.PageInfo(childComplexity), true
+	case "AgentRuntimeConnection.totalCount":
+		if e.complexity.AgentRuntimeConnection.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntimeConnection.TotalCount(childComplexity), true
+
+	case "AgentRuntimeEdge.cursor":
+		if e.complexity.AgentRuntimeEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntimeEdge.Cursor(childComplexity), true
+	case "AgentRuntimeEdge.node":
+		if e.complexity.AgentRuntimeEdge.Node == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntimeEdge.Node(childComplexity), true
+
+	case "AgentRuntimeTestResult.error":
+		if e.complexity.AgentRuntimeTestResult.Error == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntimeTestResult.Error(childComplexity), true
+	case "AgentRuntimeTestResult.latency":
+		if e.complexity.AgentRuntimeTestResult.Latency == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntimeTestResult.Latency(childComplexity), true
+	case "AgentRuntimeTestResult.success":
+		if e.complexity.AgentRuntimeTestResult.Success == nil {
+			break
+		}
+
+		return e.complexity.AgentRuntimeTestResult.Success(childComplexity), true
 
 	case "AgentSkill.agent":
 		if e.complexity.AgentSkill.Agent == nil {
@@ -4938,6 +5166,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DeleteDisabledAPIKeysPayload.Success(childComplexity), true
 
+	case "DeployAxonclawResult.error":
+		if e.complexity.DeployAxonclawResult.Error == nil {
+			break
+		}
+
+		return e.complexity.DeployAxonclawResult.Error(childComplexity), true
+	case "DeployAxonclawResult.instance":
+		if e.complexity.DeployAxonclawResult.Instance == nil {
+			break
+		}
+
+		return e.complexity.DeployAxonclawResult.Instance(childComplexity), true
+	case "DeployAxonclawResult.success":
+		if e.complexity.DeployAxonclawResult.Success == nil {
+			break
+		}
+
+		return e.complexity.DeployAxonclawResult.Success(childComplexity), true
+
 	case "DisabledAPIKey.disabledAt":
 		if e.complexity.DisabledAPIKey.DisabledAt == nil {
 			break
@@ -5689,6 +5936,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BulkCreateModels(childComplexity, args["inputs"].([]*ent.CreateModelInput)), true
+	case "Mutation.bulkDeleteAgentRuntimes":
+		if e.complexity.Mutation.BulkDeleteAgentRuntimes == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bulkDeleteAgentRuntimes_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BulkDeleteAgentRuntimes(childComplexity, args["ids"].([]*objects.GUID)), true
 	case "Mutation.bulkDeleteChannels":
 		if e.complexity.Mutation.BulkDeleteChannels == nil {
 			break
@@ -5832,6 +6090,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BulkImportChannels(childComplexity, args["input"].(BulkImportChannelsInput)), true
+	case "Mutation.bulkUpdateAgentRuntimeStatus":
+		if e.complexity.Mutation.BulkUpdateAgentRuntimeStatus == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bulkUpdateAgentRuntimeStatus_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BulkUpdateAgentRuntimeStatus(childComplexity, args["ids"].([]*objects.GUID), args["status"].(agentruntime.Status)), true
 	case "Mutation.bulkUpdateChannelOrdering":
 		if e.complexity.Mutation.BulkUpdateChannelOrdering == nil {
 			break
@@ -5904,6 +6173,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CreateAgent(childComplexity, args["input"].(biz.CreateAgentInput)), true
+	case "Mutation.createAgentRuntime":
+		if e.complexity.Mutation.CreateAgentRuntime == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createAgentRuntime_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateAgentRuntime(childComplexity, args["input"].(ent.CreateAgentRuntimeInput)), true
 	case "Mutation.createChannel":
 		if e.complexity.Mutation.CreateChannel == nil {
 			break
@@ -6003,6 +6283,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteAgent(childComplexity, args["id"].(objects.GUID)), true
+	case "Mutation.deleteAgentRuntime":
+		if e.complexity.Mutation.DeleteAgentRuntime == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteAgentRuntime_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteAgentRuntime(childComplexity, args["id"].(objects.GUID)), true
 	case "Mutation.deleteChannel":
 		if e.complexity.Mutation.DeleteChannel == nil {
 			break
@@ -6069,6 +6360,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteRole(childComplexity, args["id"].(objects.GUID)), true
+	case "Mutation.deployAxonclaw":
+		if e.complexity.Mutation.DeployAxonclaw == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deployAxonclaw_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeployAxonclaw(childComplexity, args["input"].(objects.DeployAxonclawInput)), true
 	case "Mutation.disableChannelAPIKey":
 		if e.complexity.Mutation.DisableChannelAPIKey == nil {
 			break
@@ -6179,6 +6481,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SyncChannelModels(childComplexity, args["channelID"].(objects.GUID), args["pattern"].(*string)), true
+	case "Mutation.testAgentRuntimeConnection":
+		if e.complexity.Mutation.TestAgentRuntimeConnection == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_testAgentRuntimeConnection_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.TestAgentRuntimeConnection(childComplexity, args["id"].(objects.GUID)), true
 	case "Mutation.testChannel":
 		if e.complexity.Mutation.TestChannel == nil {
 			break
@@ -6240,6 +6553,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateAgent(childComplexity, args["id"].(objects.GUID), args["input"].(biz.UpdateAgentInput)), true
+	case "Mutation.updateAgentRuntime":
+		if e.complexity.Mutation.UpdateAgentRuntime == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAgentRuntime_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateAgentRuntime(childComplexity, args["id"].(objects.GUID), args["input"].(ent.UpdateAgentRuntimeInput)), true
+	case "Mutation.updateAgentRuntimeStatus":
+		if e.complexity.Mutation.UpdateAgentRuntimeStatus == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAgentRuntimeStatus_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateAgentRuntimeStatus(childComplexity, args["id"].(objects.GUID), args["status"].(agentruntime.Status)), true
 	case "Mutation.updateAutoBackupSettings":
 		if e.complexity.Mutation.UpdateAutoBackupSettings == nil {
 			break
@@ -7408,6 +7743,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.AgentMessages(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.AgentMessageOrder), args["where"].(*ent.AgentMessageWhereInput)), true
+	case "Query.agentRuntime":
+		if e.complexity.Query.AgentRuntime == nil {
+			break
+		}
+
+		args, err := ec.field_Query_agentRuntime_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AgentRuntime(childComplexity, args["id"].(objects.GUID)), true
+	case "Query.agentRuntimes":
+		if e.complexity.Query.AgentRuntimes == nil {
+			break
+		}
+
+		args, err := ec.field_Query_agentRuntimes_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AgentRuntimes(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.AgentRuntimeOrder), args["where"].(*ent.AgentRuntimeWhereInput)), true
 	case "Query.agentSkills":
 		if e.complexity.Query.AgentSkills == nil {
 			break
@@ -10498,6 +10855,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAckAgentMessagesInput,
 		ec.unmarshalInputAddUserToProjectInput,
 		ec.unmarshalInputAgentBuiltinToolInput,
+		ec.unmarshalInputAgentInstanceDeploymentInput,
 		ec.unmarshalInputAgentInstanceOrder,
 		ec.unmarshalInputAgentInstanceWhereInput,
 		ec.unmarshalInputAgentMemoryOrder,
@@ -10505,6 +10863,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAgentMessageOrder,
 		ec.unmarshalInputAgentMessageWhereInput,
 		ec.unmarshalInputAgentOrder,
+		ec.unmarshalInputAgentRuntimeOrder,
+		ec.unmarshalInputAgentRuntimeWhereInput,
 		ec.unmarshalInputAgentSkillOrder,
 		ec.unmarshalInputAgentSkillWhereInput,
 		ec.unmarshalInputAgentSkillsPolicyInput,
@@ -10549,6 +10909,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateAgentInstanceInput,
 		ec.unmarshalInputCreateAgentMemoryInput,
 		ec.unmarshalInputCreateAgentMessageInput,
+		ec.unmarshalInputCreateAgentRuntimeInput,
 		ec.unmarshalInputCreateAgentSkillInput,
 		ec.unmarshalInputCreateAgentThreadInput,
 		ec.unmarshalInputCreateAgentToolInput,
@@ -10571,6 +10932,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputDataStorageOrder,
 		ec.unmarshalInputDataStorageSettingsInput,
 		ec.unmarshalInputDataStorageWhereInput,
+		ec.unmarshalInputDeployAxonclawInput,
 		ec.unmarshalInputExcludeAssociationInput,
 		ec.unmarshalInputFastestChannelsInput,
 		ec.unmarshalInputFetchModelsInput,
@@ -10647,6 +11009,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateAgentInstanceInput,
 		ec.unmarshalInputUpdateAgentMemoryInput,
 		ec.unmarshalInputUpdateAgentMessageInput,
+		ec.unmarshalInputUpdateAgentRuntimeInput,
 		ec.unmarshalInputUpdateAgentSkillInput,
 		ec.unmarshalInputUpdateAgentToolInput,
 		ec.unmarshalInputUpdateAutoBackupSettingsInput,
@@ -10782,7 +11145,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "axonhub.graphql" "ent.graphql" "dashboard.graphql" "scopes.graphql" "me.graphql" "system.graphql" "model.graphql" "backup.graphql" "channel_probe.graphql" "agent.graphql" "prompt.graphql" "price.graphql" "cost.graphql"
+//go:embed "axonhub.graphql" "ent.graphql" "dashboard.graphql" "scopes.graphql" "me.graphql" "system.graphql" "model.graphql" "backup.graphql" "channel_probe.graphql" "agent.graphql" "agent_runtime.graphql" "prompt.graphql" "price.graphql" "cost.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -10804,6 +11167,7 @@ var sources = []*ast.Source{
 	{Name: "backup.graphql", Input: sourceData("backup.graphql"), BuiltIn: false},
 	{Name: "channel_probe.graphql", Input: sourceData("channel_probe.graphql"), BuiltIn: false},
 	{Name: "agent.graphql", Input: sourceData("agent.graphql"), BuiltIn: false},
+	{Name: "agent_runtime.graphql", Input: sourceData("agent_runtime.graphql"), BuiltIn: false},
 	{Name: "prompt.graphql", Input: sourceData("prompt.graphql"), BuiltIn: false},
 	{Name: "price.graphql", Input: sourceData("price.graphql"), BuiltIn: false},
 	{Name: "cost.graphql", Input: sourceData("cost.graphql"), BuiltIn: false},
@@ -10879,6 +11243,42 @@ func (ec *executionContext) field_AgentInstance_messages_args(ctx context.Contex
 	}
 	args["orderBy"] = arg4
 	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "where", ec.unmarshalOAgentMessageWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentMessageWhereInput)
+	if err != nil {
+		return nil, err
+	}
+	args["where"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_AgentRuntime_instances_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "before", ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor)
+	if err != nil {
+		return nil, err
+	}
+	args["before"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "last", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["last"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "orderBy", ec.unmarshalOAgentInstanceOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceOrder)
+	if err != nil {
+		return nil, err
+	}
+	args["orderBy"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "where", ec.unmarshalOAgentInstanceWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceWhereInput)
 	if err != nil {
 		return nil, err
 	}
@@ -11381,6 +11781,17 @@ func (ec *executionContext) field_Mutation_bulkCreateModels_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_bulkDeleteAgentRuntimes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ids", ec.unmarshalNID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["ids"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_bulkDeleteChannels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11524,6 +11935,22 @@ func (ec *executionContext) field_Mutation_bulkImportChannels_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_bulkUpdateAgentRuntimeStatus_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ids", ec.unmarshalNID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["ids"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "status", ec.unmarshalNAgentRuntimeStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus)
+	if err != nil {
+		return nil, err
+	}
+	args["status"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_bulkUpdateChannelOrdering_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11572,6 +11999,17 @@ func (ec *executionContext) field_Mutation_createAPIKey_args(ctx context.Context
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateAPIKeyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateAPIKeyInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createAgentRuntime_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateAgentRuntimeInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateAgentRuntimeInput)
 	if err != nil {
 		return nil, err
 	}
@@ -11678,6 +12116,17 @@ func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteAgentRuntime_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteAgent_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11757,6 +12206,17 @@ func (ec *executionContext) field_Mutation_deleteRole_args(ctx context.Context, 
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deployAxonclaw_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNDeployAxonclawInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDeployAxonclawInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -11900,6 +12360,17 @@ func (ec *executionContext) field_Mutation_syncChannelModels_args(ctx context.Co
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_testAgentRuntimeConnection_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_testChannel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11952,6 +12423,38 @@ func (ec *executionContext) field_Mutation_updateAPIKey_args(ctx context.Context
 	}
 	args["id"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateAPIKeyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateAPIKeyInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAgentRuntimeStatus_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "status", ec.unmarshalNAgentRuntimeStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus)
+	if err != nil {
+		return nil, err
+	}
+	args["status"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAgentRuntime_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateAgentRuntimeInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateAgentRuntimeInput)
 	if err != nil {
 		return nil, err
 	}
@@ -13126,6 +13629,53 @@ func (ec *executionContext) field_Query_agentMessages_args(ctx context.Context, 
 	}
 	args["orderBy"] = arg4
 	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "where", ec.unmarshalOAgentMessageWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentMessageWhereInput)
+	if err != nil {
+		return nil, err
+	}
+	args["where"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_agentRuntime_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_agentRuntimes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "before", ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor)
+	if err != nil {
+		return nil, err
+	}
+	args["before"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "last", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["last"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "orderBy", ec.unmarshalOAgentRuntimeOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeOrder)
+	if err != nil {
+		return nil, err
+	}
+	args["orderBy"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "where", ec.unmarshalOAgentRuntimeWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInput)
 	if err != nil {
 		return nil, err
 	}
@@ -18325,6 +18875,35 @@ func (ec *executionContext) fieldContext_AgentInstance_agentID(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _AgentInstance_agentRuntimeID(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstance_agentRuntimeID,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.AgentInstance().AgentRuntimeID(ctx, obj)
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstance_agentRuntimeID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstance",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AgentInstance_instanceID(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18470,6 +19049,70 @@ func (ec *executionContext) fieldContext_AgentInstance_lastHeartbeatAt(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _AgentInstance_deployment(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstance_deployment,
+		func(ctx context.Context) (any, error) {
+			return obj.Deployment, nil
+		},
+		nil,
+		ec.marshalOAgentInstanceDeployment2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstance_deployment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "directory":
+				return ec.fieldContext_AgentInstanceDeployment_directory(ctx, field)
+			case "dockerContainerName":
+				return ec.fieldContext_AgentInstanceDeployment_dockerContainerName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentInstanceDeployment", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentInstance_status(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstance_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNAgentInstanceStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstance_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type AgentInstanceStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AgentInstance_agent(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18542,6 +19185,57 @@ func (ec *executionContext) fieldContext_AgentInstance_agent(_ context.Context, 
 				return ec.fieldContext_Agent_memories(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Agent", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentInstance_runtime(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstance_runtime,
+		func(ctx context.Context) (any, error) {
+			return obj.Runtime(ctx)
+		},
+		nil,
+		ec.marshalOAgentRuntime2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstance_runtime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstance",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentRuntime_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AgentRuntime_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AgentRuntime_updatedAt(ctx, field)
+			case "name":
+				return ec.fieldContext_AgentRuntime_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentRuntime_type(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentRuntime_status(ctx, field)
+			case "host":
+				return ec.fieldContext_AgentRuntime_host(ctx, field)
+			case "user":
+				return ec.fieldContext_AgentRuntime_user(ctx, field)
+			case "instances":
+				return ec.fieldContext_AgentRuntime_instances(ctx, field)
+			case "password":
+				return ec.fieldContext_AgentRuntime_password(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntime", field.Name)
 		},
 	}
 	return fc, nil
@@ -18699,6 +19393,64 @@ func (ec *executionContext) fieldContext_AgentInstanceConnection_totalCount(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _AgentInstanceDeployment_directory(ctx context.Context, field graphql.CollectedField, obj *objects.AgentInstanceDeployment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstanceDeployment_directory,
+		func(ctx context.Context) (any, error) {
+			return obj.Directory, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstanceDeployment_directory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstanceDeployment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentInstanceDeployment_dockerContainerName(ctx context.Context, field graphql.CollectedField, obj *objects.AgentInstanceDeployment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstanceDeployment_dockerContainerName,
+		func(ctx context.Context) (any, error) {
+			return obj.DockerContainerName, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstanceDeployment_dockerContainerName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstanceDeployment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AgentInstanceEdge_node(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstanceEdge) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18733,6 +19485,8 @@ func (ec *executionContext) fieldContext_AgentInstanceEdge_node(_ context.Contex
 				return ec.fieldContext_AgentInstance_projectID(ctx, field)
 			case "agentID":
 				return ec.fieldContext_AgentInstance_agentID(ctx, field)
+			case "agentRuntimeID":
+				return ec.fieldContext_AgentInstance_agentRuntimeID(ctx, field)
 			case "instanceID":
 				return ec.fieldContext_AgentInstance_instanceID(ctx, field)
 			case "name":
@@ -18743,8 +19497,14 @@ func (ec *executionContext) fieldContext_AgentInstanceEdge_node(_ context.Contex
 				return ec.fieldContext_AgentInstance_version(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
+			case "deployment":
+				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentInstance_status(ctx, field)
 			case "agent":
 				return ec.fieldContext_AgentInstance_agent(ctx, field)
+			case "runtime":
+				return ec.fieldContext_AgentInstance_runtime(ctx, field)
 			case "messages":
 				return ec.fieldContext_AgentInstance_messages(ctx, field)
 			}
@@ -19819,6 +20579,8 @@ func (ec *executionContext) fieldContext_AgentMessage_agentInstance(_ context.Co
 				return ec.fieldContext_AgentInstance_projectID(ctx, field)
 			case "agentID":
 				return ec.fieldContext_AgentInstance_agentID(ctx, field)
+			case "agentRuntimeID":
+				return ec.fieldContext_AgentInstance_agentRuntimeID(ctx, field)
 			case "instanceID":
 				return ec.fieldContext_AgentInstance_instanceID(ctx, field)
 			case "name":
@@ -19829,8 +20591,14 @@ func (ec *executionContext) fieldContext_AgentMessage_agentInstance(_ context.Co
 				return ec.fieldContext_AgentInstance_version(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
+			case "deployment":
+				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentInstance_status(ctx, field)
 			case "agent":
 				return ec.fieldContext_AgentInstance_agent(ctx, field)
+			case "runtime":
+				return ec.fieldContext_AgentInstance_runtime(ctx, field)
 			case "messages":
 				return ec.fieldContext_AgentInstance_messages(ctx, field)
 			}
@@ -20032,6 +20800,586 @@ func (ec *executionContext) fieldContext_AgentMessageEdge_cursor(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_id(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_id,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.AgentRuntime().ID(ctx, obj)
+		},
+		nil,
+		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_name(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_type(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_type,
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		ec.marshalNAgentRuntimeType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type AgentRuntimeType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_status(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNAgentRuntimeStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type AgentRuntimeStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_host(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_host,
+		func(ctx context.Context) (any, error) {
+			return obj.Host, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_host(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_user(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_user,
+		func(ctx context.Context) (any, error) {
+			return obj.User, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_instances(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_instances,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return obj.Instances(ctx, fc.Args["after"].(*entgql.Cursor[int]), fc.Args["first"].(*int), fc.Args["before"].(*entgql.Cursor[int]), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.AgentInstanceOrder), fc.Args["where"].(*ent.AgentInstanceWhereInput))
+		},
+		nil,
+		ec.marshalNAgentInstanceConnection2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceConnection,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_instances(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_AgentInstanceConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_AgentInstanceConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_AgentInstanceConnection_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentInstanceConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_AgentRuntime_instances_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntime_password(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntime_password,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.AgentRuntime().Password(ctx, obj)
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntime_password(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntime",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntimeConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntimeConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntimeConnection_edges,
+		func(ctx context.Context) (any, error) {
+			return obj.Edges, nil
+		},
+		nil,
+		ec.marshalOAgentRuntimeEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeEdge,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntimeConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntimeConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "node":
+				return ec.fieldContext_AgentRuntimeEdge_node(ctx, field)
+			case "cursor":
+				return ec.fieldContext_AgentRuntimeEdge_cursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntimeEdge", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntimeConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntimeConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntimeConnection_pageInfo,
+		func(ctx context.Context) (any, error) {
+			return obj.PageInfo, nil
+		},
+		nil,
+		ec.marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntimeConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntimeConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasNextPage":
+				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
+			case "hasPreviousPage":
+				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
+			case "startCursor":
+				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "endCursor":
+				return ec.fieldContext_PageInfo_endCursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntimeConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntimeConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntimeConnection_totalCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntimeConnection_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntimeConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntimeEdge_node(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntimeEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntimeEdge_node,
+		func(ctx context.Context) (any, error) {
+			return obj.Node, nil
+		},
+		nil,
+		ec.marshalOAgentRuntime2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntimeEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntimeEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentRuntime_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AgentRuntime_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AgentRuntime_updatedAt(ctx, field)
+			case "name":
+				return ec.fieldContext_AgentRuntime_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentRuntime_type(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentRuntime_status(ctx, field)
+			case "host":
+				return ec.fieldContext_AgentRuntime_host(ctx, field)
+			case "user":
+				return ec.fieldContext_AgentRuntime_user(ctx, field)
+			case "instances":
+				return ec.fieldContext_AgentRuntime_instances(ctx, field)
+			case "password":
+				return ec.fieldContext_AgentRuntime_password(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntime", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntimeEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *ent.AgentRuntimeEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntimeEdge_cursor,
+		func(ctx context.Context) (any, error) {
+			return obj.Cursor, nil
+		},
+		nil,
+		ec.marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntimeEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntimeEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntimeTestResult_success(ctx context.Context, field graphql.CollectedField, obj *biz.TestConnectionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntimeTestResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntimeTestResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntimeTestResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntimeTestResult_error(ctx context.Context, field graphql.CollectedField, obj *biz.TestConnectionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntimeTestResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntimeTestResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntimeTestResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentRuntimeTestResult_latency(ctx context.Context, field graphql.CollectedField, obj *biz.TestConnectionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentRuntimeTestResult_latency,
+		func(ctx context.Context) (any, error) {
+			return obj.Latency, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentRuntimeTestResult_latency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentRuntimeTestResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -28963,6 +30311,127 @@ func (ec *executionContext) fieldContext_DeleteDisabledAPIKeysPayload_message(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _DeployAxonclawResult_success(ctx context.Context, field graphql.CollectedField, obj *biz.DeployAxonclawResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeployAxonclawResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeployAxonclawResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeployAxonclawResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeployAxonclawResult_error(ctx context.Context, field graphql.CollectedField, obj *biz.DeployAxonclawResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeployAxonclawResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeployAxonclawResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeployAxonclawResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeployAxonclawResult_instance(ctx context.Context, field graphql.CollectedField, obj *biz.DeployAxonclawResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeployAxonclawResult_instance,
+		func(ctx context.Context) (any, error) {
+			return obj.Instance, nil
+		},
+		nil,
+		ec.marshalOAgentInstance2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstance,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeployAxonclawResult_instance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeployAxonclawResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentInstance_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AgentInstance_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AgentInstance_updatedAt(ctx, field)
+			case "projectID":
+				return ec.fieldContext_AgentInstance_projectID(ctx, field)
+			case "agentID":
+				return ec.fieldContext_AgentInstance_agentID(ctx, field)
+			case "agentRuntimeID":
+				return ec.fieldContext_AgentInstance_agentRuntimeID(ctx, field)
+			case "instanceID":
+				return ec.fieldContext_AgentInstance_instanceID(ctx, field)
+			case "name":
+				return ec.fieldContext_AgentInstance_name(ctx, field)
+			case "platform":
+				return ec.fieldContext_AgentInstance_platform(ctx, field)
+			case "version":
+				return ec.fieldContext_AgentInstance_version(ctx, field)
+			case "lastHeartbeatAt":
+				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
+			case "deployment":
+				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentInstance_status(ctx, field)
+			case "agent":
+				return ec.fieldContext_AgentInstance_agent(ctx, field)
+			case "runtime":
+				return ec.fieldContext_AgentInstance_runtime(ctx, field)
+			case "messages":
+				return ec.fieldContext_AgentInstance_messages(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentInstance", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _DisabledAPIKey_key(ctx context.Context, field graphql.CollectedField, obj *objects.DisabledAPIKey) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36493,6 +37962,416 @@ func (ec *executionContext) fieldContext_Mutation_ackAgentMessages(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createAgentRuntime(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_createAgentRuntime,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().CreateAgentRuntime(ctx, fc.Args["input"].(ent.CreateAgentRuntimeInput))
+		},
+		nil,
+		ec.marshalNAgentRuntime2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createAgentRuntime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentRuntime_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AgentRuntime_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AgentRuntime_updatedAt(ctx, field)
+			case "name":
+				return ec.fieldContext_AgentRuntime_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentRuntime_type(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentRuntime_status(ctx, field)
+			case "host":
+				return ec.fieldContext_AgentRuntime_host(ctx, field)
+			case "user":
+				return ec.fieldContext_AgentRuntime_user(ctx, field)
+			case "instances":
+				return ec.fieldContext_AgentRuntime_instances(ctx, field)
+			case "password":
+				return ec.fieldContext_AgentRuntime_password(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntime", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createAgentRuntime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateAgentRuntime(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateAgentRuntime,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateAgentRuntime(ctx, fc.Args["id"].(objects.GUID), fc.Args["input"].(ent.UpdateAgentRuntimeInput))
+		},
+		nil,
+		ec.marshalNAgentRuntime2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateAgentRuntime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentRuntime_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AgentRuntime_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AgentRuntime_updatedAt(ctx, field)
+			case "name":
+				return ec.fieldContext_AgentRuntime_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentRuntime_type(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentRuntime_status(ctx, field)
+			case "host":
+				return ec.fieldContext_AgentRuntime_host(ctx, field)
+			case "user":
+				return ec.fieldContext_AgentRuntime_user(ctx, field)
+			case "instances":
+				return ec.fieldContext_AgentRuntime_instances(ctx, field)
+			case "password":
+				return ec.fieldContext_AgentRuntime_password(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntime", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateAgentRuntime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateAgentRuntimeStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateAgentRuntimeStatus,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateAgentRuntimeStatus(ctx, fc.Args["id"].(objects.GUID), fc.Args["status"].(agentruntime.Status))
+		},
+		nil,
+		ec.marshalNAgentRuntime2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateAgentRuntimeStatus(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentRuntime_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AgentRuntime_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AgentRuntime_updatedAt(ctx, field)
+			case "name":
+				return ec.fieldContext_AgentRuntime_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentRuntime_type(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentRuntime_status(ctx, field)
+			case "host":
+				return ec.fieldContext_AgentRuntime_host(ctx, field)
+			case "user":
+				return ec.fieldContext_AgentRuntime_user(ctx, field)
+			case "instances":
+				return ec.fieldContext_AgentRuntime_instances(ctx, field)
+			case "password":
+				return ec.fieldContext_AgentRuntime_password(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntime", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateAgentRuntimeStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteAgentRuntime(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deleteAgentRuntime,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeleteAgentRuntime(ctx, fc.Args["id"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteAgentRuntime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteAgentRuntime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_bulkDeleteAgentRuntimes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_bulkDeleteAgentRuntimes,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().BulkDeleteAgentRuntimes(ctx, fc.Args["ids"].([]*objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_bulkDeleteAgentRuntimes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_bulkDeleteAgentRuntimes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_bulkUpdateAgentRuntimeStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_bulkUpdateAgentRuntimeStatus,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().BulkUpdateAgentRuntimeStatus(ctx, fc.Args["ids"].([]*objects.GUID), fc.Args["status"].(agentruntime.Status))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_bulkUpdateAgentRuntimeStatus(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_bulkUpdateAgentRuntimeStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_testAgentRuntimeConnection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_testAgentRuntimeConnection,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().TestAgentRuntimeConnection(ctx, fc.Args["id"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNAgentRuntimeTestResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐTestConnectionResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_testAgentRuntimeConnection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_AgentRuntimeTestResult_success(ctx, field)
+			case "error":
+				return ec.fieldContext_AgentRuntimeTestResult_error(ctx, field)
+			case "latency":
+				return ec.fieldContext_AgentRuntimeTestResult_latency(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntimeTestResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_testAgentRuntimeConnection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deployAxonclaw(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deployAxonclaw,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeployAxonclaw(ctx, fc.Args["input"].(objects.DeployAxonclawInput))
+		},
+		nil,
+		ec.marshalNDeployAxonclawResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐDeployAxonclawResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deployAxonclaw(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_DeployAxonclawResult_success(ctx, field)
+			case "error":
+				return ec.fieldContext_DeployAxonclawResult_error(ctx, field)
+			case "instance":
+				return ec.fieldContext_DeployAxonclawResult_instance(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DeployAxonclawResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deployAxonclaw_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createPrompt(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -41588,6 +43467,55 @@ func (ec *executionContext) fieldContext_Query_agentMessages(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_agentRuntimes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_agentRuntimes,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().AgentRuntimes(ctx, fc.Args["after"].(*entgql.Cursor[int]), fc.Args["first"].(*int), fc.Args["before"].(*entgql.Cursor[int]), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.AgentRuntimeOrder), fc.Args["where"].(*ent.AgentRuntimeWhereInput))
+		},
+		nil,
+		ec.marshalNAgentRuntimeConnection2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeConnection,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_agentRuntimes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_AgentRuntimeConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_AgentRuntimeConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_AgentRuntimeConnection_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntimeConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_agentRuntimes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_agentSkills(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44371,6 +46299,69 @@ func (ec *executionContext) fieldContext_Query_agentChatMessages(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_agentChatMessages_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_agentRuntime(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_agentRuntime,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().AgentRuntime(ctx, fc.Args["id"].(objects.GUID))
+		},
+		nil,
+		ec.marshalOAgentRuntime2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_agentRuntime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentRuntime_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AgentRuntime_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AgentRuntime_updatedAt(ctx, field)
+			case "name":
+				return ec.fieldContext_AgentRuntime_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentRuntime_type(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentRuntime_status(ctx, field)
+			case "host":
+				return ec.fieldContext_AgentRuntime_host(ctx, field)
+			case "user":
+				return ec.fieldContext_AgentRuntime_user(ctx, field)
+			case "instances":
+				return ec.fieldContext_AgentRuntime_instances(ctx, field)
+			case "password":
+				return ec.fieldContext_AgentRuntime_password(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentRuntime", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_agentRuntime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -60651,6 +62642,40 @@ func (ec *executionContext) unmarshalInputAgentBuiltinToolInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputAgentInstanceDeploymentInput(ctx context.Context, obj any) (objects.AgentInstanceDeployment, error) {
+	var it objects.AgentInstanceDeployment
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"directory", "dockerContainerName"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "directory":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Directory = data
+		case "dockerContainerName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dockerContainerName"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DockerContainerName = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputAgentInstanceOrder(ctx context.Context, obj any) (ent.AgentInstanceOrder, error) {
 	var it ent.AgentInstanceOrder
 	asMap := map[string]any{}
@@ -60696,7 +62721,7 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "agentID", "agentIDNEQ", "agentIDIn", "agentIDNotIn", "instanceID", "instanceIDNEQ", "instanceIDIn", "instanceIDNotIn", "instanceIDGT", "instanceIDGTE", "instanceIDLT", "instanceIDLTE", "instanceIDContains", "instanceIDHasPrefix", "instanceIDHasSuffix", "instanceIDEqualFold", "instanceIDContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "platform", "platformNEQ", "platformIn", "platformNotIn", "platformGT", "platformGTE", "platformLT", "platformLTE", "platformContains", "platformHasPrefix", "platformHasSuffix", "platformEqualFold", "platformContainsFold", "version", "versionNEQ", "versionIn", "versionNotIn", "versionGT", "versionGTE", "versionLT", "versionLTE", "versionContains", "versionHasPrefix", "versionHasSuffix", "versionEqualFold", "versionContainsFold", "lastHeartbeatAt", "lastHeartbeatAtNEQ", "lastHeartbeatAtIn", "lastHeartbeatAtNotIn", "lastHeartbeatAtGT", "lastHeartbeatAtGTE", "lastHeartbeatAtLT", "lastHeartbeatAtLTE", "hasAgent", "hasAgentWith", "hasMessages", "hasMessagesWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "agentID", "agentIDNEQ", "agentIDIn", "agentIDNotIn", "agentRuntimeID", "agentRuntimeIDNEQ", "agentRuntimeIDIn", "agentRuntimeIDNotIn", "agentRuntimeIDIsNil", "agentRuntimeIDNotNil", "instanceID", "instanceIDNEQ", "instanceIDIn", "instanceIDNotIn", "instanceIDGT", "instanceIDGTE", "instanceIDLT", "instanceIDLTE", "instanceIDContains", "instanceIDHasPrefix", "instanceIDHasSuffix", "instanceIDEqualFold", "instanceIDContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "platform", "platformNEQ", "platformIn", "platformNotIn", "platformGT", "platformGTE", "platformLT", "platformLTE", "platformContains", "platformHasPrefix", "platformHasSuffix", "platformEqualFold", "platformContainsFold", "version", "versionNEQ", "versionIn", "versionNotIn", "versionGT", "versionGTE", "versionLT", "versionLTE", "versionContains", "versionHasPrefix", "versionHasSuffix", "versionEqualFold", "versionContainsFold", "lastHeartbeatAt", "lastHeartbeatAtNEQ", "lastHeartbeatAtIn", "lastHeartbeatAtNotIn", "lastHeartbeatAtGT", "lastHeartbeatAtGTE", "lastHeartbeatAtLT", "lastHeartbeatAtLTE", "status", "statusNEQ", "statusIn", "statusNotIn", "hasAgent", "hasAgentWith", "hasRuntime", "hasRuntimeWith", "hasMessages", "hasMessagesWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -61024,6 +63049,64 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.AgentIDNotIn = converted
+		case "agentRuntimeID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentRuntimeID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.AgentRuntimeID = converted
+		case "agentRuntimeIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentRuntimeIDNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.AgentRuntimeIDNEQ = converted
+		case "agentRuntimeIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentRuntimeIDIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.AgentRuntimeIDIn = converted
+		case "agentRuntimeIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentRuntimeIDNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.AgentRuntimeIDNotIn = converted
+		case "agentRuntimeIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentRuntimeIDIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AgentRuntimeIDIsNil = data
+		case "agentRuntimeIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentRuntimeIDNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AgentRuntimeIDNotNil = data
 		case "instanceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -61444,6 +63527,34 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 				return it, err
 			}
 			it.LastHeartbeatAtLTE = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "statusNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNEQ"))
+			data, err := ec.unmarshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusNEQ = data
+		case "statusIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusIn"))
+			data, err := ec.unmarshalOAgentInstanceStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatusᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusIn = data
+		case "statusNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNotIn"))
+			data, err := ec.unmarshalOAgentInstanceStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatusᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusNotIn = data
 		case "hasAgent":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAgent"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -61458,6 +63569,20 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 				return it, err
 			}
 			it.HasAgentWith = data
+		case "hasRuntime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRuntime"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasRuntime = data
+		case "hasRuntimeWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRuntimeWith"))
+			data, err := ec.unmarshalOAgentRuntimeWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasRuntimeWith = data
 		case "hasMessages":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasMessages"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -63040,6 +65165,628 @@ func (ec *executionContext) unmarshalInputAgentOrder(ctx context.Context, obj an
 				return it, err
 			}
 			it.Field = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAgentRuntimeOrder(ctx context.Context, obj any) (ent.AgentRuntimeOrder, error) {
+	var it ent.AgentRuntimeOrder
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["direction"]; !present {
+		asMap["direction"] = "ASC"
+	}
+
+	fieldsInOrder := [...]string{"direction", "field"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "direction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
+			data, err := ec.unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Direction = data
+		case "field":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("field"))
+			data, err := ec.unmarshalNAgentRuntimeOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeOrderField(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Field = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAgentRuntimeWhereInput(ctx context.Context, obj any) (ent.AgentRuntimeWhereInput, error) {
+	var it ent.AgentRuntimeWhereInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "host", "hostNEQ", "hostIn", "hostNotIn", "hostGT", "hostGTE", "hostLT", "hostLTE", "hostContains", "hostHasPrefix", "hostHasSuffix", "hostEqualFold", "hostContainsFold", "user", "userNEQ", "userIn", "userNotIn", "userGT", "userGTE", "userLT", "userLTE", "userContains", "userHasPrefix", "userHasSuffix", "userEqualFold", "userContainsFold", "hasInstances", "hasInstancesWith"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "not":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
+			data, err := ec.unmarshalOAgentRuntimeWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Not = data
+		case "and":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
+			data, err := ec.unmarshalOAgentRuntimeWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.And = data
+		case "or":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			data, err := ec.unmarshalOAgentRuntimeWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Or = data
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ID = converted
+		case "idNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDNEQ = converted
+		case "idIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDIn = converted
+		case "idNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDNotIn = converted
+		case "idGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDGT = converted
+		case "idGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDGTE = converted
+		case "idLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDLT = converted
+		case "idLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDLTE = converted
+		case "createdAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAt = data
+		case "createdAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtNEQ = data
+		case "createdAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtIn = data
+		case "createdAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtNotIn = data
+		case "createdAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtGT = data
+		case "createdAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtGTE = data
+		case "createdAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtLT = data
+		case "createdAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtLTE = data
+		case "updatedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAt = data
+		case "updatedAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtNEQ = data
+		case "updatedAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtIn = data
+		case "updatedAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtNotIn = data
+		case "updatedAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtGT = data
+		case "updatedAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtGTE = data
+		case "updatedAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtLT = data
+		case "updatedAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpdatedAtLTE = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "nameNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameNEQ = data
+		case "nameIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameIn = data
+		case "nameNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameNotIn = data
+		case "nameGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameGT = data
+		case "nameGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameGTE = data
+		case "nameLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameLT = data
+		case "nameLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameLTE = data
+		case "nameContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameContains = data
+		case "nameHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameHasPrefix = data
+		case "nameHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameHasSuffix = data
+		case "nameEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameEqualFold = data
+		case "nameContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NameContainsFold = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAgentRuntimeType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "typeNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeNEQ"))
+			data, err := ec.unmarshalOAgentRuntimeType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TypeNEQ = data
+		case "typeIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeIn"))
+			data, err := ec.unmarshalOAgentRuntimeType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐTypeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TypeIn = data
+		case "typeNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeNotIn"))
+			data, err := ec.unmarshalOAgentRuntimeType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐTypeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TypeNotIn = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOAgentRuntimeStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "statusNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNEQ"))
+			data, err := ec.unmarshalOAgentRuntimeStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusNEQ = data
+		case "statusIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusIn"))
+			data, err := ec.unmarshalOAgentRuntimeStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatusᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusIn = data
+		case "statusNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNotIn"))
+			data, err := ec.unmarshalOAgentRuntimeStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatusᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusNotIn = data
+		case "host":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("host"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Host = data
+		case "hostNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostNEQ = data
+		case "hostIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostIn = data
+		case "hostNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostNotIn = data
+		case "hostGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostGT = data
+		case "hostGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostGTE = data
+		case "hostLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostLT = data
+		case "hostLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostLTE = data
+		case "hostContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostContains = data
+		case "hostHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostHasPrefix = data
+		case "hostHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostHasSuffix = data
+		case "hostEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostEqualFold = data
+		case "hostContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostContainsFold = data
+		case "user":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("user"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.User = data
+		case "userNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserNEQ = data
+		case "userIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIn = data
+		case "userNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserNotIn = data
+		case "userGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserGT = data
+		case "userGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserGTE = data
+		case "userLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserLT = data
+		case "userLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserLTE = data
+		case "userContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserContains = data
+		case "userHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserHasPrefix = data
+		case "userHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserHasSuffix = data
+		case "userEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserEqualFold = data
+		case "userContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserContainsFold = data
+		case "hasInstances":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasInstances"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasInstances = data
+		case "hasInstancesWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasInstancesWith"))
+			data, err := ec.unmarshalOAgentInstanceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasInstancesWith = data
 		}
 	}
 
@@ -70029,7 +72776,7 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectID", "instanceID", "name", "platform", "version", "lastHeartbeatAt", "agentID"}
+	fieldsInOrder := [...]string{"projectID", "instanceID", "name", "platform", "version", "lastHeartbeatAt", "deployment", "status", "agentID", "runtimeID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70078,6 +72825,20 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.LastHeartbeatAt = data
+		case "deployment":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deployment"))
+			data, err := ec.unmarshalOAgentInstanceDeploymentInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Deployment = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
 		case "agentID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
 			data, err := ec.unmarshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -70089,6 +72850,17 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.AgentID = converted
+		case "runtimeID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("runtimeID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.RuntimeID = converted
 		}
 	}
 
@@ -70260,6 +73032,68 @@ func (ec *executionContext) unmarshalInputCreateAgentMessageInput(ctx context.Co
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.AgentInstanceID = converted
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateAgentRuntimeInput(ctx context.Context, obj any) (ent.CreateAgentRuntimeInput, error) {
+	var it ent.CreateAgentRuntimeInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "type", "status", "host", "user", "password"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAgentRuntimeType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOAgentRuntimeStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "host":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("host"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Host = data
+		case "user":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("user"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.User = data
+		case "password":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Password = data
 		}
 	}
 
@@ -72461,6 +75295,54 @@ func (ec *executionContext) unmarshalInputDataStorageWhereInput(ctx context.Cont
 				return it, err
 			}
 			it.HasExecutionsWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDeployAxonclawInput(ctx context.Context, obj any) (objects.DeployAxonclawInput, error) {
+	var it objects.DeployAxonclawInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"agentID", "runtimeID", "name", "directory"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "agentID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AgentID = data
+		case "runtimeID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("runtimeID"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RuntimeID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "directory":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Directory = data
 		}
 	}
 
@@ -84522,7 +87404,7 @@ func (ec *executionContext) unmarshalInputUpdateAgentInstanceInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "platform", "version", "lastHeartbeatAt"}
+	fieldsInOrder := [...]string{"name", "platform", "version", "lastHeartbeatAt", "deployment", "clearDeployment", "status", "runtimeID", "clearRuntime"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84557,6 +87439,45 @@ func (ec *executionContext) unmarshalInputUpdateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.LastHeartbeatAt = data
+		case "deployment":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deployment"))
+			data, err := ec.unmarshalOAgentInstanceDeploymentInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Deployment = data
+		case "clearDeployment":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearDeployment"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearDeployment = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "runtimeID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("runtimeID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.RuntimeID = converted
+		case "clearRuntime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearRuntime"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearRuntime = data
 		}
 	}
 
@@ -84720,6 +87641,68 @@ func (ec *executionContext) unmarshalInputUpdateAgentMessageInput(ctx context.Co
 				return it, err
 			}
 			it.ClearExpiresAt = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateAgentRuntimeInput(ctx context.Context, obj any) (ent.UpdateAgentRuntimeInput, error) {
+	var it ent.UpdateAgentRuntimeInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "type", "status", "host", "user", "password"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAgentRuntimeType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOAgentRuntimeStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "host":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("host"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Host = data
+		case "user":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("user"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.User = data
+		case "password":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Password = data
 		}
 	}
 
@@ -90447,6 +93430,11 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._AgentSkill(ctx, sel, obj)
+	case *ent.AgentRuntime:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._AgentRuntime(ctx, sel, obj)
 	case *ent.AgentMessage:
 		if obj == nil {
 			return graphql.Null
@@ -92294,6 +95282,39 @@ func (ec *executionContext) _AgentInstance(ctx context.Context, sel ast.Selectio
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "agentRuntimeID":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AgentInstance_agentRuntimeID(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "instanceID":
 			out.Values[i] = ec._AgentInstance_instanceID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -92319,6 +95340,13 @@ func (ec *executionContext) _AgentInstance(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "deployment":
+			out.Values[i] = ec._AgentInstance_deployment(ctx, field, obj)
+		case "status":
+			out.Values[i] = ec._AgentInstance_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "agent":
 			field := field
 
@@ -92332,6 +95360,39 @@ func (ec *executionContext) _AgentInstance(ctx context.Context, sel ast.Selectio
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "runtime":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AgentInstance_runtime(ctx, field, obj)
 				return res
 			}
 
@@ -92437,6 +95498,44 @@ func (ec *executionContext) _AgentInstanceConnection(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var agentInstanceDeploymentImplementors = []string{"AgentInstanceDeployment"}
+
+func (ec *executionContext) _AgentInstanceDeployment(ctx context.Context, sel ast.SelectionSet, obj *objects.AgentInstanceDeployment) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, agentInstanceDeploymentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AgentInstanceDeployment")
+		case "directory":
+			out.Values[i] = ec._AgentInstanceDeployment_directory(ctx, field, obj)
+		case "dockerContainerName":
+			out.Values[i] = ec._AgentInstanceDeployment_dockerContainerName(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -93086,6 +96185,310 @@ func (ec *executionContext) _AgentMessageEdge(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var agentRuntimeImplementors = []string{"AgentRuntime", "Node"}
+
+func (ec *executionContext) _AgentRuntime(ctx context.Context, sel ast.SelectionSet, obj *ent.AgentRuntime) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, agentRuntimeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AgentRuntime")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AgentRuntime_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "createdAt":
+			out.Values[i] = ec._AgentRuntime_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "updatedAt":
+			out.Values[i] = ec._AgentRuntime_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "name":
+			out.Values[i] = ec._AgentRuntime_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "type":
+			out.Values[i] = ec._AgentRuntime_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "status":
+			out.Values[i] = ec._AgentRuntime_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "host":
+			out.Values[i] = ec._AgentRuntime_host(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "user":
+			out.Values[i] = ec._AgentRuntime_user(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "instances":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AgentRuntime_instances(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "password":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AgentRuntime_password(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var agentRuntimeConnectionImplementors = []string{"AgentRuntimeConnection"}
+
+func (ec *executionContext) _AgentRuntimeConnection(ctx context.Context, sel ast.SelectionSet, obj *ent.AgentRuntimeConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, agentRuntimeConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AgentRuntimeConnection")
+		case "edges":
+			out.Values[i] = ec._AgentRuntimeConnection_edges(ctx, field, obj)
+		case "pageInfo":
+			out.Values[i] = ec._AgentRuntimeConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._AgentRuntimeConnection_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var agentRuntimeEdgeImplementors = []string{"AgentRuntimeEdge"}
+
+func (ec *executionContext) _AgentRuntimeEdge(ctx context.Context, sel ast.SelectionSet, obj *ent.AgentRuntimeEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, agentRuntimeEdgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AgentRuntimeEdge")
+		case "node":
+			out.Values[i] = ec._AgentRuntimeEdge_node(ctx, field, obj)
+		case "cursor":
+			out.Values[i] = ec._AgentRuntimeEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var agentRuntimeTestResultImplementors = []string{"AgentRuntimeTestResult"}
+
+func (ec *executionContext) _AgentRuntimeTestResult(ctx context.Context, sel ast.SelectionSet, obj *biz.TestConnectionResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, agentRuntimeTestResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AgentRuntimeTestResult")
+		case "success":
+			out.Values[i] = ec._AgentRuntimeTestResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._AgentRuntimeTestResult_error(ctx, field, obj)
+		case "latency":
+			out.Values[i] = ec._AgentRuntimeTestResult_latency(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -97714,6 +101117,49 @@ func (ec *executionContext) _DeleteDisabledAPIKeysPayload(ctx context.Context, s
 	return out
 }
 
+var deployAxonclawResultImplementors = []string{"DeployAxonclawResult"}
+
+func (ec *executionContext) _DeployAxonclawResult(ctx context.Context, sel ast.SelectionSet, obj *biz.DeployAxonclawResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deployAxonclawResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeployAxonclawResult")
+		case "success":
+			out.Values[i] = ec._DeployAxonclawResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._DeployAxonclawResult_error(ctx, field, obj)
+		case "instance":
+			out.Values[i] = ec._DeployAxonclawResult_instance(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var disabledAPIKeyImplementors = []string{"DisabledAPIKey"}
 
 func (ec *executionContext) _DisabledAPIKey(ctx context.Context, sel ast.SelectionSet, obj *objects.DisabledAPIKey) graphql.Marshaler {
@@ -99723,6 +103169,62 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "ackAgentMessages":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_ackAgentMessages(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createAgentRuntime":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createAgentRuntime(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateAgentRuntime":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateAgentRuntime(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateAgentRuntimeStatus":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateAgentRuntimeStatus(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteAgentRuntime":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteAgentRuntime(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bulkDeleteAgentRuntimes":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_bulkDeleteAgentRuntimes(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bulkUpdateAgentRuntimeStatus":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_bulkUpdateAgentRuntimeStatus(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "testAgentRuntimeConnection":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_testAgentRuntimeConnection(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deployAxonclaw":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deployAxonclaw(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -102314,6 +105816,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "agentRuntimes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_agentRuntimes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "agentSkills":
 			field := field
 
@@ -103641,6 +107165,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "agentRuntime":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_agentRuntime(ctx, field)
 				return res
 			}
 
@@ -111560,6 +115103,16 @@ func (ec *executionContext) marshalNAgentInstanceOrderField2ᚖgithubᚗcomᚋlo
 	return v
 }
 
+func (ec *executionContext) unmarshalNAgentInstanceStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx context.Context, v any) (agentinstance.Status, error) {
+	var res agentinstance.Status
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAgentInstanceStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx context.Context, sel ast.SelectionSet, v agentinstance.Status) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNAgentInstanceWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceWhereInput(ctx context.Context, v any) (*ent.AgentInstanceWhereInput, error) {
 	res, err := ec.unmarshalInputAgentInstanceWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -111689,6 +115242,89 @@ func (ec *executionContext) marshalNAgentOrderField2ᚖgithubᚗcomᚋloopljᚋa
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalNAgentRuntime2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime(ctx context.Context, sel ast.SelectionSet, v ent.AgentRuntime) graphql.Marshaler {
+	return ec._AgentRuntime(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAgentRuntime2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime(ctx context.Context, sel ast.SelectionSet, v *ent.AgentRuntime) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AgentRuntime(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAgentRuntimeConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeConnection(ctx context.Context, sel ast.SelectionSet, v ent.AgentRuntimeConnection) graphql.Marshaler {
+	return ec._AgentRuntimeConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAgentRuntimeConnection2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeConnection(ctx context.Context, sel ast.SelectionSet, v *ent.AgentRuntimeConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AgentRuntimeConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAgentRuntimeOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeOrderField(ctx context.Context, v any) (*ent.AgentRuntimeOrderField, error) {
+	var res = new(ent.AgentRuntimeOrderField)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAgentRuntimeOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeOrderField(ctx context.Context, sel ast.SelectionSet, v *ent.AgentRuntimeOrderField) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalNAgentRuntimeStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx context.Context, v any) (agentruntime.Status, error) {
+	var res agentruntime.Status
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAgentRuntimeStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx context.Context, sel ast.SelectionSet, v agentruntime.Status) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNAgentRuntimeTestResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐTestConnectionResult(ctx context.Context, sel ast.SelectionSet, v biz.TestConnectionResult) graphql.Marshaler {
+	return ec._AgentRuntimeTestResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAgentRuntimeTestResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐTestConnectionResult(ctx context.Context, sel ast.SelectionSet, v *biz.TestConnectionResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AgentRuntimeTestResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAgentRuntimeType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx context.Context, v any) (agentruntime.Type, error) {
+	var res agentruntime.Type
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAgentRuntimeType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx context.Context, sel ast.SelectionSet, v agentruntime.Type) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNAgentRuntimeWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInput(ctx context.Context, v any) (*ent.AgentRuntimeWhereInput, error) {
+	res, err := ec.unmarshalInputAgentRuntimeWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNAgentSkillConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentSkillConnection(ctx context.Context, sel ast.SelectionSet, v ent.AgentSkillConnection) graphql.Marshaler {
@@ -112891,6 +116527,11 @@ func (ec *executionContext) unmarshalNCreateAgentInput2githubᚗcomᚋloopljᚋa
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateAgentRuntimeInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateAgentRuntimeInput(ctx context.Context, v any) (ent.CreateAgentRuntimeInput, error) {
+	res, err := ec.unmarshalInputCreateAgentRuntimeInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCreateChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateChannelInput(ctx context.Context, v any) (ent.CreateChannelInput, error) {
 	res, err := ec.unmarshalInputCreateChannelInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -113147,6 +116788,25 @@ func (ec *executionContext) marshalNDeleteDisabledAPIKeysPayload2ᚖgithubᚗcom
 		return graphql.Null
 	}
 	return ec._DeleteDisabledAPIKeysPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNDeployAxonclawInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDeployAxonclawInput(ctx context.Context, v any) (objects.DeployAxonclawInput, error) {
+	res, err := ec.unmarshalInputDeployAxonclawInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDeployAxonclawResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐDeployAxonclawResult(ctx context.Context, sel ast.SelectionSet, v biz.DeployAxonclawResult) graphql.Marshaler {
+	return ec._DeployAxonclawResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDeployAxonclawResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐDeployAxonclawResult(ctx context.Context, sel ast.SelectionSet, v *biz.DeployAxonclawResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DeployAxonclawResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNDisabledAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDisabledAPIKey(ctx context.Context, sel ast.SelectionSet, v *objects.DisabledAPIKey) graphql.Marshaler {
@@ -115828,6 +119488,11 @@ func (ec *executionContext) unmarshalNUpdateAgentInput2githubᚗcomᚋloopljᚋa
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateAgentRuntimeInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateAgentRuntimeInput(ctx context.Context, v any) (ent.UpdateAgentRuntimeInput, error) {
+	res, err := ec.unmarshalInputUpdateAgentRuntimeInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdateAutoBackupSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateAutoBackupSettingsInput(ctx context.Context, v any) (UpdateAutoBackupSettingsInput, error) {
 	res, err := ec.unmarshalInputUpdateAutoBackupSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -116900,6 +120565,18 @@ func (ec *executionContext) marshalOAgentInstance2ᚖgithubᚗcomᚋloopljᚋaxo
 	return ec._AgentInstance(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOAgentInstanceDeployment2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment(ctx context.Context, sel ast.SelectionSet, v objects.AgentInstanceDeployment) graphql.Marshaler {
+	return ec._AgentInstanceDeployment(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalOAgentInstanceDeploymentInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment(ctx context.Context, v any) (*objects.AgentInstanceDeployment, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAgentInstanceDeploymentInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOAgentInstanceEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.AgentInstanceEdge) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -116954,6 +120631,87 @@ func (ec *executionContext) unmarshalOAgentInstanceOrder2ᚖgithubᚗcomᚋloopl
 	}
 	res, err := ec.unmarshalInputAgentInstanceOrder(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOAgentInstanceStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatusᚄ(ctx context.Context, v any) ([]agentinstance.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]agentinstance.Status, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAgentInstanceStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOAgentInstanceStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatusᚄ(ctx context.Context, sel ast.SelectionSet, v []agentinstance.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAgentInstanceStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx context.Context, v any) (*agentinstance.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(agentinstance.Status)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx context.Context, sel ast.SelectionSet, v *agentinstance.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOAgentInstanceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceWhereInputᚄ(ctx context.Context, v any) ([]*ent.AgentInstanceWhereInput, error) {
@@ -117489,6 +121247,257 @@ func (ec *executionContext) unmarshalOAgentOrder2ᚖgithubᚗcomᚋloopljᚋaxon
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputAgentOrder(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAgentRuntime2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntime(ctx context.Context, sel ast.SelectionSet, v *ent.AgentRuntime) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AgentRuntime(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOAgentRuntimeEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.AgentRuntimeEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOAgentRuntimeEdge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOAgentRuntimeEdge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeEdge(ctx context.Context, sel ast.SelectionSet, v *ent.AgentRuntimeEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AgentRuntimeEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAgentRuntimeOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeOrder(ctx context.Context, v any) (*ent.AgentRuntimeOrder, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAgentRuntimeOrder(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOAgentRuntimeStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatusᚄ(ctx context.Context, v any) ([]agentruntime.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]agentruntime.Status, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAgentRuntimeStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOAgentRuntimeStatus2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatusᚄ(ctx context.Context, sel ast.SelectionSet, v []agentruntime.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAgentRuntimeStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOAgentRuntimeStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx context.Context, v any) (*agentruntime.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(agentruntime.Status)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAgentRuntimeStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐStatus(ctx context.Context, sel ast.SelectionSet, v *agentruntime.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOAgentRuntimeType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐTypeᚄ(ctx context.Context, v any) ([]agentruntime.Type, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]agentruntime.Type, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAgentRuntimeType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOAgentRuntimeType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []agentruntime.Type) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAgentRuntimeType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOAgentRuntimeType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx context.Context, v any) (*agentruntime.Type, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(agentruntime.Type)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAgentRuntimeType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentruntimeᚐType(ctx context.Context, sel ast.SelectionSet, v *agentruntime.Type) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOAgentRuntimeWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInputᚄ(ctx context.Context, v any) ([]*ent.AgentRuntimeWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ent.AgentRuntimeWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAgentRuntimeWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOAgentRuntimeWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentRuntimeWhereInput(ctx context.Context, v any) (*ent.AgentRuntimeWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAgentRuntimeWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

@@ -133,7 +133,10 @@ var (
 		{Name: "platform", Type: field.TypeString, Default: ""},
 		{Name: "version", Type: field.TypeString, Default: ""},
 		{Name: "last_heartbeat_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime(6)"}},
+		{Name: "deployment", Type: field.TypeJSON, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "stopped", "error"}, Default: "running"},
 		{Name: "agent_id", Type: field.TypeInt},
+		{Name: "agent_runtime_id", Type: field.TypeInt, Nullable: true},
 	}
 	// AgentInstancesTable holds the schema information for the "agent_instances" table.
 	AgentInstancesTable = &schema.Table{
@@ -143,21 +146,32 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "agent_instances_agents_instances",
-				Columns:    []*schema.Column{AgentInstancesColumns[10]},
+				Columns:    []*schema.Column{AgentInstancesColumns[12]},
 				RefColumns: []*schema.Column{AgentsColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_instances_agent_runtimes_instances",
+				Columns:    []*schema.Column{AgentInstancesColumns[13]},
+				RefColumns: []*schema.Column{AgentRuntimesColumns[0]},
+				OnDelete:   schema.SetNull,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "agent_instances_by_agent_id_last_heartbeat_at",
 				Unique:  false,
-				Columns: []*schema.Column{AgentInstancesColumns[10], AgentInstancesColumns[9]},
+				Columns: []*schema.Column{AgentInstancesColumns[12], AgentInstancesColumns[9]},
 			},
 			{
 				Name:    "agent_instances_by_agent_id_instance_id",
 				Unique:  true,
-				Columns: []*schema.Column{AgentInstancesColumns[10], AgentInstancesColumns[5], AgentInstancesColumns[3]},
+				Columns: []*schema.Column{AgentInstancesColumns[12], AgentInstancesColumns[5], AgentInstancesColumns[3]},
+			},
+			{
+				Name:    "agent_instances_by_runtime_id",
+				Unique:  false,
+				Columns: []*schema.Column{AgentInstancesColumns[13], AgentInstancesColumns[3]},
 			},
 		},
 	}
@@ -252,6 +266,37 @@ var (
 				Name:    "agent_messages_by_agent_id_correlation_id",
 				Unique:  false,
 				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[9], AgentMessagesColumns[3]},
+			},
+		},
+	}
+	// AgentRuntimesColumns holds the columns for the "agent_runtimes" table.
+	AgentRuntimesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"vm", "docker"}, Default: "vm"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive", "error"}, Default: "active"},
+		{Name: "host", Type: field.TypeString, Default: ""},
+		{Name: "user", Type: field.TypeString, Default: ""},
+		{Name: "password", Type: field.TypeString, Default: ""},
+	}
+	// AgentRuntimesTable holds the schema information for the "agent_runtimes" table.
+	AgentRuntimesTable = &schema.Table{
+		Name:       "agent_runtimes",
+		Columns:    AgentRuntimesColumns,
+		PrimaryKey: []*schema.Column{AgentRuntimesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_runtimes_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{AgentRuntimesColumns[4], AgentRuntimesColumns[3]},
+			},
+			{
+				Name:    "agent_runtimes_by_type",
+				Unique:  false,
+				Columns: []*schema.Column{AgentRuntimesColumns[5], AgentRuntimesColumns[3]},
 			},
 		},
 	}
@@ -1373,6 +1418,7 @@ var (
 		AgentInstancesTable,
 		AgentMemoriesTable,
 		AgentMessagesTable,
+		AgentRuntimesTable,
 		AgentSkillsTable,
 		AgentThreadsTable,
 		AgentToolsTable,
@@ -1411,6 +1457,7 @@ func init() {
 	AgentsTable.ForeignKeys[2].RefTable = PromptsTable
 	AgentsTable.ForeignKeys[3].RefTable = UsersTable
 	AgentInstancesTable.ForeignKeys[0].RefTable = AgentsTable
+	AgentInstancesTable.ForeignKeys[1].RefTable = AgentRuntimesTable
 	AgentMemoriesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[1].RefTable = AgentInstancesTable

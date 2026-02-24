@@ -3,6 +3,8 @@ package runner
 import (
 	"context"
 	"log/slog"
+	"strings"
+	"text/template"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -18,24 +20,6 @@ import (
 )
 
 const defaultMaxIterations = 30
-
-const replyMessageSystemPrompt = `
-
-## IMPORTANT: Response Protocol
-
-After completing your task, you MUST use the "ReplyMessage" tool to send your response back to the user. This is the ONLY way to communicate your results to the user.
-
-Example workflow:
-1. Process the user's request
-2. Perform any necessary operations (read files, write code, etc.)
-3. Call ReplyMessage with your final response
-
-Do NOT just output text - always use ReplyMessage to respond.
-
-## Language
-
-Reply in the same language the user writes in — if they write English, reply in English; if Chinese, reply in Chinese.
-`
 
 type Runner struct {
 	Client       graphql.Client
@@ -64,10 +48,12 @@ type NewOptions struct {
 func New(opts NewOptions) *Runner {
 	permMw := NewPermissionMiddleware(opts.PermEvaluator)
 
+	localPrompt := buildLocalSystemPrompt(opts.Boot.AxonClawPath)
+
 	a := agent.New(agent.Config{
 		Model:         opts.Boot.Model,
 		MaxIterations: defaultMaxIterations,
-		SystemPrompts: []string{opts.Boot.SystemPrompt, replyMessageSystemPrompt},
+		SystemPrompts: []string{opts.Boot.SystemPrompt, localPrompt},
 	}, opts.Provider,
 		agent.WithBus(opts.Bus),
 		agent.WithMiddlewares(permMw),
@@ -167,4 +153,24 @@ func (r *Runner) processMessage(ctx context.Context, text string) error {
 	traceID := uuid.New().String()
 	traceCtx := axoncontext.WithTraceID(ctx, traceID)
 	return r.Agent.Process(traceCtx, agent.Content{Text: &text})
+}
+
+func buildLocalSystemPrompt(axonClawPath string) string {
+	tmplData := struct {
+		AxonClawPath string
+	}{
+		AxonClawPath: axonClawPath,
+	}
+
+	tmpl, err := template.New("local").Parse(systemPrompt)
+	if err != nil {
+		return systemPrompt
+	}
+
+	var result strings.Builder
+	if err := tmpl.Execute(&result, tmplData); err != nil {
+		return systemPrompt
+	}
+
+	return result.String()
 }

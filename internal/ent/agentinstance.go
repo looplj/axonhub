@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // AgentInstance is the model entity for the AgentInstance schema.
@@ -28,6 +31,8 @@ type AgentInstance struct {
 	ProjectID int `json:"project_id,omitempty"`
 	// AgentID holds the value of the "agent_id" field.
 	AgentID int `json:"agent_id,omitempty"`
+	// Agent Runtime ID (null means unknown/CLI started)
+	AgentRuntimeID *int `json:"agent_runtime_id,omitempty"`
 	// Runtime generated instance identifier
 	InstanceID string `json:"instance_id,omitempty"`
 	// Human readable name
@@ -38,6 +43,10 @@ type AgentInstance struct {
 	Version string `json:"version,omitempty"`
 	// Last heartbeat timestamp
 	LastHeartbeatAt time.Time `json:"last_heartbeat_at,omitempty"`
+	// Deployment info - runtime specific deployment details
+	Deployment objects.AgentInstanceDeployment `json:"deployment,omitempty"`
+	// Instance status
+	Status agentinstance.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AgentInstanceQuery when eager-loading is set.
 	Edges        AgentInstanceEdges `json:"edges"`
@@ -48,13 +57,15 @@ type AgentInstance struct {
 type AgentInstanceEdges struct {
 	// Agent holds the value of the agent edge.
 	Agent *Agent `json:"agent,omitempty"`
+	// Runtime holds the value of the runtime edge.
+	Runtime *AgentRuntime `json:"runtime,omitempty"`
 	// Messages holds the value of the messages edge.
 	Messages []*AgentMessage `json:"messages,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 	// totalCount holds the count of the edges above.
-	totalCount [2]map[string]int
+	totalCount [3]map[string]int
 
 	namedMessages map[string][]*AgentMessage
 }
@@ -70,10 +81,21 @@ func (e AgentInstanceEdges) AgentOrErr() (*Agent, error) {
 	return nil, &NotLoadedError{edge: "agent"}
 }
 
+// RuntimeOrErr returns the Runtime value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e AgentInstanceEdges) RuntimeOrErr() (*AgentRuntime, error) {
+	if e.Runtime != nil {
+		return e.Runtime, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: agentruntime.Label}
+	}
+	return nil, &NotLoadedError{edge: "runtime"}
+}
+
 // MessagesOrErr returns the Messages value or an error if the edge
 // was not loaded in eager-loading.
 func (e AgentInstanceEdges) MessagesOrErr() ([]*AgentMessage, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.Messages, nil
 	}
 	return nil, &NotLoadedError{edge: "messages"}
@@ -84,9 +106,11 @@ func (*AgentInstance) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case agentinstance.FieldID, agentinstance.FieldDeletedAt, agentinstance.FieldProjectID, agentinstance.FieldAgentID:
+		case agentinstance.FieldDeployment:
+			values[i] = new([]byte)
+		case agentinstance.FieldID, agentinstance.FieldDeletedAt, agentinstance.FieldProjectID, agentinstance.FieldAgentID, agentinstance.FieldAgentRuntimeID:
 			values[i] = new(sql.NullInt64)
-		case agentinstance.FieldInstanceID, agentinstance.FieldName, agentinstance.FieldPlatform, agentinstance.FieldVersion:
+		case agentinstance.FieldInstanceID, agentinstance.FieldName, agentinstance.FieldPlatform, agentinstance.FieldVersion, agentinstance.FieldStatus:
 			values[i] = new(sql.NullString)
 		case agentinstance.FieldCreatedAt, agentinstance.FieldUpdatedAt, agentinstance.FieldLastHeartbeatAt:
 			values[i] = new(sql.NullTime)
@@ -141,6 +165,13 @@ func (_m *AgentInstance) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.AgentID = int(value.Int64)
 			}
+		case agentinstance.FieldAgentRuntimeID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field agent_runtime_id", values[i])
+			} else if value.Valid {
+				_m.AgentRuntimeID = new(int)
+				*_m.AgentRuntimeID = int(value.Int64)
+			}
 		case agentinstance.FieldInstanceID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field instance_id", values[i])
@@ -171,6 +202,20 @@ func (_m *AgentInstance) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LastHeartbeatAt = value.Time
 			}
+		case agentinstance.FieldDeployment:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field deployment", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Deployment); err != nil {
+					return fmt.Errorf("unmarshal field deployment: %w", err)
+				}
+			}
+		case agentinstance.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				_m.Status = agentinstance.Status(value.String)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -187,6 +232,11 @@ func (_m *AgentInstance) Value(name string) (ent.Value, error) {
 // QueryAgent queries the "agent" edge of the AgentInstance entity.
 func (_m *AgentInstance) QueryAgent() *AgentQuery {
 	return NewAgentInstanceClient(_m.config).QueryAgent(_m)
+}
+
+// QueryRuntime queries the "runtime" edge of the AgentInstance entity.
+func (_m *AgentInstance) QueryRuntime() *AgentRuntimeQuery {
+	return NewAgentInstanceClient(_m.config).QueryRuntime(_m)
 }
 
 // QueryMessages queries the "messages" edge of the AgentInstance entity.
@@ -232,6 +282,11 @@ func (_m *AgentInstance) String() string {
 	builder.WriteString("agent_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AgentID))
 	builder.WriteString(", ")
+	if v := _m.AgentRuntimeID; v != nil {
+		builder.WriteString("agent_runtime_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
 	builder.WriteString("instance_id=")
 	builder.WriteString(_m.InstanceID)
 	builder.WriteString(", ")
@@ -246,6 +301,12 @@ func (_m *AgentInstance) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("last_heartbeat_at=")
 	builder.WriteString(_m.LastHeartbeatAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("deployment=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Deployment))
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteByte(')')
 	return builder.String()
 }

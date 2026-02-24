@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -1218,6 +1219,14 @@ type AgentInstanceWhereInput struct {
 	AgentIDIn    []int `json:"agentIDIn,omitempty"`
 	AgentIDNotIn []int `json:"agentIDNotIn,omitempty"`
 
+	// "agent_runtime_id" field predicates.
+	AgentRuntimeID       *int  `json:"agentRuntimeID,omitempty"`
+	AgentRuntimeIDNEQ    *int  `json:"agentRuntimeIDNEQ,omitempty"`
+	AgentRuntimeIDIn     []int `json:"agentRuntimeIDIn,omitempty"`
+	AgentRuntimeIDNotIn  []int `json:"agentRuntimeIDNotIn,omitempty"`
+	AgentRuntimeIDIsNil  bool  `json:"agentRuntimeIDIsNil,omitempty"`
+	AgentRuntimeIDNotNil bool  `json:"agentRuntimeIDNotNil,omitempty"`
+
 	// "instance_id" field predicates.
 	InstanceID             *string  `json:"instanceID,omitempty"`
 	InstanceIDNEQ          *string  `json:"instanceIDNEQ,omitempty"`
@@ -1288,9 +1297,19 @@ type AgentInstanceWhereInput struct {
 	LastHeartbeatAtLT    *time.Time  `json:"lastHeartbeatAtLT,omitempty"`
 	LastHeartbeatAtLTE   *time.Time  `json:"lastHeartbeatAtLTE,omitempty"`
 
+	// "status" field predicates.
+	Status      *agentinstance.Status  `json:"status,omitempty"`
+	StatusNEQ   *agentinstance.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []agentinstance.Status `json:"statusIn,omitempty"`
+	StatusNotIn []agentinstance.Status `json:"statusNotIn,omitempty"`
+
 	// "agent" edge predicates.
 	HasAgent     *bool              `json:"hasAgent,omitempty"`
 	HasAgentWith []*AgentWhereInput `json:"hasAgentWith,omitempty"`
+
+	// "runtime" edge predicates.
+	HasRuntime     *bool                     `json:"hasRuntime,omitempty"`
+	HasRuntimeWith []*AgentRuntimeWhereInput `json:"hasRuntimeWith,omitempty"`
 
 	// "messages" edge predicates.
 	HasMessages     *bool                     `json:"hasMessages,omitempty"`
@@ -1476,6 +1495,24 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 	if len(i.AgentIDNotIn) > 0 {
 		predicates = append(predicates, agentinstance.AgentIDNotIn(i.AgentIDNotIn...))
 	}
+	if i.AgentRuntimeID != nil {
+		predicates = append(predicates, agentinstance.AgentRuntimeIDEQ(*i.AgentRuntimeID))
+	}
+	if i.AgentRuntimeIDNEQ != nil {
+		predicates = append(predicates, agentinstance.AgentRuntimeIDNEQ(*i.AgentRuntimeIDNEQ))
+	}
+	if len(i.AgentRuntimeIDIn) > 0 {
+		predicates = append(predicates, agentinstance.AgentRuntimeIDIn(i.AgentRuntimeIDIn...))
+	}
+	if len(i.AgentRuntimeIDNotIn) > 0 {
+		predicates = append(predicates, agentinstance.AgentRuntimeIDNotIn(i.AgentRuntimeIDNotIn...))
+	}
+	if i.AgentRuntimeIDIsNil {
+		predicates = append(predicates, agentinstance.AgentRuntimeIDIsNil())
+	}
+	if i.AgentRuntimeIDNotNil {
+		predicates = append(predicates, agentinstance.AgentRuntimeIDNotNil())
+	}
 	if i.InstanceID != nil {
 		predicates = append(predicates, agentinstance.InstanceIDEQ(*i.InstanceID))
 	}
@@ -1656,6 +1693,18 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 	if i.LastHeartbeatAtLTE != nil {
 		predicates = append(predicates, agentinstance.LastHeartbeatAtLTE(*i.LastHeartbeatAtLTE))
 	}
+	if i.Status != nil {
+		predicates = append(predicates, agentinstance.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, agentinstance.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, agentinstance.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, agentinstance.StatusNotIn(i.StatusNotIn...))
+	}
 
 	if i.HasAgent != nil {
 		p := agentinstance.HasAgent()
@@ -1674,6 +1723,24 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, agentinstance.HasAgentWith(with...))
+	}
+	if i.HasRuntime != nil {
+		p := agentinstance.HasRuntime()
+		if !*i.HasRuntime {
+			p = agentinstance.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasRuntimeWith) > 0 {
+		with := make([]predicate.AgentRuntime, 0, len(i.HasRuntimeWith))
+		for _, w := range i.HasRuntimeWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasRuntimeWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, agentinstance.HasRuntimeWith(with...))
 	}
 	if i.HasMessages != nil {
 		p := agentinstance.HasMessages()
@@ -2686,6 +2753,472 @@ func (i *AgentMessageWhereInput) P() (predicate.AgentMessage, error) {
 		return predicates[0], nil
 	default:
 		return agentmessage.And(predicates...), nil
+	}
+}
+
+// AgentRuntimeWhereInput represents a where input for filtering AgentRuntime queries.
+type AgentRuntimeWhereInput struct {
+	Predicates []predicate.AgentRuntime  `json:"-"`
+	Not        *AgentRuntimeWhereInput   `json:"not,omitempty"`
+	Or         []*AgentRuntimeWhereInput `json:"or,omitempty"`
+	And        []*AgentRuntimeWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "name" field predicates.
+	Name             *string  `json:"name,omitempty"`
+	NameNEQ          *string  `json:"nameNEQ,omitempty"`
+	NameIn           []string `json:"nameIn,omitempty"`
+	NameNotIn        []string `json:"nameNotIn,omitempty"`
+	NameGT           *string  `json:"nameGT,omitempty"`
+	NameGTE          *string  `json:"nameGTE,omitempty"`
+	NameLT           *string  `json:"nameLT,omitempty"`
+	NameLTE          *string  `json:"nameLTE,omitempty"`
+	NameContains     *string  `json:"nameContains,omitempty"`
+	NameHasPrefix    *string  `json:"nameHasPrefix,omitempty"`
+	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
+	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
+	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "type" field predicates.
+	Type      *agentruntime.Type  `json:"type,omitempty"`
+	TypeNEQ   *agentruntime.Type  `json:"typeNEQ,omitempty"`
+	TypeIn    []agentruntime.Type `json:"typeIn,omitempty"`
+	TypeNotIn []agentruntime.Type `json:"typeNotIn,omitempty"`
+
+	// "status" field predicates.
+	Status      *agentruntime.Status  `json:"status,omitempty"`
+	StatusNEQ   *agentruntime.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []agentruntime.Status `json:"statusIn,omitempty"`
+	StatusNotIn []agentruntime.Status `json:"statusNotIn,omitempty"`
+
+	// "host" field predicates.
+	Host             *string  `json:"host,omitempty"`
+	HostNEQ          *string  `json:"hostNEQ,omitempty"`
+	HostIn           []string `json:"hostIn,omitempty"`
+	HostNotIn        []string `json:"hostNotIn,omitempty"`
+	HostGT           *string  `json:"hostGT,omitempty"`
+	HostGTE          *string  `json:"hostGTE,omitempty"`
+	HostLT           *string  `json:"hostLT,omitempty"`
+	HostLTE          *string  `json:"hostLTE,omitempty"`
+	HostContains     *string  `json:"hostContains,omitempty"`
+	HostHasPrefix    *string  `json:"hostHasPrefix,omitempty"`
+	HostHasSuffix    *string  `json:"hostHasSuffix,omitempty"`
+	HostEqualFold    *string  `json:"hostEqualFold,omitempty"`
+	HostContainsFold *string  `json:"hostContainsFold,omitempty"`
+
+	// "user" field predicates.
+	User             *string  `json:"user,omitempty"`
+	UserNEQ          *string  `json:"userNEQ,omitempty"`
+	UserIn           []string `json:"userIn,omitempty"`
+	UserNotIn        []string `json:"userNotIn,omitempty"`
+	UserGT           *string  `json:"userGT,omitempty"`
+	UserGTE          *string  `json:"userGTE,omitempty"`
+	UserLT           *string  `json:"userLT,omitempty"`
+	UserLTE          *string  `json:"userLTE,omitempty"`
+	UserContains     *string  `json:"userContains,omitempty"`
+	UserHasPrefix    *string  `json:"userHasPrefix,omitempty"`
+	UserHasSuffix    *string  `json:"userHasSuffix,omitempty"`
+	UserEqualFold    *string  `json:"userEqualFold,omitempty"`
+	UserContainsFold *string  `json:"userContainsFold,omitempty"`
+
+	// "password" field predicates.
+	Password             *string  `json:"password,omitempty"`
+	PasswordNEQ          *string  `json:"passwordNEQ,omitempty"`
+	PasswordIn           []string `json:"passwordIn,omitempty"`
+	PasswordNotIn        []string `json:"passwordNotIn,omitempty"`
+	PasswordGT           *string  `json:"passwordGT,omitempty"`
+	PasswordGTE          *string  `json:"passwordGTE,omitempty"`
+	PasswordLT           *string  `json:"passwordLT,omitempty"`
+	PasswordLTE          *string  `json:"passwordLTE,omitempty"`
+	PasswordContains     *string  `json:"passwordContains,omitempty"`
+	PasswordHasPrefix    *string  `json:"passwordHasPrefix,omitempty"`
+	PasswordHasSuffix    *string  `json:"passwordHasSuffix,omitempty"`
+	PasswordEqualFold    *string  `json:"passwordEqualFold,omitempty"`
+	PasswordContainsFold *string  `json:"passwordContainsFold,omitempty"`
+
+	// "instances" edge predicates.
+	HasInstances     *bool                      `json:"hasInstances,omitempty"`
+	HasInstancesWith []*AgentInstanceWhereInput `json:"hasInstancesWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *AgentRuntimeWhereInput) AddPredicates(predicates ...predicate.AgentRuntime) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the AgentRuntimeWhereInput filter on the AgentRuntimeQuery builder.
+func (i *AgentRuntimeWhereInput) Filter(q *AgentRuntimeQuery) (*AgentRuntimeQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyAgentRuntimeWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyAgentRuntimeWhereInput is returned in case the AgentRuntimeWhereInput is empty.
+var ErrEmptyAgentRuntimeWhereInput = errors.New("ent: empty predicate AgentRuntimeWhereInput")
+
+// P returns a predicate for filtering agentruntimes.
+// An error is returned if the input is empty or invalid.
+func (i *AgentRuntimeWhereInput) P() (predicate.AgentRuntime, error) {
+	var predicates []predicate.AgentRuntime
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, agentruntime.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.AgentRuntime, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, agentruntime.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.AgentRuntime, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, agentruntime.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, agentruntime.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, agentruntime.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, agentruntime.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, agentruntime.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, agentruntime.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, agentruntime.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, agentruntime.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, agentruntime.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, agentruntime.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, agentruntime.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, agentruntime.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, agentruntime.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, agentruntime.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, agentruntime.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, agentruntime.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, agentruntime.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, agentruntime.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, agentruntime.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, agentruntime.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, agentruntime.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, agentruntime.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, agentruntime.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, agentruntime.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, agentruntime.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.Name != nil {
+		predicates = append(predicates, agentruntime.NameEQ(*i.Name))
+	}
+	if i.NameNEQ != nil {
+		predicates = append(predicates, agentruntime.NameNEQ(*i.NameNEQ))
+	}
+	if len(i.NameIn) > 0 {
+		predicates = append(predicates, agentruntime.NameIn(i.NameIn...))
+	}
+	if len(i.NameNotIn) > 0 {
+		predicates = append(predicates, agentruntime.NameNotIn(i.NameNotIn...))
+	}
+	if i.NameGT != nil {
+		predicates = append(predicates, agentruntime.NameGT(*i.NameGT))
+	}
+	if i.NameGTE != nil {
+		predicates = append(predicates, agentruntime.NameGTE(*i.NameGTE))
+	}
+	if i.NameLT != nil {
+		predicates = append(predicates, agentruntime.NameLT(*i.NameLT))
+	}
+	if i.NameLTE != nil {
+		predicates = append(predicates, agentruntime.NameLTE(*i.NameLTE))
+	}
+	if i.NameContains != nil {
+		predicates = append(predicates, agentruntime.NameContains(*i.NameContains))
+	}
+	if i.NameHasPrefix != nil {
+		predicates = append(predicates, agentruntime.NameHasPrefix(*i.NameHasPrefix))
+	}
+	if i.NameHasSuffix != nil {
+		predicates = append(predicates, agentruntime.NameHasSuffix(*i.NameHasSuffix))
+	}
+	if i.NameEqualFold != nil {
+		predicates = append(predicates, agentruntime.NameEqualFold(*i.NameEqualFold))
+	}
+	if i.NameContainsFold != nil {
+		predicates = append(predicates, agentruntime.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.Type != nil {
+		predicates = append(predicates, agentruntime.TypeEQ(*i.Type))
+	}
+	if i.TypeNEQ != nil {
+		predicates = append(predicates, agentruntime.TypeNEQ(*i.TypeNEQ))
+	}
+	if len(i.TypeIn) > 0 {
+		predicates = append(predicates, agentruntime.TypeIn(i.TypeIn...))
+	}
+	if len(i.TypeNotIn) > 0 {
+		predicates = append(predicates, agentruntime.TypeNotIn(i.TypeNotIn...))
+	}
+	if i.Status != nil {
+		predicates = append(predicates, agentruntime.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, agentruntime.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, agentruntime.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, agentruntime.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.Host != nil {
+		predicates = append(predicates, agentruntime.HostEQ(*i.Host))
+	}
+	if i.HostNEQ != nil {
+		predicates = append(predicates, agentruntime.HostNEQ(*i.HostNEQ))
+	}
+	if len(i.HostIn) > 0 {
+		predicates = append(predicates, agentruntime.HostIn(i.HostIn...))
+	}
+	if len(i.HostNotIn) > 0 {
+		predicates = append(predicates, agentruntime.HostNotIn(i.HostNotIn...))
+	}
+	if i.HostGT != nil {
+		predicates = append(predicates, agentruntime.HostGT(*i.HostGT))
+	}
+	if i.HostGTE != nil {
+		predicates = append(predicates, agentruntime.HostGTE(*i.HostGTE))
+	}
+	if i.HostLT != nil {
+		predicates = append(predicates, agentruntime.HostLT(*i.HostLT))
+	}
+	if i.HostLTE != nil {
+		predicates = append(predicates, agentruntime.HostLTE(*i.HostLTE))
+	}
+	if i.HostContains != nil {
+		predicates = append(predicates, agentruntime.HostContains(*i.HostContains))
+	}
+	if i.HostHasPrefix != nil {
+		predicates = append(predicates, agentruntime.HostHasPrefix(*i.HostHasPrefix))
+	}
+	if i.HostHasSuffix != nil {
+		predicates = append(predicates, agentruntime.HostHasSuffix(*i.HostHasSuffix))
+	}
+	if i.HostEqualFold != nil {
+		predicates = append(predicates, agentruntime.HostEqualFold(*i.HostEqualFold))
+	}
+	if i.HostContainsFold != nil {
+		predicates = append(predicates, agentruntime.HostContainsFold(*i.HostContainsFold))
+	}
+	if i.User != nil {
+		predicates = append(predicates, agentruntime.UserEQ(*i.User))
+	}
+	if i.UserNEQ != nil {
+		predicates = append(predicates, agentruntime.UserNEQ(*i.UserNEQ))
+	}
+	if len(i.UserIn) > 0 {
+		predicates = append(predicates, agentruntime.UserIn(i.UserIn...))
+	}
+	if len(i.UserNotIn) > 0 {
+		predicates = append(predicates, agentruntime.UserNotIn(i.UserNotIn...))
+	}
+	if i.UserGT != nil {
+		predicates = append(predicates, agentruntime.UserGT(*i.UserGT))
+	}
+	if i.UserGTE != nil {
+		predicates = append(predicates, agentruntime.UserGTE(*i.UserGTE))
+	}
+	if i.UserLT != nil {
+		predicates = append(predicates, agentruntime.UserLT(*i.UserLT))
+	}
+	if i.UserLTE != nil {
+		predicates = append(predicates, agentruntime.UserLTE(*i.UserLTE))
+	}
+	if i.UserContains != nil {
+		predicates = append(predicates, agentruntime.UserContains(*i.UserContains))
+	}
+	if i.UserHasPrefix != nil {
+		predicates = append(predicates, agentruntime.UserHasPrefix(*i.UserHasPrefix))
+	}
+	if i.UserHasSuffix != nil {
+		predicates = append(predicates, agentruntime.UserHasSuffix(*i.UserHasSuffix))
+	}
+	if i.UserEqualFold != nil {
+		predicates = append(predicates, agentruntime.UserEqualFold(*i.UserEqualFold))
+	}
+	if i.UserContainsFold != nil {
+		predicates = append(predicates, agentruntime.UserContainsFold(*i.UserContainsFold))
+	}
+	if i.Password != nil {
+		predicates = append(predicates, agentruntime.PasswordEQ(*i.Password))
+	}
+	if i.PasswordNEQ != nil {
+		predicates = append(predicates, agentruntime.PasswordNEQ(*i.PasswordNEQ))
+	}
+	if len(i.PasswordIn) > 0 {
+		predicates = append(predicates, agentruntime.PasswordIn(i.PasswordIn...))
+	}
+	if len(i.PasswordNotIn) > 0 {
+		predicates = append(predicates, agentruntime.PasswordNotIn(i.PasswordNotIn...))
+	}
+	if i.PasswordGT != nil {
+		predicates = append(predicates, agentruntime.PasswordGT(*i.PasswordGT))
+	}
+	if i.PasswordGTE != nil {
+		predicates = append(predicates, agentruntime.PasswordGTE(*i.PasswordGTE))
+	}
+	if i.PasswordLT != nil {
+		predicates = append(predicates, agentruntime.PasswordLT(*i.PasswordLT))
+	}
+	if i.PasswordLTE != nil {
+		predicates = append(predicates, agentruntime.PasswordLTE(*i.PasswordLTE))
+	}
+	if i.PasswordContains != nil {
+		predicates = append(predicates, agentruntime.PasswordContains(*i.PasswordContains))
+	}
+	if i.PasswordHasPrefix != nil {
+		predicates = append(predicates, agentruntime.PasswordHasPrefix(*i.PasswordHasPrefix))
+	}
+	if i.PasswordHasSuffix != nil {
+		predicates = append(predicates, agentruntime.PasswordHasSuffix(*i.PasswordHasSuffix))
+	}
+	if i.PasswordEqualFold != nil {
+		predicates = append(predicates, agentruntime.PasswordEqualFold(*i.PasswordEqualFold))
+	}
+	if i.PasswordContainsFold != nil {
+		predicates = append(predicates, agentruntime.PasswordContainsFold(*i.PasswordContainsFold))
+	}
+
+	if i.HasInstances != nil {
+		p := agentruntime.HasInstances()
+		if !*i.HasInstances {
+			p = agentruntime.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasInstancesWith) > 0 {
+		with := make([]predicate.AgentInstance, 0, len(i.HasInstancesWith))
+		for _, w := range i.HasInstancesWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasInstancesWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, agentruntime.HasInstancesWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyAgentRuntimeWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return agentruntime.And(predicates...), nil
 	}
 }
 

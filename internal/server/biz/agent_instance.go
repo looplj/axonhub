@@ -1,0 +1,1465 @@
+package biz
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"entgo.io/ent/dialect/sql"
+	"go.uber.org/fx"
+
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agentthread"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
+	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/objects"
+)
+
+type AgentBootstrapServiceParams struct {
+	fx.In
+
+	Ent *ent.Client
+}
+
+// AgentBootstrapService provides APIs for the runtime agent endpoint (/agent/v1/graphql).
+// This service enforces agent API key ownership checks at the application layer and
+// uses system bypass for DB access to avoid coupling to Ent privacy rules.
+type AgentBootstrapService struct {
+	*AbstractService
+}
+
+func NewAgentBootstrapService(params AgentBootstrapServiceParams) *AgentBootstrapService {
+	return &AgentBootstrapService{
+		AbstractService: &AbstractService{
+			db: params.Ent,
+		},
+	}
+}
+
+type AgentToolDefinition struct {
+	Name        string
+	Description string
+	Parameters  objects.JSONRawMessage
+	Config      *objects.JSONRawMessage
+}
+
+type AgentSkillDefinition struct {
+	Name       string
+	Content    *string
+	Entrypoint *string
+	Args       *string
+}
+
+type AgentBootstrap struct {
+	AgentID      int
+	AgentName    string
+	Model        *string
+	SystemPrompt string
+
+	Tools        []AgentToolDefinition
+	Skills       []AgentSkillDefinition
+	BuiltinTools []objects.AgentBuiltinTool
+	SkillsPolicy objects.AgentSkillsPolicy
+
+	MemoryPolicy *objects.JSONRawMessage
+}
+
+type AgentMessageView struct {
+	ID         int
+	AgentID    int
+	Direction  agentmessage.Direction
+	SenderType agentmessage.SenderType
+	SenderID   *int
+	Kind       agentmessage.Kind
+	// CorrelationID ties messages together (e.g. approval request + result).
+	CorrelationID string
+	Content       objects.JSONRawMessage
+	Text          string
+	Sequence      int64
+	Status        agentmessage.Status
+	CreatedAt     time.Time
+}
+
+type RegisterAgentInstanceInput struct {
+	AgentID    int
+	InstanceID string
+	Name       *string
+	Platform   *string
+	Version    *string
+	ThreadID   *string
+}
+
+type SendAgentMessageInput struct {
+	AgentID       int
+	InstanceID    string
+	Text          string
+	Content       *objects.JSONRawMessage
+	Kind          *agentmessage.Kind
+	CorrelationID *string
+}
+
+type PushAgentMessageInput struct {
+	AgentID       int
+	InstanceID    string
+	Text          string
+	Content       *objects.JSONRawMessage
+	Kind          *agentmessage.Kind
+	CorrelationID *string
+}
+
+type PullAgentMessagesInput struct {
+	AgentID       int
+	InstanceID    string
+	AfterSequence *int64
+	Limit         int
+	KindIn        []agentmessage.Kind
+	CorrelationID *string
+}
+
+type AckAgentMessagesInput struct {
+	AgentID    int
+	InstanceID string
+	MessageIDs []int
+}
+
+type ResolveApprovalCommandInput struct {
+	AgentID   int
+	RequestID string
+	Granted   bool
+	Scope     string // once|thread|workspace
+	Reason    *string
+}
+
+type AgentApprovalRequestView struct {
+	ID            int
+	AgentID       int
+	CorrelationID string
+	Content       objects.JSONRawMessage
+	Sequence      int64
+	CreatedAt     time.Time
+}
+
+func (s *AgentBootstrapService) GetAgentIDFromAPIKey(ctx context.Context) (int, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return 0, fmt.Errorf("agent api key not found in context")
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-get-agent-id", func(bypassCtx context.Context) (int, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		return a.ID, nil
+	})
+}
+
+func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, agentID int) (*AgentBootstrap, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return nil, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-bootstrap", func(bypassCtx context.Context) (*AgentBootstrap, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		p, err := client.Prompt.Query().
+			Where(
+				prompt.IDEQ(a.PromptID),
+				prompt.ProjectIDEQ(projectID),
+				prompt.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent system prompt: %w", err)
+		}
+
+		builtinTools := a.AgentBuiltinTools
+		if builtinTools == nil {
+			builtinTools = []objects.AgentBuiltinTool{}
+		}
+
+		skillsPolicy := a.SkillsPolicy
+		if skillsPolicy.Add == "" {
+			skillsPolicy.Add = "open"
+		}
+
+		toolBindings, err := client.AgentTool.Query().
+			Where(
+				agenttool.AgentIDEQ(a.ID),
+				agenttool.ProjectIDEQ(projectID),
+			).
+			Order(agenttool.ByEnabled(sql.OrderDesc()), agenttool.ByOrder()).
+			WithTool().
+			All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent tool bindings: %w", err)
+		}
+
+		tools := make([]AgentToolDefinition, 0, len(toolBindings))
+		for _, b := range toolBindings {
+			if b.Edges.Tool == nil {
+				continue
+			}
+			t := b.Edges.Tool
+			def := AgentToolDefinition{
+				Name:        t.Name,
+				Description: t.Description,
+				Parameters:  t.Schema,
+			}
+			if len(b.Config) > 0 && string(b.Config) != "{}" {
+				cfg := objects.JSONRawMessage(b.Config)
+				def.Config = &cfg
+			}
+			tools = append(tools, def)
+		}
+
+		skillBindings, err := client.AgentSkill.Query().
+			Where(
+				agentskill.AgentIDEQ(a.ID),
+				agentskill.ProjectIDEQ(projectID),
+			).
+			Order(agentskill.ByEnabled(sql.OrderDesc()), agentskill.ByOrder()).
+			WithSkill().
+			All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent skill bindings: %w", err)
+		}
+
+		skills := make([]AgentSkillDefinition, 0, len(skillBindings))
+		for _, b := range skillBindings {
+			if b.Edges.Skill == nil {
+				continue
+			}
+			sk := b.Edges.Skill
+
+			var entrypoint *string
+			if sk.Entrypoint != "" {
+				entrypoint = &sk.Entrypoint
+			}
+
+			var args *string
+			if b.Args != "" {
+				args = &b.Args
+			}
+
+			skills = append(skills, AgentSkillDefinition{
+				Name:       sk.Name,
+				Content:    sk.Content,
+				Entrypoint: entrypoint,
+				Args:       args,
+			})
+		}
+
+		var model *string
+		if a.Model != "" {
+			model = &a.Model
+		}
+
+		return &AgentBootstrap{
+			AgentID:      a.ID,
+			AgentName:    a.Name,
+			Model:        model,
+			SystemPrompt: p.Content,
+			Tools:        tools,
+			Skills:       skills,
+			BuiltinTools: builtinTools,
+			SkillsPolicy: skillsPolicy,
+			MemoryPolicy: nil,
+		}, nil
+	})
+}
+
+func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, userID int, agentID int, instanceID string, text string) (*AgentMessageView, error) {
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("project id not found in context")
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-admin-send-message", func(bypassCtx context.Context) (*AgentMessageView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		inst, err := client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(a.ID),
+				agentinstance.InstanceIDEQ(instanceID),
+				agentinstance.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent instance: %w", err)
+		}
+
+		raw, err := marshalMessageContent("text", text, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal message content: %w", err)
+		}
+
+		var msg *ent.AgentMessage
+		for attempt := 0; attempt < 3; attempt++ {
+			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			created, err := client.AgentMessage.Create().
+				SetProjectID(projectID).
+				SetAgentID(a.ID).
+				SetAgentInstanceID(inst.ID).
+				SetDirection(agentmessage.DirectionToAgent).
+				SetSenderType(agentmessage.SenderTypeUser).
+				SetSenderID(userID).
+				SetKind(agentmessage.KindChat).
+				SetCorrelationID("").
+				SetContent(objects.JSONRawMessage(raw)).
+				SetStatus(agentmessage.StatusPending).
+				SetSequence(nextSeq).
+				Save(bypassCtx)
+			if err == nil {
+				msg = created
+				break
+			}
+
+			if ent.IsConstraintError(err) && attempt < 2 {
+				continue
+			}
+
+			return nil, fmt.Errorf("failed to create message: %w", err)
+		}
+		if msg == nil {
+			return nil, fmt.Errorf("failed to create message: no message created")
+		}
+
+		return &AgentMessageView{
+			ID:            msg.ID,
+			AgentID:       a.ID,
+			Direction:     msg.Direction,
+			SenderType:    msg.SenderType,
+			SenderID:      new(userID),
+			Kind:          msg.Kind,
+			CorrelationID: msg.CorrelationID,
+			Content:       msg.Content,
+			Text:          text,
+			Sequence:      msg.Sequence,
+			Status:        msg.Status,
+			CreatedAt:     msg.CreatedAt,
+		}, nil
+	})
+}
+
+func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Context, agentID int, instanceID *string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("project id not found in context")
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-admin-pull-messages-to-user", func(bypassCtx context.Context) ([]*AgentMessageView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		q := client.AgentMessage.Query().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.DeletedAtEQ(0),
+			).
+			Order(agentmessage.BySequence()).
+			Limit(limit).
+			Where(func(s *sql.Selector) {})
+
+		if instanceID != nil && *instanceID != "" {
+			inst, err := client.AgentInstance.Query().
+				Where(
+					agentinstance.AgentIDEQ(a.ID),
+					agentinstance.InstanceIDEQ(*instanceID),
+					agentinstance.DeletedAtEQ(0),
+				).
+				Only(bypassCtx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load agent instance: %w", err)
+			}
+
+			q = q.Where(agentmessage.AgentInstanceIDEQ(inst.ID))
+		}
+
+		if afterSequence != nil {
+			q = q.Where(agentmessage.SequenceGT(*afterSequence))
+		}
+
+		items, err := q.All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query messages: %w", err)
+		}
+
+		out := make([]*AgentMessageView, 0, len(items))
+		for _, m := range items {
+			text := extractTextFromMessageContent(m.Content)
+
+			out = append(out, &AgentMessageView{
+				ID:            m.ID,
+				AgentID:       a.ID,
+				Direction:     m.Direction,
+				SenderType:    m.SenderType,
+				SenderID:      m.SenderID,
+				Kind:          m.Kind,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Text:          text,
+				Sequence:      m.Sequence,
+				Status:        m.Status,
+				CreatedAt:     m.CreatedAt,
+			})
+		}
+
+		return out, nil
+	})
+}
+
+func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentApprovalRequestView, error) {
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("project id not found in context")
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+
+	if limit > 200 {
+		limit = 200
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-admin-pull-approval-requests", func(bypassCtx context.Context) ([]*AgentApprovalRequestView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		q := client.AgentMessage.Query().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.DeletedAtEQ(0),
+			).
+			Order(agentmessage.BySequence()).
+			Limit(limit).
+			Where(func(s *sql.Selector) {})
+
+		if afterSequence != nil {
+			q = q.Where(agentmessage.SequenceGT(*afterSequence))
+		}
+
+		items, err := q.All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query approval requests: %w", err)
+		}
+
+		out := make([]*AgentApprovalRequestView, 0, len(items))
+		for _, m := range items {
+			out = append(out, &AgentApprovalRequestView{
+				ID:            m.ID,
+				AgentID:       a.ID,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Sequence:      m.Sequence,
+				CreatedAt:     m.CreatedAt,
+			})
+		}
+
+		return out, nil
+	})
+}
+
+func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, agentID int, instanceID *string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("project id not found in context")
+	}
+
+	if limit <= 0 {
+		limit = 200
+	}
+
+	if limit > 500 {
+		limit = 500
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-admin-list-thread-messages", func(bypassCtx context.Context) ([]*AgentMessageView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		q := client.AgentMessage.Query().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.DeletedAtEQ(0),
+			).
+			Order(agentmessage.BySequence()).
+			Limit(limit).
+			Where(func(s *sql.Selector) {})
+
+		if instanceID != nil && *instanceID != "" {
+			inst, err := client.AgentInstance.Query().
+				Where(
+					agentinstance.AgentIDEQ(a.ID),
+					agentinstance.InstanceIDEQ(*instanceID),
+					agentinstance.DeletedAtEQ(0),
+				).
+				Only(bypassCtx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load agent instance: %w", err)
+			}
+
+			q = q.Where(agentmessage.AgentInstanceIDEQ(inst.ID))
+		}
+
+		if afterSequence != nil {
+			q = q.Where(agentmessage.SequenceGT(*afterSequence))
+		}
+
+		items, err := q.All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query messages: %w", err)
+		}
+
+		out := make([]*AgentMessageView, 0, len(items))
+		for _, m := range items {
+			text := extractTextFromMessageContent(m.Content)
+
+			out = append(out, &AgentMessageView{
+				ID:            m.ID,
+				AgentID:       a.ID,
+				Direction:     m.Direction,
+				SenderType:    m.SenderType,
+				SenderID:      m.SenderID,
+				Kind:          m.Kind,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Text:          text,
+				Sequence:      m.Sequence,
+				Status:        m.Status,
+				CreatedAt:     m.CreatedAt,
+			})
+		}
+
+		return out, nil
+	})
+}
+
+func (s *AgentBootstrapService) ResolveApprovalAsUser(ctx context.Context, userID int, input ResolveApprovalCommandInput) (bool, error) {
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return false, fmt.Errorf("project id not found in context")
+	}
+
+	// Normalize scope value.
+	scope := input.Scope
+	if scope == "" {
+		scope = "once"
+	}
+
+	switch scope {
+	case "once", "thread", "workspace":
+	default:
+		return false, fmt.Errorf("invalid approval scope: %q", scope)
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-admin-resolve-approval", func(bypassCtx context.Context) (bool, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(input.AgentID),
+				agent.ProjectIDEQ(projectID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return false, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		// Ensure there is a pending approval_request to resolve (prevents arbitrary injection).
+		approvalReq, err := client.AgentMessage.Query().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.CorrelationIDEQ(input.RequestID),
+				agentmessage.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			if ent.IsNotFound(err) {
+				return false, fmt.Errorf("approval request not found or already resolved")
+			}
+
+			return false, fmt.Errorf("failed to query approval request: %w", err)
+		}
+
+		payload := map[string]any{
+			"type":       "approval_result",
+			"request_id": input.RequestID,
+			"granted":    input.Granted,
+			"scope":      scope,
+		}
+		if input.Reason != nil && *input.Reason != "" {
+			payload["reason"] = *input.Reason
+		}
+
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return false, fmt.Errorf("marshal approval result: %w", err)
+		}
+
+		var resultMsg *ent.AgentMessage
+
+		for attempt := range 3 {
+			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
+			if err != nil {
+				return false, err
+			}
+
+			created, err := client.AgentMessage.Create().
+				SetProjectID(projectID).
+				SetAgentID(a.ID).
+				SetAgentInstanceID(approvalReq.AgentInstanceID).
+				SetDirection(agentmessage.DirectionToAgent).
+				SetSenderType(agentmessage.SenderTypeUser).
+				SetSenderID(userID).
+				SetKind(agentmessage.KindApprovalResult).
+				SetCorrelationID(input.RequestID).
+				SetContent(objects.JSONRawMessage(raw)).
+				SetStatus(agentmessage.StatusPending).
+				SetSequence(nextSeq).
+				Save(bypassCtx)
+			if err == nil {
+				resultMsg = created
+				break
+			}
+
+			if ent.IsConstraintError(err) && attempt < 2 {
+				continue
+			}
+
+			return false, fmt.Errorf("create approval result: %w", err)
+		}
+
+		if resultMsg == nil {
+			return false, fmt.Errorf("create approval result: no message created")
+		}
+
+		// Mark request as resolved to avoid repeated approvals.
+		_, _ = client.AgentMessage.Update().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.ProjectIDEQ(projectID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.CorrelationIDEQ(input.RequestID),
+				agentmessage.DeletedAtEQ(0),
+			).
+			SetStatus(agentmessage.StatusAcked).
+			Save(bypassCtx)
+
+		return true, nil
+	})
+}
+
+func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input RegisterAgentInstanceInput) (*ent.AgentInstance, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return nil, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+	now := time.Now()
+
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-register-instance", func(bypassCtx context.Context) (*ent.AgentInstance, error) {
+		client := s.entFromContext(bypassCtx)
+
+		_, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(input.AgentID),
+				agent.ProjectIDEQ(projectID),
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		existing, err := client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(input.AgentID),
+				agentinstance.InstanceIDEQ(input.InstanceID),
+				agentinstance.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err == nil {
+			upd := client.AgentInstance.UpdateOneID(existing.ID).
+				SetLastHeartbeatAt(now)
+
+			if input.Name != nil {
+				upd.SetName(*input.Name)
+			}
+			if input.Platform != nil {
+				upd.SetPlatform(*input.Platform)
+			}
+			if input.Version != nil {
+				upd.SetVersion(*input.Version)
+			}
+
+			inst, err := upd.Save(bypassCtx)
+			if err != nil {
+				return nil, err
+			}
+
+			if input.ThreadID != nil && *input.ThreadID != "" {
+				if err := s.createAgentThread(bypassCtx, client, projectID, input.AgentID, *input.ThreadID); err != nil {
+					return nil, err
+				}
+			}
+
+			return inst, nil
+		}
+		if !ent.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to query agent instance: %w", err)
+		}
+
+		create := client.AgentInstance.Create().
+			SetProjectID(projectID).
+			SetAgentID(input.AgentID).
+			SetInstanceID(input.InstanceID).
+			SetLastHeartbeatAt(now)
+
+		if input.Name != nil {
+			create.SetName(*input.Name)
+		}
+		if input.Platform != nil {
+			create.SetPlatform(*input.Platform)
+		}
+		if input.Version != nil {
+			create.SetVersion(*input.Version)
+		}
+
+		created, err := create.Save(bypassCtx)
+		if err != nil {
+			if ent.IsConstraintError(err) {
+				existing, getErr := client.AgentInstance.Query().
+					Where(
+						agentinstance.AgentIDEQ(input.AgentID),
+						agentinstance.InstanceIDEQ(input.InstanceID),
+						agentinstance.DeletedAtEQ(0),
+					).
+					Only(bypassCtx)
+				if getErr != nil {
+					return nil, fmt.Errorf("failed to reload agent instance after conflict: %w", getErr)
+				}
+
+				inst, err := client.AgentInstance.UpdateOneID(existing.ID).
+					SetLastHeartbeatAt(now).
+					Save(bypassCtx)
+				if err != nil {
+					return nil, err
+				}
+
+				if input.ThreadID != nil && *input.ThreadID != "" {
+					if err := s.createAgentThread(bypassCtx, client, projectID, input.AgentID, *input.ThreadID); err != nil {
+						return nil, err
+					}
+				}
+
+				return inst, nil
+			}
+			return nil, fmt.Errorf("failed to create agent instance: %w", err)
+		}
+
+		if input.ThreadID != nil && *input.ThreadID != "" {
+			if err := s.createAgentThread(bypassCtx, client, projectID, input.AgentID, *input.ThreadID); err != nil {
+				return nil, err
+			}
+		}
+
+		return created, nil
+	})
+}
+
+func (s *AgentBootstrapService) createAgentThread(ctx context.Context, client *ent.Client, projectID int, agentID int, threadID string) error {
+	t, err := client.Thread.Query().
+		Where(
+			thread.ThreadIDEQ(threadID),
+			thread.ProjectIDEQ(projectID),
+		).
+		Only(ctx)
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			return fmt.Errorf("failed to query thread: %w", err)
+		}
+
+		t, err = client.Thread.Create().
+			SetThreadID(threadID).
+			SetProjectID(projectID).
+			Save(ctx)
+		if err != nil {
+			if ent.IsConstraintError(err) {
+				t, err = client.Thread.Query().
+					Where(
+						thread.ThreadIDEQ(threadID),
+						thread.ProjectIDEQ(projectID),
+					).
+					Only(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to reload thread after conflict: %w", err)
+				}
+			} else {
+				return fmt.Errorf("failed to create thread: %w", err)
+			}
+		}
+	}
+
+	exists, err := client.AgentThread.Query().
+		Where(
+			agentthread.AgentIDEQ(agentID),
+			agentthread.ThreadIDEQ(t.ID),
+		).
+		Exist(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query agent thread: %w", err)
+	}
+
+	if exists {
+		return nil
+	}
+
+	_, err = client.AgentThread.Create().
+		SetProjectID(projectID).
+		SetAgentID(agentID).
+		SetThreadID(t.ID).
+		Save(ctx)
+	if err != nil {
+		if ent.IsConstraintError(err) {
+			return nil
+		}
+
+		return fmt.Errorf("failed to create agent thread: %w", err)
+	}
+
+	return nil
+}
+
+func (s *AgentBootstrapService) HeartbeatAgentInstance(ctx context.Context, agentID int, instanceID string) (bool, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return false, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+	now := time.Now()
+
+	affected, err := authz.RunWithSystemBypass(ctx, "agent-runtime-heartbeat-instance", func(bypassCtx context.Context) (int, error) {
+		client := s.entFromContext(bypassCtx)
+
+		_, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		return client.AgentInstance.Update().
+			Where(
+				agentinstance.AgentIDEQ(agentID),
+				agentinstance.InstanceIDEQ(instanceID),
+				agentinstance.DeletedAtEQ(0),
+			).
+			SetLastHeartbeatAt(now).
+			Save(bypassCtx)
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return affected > 0, nil
+}
+
+type agentTextMessageContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+func marshalMessageContent(typ string, text string, payload any) (objects.JSONRawMessage, error) {
+	type base struct {
+		Type string `json:"type"`
+		Text string `json:"text,omitempty"`
+	}
+
+	if typ == "" {
+		typ = "text"
+	}
+
+	if typ == "text" {
+		raw, err := json.Marshal(agentTextMessageContent{Type: typ, Text: text})
+		return objects.JSONRawMessage(raw), err
+	}
+	// For non-text messages, allow payload to carry structured fields.
+	// The caller must ensure payload is JSON-safe and redacted.
+	if payload == nil {
+		raw, err := json.Marshal(base{Type: typ, Text: text})
+		return objects.JSONRawMessage(raw), err
+	}
+
+	raw, err := json.Marshal(payload)
+
+	return objects.JSONRawMessage(raw), err
+}
+
+func extractTextFromMessageContent(raw objects.JSONRawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+
+	var content agentTextMessageContent
+	if err := json.Unmarshal(raw, &content); err != nil {
+		return ""
+	}
+
+	return content.Text
+}
+
+func (s *AgentBootstrapService) SendAgentMessage(ctx context.Context, input SendAgentMessageInput) (*AgentMessageView, error) {
+	kind := agentmessage.KindChat
+	if input.Kind != nil && *input.Kind != "" {
+		kind = *input.Kind
+	}
+
+	corr := ""
+	if input.CorrelationID != nil {
+		corr = *input.CorrelationID
+	}
+
+	return s.createMessage(ctx, input.AgentID, input.InstanceID, input.Text, input.Content, agentmessage.DirectionToAgent, agentmessage.SenderTypeUser, kind, corr)
+}
+
+func (s *AgentBootstrapService) PushAgentMessage(ctx context.Context, input PushAgentMessageInput) (*AgentMessageView, error) {
+	kind := agentmessage.KindChat
+	if input.Kind != nil && *input.Kind != "" {
+		kind = *input.Kind
+	}
+
+	corr := ""
+	if input.CorrelationID != nil {
+		corr = *input.CorrelationID
+	}
+
+	return s.createMessage(ctx, input.AgentID, input.InstanceID, input.Text, input.Content, agentmessage.DirectionToUser, agentmessage.SenderTypeAgent, kind, corr)
+}
+
+func (s *AgentBootstrapService) createMessage(
+	ctx context.Context,
+	agentID int,
+	instanceID string,
+	text string,
+	content *objects.JSONRawMessage,
+	direction agentmessage.Direction,
+	senderType agentmessage.SenderType,
+	kind agentmessage.Kind,
+	correlationID string,
+) (*AgentMessageView, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return nil, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-create-message", func(bypassCtx context.Context) (*AgentMessageView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		var senderID *int
+
+		inst, err := client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(a.ID),
+				agentinstance.InstanceIDEQ(instanceID),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent instance: %w", err)
+		}
+
+		senderID = &inst.ID
+
+		raw := objects.JSONRawMessage(nil)
+		if content != nil && len(*content) > 0 && string(*content) != "null" {
+			raw = *content
+		} else {
+			b, err := marshalMessageContent("text", text, nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal message content: %w", err)
+			}
+
+			raw = b
+		}
+
+		var msg *ent.AgentMessage
+		for attempt := 0; attempt < 3; attempt++ {
+			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			created, err := client.AgentMessage.Create().
+				SetProjectID(projectID).
+				SetAgentID(a.ID).
+				SetAgentInstanceID(*senderID).
+				SetDirection(direction).
+				SetSenderType(senderType).
+				SetNillableSenderID(senderID).
+				SetKind(kind).
+				SetCorrelationID(correlationID).
+				SetContent(raw).
+				SetStatus(agentmessage.StatusPending).
+				SetSequence(nextSeq).
+				Save(bypassCtx)
+			if err == nil {
+				msg = created
+				break
+			}
+
+			if ent.IsConstraintError(err) && attempt < 2 {
+				continue
+			}
+
+			return nil, fmt.Errorf("failed to create message: %w", err)
+		}
+		if msg == nil {
+			return nil, fmt.Errorf("failed to create message: no message created")
+		}
+
+		viewText := extractTextFromMessageContent(msg.Content)
+		if viewText == "" {
+			viewText = text
+		}
+
+		return &AgentMessageView{
+			ID:            msg.ID,
+			AgentID:       a.ID,
+			Direction:     msg.Direction,
+			SenderType:    msg.SenderType,
+			SenderID:      senderID,
+			Kind:          msg.Kind,
+			CorrelationID: msg.CorrelationID,
+			Content:       msg.Content,
+			Text:          viewText,
+			Sequence:      msg.Sequence,
+			Status:        msg.Status,
+			CreatedAt:     msg.CreatedAt,
+		}, nil
+	})
+}
+
+func (s *AgentBootstrapService) nextSequence(ctx context.Context, agentID int) (int64, error) {
+	client := s.entFromContext(ctx)
+
+	last, err := client.AgentMessage.Query().
+		Where(
+			agentmessage.AgentIDEQ(agentID),
+		).
+		Order(agentmessage.BySequence(sql.OrderDesc())).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return 1, nil
+		}
+		return 0, fmt.Errorf("failed to query last sequence: %w", err)
+	}
+
+	return last.Sequence + 1, nil
+}
+
+func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, input PullAgentMessagesInput) ([]*AgentMessageView, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return nil, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+	limit := input.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-pull-messages", func(bypassCtx context.Context) ([]*AgentMessageView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(input.AgentID),
+				agent.ProjectIDEQ(projectID),
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		_, err = client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(a.ID),
+				agentinstance.InstanceIDEQ(input.InstanceID),
+				agentinstance.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent instance: %w", err)
+		}
+
+		q := client.AgentMessage.Query().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToAgent),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.DeletedAtEQ(0),
+			).
+			Order(agentmessage.BySequence()).
+			Limit(limit).
+			Where(func(s *sql.Selector) {})
+
+		if len(input.KindIn) > 0 {
+			q = q.Where(agentmessage.KindIn(input.KindIn...))
+		}
+
+		if input.CorrelationID != nil && *input.CorrelationID != "" {
+			q = q.Where(agentmessage.CorrelationIDEQ(*input.CorrelationID))
+		}
+		if input.AfterSequence != nil {
+			q = q.Where(agentmessage.SequenceGT(*input.AfterSequence))
+		}
+
+		items, err := q.All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query messages: %w", err)
+		}
+
+		out := make([]*AgentMessageView, 0, len(items))
+		for _, m := range items {
+			text := extractTextFromMessageContent(m.Content)
+
+			out = append(out, &AgentMessageView{
+				ID:            m.ID,
+				AgentID:       a.ID,
+				Direction:     m.Direction,
+				SenderType:    m.SenderType,
+				SenderID:      m.SenderID,
+				Kind:          m.Kind,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Text:          text,
+				Sequence:      m.Sequence,
+				Status:        m.Status,
+				CreatedAt:     m.CreatedAt,
+			})
+		}
+
+		return out, nil
+	})
+}
+
+func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return nil, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-pull-messages-to-user", func(bypassCtx context.Context) ([]*AgentMessageView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(agentID),
+				agent.ProjectIDEQ(projectID),
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		q := client.AgentMessage.Query().
+			Where(
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
+				agentmessage.KindEQ(agentmessage.KindChat),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.DeletedAtEQ(0),
+			).
+			Order(agentmessage.BySequence()).
+			Limit(limit)
+
+		if afterSequence != nil {
+			q = q.Where(agentmessage.SequenceGT(*afterSequence))
+		}
+
+		items, err := q.All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query messages: %w", err)
+		}
+
+		out := make([]*AgentMessageView, 0, len(items))
+		for _, m := range items {
+			text := extractTextFromMessageContent(m.Content)
+
+			out = append(out, &AgentMessageView{
+				ID:            m.ID,
+				AgentID:       a.ID,
+				Direction:     m.Direction,
+				SenderType:    m.SenderType,
+				SenderID:      m.SenderID,
+				Kind:          m.Kind,
+				CorrelationID: m.CorrelationID,
+				Content:       m.Content,
+				Text:          text,
+				Sequence:      m.Sequence,
+				Status:        m.Status,
+				CreatedAt:     m.CreatedAt,
+			})
+		}
+
+		return out, nil
+	})
+}
+
+func (s *AgentBootstrapService) AckAgentMessages(ctx context.Context, input AckAgentMessagesInput) (bool, error) {
+	if len(input.MessageIDs) == 0 {
+		return true, nil
+	}
+
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return false, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+
+	_, err := authz.RunWithSystemBypass(ctx, "agent-runtime-ack-messages", func(bypassCtx context.Context) (int, error) {
+		client := s.entFromContext(bypassCtx)
+
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(input.AgentID),
+				agent.ProjectIDEQ(projectID),
+				agent.APIKeyIDEQ(apiKey.ID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		_, err = client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(a.ID),
+				agentinstance.InstanceIDEQ(input.InstanceID),
+				agentinstance.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent instance: %w", err)
+		}
+
+		affected, err := client.AgentMessage.Update().
+			Where(
+				agentmessage.IDIn(input.MessageIDs...),
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.ProjectIDEQ(projectID),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.DeletedAtEQ(0),
+			).
+			SetStatus(agentmessage.StatusAcked).
+			Save(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to ack messages: %w", err)
+		}
+
+		return affected, nil
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// AckAgentMessagesAsUser acknowledges messages as a user (for Web UI).
+// Unlike AckAgentMessages which requires agent API key, this method uses user authentication.
+func (s *AgentBootstrapService) AckAgentMessagesAsUser(ctx context.Context, userID int, input AckAgentMessagesInput) (bool, error) {
+	if len(input.MessageIDs) == 0 {
+		return true, nil
+	}
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return false, fmt.Errorf("project id not found in context")
+	}
+
+	_, err := authz.RunWithSystemBypass(ctx, "agent-user-ack-messages", func(bypassCtx context.Context) (int, error) {
+		client := s.entFromContext(bypassCtx)
+
+		// Verify agent exists and belongs to project
+		a, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(input.AgentID),
+				agent.ProjectIDEQ(projectID),
+				agent.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		// Verify instance exists
+		_, err = client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(a.ID),
+				agentinstance.InstanceIDEQ(input.InstanceID),
+				agentinstance.DeletedAtEQ(0),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to load agent instance: %w", err)
+		}
+
+		affected, err := client.AgentMessage.Update().
+			Where(
+				agentmessage.IDIn(input.MessageIDs...),
+				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.ProjectIDEQ(projectID),
+				agentmessage.StatusEQ(agentmessage.StatusPending),
+				agentmessage.DeletedAtEQ(0),
+			).
+			SetStatus(agentmessage.StatusAcked).
+			Save(bypassCtx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to ack messages: %w", err)
+		}
+
+		return affected, nil
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}

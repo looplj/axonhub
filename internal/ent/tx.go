@@ -22,6 +22,8 @@ type Tx struct {
 	AgentMemory *AgentMemoryClient
 	// AgentMessage is the client for interacting with the AgentMessage builders.
 	AgentMessage *AgentMessageClient
+	// AgentRuntime is the client for interacting with the AgentRuntime builders.
+	AgentRuntime *AgentRuntimeClient
 	// AgentSkill is the client for interacting with the AgentSkill builders.
 	AgentSkill *AgentSkillClient
 	// AgentThread is the client for interacting with the AgentThread builders.
@@ -210,6 +212,7 @@ func (tx *Tx) init() {
 	tx.AgentInstance = NewAgentInstanceClient(tx.config)
 	tx.AgentMemory = NewAgentMemoryClient(tx.config)
 	tx.AgentMessage = NewAgentMessageClient(tx.config)
+	tx.AgentRuntime = NewAgentRuntimeClient(tx.config)
 	tx.AgentSkill = NewAgentSkillClient(tx.config)
 	tx.AgentThread = NewAgentThreadClient(tx.config)
 	tx.AgentTool = NewAgentToolClient(tx.config)

@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -1693,6 +1694,320 @@ func (_m *AgentMessage) ToEdge(order *AgentMessageOrder) *AgentMessageEdge {
 		order = DefaultAgentMessageOrder
 	}
 	return &AgentMessageEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// AgentRuntimeEdge is the edge representation of AgentRuntime.
+type AgentRuntimeEdge struct {
+	Node   *AgentRuntime `json:"node"`
+	Cursor Cursor        `json:"cursor"`
+}
+
+// AgentRuntimeConnection is the connection containing edges to AgentRuntime.
+type AgentRuntimeConnection struct {
+	Edges      []*AgentRuntimeEdge `json:"edges"`
+	PageInfo   PageInfo            `json:"pageInfo"`
+	TotalCount int                 `json:"totalCount"`
+}
+
+func (c *AgentRuntimeConnection) build(nodes []*AgentRuntime, pager *agentruntimePager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *AgentRuntime
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *AgentRuntime {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *AgentRuntime {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*AgentRuntimeEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &AgentRuntimeEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// AgentRuntimePaginateOption enables pagination customization.
+type AgentRuntimePaginateOption func(*agentruntimePager) error
+
+// WithAgentRuntimeOrder configures pagination ordering.
+func WithAgentRuntimeOrder(order *AgentRuntimeOrder) AgentRuntimePaginateOption {
+	if order == nil {
+		order = DefaultAgentRuntimeOrder
+	}
+	o := *order
+	return func(pager *agentruntimePager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultAgentRuntimeOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithAgentRuntimeFilter configures pagination filter.
+func WithAgentRuntimeFilter(filter func(*AgentRuntimeQuery) (*AgentRuntimeQuery, error)) AgentRuntimePaginateOption {
+	return func(pager *agentruntimePager) error {
+		if filter == nil {
+			return errors.New("AgentRuntimeQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type agentruntimePager struct {
+	reverse bool
+	order   *AgentRuntimeOrder
+	filter  func(*AgentRuntimeQuery) (*AgentRuntimeQuery, error)
+}
+
+func newAgentRuntimePager(opts []AgentRuntimePaginateOption, reverse bool) (*agentruntimePager, error) {
+	pager := &agentruntimePager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultAgentRuntimeOrder
+	}
+	return pager, nil
+}
+
+func (p *agentruntimePager) applyFilter(query *AgentRuntimeQuery) (*AgentRuntimeQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *agentruntimePager) toCursor(_m *AgentRuntime) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *agentruntimePager) applyCursors(query *AgentRuntimeQuery, after, before *Cursor) (*AgentRuntimeQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultAgentRuntimeOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *agentruntimePager) applyOrder(query *AgentRuntimeQuery) *AgentRuntimeQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultAgentRuntimeOrder.Field {
+		query = query.Order(DefaultAgentRuntimeOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *agentruntimePager) orderExpr(query *AgentRuntimeQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultAgentRuntimeOrder.Field {
+			b.Comma().Ident(DefaultAgentRuntimeOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to AgentRuntime.
+func (_m *AgentRuntimeQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...AgentRuntimePaginateOption,
+) (*AgentRuntimeConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newAgentRuntimePager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &AgentRuntimeConnection{Edges: []*AgentRuntimeEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// AgentRuntimeOrderFieldCreatedAt orders AgentRuntime by created_at.
+	AgentRuntimeOrderFieldCreatedAt = &AgentRuntimeOrderField{
+		Value: func(_m *AgentRuntime) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: agentruntime.FieldCreatedAt,
+		toTerm: agentruntime.ByCreatedAt,
+		toCursor: func(_m *AgentRuntime) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// AgentRuntimeOrderFieldUpdatedAt orders AgentRuntime by updated_at.
+	AgentRuntimeOrderFieldUpdatedAt = &AgentRuntimeOrderField{
+		Value: func(_m *AgentRuntime) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: agentruntime.FieldUpdatedAt,
+		toTerm: agentruntime.ByUpdatedAt,
+		toCursor: func(_m *AgentRuntime) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f AgentRuntimeOrderField) String() string {
+	var str string
+	switch f.column {
+	case AgentRuntimeOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case AgentRuntimeOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f AgentRuntimeOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *AgentRuntimeOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("AgentRuntimeOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *AgentRuntimeOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *AgentRuntimeOrderFieldUpdatedAt
+	default:
+		return fmt.Errorf("%s is not a valid AgentRuntimeOrderField", str)
+	}
+	return nil
+}
+
+// AgentRuntimeOrderField defines the ordering field of AgentRuntime.
+type AgentRuntimeOrderField struct {
+	// Value extracts the ordering value from the given AgentRuntime.
+	Value    func(*AgentRuntime) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) agentruntime.OrderOption
+	toCursor func(*AgentRuntime) Cursor
+}
+
+// AgentRuntimeOrder defines the ordering of AgentRuntime.
+type AgentRuntimeOrder struct {
+	Direction OrderDirection          `json:"direction"`
+	Field     *AgentRuntimeOrderField `json:"field"`
+}
+
+// DefaultAgentRuntimeOrder is the default ordering of AgentRuntime.
+var DefaultAgentRuntimeOrder = &AgentRuntimeOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &AgentRuntimeOrderField{
+		Value: func(_m *AgentRuntime) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: agentruntime.FieldID,
+		toTerm: agentruntime.ByID,
+		toCursor: func(_m *AgentRuntime) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts AgentRuntime into AgentRuntimeEdge.
+func (_m *AgentRuntime) ToEdge(order *AgentRuntimeOrder) *AgentRuntimeEdge {
+	if order == nil {
+		order = DefaultAgentRuntimeOrder
+	}
+	return &AgentRuntimeEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -78,6 +79,11 @@ var agentmessageImplementors = []string{"AgentMessage", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*AgentMessage) IsNode() {}
+
+var agentruntimeImplementors = []string{"AgentRuntime", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentRuntime) IsNode() {}
 
 var agentskillImplementors = []string{"AgentSkill", "Node"}
 
@@ -308,6 +314,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(agentmessage.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentmessageImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case agentruntime.Table:
+		query := c.AgentRuntime.Query().
+			Where(agentruntime.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentruntimeImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -687,6 +702,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.AgentMessage.Query().
 			Where(agentmessage.IDIn(ids...))
 		query, err := query.CollectFields(ctx, agentmessageImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case agentruntime.Table:
+		query := c.AgentRuntime.Query().
+			Where(agentruntime.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agentruntimeImplementors...)
 		if err != nil {
 			return nil, err
 		}

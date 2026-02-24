@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 )
 
@@ -27,6 +28,7 @@ type AgentInstanceQuery struct {
 	inters            []Interceptor
 	predicates        []predicate.AgentInstance
 	withAgent         *AgentQuery
+	withRuntime       *AgentRuntimeQuery
 	withMessages      *AgentMessageQuery
 	loadTotal         []func(context.Context, []*AgentInstance) error
 	modifiers         []func(*sql.Selector)
@@ -82,6 +84,28 @@ func (_q *AgentInstanceQuery) QueryAgent() *AgentQuery {
 			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, selector),
 			sqlgraph.To(agent.Table, agent.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, agentinstance.AgentTable, agentinstance.AgentColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRuntime chains the current query on the "runtime" edge.
+func (_q *AgentInstanceQuery) QueryRuntime() *AgentRuntimeQuery {
+	query := (&AgentRuntimeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, selector),
+			sqlgraph.To(agentruntime.Table, agentruntime.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, agentinstance.RuntimeTable, agentinstance.RuntimeColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -304,6 +328,7 @@ func (_q *AgentInstanceQuery) Clone() *AgentInstanceQuery {
 		inters:       append([]Interceptor{}, _q.inters...),
 		predicates:   append([]predicate.AgentInstance{}, _q.predicates...),
 		withAgent:    _q.withAgent.Clone(),
+		withRuntime:  _q.withRuntime.Clone(),
 		withMessages: _q.withMessages.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
@@ -320,6 +345,17 @@ func (_q *AgentInstanceQuery) WithAgent(opts ...func(*AgentQuery)) *AgentInstanc
 		opt(query)
 	}
 	_q.withAgent = query
+	return _q
+}
+
+// WithRuntime tells the query-builder to eager-load the nodes that are connected to
+// the "runtime" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *AgentInstanceQuery) WithRuntime(opts ...func(*AgentRuntimeQuery)) *AgentInstanceQuery {
+	query := (&AgentRuntimeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withRuntime = query
 	return _q
 }
 
@@ -418,8 +454,9 @@ func (_q *AgentInstanceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	var (
 		nodes       = []*AgentInstance{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withAgent != nil,
+			_q.withRuntime != nil,
 			_q.withMessages != nil,
 		}
 	)
@@ -447,6 +484,12 @@ func (_q *AgentInstanceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	if query := _q.withAgent; query != nil {
 		if err := _q.loadAgent(ctx, query, nodes, nil,
 			func(n *AgentInstance, e *Agent) { n.Edges.Agent = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withRuntime; query != nil {
+		if err := _q.loadRuntime(ctx, query, nodes, nil,
+			func(n *AgentInstance, e *AgentRuntime) { n.Edges.Runtime = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -494,6 +537,38 @@ func (_q *AgentInstanceQuery) loadAgent(ctx context.Context, query *AgentQuery, 
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "agent_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *AgentInstanceQuery) loadRuntime(ctx context.Context, query *AgentRuntimeQuery, nodes []*AgentInstance, init func(*AgentInstance), assign func(*AgentInstance, *AgentRuntime)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*AgentInstance)
+	for i := range nodes {
+		if nodes[i].AgentRuntimeID == nil {
+			continue
+		}
+		fk := *nodes[i].AgentRuntimeID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(agentruntime.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "agent_runtime_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -562,6 +637,9 @@ func (_q *AgentInstanceQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if _q.withAgent != nil {
 			_spec.Node.AddColumnOnce(agentinstance.FieldAgentID)
+		}
+		if _q.withRuntime != nil {
+			_spec.Node.AddColumnOnce(agentinstance.FieldAgentRuntimeID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

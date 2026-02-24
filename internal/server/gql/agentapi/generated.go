@@ -4002,7 +4002,7 @@ func (ec *executionContext) unmarshalInputPushAgentMessageInput(ctx context.Cont
 			it.Text = data
 		case "content":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
-			data, err := ec.unmarshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4112,7 +4112,7 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 			it.Text = data
 		case "content":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
-			data, err := ec.unmarshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
+			data, err := ec.unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -5941,6 +5941,22 @@ func (ec *executionContext) unmarshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxo
 }
 
 func (ec *executionContext) marshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx context.Context, sel ast.SelectionSet, v objects.JSONRawMessage) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx context.Context, v any) (objects.JSONRawMessage, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res objects.JSONRawMessage
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx context.Context, sel ast.SelectionSet, v objects.JSONRawMessage) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

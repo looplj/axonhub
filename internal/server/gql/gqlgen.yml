@@ -12,6 +12,7 @@ schema:
   - backup.graphql
   - channel_probe.graphql
   - agent.graphql
+  - agent_runtime.graphql
   - prompt.graphql
   - price.graphql
   - cost.graphql
@@ -41,6 +42,7 @@ autobind:
   - github.com/looplj/axonhub/internal/ent/request
   - github.com/looplj/axonhub/internal/ent/requestexecution
   - github.com/looplj/axonhub/internal/ent/channel
+  - github.com/looplj/axonhub/internal/ent/agentruntime
   - github.com/looplj/axonhub/internal/server/biz
 
 converters:
@@ -587,3 +589,18 @@ models:
   AckAgentMessagesInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AckAgentMessagesInput
+  AgentRuntimeTestResult:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.TestConnectionResult
+  AgentInstanceDeployment:
+    model:
+      - github.com/looplj/axonhub/internal/objects.AgentInstanceDeployment
+  AgentInstanceDeploymentInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.AgentInstanceDeployment
+  DeployAxonclawInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DeployAxonclawInput
+  DeployAxonclawResult:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DeployAxonclawResult

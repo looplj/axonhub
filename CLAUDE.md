@@ -16,6 +16,8 @@ AxonHub is an all-in-one AI development platform that serves as a unified API ga
 
 ## Development Commands
 
+**IMPORTANT**: Do NOT run lint or build commands unless explicitly requested by the user.
+
 ### Backend (Go)
 ```bash
 # Run the main server
@@ -26,12 +28,6 @@ make generate
 
 # Run tests
 go test ./...
-
-# Run linting
-golangci-lint run
-
-# Build the application
-make build-backend
 
 # Use air for hot reload (development) - server auto-restarts on changes
 air
@@ -47,12 +43,6 @@ pnpm install
 
 # Start development server (port 5173) - already configured with backend proxy
 pnpm dev
-
-# Build for production
-pnpm build
-
-# Run linting
-pnpm lint
 
 # Format code
 pnpm format
@@ -189,14 +179,7 @@ make filter-logs                # Filter and analyze load balance logs
    - Air watches `.go` and `.yml` files
    - Excludes directories: `frontend`, `integration_test`, `scripts`, `tools`, `examples`
    - Builds to `./tmp/axonhub`
-
-   **Dev vs prod builds**
-   - Dev hot-reload uses Air (`.air.toml`) and builds to `./tmp/axonhub`.
-   - Production build uses `make build-backend` and outputs `./axonhub`.
-
-5. **Building**: Use `make build-backend` to build the server for production deployment
-6. **Testing**: Run `go test ./...` for unit tests
-7. **Linting**: Run `golangci-lint run` before committing
+5. **Testing**: Run `go test ./...` for unit tests
 
 #### Frontend Development
 1. **Start Dev Server**: Run `pnpm dev` in `frontend/` directory (port 5173)
@@ -254,6 +237,8 @@ make filter-logs                # Filter and analyze load balance logs
 - `docs/`: Detailed documentation and architecture diagrams
 
 ## Key Development Patterns
+
+For detailed development guides, see [docs/en/development/development.md](docs/en/development/development.md).
 
 ### Adding a New AI Provider Channel
 When introducing a new provider channel, keep backend and frontend changes aligned:
@@ -343,7 +328,6 @@ Pre-commit hooks (see `.pre-commit-config.yaml`) also run:
   - `pnpm test:e2e:debug` - Run E2E tests in debug mode
   - `pnpm test:ui` - Run Playwright tests in UI mode
   - `pnpm test:ui:headed` - Run Playwright tests in headed mode
-- **Code Quality**: `pnpm lint` for TypeScript/ESLint checking
 - **Test Credentials**: Frontend testing uses `my@example.com` / `pwd123456`
 
 ### Integration Testing

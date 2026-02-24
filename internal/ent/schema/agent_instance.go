@@ -10,10 +10,10 @@ import (
 	"entgo.io/ent/schema/index"
 
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
-// AgentInstance holds the schema definition for the AgentInstance entity.
 type AgentInstance struct {
 	ent.Schema
 }
@@ -32,6 +32,8 @@ func (AgentInstance) Indexes() []ent.Index {
 		index.Fields("agent_id", "instance_id", "deleted_at").
 			StorageKey("agent_instances_by_agent_id_instance_id").
 			Unique(),
+		index.Fields("agent_runtime_id", "deleted_at").
+			StorageKey("agent_instances_by_runtime_id"),
 	}
 }
 
@@ -42,6 +44,10 @@ func (AgentInstance) Fields() []ent.Field {
 			Comment("Project ID that this agent instance belongs to"),
 		field.Int("agent_id").
 			Immutable(),
+		field.Int("agent_runtime_id").
+			Nillable().
+			Optional().
+			Comment("Agent Runtime ID (null means unknown/CLI started)"),
 		field.String("instance_id").
 			Immutable().
 			Comment("Runtime generated instance identifier"),
@@ -59,6 +65,14 @@ func (AgentInstance) Fields() []ent.Field {
 				dialect.MySQL: "datetime(6)",
 			}).
 			Comment("Last heartbeat timestamp"),
+
+		field.JSON("deployment", objects.AgentInstanceDeployment{}).
+			Optional().
+			Comment("Deployment info - runtime specific deployment details"),
+		field.Enum("status").
+			Values("pending", "running", "stopped", "error").
+			Default("running").
+			Comment("Instance status"),
 	}
 }
 
@@ -69,6 +83,10 @@ func (AgentInstance) Edges() []ent.Edge {
 			Field("agent_id").
 			Immutable().
 			Required().
+			Unique(),
+		edge.From("runtime", AgentRuntime.Type).
+			Ref("instances").
+			Field("agent_runtime_id").
 			Unique(),
 		edge.To("messages", AgentMessage.Type).Annotations(
 			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

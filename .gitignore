@@ -157,3 +157,4 @@ locales_backup
 .superset/
 .axonclaw/
 .axoncli/
+*.zip

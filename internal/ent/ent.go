@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -108,6 +109,7 @@ func checkColumn(t, c string) error {
 			agentinstance.Table:            agentinstance.ValidColumn,
 			agentmemory.Table:              agentmemory.ValidColumn,
 			agentmessage.Table:             agentmessage.ValidColumn,
+			agentruntime.Table:             agentruntime.ValidColumn,
 			agentskill.Table:               agentskill.ValidColumn,
 			agentthread.Table:              agentthread.ValidColumn,
 			agenttool.Table:                agenttool.ValidColumn,

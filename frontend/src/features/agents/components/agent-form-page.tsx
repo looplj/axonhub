@@ -19,20 +19,21 @@ import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
 import { AutoComplete } from '@/components/auto-complete';
 import { CopyButton } from '@/components/ui/copy-button';
 import { useQueryModels } from '@/gql/models';
 import { useCreateAgent, useUpdateAgent } from '../data/agents';
 import { useAgentDetail } from '../data/agent-detail';
 import type { AgentBuiltinToolInput } from '../data/schema';
-import { builtinToolOptions } from '../data/agent-tools';
+import { builtinToolOptions, builtinToolDefaultEnabled } from '../data/agent-tools';
 import { defaultSystemPrompt } from '../data/prompt';
 
 
 const builtinToolSchema = z.object({
   name: z.string().min(1),
-  enabled: z.boolean().default(true),
-  order: z.coerce.number().int().default(0),
+  enabled: z.boolean(),
+  order: z.number().int(),
 });
 
 const agentFormSchema = z.object({
@@ -40,8 +41,8 @@ const agentFormSchema = z.object({
   description: z.string().optional(),
   model: z.string().min(1, 'Model is required'),
   systemPrompt: z.string().min(1),
-  skillsPolicyAdd: z.enum(['open', 'approval_required', 'registry_only']).default('open'),
-  builtinTools: z.array(builtinToolSchema).default([]),
+  skillsPolicyAdd: z.enum(['open', 'approval_required', 'registry_only']),
+  builtinTools: z.array(builtinToolSchema),
 });
 
 type FormData = z.infer<typeof agentFormSchema>;
@@ -121,6 +122,17 @@ function SortableToolItem({ field, index, availableOptions, onRemove, form, t }:
         </TooltipContent>
       </Tooltip>
 
+      {/* Enabled/Disabled Toggle */}
+      <FormField
+        control={form.control}
+        name={`builtinTools.${index}.enabled`}
+        render={({ field }) => (
+          <FormItem className='flex items-center space-y-0'>
+            <Switch checked={field.value} onCheckedChange={field.onChange} />
+          </FormItem>
+        )}
+      />
+
       {/* Delete Button */}
       <Button type='button' variant='ghost' size='icon' onClick={() => onRemove(index)} className='h-9 w-9 shrink-0'>
         <Trash2 className='h-4 w-4' />
@@ -159,18 +171,20 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
   }, [fetchModels]);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(agentFormSchema),
+    resolver: zodResolver(agentFormSchema) as any,
     defaultValues: {
       name: '',
       description: '',
       model: '',
       systemPrompt: defaultSystemPrompt,
       skillsPolicyAdd: 'open',
-      builtinTools: builtinToolOptions.map((name, index) => ({
-        name,
-        enabled: true,
-        order: index,
-      })),
+      builtinTools: builtinToolOptions
+        .filter((name) => builtinToolDefaultEnabled[name])
+        .map((name, index) => ({
+          name,
+          enabled: true,
+          order: index,
+        })),
     },
   });
 

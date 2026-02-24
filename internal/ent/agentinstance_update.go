@@ -13,7 +13,9 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/predicate"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // AgentInstanceUpdate is the builder for updating AgentInstance entities.
@@ -54,6 +56,26 @@ func (_u *AgentInstanceUpdate) SetNillableDeletedAt(v *int) *AgentInstanceUpdate
 // AddDeletedAt adds value to the "deleted_at" field.
 func (_u *AgentInstanceUpdate) AddDeletedAt(v int) *AgentInstanceUpdate {
 	_u.mutation.AddDeletedAt(v)
+	return _u
+}
+
+// SetAgentRuntimeID sets the "agent_runtime_id" field.
+func (_u *AgentInstanceUpdate) SetAgentRuntimeID(v int) *AgentInstanceUpdate {
+	_u.mutation.SetAgentRuntimeID(v)
+	return _u
+}
+
+// SetNillableAgentRuntimeID sets the "agent_runtime_id" field if the given value is not nil.
+func (_u *AgentInstanceUpdate) SetNillableAgentRuntimeID(v *int) *AgentInstanceUpdate {
+	if v != nil {
+		_u.SetAgentRuntimeID(*v)
+	}
+	return _u
+}
+
+// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
+func (_u *AgentInstanceUpdate) ClearAgentRuntimeID() *AgentInstanceUpdate {
+	_u.mutation.ClearAgentRuntimeID()
 	return _u
 }
 
@@ -113,6 +135,59 @@ func (_u *AgentInstanceUpdate) SetNillableLastHeartbeatAt(v *time.Time) *AgentIn
 	return _u
 }
 
+// SetDeployment sets the "deployment" field.
+func (_u *AgentInstanceUpdate) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpdate {
+	_u.mutation.SetDeployment(v)
+	return _u
+}
+
+// SetNillableDeployment sets the "deployment" field if the given value is not nil.
+func (_u *AgentInstanceUpdate) SetNillableDeployment(v *objects.AgentInstanceDeployment) *AgentInstanceUpdate {
+	if v != nil {
+		_u.SetDeployment(*v)
+	}
+	return _u
+}
+
+// ClearDeployment clears the value of the "deployment" field.
+func (_u *AgentInstanceUpdate) ClearDeployment() *AgentInstanceUpdate {
+	_u.mutation.ClearDeployment()
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *AgentInstanceUpdate) SetStatus(v agentinstance.Status) *AgentInstanceUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *AgentInstanceUpdate) SetNillableStatus(v *agentinstance.Status) *AgentInstanceUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
+// SetRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID.
+func (_u *AgentInstanceUpdate) SetRuntimeID(id int) *AgentInstanceUpdate {
+	_u.mutation.SetRuntimeID(id)
+	return _u
+}
+
+// SetNillableRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID if the given value is not nil.
+func (_u *AgentInstanceUpdate) SetNillableRuntimeID(id *int) *AgentInstanceUpdate {
+	if id != nil {
+		_u = _u.SetRuntimeID(*id)
+	}
+	return _u
+}
+
+// SetRuntime sets the "runtime" edge to the AgentRuntime entity.
+func (_u *AgentInstanceUpdate) SetRuntime(v *AgentRuntime) *AgentInstanceUpdate {
+	return _u.SetRuntimeID(v.ID)
+}
+
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
 func (_u *AgentInstanceUpdate) AddMessageIDs(ids ...int) *AgentInstanceUpdate {
 	_u.mutation.AddMessageIDs(ids...)
@@ -131,6 +206,12 @@ func (_u *AgentInstanceUpdate) AddMessages(v ...*AgentMessage) *AgentInstanceUpd
 // Mutation returns the AgentInstanceMutation object of the builder.
 func (_u *AgentInstanceUpdate) Mutation() *AgentInstanceMutation {
 	return _u.mutation
+}
+
+// ClearRuntime clears the "runtime" edge to the AgentRuntime entity.
+func (_u *AgentInstanceUpdate) ClearRuntime() *AgentInstanceUpdate {
+	_u.mutation.ClearRuntime()
+	return _u
 }
 
 // ClearMessages clears all "messages" edges to the AgentMessage entity.
@@ -198,6 +279,11 @@ func (_u *AgentInstanceUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *AgentInstanceUpdate) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := agentinstance.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "AgentInstance.status": %w`, err)}
+		}
+	}
 	if _u.mutation.AgentCleared() && len(_u.mutation.AgentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "AgentInstance.agent"`)
 	}
@@ -242,6 +328,44 @@ func (_u *AgentInstanceUpdate) sqlSave(ctx context.Context) (_node int, err erro
 	}
 	if value, ok := _u.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.Deployment(); ok {
+		_spec.SetField(agentinstance.FieldDeployment, field.TypeJSON, value)
+	}
+	if _u.mutation.DeploymentCleared() {
+		_spec.ClearField(agentinstance.FieldDeployment, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(agentinstance.FieldStatus, field.TypeEnum, value)
+	}
+	if _u.mutation.RuntimeCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentinstance.RuntimeTable,
+			Columns: []string{agentinstance.RuntimeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RuntimeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentinstance.RuntimeTable,
+			Columns: []string{agentinstance.RuntimeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.MessagesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -337,6 +461,26 @@ func (_u *AgentInstanceUpdateOne) AddDeletedAt(v int) *AgentInstanceUpdateOne {
 	return _u
 }
 
+// SetAgentRuntimeID sets the "agent_runtime_id" field.
+func (_u *AgentInstanceUpdateOne) SetAgentRuntimeID(v int) *AgentInstanceUpdateOne {
+	_u.mutation.SetAgentRuntimeID(v)
+	return _u
+}
+
+// SetNillableAgentRuntimeID sets the "agent_runtime_id" field if the given value is not nil.
+func (_u *AgentInstanceUpdateOne) SetNillableAgentRuntimeID(v *int) *AgentInstanceUpdateOne {
+	if v != nil {
+		_u.SetAgentRuntimeID(*v)
+	}
+	return _u
+}
+
+// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
+func (_u *AgentInstanceUpdateOne) ClearAgentRuntimeID() *AgentInstanceUpdateOne {
+	_u.mutation.ClearAgentRuntimeID()
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *AgentInstanceUpdateOne) SetName(v string) *AgentInstanceUpdateOne {
 	_u.mutation.SetName(v)
@@ -393,6 +537,59 @@ func (_u *AgentInstanceUpdateOne) SetNillableLastHeartbeatAt(v *time.Time) *Agen
 	return _u
 }
 
+// SetDeployment sets the "deployment" field.
+func (_u *AgentInstanceUpdateOne) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpdateOne {
+	_u.mutation.SetDeployment(v)
+	return _u
+}
+
+// SetNillableDeployment sets the "deployment" field if the given value is not nil.
+func (_u *AgentInstanceUpdateOne) SetNillableDeployment(v *objects.AgentInstanceDeployment) *AgentInstanceUpdateOne {
+	if v != nil {
+		_u.SetDeployment(*v)
+	}
+	return _u
+}
+
+// ClearDeployment clears the value of the "deployment" field.
+func (_u *AgentInstanceUpdateOne) ClearDeployment() *AgentInstanceUpdateOne {
+	_u.mutation.ClearDeployment()
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *AgentInstanceUpdateOne) SetStatus(v agentinstance.Status) *AgentInstanceUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *AgentInstanceUpdateOne) SetNillableStatus(v *agentinstance.Status) *AgentInstanceUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
+// SetRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID.
+func (_u *AgentInstanceUpdateOne) SetRuntimeID(id int) *AgentInstanceUpdateOne {
+	_u.mutation.SetRuntimeID(id)
+	return _u
+}
+
+// SetNillableRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID if the given value is not nil.
+func (_u *AgentInstanceUpdateOne) SetNillableRuntimeID(id *int) *AgentInstanceUpdateOne {
+	if id != nil {
+		_u = _u.SetRuntimeID(*id)
+	}
+	return _u
+}
+
+// SetRuntime sets the "runtime" edge to the AgentRuntime entity.
+func (_u *AgentInstanceUpdateOne) SetRuntime(v *AgentRuntime) *AgentInstanceUpdateOne {
+	return _u.SetRuntimeID(v.ID)
+}
+
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
 func (_u *AgentInstanceUpdateOne) AddMessageIDs(ids ...int) *AgentInstanceUpdateOne {
 	_u.mutation.AddMessageIDs(ids...)
@@ -411,6 +608,12 @@ func (_u *AgentInstanceUpdateOne) AddMessages(v ...*AgentMessage) *AgentInstance
 // Mutation returns the AgentInstanceMutation object of the builder.
 func (_u *AgentInstanceUpdateOne) Mutation() *AgentInstanceMutation {
 	return _u.mutation
+}
+
+// ClearRuntime clears the "runtime" edge to the AgentRuntime entity.
+func (_u *AgentInstanceUpdateOne) ClearRuntime() *AgentInstanceUpdateOne {
+	_u.mutation.ClearRuntime()
+	return _u
 }
 
 // ClearMessages clears all "messages" edges to the AgentMessage entity.
@@ -491,6 +694,11 @@ func (_u *AgentInstanceUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *AgentInstanceUpdateOne) check() error {
+	if v, ok := _u.mutation.Status(); ok {
+		if err := agentinstance.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "AgentInstance.status": %w`, err)}
+		}
+	}
 	if _u.mutation.AgentCleared() && len(_u.mutation.AgentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "AgentInstance.agent"`)
 	}
@@ -552,6 +760,44 @@ func (_u *AgentInstanceUpdateOne) sqlSave(ctx context.Context) (_node *AgentInst
 	}
 	if value, ok := _u.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.Deployment(); ok {
+		_spec.SetField(agentinstance.FieldDeployment, field.TypeJSON, value)
+	}
+	if _u.mutation.DeploymentCleared() {
+		_spec.ClearField(agentinstance.FieldDeployment, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(agentinstance.FieldStatus, field.TypeEnum, value)
+	}
+	if _u.mutation.RuntimeCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentinstance.RuntimeTable,
+			Columns: []string{agentinstance.RuntimeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RuntimeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentinstance.RuntimeTable,
+			Columns: []string{agentinstance.RuntimeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.MessagesCleared() {
 		edge := &sqlgraph.EdgeSpec{

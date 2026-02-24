@@ -24,6 +24,16 @@ import (
 	"github.com/samber/lo"
 )
 
+// Password is the resolver for the password field.
+func (r *agentRuntimeResolver) Password(ctx context.Context, obj *ent.AgentRuntime) (*string, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteAgents) {
+		return nil, nil
+	}
+
+	password := obj.Password
+	return &password, nil
+}
+
 // AllModelEntries is the resolver for the allModelEntries field.
 func (r *channelResolver) AllModelEntries(ctx context.Context, obj *ent.Channel) ([]*biz.ChannelModelEntry, error) {
 	ch := biz.Channel{Channel: obj}

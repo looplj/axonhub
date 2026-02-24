@@ -537,9 +537,11 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 				toolResult := a.executeTool(ctx, *msg.ToolUse)
 
 				var toolContent Content
+				var isError bool
 				if toolResult.Error != nil {
 					errMsg := fmt.Sprintf("error: %v", toolResult.Error)
 					toolContent = Content{Text: &errMsg}
+					isError = true
 				} else {
 					toolContent = toolResult.Content
 				}
@@ -548,6 +550,7 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 					Role:      RoleTool,
 					Content:   &toolContent,
 					ToolUseID: &msg.ToolUse.ID,
+					IsError:   &isError,
 				}
 				a.addMessage(ctx, msg, toolMsg)
 
@@ -685,10 +688,12 @@ func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse, requestIndex int) 
 	})
 
 	errMsg := "Skipped due to steering message."
+	isError := true
 	toolMsg := Message{
 		Role:      RoleTool,
 		Content:   &Content{Text: &errMsg},
 		ToolUseID: &tc.ID,
+		IsError:   &isError,
 	}
 	// Add original tool-use message + skipped result so history is valid.
 	a.addMessage(ctx, Message{
@@ -873,9 +878,11 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 				toolResult := a.executeToolStream(ctx, tc, events)
 
 				var toolContent Content
+				var isError bool
 				if toolResult.Error != nil {
 					errMsg := fmt.Sprintf("error: %v", toolResult.Error)
 					toolContent = Content{Text: &errMsg}
+					isError = true
 				} else {
 					toolContent = toolResult.Content
 				}
@@ -884,6 +891,7 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 					Role:      RoleTool,
 					Content:   &toolContent,
 					ToolUseID: &tc.ID,
+					IsError:   &isError,
 				}
 				a.addMessage(ctx, Message{Role: RoleAssistant, ToolUse: &tc, RequestIndex: requestIndex}, toolMsg)
 
