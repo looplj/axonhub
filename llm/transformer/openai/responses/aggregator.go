@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"strings"
 
 	"github.com/samber/lo"
@@ -244,13 +243,6 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 					part.Final = true
 				}
 			}
-
-			slog.Info("OutputItemAdded",
-				slog.String("item_id", item.ID),
-				slog.String("item_type", item.Type),
-				slog.String("call_id", item.CallID),
-				slog.String("name", item.Name),
-				slog.Int("output_index", ev.OutputIndex))
 		}
 
 		if item.ID != "" {
@@ -293,14 +285,6 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		if ev.ItemID != nil {
 			if item := a.getItemForEvent(ev.OutputIndex, ev.ItemID); item != nil {
 				item.Arguments.WriteString(ev.Delta)
-			} else {
-				slog.Info("FunctionCallArgumentsDelta: item not found", slog.String("item_id", *ev.ItemID), slog.Int("output_index", ev.OutputIndex))
-			}
-		}
-		// Find item by item_id
-		if ev.ItemID != nil {
-			if item := a.getItemForEvent(ev.OutputIndex, ev.ItemID); item != nil {
-				item.Arguments.WriteString(ev.Delta)
 			}
 		}
 
@@ -317,11 +301,8 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 					item.Arguments.Reset()
 					item.Arguments.WriteString(ev.Arguments)
 				}
-			} else {
-				slog.Info("FunctionCallArgumentsDone: item not found", slog.String("item_id", *ev.ItemID), slog.Int("output_index", ev.OutputIndex))
 			}
 		}
-
 
 	case StreamEventTypeCustomToolCallInputDelta:
 		// Accumulate custom tool call input delta
