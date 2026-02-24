@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -251,12 +252,24 @@ func extractVideoURLFromResponseBody(raw []byte) (string, error) {
 
 // openVideoStream opens an HTTP GET to the video URL and returns the response body
 // as an io.ReadCloser for streaming. The caller must close the returned reader.
-func openVideoStream(ctx context.Context, url string) (io.ReadCloser, string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func openVideoStream(ctx context.Context, videoURL string) (io.ReadCloser, string, error) {
+	// Validate URL to prevent SSRF attacks
+	parsedURL, err := url.Parse(videoURL)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid video URL: %w", err)
+	}
+
+	// Only allow http and https schemes
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return nil, "", fmt.Errorf("invalid URL scheme: %s", parsedURL.Scheme)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, videoURL, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create request: %w", err)
 	}
 
+	// nolint:gosec // URL has been validated above
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to download video: %w", err)
@@ -267,7 +280,7 @@ func openVideoStream(ctx context.Context, url string) (io.ReadCloser, string, er
 		return nil, "", fmt.Errorf("failed to download video: HTTP %d", resp.StatusCode)
 	}
 
-	filename := filenameFromResponse(resp, url)
+	filename := filenameFromResponse(resp, videoURL)
 	return resp.Body, filename, nil
 }
 

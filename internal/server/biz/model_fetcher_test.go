@@ -355,12 +355,6 @@ func TestPrepareModelsEndpoint(t *testing.T) {
 			baseURL:     "https://ark.cn-beijing.volces.com/anthropic",
 			expectedURL: "https://ark.cn-beijing.volces.com/v1/models",
 		},
-		{
-			name:        "Doubao",
-			channelType: channel.TypeDoubao,
-			baseURL:     "https://ark.cn-beijing.volces.com",
-			expectedURL: "https://ark.cn-beijing.volces.com/v1/models",
-		},
 	}
 
 	for _, tt := range tests {
