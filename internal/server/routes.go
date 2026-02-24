@@ -32,6 +32,7 @@ type Handlers struct {
 	Codex          *api.CodexHandlers
 	ClaudeCode     *api.ClaudeCodeHandlers
 	Antigravity    *api.AntigravityHandlers
+	RequestContent *api.RequestContentHandlers
 }
 
 type Services struct {
@@ -108,6 +109,12 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithSource(request.SourcePlayground),
 			handlers.Playground.ChatCompletion,
+		)
+
+		adminGroup.GET(
+			"/requests/:request_id/content",
+			middleware.WithTimeout(server.Config.RequestTimeout),
+			handlers.RequestContent.DownloadRequestContent,
 		)
 	}
 

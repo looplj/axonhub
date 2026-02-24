@@ -105,18 +105,18 @@ type OpenAIVideoUsage struct {
 }
 
 type OpenAIVideoObject struct {
-	ID          string          `json:"id"`
-	Object      string          `json:"object"`
-	Status      string          `json:"status"`
-	Model       string          `json:"model,omitempty"`
-	Prompt      string          `json:"prompt,omitempty"`
-	Seconds     *int64          `json:"seconds,omitempty"`
-	Size        string          `json:"size,omitempty"`
-	Progress    *float64        `json:"progress,omitempty"`
-	VideoURL    string          `json:"video_url,omitempty"`
-	CreatedAt   int64           `json:"created_at,omitempty"`
-	CompletedAt *int64           `json:"completed_at,omitempty"`
-	ExpiresAt   *int64           `json:"expires_at,omitempty"`
+	ID          string            `json:"id"`
+	Object      string            `json:"object"`
+	Status      string            `json:"status"`
+	Model       string            `json:"model,omitempty"`
+	Prompt      string            `json:"prompt,omitempty"`
+	Seconds     *int64            `json:"seconds,omitempty"`
+	Size        string            `json:"size,omitempty"`
+	Progress    *float64          `json:"progress,omitempty"`
+	VideoURL    string            `json:"video_url,omitempty"`
+	CreatedAt   int64             `json:"created_at,omitempty"`
+	CompletedAt *int64            `json:"completed_at,omitempty"`
+	ExpiresAt   *int64            `json:"expires_at,omitempty"`
 	Error       *OpenAIVideoError `json:"error,omitempty"`
 	Usage       *OpenAIVideoUsage `json:"usage,omitempty"`
 }
