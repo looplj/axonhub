@@ -1235,6 +1235,7 @@ type ChannelMutation struct {
 	manual_models                *[]string
 	appendmanual_models          []string
 	auto_sync_supported_models   *bool
+	auto_sync_model_pattern      *string
 	tags                         *[]string
 	appendtags                   []string
 	default_test_model           *string
@@ -1901,6 +1902,55 @@ func (m *ChannelMutation) OldAutoSyncSupportedModels(ctx context.Context) (v boo
 // ResetAutoSyncSupportedModels resets all changes to the "auto_sync_supported_models" field.
 func (m *ChannelMutation) ResetAutoSyncSupportedModels() {
 	m.auto_sync_supported_models = nil
+}
+
+// SetAutoSyncModelPattern sets the "auto_sync_model_pattern" field.
+func (m *ChannelMutation) SetAutoSyncModelPattern(s string) {
+	m.auto_sync_model_pattern = &s
+}
+
+// AutoSyncModelPattern returns the value of the "auto_sync_model_pattern" field in the mutation.
+func (m *ChannelMutation) AutoSyncModelPattern() (r string, exists bool) {
+	v := m.auto_sync_model_pattern
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAutoSyncModelPattern returns the old "auto_sync_model_pattern" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldAutoSyncModelPattern(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAutoSyncModelPattern is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAutoSyncModelPattern requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAutoSyncModelPattern: %w", err)
+	}
+	return oldValue.AutoSyncModelPattern, nil
+}
+
+// ClearAutoSyncModelPattern clears the value of the "auto_sync_model_pattern" field.
+func (m *ChannelMutation) ClearAutoSyncModelPattern() {
+	m.auto_sync_model_pattern = nil
+	m.clearedFields[channel.FieldAutoSyncModelPattern] = struct{}{}
+}
+
+// AutoSyncModelPatternCleared returns if the "auto_sync_model_pattern" field was cleared in this mutation.
+func (m *ChannelMutation) AutoSyncModelPatternCleared() bool {
+	_, ok := m.clearedFields[channel.FieldAutoSyncModelPattern]
+	return ok
+}
+
+// ResetAutoSyncModelPattern resets all changes to the "auto_sync_model_pattern" field.
+func (m *ChannelMutation) ResetAutoSyncModelPattern() {
+	m.auto_sync_model_pattern = nil
+	delete(m.clearedFields, channel.FieldAutoSyncModelPattern)
 }
 
 // SetTags sets the "tags" field.
@@ -2599,7 +2649,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 19)
+	fields := make([]string, 0, 20)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -2635,6 +2685,9 @@ func (m *ChannelMutation) Fields() []string {
 	}
 	if m.auto_sync_supported_models != nil {
 		fields = append(fields, channel.FieldAutoSyncSupportedModels)
+	}
+	if m.auto_sync_model_pattern != nil {
+		fields = append(fields, channel.FieldAutoSyncModelPattern)
 	}
 	if m.tags != nil {
 		fields = append(fields, channel.FieldTags)
@@ -2689,6 +2742,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.ManualModels()
 	case channel.FieldAutoSyncSupportedModels:
 		return m.AutoSyncSupportedModels()
+	case channel.FieldAutoSyncModelPattern:
+		return m.AutoSyncModelPattern()
 	case channel.FieldTags:
 		return m.Tags()
 	case channel.FieldDefaultTestModel:
@@ -2736,6 +2791,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldManualModels(ctx)
 	case channel.FieldAutoSyncSupportedModels:
 		return m.OldAutoSyncSupportedModels(ctx)
+	case channel.FieldAutoSyncModelPattern:
+		return m.OldAutoSyncModelPattern(ctx)
 	case channel.FieldTags:
 		return m.OldTags(ctx)
 	case channel.FieldDefaultTestModel:
@@ -2842,6 +2899,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAutoSyncSupportedModels(v)
+		return nil
+	case channel.FieldAutoSyncModelPattern:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAutoSyncModelPattern(v)
 		return nil
 	case channel.FieldTags:
 		v, ok := value.([]string)
@@ -2958,6 +3022,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldManualModels) {
 		fields = append(fields, channel.FieldManualModels)
 	}
+	if m.FieldCleared(channel.FieldAutoSyncModelPattern) {
+		fields = append(fields, channel.FieldAutoSyncModelPattern)
+	}
 	if m.FieldCleared(channel.FieldTags) {
 		fields = append(fields, channel.FieldTags)
 	}
@@ -2995,6 +3062,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 		return nil
 	case channel.FieldManualModels:
 		m.ClearManualModels()
+		return nil
+	case channel.FieldAutoSyncModelPattern:
+		m.ClearAutoSyncModelPattern()
 		return nil
 	case channel.FieldTags:
 		m.ClearTags()
@@ -3054,6 +3124,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldAutoSyncSupportedModels:
 		m.ResetAutoSyncSupportedModels()
+		return nil
+	case channel.FieldAutoSyncModelPattern:
+		m.ResetAutoSyncModelPattern()
 		return nil
 	case channel.FieldTags:
 		m.ResetTags()

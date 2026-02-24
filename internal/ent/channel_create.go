@@ -149,6 +149,20 @@ func (_c *ChannelCreate) SetNillableAutoSyncSupportedModels(v *bool) *ChannelCre
 	return _c
 }
 
+// SetAutoSyncModelPattern sets the "auto_sync_model_pattern" field.
+func (_c *ChannelCreate) SetAutoSyncModelPattern(v string) *ChannelCreate {
+	_c.mutation.SetAutoSyncModelPattern(v)
+	return _c
+}
+
+// SetNillableAutoSyncModelPattern sets the "auto_sync_model_pattern" field if the given value is not nil.
+func (_c *ChannelCreate) SetNillableAutoSyncModelPattern(v *string) *ChannelCreate {
+	if v != nil {
+		_c.SetAutoSyncModelPattern(*v)
+	}
+	return _c
+}
+
 // SetTags sets the "tags" field.
 func (_c *ChannelCreate) SetTags(v []string) *ChannelCreate {
 	_c.mutation.SetTags(v)
@@ -388,6 +402,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultAutoSyncSupportedModels
 		_c.mutation.SetAutoSyncSupportedModels(v)
 	}
+	if _, ok := _c.mutation.AutoSyncModelPattern(); !ok {
+		v := channel.DefaultAutoSyncModelPattern
+		_c.mutation.SetAutoSyncModelPattern(v)
+	}
 	if _, ok := _c.mutation.Tags(); !ok {
 		v := channel.DefaultTags
 		_c.mutation.SetTags(v)
@@ -526,6 +544,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.AutoSyncSupportedModels(); ok {
 		_spec.SetField(channel.FieldAutoSyncSupportedModels, field.TypeBool, value)
 		_node.AutoSyncSupportedModels = value
+	}
+	if value, ok := _c.mutation.AutoSyncModelPattern(); ok {
+		_spec.SetField(channel.FieldAutoSyncModelPattern, field.TypeString, value)
+		_node.AutoSyncModelPattern = value
 	}
 	if value, ok := _c.mutation.Tags(); ok {
 		_spec.SetField(channel.FieldTags, field.TypeJSON, value)
@@ -844,6 +866,24 @@ func (u *ChannelUpsert) SetAutoSyncSupportedModels(v bool) *ChannelUpsert {
 // UpdateAutoSyncSupportedModels sets the "auto_sync_supported_models" field to the value that was provided on create.
 func (u *ChannelUpsert) UpdateAutoSyncSupportedModels() *ChannelUpsert {
 	u.SetExcluded(channel.FieldAutoSyncSupportedModels)
+	return u
+}
+
+// SetAutoSyncModelPattern sets the "auto_sync_model_pattern" field.
+func (u *ChannelUpsert) SetAutoSyncModelPattern(v string) *ChannelUpsert {
+	u.Set(channel.FieldAutoSyncModelPattern, v)
+	return u
+}
+
+// UpdateAutoSyncModelPattern sets the "auto_sync_model_pattern" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateAutoSyncModelPattern() *ChannelUpsert {
+	u.SetExcluded(channel.FieldAutoSyncModelPattern)
+	return u
+}
+
+// ClearAutoSyncModelPattern clears the value of the "auto_sync_model_pattern" field.
+func (u *ChannelUpsert) ClearAutoSyncModelPattern() *ChannelUpsert {
+	u.SetNull(channel.FieldAutoSyncModelPattern)
 	return u
 }
 
@@ -1180,6 +1220,27 @@ func (u *ChannelUpsertOne) SetAutoSyncSupportedModels(v bool) *ChannelUpsertOne 
 func (u *ChannelUpsertOne) UpdateAutoSyncSupportedModels() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateAutoSyncSupportedModels()
+	})
+}
+
+// SetAutoSyncModelPattern sets the "auto_sync_model_pattern" field.
+func (u *ChannelUpsertOne) SetAutoSyncModelPattern(v string) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetAutoSyncModelPattern(v)
+	})
+}
+
+// UpdateAutoSyncModelPattern sets the "auto_sync_model_pattern" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateAutoSyncModelPattern() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateAutoSyncModelPattern()
+	})
+}
+
+// ClearAutoSyncModelPattern clears the value of the "auto_sync_model_pattern" field.
+func (u *ChannelUpsertOne) ClearAutoSyncModelPattern() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearAutoSyncModelPattern()
 	})
 }
 
@@ -1702,6 +1763,27 @@ func (u *ChannelUpsertBulk) SetAutoSyncSupportedModels(v bool) *ChannelUpsertBul
 func (u *ChannelUpsertBulk) UpdateAutoSyncSupportedModels() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.UpdateAutoSyncSupportedModels()
+	})
+}
+
+// SetAutoSyncModelPattern sets the "auto_sync_model_pattern" field.
+func (u *ChannelUpsertBulk) SetAutoSyncModelPattern(v string) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetAutoSyncModelPattern(v)
+	})
+}
+
+// UpdateAutoSyncModelPattern sets the "auto_sync_model_pattern" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateAutoSyncModelPattern() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateAutoSyncModelPattern()
+	})
+}
+
+// ClearAutoSyncModelPattern clears the value of the "auto_sync_model_pattern" field.
+func (u *ChannelUpsertBulk) ClearAutoSyncModelPattern() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearAutoSyncModelPattern()
 	})
 }
 

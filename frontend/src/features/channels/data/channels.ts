@@ -74,6 +74,7 @@ const CREATE_CHANNEL_MUTATION = `
       }
       supportedModels
       autoSyncSupportedModels
+      autoSyncModelPattern
       manualModels
       tags
       defaultTestModel
@@ -119,6 +120,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       }
       supportedModels
       autoSyncSupportedModels
+      autoSyncModelPattern
       manualModels
       tags
       defaultTestModel
@@ -164,6 +166,7 @@ const UPDATE_CHANNEL_MUTATION = `
       }
       supportedModels
       autoSyncSupportedModels
+      autoSyncModelPattern
       manualModels
       tags
       defaultTestModel
@@ -260,8 +263,9 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         baseURL
         name
         status
-        supportedModels
+          supportedModels
         autoSyncSupportedModels
+        autoSyncModelPattern
         manualModels
         tags
         defaultTestModel
@@ -536,6 +540,7 @@ const QUERY_CHANNELS_QUERY = `
           }
           supportedModels
           autoSyncSupportedModels
+          autoSyncModelPattern
           manualModels
           tags
           defaultTestModel
@@ -1075,6 +1080,31 @@ export function useBulkUpdateChannelOrdering() {
     },
     onError: (error) => {
       toast.error(t('channels.messages.orderingUpdateError', { error: error.message }));
+    },
+  });
+}
+
+const SYNC_CHANNEL_MODELS_MUTATION = `
+  mutation SyncChannelModels($channelID: ID!) {
+    syncChannelModels(channelID: $channelID)
+  }
+`;
+
+export function useSyncChannelModels() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (channelID: string) => {
+      const data = await graphqlRequest<{ syncChannelModels: boolean }>(SYNC_CHANNEL_MODELS_MUTATION, { channelID });
+      return data.syncChannelModels;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      toast.success(t('channels.messages.syncModelsSuccess'));
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.syncModelsError', { error: error.message }));
     },
   });
 }

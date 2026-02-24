@@ -321,6 +321,7 @@
   "channels.dialogs.fields.supportedModels.showMore": "+{{count}} more",
   "channels.dialogs.fields.supportedModels.searchPlaceholder": "Search models...",
   "channels.dialogs.fields.supportedModels.showNotAddedOnly": "Show not added only",
+  "channels.dialogs.fields.supportedModels.filterByPattern": "Filter by sync pattern",
   "channels.dialogs.fields.supportedModels.added": "Added",
   "channels.dialogs.fields.supportedModels.allModels": "All Models ({{count}})",
   "channels.dialogs.fields.supportedModels.allModelsWithManual": "{{autoCount}} auto + {{manualCount}} manual models",
@@ -331,6 +332,10 @@
   "channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired": "Codex channel requires OAuth credentials JSON",
   "channels.dialogs.fields.autoSyncSupportedModels.label": "Auto-sync supported models",
   "channels.dialogs.fields.autoSyncSupportedModels.description": "Automatically sync supported models list every hour from the provider API",
+  "channels.dialogs.fields.autoSyncModelPattern.label": "Model Filter Pattern",
+  "channels.dialogs.fields.autoSyncModelPattern.placeholder": "e.g. ^gpt-4|claude-3",
+  "channels.dialogs.fields.autoSyncModelPattern.description": "Only sync models matching this regex pattern. Leave empty to sync all models.",
+  "channels.dialogs.fields.autoSyncModelPattern.invalid": "Invalid regex pattern",
   "channels.dialogs.fields.defaultTestModel.label": "Test Model",
   "channels.dialogs.fields.defaultTestModel.description": "Default model for testing connections",
   "channels.dialogs.fields.tags.label": "Tags",
@@ -360,6 +365,8 @@
   "channels.dialogs.buttons.deselectAll": "Deselect All",
   "channels.dialogs.buttons.addSelectedCount": "Add Selected ({{count}})",
   "channels.dialogs.buttons.removeDeprecated": "Clean ({{count}})",
+  "channels.dialogs.buttons.syncNow": "Sync Now",
+  "channels.dialogs.buttons.syncingNow": "Syncing...",
   "channels.dialogs.buttons.clearAll": "Clear all",
   "channels.dialogs.status.enable.title": "Enable Channel",
   "channels.dialogs.status.enable.description": "Are you sure you want to enable channel \"{{name}}\"? The channel will be available for use after enabling.",
@@ -564,5 +571,7 @@
   "channels.messages.enableSelectedAPIKeysError": "Failed to enable selected API keys: {{error}}",
   "channels.messages.deleteDisabledAPIKeysSuccess": "API keys deleted successfully",
   "channels.messages.deleteDisabledAPIKeysPreserved": "API keys deleted, but at least one key was preserved to keep the channel available",
-  "channels.messages.deleteDisabledAPIKeysError": "Failed to delete API keys: {{error}}"
+  "channels.messages.deleteDisabledAPIKeysError": "Failed to delete API keys: {{error}}",
+  "channels.messages.syncModelsSuccess": "Models synced successfully",
+  "channels.messages.syncModelsError": "Failed to sync models: {{error}}"
 }

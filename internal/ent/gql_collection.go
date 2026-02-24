@@ -656,6 +656,11 @@ func (_q *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, channel.FieldAutoSyncSupportedModels)
 				fieldSeen[channel.FieldAutoSyncSupportedModels] = struct{}{}
 			}
+		case "autoSyncModelPattern":
+			if _, ok := fieldSeen[channel.FieldAutoSyncModelPattern]; !ok {
+				selectedFields = append(selectedFields, channel.FieldAutoSyncModelPattern)
+				fieldSeen[channel.FieldAutoSyncModelPattern] = struct{}{}
+			}
 		case "tags":
 			if _, ok := fieldSeen[channel.FieldTags]; !ok {
 				selectedFields = append(selectedFields, channel.FieldTags)

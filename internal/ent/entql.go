@@ -82,6 +82,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldSupportedModels:         {Type: field.TypeJSON, Column: channel.FieldSupportedModels},
 			channel.FieldManualModels:            {Type: field.TypeJSON, Column: channel.FieldManualModels},
 			channel.FieldAutoSyncSupportedModels: {Type: field.TypeBool, Column: channel.FieldAutoSyncSupportedModels},
+			channel.FieldAutoSyncModelPattern:    {Type: field.TypeString, Column: channel.FieldAutoSyncModelPattern},
 			channel.FieldTags:                    {Type: field.TypeJSON, Column: channel.FieldTags},
 			channel.FieldDefaultTestModel:        {Type: field.TypeString, Column: channel.FieldDefaultTestModel},
 			channel.FieldPolicies:                {Type: field.TypeJSON, Column: channel.FieldPolicies},
@@ -1465,6 +1466,11 @@ func (f *ChannelFilter) WhereManualModels(p entql.BytesP) {
 // WhereAutoSyncSupportedModels applies the entql bool predicate on the auto_sync_supported_models field.
 func (f *ChannelFilter) WhereAutoSyncSupportedModels(p entql.BoolP) {
 	f.Where(p.Field(channel.FieldAutoSyncSupportedModels))
+}
+
+// WhereAutoSyncModelPattern applies the entql string predicate on the auto_sync_model_pattern field.
+func (f *ChannelFilter) WhereAutoSyncModelPattern(p entql.StringP) {
+	f.Where(p.Field(channel.FieldAutoSyncModelPattern))
 }
 
 // WhereTags applies the entql json.RawMessage predicate on the tags field.
