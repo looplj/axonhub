@@ -251,11 +251,6 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 			gjson.GetBytes(httpResp.Body, "object").String() == "response"
 	}
 
-	slog.InfoContext(ctx, "Copilot TransformResponse",
-		slog.Bool("isResponsesFormat", isResponsesFormat),
-		slog.String("objectField", gjson.GetBytes(httpResp.Body, "object").String()),
-		slog.Int("bodyLength", len(httpResp.Body)),
-		slog.String("bodySample", string(httpResp.Body)[:min(200, len(httpResp.Body))]))
 
 	if isResponsesFormat {
 		// Use the responses transformer to parse Responses API format
@@ -276,12 +271,8 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 
 // TransformStream transforms an HTTP stream to a unified LLM response stream.
 func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-	slog.InfoContext(ctx, "Copilot TransformStream called for Codex model")
-
-	// Initialize state for accumulating tool call arguments
 	t.streamCurrentCallID = ""
-	t.streamToolCallArgs = make(map[string]*strings.Builder)
-	t.streamSeenCallIDs = make(map[string]bool)
+
 	// For Codex models, we need to convert the Copilot-specific stream format
 	// to standard OpenAI Responses API format, then delegate to the responses transformer
 	convertedStream := streams.Map(stream, func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
@@ -294,8 +285,6 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 			return event
 		}
 
-		// Log raw event for debugging
-		slog.InfoContext(ctx, "Copilot raw stream event", slog.String("data", string(event.Data)))
 
 		// Convert Copilot's custom format to standard Responses API format
 		convertedData := t.convertCopilotStreamEvent(ctx, event.Data)
