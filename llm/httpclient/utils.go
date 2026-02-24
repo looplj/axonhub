@@ -83,8 +83,10 @@ var libManagedHeaders = map[string]bool{
 }
 
 var blockedHeaders = map[string]bool{
+	"Content-Type":      true,
 	"Connection":        true,
 	"X-Channel-Id":      true,
+	"X-Project-Id":      true,
 	"X-Real-Ip":         true,
 	"X-Forwarded-For":   true,
 	"X-Forwarded-Proto": true,
