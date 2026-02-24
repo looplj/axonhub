@@ -280,7 +280,46 @@ export const saveChannelModelPriceInputSchema = z.object({
   price: modelPriceSchema,
 });
 export type SaveChannelModelPriceInput = z.infer<typeof saveChannelModelPriceInputSchema>;
+// Helper function to validate OAuth credentials
+function validateOAuthCredentials(
+  type: string,
+  apiKey: string | undefined,
+  ctx: z.RefinementCtx
+) {
+  if (!apiKey) return;
 
+  // Only enforce JSON validation if it looks like JSON (starts with '{')
+  if (!apiKey.trim().startsWith('{')) return;
+
+  const issue = {
+    code: 'custom' as const,
+    message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
+    path: ['credentials', 'apiKey'],
+  };
+
+  let json: unknown;
+  try {
+    json = JSON.parse(apiKey);
+  } catch {
+    ctx.addIssue(issue);
+    return;
+  }
+
+  // GitHub Copilot only requires access_token, others may require refresh_token
+  const isCopilot = type === 'github_copilot';
+  const parsed = z
+    .object({
+      access_token: z.string().min(1),
+      refresh_token: isCopilot ? z.string().optional() : z.string().min(1),
+    })
+    .safeParse(json);
+
+  if (!parsed.success) {
+    ctx.addIssue(issue);
+  }
+}
+
+// Create Channel Input
 // Create Channel Input
 export const createChannelInputSchema = z
   .object({
@@ -326,35 +365,7 @@ export const createChannelInputSchema = z
 
     // For OAuth types, validate the OAuth JSON format if apiKey is provided
     if (isOAuthType && hasApiKey) {
-      const apiKey = data.credentials.apiKey!;
-      if (apiKey.trim().startsWith('{')) {
-        const issue = {
-          code: 'custom' as const,
-          message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-          path: ['credentials', 'apiKey'],
-        };
-
-        let json: unknown;
-        try {
-          json = JSON.parse(apiKey);
-        } catch {
-          ctx.addIssue(issue);
-          return;
-        }
-
-        // GitHub Copilot only requires access_token, others may require refresh_token
-        const isCopilot = data.type === 'github_copilot';
-        const parsed = z
-          .object({
-            access_token: z.string().min(1),
-            refresh_token: isCopilot ? z.string().optional() : z.string().min(1),
-          })
-          .safeParse(json);
-
-        if (!parsed.success) {
-          ctx.addIssue(issue);
-        }
-      }
+      validateOAuthCredentials(data.type, data.credentials.apiKey, ctx);
     }
 
     // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
@@ -421,38 +432,7 @@ export const updateChannelInputSchema = z
     const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
 
     if (isOAuthType) {
-      if (!data.credentials) return;
-
-      const apiKey = data.credentials.apiKey;
-      // Only enforce JSON validation if it looks like JSON (starts with '{')
-      if (apiKey && apiKey.trim().startsWith('{')) {
-        const issue = {
-          code: 'custom' as const,
-          message: 'channels.dialogs.fields.supportedModels.codexOAuthCredentialsRequired',
-          path: ['credentials', 'apiKey'],
-        };
-
-        let json: unknown;
-        try {
-          json = JSON.parse(apiKey);
-        } catch {
-          ctx.addIssue(issue);
-          return;
-        }
-
-        // GitHub Copilot only requires access_token, others may require refresh_token
-        const isCopilot = data.type === 'github_copilot';
-        const parsed = z
-          .object({
-            access_token: z.string().min(1),
-            refresh_token: isCopilot ? z.string().optional() : z.string().min(1),
-          })
-          .safeParse(json);
-
-        if (!parsed.success) {
-          ctx.addIssue(issue);
-        }
-      }
+      validateOAuthCredentials(data.type, data.credentials?.apiKey, ctx);
     }
 
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）

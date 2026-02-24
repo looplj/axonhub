@@ -1903,15 +1903,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               control={form.control}
                               name='autoSyncSupportedModels'
                               render={({ field }) => (
-                                <FormItem className={`flex items-center gap-2 ${isCodexType || isClaudeCodeType ? 'opacity-60' : ''}`}>
+                                <FormItem className={`flex items-center gap-2 ${isCodexType || isClaudeCodeType || isCopilotType ? 'opacity-60' : ''}`}>
                                   {wrapUnsupported(
-                                    isCodexType || isClaudeCodeType,
+                                    isCodexType || isClaudeCodeType || isCopilotType,
                                     <Checkbox
                                       checked={field.value}
                                       onCheckedChange={field.onChange}
                                       data-testid='auto-sync-supported-models-checkbox'
-                                      disabled={isCodexType || isClaudeCodeType}
-                                      className={isCodexType || isClaudeCodeType ? 'pointer-events-none' : undefined}
+                                      disabled={isCodexType || isClaudeCodeType || isCopilotType}
+                                      className={isCodexType || isClaudeCodeType || isCopilotType ? 'pointer-events-none' : undefined}
                                     />,
                                     'inline-flex items-center'
                                   )}
