@@ -115,11 +115,6 @@ func (t *OutboundTransformer) buildVideoGenerationAPIRequest(ctx context.Context
 		req.TransformerMetadata = map[string]any{}
 	}
 	req.TransformerMetadata["model"] = llmReq.Model
-	if llmReq.TransformerMetadata != nil {
-		if v, ok := llmReq.TransformerMetadata["axonhub_request_id"].(int); ok && v != 0 {
-			req.TransformerMetadata["axonhub_request_id"] = v
-		}
-	}
 
 	return req, nil
 }
@@ -306,18 +301,6 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		return nil, fmt.Errorf("%w: missing id in seedance create response", transformer.ErrInvalidResponse)
 	}
 
-	var axonhubRequestID int
-	if httpResp.Request.TransformerMetadata != nil {
-		if rid, ok := httpResp.Request.TransformerMetadata["axonhub_request_id"].(int); ok && rid != 0 {
-			axonhubRequestID = rid
-		}
-	}
-
-	taskID := resp.ID
-	if axonhubRequestID != 0 {
-		taskID = strconv.Itoa(axonhubRequestID)
-	}
-
 	return &llm.Response{
 		ID:          resp.ID, // provider task id for persistence
 		Object:      "video.create",
@@ -327,7 +310,7 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		APIFormat:   llm.APIFormatSeedanceVideo,
 		Choices:     []llm.Choice{},
 		Video: &llm.VideoResponse{
-			ID:        taskID,
+			ID:        resp.ID,
 			Status:    "queued",
 			Model:     llmReqModelOrFallback(httpResp),
 			CreatedAt: time.Now().Unix(),

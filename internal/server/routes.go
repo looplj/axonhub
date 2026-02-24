@@ -21,8 +21,7 @@ type Handlers struct {
 	Graphql        *gql.GraphqlHandler
 	OpenAPIGraphql *openapi.GraphqlHandler
 	OpenAI         *api.OpenAIHandlers
-	OpenAIVideo    *api.OpenAIVideoHandlers
-	SeedanceVideo  *api.SeedanceVideoHandlers
+	Doubao         *api.DoubaoHandlers
 	Anthropic      *api.AnthropicHandlers
 	Gemini         *api.GeminiHandlers
 	AiSDK          *api.AiSDKHandlers
@@ -138,9 +137,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
 		openaiGroup.POST("/images/generations", handlers.OpenAI.CreateImage)
 		openaiGroup.POST("/images/edits", handlers.OpenAI.CreateImageEdit)
-		openaiGroup.POST("/videos", handlers.OpenAIVideo.CreateVideo)
-		openaiGroup.GET("/videos/:id", handlers.OpenAIVideo.GetVideo)
-		openaiGroup.DELETE("/videos/:id", handlers.OpenAIVideo.DeleteVideo)
+		openaiGroup.POST("/videos", handlers.OpenAI.CreateVideo)
+		openaiGroup.GET("/videos/:id", handlers.OpenAI.GetVideo)
+		openaiGroup.DELETE("/videos/:id", handlers.OpenAI.DeleteVideo)
 		// DO NOT SUPPORT IMAGE VARIATION
 		// openaiGroup.POST("/images/variations", handlers.OpenAI.CreateImageVariation)
 
@@ -164,10 +163,10 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	}
 
 	{
-		seedanceGroup := apiGroup.Group("/seedance/v3")
-		seedanceGroup.POST("/contents/generations/tasks", handlers.SeedanceVideo.CreateTask)
-		seedanceGroup.GET("/contents/generations/tasks/:id", handlers.SeedanceVideo.GetTask)
-		seedanceGroup.DELETE("/contents/generations/tasks/:id", handlers.SeedanceVideo.DeleteTask)
+		doubaoGroup := apiGroup.Group("/doubao/v3")
+		doubaoGroup.POST("/contents/generations/tasks", handlers.Doubao.CreateTask)
+		doubaoGroup.GET("/contents/generations/tasks/:id", handlers.Doubao.GetTask)
+		doubaoGroup.DELETE("/contents/generations/tasks/:id", handlers.Doubao.DeleteTask)
 	}
 
 	{

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -95,11 +94,6 @@ func (t *OutboundTransformer) buildVideoGenerationAPIRequest(ctx context.Context
 	}
 	req.TransformerMetadata["model"] = llmReq.Model
 	req.TransformerMetadata["video_prompt"] = prompt
-	if llmReq.TransformerMetadata != nil {
-		if v, ok := llmReq.TransformerMetadata["axonhub_request_id"].(int); ok && v != 0 {
-			req.TransformerMetadata["axonhub_request_id"] = v
-		}
-	}
 
 	return req, nil
 }
@@ -149,7 +143,6 @@ func transformVideoResponse(httpResp *httpclient.Response) (*llm.Response, error
 
 	model := "video-generation"
 	var prompt string
-	var axonhubRequestID int
 
 	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
 		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
@@ -157,9 +150,6 @@ func transformVideoResponse(httpResp *httpclient.Response) (*llm.Response, error
 		}
 		if p, ok := httpResp.Request.TransformerMetadata["video_prompt"].(string); ok && p != "" {
 			prompt = p
-		}
-		if rid, ok := httpResp.Request.TransformerMetadata["axonhub_request_id"].(int); ok && rid != 0 {
-			axonhubRequestID = rid
 		}
 	}
 
@@ -171,9 +161,6 @@ func transformVideoResponse(httpResp *httpclient.Response) (*llm.Response, error
 		Model:     model,
 		Prompt:    prompt,
 		CreatedAt: time.Now().Unix(),
-	}
-	if axonhubRequestID != 0 {
-		videoResp.ID = strconv.Itoa(axonhubRequestID)
 	}
 
 	return &llm.Response{

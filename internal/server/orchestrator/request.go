@@ -47,18 +47,6 @@ func (m *persistRequestMiddleware) OnInboundLlmRequest(ctx context.Context, llmR
 
 	m.inbound.state.Request = request
 
-	// Attach AxonHub request ID for downstream transformers (e.g., async task APIs).
-	if llmRequest != nil {
-		if llmRequest.TransformerMetadata == nil {
-			llmRequest.TransformerMetadata = make(map[string]any)
-		}
-
-		// Don't overwrite if already set by caller.
-		if _, ok := llmRequest.TransformerMetadata["axonhub_request_id"]; !ok {
-			llmRequest.TransformerMetadata["axonhub_request_id"] = request.ID
-		}
-	}
-
 	return llmRequest, nil
 }
 

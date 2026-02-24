@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
@@ -18,7 +16,7 @@ import (
 	doubao "github.com/looplj/axonhub/llm/transformer/doubao"
 )
 
-type SeedanceVideoHandlersParams struct {
+type DoubaoHandlersParams struct {
 	fx.In
 
 	VideoService    *biz.VideoService
@@ -32,16 +30,16 @@ type SeedanceVideoHandlersParams struct {
 	HttpClient      *httpclient.HttpClient
 }
 
-type SeedanceVideoHandlers struct {
+type DoubaoHandlers struct {
 	VideoService       *biz.VideoService
 	CreateOrchestrator *orchestrator.ChatCompletionOrchestrator
 	InboundTransformer *doubao.VideoInboundTransformer
 }
 
-func NewSeedanceVideoHandlers(params SeedanceVideoHandlersParams) *SeedanceVideoHandlers {
+func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 	inbound := doubao.NewVideoInboundTransformer()
 
-	return &SeedanceVideoHandlers{
+	return &DoubaoHandlers{
 		VideoService: params.VideoService,
 		CreateOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 			params.ChannelService,
@@ -58,7 +56,7 @@ func NewSeedanceVideoHandlers(params SeedanceVideoHandlersParams) *SeedanceVideo
 	}
 }
 
-func (h *SeedanceVideoHandlers) CreateTask(c *gin.Context) {
+func (h *DoubaoHandlers) CreateTask(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
@@ -75,7 +73,7 @@ func (h *SeedanceVideoHandlers) CreateTask(c *gin.Context) {
 
 	result, err := h.CreateOrchestrator.Process(ctx, genericReq)
 	if err != nil {
-		log.Error(ctx, "Error processing seedance create", log.Cause(err))
+		log.Error(ctx, "Error processing doubao create", log.Cause(err))
 
 		httpErr := h.CreateOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
@@ -95,17 +93,16 @@ func (h *SeedanceVideoHandlers) CreateTask(c *gin.Context) {
 	c.Data(resp.StatusCode, contentType, resp.Body)
 }
 
-func (h *SeedanceVideoHandlers) GetTask(c *gin.Context) {
+func (h *DoubaoHandlers) GetTask(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	idStr := c.Param("id")
-	requestID, err := parseRequestIDSeedance(idStr)
-	if err != nil {
-		JSONError(c, http.StatusBadRequest, err)
+	externalID := c.Param("id")
+	if externalID == "" {
+		JSONError(c, http.StatusBadRequest, errors.New("invalid id"))
 		return
 	}
 
-	video, err := h.VideoService.GetTask(ctx, requestID)
+	video, err := h.VideoService.GetTaskByExternalID(ctx, externalID)
 	if err != nil {
 		JSONError(c, http.StatusInternalServerError, err)
 		return
@@ -134,17 +131,16 @@ func (h *SeedanceVideoHandlers) GetTask(c *gin.Context) {
 	c.Data(httpResp.StatusCode, contentType, httpResp.Body)
 }
 
-func (h *SeedanceVideoHandlers) DeleteTask(c *gin.Context) {
+func (h *DoubaoHandlers) DeleteTask(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	idStr := c.Param("id")
-	requestID, err := parseRequestIDSeedance(idStr)
-	if err != nil {
-		JSONError(c, http.StatusBadRequest, err)
+	externalID := c.Param("id")
+	if externalID == "" {
+		JSONError(c, http.StatusBadRequest, errors.New("invalid id"))
 		return
 	}
 
-	if err := h.VideoService.DeleteTask(ctx, requestID); err != nil {
+	if err := h.VideoService.DeleteTaskByExternalID(ctx, externalID); err != nil {
 		JSONError(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -152,15 +148,4 @@ func (h *SeedanceVideoHandlers) DeleteTask(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func parseRequestIDSeedance(s string) (int, error) {
-	if gid, err := objects.ParseGUID(s); err == nil && gid.ID > 0 {
-		return gid.ID, nil
-	}
 
-	id, err := strconv.Atoi(s)
-	if err != nil || id <= 0 {
-		return 0, errors.New("invalid id")
-	}
-
-	return id, nil
-}
