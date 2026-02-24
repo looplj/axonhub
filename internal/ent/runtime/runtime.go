@@ -131,20 +131,24 @@ func init() {
 	channelDescAutoSyncSupportedModels := channelFields[8].Descriptor()
 	// channel.DefaultAutoSyncSupportedModels holds the default value on creation for the auto_sync_supported_models field.
 	channel.DefaultAutoSyncSupportedModels = channelDescAutoSyncSupportedModels.Default.(bool)
+	// channelDescAutoSyncModelPattern is the schema descriptor for auto_sync_model_pattern field.
+	channelDescAutoSyncModelPattern := channelFields[9].Descriptor()
+	// channel.DefaultAutoSyncModelPattern holds the default value on creation for the auto_sync_model_pattern field.
+	channel.DefaultAutoSyncModelPattern = channelDescAutoSyncModelPattern.Default.(string)
 	// channelDescTags is the schema descriptor for tags field.
-	channelDescTags := channelFields[9].Descriptor()
+	channelDescTags := channelFields[10].Descriptor()
 	// channel.DefaultTags holds the default value on creation for the tags field.
 	channel.DefaultTags = channelDescTags.Default.([]string)
 	// channelDescPolicies is the schema descriptor for policies field.
-	channelDescPolicies := channelFields[11].Descriptor()
+	channelDescPolicies := channelFields[12].Descriptor()
 	// channel.DefaultPolicies holds the default value on creation for the policies field.
 	channel.DefaultPolicies = channelDescPolicies.Default.(objects.ChannelPolicies)
 	// channelDescSettings is the schema descriptor for settings field.
-	channelDescSettings := channelFields[12].Descriptor()
+	channelDescSettings := channelFields[13].Descriptor()
 	// channel.DefaultSettings holds the default value on creation for the settings field.
 	channel.DefaultSettings = channelDescSettings.Default.(*objects.ChannelSettings)
 	// channelDescOrderingWeight is the schema descriptor for ordering_weight field.
-	channelDescOrderingWeight := channelFields[13].Descriptor()
+	channelDescOrderingWeight := channelFields[14].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
 	channelmodelpriceMixin := schema.ChannelModelPrice{}.Mixin()

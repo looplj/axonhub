@@ -251,6 +251,10 @@ type Channel implements Node {
   supportedModels: [String!]!
   manualModels: [String!]
   autoSyncSupportedModels: Boolean!
+  """
+  Regex pattern to filter models during auto-sync. Empty string means no filtering.
+  """
+  autoSyncModelPattern: String
   tags: [String!]
   defaultTestModel: String!
   policies: ChannelPolicies @goField(forceResolver: true)
@@ -1224,6 +1228,24 @@ input ChannelWhereInput {
   autoSyncSupportedModels: Boolean
   autoSyncSupportedModelsNEQ: Boolean
   """
+  auto_sync_model_pattern field predicates
+  """
+  autoSyncModelPattern: String
+  autoSyncModelPatternNEQ: String
+  autoSyncModelPatternIn: [String!]
+  autoSyncModelPatternNotIn: [String!]
+  autoSyncModelPatternGT: String
+  autoSyncModelPatternGTE: String
+  autoSyncModelPatternLT: String
+  autoSyncModelPatternLTE: String
+  autoSyncModelPatternContains: String
+  autoSyncModelPatternHasPrefix: String
+  autoSyncModelPatternHasSuffix: String
+  autoSyncModelPatternIsNil: Boolean
+  autoSyncModelPatternNotNil: Boolean
+  autoSyncModelPatternEqualFold: String
+  autoSyncModelPatternContainsFold: String
+  """
   default_test_model field predicates
   """
   defaultTestModel: String
@@ -1345,6 +1367,10 @@ input CreateChannelInput {
   supportedModels: [String!]!
   manualModels: [String!]
   autoSyncSupportedModels: Boolean
+  """
+  Regex pattern to filter models during auto-sync. Empty string means no filtering.
+  """
+  autoSyncModelPattern: String
   tags: [String!]
   defaultTestModel: String!
   policies: ChannelPoliciesInput
@@ -4988,6 +5014,11 @@ input UpdateChannelInput {
   appendManualModels: [String!]
   clearManualModels: Boolean
   autoSyncSupportedModels: Boolean
+  """
+  Regex pattern to filter models during auto-sync. Empty string means no filtering.
+  """
+  autoSyncModelPattern: String
+  clearAutoSyncModelPattern: Boolean
   tags: [String!]
   appendTags: [String!]
   clearTags: Boolean

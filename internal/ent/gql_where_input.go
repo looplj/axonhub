@@ -554,6 +554,23 @@ type ChannelWhereInput struct {
 	AutoSyncSupportedModels    *bool `json:"autoSyncSupportedModels,omitempty"`
 	AutoSyncSupportedModelsNEQ *bool `json:"autoSyncSupportedModelsNEQ,omitempty"`
 
+	// "auto_sync_model_pattern" field predicates.
+	AutoSyncModelPattern             *string  `json:"autoSyncModelPattern,omitempty"`
+	AutoSyncModelPatternNEQ          *string  `json:"autoSyncModelPatternNEQ,omitempty"`
+	AutoSyncModelPatternIn           []string `json:"autoSyncModelPatternIn,omitempty"`
+	AutoSyncModelPatternNotIn        []string `json:"autoSyncModelPatternNotIn,omitempty"`
+	AutoSyncModelPatternGT           *string  `json:"autoSyncModelPatternGT,omitempty"`
+	AutoSyncModelPatternGTE          *string  `json:"autoSyncModelPatternGTE,omitempty"`
+	AutoSyncModelPatternLT           *string  `json:"autoSyncModelPatternLT,omitempty"`
+	AutoSyncModelPatternLTE          *string  `json:"autoSyncModelPatternLTE,omitempty"`
+	AutoSyncModelPatternContains     *string  `json:"autoSyncModelPatternContains,omitempty"`
+	AutoSyncModelPatternHasPrefix    *string  `json:"autoSyncModelPatternHasPrefix,omitempty"`
+	AutoSyncModelPatternHasSuffix    *string  `json:"autoSyncModelPatternHasSuffix,omitempty"`
+	AutoSyncModelPatternIsNil        bool     `json:"autoSyncModelPatternIsNil,omitempty"`
+	AutoSyncModelPatternNotNil       bool     `json:"autoSyncModelPatternNotNil,omitempty"`
+	AutoSyncModelPatternEqualFold    *string  `json:"autoSyncModelPatternEqualFold,omitempty"`
+	AutoSyncModelPatternContainsFold *string  `json:"autoSyncModelPatternContainsFold,omitempty"`
+
 	// "default_test_model" field predicates.
 	DefaultTestModel             *string  `json:"defaultTestModel,omitempty"`
 	DefaultTestModelNEQ          *string  `json:"defaultTestModelNEQ,omitempty"`
@@ -894,6 +911,51 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	}
 	if i.AutoSyncSupportedModelsNEQ != nil {
 		predicates = append(predicates, channel.AutoSyncSupportedModelsNEQ(*i.AutoSyncSupportedModelsNEQ))
+	}
+	if i.AutoSyncModelPattern != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternEQ(*i.AutoSyncModelPattern))
+	}
+	if i.AutoSyncModelPatternNEQ != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternNEQ(*i.AutoSyncModelPatternNEQ))
+	}
+	if len(i.AutoSyncModelPatternIn) > 0 {
+		predicates = append(predicates, channel.AutoSyncModelPatternIn(i.AutoSyncModelPatternIn...))
+	}
+	if len(i.AutoSyncModelPatternNotIn) > 0 {
+		predicates = append(predicates, channel.AutoSyncModelPatternNotIn(i.AutoSyncModelPatternNotIn...))
+	}
+	if i.AutoSyncModelPatternGT != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternGT(*i.AutoSyncModelPatternGT))
+	}
+	if i.AutoSyncModelPatternGTE != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternGTE(*i.AutoSyncModelPatternGTE))
+	}
+	if i.AutoSyncModelPatternLT != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternLT(*i.AutoSyncModelPatternLT))
+	}
+	if i.AutoSyncModelPatternLTE != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternLTE(*i.AutoSyncModelPatternLTE))
+	}
+	if i.AutoSyncModelPatternContains != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternContains(*i.AutoSyncModelPatternContains))
+	}
+	if i.AutoSyncModelPatternHasPrefix != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternHasPrefix(*i.AutoSyncModelPatternHasPrefix))
+	}
+	if i.AutoSyncModelPatternHasSuffix != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternHasSuffix(*i.AutoSyncModelPatternHasSuffix))
+	}
+	if i.AutoSyncModelPatternIsNil {
+		predicates = append(predicates, channel.AutoSyncModelPatternIsNil())
+	}
+	if i.AutoSyncModelPatternNotNil {
+		predicates = append(predicates, channel.AutoSyncModelPatternNotNil())
+	}
+	if i.AutoSyncModelPatternEqualFold != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternEqualFold(*i.AutoSyncModelPatternEqualFold))
+	}
+	if i.AutoSyncModelPatternContainsFold != nil {
+		predicates = append(predicates, channel.AutoSyncModelPatternContainsFold(*i.AutoSyncModelPatternContainsFold))
 	}
 	if i.DefaultTestModel != nil {
 		predicates = append(predicates, channel.DefaultTestModelEQ(*i.DefaultTestModel))

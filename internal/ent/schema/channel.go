@@ -106,6 +106,8 @@ func (Channel) Fields() []ent.Field {
 		field.Strings("supported_models"),
 		field.Strings("manual_models").Optional().Default([]string{}),
 		field.Bool("auto_sync_supported_models").Default(false),
+		field.String("auto_sync_model_pattern").Optional().Default("").
+			Comment("Regex pattern to filter models during auto-sync. Empty string means no filtering."),
 		field.Strings("tags").Optional().Default([]string{}),
 		field.String("default_test_model"),
 		field.JSON("policies", objects.ChannelPolicies{}).

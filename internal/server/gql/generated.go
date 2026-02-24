@@ -247,6 +247,7 @@ type ComplexityRoot struct {
 
 	Channel struct {
 		AllModelEntries         func(childComplexity int) int
+		AutoSyncModelPattern    func(childComplexity int) int
 		AutoSyncSupportedModels func(childComplexity int) int
 		BaseURL                 func(childComplexity int) int
 		ChannelModelPrices      func(childComplexity int) int
@@ -763,6 +764,7 @@ type ComplexityRoot struct {
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
 		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
+		SyncChannelModels                    func(childComplexity int, channelID objects.GUID) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
 		TriggerAutoBackup                    func(childComplexity int) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
@@ -1644,6 +1646,7 @@ type MutationResolver interface {
 	UpdateChannelOverrideTemplate(ctx context.Context, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) (*ent.ChannelOverrideTemplate, error)
 	DeleteChannelOverrideTemplate(ctx context.Context, id objects.GUID) (bool, error)
 	ApplyChannelOverrideTemplate(ctx context.Context, input ApplyChannelOverrideTemplateInput) (*ApplyChannelOverrideTemplatePayload, error)
+	SyncChannelModels(ctx context.Context, channelID objects.GUID) (bool, error)
 	UpdateMe(ctx context.Context, input UpdateMeInput) (*ent.User, error)
 	UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error)
 	UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error)
@@ -2389,6 +2392,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.AllModelEntries(childComplexity), true
+	case "Channel.autoSyncModelPattern":
+		if e.complexity.Channel.AutoSyncModelPattern == nil {
+			break
+		}
+
+		return e.complexity.Channel.AutoSyncModelPattern(childComplexity), true
 	case "Channel.autoSyncSupportedModels":
 		if e.complexity.Channel.AutoSyncSupportedModels == nil {
 			break
@@ -4657,6 +4666,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SaveChannelModelPrices(childComplexity, args["channelId"].(objects.GUID), args["input"].([]*biz.SaveChannelModelPriceInput)), true
+	case "Mutation.syncChannelModels":
+		if e.complexity.Mutation.SyncChannelModels == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_syncChannelModels_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SyncChannelModels(childComplexity, args["channelID"].(objects.GUID)), true
 	case "Mutation.testChannel":
 		if e.complexity.Mutation.TestChannel == nil {
 			break
@@ -9220,6 +9240,17 @@ func (ec *executionContext) field_Mutation_saveChannelModelPrices_args(ctx conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_syncChannelModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "channelID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["channelID"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_testChannel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12623,6 +12654,8 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -13559,6 +13592,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -13700,6 +13735,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -14024,6 +14061,35 @@ func (ec *executionContext) fieldContext_Channel_autoSyncSupportedModels(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Channel_autoSyncModelPattern(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Channel_autoSyncModelPattern,
+		func(ctx context.Context) (any, error) {
+			return obj.AutoSyncModelPattern, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Channel_autoSyncModelPattern(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -14952,6 +15018,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -15416,6 +15484,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_channel(_ context.Con
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -17274,6 +17344,8 @@ func (ec *executionContext) fieldContext_ChannelProbe_channel(_ context.Context,
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -22037,6 +22109,8 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -22923,6 +22997,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -23018,6 +23094,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -23113,6 +23191,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -23208,6 +23288,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -25399,6 +25481,47 @@ func (ec *executionContext) fieldContext_Mutation_applyChannelOverrideTemplate(c
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_applyChannelOverrideTemplate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_syncChannelModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_syncChannelModels,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().SyncChannelModels(ctx, fc.Args["channelID"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_syncChannelModels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_syncChannelModels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -29712,6 +29835,8 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_channel(_ context.C
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -33361,6 +33486,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -34350,6 +34477,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -40423,6 +40552,8 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.C
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -41418,6 +41549,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_manualModels(ctx, field)
 			case "autoSyncSupportedModels":
 				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
 			case "tags":
 				return ec.fieldContext_Channel_tags(ctx, field)
 			case "defaultTestModel":
@@ -49437,7 +49570,7 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "autoSyncSupportedModels", "autoSyncSupportedModelsNEQ", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "remark", "remarkNEQ", "remarkIn", "remarkNotIn", "remarkGT", "remarkGTE", "remarkLT", "remarkLTE", "remarkContains", "remarkHasPrefix", "remarkHasSuffix", "remarkIsNil", "remarkNotNil", "remarkEqualFold", "remarkContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith", "hasUsageLogs", "hasUsageLogsWith", "hasChannelProbes", "hasChannelProbesWith", "hasChannelModelPrices", "hasChannelModelPricesWith", "hasProviderQuotaStatus", "hasProviderQuotaStatusWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "autoSyncSupportedModels", "autoSyncSupportedModelsNEQ", "autoSyncModelPattern", "autoSyncModelPatternNEQ", "autoSyncModelPatternIn", "autoSyncModelPatternNotIn", "autoSyncModelPatternGT", "autoSyncModelPatternGTE", "autoSyncModelPatternLT", "autoSyncModelPatternLTE", "autoSyncModelPatternContains", "autoSyncModelPatternHasPrefix", "autoSyncModelPatternHasSuffix", "autoSyncModelPatternIsNil", "autoSyncModelPatternNotNil", "autoSyncModelPatternEqualFold", "autoSyncModelPatternContainsFold", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "remark", "remarkNEQ", "remarkIn", "remarkNotIn", "remarkGT", "remarkGTE", "remarkLT", "remarkLTE", "remarkContains", "remarkHasPrefix", "remarkHasSuffix", "remarkIsNil", "remarkNotNil", "remarkEqualFold", "remarkContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith", "hasUsageLogs", "hasUsageLogsWith", "hasChannelProbes", "hasChannelProbesWith", "hasChannelModelPrices", "hasChannelModelPricesWith", "hasProviderQuotaStatus", "hasProviderQuotaStatusWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -49931,6 +50064,111 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.AutoSyncSupportedModelsNEQ = data
+		case "autoSyncModelPattern":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPattern"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPattern = data
+		case "autoSyncModelPatternNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternNEQ = data
+		case "autoSyncModelPatternIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternIn = data
+		case "autoSyncModelPatternNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternNotIn = data
+		case "autoSyncModelPatternGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternGT = data
+		case "autoSyncModelPatternGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternGTE = data
+		case "autoSyncModelPatternLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternLT = data
+		case "autoSyncModelPatternLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternLTE = data
+		case "autoSyncModelPatternContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternContains = data
+		case "autoSyncModelPatternHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternHasPrefix = data
+		case "autoSyncModelPatternHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternHasSuffix = data
+		case "autoSyncModelPatternIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternIsNil = data
+		case "autoSyncModelPatternNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternNotNil = data
+		case "autoSyncModelPatternEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternEqualFold = data
+		case "autoSyncModelPatternContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPatternContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPatternContainsFold = data
 		case "defaultTestModel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultTestModel"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -50634,7 +50872,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "baseURL", "name", "credentials", "supportedModels", "manualModels", "autoSyncSupportedModels", "tags", "defaultTestModel", "policies", "settings", "orderingWeight", "remark"}
+	fieldsInOrder := [...]string{"type", "baseURL", "name", "credentials", "supportedModels", "manualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "tags", "defaultTestModel", "policies", "settings", "orderingWeight", "remark"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -50690,6 +50928,13 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.AutoSyncSupportedModels = data
+		case "autoSyncModelPattern":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPattern"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPattern = data
 		case "tags":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -61425,7 +61670,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "manualModels", "appendManualModels", "clearManualModels", "autoSyncSupportedModels", "tags", "appendTags", "clearTags", "defaultTestModel", "policies", "clearPolicies", "settings", "clearSettings", "orderingWeight", "errorMessage", "clearErrorMessage", "remark", "clearRemark"}
+	fieldsInOrder := [...]string{"baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "manualModels", "appendManualModels", "clearManualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "clearAutoSyncModelPattern", "tags", "appendTags", "clearTags", "defaultTestModel", "policies", "clearPolicies", "settings", "clearSettings", "orderingWeight", "errorMessage", "clearErrorMessage", "remark", "clearRemark"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -61509,6 +61754,20 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.AutoSyncSupportedModels = data
+		case "autoSyncModelPattern":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSyncModelPattern"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSyncModelPattern = data
+		case "clearAutoSyncModelPattern":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearAutoSyncModelPattern"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearAutoSyncModelPattern = data
 		case "tags":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -67830,6 +68089,8 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "autoSyncModelPattern":
+			out.Values[i] = ec._Channel_autoSyncModelPattern(ctx, field, obj)
 		case "tags":
 			out.Values[i] = ec._Channel_tags(ctx, field, obj)
 		case "defaultTestModel":
@@ -72444,6 +72705,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "applyChannelOverrideTemplate":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_applyChannelOverrideTemplate(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "syncChannelModels":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_syncChannelModels(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

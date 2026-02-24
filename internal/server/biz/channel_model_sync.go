@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/xregexp"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -80,6 +81,24 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		return m.ID
 	})
 
+	// Filter by auto_sync_model_pattern if set
+	if ch.AutoSyncModelPattern != "" {
+		if err := xregexp.ValidateRegex(ch.AutoSyncModelPattern); err != nil {
+			log.Warn(ctx, "invalid auto_sync_model_pattern, skipping filter",
+				log.Int("channel_id", ch.ID),
+				log.String("pattern", ch.AutoSyncModelPattern),
+				log.Cause(err))
+		} else {
+			before := len(fetchedModelIDs)
+			fetchedModelIDs = xregexp.Filter(fetchedModelIDs, ch.AutoSyncModelPattern)
+			log.Info(ctx, "filtered models by pattern",
+				log.Int("channel_id", ch.ID),
+				log.String("pattern", ch.AutoSyncModelPattern),
+				log.Int("before", before),
+				log.Int("after", len(fetchedModelIDs)))
+		}
+	}
+
 	// Read existing manual models from the channel
 	manualModels := ch.ManualModels
 	if manualModels == nil {
@@ -115,4 +134,18 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		log.Int("total_count", len(mergedModels)))
 
 	return nil
+}
+
+// SyncChannelModelsByID triggers an immediate model sync for a single channel by ID.
+func (svc *ChannelService) SyncChannelModelsByID(ctx context.Context, channelID int) error {
+	ch, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
+	if err != nil {
+		return fmt.Errorf("failed to get channel: %w", err)
+	}
+
+	if !ch.AutoSyncSupportedModels {
+		return fmt.Errorf("auto sync is not enabled for this channel")
+	}
+
+	return svc.syncChannelModelsForChannel(ctx, ch)
 }

@@ -188,6 +188,26 @@ func (_u *ChannelUpdate) SetNillableAutoSyncSupportedModels(v *bool) *ChannelUpd
 	return _u
 }
 
+// SetAutoSyncModelPattern sets the "auto_sync_model_pattern" field.
+func (_u *ChannelUpdate) SetAutoSyncModelPattern(v string) *ChannelUpdate {
+	_u.mutation.SetAutoSyncModelPattern(v)
+	return _u
+}
+
+// SetNillableAutoSyncModelPattern sets the "auto_sync_model_pattern" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableAutoSyncModelPattern(v *string) *ChannelUpdate {
+	if v != nil {
+		_u.SetAutoSyncModelPattern(*v)
+	}
+	return _u
+}
+
+// ClearAutoSyncModelPattern clears the value of the "auto_sync_model_pattern" field.
+func (_u *ChannelUpdate) ClearAutoSyncModelPattern() *ChannelUpdate {
+	_u.mutation.ClearAutoSyncModelPattern()
+	return _u
+}
+
 // SetTags sets the "tags" field.
 func (_u *ChannelUpdate) SetTags(v []string) *ChannelUpdate {
 	_u.mutation.SetTags(v)
@@ -649,6 +669,12 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AutoSyncSupportedModels(); ok {
 		_spec.SetField(channel.FieldAutoSyncSupportedModels, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.AutoSyncModelPattern(); ok {
+		_spec.SetField(channel.FieldAutoSyncModelPattern, field.TypeString, value)
+	}
+	if _u.mutation.AutoSyncModelPatternCleared() {
+		_spec.ClearField(channel.FieldAutoSyncModelPattern, field.TypeString)
 	}
 	if value, ok := _u.mutation.Tags(); ok {
 		_spec.SetField(channel.FieldTags, field.TypeJSON, value)
@@ -1118,6 +1144,26 @@ func (_u *ChannelUpdateOne) SetNillableAutoSyncSupportedModels(v *bool) *Channel
 	if v != nil {
 		_u.SetAutoSyncSupportedModels(*v)
 	}
+	return _u
+}
+
+// SetAutoSyncModelPattern sets the "auto_sync_model_pattern" field.
+func (_u *ChannelUpdateOne) SetAutoSyncModelPattern(v string) *ChannelUpdateOne {
+	_u.mutation.SetAutoSyncModelPattern(v)
+	return _u
+}
+
+// SetNillableAutoSyncModelPattern sets the "auto_sync_model_pattern" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableAutoSyncModelPattern(v *string) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetAutoSyncModelPattern(*v)
+	}
+	return _u
+}
+
+// ClearAutoSyncModelPattern clears the value of the "auto_sync_model_pattern" field.
+func (_u *ChannelUpdateOne) ClearAutoSyncModelPattern() *ChannelUpdateOne {
+	_u.mutation.ClearAutoSyncModelPattern()
 	return _u
 }
 
@@ -1612,6 +1658,12 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if value, ok := _u.mutation.AutoSyncSupportedModels(); ok {
 		_spec.SetField(channel.FieldAutoSyncSupportedModels, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.AutoSyncModelPattern(); ok {
+		_spec.SetField(channel.FieldAutoSyncModelPattern, field.TypeString, value)
+	}
+	if _u.mutation.AutoSyncModelPatternCleared() {
+		_spec.ClearField(channel.FieldAutoSyncModelPattern, field.TypeString)
 	}
 	if value, ok := _u.mutation.Tags(); ok {
 		_spec.SetField(channel.FieldTags, field.TypeJSON, value)

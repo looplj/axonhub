@@ -44,6 +44,8 @@ type Channel struct {
 	ManualModels []string `json:"manual_models,omitempty"`
 	// AutoSyncSupportedModels holds the value of the "auto_sync_supported_models" field.
 	AutoSyncSupportedModels bool `json:"auto_sync_supported_models,omitempty"`
+	// Regex pattern to filter models during auto-sync. Empty string means no filtering.
+	AutoSyncModelPattern string `json:"auto_sync_model_pattern,omitempty"`
 	// Tags holds the value of the "tags" field.
 	Tags []string `json:"tags,omitempty"`
 	// DefaultTestModel holds the value of the "default_test_model" field.
@@ -158,7 +160,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case channel.FieldID, channel.FieldDeletedAt, channel.FieldOrderingWeight:
 			values[i] = new(sql.NullInt64)
-		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark:
+		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldAutoSyncModelPattern, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark:
 			values[i] = new(sql.NullString)
 		case channel.FieldCreatedAt, channel.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -262,6 +264,12 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field auto_sync_supported_models", values[i])
 			} else if value.Valid {
 				_m.AutoSyncSupportedModels = value.Bool
+			}
+		case channel.FieldAutoSyncModelPattern:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field auto_sync_model_pattern", values[i])
+			} else if value.Valid {
+				_m.AutoSyncModelPattern = value.String
 			}
 		case channel.FieldTags:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -412,6 +420,9 @@ func (_m *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("auto_sync_supported_models=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AutoSyncSupportedModels))
+	builder.WriteString(", ")
+	builder.WriteString("auto_sync_model_pattern=")
+	builder.WriteString(_m.AutoSyncModelPattern)
 	builder.WriteString(", ")
 	builder.WriteString("tags=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Tags))
