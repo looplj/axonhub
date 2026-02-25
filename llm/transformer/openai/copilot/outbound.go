@@ -236,19 +236,31 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		gjson.GetBytes(httpResp.Body, "object").String() == "response"
 
 	// Check for Copilot's wrapped response format: {"response": {...}}
+	var unwrappedBody []byte
 	if !isResponsesFormat && gjson.GetBytes(httpResp.Body, "response").Exists() {
-		// Read original body into local variable to avoid mutating httpResp.Body
-		body := httpResp.Body
 		// Extract the inner response object
-		innerResponse := gjson.GetBytes(body, "response").Raw
+		innerResponse := gjson.GetBytes(httpResp.Body, "response").Raw
 		slog.DebugContext(ctx, "Copilot wrapped response detected, extracting inner response")
 		isResponsesFormat = gjson.GetBytes([]byte(innerResponse), "output").Exists() ||
 			gjson.GetBytes([]byte(innerResponse), "object").String() == "response"
+		if isResponsesFormat {
+			// Use the unwrapped body for TransformResponse
+			unwrappedBody = []byte(innerResponse)
+		}
 	}
 
 
 	if isResponsesFormat {
 		// Use the responses transformer to parse Responses API format
+		// If we have an unwrapped body, create a response with that body
+		if len(unwrappedBody) > 0 {
+			wrappedResp := &httpclient.Response{
+				StatusCode: httpResp.StatusCode,
+				Headers:    httpResp.Headers,
+				Body:       unwrappedBody,
+			}
+			return t.codexResponses.TransformResponse(ctx, wrappedResp)
+		}
 		return t.codexResponses.TransformResponse(ctx, httpResp)
 	}
 
@@ -276,17 +288,20 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 			isResponsesFormat = strings.HasPrefix(eventType, "response.")
 		}
 	}
-
-	// Collect all remaining events from the stream
-	remainingEvents := collectStreamEvents(stream)
-
-	// Reconstruct the full stream including the first event
-	allEvents := make([]*httpclient.StreamEvent, 0, 1+len(remainingEvents))
+	// Create a composite stream that preserves true streaming:
+	// First yields the firstEvent (if non-nil), then forwards from the original stream
+	var compositeStream streams.Stream[*httpclient.StreamEvent]
 	if firstEvent != nil {
-		allEvents = append(allEvents, firstEvent)
+		compositeStream = &prependedStream{
+			firstEvent: firstEvent,
+			upstream:   stream,
+			firstYielded: false,
+		}
+	} else {
+		compositeStream = stream
 	}
-	allEvents = append(allEvents, remainingEvents...)
-	stream = streams.SliceStream(allEvents)
+
+	stream = compositeStream
 
 	if !isResponsesFormat {
 		// Non-Codex model: use standard OpenAI chat completions stream transformer
@@ -358,8 +373,14 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 	if eventType == "response.output_item.added" {
 		callID := gjson.GetBytes(data, "item.call_id").String()
 		if callID != "" {
-			// Track the call_id in our mapping
+			// Capture original item ID before overriding
+			originalID := gjson.GetBytes(data, "item.id").String()
+
+			// Track the call_id in our mapping - store both original ID and callID
 			itemIDToCallID[callID] = callID
+			if originalID != "" && originalID != callID {
+				itemIDToCallID[originalID] = callID
+			}
 			*mostRecentCallID = callID
 
 			// Copilot sends an item with arguments="" first, then later sends another item
@@ -562,5 +583,38 @@ func (t *OutboundTransformer) transformCodexResponsesRequest(ctx context.Context
 // isCodexModel checks if the model is a Codex model.
 func isCodexModel(model string) bool {
 	return strings.Contains(strings.ToLower(model), "codex")
+}
+
+// prependedStream is a stream that yields a first event before forwarding to the upstream stream.
+// This preserves true streaming by not buffering the entire response.
+type prependedStream struct {
+	firstEvent   *httpclient.StreamEvent
+	upstream     streams.Stream[*httpclient.StreamEvent]
+	firstYielded bool
+	current      *httpclient.StreamEvent
+}
+
+func (s *prependedStream) Next() bool {
+	if !s.firstYielded {
+		s.firstYielded = true
+		s.current = s.firstEvent
+		return s.firstEvent != nil
+	}
+	return s.upstream.Next()
+}
+
+func (s *prependedStream) Current() *httpclient.StreamEvent {
+	if s.firstYielded && s.firstEvent != nil && s.current == s.firstEvent {
+		return s.current
+	}
+	return s.upstream.Current()
+}
+
+func (s *prependedStream) Err() error {
+	return s.upstream.Err()
+}
+
+func (s *prependedStream) Close() error {
+	return s.upstream.Close()
 }
 
