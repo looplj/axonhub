@@ -991,24 +991,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
   };
 
-  #PM|  const handleClearAllSupportedModels = () => {
-#MM|    setSupportedModels([]);
-#ZY|    setManualModels([]);
-#QY|  };
-#XP|
-#XB|  // Helper function to parse OAuth token from JSON string
-#QM|  const parseOauthToken = (oauthApiKey: string): string => {
-#TH|    if (!oauthApiKey) return '';
-#YQ|    try {
-#XZ|      const parsed = JSON.parse(oauthApiKey);
-#BQ|      if (parsed.access_token) {
-#JM|        return parsed.access_token;
-#QP|      }
-#HV|    } catch {
-#TH|      // Not JSON, use as-is
-#NM|    }
-#PQ|    return oauthApiKey;
-#WR|  };
+  const handleClearAllSupportedModels = () => {
+    setSupportedModels([]);
+    setManualModels([]);
+  };
+  // Helper function to parse OAuth token from JSON string
+  const parseOauthToken = (oauthApiKey: string): string => {
+    if (!oauthApiKey) return '';
+    try {
+      const parsed = JSON.parse(oauthApiKey);
+      if (parsed.access_token) {
+        return parsed.access_token;
+      }
+    } catch {
+      // Not JSON, use as-is
+    }
+    return oauthApiKey;
+  };
 #BJ|
   const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type');
@@ -1024,22 +1023,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       // Extract first API key from the array
       let firstApiKey = apiKeys?.find((key) => key.trim().length > 0) || '';
 
-      #SQ|      // For OAuth-based providers, use credentials.apiKey if apiKeys is empty
-#JM|      if (!firstApiKey && oauthApiKey) {
-#YP|        firstApiKey = parseOauthToken(oauthApiKey);
-#WQ|      }
-#KV|
-#MZ|      const result = await fetchModels.mutateAsync({
-#NT|        channelType,
-#VW|        baseURL,
-#YK|        apiKey: firstApiKey || undefined,
-#VP|        channelID: isEdit ? currentRow?.id : undefined,
-#KT|      });
+      // For OAuth-based providers, use credentials.apiKey if apiKeys is empty
+      if (!firstApiKey && oauthApiKey) {
+        firstApiKey = parseOauthToken(oauthApiKey);
+      }
 
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: !isEdit ? (firstApiKey || undefined) : (firstApiKey || undefined),
+        apiKey: firstApiKey || undefined,
         channelID: isEdit ? currentRow?.id : undefined,
       });
 
