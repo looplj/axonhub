@@ -370,9 +370,9 @@ func TestEmbeddingOutboundTransformer_TransformResponse(t *testing.T) {
 		require.NotNil(t, llmResp)
 		require.Equal(t, "list", llmResp.Embedding.Object)
 		require.Equal(t, "text-embedding-ada-002", llmResp.Model)
-		require.NotNil(t, llmResp.Embedding.Usage)
-		require.Equal(t, int64(5), llmResp.Embedding.Usage.PromptTokens)
-		require.Equal(t, int64(5), llmResp.Embedding.Usage.TotalTokens)
+		require.NotNil(t, llmResp.Usage)
+		require.Equal(t, int64(5), llmResp.Usage.PromptTokens)
+		require.Equal(t, int64(5), llmResp.Usage.TotalTokens)
 		require.NotNil(t, llmResp.Embedding)
 	})
 
@@ -500,10 +500,10 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 						Index:     embResp.Data[0].Index,
 					},
 				},
-				Usage: &llm.EmbeddingUsage{
-					PromptTokens: embResp.Usage.PromptTokens,
-					TotalTokens:  embResp.Usage.TotalTokens,
-				},
+			},
+			Usage: &llm.Usage{
+				PromptTokens: embResp.Usage.PromptTokens,
+				TotalTokens:  embResp.Usage.TotalTokens,
 			},
 		}
 

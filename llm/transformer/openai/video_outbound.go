@@ -239,7 +239,7 @@ type openAIVideoGetResponse struct {
 	} `json:"usage,omitempty"`
 }
 
-func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.VideoResponse, error) {
+func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("%w: http response is nil", transformer.ErrInvalidResponse)
 	}
@@ -278,13 +278,6 @@ func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, htt
 		ExpiresAt:   expiresAt,
 	}
 
-	if resp.Usage != nil {
-		v.Usage = &llm.VideoUsage{
-			CompletionTokens: resp.Usage.CompletionTokens,
-			TotalTokens:      resp.Usage.TotalTokens,
-		}
-	}
-
 	if resp.Error != nil && strings.TrimSpace(resp.Error.Message) != "" {
 		v.Error = &llm.VideoError{
 			Code:    resp.Error.Code,
@@ -292,7 +285,19 @@ func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, htt
 		}
 	}
 
-	return v, nil
+	llmResp := &llm.Response{
+		RequestType: llm.RequestTypeVideo,
+		Video:       v,
+	}
+
+	if resp.Usage != nil {
+		llmResp.Usage = &llm.Usage{
+			CompletionTokens: resp.Usage.CompletionTokens,
+			TotalTokens:      resp.Usage.TotalTokens,
+		}
+	}
+
+	return llmResp, nil
 }
 
 func (t *OutboundTransformer) BuildDeleteVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error) {

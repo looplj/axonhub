@@ -88,7 +88,6 @@ type VideoResponse struct {
 	FPS  *int64 `json:"fps,omitempty"`
 	Seed *int64 `json:"seed,omitempty"`
 
-	Usage *VideoUsage `json:"usage,omitempty"`
 	Error *VideoError `json:"error,omitempty"`
 
 	CreatedAt   int64 `json:"created_at,omitempty"`
@@ -96,10 +95,6 @@ type VideoResponse struct {
 	ExpiresAt   int64 `json:"expires_at,omitempty"`
 }
 
-type VideoUsage struct {
-	CompletionTokens int64 `json:"completion_tokens"`
-	TotalTokens      int64 `json:"total_tokens"`
-}
 
 type VideoError struct {
 	Code    string `json:"code"`

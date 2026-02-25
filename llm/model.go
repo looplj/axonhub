@@ -483,9 +483,8 @@ type Response struct {
 	// Model is the model used to generate the response.
 	Model string `json:"model"`
 
-	// An optional field that will only be present when you set stream_options: {"include_usage": true} in your request.
-	// When present, it contains a null value except for the last chunk which contains the token usage statistics
-	// for the entire request.
+	// Usage is the unified token usage field for all request types (chat, embedding, rerank, image, video).
+	// For streaming chat requests, it will only be present in the last chunk when stream_options: {"include_usage": true} is set.
 	Usage *Usage `json:"usage,omitempty"`
 
 	// This fingerprint represents the backend configuration that the model runs with.
@@ -640,6 +639,12 @@ type PromptTokensDetails struct {
 
 	// WriteCached1HourTokens is the number of tokens cached write for 1 hour ttl, for the anthropic.
 	WriteCached1HourTokens int64 `json:"write_cached_1hour_tokens,omitempty"`
+
+	// ImageTokens is the number of image tokens in the input (for image generation).
+	ImageTokens int64 `json:"image_tokens,omitempty"`
+
+	// TextTokens is the number of text tokens in the input (for image generation).
+	TextTokens int64 `json:"text_tokens,omitempty"`
 }
 
 // ResponseError represents an error response.

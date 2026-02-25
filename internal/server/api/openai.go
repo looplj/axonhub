@@ -226,23 +226,17 @@ func (handlers *OpenAIHandlers) GetVideo(c *gin.Context) {
 		return
 	}
 
-	video, err := handlers.VideoService.GetTaskByExternalID(ctx, externalID)
+	resp, err := handlers.VideoService.GetTaskByExternalID(ctx, externalID)
 	if err != nil {
 		JSONError(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	llmResp := &llm.Response{
-		ID:          video.ID,
-		Object:      "video",
-		Model:       video.Model,
-		RequestType: llm.RequestTypeVideo,
-		APIFormat:   llm.APIFormatOpenAIVideo,
-		Video:       video,
-		Choices:     []llm.Choice{},
-	}
+	resp.Object = "video"
+	resp.APIFormat = llm.APIFormatOpenAIVideo
+	resp.Choices = []llm.Choice{}
 
-	httpResp, err := handlers.VideoInboundTransformer.TransformResponse(ctx, llmResp)
+	httpResp, err := handlers.VideoInboundTransformer.TransformResponse(ctx, resp)
 	if err != nil {
 		JSONError(c, http.StatusInternalServerError, err)
 		return

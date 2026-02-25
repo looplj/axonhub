@@ -343,6 +343,90 @@ func TestTransformImageGenerationResponse_WithUsage(t *testing.T) {
 	assert.Equal(t, int64(10), resp.Usage.PromptTokens)
 	assert.Equal(t, int64(256), resp.Usage.CompletionTokens)
 	assert.Equal(t, int64(266), resp.Usage.TotalTokens)
+	require.NotNil(t, resp.Usage.PromptTokensDetails)
+	assert.Equal(t, int64(0), resp.Usage.PromptTokensDetails.ImageTokens)
+	assert.Equal(t, int64(10), resp.Usage.PromptTokensDetails.TextTokens)
+}
+
+func TestTransformImageGenerationResponse_WithCachedTokens(t *testing.T) {
+	body := []byte(`{
+		"created": 1730000000,
+		"data": [
+			{
+				"b64_json": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+			}
+		],
+		"usage": {
+			"input_tokens": 100,
+			"output_tokens": 256,
+			"total_tokens": 356,
+			"input_tokens_details": {
+				"image_tokens": 80,
+				"text_tokens": 10,
+				"cached_tokens": 10
+			}
+		}
+	}`)
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       body,
+	}
+
+	resp, err := transformImageGenerationResponse(httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Usage)
+
+	assert.Equal(t, int64(100), resp.Usage.PromptTokens)
+	assert.Equal(t, int64(256), resp.Usage.CompletionTokens)
+	assert.Equal(t, int64(356), resp.Usage.TotalTokens)
+	require.NotNil(t, resp.Usage.PromptTokensDetails)
+	assert.Equal(t, int64(80), resp.Usage.PromptTokensDetails.ImageTokens)
+	assert.Equal(t, int64(10), resp.Usage.PromptTokensDetails.TextTokens)
+	assert.Equal(t, int64(10), resp.Usage.PromptTokensDetails.CachedTokens)
+}
+
+func TestTransformImageGenerationResponse_WithOutputTokensDetails(t *testing.T) {
+	body := []byte(`{
+		"created": 1730000000,
+		"data": [
+			{
+				"b64_json": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+			}
+		],
+		"usage": {
+			"input_tokens": 100,
+			"output_tokens": 256,
+			"total_tokens": 356,
+			"input_tokens_details": {
+				"image_tokens": 80,
+				"text_tokens": 20
+			},
+			"output_tokens_details": {
+				"reasoning_tokens": 50
+			}
+		}
+	}`)
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       body,
+	}
+
+	resp, err := transformImageGenerationResponse(httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Usage)
+
+	assert.Equal(t, int64(100), resp.Usage.PromptTokens)
+	assert.Equal(t, int64(256), resp.Usage.CompletionTokens)
+	assert.Equal(t, int64(356), resp.Usage.TotalTokens)
+	require.NotNil(t, resp.Usage.PromptTokensDetails)
+	assert.Equal(t, int64(80), resp.Usage.PromptTokensDetails.ImageTokens)
+	assert.Equal(t, int64(20), resp.Usage.PromptTokensDetails.TextTokens)
+	require.NotNil(t, resp.Usage.CompletionTokensDetails)
+	assert.Equal(t, int64(50), resp.Usage.CompletionTokensDetails.ReasoningTokens)
 }
 
 func TestTransformImageGenerationResponse_MultipleImages(t *testing.T) {

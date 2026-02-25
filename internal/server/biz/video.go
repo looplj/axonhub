@@ -23,7 +23,7 @@ func NewVideoService(channelService *ChannelService, requestService *RequestServ
 	}
 }
 
-func (s *VideoService) GetTask(ctx context.Context, requestID int) (*llm.VideoResponse, error) {
+func (s *VideoService) GetTask(ctx context.Context, requestID int) (*llm.Response, error) {
 	task, ch, outbound, err := s.loadTask(ctx, requestID)
 	if err != nil {
 		return nil, err
@@ -45,10 +45,10 @@ func (s *VideoService) GetTask(ctx context.Context, requestID int) (*llm.VideoRe
 	}
 
 	// Persist snapshot to request table for task tracking.
-	status := mapVideoStatusToRequestStatus(video.Status)
+	status := mapVideoStatusToRequestStatus(video.Video.Status)
 
 	// Always store the latest response snapshot.
-	if err := s.RequestService.UpdateRequestStatusExternalIDAndResponseBody(ctx, requestID, status, task.ExternalID, video, nil); err != nil {
+	if err := s.RequestService.UpdateRequestStatusExternalIDAndResponseBody(ctx, requestID, status, task.ExternalID, video.Video, nil); err != nil {
 		// non-fatal: return data anyway
 	}
 
@@ -57,7 +57,7 @@ func (s *VideoService) GetTask(ctx context.Context, requestID int) (*llm.VideoRe
 
 // GetTaskByExternalID looks up a video task by the provider's task ID (external_id).
 // NOTE: assumes provider task IDs are globally unique across channels.
-func (s *VideoService) GetTaskByExternalID(ctx context.Context, externalID string) (*llm.VideoResponse, error) {
+func (s *VideoService) GetTaskByExternalID(ctx context.Context, externalID string) (*llm.Response, error) {
 	client := ent.FromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("%w: ent client not found in context", ErrInternal)

@@ -102,23 +102,17 @@ func (h *DoubaoHandlers) GetTask(c *gin.Context) {
 		return
 	}
 
-	video, err := h.VideoService.GetTaskByExternalID(ctx, externalID)
+	resp, err := h.VideoService.GetTaskByExternalID(ctx, externalID)
 	if err != nil {
 		JSONError(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	llmResp := &llm.Response{
-		ID:          video.ID,
-		Object:      "video.task",
-		Model:       video.Model,
-		RequestType: llm.RequestTypeVideo,
-		APIFormat:   llm.APIFormatSeedanceVideo,
-		Video:       video,
-		Choices:     []llm.Choice{},
-	}
+	resp.Object = "video.task"
+	resp.APIFormat = llm.APIFormatSeedanceVideo
+	resp.Choices = []llm.Choice{}
 
-	httpResp, err := h.InboundTransformer.TransformResponse(ctx, llmResp)
+	httpResp, err := h.InboundTransformer.TransformResponse(ctx, resp)
 	if err != nil {
 		JSONError(c, http.StatusInternalServerError, err)
 		return
