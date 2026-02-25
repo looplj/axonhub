@@ -1020,12 +1020,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
 
     try {
-      // Extract first API key from the array
-      let firstApiKey = apiKeys?.find((key) => key.trim().length > 0) || '';
+      // For OAuth-based providers (like Copilot), prefer oauthApiKey first
+      let firstApiKey = '';
+      if (oauthApiKey) {
+        const parsed = parseOauthToken(oauthApiKey);
+        if (parsed) {
+          firstApiKey = parsed;
+        }
+      }
 
-      // For OAuth-based providers, use credentials.apiKey if apiKeys is empty
-      if (!firstApiKey && oauthApiKey) {
-        firstApiKey = parseOauthToken(oauthApiKey);
+      // Fall back to apiKeys array if no OAuth token
+      if (!firstApiKey && apiKeys?.length) {
+        firstApiKey = apiKeys.find((key) => key.trim().length > 0) || '';
       }
 
       const result = await fetchModels.mutateAsync({

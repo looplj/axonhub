@@ -57,6 +57,7 @@ type OutboundTransformer struct {
 	tokenProvider  TokenProvider
 	baseURL        string
 	codexResponses *responses.OutboundTransformer
+	openAITransformer transformer.Outbound
 }
 
 
@@ -152,13 +153,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	headers.Set("Accept", "application/json")
 
 	// Add LiteLLM-style editor headers (required by Copilot).
-	headers.Set(EditorVersionHeader, DefaultEditorVersion)
-	headers.Set(EditorPluginVersionHeader, DefaultEditorPluginVersion)
-	headers.Set(UserAgentHeader, DefaultUserAgent)
-	headers.Set(CopilotIntegrationIDHeader, DefaultCopilotIntegrationID)
-	headers.Set(OpenAIIntentHeader, DefaultOpenAIIntent)
-	headers.Set(GitHubAPIVersionHeader, DefaultGitHubAPIVersion)
-	headers.Set(VSCodeUserAgentLibHeader, DefaultVSCodeUserAgentLib)
+	setCopilotHeaders(headers)
 
 	// Add vision header if request contains image content.
 	if hasVisionContent(llmReq) {
@@ -181,6 +176,19 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}, nil
 }
 
+
+// setCopilotHeaders sets the LiteLLM-style editor headers required by Copilot.
+func setCopilotHeaders(headers http.Header) {
+	headers.Set(EditorVersionHeader, DefaultEditorVersion)
+	headers.Set(EditorPluginVersionHeader, DefaultEditorPluginVersion)
+	headers.Set(UserAgentHeader, DefaultUserAgent)
+	headers.Set(CopilotIntegrationIDHeader, DefaultCopilotIntegrationID)
+	headers.Set(OpenAIIntentHeader, DefaultOpenAIIntent)
+	headers.Set(GitHubAPIVersionHeader, DefaultGitHubAPIVersion)
+	headers.Set(VSCodeUserAgentLibHeader, DefaultVSCodeUserAgentLib)
+}
+
+// hasVisionContent checks if the request contains image content (vision capabilities).
 // hasVisionContent checks if the request contains image content (vision capabilities).
 // It returns true if any message contains image_url content or data URLs.
 func hasVisionContent(llmReq *llm.Request) bool {
@@ -223,7 +231,16 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 
 	// Check for HTTP error status codes.
 	if httpResp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, string(httpResp.Body))
+		bodyLen := len(httpResp.Body)
+		var bodyMsg string
+		if bodyLen == 0 {
+			bodyMsg = "(empty body)"
+		} else if bodyLen > 100 {
+			bodyMsg = fmt.Sprintf("(first 100 chars: %s, total length: %d)", string(httpResp.Body[:100]), bodyLen)
+		} else {
+			bodyMsg = fmt.Sprintf("(body: %s, length: %d)", string(httpResp.Body), bodyLen)
+		}
+		return nil, fmt.Errorf("HTTP error %d: %s", httpResp.StatusCode, bodyMsg)
 	}
 
 	// Check for empty response body.
@@ -305,11 +322,15 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 
 	if !isResponsesFormat {
 		// Non-Codex model: use standard OpenAI chat completions stream transformer
-		openaiTransformer, err := openai.NewOutboundTransformer(t.baseURL, "")
-		if err != nil {
-			return nil, fmt.Errorf("failed to create openai transformer: %w", err)
+		// Use cached transformer to avoid repeated allocations
+		if t.openAITransformer == nil {
+			var err error
+			t.openAITransformer, err = openai.NewOutboundTransformer(t.baseURL, "")
+			if err != nil {
+				return nil, fmt.Errorf("failed to create openai transformer: %w", err)
+			}
 		}
-		return openaiTransformer.TransformStream(ctx, stream)
+		return t.openAITransformer.TransformStream(ctx, stream)
 	}
 
 	// Codex model: process the Responses API format stream
@@ -352,16 +373,8 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 	return t.codexResponses.TransformStream(ctx, filteredStream)
 }
 
-// collectStreamEvents collects all remaining events from a stream into a slice
-func collectStreamEvents(stream streams.Stream[*httpclient.StreamEvent]) []*httpclient.StreamEvent {
-	var events []*httpclient.StreamEvent
-	for stream.Next() {
-		if event := stream.Current(); event != nil {
-			events = append(events, event)
-		}
-	}
-	return events
-}
+
+
 
 
 // convertCopilotStreamEvent fixes up Copilot's standard Responses API stream events.
@@ -564,13 +577,7 @@ func (t *OutboundTransformer) transformCodexResponsesRequest(ctx context.Context
 	}
 
 	// Add Copilot-specific headers
-	responsesReq.Headers.Set(EditorVersionHeader, DefaultEditorVersion)
-	responsesReq.Headers.Set(EditorPluginVersionHeader, DefaultEditorPluginVersion)
-	responsesReq.Headers.Set(UserAgentHeader, DefaultUserAgent)
-	responsesReq.Headers.Set(CopilotIntegrationIDHeader, DefaultCopilotIntegrationID)
-	responsesReq.Headers.Set(OpenAIIntentHeader, DefaultOpenAIIntent)
-	responsesReq.Headers.Set(GitHubAPIVersionHeader, DefaultGitHubAPIVersion)
-	responsesReq.Headers.Set(VSCodeUserAgentLibHeader, DefaultVSCodeUserAgentLib)
+	setCopilotHeaders(responsesReq.Headers)
 
 	// Add vision header if request contains image content.
 	if hasVisionContent(llmReq) {
@@ -600,7 +607,15 @@ func (s *prependedStream) Next() bool {
 		s.current = s.firstEvent
 		return s.firstEvent != nil
 	}
-	return s.upstream.Next()
+
+	// Delegate to upstream and update current
+	ok := s.upstream.Next()
+	if ok {
+		s.current = s.upstream.Current()
+	} else {
+		s.current = nil
+	}
+	return ok
 }
 
 func (s *prependedStream) Current() *httpclient.StreamEvent {

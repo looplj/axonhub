@@ -93,7 +93,8 @@ func (e *CopilotTokenExchanger) refreshTokenWithClient(ctx context.Context, http
 	sfKey := accessToken + ":" + fmt.Sprintf("%p", httpClient)
 
 	v, err, _ := e.sf.Do(sfKey, func() (any, error) {
-		return e.exchangeWithClient(ctx, httpClient, accessToken)
+		// Use background context to avoid cancellation propagation to all waiters
+		return e.exchangeWithClient(context.Background(), httpClient, accessToken)
 	})
 	if err != nil {
 		return "", 0, err
