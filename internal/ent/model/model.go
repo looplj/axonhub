@@ -102,9 +102,11 @@ const DefaultType = TypeChat
 
 // Type values.
 const (
-	TypeChat      Type = "chat"
-	TypeEmbedding Type = "embedding"
-	TypeRerank    Type = "rerank"
+	TypeChat            Type = "chat"
+	TypeEmbedding       Type = "embedding"
+	TypeRerank          Type = "rerank"
+	TypeImageGeneration Type = "image_generation"
+	TypeVideoGeneration Type = "video_generation"
 )
 
 func (_type Type) String() string {
@@ -114,7 +116,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeChat, TypeEmbedding, TypeRerank:
+	case TypeChat, TypeEmbedding, TypeRerank, TypeImageGeneration, TypeVideoGeneration:
 		return nil
 	default:
 		return fmt.Errorf("model: invalid enum value for type field: %q", _type)

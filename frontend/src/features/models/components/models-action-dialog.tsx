@@ -23,7 +23,7 @@ import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
 import { useCreateModel, useUpdateModel } from '../data/models';
 import { useDevelopersData } from '../data/providers';
 import { type Provider, type ProviderModel } from '../data/providers.schema';
-import { CreateModelInput, createModelInputSchema, UpdateModelInput, ModelCard, updateModelInputSchema } from '../data/schema';
+import { CreateModelInput, createModelInputSchema, UpdateModelInput, ModelCard, ModelType, modelTypeSchema, updateModelInputSchema } from '../data/schema';
 
 function isDeveloper(provider: string) {
   return DEVELOPER_IDS.includes(provider);
@@ -174,6 +174,10 @@ export function ModelsActionDialog() {
       if (selectedModel) {
         form.setValue('name', selectedModel.display_name || selectedModel.name || '');
         form.setValue('group', selectedModel.family || selectedProvider);
+        const normalizedType = selectedModel.type?.replace(/-/g, '_');
+        if (normalizedType && modelTypeSchema.safeParse(normalizedType).success) {
+          form.setValue('type', normalizedType as ModelType);
+        }
         const modelCard: ModelCard = {
           reasoning: {
             supported: selectedModel.reasoning?.supported || false,
@@ -385,6 +389,8 @@ export function ModelsActionDialog() {
                             <SelectItem value='chat'>{t('models.types.chat')}</SelectItem>
                             <SelectItem value='embedding'>{t('models.types.embedding')}</SelectItem>
                             <SelectItem value='rerank'>{t('models.types.rerank')}</SelectItem>
+                            <SelectItem value='image_generation'>{t('models.types.image_generation')}</SelectItem>
+                            <SelectItem value='video_generation'>{t('models.types.video_generation')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

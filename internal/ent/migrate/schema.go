@@ -257,7 +257,7 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "developer", Type: field.TypeString},
 		{Name: "model_id", Type: field.TypeString},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"chat", "embedding", "rerank"}, Default: "chat"},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"chat", "embedding", "rerank", "image_generation", "video_generation"}, Default: "chat"},
 		{Name: "name", Type: field.TypeString},
 		{Name: "icon", Type: field.TypeString},
 		{Name: "group", Type: field.TypeString},

@@ -2090,6 +2090,8 @@ enum ModelType @goModel(model: "github.com/looplj/axonhub/internal/ent/model.Typ
   chat
   embedding
   rerank
+  image_generation
+  video_generation
 }
 """
 ModelWhereInput is used for filtering Model objects.
