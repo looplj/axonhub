@@ -8648,6 +8648,130 @@
           "type": "chat"
         }
       ]
+    },
+    "bytedance": {
+      "id": "bytedance",
+      "name": "ByteDance",
+      "display_name": "ByteDance",
+      "metadata": {
+        "source": "public-provider-conf-template"
+      },
+      "models": [
+        {
+          "id": "doubao-seed-1-6-vision-250815",
+          "name": "Doubao Seed 1.6 Vision",
+          "display_name": "Doubao Seed 1.6 Vision",
+          "type": "chat",
+          "metadata": {
+            "source": "public-provider-conf-template"
+          },
+          "vision": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "limit": {
+            "context": 256000,
+            "output": 32000
+          }
+        },
+        {
+          "id": "doubao-seed-1-6-250615",
+          "name": "Doubao Seed 1.6",
+          "display_name": "Doubao Seed 1.6",
+          "type": "chat",
+          "metadata": {
+            "source": "public-provider-conf-template"
+          },
+          "vision": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "limit": {
+            "context": 256000,
+            "output": 32000
+          }
+        },
+        {
+          "id": "doubao-seed-1-6-flash-250715",
+          "name": "Doubao Seed 1.6 Flash",
+          "display_name": "Doubao Seed 1.6 Flash",
+          "type": "chat",
+          "metadata": {
+            "source": "public-provider-conf-template"
+          },
+          "vision": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "limit": {
+            "context": 256000,
+            "output": 32000
+          }
+        },
+        {
+          "id": "doubao-seed-1-6-flash-250615",
+          "name": "Doubao Seed 1.6 Flash (250615)",
+          "display_name": "Doubao Seed 1.6 Flash (250615)",
+          "type": "chat",
+          "metadata": {
+            "source": "public-provider-conf-template"
+          },
+          "vision": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "limit": {
+            "context": 256000,
+            "output": 32000
+          }
+        },
+        {
+          "id": "doubao-seed-1-6-thinking-250715",
+          "name": "Doubao Seed 1.6 Thinking",
+          "display_name": "Doubao Seed 1.6 Thinking",
+          "type": "chat",
+          "metadata": {
+            "source": "public-provider-conf-template"
+          },
+          "vision": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "limit": {
+            "context": 256000,
+            "output": 32000
+          }
+        },
+        {
+          "id": "doubao-seed-1-6-thinking-250615",
+          "name": "Doubao Seed 1.6 Thinking (250615)",
+          "display_name": "Doubao Seed 1.6 Thinking (250615)",
+          "type": "chat",
+          "metadata": {
+            "source": "public-provider-conf-template"
+          },
+          "vision": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "limit": {
+            "context": 256000,
+            "output": 32000
+          }
+        }
+      ]
     }
   }
 }

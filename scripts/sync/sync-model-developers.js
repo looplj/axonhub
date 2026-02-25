@@ -62,6 +62,24 @@ function filterProviders(data, allowedIds) {
     }
   }
   
+  // Map doubao channel's doubao models to bytedance developer
+  if (allowedIds.includes('bytedance') && data.providers['doubao']) {
+    const doubaoProvider = data.providers['doubao'];
+    const doubaoModels = (doubaoProvider.models || []).filter(m =>
+      m.id && m.id.toLowerCase().startsWith('doubao')
+    );
+    if (doubaoModels.length > 0) {
+      filtered['bytedance'] = {
+        ...doubaoProvider,
+        id: 'bytedance',
+        name: 'ByteDance',
+        display_name: 'ByteDance',
+        models: doubaoModels,
+      };
+      console.log(`Mapped ${doubaoModels.length} doubao models to bytedance developer`);
+    }
+  }
+  
   return { providers: filtered };
 }
 
