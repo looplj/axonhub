@@ -308,7 +308,6 @@ linters:
 
 
       # Exclude lll issues for long lines with go:generate
-      # Exclude lll issues for long lines with go:generate
       - linters:
           - lll
         source: "^//go:generate "

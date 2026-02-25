@@ -255,7 +255,7 @@ func TestCopilotTokenExchanger_RefreshToken_DifferentTokens(t *testing.T) {
 	var wg sync.WaitGroup
 	tokens := []string{"token1", "token2", "token3"}
 	results := make(map[string]string)
-	errors := make(map[string]error)
+	resultErrors := make(map[string]error)
 	var resultsMu sync.Mutex
 
 	for _, token := range tokens {
@@ -265,10 +265,11 @@ func TestCopilotTokenExchanger_RefreshToken_DifferentTokens(t *testing.T) {
 			copilotToken, _, err := exchanger.RefreshToken(ctx, tkn)
 			resultsMu.Lock()
 			results[tkn] = copilotToken
-			errors[tkn] = err
+			resultErrors[tkn] = err
 			resultsMu.Unlock()
 		}(token)
 	}
+
 
 	wg.Wait()
 
@@ -277,7 +278,7 @@ func TestCopilotTokenExchanger_RefreshToken_DifferentTokens(t *testing.T) {
 
 	// Verify no errors occurred
 	for _, tkn := range tokens {
-		require.NoError(t, errors[tkn], "token %s should not have error", tkn)
+		require.NoError(t, resultErrors[tkn], "token %s should not have error", tkn)
 	}
 
 	// Verify each token got its own copilot token

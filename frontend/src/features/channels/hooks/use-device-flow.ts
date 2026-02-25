@@ -81,6 +81,7 @@ export function useDeviceFlow(
   const [isComplete, setIsComplete] = useState(false);
 
   const pollingIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const currentIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
   const onSuccessRef = useRef(onSuccess);
 
   useEffect(() => {

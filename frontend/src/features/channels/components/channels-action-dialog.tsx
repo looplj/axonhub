@@ -1532,12 +1532,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 const oauthCredentials = JSON.stringify({
                                   access_token: token,
                                   token_type: 'bearer',
-                                const oauthCredentials = JSON.stringify({
-                                  access_token: token,
-                                  token_type: 'bearer',
                                 });
                                 form.setValue('credentials.apiKey', oauthCredentials, { shouldDirty: true, shouldValidate: true });
-                                form.setValue('credentials.apiKey', oauthCredentials, { shouldValidate: false });
                               }}
                               onError={(error) => {
                                 toast.error(error);

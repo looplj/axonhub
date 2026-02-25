@@ -153,8 +153,6 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
                 size='icon'
                 title={t('copilot_device.copy_code')}
               >
-                title='Copy code'
-              >
                 <Copy className='h-4 w-4' />
               </Button>
             </div>
