@@ -21,6 +21,7 @@ type Handlers struct {
 	Graphql        *gql.GraphqlHandler
 	OpenAPIGraphql *openapi.GraphqlHandler
 	OpenAI         *api.OpenAIHandlers
+	Doubao         *api.DoubaoHandlers
 	Anthropic      *api.AnthropicHandlers
 	Gemini         *api.GeminiHandlers
 	AiSDK          *api.AiSDKHandlers
@@ -32,6 +33,7 @@ type Handlers struct {
 	ClaudeCode     *api.ClaudeCodeHandlers
 	Antigravity    *api.AntigravityHandlers
 	Copilot        *api.CopilotHandlers
+	RequestContent *api.RequestContentHandlers
 }
 
 type Services struct {
@@ -112,6 +114,12 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithSource(request.SourcePlayground),
 			handlers.Playground.ChatCompletion,
 		)
+
+		adminGroup.GET(
+			"/requests/:request_id/content",
+			middleware.WithTimeout(server.Config.RequestTimeout),
+			handlers.RequestContent.DownloadRequestContent,
+		)
 	}
 
 	openAPIGroup := server.Group("/openapi", middleware.WithOpenAPIAuth(services.AuthService), middleware.WithTimeout(server.Config.RequestTimeout))
@@ -140,6 +148,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
 		openaiGroup.POST("/images/generations", handlers.OpenAI.CreateImage)
 		openaiGroup.POST("/images/edits", handlers.OpenAI.CreateImageEdit)
+		openaiGroup.POST("/videos", handlers.OpenAI.CreateVideo)
+		openaiGroup.GET("/videos/:id", handlers.OpenAI.GetVideo)
+		openaiGroup.DELETE("/videos/:id", handlers.OpenAI.DeleteVideo)
 		// DO NOT SUPPORT IMAGE VARIATION
 		// openaiGroup.POST("/images/variations", handlers.OpenAI.CreateImageVariation)
 
@@ -160,6 +171,13 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		anthropicGroup := apiGroup.Group("/anthropic/v1")
 		anthropicGroup.POST("/messages", handlers.Anthropic.CreateMessage)
 		anthropicGroup.GET("/models", handlers.Anthropic.ListModels)
+	}
+
+	{
+		doubaoGroup := apiGroup.Group("/doubao/v3")
+		doubaoGroup.POST("/contents/generations/tasks", handlers.Doubao.CreateTask)
+		doubaoGroup.GET("/contents/generations/tasks/:id", handlers.Doubao.GetTask)
+		doubaoGroup.DELETE("/contents/generations/tasks/:id", handlers.Doubao.DeleteTask)
 	}
 
 	{

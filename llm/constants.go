@@ -7,6 +7,7 @@ const (
 	RequestTypeEmbedding RequestType = "embedding"
 	RequestTypeRerank    RequestType = "rerank"
 	RequestTypeImage     RequestType = "image"
+	RequestTypeVideo     RequestType = "video"
 )
 
 func (r RequestType) String() string {
@@ -22,6 +23,7 @@ const (
 	APIFormatOpenAIImageEdit       APIFormat = "openai/image_edit"
 	APIFormatOpenAIImageVariation  APIFormat = "openai/image_variation"
 	APIFormatOpenAIEmbedding       APIFormat = "openai/embeddings"
+	APIFormatOpenAIVideo           APIFormat = "openai/video"
 	APIFormatGeminiContents        APIFormat = "gemini/contents"
 	APIFormatAnthropicMessage      APIFormat = "anthropic/messages"
 	APIFormatAiSDKText             APIFormat = "aisdk/text"
@@ -29,6 +31,8 @@ const (
 
 	APIFormatJinaRerank    APIFormat = "jina/rerank"
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
+
+	APIFormatSeedanceVideo APIFormat = "seedance/video"
 )
 
 func (f APIFormat) String() string {

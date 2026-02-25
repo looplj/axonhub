@@ -389,6 +389,23 @@ export function useQueryModels(args: QueryModelsArgs) {
   });
 }
 
+interface QueryAllModelsArgs {
+  where?: Record<string, any>;
+}
+
+export function useQueryAllModels(args: QueryAllModelsArgs) {
+  return useQuery({
+    queryKey: ['models', 'all', args],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ models: ModelConnection }>(MODELS_QUERY, {
+        first: 10000,
+        ...args,
+      });
+      return modelConnectionSchema.parse(data.models);
+    },
+  });
+}
+
 export function useCreateModel() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();

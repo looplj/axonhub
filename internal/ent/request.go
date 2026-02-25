@@ -64,6 +64,14 @@ type Request struct {
 	MetricsLatencyMs *int64 `json:"metrics_latency_ms,omitempty"`
 	// MetricsFirstTokenLatencyMs holds the value of the "metrics_first_token_latency_ms" field.
 	MetricsFirstTokenLatencyMs *int64 `json:"metrics_first_token_latency_ms,omitempty"`
+	// whether the generated content has been saved to external storage
+	ContentSaved bool `json:"content_saved,omitempty"`
+	// data storage id used to save the content file
+	ContentStorageID *int `json:"content_storage_id,omitempty"`
+	// storage key/path of the saved content file
+	ContentStorageKey *string `json:"content_storage_key,omitempty"`
+	// when the content file was saved
+	ContentSavedAt *time.Time `json:"content_saved_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the RequestQuery when eager-loading is set.
 	Edges        RequestEdges `json:"edges"`
@@ -176,13 +184,13 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case request.FieldRequestHeaders, request.FieldRequestBody, request.FieldResponseBody, request.FieldResponseChunks:
 			values[i] = new([]byte)
-		case request.FieldStream:
+		case request.FieldStream, request.FieldContentSaved:
 			values[i] = new(sql.NullBool)
-		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs:
+		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldContentStorageID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP:
+		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
 			values[i] = new(sql.NullString)
-		case request.FieldCreatedAt, request.FieldUpdatedAt:
+		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldContentSavedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -335,6 +343,33 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				_m.MetricsFirstTokenLatencyMs = new(int64)
 				*_m.MetricsFirstTokenLatencyMs = value.Int64
 			}
+		case request.FieldContentSaved:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field content_saved", values[i])
+			} else if value.Valid {
+				_m.ContentSaved = value.Bool
+			}
+		case request.FieldContentStorageID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field content_storage_id", values[i])
+			} else if value.Valid {
+				_m.ContentStorageID = new(int)
+				*_m.ContentStorageID = int(value.Int64)
+			}
+		case request.FieldContentStorageKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field content_storage_key", values[i])
+			} else if value.Valid {
+				_m.ContentStorageKey = new(string)
+				*_m.ContentStorageKey = value.String
+			}
+		case request.FieldContentSavedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field content_saved_at", values[i])
+			} else if value.Valid {
+				_m.ContentSavedAt = new(time.Time)
+				*_m.ContentSavedAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -468,6 +503,24 @@ func (_m *Request) String() string {
 	if v := _m.MetricsFirstTokenLatencyMs; v != nil {
 		builder.WriteString("metrics_first_token_latency_ms=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("content_saved=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ContentSaved))
+	builder.WriteString(", ")
+	if v := _m.ContentStorageID; v != nil {
+		builder.WriteString("content_storage_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.ContentStorageKey; v != nil {
+		builder.WriteString("content_storage_key=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ContentSavedAt; v != nil {
+		builder.WriteString("content_saved_at=")
+		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteByte(')')
 	return builder.String()

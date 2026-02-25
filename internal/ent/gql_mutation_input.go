@@ -3,6 +3,8 @@
 package ent
 
 import (
+	"time"
+
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
@@ -87,6 +89,7 @@ type CreateChannelInput struct {
 	SupportedModels         []string
 	ManualModels            []string
 	AutoSyncSupportedModels *bool
+	AutoSyncModelPattern    *string
 	Tags                    []string
 	DefaultTestModel        string
 	Policies                *objects.ChannelPolicies
@@ -111,6 +114,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.AutoSyncSupportedModels; v != nil {
 		m.SetAutoSyncSupportedModels(*v)
+	}
+	if v := i.AutoSyncModelPattern; v != nil {
+		m.SetAutoSyncModelPattern(*v)
 	}
 	if v := i.Tags; v != nil {
 		m.SetTags(v)
@@ -138,30 +144,32 @@ func (c *ChannelCreate) SetInput(i CreateChannelInput) *ChannelCreate {
 
 // UpdateChannelInput represents a mutation input for updating channels.
 type UpdateChannelInput struct {
-	ClearBaseURL            bool
-	BaseURL                 *string
-	Name                    *string
-	Status                  *channel.Status
-	Credentials             *objects.ChannelCredentials
-	SupportedModels         []string
-	AppendSupportedModels   []string
-	ClearManualModels       bool
-	ManualModels            []string
-	AppendManualModels      []string
-	AutoSyncSupportedModels *bool
-	ClearTags               bool
-	Tags                    []string
-	AppendTags              []string
-	DefaultTestModel        *string
-	ClearPolicies           bool
-	Policies                *objects.ChannelPolicies
-	ClearSettings           bool
-	Settings                *objects.ChannelSettings
-	OrderingWeight          *int
-	ClearErrorMessage       bool
-	ErrorMessage            *string
-	ClearRemark             bool
-	Remark                  *string
+	ClearBaseURL              bool
+	BaseURL                   *string
+	Name                      *string
+	Status                    *channel.Status
+	Credentials               *objects.ChannelCredentials
+	SupportedModels           []string
+	AppendSupportedModels     []string
+	ClearManualModels         bool
+	ManualModels              []string
+	AppendManualModels        []string
+	AutoSyncSupportedModels   *bool
+	ClearAutoSyncModelPattern bool
+	AutoSyncModelPattern      *string
+	ClearTags                 bool
+	Tags                      []string
+	AppendTags                []string
+	DefaultTestModel          *string
+	ClearPolicies             bool
+	Policies                  *objects.ChannelPolicies
+	ClearSettings             bool
+	Settings                  *objects.ChannelSettings
+	OrderingWeight            *int
+	ClearErrorMessage         bool
+	ErrorMessage              *string
+	ClearRemark               bool
+	Remark                    *string
 }
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
@@ -194,10 +202,16 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 		m.SetManualModels(v)
 	}
 	if i.AppendManualModels != nil {
-		m.AppendManualModels(i.AppendManualModels)
+		m.AppendManualModels(i.ManualModels)
 	}
 	if v := i.AutoSyncSupportedModels; v != nil {
 		m.SetAutoSyncSupportedModels(*v)
+	}
+	if i.ClearAutoSyncModelPattern {
+		m.ClearAutoSyncModelPattern()
+	}
+	if v := i.AutoSyncModelPattern; v != nil {
+		m.SetAutoSyncModelPattern(*v)
 	}
 	if i.ClearTags {
 		m.ClearTags()
@@ -677,6 +691,10 @@ type CreateRequestInput struct {
 	ClientIP                   *string
 	MetricsLatencyMs           *int64
 	MetricsFirstTokenLatencyMs *int64
+	ContentSaved               *bool
+	ContentStorageID           *int
+	ContentStorageKey          *string
+	ContentSavedAt             *time.Time
 	APIKeyID                   *int
 	ProjectID                  int
 	TraceID                    *int
@@ -721,6 +739,18 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.MetricsFirstTokenLatencyMs; v != nil {
 		m.SetMetricsFirstTokenLatencyMs(*v)
 	}
+	if v := i.ContentSaved; v != nil {
+		m.SetContentSaved(*v)
+	}
+	if v := i.ContentStorageID; v != nil {
+		m.SetContentStorageID(*v)
+	}
+	if v := i.ContentStorageKey; v != nil {
+		m.SetContentStorageKey(*v)
+	}
+	if v := i.ContentSavedAt; v != nil {
+		m.SetContentSavedAt(*v)
+	}
 	if v := i.APIKeyID; v != nil {
 		m.SetAPIKeyID(*v)
 	}
@@ -760,6 +790,13 @@ type UpdateRequestInput struct {
 	MetricsLatencyMs                *int64
 	ClearMetricsFirstTokenLatencyMs bool
 	MetricsFirstTokenLatencyMs      *int64
+	ContentSaved                    *bool
+	ClearContentStorageID           bool
+	ContentStorageID                *int
+	ClearContentStorageKey          bool
+	ContentStorageKey               *string
+	ClearContentSavedAt             bool
+	ContentSavedAt                  *time.Time
 	ClearChannel                    bool
 	ChannelID                       *int
 }
@@ -813,6 +850,27 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.MetricsFirstTokenLatencyMs; v != nil {
 		m.SetMetricsFirstTokenLatencyMs(*v)
+	}
+	if v := i.ContentSaved; v != nil {
+		m.SetContentSaved(*v)
+	}
+	if i.ClearContentStorageID {
+		m.ClearContentStorageID()
+	}
+	if v := i.ContentStorageID; v != nil {
+		m.SetContentStorageID(*v)
+	}
+	if i.ClearContentStorageKey {
+		m.ClearContentStorageKey()
+	}
+	if v := i.ContentStorageKey; v != nil {
+		m.SetContentStorageKey(*v)
+	}
+	if i.ClearContentSavedAt {
+		m.ClearContentSavedAt()
+	}
+	if v := i.ContentSavedAt; v != nil {
+		m.SetContentSavedAt(*v)
 	}
 	if i.ClearChannel {
 		m.ClearChannel()

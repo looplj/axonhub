@@ -656,6 +656,11 @@ func (_q *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, channel.FieldAutoSyncSupportedModels)
 				fieldSeen[channel.FieldAutoSyncSupportedModels] = struct{}{}
 			}
+		case "autoSyncModelPattern":
+			if _, ok := fieldSeen[channel.FieldAutoSyncModelPattern]; !ok {
+				selectedFields = append(selectedFields, channel.FieldAutoSyncModelPattern)
+				fieldSeen[channel.FieldAutoSyncModelPattern] = struct{}{}
+			}
 		case "tags":
 			if _, ok := fieldSeen[channel.FieldTags]; !ok {
 				selectedFields = append(selectedFields, channel.FieldTags)
@@ -3404,6 +3409,26 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 			if _, ok := fieldSeen[request.FieldMetricsFirstTokenLatencyMs]; !ok {
 				selectedFields = append(selectedFields, request.FieldMetricsFirstTokenLatencyMs)
 				fieldSeen[request.FieldMetricsFirstTokenLatencyMs] = struct{}{}
+			}
+		case "contentSaved":
+			if _, ok := fieldSeen[request.FieldContentSaved]; !ok {
+				selectedFields = append(selectedFields, request.FieldContentSaved)
+				fieldSeen[request.FieldContentSaved] = struct{}{}
+			}
+		case "contentStorageID":
+			if _, ok := fieldSeen[request.FieldContentStorageID]; !ok {
+				selectedFields = append(selectedFields, request.FieldContentStorageID)
+				fieldSeen[request.FieldContentStorageID] = struct{}{}
+			}
+		case "contentStorageKey":
+			if _, ok := fieldSeen[request.FieldContentStorageKey]; !ok {
+				selectedFields = append(selectedFields, request.FieldContentStorageKey)
+				fieldSeen[request.FieldContentStorageKey] = struct{}{}
+			}
+		case "contentSavedAt":
+			if _, ok := fieldSeen[request.FieldContentSavedAt]; !ok {
+				selectedFields = append(selectedFields, request.FieldContentSavedAt)
+				fieldSeen[request.FieldContentSavedAt] = struct{}{}
 			}
 		case "id":
 		case "__typename":

@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/gql"
 	"github.com/looplj/axonhub/internal/server/gql/openapi"
 	"github.com/looplj/axonhub/internal/server/middleware"
+	"github.com/looplj/axonhub/internal/server/video_storage"
 	"github.com/looplj/axonhub/internal/tracing"
 )
 
@@ -90,6 +91,7 @@ func Run(opts ...fx.Option) {
 			dependencies.Module,
 			biz.Module,
 			backup.Module,
+			video_storage.Module,
 			api.Module,
 			fx.Invoke(func(cfg log.Config) {
 				log.SetGlobalConfig(cfg)

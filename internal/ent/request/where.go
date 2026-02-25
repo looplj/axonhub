@@ -125,6 +125,26 @@ func MetricsFirstTokenLatencyMs(v int64) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldMetricsFirstTokenLatencyMs, v))
 }
 
+// ContentSaved applies equality check predicate on the "content_saved" field. It's identical to ContentSavedEQ.
+func ContentSaved(v bool) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldContentSaved, v))
+}
+
+// ContentStorageID applies equality check predicate on the "content_storage_id" field. It's identical to ContentStorageIDEQ.
+func ContentStorageID(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldContentStorageID, v))
+}
+
+// ContentStorageKey applies equality check predicate on the "content_storage_key" field. It's identical to ContentStorageKeyEQ.
+func ContentStorageKey(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldContentStorageKey, v))
+}
+
+// ContentSavedAt applies equality check predicate on the "content_saved_at" field. It's identical to ContentSavedAtEQ.
+func ContentSavedAt(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldContentSavedAt, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldCreatedAt, v))
@@ -793,6 +813,191 @@ func MetricsFirstTokenLatencyMsIsNil() predicate.Request {
 // MetricsFirstTokenLatencyMsNotNil applies the NotNil predicate on the "metrics_first_token_latency_ms" field.
 func MetricsFirstTokenLatencyMsNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldMetricsFirstTokenLatencyMs))
+}
+
+// ContentSavedEQ applies the EQ predicate on the "content_saved" field.
+func ContentSavedEQ(v bool) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldContentSaved, v))
+}
+
+// ContentSavedNEQ applies the NEQ predicate on the "content_saved" field.
+func ContentSavedNEQ(v bool) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldContentSaved, v))
+}
+
+// ContentStorageIDEQ applies the EQ predicate on the "content_storage_id" field.
+func ContentStorageIDEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldContentStorageID, v))
+}
+
+// ContentStorageIDNEQ applies the NEQ predicate on the "content_storage_id" field.
+func ContentStorageIDNEQ(v int) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldContentStorageID, v))
+}
+
+// ContentStorageIDIn applies the In predicate on the "content_storage_id" field.
+func ContentStorageIDIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldContentStorageID, vs...))
+}
+
+// ContentStorageIDNotIn applies the NotIn predicate on the "content_storage_id" field.
+func ContentStorageIDNotIn(vs ...int) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldContentStorageID, vs...))
+}
+
+// ContentStorageIDGT applies the GT predicate on the "content_storage_id" field.
+func ContentStorageIDGT(v int) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldContentStorageID, v))
+}
+
+// ContentStorageIDGTE applies the GTE predicate on the "content_storage_id" field.
+func ContentStorageIDGTE(v int) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldContentStorageID, v))
+}
+
+// ContentStorageIDLT applies the LT predicate on the "content_storage_id" field.
+func ContentStorageIDLT(v int) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldContentStorageID, v))
+}
+
+// ContentStorageIDLTE applies the LTE predicate on the "content_storage_id" field.
+func ContentStorageIDLTE(v int) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldContentStorageID, v))
+}
+
+// ContentStorageIDIsNil applies the IsNil predicate on the "content_storage_id" field.
+func ContentStorageIDIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldContentStorageID))
+}
+
+// ContentStorageIDNotNil applies the NotNil predicate on the "content_storage_id" field.
+func ContentStorageIDNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldContentStorageID))
+}
+
+// ContentStorageKeyEQ applies the EQ predicate on the "content_storage_key" field.
+func ContentStorageKeyEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyNEQ applies the NEQ predicate on the "content_storage_key" field.
+func ContentStorageKeyNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyIn applies the In predicate on the "content_storage_key" field.
+func ContentStorageKeyIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldContentStorageKey, vs...))
+}
+
+// ContentStorageKeyNotIn applies the NotIn predicate on the "content_storage_key" field.
+func ContentStorageKeyNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldContentStorageKey, vs...))
+}
+
+// ContentStorageKeyGT applies the GT predicate on the "content_storage_key" field.
+func ContentStorageKeyGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyGTE applies the GTE predicate on the "content_storage_key" field.
+func ContentStorageKeyGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyLT applies the LT predicate on the "content_storage_key" field.
+func ContentStorageKeyLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyLTE applies the LTE predicate on the "content_storage_key" field.
+func ContentStorageKeyLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyContains applies the Contains predicate on the "content_storage_key" field.
+func ContentStorageKeyContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyHasPrefix applies the HasPrefix predicate on the "content_storage_key" field.
+func ContentStorageKeyHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyHasSuffix applies the HasSuffix predicate on the "content_storage_key" field.
+func ContentStorageKeyHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyIsNil applies the IsNil predicate on the "content_storage_key" field.
+func ContentStorageKeyIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldContentStorageKey))
+}
+
+// ContentStorageKeyNotNil applies the NotNil predicate on the "content_storage_key" field.
+func ContentStorageKeyNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldContentStorageKey))
+}
+
+// ContentStorageKeyEqualFold applies the EqualFold predicate on the "content_storage_key" field.
+func ContentStorageKeyEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldContentStorageKey, v))
+}
+
+// ContentStorageKeyContainsFold applies the ContainsFold predicate on the "content_storage_key" field.
+func ContentStorageKeyContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldContentStorageKey, v))
+}
+
+// ContentSavedAtEQ applies the EQ predicate on the "content_saved_at" field.
+func ContentSavedAtEQ(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldContentSavedAt, v))
+}
+
+// ContentSavedAtNEQ applies the NEQ predicate on the "content_saved_at" field.
+func ContentSavedAtNEQ(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldContentSavedAt, v))
+}
+
+// ContentSavedAtIn applies the In predicate on the "content_saved_at" field.
+func ContentSavedAtIn(vs ...time.Time) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldContentSavedAt, vs...))
+}
+
+// ContentSavedAtNotIn applies the NotIn predicate on the "content_saved_at" field.
+func ContentSavedAtNotIn(vs ...time.Time) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldContentSavedAt, vs...))
+}
+
+// ContentSavedAtGT applies the GT predicate on the "content_saved_at" field.
+func ContentSavedAtGT(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldContentSavedAt, v))
+}
+
+// ContentSavedAtGTE applies the GTE predicate on the "content_saved_at" field.
+func ContentSavedAtGTE(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldContentSavedAt, v))
+}
+
+// ContentSavedAtLT applies the LT predicate on the "content_saved_at" field.
+func ContentSavedAtLT(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldContentSavedAt, v))
+}
+
+// ContentSavedAtLTE applies the LTE predicate on the "content_saved_at" field.
+func ContentSavedAtLTE(v time.Time) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldContentSavedAt, v))
+}
+
+// ContentSavedAtIsNil applies the IsNil predicate on the "content_saved_at" field.
+func ContentSavedAtIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldContentSavedAt))
+}
+
+// ContentSavedAtNotNil applies the NotNil predicate on the "content_saved_at" field.
+func ContentSavedAtNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldContentSavedAt))
 }
 
 // HasAPIKey applies the HasEdge predicate on the "api_key" edge.

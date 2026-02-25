@@ -58,6 +58,14 @@ const (
 	FieldMetricsLatencyMs = "metrics_latency_ms"
 	// FieldMetricsFirstTokenLatencyMs holds the string denoting the metrics_first_token_latency_ms field in the database.
 	FieldMetricsFirstTokenLatencyMs = "metrics_first_token_latency_ms"
+	// FieldContentSaved holds the string denoting the content_saved field in the database.
+	FieldContentSaved = "content_saved"
+	// FieldContentStorageID holds the string denoting the content_storage_id field in the database.
+	FieldContentStorageID = "content_storage_id"
+	// FieldContentStorageKey holds the string denoting the content_storage_key field in the database.
+	FieldContentStorageKey = "content_storage_key"
+	// FieldContentSavedAt holds the string denoting the content_saved_at field in the database.
+	FieldContentSavedAt = "content_saved_at"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
 	EdgeAPIKey = "api_key"
 	// EdgeProject holds the string denoting the project edge name in mutations.
@@ -148,6 +156,10 @@ var Columns = []string{
 	FieldClientIP,
 	FieldMetricsLatencyMs,
 	FieldMetricsFirstTokenLatencyMs,
+	FieldContentSaved,
+	FieldContentStorageID,
+	FieldContentStorageKey,
+	FieldContentSavedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -182,6 +194,8 @@ var (
 	DefaultStream bool
 	// DefaultClientIP holds the default value on creation for the "client_ip" field.
 	DefaultClientIP string
+	// DefaultContentSaved holds the default value on creation for the "content_saved" field.
+	DefaultContentSaved bool
 )
 
 // Source defines the type for the "source" enum field.
@@ -323,6 +337,26 @@ func ByMetricsLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 // ByMetricsFirstTokenLatencyMs orders the results by the metrics_first_token_latency_ms field.
 func ByMetricsFirstTokenLatencyMs(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMetricsFirstTokenLatencyMs, opts...).ToFunc()
+}
+
+// ByContentSaved orders the results by the content_saved field.
+func ByContentSaved(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldContentSaved, opts...).ToFunc()
+}
+
+// ByContentStorageID orders the results by the content_storage_id field.
+func ByContentStorageID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldContentStorageID, opts...).ToFunc()
+}
+
+// ByContentStorageKey orders the results by the content_storage_key field.
+func ByContentStorageKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldContentStorageKey, opts...).ToFunc()
+}
+
+// ByContentSavedAt orders the results by the content_saved_at field.
+func ByContentSavedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldContentSavedAt, opts...).ToFunc()
 }
 
 // ByAPIKeyField orders the results by api_key field.

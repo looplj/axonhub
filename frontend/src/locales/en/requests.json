@@ -48,6 +48,7 @@
   "requests.actions.viewDetails": "View Details",
   "requests.actions.copy": "Copy",
   "requests.actions.download": "Download",
+  "requests.actions.downloadVideo": "Download Video",
   "requests.actions.copyCurl": "cURL",
   "requests.actions.curlCopied": "cURL command copied",
   "requests.filters.filterId": "Filter by ID...",

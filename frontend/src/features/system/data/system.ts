@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { toast } from 'sonner';
+import { getTokenFromStorage } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import { getTokenFromStorage } from '@/stores/authStore';
 
 // GraphQL queries and mutations
 const SYSTEM_VERSION_QUERY = `
@@ -152,6 +152,20 @@ export interface SystemGeneralSettings {
 export interface UpdateSystemGeneralSettingsInput {
   currencyCode?: string;
   timezone?: string;
+}
+
+export interface VideoStorageSettings {
+  enabled: boolean;
+  dataStorageID: number;
+  scanIntervalMinutes: number;
+  scanLimit: number;
+}
+
+export interface UpdateVideoStorageSettingsInput {
+  enabled?: boolean;
+  dataStorageID?: number;
+  scanIntervalMinutes?: number;
+  scanLimit?: number;
 }
 
 export interface StoragePolicy {
@@ -420,7 +434,7 @@ export function useOnboardingInfo() {
       try {
         const data = await graphqlRequest<{ onboardingInfo: OnboardingInfo | null }>(ONBOARDING_INFO_QUERY);
         return data.onboardingInfo;
-      } catch (error) {
+      } catch (_error) {
         return {
           onboarded: true,
           completedAt: new Date().toISOString(),
@@ -554,6 +568,23 @@ const SYSTEM_GENERAL_SETTINGS_QUERY = `
 const UPDATE_SYSTEM_GENERAL_SETTINGS_MUTATION = `
   mutation UpdateSystemGeneralSettings($input: UpdateSystemGeneralSettingsInput!) {
     updateSystemGeneralSettings(input: $input)
+  }
+`;
+
+const VIDEO_STORAGE_SETTINGS_QUERY = `
+  query VideoStorageSettings {
+    videoStorageSettings {
+      enabled
+      dataStorageID
+      scanIntervalMinutes
+      scanLimit
+    }
+  }
+`;
+
+const UPDATE_VIDEO_STORAGE_SETTINGS_MUTATION = `
+  mutation UpdateVideoStorageSettings($input: UpdateVideoStorageSettingsInput!) {
+    updateVideoStorageSettings(input: $input)
   }
 `;
 
@@ -693,6 +724,41 @@ export function useUpdateGeneralSettings() {
   });
 }
 
+export function useVideoStorageSettings() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['videoStorageSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ videoStorageSettings: VideoStorageSettings }>(VIDEO_STORAGE_SETTINGS_QUERY);
+        return data.videoStorageSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateVideoStorageSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateVideoStorageSettingsInput) => {
+      const data = await graphqlRequest<{ updateVideoStorageSettings: boolean }>(UPDATE_VIDEO_STORAGE_SETTINGS_MUTATION, { input });
+      return data.updateVideoStorageSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['videoStorageSettings'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
 // Backup and Restore
 const BACKUP_MUTATION = `
   mutation Backup($input: BackupOptionsInput!) {
@@ -777,10 +843,13 @@ export function useRestore() {
   return useMutation({
     mutationFn: async ({ file, input }: { file: File; input: RestoreOptionsInput }) => {
       const formData = new FormData();
-      formData.append('operations', JSON.stringify({
-        query: RESTORE_MUTATION,
-        variables: { file: null, input }
-      }));
+      formData.append(
+        'operations',
+        JSON.stringify({
+          query: RESTORE_MUTATION,
+          variables: { file: null, input },
+        })
+      );
       formData.append('map', JSON.stringify({ '0': ['variables.file'] }));
       formData.append('0', file);
 
@@ -788,7 +857,7 @@ export function useRestore() {
       const response = await fetch('/admin/graphql', {
         method: 'POST',
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          Authorization: token ? `Bearer ${token}` : '',
         },
         body: formData,
       });
@@ -912,9 +981,7 @@ export function useTriggerAutoBackup() {
 
   return useMutation({
     mutationFn: async () => {
-      const data = await graphqlRequest<{ triggerAutoBackup: { success: boolean; message?: string } }>(
-        TRIGGER_AUTO_BACKUP_MUTATION
-      );
+      const data = await graphqlRequest<{ triggerAutoBackup: { success: boolean; message?: string } }>(TRIGGER_AUTO_BACKUP_MUTATION);
       return data.triggerAutoBackup;
     },
     onSuccess: (data) => {

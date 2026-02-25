@@ -664,6 +664,9 @@ type Mutation {
   applyChannelOverrideTemplate(
     input: ApplyChannelOverrideTemplateInput!
   ): ApplyChannelOverrideTemplatePayload!
+
+  # Trigger immediate model sync for a channel
+  syncChannelModels(channelID: ID!): Boolean!
 }
 
 input QueryChannelInput {

@@ -262,6 +262,62 @@ func (_c *RequestCreate) SetNillableMetricsFirstTokenLatencyMs(v *int64) *Reques
 	return _c
 }
 
+// SetContentSaved sets the "content_saved" field.
+func (_c *RequestCreate) SetContentSaved(v bool) *RequestCreate {
+	_c.mutation.SetContentSaved(v)
+	return _c
+}
+
+// SetNillableContentSaved sets the "content_saved" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableContentSaved(v *bool) *RequestCreate {
+	if v != nil {
+		_c.SetContentSaved(*v)
+	}
+	return _c
+}
+
+// SetContentStorageID sets the "content_storage_id" field.
+func (_c *RequestCreate) SetContentStorageID(v int) *RequestCreate {
+	_c.mutation.SetContentStorageID(v)
+	return _c
+}
+
+// SetNillableContentStorageID sets the "content_storage_id" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableContentStorageID(v *int) *RequestCreate {
+	if v != nil {
+		_c.SetContentStorageID(*v)
+	}
+	return _c
+}
+
+// SetContentStorageKey sets the "content_storage_key" field.
+func (_c *RequestCreate) SetContentStorageKey(v string) *RequestCreate {
+	_c.mutation.SetContentStorageKey(v)
+	return _c
+}
+
+// SetNillableContentStorageKey sets the "content_storage_key" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableContentStorageKey(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetContentStorageKey(*v)
+	}
+	return _c
+}
+
+// SetContentSavedAt sets the "content_saved_at" field.
+func (_c *RequestCreate) SetContentSavedAt(v time.Time) *RequestCreate {
+	_c.mutation.SetContentSavedAt(v)
+	return _c
+}
+
+// SetNillableContentSavedAt sets the "content_saved_at" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableContentSavedAt(v *time.Time) *RequestCreate {
+	if v != nil {
+		_c.SetContentSavedAt(*v)
+	}
+	return _c
+}
+
 // SetAPIKey sets the "api_key" edge to the APIKey entity.
 func (_c *RequestCreate) SetAPIKey(v *APIKey) *RequestCreate {
 	return _c.SetAPIKeyID(v.ID)
@@ -388,6 +444,10 @@ func (_c *RequestCreate) defaults() error {
 		v := request.DefaultClientIP
 		_c.mutation.SetClientIP(v)
 	}
+	if _, ok := _c.mutation.ContentSaved(); !ok {
+		v := request.DefaultContentSaved
+		_c.mutation.SetContentSaved(v)
+	}
 	return nil
 }
 
@@ -432,6 +492,9 @@ func (_c *RequestCreate) check() error {
 	}
 	if _, ok := _c.mutation.ClientIP(); !ok {
 		return &ValidationError{Name: "client_ip", err: errors.New(`ent: missing required field "Request.client_ip"`)}
+	}
+	if _, ok := _c.mutation.ContentSaved(); !ok {
+		return &ValidationError{Name: "content_saved", err: errors.New(`ent: missing required field "Request.content_saved"`)}
 	}
 	if len(_c.mutation.ProjectIDs()) == 0 {
 		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Request.project"`)}
@@ -522,6 +585,22 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.MetricsFirstTokenLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
 		_node.MetricsFirstTokenLatencyMs = &value
+	}
+	if value, ok := _c.mutation.ContentSaved(); ok {
+		_spec.SetField(request.FieldContentSaved, field.TypeBool, value)
+		_node.ContentSaved = value
+	}
+	if value, ok := _c.mutation.ContentStorageID(); ok {
+		_spec.SetField(request.FieldContentStorageID, field.TypeInt, value)
+		_node.ContentStorageID = &value
+	}
+	if value, ok := _c.mutation.ContentStorageKey(); ok {
+		_spec.SetField(request.FieldContentStorageKey, field.TypeString, value)
+		_node.ContentStorageKey = &value
+	}
+	if value, ok := _c.mutation.ContentSavedAt(); ok {
+		_spec.SetField(request.FieldContentSavedAt, field.TypeTime, value)
+		_node.ContentSavedAt = &value
 	}
 	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -854,6 +933,78 @@ func (u *RequestUpsert) ClearMetricsFirstTokenLatencyMs() *RequestUpsert {
 	return u
 }
 
+// SetContentSaved sets the "content_saved" field.
+func (u *RequestUpsert) SetContentSaved(v bool) *RequestUpsert {
+	u.Set(request.FieldContentSaved, v)
+	return u
+}
+
+// UpdateContentSaved sets the "content_saved" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateContentSaved() *RequestUpsert {
+	u.SetExcluded(request.FieldContentSaved)
+	return u
+}
+
+// SetContentStorageID sets the "content_storage_id" field.
+func (u *RequestUpsert) SetContentStorageID(v int) *RequestUpsert {
+	u.Set(request.FieldContentStorageID, v)
+	return u
+}
+
+// UpdateContentStorageID sets the "content_storage_id" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateContentStorageID() *RequestUpsert {
+	u.SetExcluded(request.FieldContentStorageID)
+	return u
+}
+
+// AddContentStorageID adds v to the "content_storage_id" field.
+func (u *RequestUpsert) AddContentStorageID(v int) *RequestUpsert {
+	u.Add(request.FieldContentStorageID, v)
+	return u
+}
+
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (u *RequestUpsert) ClearContentStorageID() *RequestUpsert {
+	u.SetNull(request.FieldContentStorageID)
+	return u
+}
+
+// SetContentStorageKey sets the "content_storage_key" field.
+func (u *RequestUpsert) SetContentStorageKey(v string) *RequestUpsert {
+	u.Set(request.FieldContentStorageKey, v)
+	return u
+}
+
+// UpdateContentStorageKey sets the "content_storage_key" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateContentStorageKey() *RequestUpsert {
+	u.SetExcluded(request.FieldContentStorageKey)
+	return u
+}
+
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (u *RequestUpsert) ClearContentStorageKey() *RequestUpsert {
+	u.SetNull(request.FieldContentStorageKey)
+	return u
+}
+
+// SetContentSavedAt sets the "content_saved_at" field.
+func (u *RequestUpsert) SetContentSavedAt(v time.Time) *RequestUpsert {
+	u.Set(request.FieldContentSavedAt, v)
+	return u
+}
+
+// UpdateContentSavedAt sets the "content_saved_at" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateContentSavedAt() *RequestUpsert {
+	u.SetExcluded(request.FieldContentSavedAt)
+	return u
+}
+
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (u *RequestUpsert) ClearContentSavedAt() *RequestUpsert {
+	u.SetNull(request.FieldContentSavedAt)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -1115,6 +1266,90 @@ func (u *RequestUpsertOne) UpdateMetricsFirstTokenLatencyMs() *RequestUpsertOne 
 func (u *RequestUpsertOne) ClearMetricsFirstTokenLatencyMs() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearMetricsFirstTokenLatencyMs()
+	})
+}
+
+// SetContentSaved sets the "content_saved" field.
+func (u *RequestUpsertOne) SetContentSaved(v bool) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetContentSaved(v)
+	})
+}
+
+// UpdateContentSaved sets the "content_saved" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateContentSaved() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateContentSaved()
+	})
+}
+
+// SetContentStorageID sets the "content_storage_id" field.
+func (u *RequestUpsertOne) SetContentStorageID(v int) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetContentStorageID(v)
+	})
+}
+
+// AddContentStorageID adds v to the "content_storage_id" field.
+func (u *RequestUpsertOne) AddContentStorageID(v int) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddContentStorageID(v)
+	})
+}
+
+// UpdateContentStorageID sets the "content_storage_id" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateContentStorageID() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateContentStorageID()
+	})
+}
+
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (u *RequestUpsertOne) ClearContentStorageID() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearContentStorageID()
+	})
+}
+
+// SetContentStorageKey sets the "content_storage_key" field.
+func (u *RequestUpsertOne) SetContentStorageKey(v string) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetContentStorageKey(v)
+	})
+}
+
+// UpdateContentStorageKey sets the "content_storage_key" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateContentStorageKey() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateContentStorageKey()
+	})
+}
+
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (u *RequestUpsertOne) ClearContentStorageKey() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearContentStorageKey()
+	})
+}
+
+// SetContentSavedAt sets the "content_saved_at" field.
+func (u *RequestUpsertOne) SetContentSavedAt(v time.Time) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetContentSavedAt(v)
+	})
+}
+
+// UpdateContentSavedAt sets the "content_saved_at" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateContentSavedAt() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateContentSavedAt()
+	})
+}
+
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (u *RequestUpsertOne) ClearContentSavedAt() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearContentSavedAt()
 	})
 }
 
@@ -1545,6 +1780,90 @@ func (u *RequestUpsertBulk) UpdateMetricsFirstTokenLatencyMs() *RequestUpsertBul
 func (u *RequestUpsertBulk) ClearMetricsFirstTokenLatencyMs() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearMetricsFirstTokenLatencyMs()
+	})
+}
+
+// SetContentSaved sets the "content_saved" field.
+func (u *RequestUpsertBulk) SetContentSaved(v bool) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetContentSaved(v)
+	})
+}
+
+// UpdateContentSaved sets the "content_saved" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateContentSaved() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateContentSaved()
+	})
+}
+
+// SetContentStorageID sets the "content_storage_id" field.
+func (u *RequestUpsertBulk) SetContentStorageID(v int) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetContentStorageID(v)
+	})
+}
+
+// AddContentStorageID adds v to the "content_storage_id" field.
+func (u *RequestUpsertBulk) AddContentStorageID(v int) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddContentStorageID(v)
+	})
+}
+
+// UpdateContentStorageID sets the "content_storage_id" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateContentStorageID() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateContentStorageID()
+	})
+}
+
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (u *RequestUpsertBulk) ClearContentStorageID() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearContentStorageID()
+	})
+}
+
+// SetContentStorageKey sets the "content_storage_key" field.
+func (u *RequestUpsertBulk) SetContentStorageKey(v string) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetContentStorageKey(v)
+	})
+}
+
+// UpdateContentStorageKey sets the "content_storage_key" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateContentStorageKey() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateContentStorageKey()
+	})
+}
+
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (u *RequestUpsertBulk) ClearContentStorageKey() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearContentStorageKey()
+	})
+}
+
+// SetContentSavedAt sets the "content_saved_at" field.
+func (u *RequestUpsertBulk) SetContentSavedAt(v time.Time) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetContentSavedAt(v)
+	})
+}
+
+// UpdateContentSavedAt sets the "content_saved_at" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateContentSavedAt() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateContentSavedAt()
+	})
+}
+
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (u *RequestUpsertBulk) ClearContentSavedAt() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearContentSavedAt()
 	})
 }
 

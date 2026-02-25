@@ -180,6 +180,20 @@ input UpdateSystemGeneralSettingsInput {
   timezone: String
 }
 
+type VideoStorageSettings {
+  enabled: Boolean!
+  dataStorageID: Int!
+  scanIntervalMinutes: Int!
+  scanLimit: Int!
+}
+
+input UpdateVideoStorageSettingsInput {
+  enabled: Boolean
+  dataStorageID: Int
+  scanIntervalMinutes: Int
+  scanLimit: Int
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
@@ -191,6 +205,7 @@ extend type Mutation {
   completeAutoDisableChannelOnboarding(input: CompleteAutoDisableChannelOnboardingInput!): Boolean!
   updateSystemChannelSettings(input: UpdateSystemChannelSettingsInput!): Boolean!
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
+  updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
 }
 
@@ -222,4 +237,5 @@ extend type Query {
   checkForUpdate: VersionCheck!
   systemChannelSettings: SystemChannelSettings!
   systemGeneralSettings: SystemGeneralSettings!
+  videoStorageSettings: VideoStorageSettings!
 }

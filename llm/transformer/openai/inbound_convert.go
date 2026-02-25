@@ -95,7 +95,8 @@ func (r *Request) ToLLMRequest() *llm.Request {
 	// Convert ResponseFormat
 	if r.ResponseFormat != nil {
 		req.ResponseFormat = &llm.ResponseFormat{
-			Type: r.ResponseFormat.Type,
+			Type:       r.ResponseFormat.Type,
+			JSONSchema: r.ResponseFormat.JSONSchema,
 		}
 	}
 

@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -79,6 +80,10 @@ const (
 	// SystemKeyAutoBackupSettings is the key used to store auto backup configuration.
 	// The value is JSON-encoded AutoBackupSettings struct.
 	SystemKeyAutoBackupSettings = "system_auto_backup_settings"
+
+	// SystemKeyVideoStorageSettings is the key used to store video storage settings.
+	// The value is JSON-encoded VideoStorageSettings struct.
+	SystemKeyVideoStorageSettings = "system_video_storage_settings"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -86,6 +91,19 @@ type SystemGeneralSettings struct {
 	// CurrencyCode is the code used for currency display (e.g., USD, RMB).
 	CurrencyCode string `json:"currency_code"`
 	Timezone     string `json:"timezone"`
+}
+
+// VideoStorageSettings represents system settings for persisting generated videos.
+// It is designed to store video artifacts outside the database (fs/s3/gcs/webdav).
+type VideoStorageSettings struct {
+	// Enabled controls whether to persist generated videos to external storage.
+	Enabled bool `json:"enabled"`
+	// DataStorageID is the target data storage ID for saving video files.
+	DataStorageID int `json:"data_storage_id"`
+	// ScanIntervalMinutes defines how often to scan for completed video requests.
+	ScanIntervalMinutes int `json:"scan_interval_minutes"`
+	// ScanLimit is the max number of requests processed per scan.
+	ScanLimit int `json:"scan_limit"`
 }
 
 // BackupFrequency represents how often automatic backups should run.
@@ -911,6 +929,69 @@ func (s *SystemService) SetAutoBackupSettings(ctx context.Context, settings Auto
 	err = s.setSystemValue(ctx, SystemKeyAutoBackupSettings, string(jsonBytes))
 	if err != nil {
 		return fmt.Errorf("failed to set auto backup settings: %w", err)
+	}
+
+	return nil
+}
+
+// VideoStorageSettings retrieves the video storage settings configuration.
+func (s *SystemService) VideoStorageSettings(ctx context.Context) (*VideoStorageSettings, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyVideoStorageSettings)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultVideoStorageSettings), nil
+		}
+
+		return nil, fmt.Errorf("failed to get video storage settings: %w", err)
+	}
+
+	var settings VideoStorageSettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal video storage settings: %w", err)
+	}
+
+	if settings.ScanIntervalMinutes <= 0 {
+		settings.ScanIntervalMinutes = defaultVideoStorageSettings.ScanIntervalMinutes
+	}
+	if settings.ScanLimit <= 0 {
+		settings.ScanLimit = defaultVideoStorageSettings.ScanLimit
+	}
+
+	return &settings, nil
+}
+
+// SetVideoStorageSettings sets the video storage settings configuration.
+func (s *SystemService) SetVideoStorageSettings(ctx context.Context, settings VideoStorageSettings) error {
+	if settings.ScanIntervalMinutes <= 0 {
+		settings.ScanIntervalMinutes = defaultVideoStorageSettings.ScanIntervalMinutes
+	}
+	if settings.ScanLimit <= 0 {
+		settings.ScanLimit = defaultVideoStorageSettings.ScanLimit
+	}
+
+	if settings.Enabled {
+		if settings.DataStorageID == 0 {
+			return fmt.Errorf("data_storage_id is required when video storage is enabled")
+		}
+
+		ds, err := s.entFromContext(ctx).DataStorage.Get(ctx, settings.DataStorageID)
+		if err != nil {
+			return fmt.Errorf("failed to get data storage: %w", err)
+		}
+
+		if ds.Primary || ds.Type == datastorage.TypeDatabase {
+			return fmt.Errorf("video storage must use a non-database data storage")
+		}
+	}
+
+	jsonBytes, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal video storage settings: %w", err)
+	}
+
+	err = s.setSystemValue(ctx, SystemKeyVideoStorageSettings, string(jsonBytes))
+	if err != nil {
+		return fmt.Errorf("failed to set video storage settings: %w", err)
 	}
 
 	return nil
