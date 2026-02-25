@@ -1008,7 +1008,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return oauthApiKey;
   };
-#BJ|
+
   const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type');
     const baseURL = form.getValues('baseURL');
@@ -1066,19 +1066,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return !!baseURL;
     }
 
-    #VT|    if (isCopilotType) {
-#BT|      const oauthApiKey = form.watch('credentials.apiKey');
-#WR|      const hasOAuthToken = !!parseOauthToken(oauthApiKey);
-#HM|      return !!baseURL && hasOAuthToken;
-#QZ|    }
+    if (isCopilotType) {
+      const oauthApiKey = form.watch('credentials.apiKey');
+      const hasOAuthToken = !!parseOauthToken(oauthApiKey);
+      return !!baseURL && hasOAuthToken;
+    }
 
     if (isEdit) {
       return !!baseURL;
     }
 
     return !!baseURL && hasApiKey;
-
-
+  };
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
   const quickModels = useMemo(() => {

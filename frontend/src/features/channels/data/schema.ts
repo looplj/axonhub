@@ -389,7 +389,6 @@ export const createChannelInputSchema = z
     if (isOAuthType && hasApiKey) {
       validateOAuthCredentials(data.type, data.credentials.apiKey, ctx);
     }
-  }
     // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
     if (data.type === 'anthropic_gcp') {
       const gcp = data.credentials?.gcp;
@@ -462,7 +461,7 @@ export const updateChannelInputSchema = z
     if (isOAuthType || isOAuthCredentials) {
       validateOAuthCredentials(effectiveType, data.credentials?.apiKey, ctx);
     }
-#QP|
+
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）
     if (data.type === 'anthropic_gcp' && data.credentials) {
       const gcp = data.credentials.gcp;
