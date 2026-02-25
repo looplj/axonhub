@@ -71,10 +71,10 @@ type Channel struct {
 type ChannelServiceParams struct {
 	fx.In
 
-	CacheConfig            xcache.Config
-	Executor               executors.ScheduledExecutor
+	CacheConfig           xcache.Config
+	Executor              executors.ScheduledExecutor
 	Ent                   *ent.Client
-	SystemService          *SystemService
+	SystemService         *SystemService
 	CopilotTokenExchanger *CopilotTokenExchanger
 }
 
@@ -83,11 +83,11 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		Executors:          params.Executor,
-		SystemService:      params.SystemService,
-		channelPerfMetrics: make(map[int]*channelMetrics),
-		channelErrorCounts: make(map[int]map[int]int),
-		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
+		Executors:             params.Executor,
+		SystemService:         params.SystemService,
+		channelPerfMetrics:    make(map[int]*channelMetrics),
+		channelErrorCounts:    make(map[int]map[int]int),
+		apiKeyErrorCounts:     make(map[int]map[string]map[int]int),
 		perfCh:                make(chan *PerformanceRecord, 1024),
 		copilotTokenExchanger: params.CopilotTokenExchanger,
 	}

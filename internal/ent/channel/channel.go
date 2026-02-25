@@ -235,7 +235,7 @@ const (
 	TypeCerebras          Type = "cerebras"
 	TypeAntigravity       Type = "antigravity"
 	TypeNanogpt           Type = "nanogpt"
-	TypeGithubCopilot Type = "github_copilot"
+	TypeGithubCopilot     Type = "github_copilot"
 )
 
 func (_type Type) String() string {

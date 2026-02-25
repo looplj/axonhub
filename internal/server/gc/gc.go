@@ -207,7 +207,7 @@ func (w *Worker) runCleanup(ctx context.Context) {
 			log.Int("cleanup_days", 3))
 	}
 
-// Run VACUUM after cleanup to reclaim storage space (SQLite and PostgreSQL)
+	// Run VACUUM after cleanup to reclaim storage space (SQLite and PostgreSQL)
 	if w.Config.VacuumEnabled {
 		if err := w.runVacuum(ctx); err != nil {
 			log.Error(ctx, "Failed to run VACUUM after cleanup",

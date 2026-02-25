@@ -266,7 +266,6 @@ func (handlers *OpenAIHandlers) DeleteVideo(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-
 type Capabilities struct {
 	Vision    bool `json:"vision"`
 	ToolCall  bool `json:"tool_call"`
