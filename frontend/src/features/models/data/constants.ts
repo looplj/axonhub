@@ -12,7 +12,6 @@ export const DEVELOPER_IDS = [
   'mistral',
   'xai',
   'bytedance',
-  'github-copilot', // OAuth provider - models use normalized naming from PublicProviderConf
 ];
 
 export const DEVELOPER_ICONS: Record<string, string> = {
@@ -29,5 +28,4 @@ export const DEVELOPER_ICONS: Record<string, string> = {
   longcat: 'LongCat',
   mistral: 'Mistral',
   bytedance: 'Doubao',
-  'github-copilot': 'Github',
 };
