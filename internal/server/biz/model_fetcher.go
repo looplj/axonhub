@@ -79,16 +79,13 @@ func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.T
 // copilotModelsCacheDuration is the duration to cache Copilot models.
 const copilotModelsCacheDuration = 1 * time.Hour
 
-// providerConfResponse represents the structure of the PublicProviderConf JSON.
-type providerConfResponse struct {
-	Providers map[string]struct {
-		Models []modelType `json:"models"`
-	} `json:"providers"`
-}
-
-// modelType is the type for individual models in providerConfResponse.
-type modelType struct {
-	ID string `json:"id"`
+// copilotProviderConfResponse represents the structure of the GitHub Copilot provider conf JSON.
+// The JSON structure is different from other providers - models are at the root level.
+type copilotProviderConfResponse struct {
+	ID     string `json:"id"`
+	Models []struct {
+		ID string `json:"id"`
+	} `json:"models"`
 }
 
 // fetchCopilotModels fetches GitHub Copilot models from PublicProviderConf with caching.
@@ -168,24 +165,22 @@ func (f *ModelFetcher) fetchCopilotModelsFromSource(ctx context.Context) ([]Mode
 		}
 	}
 
-	var conf providerConfResponse
+	var conf copilotProviderConfResponse
 	if err := json.Unmarshal(resp.Body, &conf); err != nil {
 		return nil, fmt.Errorf("failed to parse provider conf: %w", err)
 	}
 
-	provider, ok := conf.Providers[copilot.ProviderID]
-	if !ok {
-		return nil, fmt.Errorf("provider %q not found in providerConfResponse", copilot.ProviderID)
+	if conf.ID == "" {
+		return nil, fmt.Errorf("provider ID not found in response")
 	}
 
-	// Use lo.FilterMap to build models slice, filtering out empty IDs
-	models := lo.FilterMap(provider.Models, func(m modelType, _ int) (ModelIdentify, bool) {
+	// Build models slice, filtering out empty IDs
+	models := make([]ModelIdentify, 0, len(conf.Models))
+	for _, m := range conf.Models {
 		if m.ID != "" {
-			return ModelIdentify(m), true
+			models = append(models, ModelIdentify{ID: m.ID})
 		}
-
-		return ModelIdentify{}, false
-	})
+	}
 
 	return models, nil
 }
