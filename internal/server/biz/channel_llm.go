@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -600,6 +601,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			Credentials:    creds,
 			HTTPClient:     httpClient,
 			TokenExchanger: svc.copilotTokenExchanger,
+			OnRefreshed:    svc.onTokenRefreshed(c),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create CopilotTokenProvider: %w", err)
@@ -614,6 +616,13 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			return nil, fmt.Errorf("failed to create github_copilot outbound transformer: %w", err)
 		}
 		ch.Outbound = transformer
+		ch.startTokenProvider = func() {
+			p.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{
+				Interval:      5 * time.Minute,
+				RefreshBefore: 5 * time.Minute,
+			})
+		}
+		ch.stopTokenProvider = p.StopAutoRefresh
 
 		return ch, nil
 	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax, channel.TypeXiaomi,
