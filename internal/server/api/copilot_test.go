@@ -11,13 +11,41 @@ import (
 	"testing"
 	"time"
 
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+// fakeClock is a test implementation of Clock that allows advancing time.
+type fakeClock struct {
+	currentTime time.Time
+	channels    []chan time.Time
+}
+
+func (fc *fakeClock) Now() time.Time {
+	return fc.currentTime
+}
+
+func (fc *fakeClock) After(d time.Duration) <-chan time.Time {
+	ch := make(chan time.Time, 1)
+	fc.channels = append(fc.channels, ch)
+
+	return ch
+}
+
+func (fc *fakeClock) Advance(d time.Duration) {
+	fc.currentTime = fc.currentTime.Add(d)
+	for _, ch := range fc.channels {
+		select {
+		case ch <- fc.currentTime:
+		default:
+		}
+	}
+
+	fc.channels = nil
+}
 
 func TestCopilotHandlers_StartOAuth_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -608,9 +636,15 @@ func TestCopilotHandlers_PollOAuth_DeviceCodeExpired(t *testing.T) {
 	}
 	hc := httpclient.NewHttpClientWithClient(&http.Client{Transport: transport})
 
+	// Create a fake clock that can be advanced for testing
+	fakeClock := &fakeClock{
+		currentTime: time.Now(),
+	}
+
 	h := NewCopilotHandlers(CopilotHandlersParams{
 		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
 		HttpClient:  hc,
+		Clock:       fakeClock,
 	})
 
 	router := gin.New()
@@ -625,8 +659,8 @@ func TestCopilotHandlers_PollOAuth_DeviceCodeExpired(t *testing.T) {
 
 	var startResp StartCopilotOAuthResponse
 	require.NoError(t, json.Unmarshal(startW.Body.Bytes(), &startResp))
-
-	time.Sleep(6 * time.Second)
+	// Advance the fake clock by 6 seconds to simulate session expiry
+	fakeClock.Advance(6 * time.Second)
 
 	pollBody, _ := json.Marshal(PollCopilotOAuthRequest{
 		SessionID: startResp.SessionID,
@@ -637,7 +671,7 @@ func TestCopilotHandlers_PollOAuth_DeviceCodeExpired(t *testing.T) {
 	router.ServeHTTP(pollW, pollReq)
 
 	require.Equal(t, http.StatusBadRequest, pollW.Code)
-	require.Contains(t, pollW.Body.String(), "invalid or expired session")
+	require.Contains(t, pollW.Body.String(), "device code expired")
 }
 
 func TestCopilotHandlers_PollOAuth_FormEncodedResponse(t *testing.T) {

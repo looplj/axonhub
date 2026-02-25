@@ -29,7 +29,6 @@ const (
 	// GitHub Copilot Client ID (VS Code public client)
 	githubCopilotClientID = "Iv1.b507a08c87ecfe98"
 
-
 	// OAuth scopes for GitHub Copilot
 	githubCopilotScope = "read:user"
 
@@ -49,12 +48,26 @@ type CopilotHandlersParams struct {
 
 	CacheConfig xcache.Config
 	HttpClient  *httpclient.HttpClient
+	Clock       Clock
 }
+
+// Clock provides time-related functions for testability.
+type Clock interface {
+	Now() time.Time
+	After(d time.Duration) <-chan time.Time
+}
+
+// realClock implements Clock with real time functions.
+type realClock struct{}
+
+func (realClock) Now() time.Time                         { return time.Now() }
+func (realClock) After(d time.Duration) <-chan time.Time { return time.After(d) }
 
 // CopilotHandlers provides HTTP handlers for GitHub Copilot OAuth device flow.
 type CopilotHandlers struct {
 	deviceCodeCache xcache.Cache[copilotDeviceFlowState]
 	httpClient      *httpclient.HttpClient
+	clock           Clock
 }
 
 // copilotDeviceFlowState stores the state of a device flow authorization.
@@ -85,11 +98,15 @@ type accessTokenResponse struct {
 	ErrorDesc string `json:"error_description"`
 }
 
-// NewCopilotHandlers creates a new CopilotHandlers instance.
 func NewCopilotHandlers(params CopilotHandlersParams) *CopilotHandlers {
+	clock := params.Clock
+	if clock == nil {
+		clock = realClock{}
+	}
 	return &CopilotHandlers{
 		deviceCodeCache: xcache.NewFromConfig[copilotDeviceFlowState](params.CacheConfig),
 		httpClient:      params.HttpClient,
+		clock:           clock,
 	}
 }
 
@@ -207,8 +224,7 @@ func (h *CopilotHandlers) requestDeviceCode(ctx context.Context, httpClient *htt
 	}
 
 	var deviceResp deviceCodeResponse
-	if err := json.Unmarshal(resp.Body, &deviceResp);
-	err != nil {
+	if err := json.Unmarshal(resp.Body, &deviceResp); err != nil {
 		return nil, fmt.Errorf("failed to parse device code response: %w", err)
 	}
 
@@ -254,7 +270,7 @@ func (h *CopilotHandlers) PollOAuth(c *gin.Context) {
 	}
 
 	// Check if device code has expired
-	if time.Now().Unix() > state.CreatedAt+int64(state.ExpiresIn) {
+	if h.clock.Now().Unix() > state.CreatedAt+int64(state.ExpiresIn) {
 		_ = h.deviceCodeCache.Delete(ctx, cacheKey)
 		JSONError(c, http.StatusBadRequest, errors.New("device code expired"))
 		return
@@ -300,10 +316,10 @@ func (h *CopilotHandlers) PollOAuth(c *gin.Context) {
 		default:
 			JSONError(c, http.StatusBadGateway, fmt.Errorf("OAuth error: %s - %s", tokenResp.Error, tokenResp.ErrorDesc))
 			return
-
-			return
 		}
 	}
+
+	// Success - access token received
 
 	// Success - access token received
 	if tokenResp.Token != "" {
