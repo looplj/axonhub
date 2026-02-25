@@ -326,6 +326,19 @@ func getGeminiToolCallThoughtSignature(toolCall llm.ToolCall) *string {
 	return lo.ToPtr(normalized)
 }
 
+func getGeminiToolCallThoughtSignatureWithPrefix(toolCall llm.ToolCall) *string {
+	if toolCall.TransformerMetadata == nil {
+		return nil
+	}
+
+	raw, ok := toolCall.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature].(string)
+	if !ok || raw == "" {
+		return nil
+	}
+
+	return shared.NormalizeGeminiThoughtSignature(raw)
+}
+
 func setGeminiToolCallThoughtSignature(toolCall *llm.ToolCall, signature string) {
 	if toolCall == nil || signature == "" {
 		return
@@ -335,7 +348,12 @@ func setGeminiToolCallThoughtSignature(toolCall *llm.ToolCall, signature string)
 		toolCall.TransformerMetadata = map[string]any{}
 	}
 
-	toolCall.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature] = signature
+	normalized := shared.NormalizeGeminiThoughtSignature(signature)
+	if normalized == nil {
+		return
+	}
+
+	toolCall.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature] = *normalized
 }
 
 func reasoningEffortToThinkingBudget(effort string) int64 {

@@ -543,7 +543,7 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 					Args: args,
 				},
 			}
-			if signature := getGeminiToolCallThoughtSignature(toolCall); signature != nil {
+			if signature := getGeminiToolCallThoughtSignatureWithPrefix(toolCall); signature != nil {
 				part.ThoughtSignature = *signature
 				hasToolCallThoughtSignature = true
 			}
@@ -556,9 +556,13 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 			}
 		}
 
-		msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.ReasoningSignature)
+		var msgThoughtSignature *string
+		if shared.IsGeminiThoughtSignature(msg.ReasoningSignature) {
+			msgThoughtSignature = msg.ReasoningSignature
+		}
+
 		if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil && !hasToolCallThoughtSignature {
-			msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
+			msgThoughtSignature = shared.NormalizeGeminiThoughtSignature("context_engineering_is_the_way_to_go")
 		}
 
 		if msgThoughtSignature != nil && lastPart != nil {

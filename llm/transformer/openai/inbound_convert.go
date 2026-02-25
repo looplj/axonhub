@@ -22,8 +22,14 @@ func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
 	if tc.ExtraContent != nil &&
 		tc.ExtraContent.Google != nil &&
 		tc.ExtraContent.Google.ThoughtSignature != "" {
+		thoughtSignature := tc.ExtraContent.Google.ThoughtSignature
+		normalized := shared.NormalizeGeminiThoughtSignature(thoughtSignature)
+		if normalized != nil {
+			thoughtSignature = *normalized
+		}
+
 		toolCall.TransformerMetadata = map[string]any{
-			TransformerMetadataKeyGoogleThoughtSignature: tc.ExtraContent.Google.ThoughtSignature,
+			TransformerMetadataKeyGoogleThoughtSignature: thoughtSignature,
 		}
 	}
 

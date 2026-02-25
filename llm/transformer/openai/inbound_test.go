@@ -923,6 +923,32 @@ func TestMessage_ToLLMMessage_WithAlreadyPrefixedGeminiThoughtSignature(t *testi
 	require.Equal(t, "base64_signature", *decoded)
 }
 
+func TestToolCall_ToLLMToolCall_NormalizesGeminiThoughtSignature(t *testing.T) {
+	tc := ToolCall{
+		ID:   "call_1",
+		Type: "function",
+		Function: FunctionCall{
+			Name:      "get_weather",
+			Arguments: `{"city":"Shanghai"}`,
+		},
+		Index: 0,
+		ExtraContent: &ToolCallExtraContent{
+			Google: &ToolCallGoogleExtraContent{
+				ThoughtSignature: "base64_signature",
+			},
+		},
+	}
+
+	got := tc.ToLLMToolCall()
+
+	require.NotNil(t, got.TransformerMetadata)
+	require.Equal(
+		t,
+		shared.GeminiThoughtSignaturePrefix+"base64_signature",
+		got.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature],
+	)
+}
+
 func TestMessageFromLLM_WithGeminiThoughtSignatureDoesNotInjectToolCallExtraContent(t *testing.T) {
 	msg := llm.Message{
 		Role:               "assistant",
@@ -984,4 +1010,52 @@ func TestInboundTransformer_TransformResponse_WithGeminiToolCallThoughtSignature
 	require.NotNil(t, oaiResp.Choices[0].Message)
 	require.Len(t, oaiResp.Choices[0].Message.ToolCalls, 1)
 	require.Nil(t, oaiResp.Choices[0].Message.ToolCalls[0].ExtraContent)
+}
+
+func TestInboundTransformer_TransformResponse_WithGeminiPrefixedToolCallMetadata(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	resp, err := transformer.TransformResponse(t.Context(), &llm.Response{
+		ID:      "chatcmpl-1",
+		Object:  "chat.completion",
+		Created: 123,
+		Model:   "gemini-3-pro",
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_1",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "get_weather",
+								Arguments: `{"city":"Shanghai"}`,
+							},
+							Index: 0,
+							TransformerMetadata: map[string]any{
+								TransformerMetadataKeyGoogleThoughtSignature: shared.GeminiThoughtSignaturePrefix + "base64_signature",
+							},
+						},
+					},
+				},
+				FinishReason: lo.ToPtr("tool_calls"),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	var oaiResp Response
+	require.NoError(t, json.Unmarshal(resp.Body, &oaiResp))
+	require.Len(t, oaiResp.Choices, 1)
+	require.NotNil(t, oaiResp.Choices[0].Message)
+	require.Len(t, oaiResp.Choices[0].Message.ToolCalls, 1)
+	require.NotNil(t, oaiResp.Choices[0].Message.ToolCalls[0].ExtraContent)
+	require.NotNil(t, oaiResp.Choices[0].Message.ToolCalls[0].ExtraContent.Google)
+	require.Equal(
+		t,
+		shared.GeminiThoughtSignaturePrefix+"base64_signature",
+		oaiResp.Choices[0].Message.ToolCalls[0].ExtraContent.Google.ThoughtSignature,
+	)
 }

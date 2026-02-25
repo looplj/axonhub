@@ -1593,7 +1593,11 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				require.Equal(t, "call_001", tc.ID)
 				require.Equal(t, "check_flight", tc.Function.Name)
 				require.NotNil(t, tc.TransformerMetadata)
-				require.Equal(t, "signature_A", tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature])
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_A",
+					tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 			},
 		},
 		{
@@ -1642,7 +1646,11 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				tc1 := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_paris", tc1.ID)
 				require.NotNil(t, tc1.TransformerMetadata)
-				require.Equal(t, "signature_parallel", tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature])
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_parallel",
+					tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 
 				// Second call should not have signature
 				tc2 := result.Choices[0].Message.ToolCalls[1]

@@ -962,7 +962,11 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 				require.Equal(t, "call_001", tc.ID)
 				require.Equal(t, "check_flight", tc.Function.Name)
 				require.NotNil(t, tc.TransformerMetadata)
-				require.Equal(t, "signature_A", tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature])
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_A",
+					tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 			},
 		},
 		{
@@ -1000,7 +1004,11 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 				tc1 := result.ToolCalls[0]
 				require.Equal(t, "call_paris", tc1.ID)
 				require.NotNil(t, tc1.TransformerMetadata)
-				require.Equal(t, "signature_parallel", tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature])
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_parallel",
+					tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 
 				// Second call should not have signature
 				tc2 := result.ToolCalls[1]
@@ -1106,7 +1114,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.NotNil(t, result.Content)
 				require.Len(t, result.Content.Parts, 1)
-				require.Equal(t, "signature_prefixed", result.Content.Parts[0].ThoughtSignature)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_prefixed", result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 		{
@@ -1135,7 +1143,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.Len(t, result.Content.Parts, 1)
 				require.NotNil(t, result.Content.Parts[0].FunctionCall)
 				require.Equal(t, "check_flight", result.Content.Parts[0].FunctionCall.Name)
-				require.Equal(t, "signature_A", result.Content.Parts[0].ThoughtSignature)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_A", result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 		{
@@ -1171,7 +1179,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.Len(t, result.Content.Parts, 2)
 
 				require.Equal(t, "check_flight", result.Content.Parts[0].FunctionCall.Name)
-				require.Equal(t, "signature_A", result.Content.Parts[0].ThoughtSignature)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_A", result.Content.Parts[0].ThoughtSignature)
 
 				require.Equal(t, "book_taxi", result.Content.Parts[1].FunctionCall.Name)
 				require.Empty(t, result.Content.Parts[1].ThoughtSignature)
@@ -1211,7 +1219,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 2)
 				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
-				require.Equal(t, "signature_tool_2", result.Content.Parts[1].ThoughtSignature)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_tool_2", result.Content.Parts[1].ThoughtSignature)
 			},
 		},
 		{
@@ -1237,7 +1245,11 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 1)
-				require.Equal(t, "context_engineering_is_the_way_to_go", result.Content.Parts[0].ThoughtSignature)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"context_engineering_is_the_way_to_go",
+					result.Content.Parts[0].ThoughtSignature,
+				)
 			},
 		},
 		{
@@ -1263,7 +1275,11 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 1)
 				require.NotNil(t, result.Content.Parts[0].FunctionCall)
-				require.Equal(t, "context_engineering_is_the_way_to_go", result.Content.Parts[0].ThoughtSignature)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"context_engineering_is_the_way_to_go",
+					result.Content.Parts[0].ThoughtSignature,
+				)
 			},
 		},
 		{
@@ -1296,7 +1312,11 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 2)
-				require.Equal(t, "context_engineering_is_the_way_to_go", result.Content.Parts[0].ThoughtSignature)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"context_engineering_is_the_way_to_go",
+					result.Content.Parts[0].ThoughtSignature,
+				)
 				require.Empty(t, result.Content.Parts[1].ThoughtSignature)
 			},
 		},
