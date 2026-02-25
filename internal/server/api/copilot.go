@@ -48,7 +48,7 @@ type CopilotHandlersParams struct {
 
 	CacheConfig xcache.Config
 	HttpClient  *httpclient.HttpClient
-	Clock       Clock
+	Clock       Clock       `optional:"true"`
 }
 
 // Clock provides time-related functions for testability.
