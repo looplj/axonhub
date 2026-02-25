@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// TransformerMetadataKeyGoogleThoughtSignature 用于在 ToolCall TransformerMetadata 中保存 Gemini thought signature。
+const TransformerMetadataKeyGoogleThoughtSignature = "google_thought_signature"
+
 // GeminiThoughtSignaturePrefix is the prefix used for Gemini thought/reasoning signatures.
 // In models like Gemini 2.0, reasoning process is a first-class citizen.
 // This signature allows AxonHub to "wrap" and preserve these reasoning blocks in the internal
@@ -38,4 +41,31 @@ func EncodeGeminiThoughtSignature(signature *string) *string {
 	encoded := GeminiThoughtSignaturePrefix + *signature
 
 	return &encoded
+}
+
+// NormalizeGeminiThoughtSignature normalizes Gemini thought signatures into internal encoded format.
+func NormalizeGeminiThoughtSignature(signature string) *string {
+	if signature == "" {
+		return nil
+	}
+
+	if IsGeminiThoughtSignature(&signature) {
+		return &signature
+	}
+
+	return EncodeGeminiThoughtSignature(&signature)
+}
+
+// StripGeminiThoughtSignaturePrefix removes internal prefix from Gemini thought signatures.
+func StripGeminiThoughtSignaturePrefix(signature string) string {
+	if !IsGeminiThoughtSignature(&signature) {
+		return signature
+	}
+
+	decoded := DecodeGeminiThoughtSignature(&signature)
+	if decoded == nil {
+		return signature
+	}
+
+	return *decoded
 }

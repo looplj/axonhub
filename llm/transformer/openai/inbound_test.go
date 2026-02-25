@@ -12,6 +12,8 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestInboundTransformer_TransformRequest(t *testing.T) {
@@ -473,6 +475,73 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_TransformStream_SkipsPureReasoningSignatureChunk(t *testing.T) {
+	transformer := NewInboundTransformer()
+	signature := shared.GeminiThoughtSignaturePrefix + "stream_signature"
+
+	stream, err := transformer.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			ID:      "chatcmpl-123",
+			Object:  "chat.completion.chunk",
+			Created: 1677652288,
+			Model:   "gemini-3-pro",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ReasoningSignature: &signature,
+					},
+				},
+			},
+		},
+		{
+			ID:      "chatcmpl-123",
+			Object:  "chat.completion.chunk",
+			Created: 1677652289,
+			Model:   "gemini-3-pro",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						ToolCalls: []llm.ToolCall{
+							{
+								ID:   "call_1",
+								Type: "function",
+								Function: llm.FunctionCall{
+									Name:      "get_weather",
+									Arguments: `{"city":"Shanghai"}`,
+								},
+								Index: 0,
+							},
+						},
+					},
+					FinishReason: lo.ToPtr("tool_calls"),
+				},
+			},
+		},
+		{
+			Object: "[DONE]",
+		},
+	}))
+	require.NoError(t, err)
+
+	var events []*httpclient.StreamEvent
+	for stream.Next() {
+		events = append(events, stream.Current())
+	}
+	require.NoError(t, stream.Err())
+	require.Len(t, events, 2)
+
+	var chunkResp Response
+	require.NoError(t, json.Unmarshal(events[0].Data, &chunkResp))
+	require.Len(t, chunkResp.Choices, 1)
+	require.NotNil(t, chunkResp.Choices[0].Delta)
+	require.Len(t, chunkResp.Choices[0].Delta.ToolCalls, 1)
+	require.Nil(t, chunkResp.Choices[0].Delta.ToolCalls[0].ExtraContent)
+	require.Equal(t, "[DONE]", string(events[1].Data))
+}
+
 func TestInboundTransformer_TransformResponse(t *testing.T) {
 	transformer := NewInboundTransformer()
 
@@ -791,4 +860,128 @@ func TestInboundTransformer_TransformResponse_WithCitations(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMessage_ToLLMMessage_WithGeminiThoughtSignature(t *testing.T) {
+	msg := Message{
+		Role: "assistant",
+		ToolCalls: []ToolCall{
+			{
+				ID:   "call_1",
+				Type: "function",
+				Function: FunctionCall{
+					Name:      "get_weather",
+					Arguments: `{"city":"Shanghai"}`,
+				},
+				Index: 0,
+				ExtraContent: &ToolCallExtraContent{
+					Google: &ToolCallGoogleExtraContent{
+						ThoughtSignature: "base64_signature",
+					},
+				},
+			},
+		},
+	}
+
+	got := msg.ToLLMMessage()
+
+	require.Len(t, got.ToolCalls, 1)
+	require.NotNil(t, got.ReasoningSignature)
+	require.True(t, shared.IsGeminiThoughtSignature(got.ReasoningSignature))
+	decoded := shared.DecodeGeminiThoughtSignature(got.ReasoningSignature)
+	require.NotNil(t, decoded)
+	require.Equal(t, "base64_signature", *decoded)
+}
+
+func TestMessage_ToLLMMessage_WithAlreadyPrefixedGeminiThoughtSignature(t *testing.T) {
+	msg := Message{
+		Role: "assistant",
+		ToolCalls: []ToolCall{
+			{
+				ID:   "call_1",
+				Type: "function",
+				Function: FunctionCall{
+					Name:      "get_weather",
+					Arguments: `{"city":"Shanghai"}`,
+				},
+				Index: 0,
+				ExtraContent: &ToolCallExtraContent{
+					Google: &ToolCallGoogleExtraContent{
+						ThoughtSignature: shared.GeminiThoughtSignaturePrefix + "base64_signature",
+					},
+				},
+			},
+		},
+	}
+
+	got := msg.ToLLMMessage()
+
+	require.NotNil(t, got.ReasoningSignature)
+	require.Equal(t, shared.GeminiThoughtSignaturePrefix+"base64_signature", *got.ReasoningSignature)
+	decoded := shared.DecodeGeminiThoughtSignature(got.ReasoningSignature)
+	require.NotNil(t, decoded)
+	require.Equal(t, "base64_signature", *decoded)
+}
+
+func TestMessageFromLLM_WithGeminiThoughtSignatureDoesNotInjectToolCallExtraContent(t *testing.T) {
+	msg := llm.Message{
+		Role:               "assistant",
+		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("base64_signature")),
+		ToolCalls: []llm.ToolCall{
+			{
+				ID:   "call_1",
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      "get_weather",
+					Arguments: `{"city":"Shanghai"}`,
+				},
+				Index: 0,
+			},
+		},
+	}
+
+	got := MessageFromLLM(msg)
+
+	require.Len(t, got.ToolCalls, 1)
+	require.Nil(t, got.ToolCalls[0].ExtraContent)
+}
+
+func TestInboundTransformer_TransformResponse_WithGeminiToolCallThoughtSignatureDoesNotInjectExtraContent(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	resp, err := transformer.TransformResponse(t.Context(), &llm.Response{
+		ID:      "chatcmpl-1",
+		Object:  "chat.completion",
+		Created: 123,
+		Model:   "gemini-3-pro",
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Message: &llm.Message{
+					Role:               "assistant",
+					ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("base64_signature")),
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_1",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "get_weather",
+								Arguments: `{"city":"Shanghai"}`,
+							},
+							Index: 0,
+						},
+					},
+				},
+				FinishReason: lo.ToPtr("tool_calls"),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	var oaiResp Response
+	require.NoError(t, json.Unmarshal(resp.Body, &oaiResp))
+	require.Len(t, oaiResp.Choices, 1)
+	require.NotNil(t, oaiResp.Choices[0].Message)
+	require.Len(t, oaiResp.Choices[0].Message.ToolCalls, 1)
+	require.Nil(t, oaiResp.Choices[0].Message.ToolCalls[0].ExtraContent)
 }

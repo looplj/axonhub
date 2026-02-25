@@ -129,6 +129,73 @@ func TestEncodeGeminiThoughtSignature(t *testing.T) {
 	}
 }
 
+func TestNormalizeGeminiThoughtSignature(t *testing.T) {
+	tests := []struct {
+		name      string
+		signature string
+		expected  *string
+	}{
+		{
+			name:      "empty signature",
+			signature: "",
+			expected:  nil,
+		},
+		{
+			name:      "already prefixed signature",
+			signature: GeminiThoughtSignaturePrefix + "normalized",
+			expected:  stringPtr(GeminiThoughtSignaturePrefix + "normalized"),
+		},
+		{
+			name:      "plain signature",
+			signature: "normalized",
+			expected:  stringPtr(GeminiThoughtSignaturePrefix + "normalized"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := NormalizeGeminiThoughtSignature(tt.signature)
+			if tt.expected == nil {
+				require.Nil(t, result)
+			} else {
+				require.NotNil(t, result)
+				require.Equal(t, *tt.expected, *result)
+			}
+		})
+	}
+}
+
+func TestStripGeminiThoughtSignaturePrefix(t *testing.T) {
+	tests := []struct {
+		name      string
+		signature string
+		expected  string
+	}{
+		{
+			name:      "prefixed signature",
+			signature: GeminiThoughtSignaturePrefix + "stripped",
+			expected:  "stripped",
+		},
+		{
+			name:      "plain signature",
+			signature: "plain",
+			expected:  "plain",
+		},
+		{
+			name:      "prefix only",
+			signature: GeminiThoughtSignaturePrefix,
+			expected:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := StripGeminiThoughtSignaturePrefix(tt.signature)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestGeminiEncodeDecodeRoundTrip(t *testing.T) {
 	original := stringPtr("some-random-signature-data")
 

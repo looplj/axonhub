@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestRequestFromLLM(t *testing.T) {
@@ -337,4 +338,94 @@ func TestResponse_ToLLMResponse_WithCitations(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestRequestFromLLM_KeepsGoogleThoughtSignatureInRequestModel(t *testing.T) {
+	req := RequestFromLLM(&llm.Request{
+		Model: "gemini-3-pro",
+		Messages: []llm.Message{
+			{
+				Role:               "assistant",
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_reasoning")),
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_1",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "get_weather",
+							Arguments: `{"city":"Shanghai"}`,
+						},
+						Index: 0,
+						TransformerMetadata: map[string]any{
+							TransformerMetadataKeyGoogleThoughtSignature: "sig_from_metadata",
+						},
+					},
+				},
+			},
+		},
+	})
+
+	require.NotNil(t, req)
+	require.Len(t, req.Messages, 1)
+	require.Len(t, req.Messages[0].ToolCalls, 1)
+	require.NotNil(t, req.Messages[0].ToolCalls[0].ExtraContent)
+	require.NotNil(t, req.Messages[0].ToolCalls[0].ExtraContent.Google)
+	require.Equal(t, "sig_from_metadata", req.Messages[0].ToolCalls[0].ExtraContent.Google.ThoughtSignature)
+}
+
+func TestMessageFromLLM_DoesNotOverrideFirstToolCallWhenMetadataExists(t *testing.T) {
+	msg := MessageFromLLM(llm.Message{
+		Role:               "assistant",
+		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second_tool_call")),
+		ToolCalls: []llm.ToolCall{
+			{
+				ID:   "call_1",
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      "tool_a",
+					Arguments: "{}",
+				},
+				Index: 0,
+			},
+			{
+				ID:   "call_2",
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      "tool_b",
+					Arguments: "{}",
+				},
+				Index: 1,
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyGoogleThoughtSignature: "sig_from_second_tool_call",
+				},
+			},
+		},
+	})
+
+	require.Len(t, msg.ToolCalls, 2)
+	require.Nil(t, msg.ToolCalls[0].ExtraContent)
+	require.NotNil(t, msg.ToolCalls[1].ExtraContent)
+	require.NotNil(t, msg.ToolCalls[1].ExtraContent.Google)
+	require.Equal(t, "sig_from_second_tool_call", msg.ToolCalls[1].ExtraContent.Google.ThoughtSignature)
+}
+
+func TestMessageFromLLM_GeminiReasoningSignatureDoesNotInjectThoughtSignature(t *testing.T) {
+	msg := MessageFromLLM(llm.Message{
+		Role:               "assistant",
+		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("gemini_signature")),
+		ToolCalls: []llm.ToolCall{
+			{
+				ID:   "call_1",
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      "tool_a",
+					Arguments: "{}",
+				},
+				Index: 0,
+			},
+		},
+	})
+
+	require.Len(t, msg.ToolCalls, 1)
+	require.Nil(t, msg.ToolCalls[0].ExtraContent)
 }
