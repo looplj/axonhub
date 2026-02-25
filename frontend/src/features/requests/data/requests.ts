@@ -131,6 +131,8 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           clientIP
           projectID
           dataStorageID
+          contentSaved
+          contentStorageKey
           requestHeaders
           requestBody
           responseBody

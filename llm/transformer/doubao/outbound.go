@@ -115,6 +115,8 @@ func (t *OutboundTransformer) TransformRequest(
 		// continue
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationAPIRequest(llmReq)
+	case llm.RequestTypeVideo:
+		return t.buildVideoGenerationAPIRequest(ctx, llmReq)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}

@@ -428,6 +428,89 @@ func (s *RequestService) UpdateRequestCompleted(
 	return nil
 }
 
+// UpdateRequestStatusExternalIDAndResponseBody updates request status/external_id and optionally persists response body.
+// It is intended for non-pipeline async task flows where task status is polled later.
+func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
+	ctx context.Context,
+	requestID int,
+	status request.Status,
+	externalId string,
+	responseBody any,
+	metrics *LatencyMetrics,
+) error {
+	// Decide whether to store the final response body
+	storeResponseBody := true
+	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
+		storeResponseBody = policy.StoreResponseBody
+	} else {
+		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
+	}
+
+	client := s.entFromContext(ctx)
+
+	// Get the request to check data storage
+	req, err := client.Request.Get(ctx, requestID)
+	if err != nil {
+		log.Error(ctx, "Failed to get request", log.Cause(err))
+		return err
+	}
+
+	// Get data storage if set
+	var dataStorage *ent.DataStorage
+	if req.DataStorageID != 0 {
+		dataStorage, err = s.DataStorageService.GetDataStorageByID(ctx, req.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
+		}
+	}
+
+	upd := client.Request.UpdateOneID(requestID).
+		SetStatus(status).
+		SetExternalID(externalId)
+
+	// Set latency metrics if provided
+	if metrics != nil {
+		if metrics.LatencyMs != nil {
+			upd = upd.SetMetricsLatencyMs(*metrics.LatencyMs)
+		}
+
+		if metrics.FirstTokenLatencyMs != nil {
+			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+	}
+
+	if storeResponseBody {
+		responseBodyBytes, err := xjson.Marshal(responseBody)
+		if err != nil {
+			log.Error(ctx, "Failed to serialize response body", log.Cause(err))
+			return err
+		}
+
+		// Check if we should use external storage
+		if s.shouldUseExternalStorage(ctx, dataStorage) {
+			// Save to external storage
+			key := GenerateResponseBodyKey(req.ProjectID, requestID)
+
+			_, err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
+			if err != nil {
+				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
+				// Continue anyway
+			}
+		} else {
+			// Store in database
+			upd = upd.SetResponseBody(responseBodyBytes)
+		}
+	}
+
+	_, err = upd.Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update request status", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
 // UpdateRequestExecutionCompleted updates request execution status to completed with response body.
 func (s *RequestService) UpdateRequestExecutionCompleted(
 	ctx context.Context,

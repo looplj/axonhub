@@ -150,6 +150,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		}
 
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
+	case llm.RequestTypeVideo:
+		//nolint:exhaustive // Checked.
+		switch t.config.PlatformType {
+		case PlatformAzure:
+			return nil, fmt.Errorf("video generation is not yet supported for Azure platform")
+		default:
+			// ok
+		}
+
+		return t.buildVideoGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeRerank:
 		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
 	}
@@ -234,6 +244,8 @@ func (t *OutboundTransformer) TransformResponse(
 			return transformImageGenerationResponse(httpResp)
 		case string(llm.APIFormatOpenAIEmbedding):
 			return t.transformEmbeddingResponse(ctx, httpResp)
+		case string(llm.APIFormatOpenAIVideo):
+			return transformVideoResponse(httpResp)
 		}
 	}
 

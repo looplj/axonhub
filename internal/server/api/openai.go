@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/model"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
@@ -21,6 +24,7 @@ import (
 type OpenAIHandlersParams struct {
 	fx.In
 
+	VideoService    *biz.VideoService
 	ChannelService  *biz.ChannelService
 	ModelService    *biz.ModelService
 	RequestService  *biz.RequestService
@@ -36,16 +40,21 @@ type OpenAIHandlers struct {
 	ChannelService             *biz.ChannelService
 	ModelService               *biz.ModelService
 	SystemService              *biz.SystemService
+	VideoService               *biz.VideoService
 	ChatCompletionHandlers     *ChatCompletionHandlers
 	ResponseCompletionHandlers *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
 	ImageGenerationHandlers    *ChatCompletionHandlers
 	ImageEditHandlers          *ChatCompletionHandlers
 	ImageVariationHandlers     *ChatCompletionHandlers
+	VideoHandlers              *ChatCompletionHandlers
+	VideoInboundTransformer    *openai.VideoInboundTransformer
 	EntClient                  *ent.Client
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
+	videoInbound := openai.NewVideoInboundTransformer()
+
 	return &OpenAIHandlers{
 		ChatCompletionHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
@@ -125,10 +134,25 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 			),
 		},
-		EntClient:      params.Client,
-		ChannelService: params.ChannelService,
-		ModelService:   params.ModelService,
-		SystemService:  params.SystemService,
+		VideoHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.ModelService,
+				params.RequestService,
+				params.HttpClient,
+				videoInbound,
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+			),
+		},
+		VideoInboundTransformer: videoInbound,
+		VideoService:            params.VideoService,
+		EntClient:               params.Client,
+		ChannelService:          params.ChannelService,
+		ModelService:            params.ModelService,
+		SystemService:           params.SystemService,
 	}
 }
 
@@ -155,6 +179,99 @@ func (handlers *OpenAIHandlers) CreateImageEdit(c *gin.Context) {
 func (handlers *OpenAIHandlers) CreateImageVariation(c *gin.Context) {
 	handlers.ImageVariationHandlers.ChatCompletion(c)
 }
+
+func (handlers *OpenAIHandlers) CreateVideo(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	if err != nil {
+		httpErr := handlers.VideoHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		return
+	}
+
+	if len(genericReq.Body) == 0 {
+		JSONError(c, http.StatusBadRequest, errors.New("Request body is empty"))
+		return
+	}
+
+	result, err := handlers.VideoHandlers.ChatCompletionOrchestrator.Process(ctx, genericReq)
+	if err != nil {
+		log.Error(ctx, "Error processing openai video create", log.Cause(err))
+
+		httpErr := handlers.VideoHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		return
+	}
+
+	if result.ChatCompletion == nil {
+		JSONError(c, http.StatusInternalServerError, biz.ErrInternal)
+		return
+	}
+
+	resp := result.ChatCompletion
+	contentType := "application/json"
+	if ct := resp.Headers.Get("Content-Type"); ct != "" {
+		contentType = ct
+	}
+	c.Data(resp.StatusCode, contentType, resp.Body)
+}
+
+func (handlers *OpenAIHandlers) GetVideo(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	externalID := c.Param("id")
+	if externalID == "" {
+		JSONError(c, http.StatusBadRequest, errors.New("invalid id"))
+		return
+	}
+
+	video, err := handlers.VideoService.GetTaskByExternalID(ctx, externalID)
+	if err != nil {
+		JSONError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	llmResp := &llm.Response{
+		ID:          video.ID,
+		Object:      "video",
+		Model:       video.Model,
+		RequestType: llm.RequestTypeVideo,
+		APIFormat:   llm.APIFormatOpenAIVideo,
+		Video:       video,
+		Choices:     []llm.Choice{},
+	}
+
+	httpResp, err := handlers.VideoInboundTransformer.TransformResponse(ctx, llmResp)
+	if err != nil {
+		JSONError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	contentType := "application/json"
+	if ct := httpResp.Headers.Get("Content-Type"); ct != "" {
+		contentType = ct
+	}
+	c.Data(httpResp.StatusCode, contentType, httpResp.Body)
+}
+
+func (handlers *OpenAIHandlers) DeleteVideo(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	externalID := c.Param("id")
+	if externalID == "" {
+		JSONError(c, http.StatusBadRequest, errors.New("invalid id"))
+		return
+	}
+
+	if err := handlers.VideoService.DeleteTaskByExternalID(ctx, externalID); err != nil {
+		JSONError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 
 type Capabilities struct {
 	Vision    bool `json:"vision"`

@@ -215,6 +215,9 @@ type Request struct {
 	// Image is the image request, will be set if the request is image request.
 	Image *ImageRequest `json:"image,omitempty"`
 
+	// Video is the video request, will be set if the request is video request.
+	Video *VideoRequest `json:"video,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -506,6 +509,9 @@ type Response struct {
 
 	// Image is the image response, will present if the request is image request.
 	Image *ImageResponse `json:"image,omitempty"`
+
+	// Video is the video response, will present if the request is video request.
+	Video *VideoResponse `json:"video,omitempty"`
 
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.

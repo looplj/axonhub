@@ -1540,6 +1540,22 @@ input CreateRequestInput {
   clientIP: String
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
+  """
+  whether the generated content has been saved to external storage
+  """
+  contentSaved: Boolean
+  """
+  data storage id used to save the content file
+  """
+  contentStorageID: Int
+  """
+  storage key/path of the saved content file
+  """
+  contentStorageKey: String
+  """
+  when the content file was saved
+  """
+  contentSavedAt: Time
   apiKeyID: ID
   projectID: ID!
   traceID: ID
@@ -3638,6 +3654,22 @@ type Request implements Node {
   clientIP: String!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
+  """
+  whether the generated content has been saved to external storage
+  """
+  contentSaved: Boolean!
+  """
+  data storage id used to save the content file
+  """
+  contentStorageID: Int
+  """
+  storage key/path of the saved content file
+  """
+  contentStorageKey: String
+  """
+  when the content file was saved
+  """
+  contentSavedAt: Time
   apiKey: APIKey
   project: Project!
   trace: Trace
@@ -4258,6 +4290,55 @@ input RequestWhereInput {
   metricsFirstTokenLatencyMsLTE: Int
   metricsFirstTokenLatencyMsIsNil: Boolean
   metricsFirstTokenLatencyMsNotNil: Boolean
+  """
+  content_saved field predicates
+  """
+  contentSaved: Boolean
+  contentSavedNEQ: Boolean
+  """
+  content_storage_id field predicates
+  """
+  contentStorageID: Int
+  contentStorageIDNEQ: Int
+  contentStorageIDIn: [Int!]
+  contentStorageIDNotIn: [Int!]
+  contentStorageIDGT: Int
+  contentStorageIDGTE: Int
+  contentStorageIDLT: Int
+  contentStorageIDLTE: Int
+  contentStorageIDIsNil: Boolean
+  contentStorageIDNotNil: Boolean
+  """
+  content_storage_key field predicates
+  """
+  contentStorageKey: String
+  contentStorageKeyNEQ: String
+  contentStorageKeyIn: [String!]
+  contentStorageKeyNotIn: [String!]
+  contentStorageKeyGT: String
+  contentStorageKeyGTE: String
+  contentStorageKeyLT: String
+  contentStorageKeyLTE: String
+  contentStorageKeyContains: String
+  contentStorageKeyHasPrefix: String
+  contentStorageKeyHasSuffix: String
+  contentStorageKeyIsNil: Boolean
+  contentStorageKeyNotNil: Boolean
+  contentStorageKeyEqualFold: String
+  contentStorageKeyContainsFold: String
+  """
+  content_saved_at field predicates
+  """
+  contentSavedAt: Time
+  contentSavedAtNEQ: Time
+  contentSavedAtIn: [Time!]
+  contentSavedAtNotIn: [Time!]
+  contentSavedAtGT: Time
+  contentSavedAtGTE: Time
+  contentSavedAtLT: Time
+  contentSavedAtLTE: Time
+  contentSavedAtIsNil: Boolean
+  contentSavedAtNotNil: Boolean
   """
   api_key edge predicates
   """
@@ -5193,6 +5274,25 @@ input UpdateRequestInput {
   clearMetricsLatencyMs: Boolean
   metricsFirstTokenLatencyMs: Int
   clearMetricsFirstTokenLatencyMs: Boolean
+  """
+  whether the generated content has been saved to external storage
+  """
+  contentSaved: Boolean
+  """
+  data storage id used to save the content file
+  """
+  contentStorageID: Int
+  clearContentStorageID: Boolean
+  """
+  storage key/path of the saved content file
+  """
+  contentStorageKey: String
+  clearContentStorageKey: Boolean
+  """
+  when the content file was saved
+  """
+  contentSavedAt: Time
+  clearContentSavedAt: Boolean
   channelID: ID
   clearChannel: Boolean
 }

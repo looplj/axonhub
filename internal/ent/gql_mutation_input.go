@@ -3,6 +3,8 @@
 package ent
 
 import (
+	"time"
+
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
@@ -689,6 +691,10 @@ type CreateRequestInput struct {
 	ClientIP                   *string
 	MetricsLatencyMs           *int64
 	MetricsFirstTokenLatencyMs *int64
+	ContentSaved               *bool
+	ContentStorageID           *int
+	ContentStorageKey          *string
+	ContentSavedAt             *time.Time
 	APIKeyID                   *int
 	ProjectID                  int
 	TraceID                    *int
@@ -733,6 +739,18 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	if v := i.MetricsFirstTokenLatencyMs; v != nil {
 		m.SetMetricsFirstTokenLatencyMs(*v)
 	}
+	if v := i.ContentSaved; v != nil {
+		m.SetContentSaved(*v)
+	}
+	if v := i.ContentStorageID; v != nil {
+		m.SetContentStorageID(*v)
+	}
+	if v := i.ContentStorageKey; v != nil {
+		m.SetContentStorageKey(*v)
+	}
+	if v := i.ContentSavedAt; v != nil {
+		m.SetContentSavedAt(*v)
+	}
 	if v := i.APIKeyID; v != nil {
 		m.SetAPIKeyID(*v)
 	}
@@ -772,6 +790,13 @@ type UpdateRequestInput struct {
 	MetricsLatencyMs                *int64
 	ClearMetricsFirstTokenLatencyMs bool
 	MetricsFirstTokenLatencyMs      *int64
+	ContentSaved                    *bool
+	ClearContentStorageID           bool
+	ContentStorageID                *int
+	ClearContentStorageKey          bool
+	ContentStorageKey               *string
+	ClearContentSavedAt             bool
+	ContentSavedAt                  *time.Time
 	ClearChannel                    bool
 	ChannelID                       *int
 }
@@ -825,6 +850,27 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.MetricsFirstTokenLatencyMs; v != nil {
 		m.SetMetricsFirstTokenLatencyMs(*v)
+	}
+	if v := i.ContentSaved; v != nil {
+		m.SetContentSaved(*v)
+	}
+	if i.ClearContentStorageID {
+		m.ClearContentStorageID()
+	}
+	if v := i.ContentStorageID; v != nil {
+		m.SetContentStorageID(*v)
+	}
+	if i.ClearContentStorageKey {
+		m.ClearContentStorageKey()
+	}
+	if v := i.ContentStorageKey; v != nil {
+		m.SetContentStorageKey(*v)
+	}
+	if i.ClearContentSavedAt {
+		m.ClearContentSavedAt()
+	}
+	if v := i.ContentSavedAt; v != nil {
+		m.SetContentSavedAt(*v)
 	}
 	if i.ClearChannel {
 		m.ClearChannel()

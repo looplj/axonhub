@@ -12384,6 +12384,11 @@ type RequestMutation struct {
 	addmetrics_latency_ms             *int64
 	metrics_first_token_latency_ms    *int64
 	addmetrics_first_token_latency_ms *int64
+	content_saved                     *bool
+	content_storage_id                *int
+	addcontent_storage_id             *int
+	content_storage_key               *string
+	content_saved_at                  *time.Time
 	clearedFields                     map[string]struct{}
 	api_key                           *int
 	clearedapi_key                    bool
@@ -13459,6 +13464,210 @@ func (m *RequestMutation) ResetMetricsFirstTokenLatencyMs() {
 	delete(m.clearedFields, request.FieldMetricsFirstTokenLatencyMs)
 }
 
+// SetContentSaved sets the "content_saved" field.
+func (m *RequestMutation) SetContentSaved(b bool) {
+	m.content_saved = &b
+}
+
+// ContentSaved returns the value of the "content_saved" field in the mutation.
+func (m *RequestMutation) ContentSaved() (r bool, exists bool) {
+	v := m.content_saved
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentSaved returns the old "content_saved" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldContentSaved(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentSaved is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentSaved requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentSaved: %w", err)
+	}
+	return oldValue.ContentSaved, nil
+}
+
+// ResetContentSaved resets all changes to the "content_saved" field.
+func (m *RequestMutation) ResetContentSaved() {
+	m.content_saved = nil
+}
+
+// SetContentStorageID sets the "content_storage_id" field.
+func (m *RequestMutation) SetContentStorageID(i int) {
+	m.content_storage_id = &i
+	m.addcontent_storage_id = nil
+}
+
+// ContentStorageID returns the value of the "content_storage_id" field in the mutation.
+func (m *RequestMutation) ContentStorageID() (r int, exists bool) {
+	v := m.content_storage_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentStorageID returns the old "content_storage_id" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldContentStorageID(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentStorageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentStorageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentStorageID: %w", err)
+	}
+	return oldValue.ContentStorageID, nil
+}
+
+// AddContentStorageID adds i to the "content_storage_id" field.
+func (m *RequestMutation) AddContentStorageID(i int) {
+	if m.addcontent_storage_id != nil {
+		*m.addcontent_storage_id += i
+	} else {
+		m.addcontent_storage_id = &i
+	}
+}
+
+// AddedContentStorageID returns the value that was added to the "content_storage_id" field in this mutation.
+func (m *RequestMutation) AddedContentStorageID() (r int, exists bool) {
+	v := m.addcontent_storage_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearContentStorageID clears the value of the "content_storage_id" field.
+func (m *RequestMutation) ClearContentStorageID() {
+	m.content_storage_id = nil
+	m.addcontent_storage_id = nil
+	m.clearedFields[request.FieldContentStorageID] = struct{}{}
+}
+
+// ContentStorageIDCleared returns if the "content_storage_id" field was cleared in this mutation.
+func (m *RequestMutation) ContentStorageIDCleared() bool {
+	_, ok := m.clearedFields[request.FieldContentStorageID]
+	return ok
+}
+
+// ResetContentStorageID resets all changes to the "content_storage_id" field.
+func (m *RequestMutation) ResetContentStorageID() {
+	m.content_storage_id = nil
+	m.addcontent_storage_id = nil
+	delete(m.clearedFields, request.FieldContentStorageID)
+}
+
+// SetContentStorageKey sets the "content_storage_key" field.
+func (m *RequestMutation) SetContentStorageKey(s string) {
+	m.content_storage_key = &s
+}
+
+// ContentStorageKey returns the value of the "content_storage_key" field in the mutation.
+func (m *RequestMutation) ContentStorageKey() (r string, exists bool) {
+	v := m.content_storage_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentStorageKey returns the old "content_storage_key" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldContentStorageKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentStorageKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentStorageKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentStorageKey: %w", err)
+	}
+	return oldValue.ContentStorageKey, nil
+}
+
+// ClearContentStorageKey clears the value of the "content_storage_key" field.
+func (m *RequestMutation) ClearContentStorageKey() {
+	m.content_storage_key = nil
+	m.clearedFields[request.FieldContentStorageKey] = struct{}{}
+}
+
+// ContentStorageKeyCleared returns if the "content_storage_key" field was cleared in this mutation.
+func (m *RequestMutation) ContentStorageKeyCleared() bool {
+	_, ok := m.clearedFields[request.FieldContentStorageKey]
+	return ok
+}
+
+// ResetContentStorageKey resets all changes to the "content_storage_key" field.
+func (m *RequestMutation) ResetContentStorageKey() {
+	m.content_storage_key = nil
+	delete(m.clearedFields, request.FieldContentStorageKey)
+}
+
+// SetContentSavedAt sets the "content_saved_at" field.
+func (m *RequestMutation) SetContentSavedAt(t time.Time) {
+	m.content_saved_at = &t
+}
+
+// ContentSavedAt returns the value of the "content_saved_at" field in the mutation.
+func (m *RequestMutation) ContentSavedAt() (r time.Time, exists bool) {
+	v := m.content_saved_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContentSavedAt returns the old "content_saved_at" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldContentSavedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContentSavedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContentSavedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContentSavedAt: %w", err)
+	}
+	return oldValue.ContentSavedAt, nil
+}
+
+// ClearContentSavedAt clears the value of the "content_saved_at" field.
+func (m *RequestMutation) ClearContentSavedAt() {
+	m.content_saved_at = nil
+	m.clearedFields[request.FieldContentSavedAt] = struct{}{}
+}
+
+// ContentSavedAtCleared returns if the "content_saved_at" field was cleared in this mutation.
+func (m *RequestMutation) ContentSavedAtCleared() bool {
+	_, ok := m.clearedFields[request.FieldContentSavedAt]
+	return ok
+}
+
+// ResetContentSavedAt resets all changes to the "content_saved_at" field.
+func (m *RequestMutation) ResetContentSavedAt() {
+	m.content_saved_at = nil
+	delete(m.clearedFields, request.FieldContentSavedAt)
+}
+
 // ClearAPIKey clears the "api_key" edge to the APIKey entity.
 func (m *RequestMutation) ClearAPIKey() {
 	m.clearedapi_key = true
@@ -13736,7 +13945,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -13797,6 +14006,18 @@ func (m *RequestMutation) Fields() []string {
 	if m.metrics_first_token_latency_ms != nil {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
 	}
+	if m.content_saved != nil {
+		fields = append(fields, request.FieldContentSaved)
+	}
+	if m.content_storage_id != nil {
+		fields = append(fields, request.FieldContentStorageID)
+	}
+	if m.content_storage_key != nil {
+		fields = append(fields, request.FieldContentStorageKey)
+	}
+	if m.content_saved_at != nil {
+		fields = append(fields, request.FieldContentSavedAt)
+	}
 	return fields
 }
 
@@ -13845,6 +14066,14 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.MetricsLatencyMs()
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.MetricsFirstTokenLatencyMs()
+	case request.FieldContentSaved:
+		return m.ContentSaved()
+	case request.FieldContentStorageID:
+		return m.ContentStorageID()
+	case request.FieldContentStorageKey:
+		return m.ContentStorageKey()
+	case request.FieldContentSavedAt:
+		return m.ContentSavedAt()
 	}
 	return nil, false
 }
@@ -13894,6 +14123,14 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldMetricsLatencyMs(ctx)
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.OldMetricsFirstTokenLatencyMs(ctx)
+	case request.FieldContentSaved:
+		return m.OldContentSaved(ctx)
+	case request.FieldContentStorageID:
+		return m.OldContentStorageID(ctx)
+	case request.FieldContentStorageKey:
+		return m.OldContentStorageKey(ctx)
+	case request.FieldContentSavedAt:
+		return m.OldContentSavedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Request field %s", name)
 }
@@ -14043,6 +14280,34 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetMetricsFirstTokenLatencyMs(v)
 		return nil
+	case request.FieldContentSaved:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentSaved(v)
+		return nil
+	case request.FieldContentStorageID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentStorageID(v)
+		return nil
+	case request.FieldContentStorageKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentStorageKey(v)
+		return nil
+	case request.FieldContentSavedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContentSavedAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)
 }
@@ -14057,6 +14322,9 @@ func (m *RequestMutation) AddedFields() []string {
 	if m.addmetrics_first_token_latency_ms != nil {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
 	}
+	if m.addcontent_storage_id != nil {
+		fields = append(fields, request.FieldContentStorageID)
+	}
 	return fields
 }
 
@@ -14069,6 +14337,8 @@ func (m *RequestMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedMetricsLatencyMs()
 	case request.FieldMetricsFirstTokenLatencyMs:
 		return m.AddedMetricsFirstTokenLatencyMs()
+	case request.FieldContentStorageID:
+		return m.AddedContentStorageID()
 	}
 	return nil, false
 }
@@ -14091,6 +14361,13 @@ func (m *RequestMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddMetricsFirstTokenLatencyMs(v)
+		return nil
+	case request.FieldContentStorageID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddContentStorageID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Request numeric field %s", name)
@@ -14129,6 +14406,15 @@ func (m *RequestMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(request.FieldMetricsFirstTokenLatencyMs) {
 		fields = append(fields, request.FieldMetricsFirstTokenLatencyMs)
+	}
+	if m.FieldCleared(request.FieldContentStorageID) {
+		fields = append(fields, request.FieldContentStorageID)
+	}
+	if m.FieldCleared(request.FieldContentStorageKey) {
+		fields = append(fields, request.FieldContentStorageKey)
+	}
+	if m.FieldCleared(request.FieldContentSavedAt) {
+		fields = append(fields, request.FieldContentSavedAt)
 	}
 	return fields
 }
@@ -14173,6 +14459,15 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldMetricsFirstTokenLatencyMs:
 		m.ClearMetricsFirstTokenLatencyMs()
+		return nil
+	case request.FieldContentStorageID:
+		m.ClearContentStorageID()
+		return nil
+	case request.FieldContentStorageKey:
+		m.ClearContentStorageKey()
+		return nil
+	case request.FieldContentSavedAt:
+		m.ClearContentSavedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Request nullable field %s", name)
@@ -14241,6 +14536,18 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldMetricsFirstTokenLatencyMs:
 		m.ResetMetricsFirstTokenLatencyMs()
+		return nil
+	case request.FieldContentSaved:
+		m.ResetContentSaved()
+		return nil
+	case request.FieldContentStorageID:
+		m.ResetContentStorageID()
+		return nil
+	case request.FieldContentStorageKey:
+		m.ResetContentStorageKey()
+		return nil
+	case request.FieldContentSavedAt:
+		m.ResetContentSavedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Request field %s", name)

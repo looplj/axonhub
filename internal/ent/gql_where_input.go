@@ -5324,6 +5324,51 @@ type RequestWhereInput struct {
 	MetricsFirstTokenLatencyMsIsNil  bool    `json:"metricsFirstTokenLatencyMsIsNil,omitempty"`
 	MetricsFirstTokenLatencyMsNotNil bool    `json:"metricsFirstTokenLatencyMsNotNil,omitempty"`
 
+	// "content_saved" field predicates.
+	ContentSaved    *bool `json:"contentSaved,omitempty"`
+	ContentSavedNEQ *bool `json:"contentSavedNEQ,omitempty"`
+
+	// "content_storage_id" field predicates.
+	ContentStorageID       *int  `json:"contentStorageID,omitempty"`
+	ContentStorageIDNEQ    *int  `json:"contentStorageIDNEQ,omitempty"`
+	ContentStorageIDIn     []int `json:"contentStorageIDIn,omitempty"`
+	ContentStorageIDNotIn  []int `json:"contentStorageIDNotIn,omitempty"`
+	ContentStorageIDGT     *int  `json:"contentStorageIDGT,omitempty"`
+	ContentStorageIDGTE    *int  `json:"contentStorageIDGTE,omitempty"`
+	ContentStorageIDLT     *int  `json:"contentStorageIDLT,omitempty"`
+	ContentStorageIDLTE    *int  `json:"contentStorageIDLTE,omitempty"`
+	ContentStorageIDIsNil  bool  `json:"contentStorageIDIsNil,omitempty"`
+	ContentStorageIDNotNil bool  `json:"contentStorageIDNotNil,omitempty"`
+
+	// "content_storage_key" field predicates.
+	ContentStorageKey             *string  `json:"contentStorageKey,omitempty"`
+	ContentStorageKeyNEQ          *string  `json:"contentStorageKeyNEQ,omitempty"`
+	ContentStorageKeyIn           []string `json:"contentStorageKeyIn,omitempty"`
+	ContentStorageKeyNotIn        []string `json:"contentStorageKeyNotIn,omitempty"`
+	ContentStorageKeyGT           *string  `json:"contentStorageKeyGT,omitempty"`
+	ContentStorageKeyGTE          *string  `json:"contentStorageKeyGTE,omitempty"`
+	ContentStorageKeyLT           *string  `json:"contentStorageKeyLT,omitempty"`
+	ContentStorageKeyLTE          *string  `json:"contentStorageKeyLTE,omitempty"`
+	ContentStorageKeyContains     *string  `json:"contentStorageKeyContains,omitempty"`
+	ContentStorageKeyHasPrefix    *string  `json:"contentStorageKeyHasPrefix,omitempty"`
+	ContentStorageKeyHasSuffix    *string  `json:"contentStorageKeyHasSuffix,omitempty"`
+	ContentStorageKeyIsNil        bool     `json:"contentStorageKeyIsNil,omitempty"`
+	ContentStorageKeyNotNil       bool     `json:"contentStorageKeyNotNil,omitempty"`
+	ContentStorageKeyEqualFold    *string  `json:"contentStorageKeyEqualFold,omitempty"`
+	ContentStorageKeyContainsFold *string  `json:"contentStorageKeyContainsFold,omitempty"`
+
+	// "content_saved_at" field predicates.
+	ContentSavedAt       *time.Time  `json:"contentSavedAt,omitempty"`
+	ContentSavedAtNEQ    *time.Time  `json:"contentSavedAtNEQ,omitempty"`
+	ContentSavedAtIn     []time.Time `json:"contentSavedAtIn,omitempty"`
+	ContentSavedAtNotIn  []time.Time `json:"contentSavedAtNotIn,omitempty"`
+	ContentSavedAtGT     *time.Time  `json:"contentSavedAtGT,omitempty"`
+	ContentSavedAtGTE    *time.Time  `json:"contentSavedAtGTE,omitempty"`
+	ContentSavedAtLT     *time.Time  `json:"contentSavedAtLT,omitempty"`
+	ContentSavedAtLTE    *time.Time  `json:"contentSavedAtLTE,omitempty"`
+	ContentSavedAtIsNil  bool        `json:"contentSavedAtIsNil,omitempty"`
+	ContentSavedAtNotNil bool        `json:"contentSavedAtNotNil,omitempty"`
+
 	// "api_key" edge predicates.
 	HasAPIKey     *bool               `json:"hasAPIKey,omitempty"`
 	HasAPIKeyWith []*APIKeyWhereInput `json:"hasAPIKeyWith,omitempty"`
@@ -5831,6 +5876,117 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.MetricsFirstTokenLatencyMsNotNil {
 		predicates = append(predicates, request.MetricsFirstTokenLatencyMsNotNil())
+	}
+	if i.ContentSaved != nil {
+		predicates = append(predicates, request.ContentSavedEQ(*i.ContentSaved))
+	}
+	if i.ContentSavedNEQ != nil {
+		predicates = append(predicates, request.ContentSavedNEQ(*i.ContentSavedNEQ))
+	}
+	if i.ContentStorageID != nil {
+		predicates = append(predicates, request.ContentStorageIDEQ(*i.ContentStorageID))
+	}
+	if i.ContentStorageIDNEQ != nil {
+		predicates = append(predicates, request.ContentStorageIDNEQ(*i.ContentStorageIDNEQ))
+	}
+	if len(i.ContentStorageIDIn) > 0 {
+		predicates = append(predicates, request.ContentStorageIDIn(i.ContentStorageIDIn...))
+	}
+	if len(i.ContentStorageIDNotIn) > 0 {
+		predicates = append(predicates, request.ContentStorageIDNotIn(i.ContentStorageIDNotIn...))
+	}
+	if i.ContentStorageIDGT != nil {
+		predicates = append(predicates, request.ContentStorageIDGT(*i.ContentStorageIDGT))
+	}
+	if i.ContentStorageIDGTE != nil {
+		predicates = append(predicates, request.ContentStorageIDGTE(*i.ContentStorageIDGTE))
+	}
+	if i.ContentStorageIDLT != nil {
+		predicates = append(predicates, request.ContentStorageIDLT(*i.ContentStorageIDLT))
+	}
+	if i.ContentStorageIDLTE != nil {
+		predicates = append(predicates, request.ContentStorageIDLTE(*i.ContentStorageIDLTE))
+	}
+	if i.ContentStorageIDIsNil {
+		predicates = append(predicates, request.ContentStorageIDIsNil())
+	}
+	if i.ContentStorageIDNotNil {
+		predicates = append(predicates, request.ContentStorageIDNotNil())
+	}
+	if i.ContentStorageKey != nil {
+		predicates = append(predicates, request.ContentStorageKeyEQ(*i.ContentStorageKey))
+	}
+	if i.ContentStorageKeyNEQ != nil {
+		predicates = append(predicates, request.ContentStorageKeyNEQ(*i.ContentStorageKeyNEQ))
+	}
+	if len(i.ContentStorageKeyIn) > 0 {
+		predicates = append(predicates, request.ContentStorageKeyIn(i.ContentStorageKeyIn...))
+	}
+	if len(i.ContentStorageKeyNotIn) > 0 {
+		predicates = append(predicates, request.ContentStorageKeyNotIn(i.ContentStorageKeyNotIn...))
+	}
+	if i.ContentStorageKeyGT != nil {
+		predicates = append(predicates, request.ContentStorageKeyGT(*i.ContentStorageKeyGT))
+	}
+	if i.ContentStorageKeyGTE != nil {
+		predicates = append(predicates, request.ContentStorageKeyGTE(*i.ContentStorageKeyGTE))
+	}
+	if i.ContentStorageKeyLT != nil {
+		predicates = append(predicates, request.ContentStorageKeyLT(*i.ContentStorageKeyLT))
+	}
+	if i.ContentStorageKeyLTE != nil {
+		predicates = append(predicates, request.ContentStorageKeyLTE(*i.ContentStorageKeyLTE))
+	}
+	if i.ContentStorageKeyContains != nil {
+		predicates = append(predicates, request.ContentStorageKeyContains(*i.ContentStorageKeyContains))
+	}
+	if i.ContentStorageKeyHasPrefix != nil {
+		predicates = append(predicates, request.ContentStorageKeyHasPrefix(*i.ContentStorageKeyHasPrefix))
+	}
+	if i.ContentStorageKeyHasSuffix != nil {
+		predicates = append(predicates, request.ContentStorageKeyHasSuffix(*i.ContentStorageKeyHasSuffix))
+	}
+	if i.ContentStorageKeyIsNil {
+		predicates = append(predicates, request.ContentStorageKeyIsNil())
+	}
+	if i.ContentStorageKeyNotNil {
+		predicates = append(predicates, request.ContentStorageKeyNotNil())
+	}
+	if i.ContentStorageKeyEqualFold != nil {
+		predicates = append(predicates, request.ContentStorageKeyEqualFold(*i.ContentStorageKeyEqualFold))
+	}
+	if i.ContentStorageKeyContainsFold != nil {
+		predicates = append(predicates, request.ContentStorageKeyContainsFold(*i.ContentStorageKeyContainsFold))
+	}
+	if i.ContentSavedAt != nil {
+		predicates = append(predicates, request.ContentSavedAtEQ(*i.ContentSavedAt))
+	}
+	if i.ContentSavedAtNEQ != nil {
+		predicates = append(predicates, request.ContentSavedAtNEQ(*i.ContentSavedAtNEQ))
+	}
+	if len(i.ContentSavedAtIn) > 0 {
+		predicates = append(predicates, request.ContentSavedAtIn(i.ContentSavedAtIn...))
+	}
+	if len(i.ContentSavedAtNotIn) > 0 {
+		predicates = append(predicates, request.ContentSavedAtNotIn(i.ContentSavedAtNotIn...))
+	}
+	if i.ContentSavedAtGT != nil {
+		predicates = append(predicates, request.ContentSavedAtGT(*i.ContentSavedAtGT))
+	}
+	if i.ContentSavedAtGTE != nil {
+		predicates = append(predicates, request.ContentSavedAtGTE(*i.ContentSavedAtGTE))
+	}
+	if i.ContentSavedAtLT != nil {
+		predicates = append(predicates, request.ContentSavedAtLT(*i.ContentSavedAtLT))
+	}
+	if i.ContentSavedAtLTE != nil {
+		predicates = append(predicates, request.ContentSavedAtLTE(*i.ContentSavedAtLTE))
+	}
+	if i.ContentSavedAtIsNil {
+		predicates = append(predicates, request.ContentSavedAtIsNil())
+	}
+	if i.ContentSavedAtNotNil {
+		predicates = append(predicates, request.ContentSavedAtNotNil())
 	}
 
 	if i.HasAPIKey != nil {

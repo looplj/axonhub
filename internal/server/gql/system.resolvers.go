@@ -124,6 +124,16 @@ func (r *mutationResolver) UpdateSystemGeneralSettings(ctx context.Context, inpu
 	return true, nil
 }
 
+// UpdateVideoStorageSettings is the resolver for the updateVideoStorageSettings field.
+func (r *mutationResolver) UpdateVideoStorageSettings(ctx context.Context, input biz.VideoStorageSettings) (bool, error) {
+	err := r.systemService.SetVideoStorageSettings(ctx, input)
+	if err != nil {
+		return false, fmt.Errorf("failed to update video storage settings: %w", err)
+	}
+
+	return true, nil
+}
+
 // CheckProviderQuotas is the resolver for the checkProviderQuotas field.
 func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error) {
 	if r.providerQuotaService == nil {
@@ -268,4 +278,9 @@ func (r *queryResolver) SystemChannelSettings(ctx context.Context) (*biz.SystemC
 // SystemGeneralSettings is the resolver for the systemGeneralSettings field.
 func (r *queryResolver) SystemGeneralSettings(ctx context.Context) (*biz.SystemGeneralSettings, error) {
 	return r.systemService.GeneralSettings(ctx)
+}
+
+// VideoStorageSettings is the resolver for the videoStorageSettings field.
+func (r *queryResolver) VideoStorageSettings(ctx context.Context) (*biz.VideoStorageSettings, error) {
+	return r.systemService.VideoStorageSettings(ctx)
 }
