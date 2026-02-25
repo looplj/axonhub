@@ -23,7 +23,7 @@ import (
 const (
 	// GitHub Copilot OAuth Device Flow endpoints
 	githubDeviceCodeURL  = "https://github.com/login/device/code"
-	githubAccessTokenURL = "https://github.com/login/oauth/access_token"
+	githubAccessTokenURL = "https://github.com/login/oauth/access_token" //nolint:gosec
 
 	//nolint:gosec // This is a public OAuth client identifier, not a secret
 	// GitHub Copilot Client ID (VS Code public client)
@@ -78,7 +78,7 @@ type deviceCodeResponse struct {
 
 // accessTokenResponse represents the response from GitHub's access token endpoint.
 type accessTokenResponse struct {
-	Token     string `json:"access_token"`
+	Token     string `json:"access_token"` //nolint:gosec
 	TokenType string `json:"token_type"`
 	Scope     string `json:"scope"`
 	Error     string `json:"error"`
@@ -227,7 +227,7 @@ type PollCopilotOAuthRequest struct {
 
 // PollCopilotOAuthResponse represents the response for polling OAuth token.
 type PollCopilotOAuthResponse struct {
-	Token   string `json:"access_token,omitempty"`
+	Token   string `json:"access_token,omitempty"` //nolint:gosec
 	Type    string `json:"token_type,omitempty"`
 	Scope   string `json:"scope,omitempty"`
 	Status  string `json:"status"`

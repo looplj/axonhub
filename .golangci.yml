@@ -196,11 +196,6 @@ linters:
 
   
   exclusions:
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
     # Exclude all linters from running on ent files.
     paths:
       - internal/ent
@@ -289,24 +284,6 @@ linters:
       - linters:
           - stylecheck
         text: "ST1016:"
-
-      # Exclude gosec G101 for Copilot client ID (public identifier, not secret)
-      - linters:
-          - gosec
-        text: "G101:.*githubCopilotClientID"
-
-      # Exclude gosec G101 for Copilot endpoint URLs (not credentials)
-      - linters:
-          - gosec
-        text: "G101:.*copilot_internal"
-
-      #XN|      # Exclude gosec G117 for Token fields in OAuth structs (false positives - generic field names)
-#BY|      # Only apply to OAuth-related files that declare Token fields
-#MX|      - linters:
-#BQ|          - gosec
-#RB|        text: "G117:.*Token"
-#VT|        path: "(copilot_token_exchange|oauth/credentials|oauth/token_provider|copilot/token_provider)"
-
 
       # Exclude lll issues for long lines with go:generate
       - linters:

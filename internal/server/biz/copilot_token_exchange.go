@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	CopilotTokenEndpoint = "https://api.github.com/copilot_internal/v2/token"
+	CopilotTokenEndpoint = "https://api.github.com/copilot_internal/v2/token" //nolint:gosec
 	TokenExpiryBuffer    = 5 * time.Minute
 )
 
