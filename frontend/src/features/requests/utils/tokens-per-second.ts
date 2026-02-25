@@ -36,7 +36,7 @@ export function calculateTokensPerSecond(request: Request): string {
   // For non-streaming: use full latency
   let effectiveLatencyMs = request.metricsLatencyMs;
   if (request.stream && request.metricsFirstTokenLatencyMs != null) {
-    if (request.metricsFirstTokenLatencyMs < request.metricsLatencyMs) {
+    if (request.metricsFirstTokenLatencyMs <= request.metricsLatencyMs) {
       effectiveLatencyMs = request.metricsLatencyMs - request.metricsFirstTokenLatencyMs;
     }
   }
