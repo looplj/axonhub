@@ -355,6 +355,32 @@ func convertFunctionToTool(src llm.Tool) Tool {
 			// The Responses API rejects schemas without this field explicitly set
 			// Overwrite any existing value (including true) to ensure false
 			params["additionalProperties"] = false
+
+			// When additionalProperties is false, the Responses API requires ALL properties
+			// to be listed in the "required" array. Ensure all property keys are included.
+			if props, ok := params["properties"].(map[string]any); ok && len(props) > 0 {
+				required := make([]string, 0, len(props))
+				// First, check if there's an existing required array and preserve it
+				if existingRequired, ok := params["required"].([]any); ok {
+					for _, r := range existingRequired {
+						if s, ok := r.(string); ok {
+							required = append(required, s)
+						}
+					}
+				}
+				// Add any missing property keys to required
+				requiredSet := make(map[string]bool)
+				for _, r := range required {
+					requiredSet[r] = true
+				}
+				for key := range props {
+					if !requiredSet[key] {
+						required = append(required, key)
+					}
+				}
+				params["required"] = required
+			}
+
 			tool.Parameters = params
 		}
 	}
