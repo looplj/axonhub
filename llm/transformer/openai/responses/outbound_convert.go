@@ -341,11 +341,14 @@ func convertFunctionToTool(src llm.Tool) Tool {
 	if len(src.Function.Parameters) > 0 {
 		var params map[string]any
 		if err := json.Unmarshal(src.Function.Parameters, &params); err == nil {
-			// Ensure additionalProperties: false is set for strict validation
-			// The Responses API rejects schemas without this field explicitly set
-			if _, exists := params["additionalProperties"]; !exists {
-				params["additionalProperties"] = false
+			// Handle nil map panic - initialize if nil
+			if params == nil {
+				params = map[string]any{}
 			}
+			// Always set additionalProperties: false for strict validation
+			// The Responses API rejects schemas without this field explicitly set
+			// Overwrite any existing value (including true) to ensure false
+			params["additionalProperties"] = false
 			tool.Parameters = params
 		}
 	}

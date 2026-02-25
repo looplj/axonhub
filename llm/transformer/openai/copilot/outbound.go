@@ -264,45 +264,86 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-    // Local state for tracking item_id to call_id mapping
-    // This allows us to handle multiple concurrent tool calls
-    itemIDToCallID := make(map[string]string)
+	// Check if this is a Responses API format stream (Codex) or Chat Completions format
+	// Peek at the first event to determine the format
+	var isResponsesFormat bool
+	var firstEvent *httpclient.StreamEvent
+	if stream.Next() {
+		firstEvent = stream.Current()
+		if firstEvent != nil && len(firstEvent.Data) > 0 {
+			eventType := gjson.GetBytes(firstEvent.Data, "type").String()
+			isResponsesFormat = strings.HasPrefix(eventType, "response.")
+		}
+	}
 
-    // For Codex models, we need to convert the Copilot-specific stream format
-    // to standard OpenAI Responses API format, then delegate to the responses transformer
-    convertedStream := streams.Map(stream, func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-        if event == nil || len(event.Data) == 0 {
-            return event
-        }
+	// Collect all remaining events from the stream
+	remainingEvents := collectStreamEvents(stream)
 
-        // Handle [DONE] marker
-        if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
-            return event
-        }
+	// Reconstruct the full stream including the first event
+	allEvents := make([]*httpclient.StreamEvent, 0, 1+len(remainingEvents))
+	if firstEvent != nil {
+		allEvents = append(allEvents, firstEvent)
+	}
+	allEvents = append(allEvents, remainingEvents...)
+	stream = streams.SliceStream(allEvents)
 
+	if !isResponsesFormat {
+		// Non-Codex model: use standard OpenAI chat completions stream transformer
+		openaiTransformer, err := openai.NewOutboundTransformer(t.baseURL, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create openai transformer: %w", err)
+		}
+		return openaiTransformer.TransformStream(ctx, stream)
+	}
 
-        // Convert Copilot's custom format to standard Responses API format
-        convertedData := convertCopilotStreamEvent(ctx, event.Data, itemIDToCallID)
+	// Codex model: process the Responses API format stream
+	// Local state for tracking item_id to call_id mapping
+	// This allows us to handle multiple concurrent tool calls
+	itemIDToCallID := make(map[string]string)
 
-        if convertedData == nil {
-            // Event was consumed (e.g., delta/arguments accumulated)
-            return nil
-        }
+	// For Codex models, we need to convert the Copilot-specific stream format
+	// to standard OpenAI Responses API format, then delegate to the responses transformer
+	convertedStream := streams.Map(stream, func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
+		if event == nil || len(event.Data) == 0 {
+			return event
+		}
 
-        return &httpclient.StreamEvent{
-            Data: convertedData,
-        }
-    })
+		// Handle [DONE] marker
+		if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
+			return event
+		}
 
+		// Convert Copilot's custom format to standard Responses API format
+		convertedData := convertCopilotStreamEvent(ctx, event.Data, itemIDToCallID)
 
-    // Filter out nil events
-    filteredStream := streams.Filter(convertedStream, func(event *httpclient.StreamEvent) bool {
-        return event != nil && len(event.Data) > 0
-    })
+		if convertedData == nil {
+			// Event was consumed (e.g., delta/arguments accumulated)
+			return nil
+		}
 
+		return &httpclient.StreamEvent{
+			Data: convertedData,
+		}
+	})
 
-    // Delegate to the responses transformer's stream handling
-    return t.codexResponses.TransformStream(ctx, filteredStream)
+	// Filter out nil events
+	filteredStream := streams.Filter(convertedStream, func(event *httpclient.StreamEvent) bool {
+		return event != nil && len(event.Data) > 0
+	})
+
+	// Delegate to the responses transformer's stream handling
+	return t.codexResponses.TransformStream(ctx, filteredStream)
+}
+
+// collectStreamEvents collects all remaining events from a stream into a slice
+func collectStreamEvents(stream streams.Stream[*httpclient.StreamEvent]) []*httpclient.StreamEvent {
+	var events []*httpclient.StreamEvent
+	for stream.Next() {
+		if event := stream.Current(); event != nil {
+			events = append(events, event)
+		}
+	}
+	return events
 }
 
 
