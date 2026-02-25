@@ -147,7 +147,8 @@ func (h *CopilotHandlers) StartOAuth(c *gin.Context) {
 	var req StartCopilotOAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// Allow empty body for requests with optional fields
-		if !strings.Contains(err.Error(), "EOF") && err.Error() != "EOF" {
+		// Only skip error if it's exactly "EOF" (empty body), not other EOF-related errors
+		if err.Error() != "EOF" {
 			JSONError(c, http.StatusBadRequest, errors.New("invalid request format"))
 			return
 		}
