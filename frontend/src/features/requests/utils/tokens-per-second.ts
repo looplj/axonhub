@@ -41,8 +41,9 @@ export function calculateTokensPerSecond(request: Request): string {
     }
   }
 
+  // For cache hits (TTFT == Latency), use minimum 1ms to calculate T/s based on total time
   if (effectiveLatencyMs <= 0) {
-    return '-';
+    effectiveLatencyMs = 1; // Minimum 1ms to show T/s for cache hits
   }
 
   const latencySeconds = effectiveLatencyMs / 1000;
