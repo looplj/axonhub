@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,11 @@ func TestIsGeminiThoughtSignature(t *testing.T) {
 		{
 			name:      "valid signature",
 			signature: stringPtr(GeminiThoughtSignaturePrefix + "some-signature"),
+			expected:  true,
+		},
+		{
+			name:      "valid legacy signature",
+			signature: stringPtr(legacyGeminiThoughtSignaturePrefix + "some-signature"),
 			expected:  true,
 		},
 		{
@@ -66,6 +72,11 @@ func TestDecodeGeminiThoughtSignature(t *testing.T) {
 		{
 			name:      "valid signature",
 			signature: stringPtr(GeminiThoughtSignaturePrefix + "some-signature"),
+			expected:  stringPtr("some-signature"),
+		},
+		{
+			name:      "valid legacy signature",
+			signature: stringPtr(legacyGeminiThoughtSignaturePrefix + "some-signature"),
 			expected:  stringPtr("some-signature"),
 		},
 		{
@@ -146,6 +157,11 @@ func TestNormalizeGeminiThoughtSignature(t *testing.T) {
 			expected:  stringPtr(GeminiThoughtSignaturePrefix + "normalized"),
 		},
 		{
+			name:      "already legacy prefixed signature should normalize to new prefix",
+			signature: legacyGeminiThoughtSignaturePrefix + "normalized",
+			expected:  stringPtr(GeminiThoughtSignaturePrefix + "normalized"),
+		},
+		{
 			name:      "plain signature",
 			signature: "normalized",
 			expected:  stringPtr(GeminiThoughtSignaturePrefix + "normalized"),
@@ -174,6 +190,11 @@ func TestStripGeminiThoughtSignaturePrefix(t *testing.T) {
 		{
 			name:      "prefixed signature",
 			signature: GeminiThoughtSignaturePrefix + "stripped",
+			expected:  "stripped",
+		},
+		{
+			name:      "legacy prefixed signature",
+			signature: legacyGeminiThoughtSignaturePrefix + "stripped",
 			expected:  "stripped",
 		},
 		{
@@ -208,4 +229,17 @@ func TestGeminiEncodeDecodeRoundTrip(t *testing.T) {
 	decoded := DecodeGeminiThoughtSignature(encoded)
 	require.NotNil(t, decoded)
 	require.Equal(t, *original, *decoded)
+}
+
+func TestGeminiThoughtSignatureWholeValueCanDecodeAsBase64(t *testing.T) {
+	signature := stringPtr("YWJjZA==")
+
+	encoded := EncodeGeminiThoughtSignature(signature)
+	require.NotNil(t, encoded)
+	_, err := base64.StdEncoding.DecodeString(*encoded)
+	require.NoError(t, err)
+
+	legacy := legacyGeminiThoughtSignaturePrefix + *signature
+	_, err = base64.StdEncoding.DecodeString(legacy)
+	require.Error(t, err)
 }
