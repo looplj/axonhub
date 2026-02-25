@@ -288,6 +288,53 @@ function validateOAuthCredentials(
 ) {
   if (!apiKey) return;
 
+  // For GitHub Copilot, enforce JSON format
+  const isCopilot = type === 'github_copilot';
+  if (isCopilot && !apiKey.trim().startsWith('{')) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'channels.dialogs.oauth.errors.copilotCredentialsInvalid',
+      path: ['credentials', 'apiKey'],
+    });
+    return;
+  }
+
+  // Only enforce JSON validation if it looks like JSON (starts with '{')
+  if (!apiKey.trim().startsWith('{')) return;
+
+  const issue = {
+    code: 'custom' as const,
+    message: 'channels.dialogs.oauth.errors.credentialsInvalid',
+    path: ['credentials', 'apiKey'],
+  };
+
+  let json: unknown;
+  try {
+    json = JSON.parse(apiKey);
+  } catch {
+    ctx.addIssue(issue);
+    return;
+  }
+
+  // GitHub Copilot only requires access_token, others may require refresh_token
+  const parsed = z
+    .object({
+      access_token: z.string().min(1),
+      refresh_token: isCopilot ? z.string().optional() : z.string().min(1),
+    })
+    .safeParse(json);
+
+  if (!parsed.success) {
+    ctx.addIssue(issue);
+  }
+}
+function validateOAuthCredentials(
+  type: string,
+  apiKey: string | undefined,
+  ctx: z.RefinementCtx
+) {
+  if (!apiKey) return;
+
   // Only enforce JSON validation if it looks like JSON (starts with '{')
   if (!apiKey.trim().startsWith('{')) return;
 

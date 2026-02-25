@@ -922,5 +922,5 @@ func (t *testCopilotTransport) RoundTrip(req *http.Request) (*http.Response, err
 		}
 	}
 
-	return http.DefaultTransport.RoundTrip(req)
+	return nil, fmt.Errorf("unexpected request to %s", req.URL)
 }

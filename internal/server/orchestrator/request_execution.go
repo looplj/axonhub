@@ -191,7 +191,8 @@ func ExtractErrorMessage(err error) string {
 		return message.String()
 	}
 
-	// Other campatible error format.
+	// Other compatible error format.
+	message = gjson.GetBytes(httpErr.Body, "errors.0.message")
 	message = gjson.GetBytes(httpErr.Body, "errors.message")
 	if message.Exists() && message.Type == gjson.String {
 		return message.String()

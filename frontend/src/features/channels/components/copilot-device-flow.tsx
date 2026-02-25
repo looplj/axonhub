@@ -140,6 +140,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
                   {deviceFlow.userCode}
                 </span>
               </div>
+
               <Button
                 type='button'
                 onClick={() => {
@@ -150,6 +151,8 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
                 }}
                 variant='outline'
                 size='icon'
+                title={t('copilot_device.copy_code')}
+              >
                 title='Copy code'
               >
                 <Copy className='h-4 w-4' />
@@ -174,12 +177,13 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
 
           <div className='bg-muted/50 p-3 rounded-md mt-3'>
             <ol className='text-sm space-y-1 list-decimal list-inside text-muted-foreground'>
-              <li>Click the button above to open GitHub</li>
-              <li>Enter the code shown above</li>
-              <li>Authorize the application</li>
-              <li>This page will update automatically</li>
+              <li>{t('copilot_device.step_1')}</li>
+              <li>{t('copilot_device.step_2')}</li>
+              <li>{t('copilot_device.step_3')}</li>
+              <li>{t('copilot_device.step_4')}</li>
             </ol>
           </div>
+
 
           <Button
             type='button'

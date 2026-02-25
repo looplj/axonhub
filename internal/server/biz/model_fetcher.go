@@ -54,11 +54,11 @@ type FetchModelsResult struct {
 }
 
 // FetchModels fetches available models from the provider API.
-func (f *ModelFetcher) getDefaultModels(channelType string) []ModelIdentify {
-	return f.getDefaultModelsByType(channel.Type(channelType))
+func (f *ModelFetcher) getDefaultModels(ctx context.Context, channelType string) []ModelIdentify {
+	return f.getDefaultModelsByType(ctx, channel.Type(channelType))
 }
 
-func (f *ModelFetcher) getDefaultModelsByType(typ channel.Type) []ModelIdentify {
+func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.Type) []ModelIdentify {
 	//nolint:exhaustive // only support antigravity, codex, claudecode, and github_copilot for now.
 	switch typ {
 	case channel.TypeAntigravity:
@@ -68,7 +68,7 @@ func (f *ModelFetcher) getDefaultModelsByType(typ channel.Type) []ModelIdentify 
 	case channel.TypeClaudecode:
 		return lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeGithubCopilot:
-		return f.fetchCopilotModels()
+		return f.fetchCopilotModels(ctx)
 	default:
 		return nil
 	}
@@ -87,10 +87,11 @@ type providerConfResponse struct {
 }
 
 // fetchCopilotModels fetches GitHub Copilot models from PublicProviderConf with caching.
-func (f *ModelFetcher) fetchCopilotModels() []ModelIdentify {
+func (f *ModelFetcher) fetchCopilotModels(ctx context.Context) []ModelIdentify {
 	f.copilotCacheMu.RLock()
 	if len(f.copilotModelsCache) > 0 && time.Since(f.copilotCacheTimestamp) < copilotModelsCacheDuration {
-		models := f.copilotModelsCache
+		models := make([]ModelIdentify, len(f.copilotModelsCache))
+		copy(models, f.copilotModelsCache)
 		f.copilotCacheMu.RUnlock()
 		return models
 	}
@@ -101,23 +102,30 @@ func (f *ModelFetcher) fetchCopilotModels() []ModelIdentify {
 
 	// Double-check after acquiring write lock
 	if len(f.copilotModelsCache) > 0 && time.Since(f.copilotCacheTimestamp) < copilotModelsCacheDuration {
-		return f.copilotModelsCache
+		models := make([]ModelIdentify, len(f.copilotModelsCache))
+		copy(models, f.copilotModelsCache)
+		return models
 	}
 
-	models := f.fetchCopilotModelsFromSource()
+	models := f.fetchCopilotModelsFromSource(ctx)
 	if len(models) > 0 {
 		f.copilotModelsCache = models
 		f.copilotCacheTimestamp = time.Now()
+		return models
 	}
 
-	return models
+	// If fetch failed but cache exists, return defensive copy
+	if len(f.copilotModelsCache) > 0 {
+		models := make([]ModelIdentify, len(f.copilotModelsCache))
+		copy(models, f.copilotModelsCache)
+		return models
+	}
+
+	return nil
 }
 
 // fetchCopilotModelsFromSource fetches models from PublicProviderConf.
-func (f *ModelFetcher) fetchCopilotModelsFromSource() []ModelIdentify {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
+func (f *ModelFetcher) fetchCopilotModelsFromSource(ctx context.Context) []ModelIdentify {
 	req := &httpclient.Request{
 		Method: http.MethodGet,
 		URL:    copilot.ProviderConfURL,
@@ -155,8 +163,8 @@ func (f *ModelFetcher) fetchCopilotModelsFromSource() []ModelIdentify {
 	return models
 }
 
-func (f *ModelFetcher) tryReturnDefaultModels(channelType string) (*FetchModelsResult, bool) {
-	models := f.getDefaultModels(channelType)
+func (f *ModelFetcher) tryReturnDefaultModels(ctx context.Context, channelType string) (*FetchModelsResult, bool) {
+	models := f.getDefaultModels(ctx, channelType)
 	if models != nil {
 		return &FetchModelsResult{Models: models}, true
 	}
@@ -171,7 +179,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}, nil
 	}
 
-	if result, ok := f.tryReturnDefaultModels(input.ChannelType); ok {
+	if result, ok := f.tryReturnDefaultModels(ctx, input.ChannelType); ok {
 		return result, nil
 	}
 
@@ -194,7 +202,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 
 		if ch.Credentials.IsOAuth() {
-			if models := f.getDefaultModelsByType(ch.Type); models != nil {
+		if models := f.getDefaultModelsByType(ctx, ch.Type); models != nil {
 				return &FetchModelsResult{Models: models}, nil
 			}
 		}
@@ -219,7 +227,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	if isOAuthJSON(apiKey) {
-		if result, ok := f.tryReturnDefaultModels(input.ChannelType); ok {
+		if result, ok := f.tryReturnDefaultModels(ctx, input.ChannelType); ok {
 			return result, nil
 		}
 	}

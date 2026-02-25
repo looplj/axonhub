@@ -71,10 +71,11 @@ type Channel struct {
 type ChannelServiceParams struct {
 	fx.In
 
-	CacheConfig   xcache.Config
-	Executor      executors.ScheduledExecutor
-	Ent           *ent.Client
-	SystemService *SystemService
+	CacheConfig            xcache.Config
+	Executor               executors.ScheduledExecutor
+	Ent                   *ent.Client
+	SystemService          *SystemService
+	CopilotTokenExchanger *CopilotTokenExchanger
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
@@ -87,10 +88,9 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
-		perfCh:             make(chan *PerformanceRecord, 1024),
-		copilotTokenExchanger: NewCopilotTokenExchanger(nil),
+		perfCh:                make(chan *PerformanceRecord, 1024),
+		copilotTokenExchanger: params.CopilotTokenExchanger,
 	}
-
 	svc.initChannelPerformances(context.Background())
 
 	watcherMode := params.CacheConfig.Mode

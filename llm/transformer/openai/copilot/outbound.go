@@ -57,12 +57,6 @@ type OutboundTransformer struct {
 	tokenProvider  TokenProvider
 	baseURL        string
 	codexResponses *responses.OutboundTransformer
-
-	// Stream state for accumulating tool call arguments
-	// Since Copilot's event IDs don't correlate, we track the current tool call
-	streamCurrentCallID string                      // The call_id we're currently accumulating for
-	streamToolCallArgs  map[string]*strings.Builder // call_id -> accumulated arguments
-	streamSeenCallIDs   map[string]bool             // call_id -> true (tracks if we've emitted output_item.added)
 }
 
 
@@ -269,59 +263,60 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	return oaiResp.ToLLMResponse(), nil
 }
 
-// TransformStream transforms an HTTP stream to a unified LLM response stream.
 func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-	t.streamCurrentCallID = ""
+    // Local state for tracking item_id to call_id mapping
+    // This allows us to handle multiple concurrent tool calls
+    itemIDToCallID := make(map[string]string)
 
-	// For Codex models, we need to convert the Copilot-specific stream format
-	// to standard OpenAI Responses API format, then delegate to the responses transformer
-	convertedStream := streams.Map(stream, func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
-		if event == nil || len(event.Data) == 0 {
-			return event
-		}
+    // For Codex models, we need to convert the Copilot-specific stream format
+    // to standard OpenAI Responses API format, then delegate to the responses transformer
+    convertedStream := streams.Map(stream, func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
+        if event == nil || len(event.Data) == 0 {
+            return event
+        }
 
-		// Handle [DONE] marker
-		if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
-			return event
-		}
-
-
-		// Convert Copilot's custom format to standard Responses API format
-		convertedData := t.convertCopilotStreamEvent(ctx, event.Data)
-
-		if convertedData == nil {
-			// Event was consumed (e.g., delta/arguments accumulated)
-			return nil
-		}
-
-		return &httpclient.StreamEvent{
-			Data: convertedData,
-		}
-	})
+        // Handle [DONE] marker
+        if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
+            return event
+        }
 
 
-	// Filter out nil events
-	filteredStream := streams.Filter(convertedStream, func(event *httpclient.StreamEvent) bool {
-		return event != nil && len(event.Data) > 0
-	})
+        // Convert Copilot's custom format to standard Responses API format
+        convertedData := convertCopilotStreamEvent(ctx, event.Data, itemIDToCallID)
+
+        if convertedData == nil {
+            // Event was consumed (e.g., delta/arguments accumulated)
+            return nil
+        }
+
+        return &httpclient.StreamEvent{
+            Data: convertedData,
+        }
+    })
 
 
-	// Delegate to the responses transformer's stream handling
-	return t.codexResponses.TransformStream(ctx, filteredStream)
+    // Filter out nil events
+    filteredStream := streams.Filter(convertedStream, func(event *httpclient.StreamEvent) bool {
+        return event != nil && len(event.Data) > 0
+    })
+
+
+    // Delegate to the responses transformer's stream handling
+    return t.codexResponses.TransformStream(ctx, filteredStream)
 }
 
 
 // convertCopilotStreamEvent fixes up Copilot's standard Responses API stream events.
 // Copilot correctly uses the Responses API format, but it sends multiple output_item.added
 // events for the same call_id, and it incorrectly sets the item_id on delta/done events.
-func (t *OutboundTransformer) convertCopilotStreamEvent(ctx context.Context, data []byte) []byte {
+func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID map[string]string) []byte {
 	eventType := gjson.GetBytes(data, "type").String()
 
 	if eventType == "response.output_item.added" {
 		callID := gjson.GetBytes(data, "item.call_id").String()
 		if callID != "" {
-			// Track the call_id. We'll use this to fix the item_id in delta/done events.
-			t.streamCurrentCallID = callID
+			// Track the call_id in our mapping
+			itemIDToCallID[callID] = callID
 
 			// Copilot sends an item with arguments="" first, then later sends another item
 			// with the full arguments. We must ensure only ONE item is created in the aggregator.
@@ -350,10 +345,23 @@ func (t *OutboundTransformer) convertCopilotStreamEvent(ctx context.Context, dat
 	} else if eventType == "response.function_call_arguments.delta" {
 		// Copilot uses random hashes for item_id in delta events, which the aggregator can't find.
 		// We MUST override the item_id to equal the call_id we forced above.
-		if t.streamCurrentCallID != "" {
+		// Try to find the call_id from the event's item_id first, then fall back
+		itemID := gjson.GetBytes(data, "item_id").String()
+		callID := ""
+		if itemID != "" {
+			callID = itemIDToCallID[itemID]
+		}
+		// Fallback: use any known call_id if not found
+		if callID == "" {
+			for _, cid := range itemIDToCallID {
+				callID = cid
+				break
+			}
+		}
+		if callID != "" {
 			var event map[string]any
 			if err := json.Unmarshal(data, &event); err == nil {
-				event["item_id"] = t.streamCurrentCallID
+				event["item_id"] = callID
 				if fixedData, err := json.Marshal(event); err == nil {
 					return fixedData
 				}
@@ -361,11 +369,23 @@ func (t *OutboundTransformer) convertCopilotStreamEvent(ctx context.Context, dat
 		}
 	} else if eventType == "response.function_call_arguments.done" {
 		// Fix item_id for done events too, and also set call_id just in case.
-		if t.streamCurrentCallID != "" {
+		// Same lookup pattern as delta
+		itemID := gjson.GetBytes(data, "item_id").String()
+		callID := ""
+		if itemID != "" {
+			callID = itemIDToCallID[itemID]
+		}
+		if callID == "" {
+			for _, cid := range itemIDToCallID {
+				callID = cid
+				break
+			}
+		}
+		if callID != "" {
 			var event map[string]any
 			if err := json.Unmarshal(data, &event); err == nil {
-				event["item_id"] = t.streamCurrentCallID
-				event["call_id"] = t.streamCurrentCallID
+				event["item_id"] = callID
+				event["call_id"] = callID
 				if fixedData, err := json.Marshal(event); err == nil {
 					return fixedData
 				}

@@ -25,8 +25,10 @@ const (
 	githubDeviceCodeURL  = "https://github.com/login/device/code"
 	githubAccessTokenURL = "https://github.com/login/oauth/access_token"
 
+	//nolint:gosec // This is a public OAuth client identifier, not a secret
 	// GitHub Copilot Client ID (VS Code public client)
 	githubCopilotClientID = "Iv1.b507a08c87ecfe98"
+
 
 	// OAuth scopes for GitHub Copilot
 	githubCopilotScope = "read:user"
@@ -199,8 +201,14 @@ func (h *CopilotHandlers) requestDeviceCode(ctx context.Context, httpClient *htt
 		return nil, fmt.Errorf("device code request failed: %w", err)
 	}
 
+	// Check for non-2xx status codes
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("device code request failed with status %d: %s", resp.StatusCode, string(resp.Body))
+	}
+
 	var deviceResp deviceCodeResponse
-	if err := json.Unmarshal(resp.Body, &deviceResp); err != nil {
+	if err := json.Unmarshal(resp.Body, &deviceResp);
+	err != nil {
 		return nil, fmt.Errorf("failed to parse device code response: %w", err)
 	}
 
@@ -337,6 +345,13 @@ func (h *CopilotHandlers) pollAccessToken(ctx context.Context, httpClient *httpc
 	if err != nil {
 		return nil, fmt.Errorf("access token request failed: %w", err)
 	}
+
+	// Check for non-2xx status codes
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("access token request failed with status %d: %s", resp.StatusCode, string(resp.Body))
+	}
+
+	// GitHub returns form-encoded response or JSON depending on Accept header
 
 	// GitHub returns form-encoded response or JSON depending on Accept header
 	// Try to parse as JSON first, then fall back to form-encoded

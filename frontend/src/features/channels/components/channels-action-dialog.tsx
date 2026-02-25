@@ -1021,7 +1021,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: !isEdit ? firstApiKey : firstApiKey || undefined,
+        apiKey: !isEdit ? (firstApiKey || undefined) : (firstApiKey || undefined),
         channelID: isEdit ? currentRow?.id : undefined,
       });
 
@@ -1051,8 +1051,22 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const apiKeys = form.watch('credentials.apiKeys');
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
 
-    if (isCodexType || isAntigravityType || isCopilotType) {
+    if (isCodexType || isAntigravityType) {
       return !!baseURL;
+    }
+
+    if (isCopilotType) {
+      const oauthApiKey = form.watch('credentials.apiKey');
+      let hasOAuthToken = false;
+      if (oauthApiKey) {
+        try {
+          const parsed = JSON.parse(oauthApiKey);
+          hasOAuthToken = !!parsed.access_token;
+        } catch {
+          hasOAuthToken = !!oauthApiKey;
+        }
+      }
+      return !!baseURL && hasOAuthToken;
     }
 
     if (isEdit) {
@@ -1060,7 +1074,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
 
     return !!baseURL && hasApiKey;
-  };
+
 
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
@@ -1504,7 +1518,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 const oauthCredentials = JSON.stringify({
                                   access_token: token,
                                   token_type: 'bearer',
+                                const oauthCredentials = JSON.stringify({
+                                  access_token: token,
+                                  token_type: 'bearer',
                                 });
+                                form.setValue('credentials.apiKey', oauthCredentials, { shouldDirty: true, shouldValidate: true });
                                 form.setValue('credentials.apiKey', oauthCredentials, { shouldValidate: false });
                               }}
                               onError={(error) => {

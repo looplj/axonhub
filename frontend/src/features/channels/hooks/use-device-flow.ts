@@ -80,8 +80,8 @@ export function useDeviceFlow(
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
-  const pollingIntervalRef = useRef<number | null>(null);
-  const currentIntervalRef = useRef(5);
+  const pollingIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const onSuccessRef = useRef(onSuccess);
 
   useEffect(() => {
     return () => {
@@ -90,6 +90,10 @@ export function useDeviceFlow(
       }
     };
   }, []);
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
 
   const start = useCallback(async () => {
     if (!projectId) {
@@ -130,7 +134,7 @@ export function useDeviceFlow(
         clearInterval(pollingIntervalRef.current);
       }
 
-      // @ts-expect-error - setInterval return type mismatch between browser and Node.js types
+
       pollingIntervalRef.current = window.setInterval(async () => {
         if (Date.now() >= expiry) {
           if (pollingIntervalRef.current) {
@@ -156,8 +160,8 @@ export function useDeviceFlow(
             setIsPolling(false);
             setIsComplete(true);
 
-            if (onSuccess) {
-              onSuccess(result.access_token);
+            if (onSuccessRef.current) {
+              onSuccessRef.current(result.access_token);
             }
 
             toast.success(t('channels.dialogs.oauth.messages.credentialsImported'));
@@ -173,7 +177,7 @@ export function useDeviceFlow(
               if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
               }
-              // @ts-expect-error - setInterval return type mismatch between browser and Node.js types
+
               pollingIntervalRef.current = window.setInterval(() => {
                 poll(sessionId, newInterval, expiry);
               }, newInterval * 1000);
@@ -198,7 +202,7 @@ export function useDeviceFlow(
         }
       }, pollInterval * 1000);
     },
-    [projectId, onSuccess, t]
+    [projectId, onSuccessRef, t]
   );
 
   const reset = useCallback(() => {

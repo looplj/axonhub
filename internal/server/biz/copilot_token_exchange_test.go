@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -254,6 +255,7 @@ func TestCopilotTokenExchanger_RefreshToken_DifferentTokens(t *testing.T) {
 	var wg sync.WaitGroup
 	tokens := []string{"token1", "token2", "token3"}
 	results := make(map[string]string)
+	errors := make(map[string]error)
 	var resultsMu sync.Mutex
 
 	for _, token := range tokens {
@@ -261,9 +263,9 @@ func TestCopilotTokenExchanger_RefreshToken_DifferentTokens(t *testing.T) {
 		go func(tkn string) {
 			defer wg.Done()
 			copilotToken, _, err := exchanger.RefreshToken(ctx, tkn)
-			require.NoError(t, err)
 			resultsMu.Lock()
 			results[tkn] = copilotToken
+			errors[tkn] = err
 			resultsMu.Unlock()
 		}(token)
 	}
@@ -272,6 +274,11 @@ func TestCopilotTokenExchanger_RefreshToken_DifferentTokens(t *testing.T) {
 
 	// Each different access token should result in a separate request
 	require.Equal(t, 3, requestCount)
+
+	// Verify no errors occurred
+	for _, tkn := range tokens {
+		require.NoError(t, errors[tkn], "token %s should not have error", tkn)
+	}
 
 	// Verify each token got its own copilot token
 	require.Equal(t, "token_for_token1", results["token1"])
@@ -421,7 +428,14 @@ func TestCopilotTokenCacheEntry_IsExpired(t *testing.T) {
 
 // TestCopilotTokenExchanger_ClearCache tests cache clearing
 func TestCopilotTokenExchanger_ClearCache(t *testing.T) {
+	requestCount := 0
+	var mu sync.Mutex
+
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requestCount++
+		mu.Unlock()
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
@@ -443,36 +457,30 @@ func TestCopilotTokenExchanger_ClearCache(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = exchanger.GetToken(ctx, "token2")
 	require.NoError(t, err)
+	initialCount := requestCount
 
 	// Clear cache
 	exchanger.ClearCache()
 
-	// Make requests again - should hit the server
-	requestCount := 0
-	mockServer2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestCount++
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		expiresAt := time.Now().Add(1 * time.Hour).Unix()
-		_ = json.NewEncoder(w).Encode(CopilotTokenResponse{
-			Token:     "new_copilot_token",
-			ExpiresAt: expiresAt,
-		})
-	}))
-	defer mockServer2.Close()
-
-	exchanger2 := createTestExchanger(t, mockServer2.URL)
-	_, _, _ = exchanger2.GetToken(ctx, "token1")
-	_, _, _ = exchanger2.GetToken(ctx, "token1") // Should use cache
-
-	// After clear, new requests would hit server
-	exchanger2.ClearCache()
-	_, _, _ = exchanger2.GetToken(ctx, "token1")
+	// After clear, requests should hit the server again
+	_, _, err = exchanger.GetToken(ctx, "token1")
+	require.NoError(t, err)
+	_, _, err = exchanger.GetToken(ctx, "token1") // Should use cache
+	require.NoError(t, err)
+	// Verify cache hit avoids extra server request
+	require.Equal(t, initialCount+1, requestCount, "second request for token1 should hit server after cache clear, but cache hit should avoid extra request")
 }
 
 // TestCopilotTokenExchanger_RemoveFromCache tests single entry removal
 func TestCopilotTokenExchanger_RemoveFromCache(t *testing.T) {
+	requestCount := 0
+	var mu sync.Mutex
+
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requestCount++
+		mu.Unlock()
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
@@ -494,12 +502,20 @@ func TestCopilotTokenExchanger_RemoveFromCache(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = exchanger.GetToken(ctx, "token2")
 	require.NoError(t, err)
+	initialCount := requestCount
 
 	// Remove only token1 from cache
 	exchanger.RemoveFromCache("token1")
 
-	// token1 should be fetched again, token2 should be cached
-	// (We can't directly verify this without request counting, but the operation shouldn't panic)
+	// token1 should be fetched again (server request)
+	_, _, err = exchanger.GetToken(ctx, "token1")
+	require.NoError(t, err)
+	// token2 should still be cached (no server request)
+	_, _, err = exchanger.GetToken(ctx, "token2")
+	require.NoError(t, err)
+
+	// Verify: token1 caused new request, token2 used cache
+	require.Equal(t, initialCount+1, requestCount, "token1 should cause new request after removal, token2 should use cache")
 }
 
 // TestCopilotTokenExchanger_ThreadSafety tests concurrent access to cache
@@ -560,15 +576,6 @@ func TestNewCopilotTokenExchanger_DefaultClient(t *testing.T) {
 func createTestExchanger(t *testing.T, mockServerURL string) *CopilotTokenExchanger {
 	t.Helper()
 
-	// Override the token endpoint URL
-	originalEndpoint := CopilotTokenEndpoint
-	defer func() {
-		// Restore original endpoint after test
-		// Note: We can't actually restore it since it's a const
-		// This is a limitation we work around by not running tests in parallel
-		_ = originalEndpoint
-	}()
-
 	// Create HTTP client that redirects to mock server
 	transport := &testCopilotTokenTransport{
 		mockServerURL: mockServerURL,
@@ -596,5 +603,6 @@ func (t *testCopilotTokenTransport) RoundTrip(req *http.Request) (*http.Response
 		return http.DefaultTransport.RoundTrip(newReq)
 	}
 
-	return http.DefaultTransport.RoundTrip(req)
+	// Return clear error for non-Copilot requests instead of delegating to DefaultTransport
+	return nil, fmt.Errorf("testCopilotTokenTransport: unexpected request to %q (only Copilot token endpoint is supported)", req.URL.String())
 }

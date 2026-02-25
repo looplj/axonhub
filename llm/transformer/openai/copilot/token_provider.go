@@ -15,6 +15,11 @@ type TokenExchanger interface {
 	// GetToken returns a Copilot token for the given access token.
 	// It handles caching internally and returns the token with its expiration timestamp.
 	GetToken(ctx context.Context, accessToken string) (string, int64, error)
+
+	// GetTokenWithClient returns a Copilot token for the given access token using the provided HTTP client.
+	// This allows the caller to specify a custom HTTP client (e.g., with proxy settings).
+	// If the implementation doesn't support custom clients, it may fall back to its default client.
+	GetTokenWithClient(ctx context.Context, httpClient *httpclient.HttpClient, accessToken string) (string, int64, error)
 }
 
 // CopilotTokenProvider manages OAuth2 credentials and exchanges them for Copilot tokens.
@@ -63,14 +68,14 @@ func (p *CopilotTokenProvider) GetToken(ctx context.Context) (string, error) {
 
 	// The TokenExchanger handles caching internally
 	// It returns cached token if valid, or exchanges for a new one if expired
-	token, _, err := p.tokenExchanger.GetToken(ctx, creds.AccessToken)
+	// Use GetTokenWithClient to honor the channel's httpClient (with proxy settings)
+	token, _, err := p.tokenExchanger.GetTokenWithClient(ctx, p.httpClient, creds.AccessToken)
 	if err != nil {
 		return "", err
 	}
 
 	return token, nil
 }
-
 // UpdateCredentials updates the stored OAuth credentials.
 // This is called when new credentials are obtained (e.g., after device flow completes).
 func (p *CopilotTokenProvider) UpdateCredentials(creds *oauth.OAuthCredentials) {
