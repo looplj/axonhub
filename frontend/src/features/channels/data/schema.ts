@@ -330,8 +330,6 @@ function validateOAuthCredentials(
   }
 }
 
-}
-
 // Create Channel Input
 
 export const createChannelInputSchema = z
@@ -485,7 +483,6 @@ export const updateChannelInputSchema = z
       }
       validateOAuthCredentials(derivedType, data.credentials?.apiKey, ctx);
     }
-  })
 
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）
     if (data.type === 'anthropic_gcp' && data.credentials) {
@@ -513,6 +510,7 @@ export const updateChannelInputSchema = z
       }
     }
   });
+
 export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>;
 
 // Channel Connection (for pagination)
