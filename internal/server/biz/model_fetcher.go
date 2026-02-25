@@ -112,9 +112,6 @@ func (f *ModelFetcher) fetchCopilotModels(ctx context.Context) []ModelIdentify {
 		return models
 	}
 
-	f.copilotCacheMu.Lock()
-	defer f.copilotCacheMu.Unlock()
-
 	models, err := f.fetchCopilotModelsFromSource(ctx)
 	if err != nil {
 		// If fetch failed but cache exists, return defensive copy
@@ -132,8 +129,11 @@ func (f *ModelFetcher) fetchCopilotModels(ctx context.Context) []ModelIdentify {
 		f.copilotModelsCache = make([]ModelIdentify, len(models))
 		copy(f.copilotModelsCache, models)
 		f.copilotCacheTimestamp = time.Now()
+
 		// Return a copy to callers
-		return make([]ModelIdentify, len(models))
+		copied := make([]ModelIdentify, len(models))
+		copy(copied, models)
+		return copied
 	}
 
 	return nil

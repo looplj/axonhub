@@ -9,7 +9,7 @@ const ProviderConfURL = "https://raw.githubusercontent.com/ThinkInAIXYZ/PublicPr
 // ProviderConfSHA256 is the SHA256 hash of the expected provider configuration file.
 // This should be updated whenever ProviderConfURL is changed to a new version.
 // You can obtain this by running: sha256sum dist/all.json
-const ProviderConfSHA256 = "" // TODO: Update with actual SHA256 hash after pinning URL version
+const ProviderConfSHA256 = "128b6c01d21fd145f3aa511355319c2ab6a5eaa560c86bce561ffc7fd82fde43"
 
 // ProviderID is the provider identifier in the PublicProviderConf.
 const ProviderID = "github-copilot"

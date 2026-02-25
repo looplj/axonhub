@@ -80,14 +80,14 @@ export function useDeviceFlow(
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
-  const pollingIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
-  const currentIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSuccessRef = useRef(onSuccess);
 
   useEffect(() => {
     return () => {
       if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
+                clearTimeout(pollingIntervalRef.current);
       }
     };
   }, []);
@@ -132,14 +132,14 @@ export function useDeviceFlow(
       }
 
       if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
+        clearTimeout(pollingIntervalRef.current);
       }
 
 
       pollingIntervalRef.current = window.setInterval(async () => {
         if (Date.now() >= expiry) {
           if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
+            clearTimeout(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
           }
           setIsPolling(false);
@@ -155,7 +155,7 @@ export function useDeviceFlow(
 
           if (result.access_token) {
             if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
+              clearTimeout(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
             }
             setIsPolling(false);
@@ -176,16 +176,18 @@ export function useDeviceFlow(
               setInterval(newInterval);
 
               if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
+                clearTimeout(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
               }
 
-              pollingIntervalRef.current = window.setInterval(() => {
+              // Use setTimeout for cleaner single poll with extended interval
+              pollingIntervalRef.current = window.setTimeout(() => {
                 poll(sessionId, newInterval, expiry);
               }, newInterval * 1000);
             } else {
               // Other error statuses
               if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
+              clearTimeout(pollingIntervalRef.current);
                 pollingIntervalRef.current = null;
               }
               setIsPolling(false);
@@ -195,7 +197,7 @@ export function useDeviceFlow(
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
           if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
+          clearTimeout(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
           }
           setIsPolling(false);
@@ -208,7 +210,7 @@ export function useDeviceFlow(
 
   const reset = useCallback(() => {
     if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
+    clearTimeout(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
     setUserCode(null);
