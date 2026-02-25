@@ -18,6 +18,7 @@ import (
 const (
 	CopilotTokenEndpoint = "https://api.github.com/copilot_internal/v2/token" //nolint:gosec
 	TokenExpiryBuffer    = 5 * time.Minute
+	TokenExchangeTimeout = 30 * time.Second
 )
 
 type CopilotTokenResponse struct {
@@ -47,9 +48,6 @@ type CopilotTokenExchanger struct {
 }
 
 func NewCopilotTokenExchanger(httpClient *httpclient.HttpClient) *CopilotTokenExchanger {
-	if httpClient == nil {
-		httpClient = httpclient.NewHttpClient()
-	}
 	return &CopilotTokenExchanger{
 		httpClient: httpClient,
 		cache:      make(map[string]*CopilotTokenCacheEntry),
@@ -117,7 +115,11 @@ func (e *CopilotTokenExchanger) exchangeWithClient(ctx context.Context, httpClie
 	log.Debug(ctx, "exchanging OAuth token for Copilot token",
 		log.String("endpoint", CopilotTokenEndpoint),
 	)
-	resp, err := httpClient.Do(ctx, req)
+	// Create a bounded context with timeout for the token exchange operation
+	exchangeCtx, cancel := context.WithTimeout(ctx, TokenExchangeTimeout)
+	defer cancel()
+
+	resp, err := httpClient.Do(exchangeCtx, req)
 	if err != nil {
 		return nil, fmt.Errorf("token exchange request failed: %w", err)
 	}

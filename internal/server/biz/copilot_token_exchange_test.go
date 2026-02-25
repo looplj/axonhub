@@ -270,7 +270,6 @@ func TestCopilotTokenExchanger_RefreshToken_DifferentTokens(t *testing.T) {
 		}(token)
 	}
 
-
 	wg.Wait()
 
 	// Each different access token should result in a separate request
@@ -566,9 +565,9 @@ func TestCopilotTokenExchanger_ThreadSafety(t *testing.T) {
 	// If we get here without panic or deadlock, thread safety is working
 }
 
-// TestNewCopilotTokenExchanger_DefaultClient tests exchanger creation with nil client
+// TestNewCopilotTokenExchanger_DefaultClient tests exchanger creation with a provided client.
 func TestNewCopilotTokenExchanger_DefaultClient(t *testing.T) {
-	exchanger := NewCopilotTokenExchanger(nil)
+	exchanger := NewCopilotTokenExchanger(httpclient.NewHttpClient())
 	require.NotNil(t, exchanger)
 	require.NotNil(t, exchanger.httpClient)
 }

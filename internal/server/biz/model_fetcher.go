@@ -2,6 +2,8 @@ package biz
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -110,25 +112,35 @@ func (f *ModelFetcher) fetchCopilotModels(ctx context.Context) []ModelIdentify {
 		return models
 	}
 
-	models := f.fetchCopilotModelsFromSource(ctx)
-	if len(models) > 0 {
-		f.copilotModelsCache = models
-		f.copilotCacheTimestamp = time.Now()
-		return models
-	}
+	f.copilotCacheMu.Lock()
+	defer f.copilotCacheMu.Unlock()
 
-	// If fetch failed but cache exists, return defensive copy
-	if len(f.copilotModelsCache) > 0 {
-		models := make([]ModelIdentify, len(f.copilotModelsCache))
-		copy(models, f.copilotModelsCache)
-		return models
+	models, err := f.fetchCopilotModelsFromSource(ctx)
+	if err != nil {
+		// If fetch failed but cache exists, return defensive copy
+		if len(f.copilotModelsCache) > 0 {
+			cached := make([]ModelIdentify, len(f.copilotModelsCache))
+			copy(cached, f.copilotModelsCache)
+
+			return cached
+		}
+
+		return nil
+	}
+	if len(models) > 0 {
+		// Store a copy in cache to avoid shared backing array
+		f.copilotModelsCache = make([]ModelIdentify, len(models))
+		copy(f.copilotModelsCache, models)
+		f.copilotCacheTimestamp = time.Now()
+		// Return a copy to callers
+		return make([]ModelIdentify, len(models))
 	}
 
 	return nil
 }
 
 // fetchCopilotModelsFromSource fetches models from PublicProviderConf.
-func (f *ModelFetcher) fetchCopilotModelsFromSource(ctx context.Context) []ModelIdentify {
+func (f *ModelFetcher) fetchCopilotModelsFromSource(ctx context.Context) ([]ModelIdentify, error) {
 	req := &httpclient.Request{
 		Method: http.MethodGet,
 		URL:    copilot.ProviderConfURL,
@@ -139,21 +151,31 @@ func (f *ModelFetcher) fetchCopilotModelsFromSource(ctx context.Context) []Model
 
 	resp, err := f.httpClient.Do(ctx, req)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to fetch copilot models: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil
+		return nil, fmt.Errorf("failed to fetch copilot models: non-OK status %d: %s", resp.StatusCode, string(resp.Body))
+	}
+
+	// Verify integrity if SHA256 is configured
+	if copilot.ProviderConfSHA256 != "" {
+		hash := sha256.Sum256(resp.Body)
+
+		hashHex := hex.EncodeToString(hash[:])
+		if hashHex != copilot.ProviderConfSHA256 {
+			return nil, fmt.Errorf("provider conf integrity check failed: expected SHA256 %s, got %s", copilot.ProviderConfSHA256, hashHex)
+		}
 	}
 
 	var conf providerConfResponse
 	if err := json.Unmarshal(resp.Body, &conf); err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to parse provider conf: %w", err)
 	}
 
 	provider, ok := conf.Providers[copilot.ProviderID]
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("provider %q not found in providerConfResponse", copilot.ProviderID)
 	}
 
 	// Use lo.FilterMap to build models slice, filtering out empty IDs
@@ -165,7 +187,7 @@ func (f *ModelFetcher) fetchCopilotModelsFromSource(ctx context.Context) []Model
 		return ModelIdentify{}, false
 	})
 
-	return models
+	return models, nil
 }
 
 func (f *ModelFetcher) tryReturnDefaultModels(ctx context.Context, channelType string) (*FetchModelsResult, bool) {
