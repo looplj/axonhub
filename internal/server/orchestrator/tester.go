@@ -127,13 +127,23 @@ func (processor *TestChannelOrchestrator) TestChannel(
 			{
 				Role: "user",
 				Content: llm.MessageContent{
-					Content: lo.ToPtr("Hello world, I'm AxonHub. Please tell me who you are?"),
-				}, // MessageContent
-			}, // Message
-		}, // Messages array
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "text",
+							Text: lo.ToPtr("Hello world, I'm AxonHub."),
+						},
+						{
+							Type: "text",
+							Text: lo.ToPtr("Please tell me who you are?"),
+						},
+					},
+				},
+			},
+		},
 		MaxCompletionTokens: lo.ToPtr(int64(256)),
 		Stream:              lo.ToPtr(useStream),
-	} // Request
+	}
+
 	body, err := json.Marshal(llmRequest)
 	if err != nil {
 		return nil, err
