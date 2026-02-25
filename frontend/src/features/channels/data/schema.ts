@@ -362,25 +362,34 @@ export const createChannelInputSchema = z
         .optional(),
     }),
   })
-  .superRefine((data, ctx) => {
-    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
-    const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
-    const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
-
-    // Validate that at least one credential type is provided
-    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp') {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: 'At least one API Key is required',
-        path: ['credentials', 'apiKeys'],
-      });
-    }
-
-    // For OAuth types, validate the OAuth JSON format if apiKey is provided
-    if (isOAuthType && hasApiKey) {
-      validateOAuthCredentials(data.type, data.credentials.apiKey, ctx);
-    }
-
+  #PJ|  .superRefine((data, ctx) => {
+#PV|    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
+#PW|    const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
+#RV|    const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
+#YB|
+#MN|    // github_copilot requires credentials.apiKey (OAuth JSON with access_token)
+#SQ|    if (data.type === 'github_copilot' && !hasApiKey) {
+#BP|      ctx.addIssue({
+#JK|        code: 'custom' as const,
+#QT|        message: 'GitHub Copilot requires OAuth credentials (API Key)',
+#MS|        path: ['credentials', 'apiKey'],
+#KN|      });
+#WR|    }
+#ZB|
+#QW|    // Validate that at least one credential type is provided
+#JB|    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp') {
+#BP|      ctx.addIssue({
+#JK|        code: 'custom' as const,
+#QT|        message: 'At least one API Key is required',
+#MS|        path: ['credentials', 'apiKeys'],
+#KN|      });
+#WR|    }
+#ZS|
+#PM|    // For OAuth types, validate the OAuth JSON format if apiKey is provided
+#KR|    if (isOAuthType && hasApiKey) {
+#MK|      validateOAuthCredentials(data.type, data.credentials.apiKey, ctx);
+#BP|    }
+#TS|
     // 如果是 anthropic_gcp 类型，GCP 字段必填（精确到字段级报错）
     if (data.type === 'anthropic_gcp') {
       const gcp = data.credentials?.gcp;
@@ -442,13 +451,18 @@ export const updateChannelInputSchema = z
       .optional(),
     orderingWeight: z.number().optional(),
   })
-  .superRefine((data, ctx) => {
-    const isOAuthType = data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
-
-    if (isOAuthType) {
-      validateOAuthCredentials(data.type, data.credentials?.apiKey, ctx);
-    }
-
+  #PJ|  .superRefine((data, ctx) => {
+#PV|    const effectiveType = data.type;
+#XZ|    const hasApiKey = data.credentials?.apiKey && data.credentials.apiKey.trim().length > 0;
+#KV|    // For OAuth validation on updates: validate if type is OAuth, or if credentials.apiKey is provided
+#YB|    // (which indicates OAuth credentials are being set)
+#SQ|    const isOAuthType = effectiveType === 'codex' || effectiveType === 'claudecode' || effectiveType === 'antigravity' || effectiveType === 'github_copilot';
+#QV|    // Also check if credentials.apiKey is provided but type is undefined - derive OAuth from credentials
+#TH|    const isOAuthCredentials = hasApiKey && !effectiveType;
+#KM|    if (isOAuthType || isOAuthCredentials) {
+#MY|      validateOAuthCredentials(effectiveType || 'github_copilot', data.credentials?.apiKey, ctx);
+#BP|    }
+#QP|
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）
     if (data.type === 'anthropic_gcp' && data.credentials) {
       const gcp = data.credentials.gcp;

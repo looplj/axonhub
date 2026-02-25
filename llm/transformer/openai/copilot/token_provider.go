@@ -42,12 +42,16 @@ type TokenProviderParams struct {
 
 // NewTokenProvider creates a new CopilotTokenProvider instance.
 // It wraps a TokenExchanger to handle the token exchange lifecycle.
-func NewTokenProvider(params TokenProviderParams) *CopilotTokenProvider {
+// Returns an error if TokenExchanger is nil.
+func NewTokenProvider(params TokenProviderParams) (*CopilotTokenProvider, error) {
+	if params.TokenExchanger == nil {
+		return nil, errors.New("TokenExchanger is required")
+	}
 	return &CopilotTokenProvider{
 		httpClient:     params.HTTPClient,
 		tokenExchanger: params.TokenExchanger,
 		credentials:    params.Credentials,
-	}
+	}, nil
 }
 
 // GetToken returns a valid Copilot token.
@@ -78,15 +82,26 @@ func (p *CopilotTokenProvider) GetToken(ctx context.Context) (string, error) {
 }
 // UpdateCredentials updates the stored OAuth credentials.
 // This is called when new credentials are obtained (e.g., after device flow completes).
+// Stores a shallow copy to prevent concurrent mutation.
 func (p *CopilotTokenProvider) UpdateCredentials(creds *oauth.OAuthCredentials) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.credentials = creds
+	if creds != nil {
+		c := *creds
+		p.credentials = &c
+	} else {
+		p.credentials = nil
+	}
 }
 
-// GetCredentials returns the current OAuth credentials.
+// GetCredentials returns a shallow copy of the current OAuth credentials.
+// Returns nil if no credentials are stored.
 func (p *CopilotTokenProvider) GetCredentials() *oauth.OAuthCredentials {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.credentials
+	if p.credentials != nil {
+		credCopy := *p.credentials
+		return &credCopy
+	}
+	return nil
 }

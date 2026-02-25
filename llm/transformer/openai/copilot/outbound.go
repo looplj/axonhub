@@ -237,12 +237,13 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 
 	// Check for Copilot's wrapped response format: {"response": {...}}
 	if !isResponsesFormat && gjson.GetBytes(httpResp.Body, "response").Exists() {
+		// Read original body into local variable to avoid mutating httpResp.Body
+		body := httpResp.Body
 		// Extract the inner response object
-		innerResponse := gjson.GetBytes(httpResp.Body, "response").Raw
-		slog.InfoContext(ctx, "Copilot wrapped response detected, extracting inner response")
-		httpResp.Body = []byte(innerResponse)
-		isResponsesFormat = gjson.GetBytes(httpResp.Body, "output").Exists() ||
-			gjson.GetBytes(httpResp.Body, "object").String() == "response"
+		innerResponse := gjson.GetBytes(body, "response").Raw
+		slog.DebugContext(ctx, "Copilot wrapped response detected, extracting inner response")
+		isResponsesFormat = gjson.GetBytes([]byte(innerResponse), "output").Exists() ||
+			gjson.GetBytes([]byte(innerResponse), "object").String() == "response"
 	}
 
 
@@ -300,6 +301,7 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 	// Local state for tracking item_id to call_id mapping
 	// This allows us to handle multiple concurrent tool calls
 	itemIDToCallID := make(map[string]string)
+	var mostRecentCallID string
 
 	// For Codex models, we need to convert the Copilot-specific stream format
 	// to standard OpenAI Responses API format, then delegate to the responses transformer
@@ -314,7 +316,7 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 		}
 
 		// Convert Copilot's custom format to standard Responses API format
-		convertedData := convertCopilotStreamEvent(ctx, event.Data, itemIDToCallID)
+		convertedData := convertCopilotStreamEvent(ctx, event.Data, itemIDToCallID, &mostRecentCallID)
 
 		if convertedData == nil {
 			// Event was consumed (e.g., delta/arguments accumulated)
@@ -350,7 +352,7 @@ func collectStreamEvents(stream streams.Stream[*httpclient.StreamEvent]) []*http
 // convertCopilotStreamEvent fixes up Copilot's standard Responses API stream events.
 // Copilot correctly uses the Responses API format, but it sends multiple output_item.added
 // events for the same call_id, and it incorrectly sets the item_id on delta/done events.
-func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID map[string]string) []byte {
+func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID map[string]string, mostRecentCallID *string) []byte {
 	eventType := gjson.GetBytes(data, "type").String()
 
 	if eventType == "response.output_item.added" {
@@ -358,6 +360,7 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 		if callID != "" {
 			// Track the call_id in our mapping
 			itemIDToCallID[callID] = callID
+			*mostRecentCallID = callID
 
 			// Copilot sends an item with arguments="" first, then later sends another item
 			// with the full arguments. We must ensure only ONE item is created in the aggregator.
@@ -392,12 +395,9 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 		if itemID != "" {
 			callID = itemIDToCallID[itemID]
 		}
-		// Fallback: use any known call_id if not found
+		// Fallback: use most recent call_id if not found
 		if callID == "" {
-			for _, cid := range itemIDToCallID {
-				callID = cid
-				break
-			}
+			callID = *mostRecentCallID
 		}
 		if callID != "" {
 			var event map[string]any
@@ -417,10 +417,7 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 			callID = itemIDToCallID[itemID]
 		}
 		if callID == "" {
-			for _, cid := range itemIDToCallID {
-				callID = cid
-				break
-			}
+			callID = *mostRecentCallID
 		}
 		if callID != "" {
 			var event map[string]any
@@ -565,13 +562,5 @@ func (t *OutboundTransformer) transformCodexResponsesRequest(ctx context.Context
 // isCodexModel checks if the model is a Codex model.
 func isCodexModel(model string) bool {
 	return strings.Contains(strings.ToLower(model), "codex")
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 

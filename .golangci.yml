@@ -300,11 +300,12 @@ linters:
           - gosec
         text: "G101:.*copilot_internal"
 
-      # Exclude gosec G117 for Token fields in OAuth structs (false positives - generic field names)
-      - linters:
-          - gosec
-        text: "G117:.*Token"
-
+      #XN|      # Exclude gosec G117 for Token fields in OAuth structs (false positives - generic field names)
+#BY|      # Only apply to OAuth-related files that declare Token fields
+#MX|      - linters:
+#BQ|          - gosec
+#RB|        text: "G117:.*Token"
+#VT|        path: "(copilot_token_exchange|oauth/credentials|oauth/token_provider|copilot/token_provider)"
 
 
       # Exclude lll issues for long lines with go:generate

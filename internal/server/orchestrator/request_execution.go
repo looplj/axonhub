@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -14,6 +15,34 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 )
+
+// sanitizeResponseBody redacts obvious secrets and truncates the body for safe logging.
+func sanitizeResponseBody(body []byte, maxLen int) []byte {
+	if len(body) == 0 {
+		return body
+	}
+
+	str := string(body)
+
+	// Redact bearer tokens
+	tokenRegex := regexp.MustCompile(`(bearer|Bearer|Bearer\s+)[a-zA-Z0-9_\-\.]+`)
+	str = tokenRegex.ReplaceAllString(str, "$1[REDACTED]")
+
+	// Redact API keys (common patterns)
+	apiKeyRegex := regexp.MustCompile(`(api[keyK]ey|API[keyK]ey)[\"']?\s*[:=]\s*[\"']?([a-zA-Z0-9_\-\.]{8,})[\"']?`)
+	str = apiKeyRegex.ReplaceAllString(str, "$1=$2[REDACTED]")
+
+	// Redact email addresses
+	emailRegex := regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+	str = emailRegex.ReplaceAllString(str, "[EMAIL REDACTED]")
+
+	// Truncate if too long
+	if len(str) > maxLen {
+		str = str[:maxLen] + "..."
+	}
+
+	return []byte(str)
+}
 
 // persistRequestExecutionMiddleware ensures a request execution exists and handles error updates.
 type persistRequestExecutionMiddleware struct {
@@ -156,9 +185,10 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 		if modelID := m.outbound.GetCurrentModelID(); modelID != "" {
 			logFields = append(logFields, log.String("model_id", modelID))
 		}
-		// Add response body for HTTP errors to help debug 400 errors
+		// Add response body for HTTP errors to help debug 400 errors (sanitized for PII)
 		if httpErr, ok := xerrors.As[*httpclient.Error](err); ok && len(httpErr.Body) > 0 {
-			logFields = append(logFields, log.ByteString("response_body", httpErr.Body))
+			sanitizedBody := sanitizeResponseBody(httpErr.Body, 1024)
+			logFields = append(logFields, log.ByteString("response_body", sanitizedBody))
 		}
 
 		log.Warn(ctx, "request process failed", logFields...)
@@ -192,10 +222,16 @@ func ExtractErrorMessage(err error) string {
 	}
 
 	// Other compatible error format.
-	message = gjson.GetBytes(httpErr.Body, "errors.0.message")
-	message = gjson.GetBytes(httpErr.Body, "errors.message")
-	if message.Exists() && message.Type == gjson.String {
-		return message.String()
+	// Try errors.0.message first, then fall back to errors.message
+	message1 := gjson.GetBytes(httpErr.Body, "errors.0.message")
+	message2 := gjson.GetBytes(httpErr.Body, "errors.message")
+
+	if message1.Exists() && message1.Type == gjson.String && message1.String() != "" {
+		return message1.String()
+	}
+
+	if message2.Exists() && message2.Type == gjson.String {
+		return message2.String()
 	}
 
 	return httpErr.Error()

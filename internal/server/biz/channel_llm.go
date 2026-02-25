@@ -596,11 +596,14 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		}
 
 		// Create CopilotTokenProvider with the token exchanger
-		p := copilot.NewTokenProvider(copilot.TokenProviderParams{
+		p, err := copilot.NewTokenProvider(copilot.TokenProviderParams{
 			Credentials:    creds,
 			HTTPClient:     httpClient,
 			TokenExchanger: svc.copilotTokenExchanger,
 		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create CopilotTokenProvider: %w", err)
+		}
 
 		// Create the Copilot outbound transformer with LiteLLM headers
 		transformer, err := copilot.NewOutboundTransformer(copilot.OutboundTransformerParams{

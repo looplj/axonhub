@@ -1,4 +1,4 @@
-  {
+{
   "copilot_device.copy_code": "Copy code",
   "copilot_device.step_1": "Click the button above to open GitHub",
   "copilot_device.step_2": "Enter the code shown above",
@@ -7,7 +7,6 @@
   "channels.dialogs.oauth.errors.copilotCredentialsInvalid": "GitHub Copilot credentials must be valid JSON with access_token",
   "channels.dialogs.oauth.errors.credentialsInvalid": "Invalid OAuth credentials format",
   "channels.title": "Channels",
-
   "channels.addChannel": "Add Channel",
   "channels.loadBalancingStrategy": "Load Balancing Strategy",
   "channels.importChannels": "Bulk Import",
@@ -288,10 +287,8 @@
   "channels.dialogs.github_copilot.buttons.starting": "Starting...",
   "channels.dialogs.github_copilot.buttons.openGitHub": "Open GitHub",
   "channels.dialogs.github_copilot.labels.userCode": "Your Code",
-  "channels.dialogs.github_copilot.buttons.openGitHub": "Open GitHub",
   "channels.dialogs.github_copilot.buttons.exchangeAndFillApiKey": "Exchange & Fill API Key",
   "channels.dialogs.github_copilot.buttons.exchanging": "Exchanging...",
-  "channels.dialogs.github_copilot.labels.userCode": "Your Code",
   "channels.dialogs.github_copilot.labels.verificationUrl": "Verification URL",
   "channels.dialogs.github_copilot.labels.authorizationUrl": "OAuth Authorization URL",
   "channels.dialogs.github_copilot.labels.callbackUrl": "Callback URL",

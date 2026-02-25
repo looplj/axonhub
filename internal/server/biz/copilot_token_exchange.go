@@ -91,7 +91,10 @@ func (e *CopilotTokenExchanger) refreshTokenWithClient(ctx context.Context, http
 	if accessToken == "" {
 		return "", 0, errors.New("access token is empty")
 	}
-	v, err, _ := e.sf.Do(accessToken, func() (any, error) {
+	// Use composite key including httpClient to ensure different proxy configs get separate deduplication
+	sfKey := accessToken + ":" + fmt.Sprintf("%p", httpClient)
+
+	v, err, _ := e.sf.Do(sfKey, func() (any, error) {
 		return e.exchangeWithClient(ctx, httpClient, accessToken)
 	})
 	if err != nil {
@@ -104,58 +107,13 @@ func (e *CopilotTokenExchanger) refreshTokenWithClient(ctx context.Context, http
 	return result.Token, result.ExpiresAt, nil
 }
 
-func (e *CopilotTokenExchanger) exchange(ctx context.Context, accessToken string) (*CopilotTokenResponse, error) {
-	req := httpclient.NewRequestBuilder().
-		WithMethod(http.MethodGet).
-		WithURL(CopilotTokenEndpoint).
-		WithHeader("Authorization", "token "+accessToken).
-		WithHeader("Accept", "application/json").
-	Build()
-	log.Debug(ctx, "exchanging OAuth token for Copilot token",
-		log.String("endpoint", CopilotTokenEndpoint),
-)
-	resp, err := e.httpClient.Do(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("token exchange request failed: %w", err)
-	}
-	// Check status code before parsing response
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("token exchange returned non-2xx status: %d", resp.StatusCode)
-	}
-	var tokenResp CopilotTokenResponse
-	if err := json.Unmarshal(resp.Body, &tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to parse token response: %w", err)
-	}
-	if tokenResp.Token == "" {
-		return nil, errors.New("copilot token is empty in response")
-	}
-	if tokenResp.ExpiresAt == 0 {
-		return nil, errors.New("expires_at is missing in response")
-	}
-
-	expiresAt := time.Unix(tokenResp.ExpiresAt, 0)
-	e.mu.Lock()
-	e.cache[accessToken] = &CopilotTokenCacheEntry{
-		Token:        accessToken,
-		CopilotToken: tokenResp.Token,
-		ExpiresAt:    expiresAt,
-		CachedAt:     time.Now(),
-	}
-	e.mu.Unlock()
-	log.Debug(ctx, "copilot token exchanged and cached",
-		log.Time("expires_at", expiresAt),
-		log.Duration("buffer", TokenExpiryBuffer),
-)
-	return &tokenResp, nil
-}
-
 func (e *CopilotTokenExchanger) exchangeWithClient(ctx context.Context, httpClient *httpclient.HttpClient, accessToken string) (*CopilotTokenResponse, error) {
 	req := httpclient.NewRequestBuilder().
 		WithMethod(http.MethodGet).
 		WithURL(CopilotTokenEndpoint).
 		WithHeader("Authorization", "token "+accessToken).
 		WithHeader("Accept", "application/json").
-	Build()
+		Build()
 	log.Debug(ctx, "exchanging OAuth token for Copilot token",
 		log.String("endpoint", CopilotTokenEndpoint),
 	)

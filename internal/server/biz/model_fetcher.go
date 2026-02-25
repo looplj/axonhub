@@ -80,10 +80,13 @@ const copilotModelsCacheDuration = 1 * time.Hour
 // providerConfResponse represents the structure of the PublicProviderConf JSON.
 type providerConfResponse struct {
 	Providers map[string]struct {
-		Models []struct {
-			ID string `json:"id"`
-		} `json:"models"`
+		Models []modelType `json:"models"`
 	} `json:"providers"`
+}
+
+// modelType is the type for individual models in providerConfResponse.
+type modelType struct {
+	ID string `json:"id"`
 }
 
 // fetchCopilotModels fetches GitHub Copilot models from PublicProviderConf with caching.
@@ -153,12 +156,14 @@ func (f *ModelFetcher) fetchCopilotModelsFromSource(ctx context.Context) []Model
 		return nil
 	}
 
-	models := make([]ModelIdentify, 0, len(provider.Models))
-	for _, model := range provider.Models {
-		if model.ID != "" {
-			models = append(models, ModelIdentify{ID: model.ID})
+	// Use lo.FilterMap to build models slice, filtering out empty IDs
+	models := lo.FilterMap(provider.Models, func(m modelType, _ int) (ModelIdentify, bool) {
+		if m.ID != "" {
+			return ModelIdentify(m), true
 		}
-	}
+
+		return ModelIdentify{}, false
+	})
 
 	return models
 }
@@ -202,7 +207,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 
 		if ch.Credentials.IsOAuth() {
-		if models := f.getDefaultModelsByType(ctx, ch.Type); models != nil {
+			if models := f.getDefaultModelsByType(ctx, ch.Type); models != nil {
 				return &FetchModelsResult{Models: models}, nil
 			}
 		}

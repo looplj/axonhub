@@ -1,4 +1,4 @@
-  {
+{
   "copilot_device.copy_code": "复制代码",
   "copilot_device.step_1": "点击上方按钮打开 GitHub",
   "copilot_device.step_2": "输入上方的代码",
@@ -9,7 +9,6 @@
   "channels.title": "渠道",
   "channels.toggleColumns": "切换列",
   "channels.description": "管理 AI 模型渠道、配置提供商并监控健康状态。",
-
   "channels.addChannel": "添加渠道",
   "channels.loadBalancingStrategy": "负载均衡策略",
   "channels.importChannels": "批量导入",
@@ -292,10 +291,8 @@
   "channels.dialogs.github_copilot.buttons.starting": "启动中...",
   "channels.dialogs.github_copilot.buttons.openGitHub": "打开 GitHub",
   "channels.dialogs.github_copilot.labels.userCode": "您的代码",
-  "channels.dialogs.github_copilot.buttons.openGitHub": "打开 GitHub",
   "channels.dialogs.github_copilot.buttons.exchangeAndFillApiKey": "交换并填写 API 密钥",
   "channels.dialogs.github_copilot.buttons.exchanging": "交换中...",
-  "channels.dialogs.github_copilot.labels.userCode": "您的代码",
   "channels.dialogs.github_copilot.labels.verificationUrl": "验证 URL",
   "channels.dialogs.github_copilot.labels.authorizationUrl": "OAuth 授权 URL",
   "channels.dialogs.github_copilot.labels.callbackUrl": "回调 URL",
