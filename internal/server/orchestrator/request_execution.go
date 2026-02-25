@@ -16,6 +16,13 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline"
 )
 
+// Precompiled regex patterns for sanitizeResponseBody to avoid recompiling on each call.
+var (
+	tokenRegex  = regexp.MustCompile(`(bearer|Bearer|Bearer\s+)[a-zA-Z0-9_\-\.]+`)
+	apiKeyRegex = regexp.MustCompile(`(api[keyK]ey|API[keyK]ey)["']?\s*[:=]\s*["']?([a-zA-Z0-9_\-\.]{8,})["']?`)
+	emailRegex  = regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+)
+
 // sanitizeResponseBody redacts obvious secrets and truncates the body for safe logging.
 func sanitizeResponseBody(body []byte, maxLen int) []byte {
 	if len(body) == 0 {
@@ -25,15 +32,12 @@ func sanitizeResponseBody(body []byte, maxLen int) []byte {
 	str := string(body)
 
 	// Redact bearer tokens
-	tokenRegex := regexp.MustCompile(`(bearer|Bearer|Bearer\s+)[a-zA-Z0-9_\-\.]+`)
 	str = tokenRegex.ReplaceAllString(str, "$1[REDACTED]")
 
 	// Redact API keys (common patterns)
-	apiKeyRegex := regexp.MustCompile(`(api[keyK]ey|API[keyK]ey)[\"']?\s*[:=]\s*[\"']?([a-zA-Z0-9_\-\.]{8,})[\"']?`)
-	str = apiKeyRegex.ReplaceAllString(str, "$1=$2[REDACTED]")
+	str = apiKeyRegex.ReplaceAllString(str, "$1=[REDACTED]")
 
 	// Redact email addresses
-	emailRegex := regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
 	str = emailRegex.ReplaceAllString(str, "[EMAIL REDACTED]")
 
 	// Truncate if too long
