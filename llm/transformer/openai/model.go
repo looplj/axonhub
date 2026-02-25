@@ -347,6 +347,11 @@ type ToolCallExtraContent struct {
 	Google *ToolCallGoogleExtraContent `json:"google,omitempty"`
 }
 
+// ToolCallExtraFields represents wrapped extension fields used by some providers.
+type ToolCallExtraFields struct {
+	ExtraContent *ToolCallExtraContent `json:"extra_content,omitempty"`
+}
+
 // ToolCallGoogleExtraContent represents Google-specific extension fields for tool calls.
 type ToolCallGoogleExtraContent struct {
 	ThoughtSignature string `json:"thought_signature,omitempty"`
@@ -360,6 +365,8 @@ type ToolCall struct {
 	Index    int          `json:"index"`
 	// ExtraContent carries provider-specific extension fields, such as Gemini OpenAI thought signature.
 	ExtraContent *ToolCallExtraContent `json:"extra_content,omitempty"`
+	// ExtraFields is a compatibility wrapper for payloads that nest extra_content under extra_fields.
+	ExtraFields *ToolCallExtraFields `json:"extra_fields,omitempty"`
 }
 
 // ToolFunction represents a tool function reference.

@@ -19,10 +19,15 @@ func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
 		Index: tc.Index,
 	}
 
-	if tc.ExtraContent != nil &&
-		tc.ExtraContent.Google != nil &&
-		tc.ExtraContent.Google.ThoughtSignature != "" {
-		thoughtSignature := tc.ExtraContent.Google.ThoughtSignature
+	extraContent := tc.ExtraContent
+	if extraContent == nil && tc.ExtraFields != nil {
+		extraContent = tc.ExtraFields.ExtraContent
+	}
+
+	if extraContent != nil &&
+		extraContent.Google != nil &&
+		extraContent.Google.ThoughtSignature != "" {
+		thoughtSignature := extraContent.Google.ThoughtSignature
 		normalized := shared.NormalizeGeminiThoughtSignature(thoughtSignature)
 		if normalized != nil {
 			thoughtSignature = *normalized

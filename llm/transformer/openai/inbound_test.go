@@ -949,6 +949,87 @@ func TestToolCall_ToLLMToolCall_NormalizesGeminiThoughtSignature(t *testing.T) {
 	)
 }
 
+func TestToolCall_ToLLMToolCall_NormalizesGeminiThoughtSignatureFromExtraFields(t *testing.T) {
+	tc := ToolCall{
+		ID:   "call_1",
+		Type: "function",
+		Function: FunctionCall{
+			Name:      "get_weather",
+			Arguments: `{"city":"Shanghai"}`,
+		},
+		Index: 0,
+		ExtraFields: &ToolCallExtraFields{
+			ExtraContent: &ToolCallExtraContent{
+				Google: &ToolCallGoogleExtraContent{
+					ThoughtSignature: "base64_signature",
+				},
+			},
+		},
+	}
+
+	got := tc.ToLLMToolCall()
+
+	require.NotNil(t, got.TransformerMetadata)
+	require.Equal(
+		t,
+		shared.GeminiThoughtSignaturePrefix+"base64_signature",
+		got.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature],
+	)
+}
+
+func TestInboundTransformer_TransformRequest_WithToolCallExtraFieldsThoughtSignature(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	req := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "/v1/chat/completions",
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: []byte(`{
+			"model":"gemini-2.5-flash",
+			"messages":[
+				{
+					"role":"assistant",
+					"tool_calls":[
+						{
+							"id":"call_1",
+							"type":"function",
+							"index":0,
+							"function":{"name":"game-art_generate_image","arguments":"{}"},
+							"extra_fields":{
+								"extra_content":{
+									"google":{"thought_signature":"raw_signature_from_extra_fields"}
+								}
+							}
+						}
+					]
+				}
+			]
+		}`),
+	}
+
+	got, err := transformer.TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Len(t, got.Messages, 1)
+	require.Len(t, got.Messages[0].ToolCalls, 1)
+	require.NotNil(t, got.Messages[0].ReasoningSignature)
+	require.Equal(
+		t,
+		shared.GeminiThoughtSignaturePrefix+"raw_signature_from_extra_fields",
+		*got.Messages[0].ReasoningSignature,
+	)
+
+	metadataSignature, ok := got.Messages[0].ToolCalls[0].TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string)
+	require.True(t, ok)
+	require.Equal(
+		t,
+		shared.GeminiThoughtSignaturePrefix+"raw_signature_from_extra_fields",
+		metadataSignature,
+	)
+}
+
 func TestMessageFromLLM_WithGeminiThoughtSignatureDoesNotInjectToolCallExtraContent(t *testing.T) {
 	msg := llm.Message{
 		Role:               "assistant",
