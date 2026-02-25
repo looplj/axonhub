@@ -48,7 +48,7 @@ type CopilotHandlersParams struct {
 
 	CacheConfig xcache.Config
 	HttpClient  *httpclient.HttpClient
-	Clock       Clock       `optional:"true"`
+	Clock       Clock `optional:"true"`
 }
 
 // Clock provides time-related functions for testability.
@@ -146,8 +146,11 @@ func (h *CopilotHandlers) StartOAuth(c *gin.Context) {
 
 	var req StartCopilotOAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		JSONError(c, http.StatusBadRequest, errors.New("invalid request format"))
-		return
+		// Allow empty body for requests with optional fields
+		if !strings.Contains(err.Error(), "EOF") && err.Error() != "EOF" {
+			JSONError(c, http.StatusBadRequest, errors.New("invalid request format"))
+			return
+		}
 	}
 
 	sessionID, err := generateCopilotSessionID()
@@ -176,7 +179,7 @@ func (h *CopilotHandlers) StartOAuth(c *gin.Context) {
 		VerificationURI: deviceCodeResp.VerificationURI,
 		ExpiresIn:       deviceCodeResp.ExpiresIn,
 		Interval:        deviceCodeResp.Interval,
-		CreatedAt:       time.Now().Unix(),
+		CreatedAt:       h.clock.Now().Unix(),
 	}
 
 	cacheKey := copilotOAuthCacheKey(sessionID)
@@ -320,8 +323,6 @@ func (h *CopilotHandlers) PollOAuth(c *gin.Context) {
 	}
 
 	// Success - access token received
-
-	// Success - access token received
 	if tokenResp.Token != "" {
 		// Clean up the cache entry
 		if err := h.deviceCodeCache.Delete(ctx, cacheKey); err != nil {
@@ -364,10 +365,8 @@ func (h *CopilotHandlers) pollAccessToken(ctx context.Context, httpClient *httpc
 
 	// Check for non-2xx status codes
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("access token request failed with status %d: %s", resp.StatusCode, string(resp.Body))
+		return nil, fmt.Errorf("access token request failed with status %d", resp.StatusCode)
 	}
-
-	// GitHub returns form-encoded response or JSON depending on Accept header
 
 	// GitHub returns form-encoded response or JSON depending on Accept header
 	// Try to parse as JSON first, then fall back to form-encoded
