@@ -304,10 +304,10 @@ func (t *VideoInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			Message: v.Error.Message,
 		}
 	}
-	if v.Usage != nil {
+	if llmResp.Usage != nil {
 		oai.Usage = &OpenAIVideoUsage{
-			CompletionTokens: v.Usage.CompletionTokens,
-			TotalTokens:      v.Usage.TotalTokens,
+			CompletionTokens: llmResp.Usage.CompletionTokens,
+			TotalTokens:      llmResp.Usage.TotalTokens,
 		}
 	}
 

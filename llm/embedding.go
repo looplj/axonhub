@@ -134,9 +134,6 @@ type EmbeddingResponse struct {
 
 	// Data contains the embedding results.
 	Data []EmbeddingData `json:"data"`
-
-	// Usage contains token usage information.
-	Usage *EmbeddingUsage `json:"usage,omitempty"`
 }
 
 // EmbeddingData represents a single embedding result.
@@ -188,11 +185,4 @@ func (e *Embedding) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("invalid embedding type")
 }
 
-// EmbeddingUsage represents token usage for embedding requests.
-type EmbeddingUsage struct {
-	// PromptTokens is the number of tokens in the input.
-	PromptTokens int64 `json:"prompt_tokens"`
 
-	// TotalTokens is the total number of tokens used.
-	TotalTokens int64 `json:"total_tokens"`
-}

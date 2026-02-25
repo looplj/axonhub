@@ -63,7 +63,7 @@ type Outbound interface {
 // video task query/delete operations (async task model).
 type VideoTaskOutbound interface {
 	BuildGetVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
-	ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.VideoResponse, error)
+	ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error)
 
 	BuildDeleteVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
 }

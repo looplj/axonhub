@@ -173,13 +173,13 @@ func (t *VideoInboundTransformer) TransformResponse(ctx context.Context, llmResp
 		}{VideoURL: v.VideoURL}
 	}
 
-	if v.Usage != nil {
+	if llmResp.Usage != nil {
 		resp.Usage = &struct {
 			CompletionTokens int64 `json:"completion_tokens,omitempty"`
 			TotalTokens      int64 `json:"total_tokens,omitempty"`
 		}{
-			CompletionTokens: v.Usage.CompletionTokens,
-			TotalTokens:      v.Usage.TotalTokens,
+			CompletionTokens: llmResp.Usage.CompletionTokens,
+			TotalTokens:      llmResp.Usage.TotalTokens,
 		}
 	}
 

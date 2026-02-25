@@ -62,7 +62,7 @@ func TestPersistRequestMiddleware_Name(t *testing.T) {
 
 func TestPersistRequestMiddleware_UsageExtraction_EmbeddingResponse(t *testing.T) {
 	t.Parallel()
-	
+
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
@@ -85,12 +85,12 @@ func TestPersistRequestMiddleware_UsageExtraction_EmbeddingResponse(t *testing.T
 
 	state := &PersistenceState{
 		Request: &ent.Request{
-			ID:         1,
-			ProjectID:  1,
-			APIKeyID:   1,
-			Source:     "test",
-			Format:     "openai",
-			ModelID:    "text-embedding-3-small",
+			ID:        1,
+			ProjectID: 1,
+			APIKeyID:  1,
+			Source:    "test",
+			Format:    "openai",
+			ModelID:   "text-embedding-3-small",
 		},
 		RequestExec: &ent.RequestExecution{
 			ID:        1,
@@ -114,12 +114,11 @@ func TestPersistRequestMiddleware_UsageExtraction_EmbeddingResponse(t *testing.T
 	}
 
 	llmResp := &llm.Response{
-		ID: "resp-1",
-		Embedding: &llm.EmbeddingResponse{
-			Usage: &llm.EmbeddingUsage{
-				PromptTokens: 100,
-				TotalTokens:  100,
-			},
+		ID:        "resp-1",
+		Embedding: &llm.EmbeddingResponse{},
+		Usage: &llm.Usage{
+			PromptTokens: 100,
+			TotalTokens:  100,
 		},
 	}
 
@@ -129,12 +128,12 @@ func TestPersistRequestMiddleware_UsageExtraction_EmbeddingResponse(t *testing.T
 	require.NotNil(t, result)
 	require.Equal(t, llmResp.ID, result.ID)
 	require.NotNil(t, result.Embedding)
-	require.Equal(t, int64(100), result.Embedding.Usage.PromptTokens)
+	require.Equal(t, int64(100), result.Usage.PromptTokens)
 }
 
 func TestPersistRequestMiddleware_UsageExtraction_ChatResponse(t *testing.T) {
 	t.Parallel()
-	
+
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
@@ -157,12 +156,12 @@ func TestPersistRequestMiddleware_UsageExtraction_ChatResponse(t *testing.T) {
 
 	state := &PersistenceState{
 		Request: &ent.Request{
-			ID:         1,
-			ProjectID:  1,
-			APIKeyID:   1,
-			Source:     "test",
-			Format:     "openai",
-			ModelID:    "gpt-4",
+			ID:        1,
+			ProjectID: 1,
+			APIKeyID:  1,
+			Source:    "test",
+			Format:    "openai",
+			ModelID:   "gpt-4",
 		},
 		RequestExec: &ent.RequestExecution{
 			ID:        1,
@@ -207,7 +206,7 @@ func TestPersistRequestMiddleware_UsageExtraction_ChatResponse(t *testing.T) {
 
 func TestPersistRequestMiddleware_UsageExtraction_NilUsage(t *testing.T) {
 	t.Parallel()
-	
+
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
@@ -230,12 +229,12 @@ func TestPersistRequestMiddleware_UsageExtraction_NilUsage(t *testing.T) {
 
 	state := &PersistenceState{
 		Request: &ent.Request{
-			ID:         1,
-			ProjectID:  1,
-			APIKeyID:   1,
-			Source:     "test",
-			Format:     "openai",
-			ModelID:    "gpt-4",
+			ID:        1,
+			ProjectID: 1,
+			APIKeyID:  1,
+			Source:    "test",
+			Format:    "openai",
+			ModelID:   "gpt-4",
 		},
 		RequestExec: &ent.RequestExecution{
 			ID:        1,
@@ -259,7 +258,7 @@ func TestPersistRequestMiddleware_UsageExtraction_NilUsage(t *testing.T) {
 	}
 
 	llmResp := &llm.Response{
-		ID:   "resp-3",
+		ID:    "resp-3",
 		Usage: nil,
 	}
 
@@ -272,7 +271,7 @@ func TestPersistRequestMiddleware_UsageExtraction_NilUsage(t *testing.T) {
 
 func TestPersistRequestMiddleware_UsageExtraction_EmbeddingWithNilUsage(t *testing.T) {
 	t.Parallel()
-	
+
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
@@ -295,12 +294,12 @@ func TestPersistRequestMiddleware_UsageExtraction_EmbeddingWithNilUsage(t *testi
 
 	state := &PersistenceState{
 		Request: &ent.Request{
-			ID:         1,
-			ProjectID:  1,
-			APIKeyID:   1,
-			Source:     "test",
-			Format:     "openai",
-			ModelID:    "text-embedding-3-small",
+			ID:        1,
+			ProjectID: 1,
+			APIKeyID:  1,
+			Source:    "test",
+			Format:    "openai",
+			ModelID:   "text-embedding-3-small",
 		},
 		RequestExec: &ent.RequestExecution{
 			ID:        1,
@@ -324,10 +323,8 @@ func TestPersistRequestMiddleware_UsageExtraction_EmbeddingWithNilUsage(t *testi
 	}
 
 	llmResp := &llm.Response{
-		ID: "resp-4",
-		Embedding: &llm.EmbeddingResponse{
-			Usage: nil,
-		},
+		ID:        "resp-4",
+		Embedding: &llm.EmbeddingResponse{},
 	}
 
 	result, err := middleware.OnOutboundLlmResponse(ctx, llmResp)

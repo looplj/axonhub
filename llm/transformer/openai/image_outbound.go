@@ -588,16 +588,16 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 			CompletionTokens: imgResp.Usage.OutputTokens,
 			TotalTokens:      imgResp.Usage.TotalTokens,
 		}
-
-		imageResponse.Usage = &llm.ImageUsage{
-			InputTokens:  imgResp.Usage.InputTokens,
-			OutputTokens: imgResp.Usage.OutputTokens,
-			TotalTokens:  imgResp.Usage.TotalTokens,
-		}
 		if imgResp.Usage.InputTokensDetails != nil {
-			imageResponse.Usage.InputTokensDetails = &llm.ImageInputTokenDetails{
-				ImageTokens: imgResp.Usage.InputTokensDetails.ImageTokens,
-				TextTokens:  imgResp.Usage.InputTokensDetails.TextTokens,
+			resp.Usage.PromptTokensDetails = &llm.PromptTokensDetails{
+				ImageTokens:  imgResp.Usage.InputTokensDetails.ImageTokens,
+				TextTokens:   imgResp.Usage.InputTokensDetails.TextTokens,
+				CachedTokens: imgResp.Usage.InputTokensDetails.CachedTokens,
+			}
+		}
+		if imgResp.Usage.OutputTokensDetails != nil {
+			resp.Usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
+				ReasoningTokens: imgResp.Usage.OutputTokensDetails.ReasoningTokens,
 			}
 		}
 	}
@@ -636,16 +636,23 @@ type ImageData struct {
 
 // ImagesResponseUsage represents usage information for image generation.
 type ImagesResponseUsage struct {
-	InputTokens        int64                                  `json:"input_tokens"`
-	OutputTokens       int64                                  `json:"output_tokens"`
-	TotalTokens        int64                                  `json:"total_tokens"`
-	InputTokensDetails *ImagesResponseUsageInputTokensDetails `json:"input_tokens_details,omitempty"`
+	InputTokens         int64                                   `json:"input_tokens"`
+	OutputTokens        int64                                   `json:"output_tokens"`
+	TotalTokens         int64                                   `json:"total_tokens"`
+	InputTokensDetails  *ImagesResponseUsageInputTokensDetails  `json:"input_tokens_details,omitempty"`
+	OutputTokensDetails *ImagesResponseUsageOutputTokensDetails `json:"output_tokens_details,omitempty"`
 }
 
 // ImagesResponseUsageInputTokensDetails represents detailed input token information.
 type ImagesResponseUsageInputTokensDetails struct {
-	ImageTokens int64 `json:"image_tokens"`
-	TextTokens  int64 `json:"text_tokens"`
+	ImageTokens  int64 `json:"image_tokens"`
+	TextTokens   int64 `json:"text_tokens"`
+	CachedTokens int64 `json:"cached_tokens,omitempty"`
+}
+
+// ImagesResponseUsageOutputTokensDetails represents detailed output token information.
+type ImagesResponseUsageOutputTokensDetails struct {
+	ReasoningTokens int64 `json:"reasoning_tokens,omitempty"`
 }
 
 // extractFile extracts base64 image data and returns FormFile.

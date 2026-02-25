@@ -43,10 +43,6 @@ func TestRerankResponseJSON(t *testing.T) {
 				Document:       &RerankDocument{Text: "doc2"},
 			},
 		},
-		Usage: &RerankUsage{
-			PromptTokens: 10,
-			TotalTokens:  15,
-		},
 	}
 
 	data, err := json.Marshal(resp)
@@ -60,6 +56,4 @@ func TestRerankResponseJSON(t *testing.T) {
 	assert.Equal(t, len(resp.Results), len(decoded.Results))
 	assert.Equal(t, resp.Results[0].Index, decoded.Results[0].Index)
 	assert.Equal(t, resp.Results[0].RelevanceScore, decoded.Results[0].RelevanceScore)
-	assert.NotNil(t, decoded.Usage)
-	assert.Equal(t, resp.Usage.TotalTokens, decoded.Usage.TotalTokens)
 }

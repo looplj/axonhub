@@ -56,7 +56,6 @@ type ImageResponse struct {
 	OutputFormat string      `json:"output_format,omitempty"`
 	Quality      string      `json:"quality,omitempty"`
 	Size         string      `json:"size,omitempty"`
-	Usage        *ImageUsage `json:"usage,omitempty"`
 }
 
 // ImageData represents a single image in the response.
@@ -66,16 +65,4 @@ type ImageData struct {
 	RevisedPrompt string `json:"revised_prompt,omitempty"`
 }
 
-// ImageUsage represents token usage for image generation (GPT Image models).
-type ImageUsage struct {
-	InputTokens        int64                   `json:"input_tokens"`
-	OutputTokens       int64                   `json:"output_tokens"`
-	TotalTokens        int64                   `json:"total_tokens"`
-	InputTokensDetails *ImageInputTokenDetails `json:"input_tokens_details,omitempty"`
-}
 
-// ImageInputTokenDetails represents detailed input token information.
-type ImageInputTokenDetails struct {
-	ImageTokens int64 `json:"image_tokens"`
-	TextTokens  int64 `json:"text_tokens"`
-}
