@@ -38,6 +38,18 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/zai"
 )
 
+type AutoRefresher interface {
+	StartAutoRefresh(ctx context.Context, opts oauth.AutoRefreshOptions)
+	StopAutoRefresh()
+}
+
+func setupAutoRefresh(ch *Channel, refresher AutoRefresher, opts oauth.AutoRefreshOptions) {
+	ch.startTokenProvider = func() {
+		refresher.StartAutoRefresh(context.Background(), opts)
+	}
+	ch.stopTokenProvider = refresher.StopAutoRefresh
+}
+
 func (c *Channel) IsModelSupported(model string) bool {
 	entries := c.GetModelEntries()
 	_, ok := entries[model]
@@ -323,10 +335,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			}
 
 			ch.Outbound = transformer
-			ch.startTokenProvider = func() {
-				tokens.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{})
-			}
-			ch.stopTokenProvider = tokens.StopAutoRefresh
+			setupAutoRefresh(ch, tokens, oauth.AutoRefreshOptions{})
 
 			return ch, nil
 		}
@@ -543,10 +552,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			}
 
 			ch.Outbound = transformer
-			ch.startTokenProvider = func() {
-				p.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{})
-			}
-			ch.stopTokenProvider = p.StopAutoRefresh
+			setupAutoRefresh(ch, p, oauth.AutoRefreshOptions{})
 
 			return ch, nil
 		}
@@ -616,13 +622,10 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 			return nil, fmt.Errorf("failed to create github_copilot outbound transformer: %w", err)
 		}
 		ch.Outbound = transformer
-		ch.startTokenProvider = func() {
-			p.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{
-				Interval:      5 * time.Minute,
-				RefreshBefore: 5 * time.Minute,
-			})
-		}
-		ch.stopTokenProvider = p.StopAutoRefresh
+		setupAutoRefresh(ch, p, oauth.AutoRefreshOptions{
+			Interval:      5 * time.Minute,
+			RefreshBefore: 5 * time.Minute,
+		})
 
 		return ch, nil
 	case channel.TypeOpenai, channel.TypeDeepinfra, channel.TypeMinimax, channel.TypeXiaomi,
@@ -702,10 +705,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		ch.Outbound = transformer
 		tokens := transformer.GetTokenProvider()
 		if tokens != nil {
-			ch.startTokenProvider = func() {
-				tokens.StartAutoRefresh(context.Background(), oauth.AutoRefreshOptions{})
-			}
-			ch.stopTokenProvider = tokens.StopAutoRefresh
+			setupAutoRefresh(ch, tokens, oauth.AutoRefreshOptions{})
 		}
 
 		return ch, nil
