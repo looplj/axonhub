@@ -21,6 +21,8 @@
   "models.types.chat": "对话",
   "models.types.embedding": "嵌入",
   "models.types.rerank": "重排序",
+  "models.types.image_generation": "图像生成",
+  "models.types.video_generation": "视频生成",
   "models.actions.create": "添加模型",
   "models.actions.bulkAdd": "批量添加",
   "models.actions.manageAssociation": "管理关联",

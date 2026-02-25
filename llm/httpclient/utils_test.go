@@ -372,6 +372,32 @@ func TestMergeInboundRequest(t *testing.T) {
 		require.Equal(t, "1", got.Query.Get("page"))
 	})
 
+	t.Run("should block Cloudflare headers by prefix", func(t *testing.T) {
+		dest := &Request{
+			Headers: http.Header{"Content-Type": []string{"application/json"}},
+			Query:   url.Values{},
+		}
+		src := &Request{
+			Headers: http.Header{
+				"Cf-Ray":          []string{"abc123"},
+				"Cf-Connecting-Ip": []string{"1.2.3.4"},
+				"Cf-Ipcountry":    []string{"US"},
+				"Cf-Visitor":      []string{`{"scheme":"https"}`},
+				"Cdn-Loop":        []string{"cloudflare; loops=1"},
+				"User-Agent":      []string{"Test/1.0"},
+			},
+			Query: url.Values{},
+		}
+
+		got := MergeInboundRequest(dest, src)
+		require.Empty(t, got.Headers.Get("Cf-Ray"))
+		require.Empty(t, got.Headers.Get("Cf-Connecting-Ip"))
+		require.Empty(t, got.Headers.Get("Cf-Ipcountry"))
+		require.Empty(t, got.Headers.Get("Cf-Visitor"))
+		require.Empty(t, got.Headers.Get("Cdn-Loop"))
+		require.Equal(t, "Test/1.0", got.Headers.Get("User-Agent"))
+	})
+
 	t.Run("should return dest if src is nil", func(t *testing.T) {
 		dest := &Request{Headers: http.Header{"X-Test": []string{"val"}}}
 		got := MergeInboundRequest(dest, nil)

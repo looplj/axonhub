@@ -21,6 +21,8 @@
   "models.types.chat": "Chat",
   "models.types.embedding": "Embedding",
   "models.types.rerank": "Rerank",
+  "models.types.image_generation": "Image Generation",
+  "models.types.video_generation": "Video Generation",
   "models.actions.create": "Add Model",
   "models.actions.bulkAdd": "Bulk Add",
   "models.actions.manageAssociation": "Manage Association",

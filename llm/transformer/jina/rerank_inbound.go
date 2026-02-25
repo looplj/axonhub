@@ -115,10 +115,10 @@ func (t *RerankInboundTransformer) TransformResponse(
 	}
 
 	// Convert usage if available
-	if llmRerankResp.Usage != nil {
+	if llmResp.Usage != nil {
 		jinaResp.Usage = &RerankUsage{
-			PromptTokens: llmRerankResp.Usage.PromptTokens,
-			TotalTokens:  llmRerankResp.Usage.TotalTokens,
+			PromptTokens: int(llmResp.Usage.PromptTokens),
+			TotalTokens:  int(llmResp.Usage.TotalTokens),
 		}
 	}
 

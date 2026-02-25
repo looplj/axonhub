@@ -209,7 +209,7 @@ type seedanceGetResponse struct {
 }
 
 // ParseGetVideoTaskResponse implements transformer.VideoTaskOutbound.
-func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.VideoResponse, error) {
+func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("%w: http response is nil", transformer.ErrInvalidResponse)
 	}
@@ -253,14 +253,20 @@ func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, htt
 	if resp.Content != nil {
 		v.VideoURL = resp.Content.VideoURL
 	}
+
+	llmResp := &llm.Response{
+		RequestType: llm.RequestTypeVideo,
+		Video:       v,
+	}
+
 	if resp.Usage != nil {
-		v.Usage = &llm.VideoUsage{
+		llmResp.Usage = &llm.Usage{
 			CompletionTokens: resp.Usage.CompletionTokens,
 			TotalTokens:      resp.Usage.TotalTokens,
 		}
 	}
 
-	return v, nil
+	return llmResp, nil
 }
 
 // BuildDeleteVideoTaskRequest implements transformer.VideoTaskOutbound.

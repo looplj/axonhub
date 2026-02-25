@@ -123,16 +123,22 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 	oaiResp.Quality = img.Quality
 	oaiResp.Size = img.Size
 
-	if img.Usage != nil {
+	if llmResp.Usage != nil {
 		oaiResp.Usage = &ImagesResponseUsage{
-			InputTokens:  img.Usage.InputTokens,
-			OutputTokens: img.Usage.OutputTokens,
-			TotalTokens:  img.Usage.TotalTokens,
+			InputTokens:  llmResp.Usage.PromptTokens,
+			OutputTokens: llmResp.Usage.CompletionTokens,
+			TotalTokens:  llmResp.Usage.TotalTokens,
 		}
-		if img.Usage.InputTokensDetails != nil {
+		if llmResp.Usage.PromptTokensDetails != nil {
 			oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{
-				ImageTokens: img.Usage.InputTokensDetails.ImageTokens,
-				TextTokens:  img.Usage.InputTokensDetails.TextTokens,
+				ImageTokens:  llmResp.Usage.PromptTokensDetails.ImageTokens,
+				TextTokens:   llmResp.Usage.PromptTokensDetails.TextTokens,
+				CachedTokens: llmResp.Usage.PromptTokensDetails.CachedTokens,
+			}
+		}
+		if llmResp.Usage.CompletionTokensDetails != nil {
+			oaiResp.Usage.OutputTokensDetails = &ImagesResponseUsageOutputTokensDetails{
+				ReasoningTokens: llmResp.Usage.CompletionTokensDetails.ReasoningTokens,
 			}
 		}
 	}

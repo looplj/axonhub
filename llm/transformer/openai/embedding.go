@@ -171,26 +171,21 @@ func (t *OutboundTransformer) transformEmbeddingResponse(
 		}
 	}
 
-	// Build unified embedding response
-	var usage *llm.EmbeddingUsage
-	if embResp.Usage.PromptTokens > 0 || embResp.Usage.TotalTokens > 0 {
-		usage = &llm.EmbeddingUsage{
-			PromptTokens: embResp.Usage.PromptTokens,
-			TotalTokens:  embResp.Usage.TotalTokens,
-		}
-	}
-
-	llmEmbeddingResp := &llm.EmbeddingResponse{
-		Object: embResp.Object,
-		Data:   llmEmbeddingData,
-		Usage:  usage,
-	}
-
 	llmResp := &llm.Response{
 		RequestType: llm.RequestTypeEmbedding,
 		APIFormat:   llm.APIFormatOpenAIEmbedding,
-		Embedding:   llmEmbeddingResp,
-		Model:       embResp.Model,
+		Embedding: &llm.EmbeddingResponse{
+			Object: embResp.Object,
+			Data:   llmEmbeddingData,
+		},
+		Model: embResp.Model,
+	}
+
+	if embResp.Usage.PromptTokens > 0 || embResp.Usage.TotalTokens > 0 {
+		llmResp.Usage = &llm.Usage{
+			PromptTokens: embResp.Usage.PromptTokens,
+			TotalTokens:  embResp.Usage.TotalTokens,
+		}
 	}
 
 	return llmResp, nil

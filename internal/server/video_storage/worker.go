@@ -168,17 +168,17 @@ func (w *Worker) processOne(ctx context.Context, ds *ent.DataStorage, req *ent.R
 
 	// If missing, poll provider once to refresh snapshot via outbound transformer.
 	if strings.TrimSpace(videoURL) == "" {
-		video, err := w.videoService.GetTask(ctx, req.ID)
+		resp, err := w.videoService.GetTask(ctx, req.ID)
 		if err != nil {
 			return err
 		}
 
 		// Only save when provider confirms it succeeded.
-		if strings.ToLower(strings.TrimSpace(video.Status)) != "succeeded" {
+		if resp.Video == nil || strings.ToLower(strings.TrimSpace(resp.Video.Status)) != "succeeded" {
 			return nil
 		}
 
-		videoURL = video.VideoURL
+		videoURL = resp.Video.VideoURL
 	}
 
 	if strings.TrimSpace(videoURL) == "" {

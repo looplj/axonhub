@@ -137,11 +137,6 @@ func TestOutboundTransformer_ImageGenerationResponse(t *testing.T) {
 							URL:     "data:image/png;base64,iVBORw0KGgo",
 						},
 					},
-					Usage: &llm.ImageUsage{
-						InputTokens:  7,
-						OutputTokens: 1290,
-						TotalTokens:  1297,
-					},
 				},
 				Usage: &llm.Usage{
 					PromptTokens:     7,
@@ -166,11 +161,6 @@ func TestOutboundTransformer_ImageGenerationResponse(t *testing.T) {
 							B64JSON: "/9j/4AAQ",
 							URL:     "data:image/jpeg;base64,/9j/4AAQ",
 						},
-					},
-					Usage: &llm.ImageUsage{
-						InputTokens:  10,
-						OutputTokens: 100,
-						TotalTokens:  110,
 					},
 				},
 				Usage: &llm.Usage{

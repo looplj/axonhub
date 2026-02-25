@@ -298,15 +298,6 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 		}
 	}
 
-	// Set usage info for image generation
-	if resp.Usage != nil {
-		imageResponse.Usage = &llm.ImageUsage{
-			InputTokens:  resp.Usage.PromptTokens,
-			OutputTokens: resp.Usage.CompletionTokens,
-			TotalTokens:  resp.Usage.TotalTokens,
-		}
-	}
-
 	resp.Image = imageResponse
 
 	return resp, nil

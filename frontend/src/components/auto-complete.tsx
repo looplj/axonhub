@@ -30,6 +30,8 @@ import { Input } from './ui/input';
 import { Popover, PopoverAnchor, PopoverContent } from './ui/popover';
 import { Skeleton } from './ui/skeleton';
 
+const MAX_DISPLAY = 100;
+
 type Props<T extends string> = {
   selectedValue: T;
   onSelectedValueChange: (value: T) => void;
@@ -89,10 +91,18 @@ export function AutoComplete<T extends string>({
     }
   };
 
+
   const filtered = useMemo(() => {
-    if (!searchValue) return items;
+    if (!searchValue) return items.slice(0, MAX_DISPLAY);
     const q = searchValue.toLowerCase();
-    return items.filter((it) => it.label.toLowerCase().includes(q) || it.value.toLowerCase().includes(q));
+    const result: typeof items = [];
+    for (const it of items) {
+      if (it.label.toLowerCase().includes(q) || it.value.toLowerCase().includes(q)) {
+        result.push(it);
+        if (result.length >= MAX_DISPLAY) break;
+      }
+    }
+    return result;
   }, [items, searchValue]);
 
   const onSelectItem = (inputValue: string) => {

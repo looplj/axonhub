@@ -147,10 +147,10 @@ func (t *EmbeddingInboundTransformer) TransformResponse(
 			}
 		}
 
-		if llmResp.Embedding.Usage != nil {
+		if llmResp.Usage != nil {
 			embResp.Usage = EmbeddingUsage{
-				PromptTokens: llmResp.Embedding.Usage.PromptTokens,
-				TotalTokens:  llmResp.Embedding.Usage.TotalTokens,
+				PromptTokens: llmResp.Usage.PromptTokens,
+				TotalTokens:  llmResp.Usage.TotalTokens,
 			}
 		}
 
