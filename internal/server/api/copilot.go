@@ -76,11 +76,11 @@ type deviceCodeResponse struct {
 
 // accessTokenResponse represents the response from GitHub's access token endpoint.
 type accessTokenResponse struct {
-	AccessToken      string `json:"access_token"`
-	TokenType        string `json:"token_type"`
-	Scope            string `json:"scope"`
-	Error            string `json:"error"`
-	ErrorDescription string `json:"error_description"`
+	Token     string `json:"access_token"`
+	TokenType string `json:"token_type"`
+	Scope     string `json:"scope"`
+	Error     string `json:"error"`
+	ErrorDesc string `json:"error_description"`
 }
 
 // NewCopilotHandlers creates a new CopilotHandlers instance.
@@ -219,11 +219,11 @@ type PollCopilotOAuthRequest struct {
 
 // PollCopilotOAuthResponse represents the response for polling OAuth token.
 type PollCopilotOAuthResponse struct {
-	AccessToken string `json:"access_token,omitempty"`
-	TokenType   string `json:"token_type,omitempty"`
-	Scope       string `json:"scope,omitempty"`
-	Status      string `json:"status"`
-	Message     string `json:"message,omitempty"`
+	Token   string `json:"access_token,omitempty"`
+	Type    string `json:"token_type,omitempty"`
+	Scope   string `json:"scope,omitempty"`
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
 }
 
 // PollOAuth polls for the OAuth access token using the device flow.
@@ -290,24 +290,26 @@ func (h *CopilotHandlers) PollOAuth(c *gin.Context) {
 			JSONError(c, http.StatusBadRequest, errors.New("access denied by user"))
 			return
 		default:
-			JSONError(c, http.StatusBadGateway, fmt.Errorf("OAuth error: %s - %s", tokenResp.Error, tokenResp.ErrorDescription))
+			JSONError(c, http.StatusBadGateway, fmt.Errorf("OAuth error: %s - %s", tokenResp.Error, tokenResp.ErrorDesc))
+			return
+
 			return
 		}
 	}
 
 	// Success - access token received
-	if tokenResp.AccessToken != "" {
+	if tokenResp.Token != "" {
 		// Clean up the cache entry
 		if err := h.deviceCodeCache.Delete(ctx, cacheKey); err != nil {
 			log.Warn(ctx, "failed to delete used oauth state from cache", log.String("session_id", req.SessionID), log.Cause(err))
 		}
 
 		c.JSON(http.StatusOK, PollCopilotOAuthResponse{
-			AccessToken: tokenResp.AccessToken,
-			TokenType:   tokenResp.TokenType,
-			Scope:       tokenResp.Scope,
-			Status:      "complete",
-			Message:     "Authorization complete. Access token received.",
+			Token:   tokenResp.Token,
+			Type:    tokenResp.TokenType,
+			Scope:   tokenResp.Scope,
+			Status:  "complete",
+			Message: "Authorization complete. Access token received.",
 		})
 		return
 	}
@@ -352,11 +354,11 @@ func (h *CopilotHandlers) pollAccessToken(ctx context.Context, httpClient *httpc
 			return nil, fmt.Errorf("failed to parse access token form response: %w", err)
 		}
 
-		tokenResp.AccessToken = values.Get("access_token")
+		tokenResp.Token = values.Get("access_token")
 		tokenResp.TokenType = values.Get("token_type")
 		tokenResp.Scope = values.Get("scope")
 		tokenResp.Error = values.Get("error")
-		tokenResp.ErrorDescription = values.Get("error_description")
+		tokenResp.ErrorDesc = values.Get("error_description")
 	}
 
 	return &tokenResp, nil

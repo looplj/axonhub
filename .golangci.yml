@@ -285,6 +285,24 @@ linters:
           - stylecheck
         text: "ST1016:"
 
+      # Exclude gosec G101 for Copilot client ID (public identifier, not secret)
+      - linters:
+          - gosec
+        text: "G101:.*githubCopilotClientID"
+
+      # Exclude gosec G101 for Copilot endpoint URLs (not credentials)
+      - linters:
+          - gosec
+        text: "G101:.*copilot_internal"
+
+      # Exclude gosec G117 for Token fields in OAuth structs (false positives - generic field names)
+      - linters:
+          - gosec
+        text: "G117:.*Token"
+
+
+
+      # Exclude lll issues for long lines with go:generate
       # Exclude lll issues for long lines with go:generate
       - linters:
           - lll

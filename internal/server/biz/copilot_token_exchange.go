@@ -26,7 +26,7 @@ type CopilotTokenResponse struct {
 }
 
 type CopilotTokenCacheEntry struct {
-	AccessToken  string
+	Token        string
 	CopilotToken string
 	ExpiresAt    time.Time
 	CachedAt     time.Time
@@ -119,7 +119,7 @@ func (e *CopilotTokenExchanger) exchange(ctx context.Context, accessToken string
 	expiresAt := time.Unix(tokenResp.ExpiresAt, 0)
 	e.mu.Lock()
 	e.cache[accessToken] = &CopilotTokenCacheEntry{
-		AccessToken:  accessToken,
+		Token:        accessToken,
 		CopilotToken: tokenResp.Token,
 		ExpiresAt:    expiresAt,
 		CachedAt:     time.Now(),

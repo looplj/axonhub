@@ -269,8 +269,8 @@ func TestCopilotHandlers_PollOAuth_Success(t *testing.T) {
 	var pollResp PollCopilotOAuthResponse
 	require.NoError(t, json.Unmarshal(pollW.Body.Bytes(), &pollResp))
 	require.Equal(t, "complete", pollResp.Status)
-	require.Equal(t, "gho_test_access_token", pollResp.AccessToken)
-	require.Equal(t, "bearer", pollResp.TokenType)
+	require.Equal(t, "gho_test_access_token", pollResp.Token)
+	require.Equal(t, "bearer", pollResp.Type)
 	require.Equal(t, "read:user", pollResp.Scope)
 }
 
@@ -697,7 +697,7 @@ func TestCopilotHandlers_PollOAuth_FormEncodedResponse(t *testing.T) {
 	var pollResp PollCopilotOAuthResponse
 	require.NoError(t, json.Unmarshal(pollW.Body.Bytes(), &pollResp))
 	require.Equal(t, "complete", pollResp.Status)
-	require.Equal(t, "gho_form_encoded_token", pollResp.AccessToken)
+	require.Equal(t, "gho_form_encoded_token", pollResp.Token)
 }
 
 func TestCopilotHandlers_PollOAuth_DeletesStateOnSuccess(t *testing.T) {
