@@ -80,14 +80,14 @@ export function useDeviceFlow(
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
-  const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const currentIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentIntervalRef = useRef<number>(5);
   const onSuccessRef = useRef(onSuccess);
 
   useEffect(() => {
     return () => {
-      if (pollingIntervalRef.current) {
-                clearTimeout(pollingIntervalRef.current);
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
       }
     };
   }, []);
@@ -100,6 +100,11 @@ export function useDeviceFlow(
     if (!projectId) {
       toast.error(t('channels.dialogs.oauth.errors.projectRequired'));
       return;
+    }
+
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
     }
 
     setIsPolling(true);
@@ -117,7 +122,7 @@ export function useDeviceFlow(
       setInterval(result.interval);
       currentIntervalRef.current = result.interval;
 
-      poll(result.session_id, result.interval, Date.now() + result.expires_in * 1000);
+      poll(result.session_id, Date.now() + result.expires_in * 1000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(errorMessage);
@@ -126,92 +131,63 @@ export function useDeviceFlow(
   }, [projectId, t]);
 
   const poll = useCallback(
-    async (sessionId: string, pollInterval: number, expiry: number) => {
+    async (sessionId: string, expiry: number) => {
       if (!projectId) {
         return;
       }
 
-      if (pollingIntervalRef.current) {
-        clearTimeout(pollingIntervalRef.current);
+      if (Date.now() >= expiry) {
+        setIsPolling(false);
+        setError(t('channels.dialogs.oauth.errors.deviceFlowExpired'));
+        return;
       }
 
+      try {
+        const result: DeviceFlowPollResult = await copilotOAuthPoll(
+          { session_id: sessionId },
+          { 'X-Project-ID': projectId }
+        );
 
-      pollingIntervalRef.current = window.setInterval(async () => {
-        if (Date.now() >= expiry) {
-          if (pollingIntervalRef.current) {
-            clearTimeout(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
+        if (result.access_token) {
           setIsPolling(false);
-          setError(t('channels.dialogs.oauth.errors.deviceFlowExpired'));
-          return;
-        }
+          setIsComplete(true);
 
-        try {
-          const result: DeviceFlowPollResult = await copilotOAuthPoll(
-            { session_id: sessionId },
-            { 'X-Project-ID': projectId }
-          );
+          if (onSuccessRef.current) {
+            onSuccessRef.current(result.access_token);
+          }
 
-          if (result.access_token) {
-            if (pollingIntervalRef.current) {
-              clearTimeout(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
+          toast.success(t('channels.dialogs.oauth.messages.credentialsImported'));
+        } else if (result.status) {
+          if (result.status === 'pending') {
+            pollingTimeoutRef.current = window.setTimeout(() => {
+              poll(sessionId, expiry);
+            }, currentIntervalRef.current * 1000);
+          } else if (result.status === 'slow_down') {
+            const newInterval = currentIntervalRef.current * 2;
+            currentIntervalRef.current = newInterval;
+            setInterval(newInterval);
+
+            pollingTimeoutRef.current = window.setTimeout(() => {
+              poll(sessionId, expiry);
+            }, newInterval * 1000);
+          } else {
             setIsPolling(false);
-            setIsComplete(true);
-
-            if (onSuccessRef.current) {
-              onSuccessRef.current(result.access_token);
-            }
-
-            toast.success(t('channels.dialogs.oauth.messages.credentialsImported'));
-          } else if (result.status) {
-            if (result.status === 'pending') {
-              // Authorization still pending, continue polling
-              return;
-            } else if (result.status === 'slow_down') {
-              const newInterval = currentIntervalRef.current * 2;
-              currentIntervalRef.current = newInterval;
-              setInterval(newInterval);
-
-              if (pollingIntervalRef.current) {
-                clearTimeout(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-              }
-
-              // Use setTimeout for cleaner single poll with extended interval
-              pollingIntervalRef.current = window.setTimeout(() => {
-                poll(sessionId, newInterval, expiry);
-              }, newInterval * 1000);
-            } else {
-              // Other error statuses
-              if (pollingIntervalRef.current) {
-              clearTimeout(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-              }
-              setIsPolling(false);
-              setError(result.message || result.status);
-            }
+            setError(result.message || result.status);
           }
-        } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          if (pollingIntervalRef.current) {
-          clearTimeout(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-          setIsPolling(false);
-          setError(errorMessage);
         }
-      }, pollInterval * 1000);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setIsPolling(false);
+        setError(errorMessage);
+      }
     },
-    [projectId, onSuccessRef, t]
+    [projectId, t, onSuccessRef]
   );
 
   const reset = useCallback(() => {
-    if (pollingIntervalRef.current) {
-    clearTimeout(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
     }
     setUserCode(null);
     setVerificationUri(null);

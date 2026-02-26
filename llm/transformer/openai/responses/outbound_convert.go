@@ -343,7 +343,6 @@ func convertFunctionToTool(src llm.Tool) Tool {
 	}
 
 	// Convert parameters from json.RawMessage to map[string]any
-	// The Responses API requires additionalProperties: false for strict schema validation
 	if len(src.Function.Parameters) > 0 {
 		var params map[string]any
 		if err := json.Unmarshal(src.Function.Parameters, &params); err == nil {
@@ -351,34 +350,37 @@ func convertFunctionToTool(src llm.Tool) Tool {
 			if params == nil {
 				params = map[string]any{}
 			}
-			// Always set additionalProperties: false for strict validation
-			// The Responses API rejects schemas without this field explicitly set
-			// Overwrite any existing value (including true) to ensure false
-			params["additionalProperties"] = false
 
-			// When additionalProperties is false, the Responses API requires ALL properties
-			// to be listed in the "required" array. Ensure all property keys are included.
-			if props, ok := params["properties"].(map[string]any); ok && len(props) > 0 {
-				required := make([]string, 0, len(props))
-				// First, check if there's an existing required array and preserve it
-				if existingRequired, ok := params["required"].([]any); ok {
-					for _, r := range existingRequired {
-						if s, ok := r.(string); ok {
-							required = append(required, s)
+			// For strict mode, additionalProperties must be false and all properties must be required
+			// See: https://platform.openai.com/docs/guides/function-calling#strict-mode
+			if src.Function.Strict != nil && *src.Function.Strict {
+				// Always set additionalProperties: false for strict validation
+				// Overwrite any existing value (including true) to ensure false
+				params["additionalProperties"] = false
+
+				// When strict mode is enabled, ALL properties must be listed in "required"
+				if props, ok := params["properties"].(map[string]any); ok && len(props) > 0 {
+					required := make([]string, 0, len(props))
+					// First, check if there's an existing required array and preserve it
+					if existingRequired, ok := params["required"].([]any); ok {
+						for _, r := range existingRequired {
+							if s, ok := r.(string); ok {
+								required = append(required, s)
+							}
 						}
 					}
-				}
-				// Add any missing property keys to required
-				requiredSet := make(map[string]bool)
-				for _, r := range required {
-					requiredSet[r] = true
-				}
-				for key := range props {
-					if !requiredSet[key] {
-						required = append(required, key)
+					// Add any missing property keys to required
+					requiredSet := make(map[string]bool)
+					for _, r := range required {
+						requiredSet[r] = true
 					}
+					for key := range props {
+						if !requiredSet[key] {
+							required = append(required, key)
+						}
+					}
+					params["required"] = required
 				}
-				params["required"] = required
 			}
 
 			tool.Parameters = params
