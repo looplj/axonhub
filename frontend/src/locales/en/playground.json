@@ -1,6 +1,8 @@
 {
   "playground.title": "Playground",
   "playground.description": "Interactive environment for testing AI models.",
+  "playground.settings.channel": "Channel",
+  "playground.settings.selectChannel": "Select a channel",
   "playground.settings.model": "Model",
   "playground.settings.selectModel": "Select a model",
   "playground.settings.temperature": "Temperature",
