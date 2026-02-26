@@ -23,25 +23,25 @@ import (
 
 const (
 	// DefaultCopilotBaseURL is the base URL for GitHub Copilot API.
-	DefaultCopilotBaseURL = "https://api.githubcopilot.com"
+	DefaultCopilotBaseURL          = "https://api.githubcopilot.com"
 	CopilotChatCompletionsEndpoint = "/chat/completions"
-	EditorVersionHeader        = "editor-version"
-	EditorPluginVersionHeader  = "editor-plugin-version"
-	UserAgentHeader            = "user-agent"
-	OpenAIIntentHeader         = "openai-intent"
-	CopilotIntegrationIDHeader = "copilot-integration-id"
-	GitHubAPIVersionHeader     = "x-github-api-version"
-	RequestIDHeader            = "x-request-id"
-	VSCodeUserAgentLibHeader   = "x-vscode-user-agent-library-version"
-	CopilotVisionRequestHeader = "Copilot-Vision-Request"
+	EditorVersionHeader            = "editor-version"
+	EditorPluginVersionHeader      = "editor-plugin-version"
+	UserAgentHeader                = "user-agent"
+	OpenAIIntentHeader             = "openai-intent"
+	CopilotIntegrationIDHeader     = "copilot-integration-id"
+	GitHubAPIVersionHeader         = "x-github-api-version"
+	RequestIDHeader                = "x-request-id"
+	VSCodeUserAgentLibHeader       = "x-vscode-user-agent-library-version"
+	CopilotVisionRequestHeader     = "Copilot-Vision-Request"
 	// Default editor header values (VSCode pattern) - from LiteLLM
-	DefaultEditorVersion       = "vscode/1.95.0"
-	DefaultEditorPluginVersion = "copilot-chat/0.26.7"
-	DefaultUserAgent           = "GitHubCopilotChat/0.26.7"
-	DefaultOpenAIIntent        = "conversation-panel"
+	DefaultEditorVersion        = "vscode/1.95.0"
+	DefaultEditorPluginVersion  = "copilot-chat/0.26.7"
+	DefaultUserAgent            = "GitHubCopilotChat/0.26.7"
+	DefaultOpenAIIntent         = "conversation-panel"
 	DefaultCopilotIntegrationID = "vscode-chat"
-	DefaultGitHubAPIVersion    = "2025-04-01"
-	DefaultVSCodeUserAgentLib  = "electron-fetch"
+	DefaultGitHubAPIVersion     = "2025-04-01"
+	DefaultVSCodeUserAgentLib   = "electron-fetch"
 )
 
 // TokenProvider defines the interface for getting Copilot tokens.
@@ -54,13 +54,11 @@ type TokenProvider interface {
 // OutboundTransformer implements transformer.Outbound for GitHub Copilot.
 // It transforms unified LLM requests to GitHub Copilot API format with LiteLLM-style headers.
 type OutboundTransformer struct {
-	tokenProvider  TokenProvider
-	baseURL        string
-	codexResponses *responses.OutboundTransformer
+	tokenProvider     TokenProvider
+	baseURL           string
+	codexResponses    *responses.OutboundTransformer
 	openAITransformer transformer.Outbound
 }
-
-
 
 // OutboundTransformerParams contains the parameters for creating a new OutboundTransformer.
 type OutboundTransformerParams struct {
@@ -176,7 +174,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}, nil
 }
 
-
 // setCopilotHeaders sets the LiteLLM-style editor headers required by Copilot.
 func setCopilotHeaders(headers http.Header) {
 	headers.Set(EditorVersionHeader, DefaultEditorVersion)
@@ -266,7 +263,6 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		}
 	}
 
-
 	if isResponsesFormat {
 		// Use the responses transformer to parse Responses API format
 		// If we have an unwrapped body, create a response with that body
@@ -310,8 +306,8 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 	var compositeStream streams.Stream[*httpclient.StreamEvent]
 	if firstEvent != nil {
 		compositeStream = &prependedStream{
-			firstEvent: firstEvent,
-			upstream:   stream,
+			firstEvent:   firstEvent,
+			upstream:     stream,
 			firstYielded: false,
 		}
 	} else {
@@ -373,10 +369,6 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 	return t.codexResponses.TransformStream(ctx, filteredStream)
 }
 
-
-
-
-
 // convertCopilotStreamEvent fixes up Copilot's standard Responses API stream events.
 // Copilot correctly uses the Responses API format, but it sends multiple output_item.added
 // events for the same call_id, and it incorrectly sets the item_id on delta/done events.
@@ -402,17 +394,17 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 			// to equal the call_id!
 			// By forcing item.id = call_id, the aggregator will merge the second item into the first one
 			// instead of creating a duplicate item!
-			
+
 			var event map[string]any
 			if err := json.Unmarshal(data, &event); err == nil {
 				if item, ok := event["item"].(map[string]any); ok {
 					item["id"] = callID // Force ID to match CallID
-					
+
 					// Also provide a fallback name if missing
 					if name, ok := item["name"].(string); !ok || name == "" {
 						item["name"] = "function"
 					}
-					
+
 					event["item"] = item
 					if fixedData, err := json.Marshal(event); err == nil {
 						return fixedData
@@ -560,7 +552,7 @@ func (t *OutboundTransformer) transformCodexResponsesRequest(ctx context.Context
 		return nil, fmt.Errorf("failed to transform request for Responses API: %w", err)
 	}
 
-	slog.InfoContext(ctx, "Codex Responses API request prepared",
+	slog.DebugContext(ctx, "Codex Responses API request prepared",
 		slog.String("url", responsesReq.URL),
 		slog.String("model", llmReq.Model))
 
@@ -632,4 +624,3 @@ func (s *prependedStream) Err() error {
 func (s *prependedStream) Close() error {
 	return s.upstream.Close()
 }
-
