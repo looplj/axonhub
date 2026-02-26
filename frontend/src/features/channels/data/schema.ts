@@ -370,7 +370,7 @@ export const createChannelInputSchema = z
     if (data.type === 'github_copilot' && !hasApiKey) {
       ctx.addIssue({
         code: 'custom' as const,
-        message: 'GitHub Copilot requires OAuth credentials (API Key)',
+        message: 'channels.dialogs.oauth.errors.copilotCredentialsRequired',
         path: ['credentials', 'apiKey'],
       });
     }
@@ -471,14 +471,23 @@ export const updateChannelInputSchema = z
     const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
 
     if (isOAuthType || (derivedType === 'github_copilot') || isCopilotKey) {
-      // For Copilot keys without explicit type, validate locally
       if (isCopilotKey && !derivedType) {
-        // This is Copilot format - validate it directly
-        ctx.addIssue({
-          code: 'custom',
-          message: 'channels.dialogs.oauth.errors.copilotCredentialsInvalid',
-          path: ['credentials', 'apiKey'],
-        });
+        try {
+          const parsed = JSON.parse(data.credentials.apiKey);
+          if (!parsed.access_token) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'channels.dialogs.oauth.errors.copilotCredentialsInvalid',
+              path: ['credentials', 'apiKey'],
+            });
+          }
+        } catch {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'channels.dialogs.oauth.errors.copilotCredentialsInvalid',
+            path: ['credentials', 'apiKey'],
+          });
+        }
         return;
       }
       validateOAuthCredentials(derivedType, data.credentials?.apiKey, ctx);

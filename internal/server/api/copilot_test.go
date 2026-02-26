@@ -56,7 +56,7 @@ func TestCopilotHandlers_StartOAuth_Success(t *testing.T) {
 
 		err := r.ParseForm()
 		require.NoError(t, err)
-		require.Equal(t, githubCopilotClientID, r.FormValue("client_id"))
+		require.Equal(t, defaultGithubCopilotClientID, r.FormValue("client_id"))
 		require.Equal(t, githubCopilotScope, r.FormValue("scope"))
 
 		w.Header().Set("Content-Type", "application/json")
@@ -248,7 +248,7 @@ func TestCopilotHandlers_PollOAuth_Success(t *testing.T) {
 
 		err := r.ParseForm()
 		require.NoError(t, err)
-		require.Equal(t, githubCopilotClientID, r.FormValue("client_id"))
+		require.Equal(t, defaultGithubCopilotClientID, r.FormValue("client_id"))
 		require.Equal(t, "test-device-code", r.FormValue("device_code"))
 		require.Equal(t, deviceGrantType, r.FormValue("grant_type"))
 

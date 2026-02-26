@@ -5,6 +5,7 @@
   "copilot_device.step_3": "授权应用程序",
   "copilot_device.step_4": "此页面将自动更新",
   "channels.dialogs.oauth.errors.copilotCredentialsInvalid": "GitHub Copilot 凭据必须是包含 access_token 的有效 JSON",
+  "channels.dialogs.oauth.errors.copilotCredentialsRequired": "GitHub Copilot 需要 OAuth 凭据（API Key）",
   "channels.dialogs.oauth.errors.credentialsInvalid": "无效的 OAuth 凭据格式",
   "channels.title": "渠道",
   "channels.toggleColumns": "切换列",

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -26,8 +27,8 @@ const (
 	githubAccessTokenURL = "https://github.com/login/oauth/access_token" //nolint:gosec
 
 	//nolint:gosec // This is a public OAuth client identifier, not a secret
-	// GitHub Copilot Client ID (VS Code public client)
-	githubCopilotClientID = "Iv1.b507a08c87ecfe98"
+	// defaultGithubCopilotClientID is the VS Code public client ID, used as fallback
+	defaultGithubCopilotClientID = "Iv1.b507a08c87ecfe98"
 
 	// OAuth scopes for GitHub Copilot
 	githubCopilotScope = "read:user"
@@ -41,6 +42,16 @@ const (
 	// Default cache expiration for device flow (15 minutes)
 	deviceFlowCacheExpiration = 15 * time.Minute
 )
+
+// getGithubCopilotClientID returns the GitHub Copilot OAuth client ID.
+// It checks the GITHUB_COPILOT_CLIENT_ID environment variable first,
+// then falls back to the default VS Code client ID.
+func getGithubCopilotClientID() string {
+	if clientID := os.Getenv("GITHUB_COPILOT_CLIENT_ID"); clientID != "" {
+		return clientID
+	}
+	return defaultGithubCopilotClientID
+}
 
 // CopilotHandlersParams contains the dependencies for CopilotHandlers.
 type CopilotHandlersParams struct {
@@ -206,7 +217,7 @@ func (h *CopilotHandlers) StartOAuth(c *gin.Context) {
 // requestDeviceCode requests a device code from GitHub's device flow endpoint.
 func (h *CopilotHandlers) requestDeviceCode(ctx context.Context, httpClient *httpclient.HttpClient) (*deviceCodeResponse, error) {
 	formData := url.Values{}
-	formData.Set("client_id", githubCopilotClientID)
+	formData.Set("client_id", getGithubCopilotClientID())
 	formData.Set("scope", githubCopilotScope)
 
 	req := &httpclient.Request{
@@ -347,7 +358,7 @@ func (h *CopilotHandlers) PollOAuth(c *gin.Context) {
 // pollAccessToken polls for the access token from GitHub's OAuth endpoint.
 func (h *CopilotHandlers) pollAccessToken(ctx context.Context, httpClient *httpclient.HttpClient, deviceCode string) (*accessTokenResponse, error) {
 	formData := url.Values{}
-	formData.Set("client_id", githubCopilotClientID)
+	formData.Set("client_id", getGithubCopilotClientID())
 	formData.Set("device_code", deviceCode)
 	formData.Set("grant_type", deviceGrantType)
 

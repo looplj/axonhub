@@ -579,6 +579,10 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		}
 
 		credsJSON := strings.TrimSpace(c.Credentials.APIKey)
+		if credsJSON == "" {
+			return nil, fmt.Errorf("github_copilot channel %s has no credentials", c.Name)
+		}
+
 		if c.Credentials.OAuth != nil {
 			o := c.Credentials.OAuth
 
@@ -591,7 +595,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 				Scopes:       o.Scopes,
 			}).ToJSON()
 			if err != nil {
-				return nil, fmt.Errorf("failed to encode github_copilot oauth credentials: %w", err)
+				return nil, fmt.Errorf("failed to encode github_copilot oauth credentials for channel %s: %w", c.Name, err)
 			}
 
 			credsJSON = creds
@@ -599,7 +603,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 
 		creds, err := oauth.ParseCredentialsJSON(credsJSON)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse github_copilot oauth credentials: %w", err)
+			return nil, fmt.Errorf("github_copilot channel %s has invalid credentials: %w", c.Name, err)
 		}
 
 		// Create CopilotTokenProvider with the token exchanger

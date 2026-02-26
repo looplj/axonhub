@@ -244,6 +244,46 @@ provider_quota:
 export AXONHUB_PROVIDER_QUOTA_CHECK_INTERVAL="30m"
 ```
 
+### GitHub Copilot OAuth Configuration
+
+```yaml
+copilot:
+  client_id: ""                   # Custom GitHub OAuth client ID (optional)
+```
+
+**Description:**
+Configures the OAuth client ID used for GitHub Copilot device flow authentication. By default, AxonHub uses the VS Code public client ID. For production deployments or to comply with GitHub's Terms of Service, you should register your own OAuth application and configure your custom client ID.
+
+**Environment Variables:**
+- `GITHUB_COPILOT_CLIENT_ID`
+
+**Default:** VS Code public client ID (used for backward compatibility)
+
+**When to Customize:**
+- **Production deployments:** Register your own GitHub OAuth app to have full control over the OAuth settings
+- **Compliance:** Using your own client ID ensures compliance with GitHub's Terms of Service
+- **Rate limiting:** Having your own OAuth app gives you dedicated rate limits
+
+**How to Register Your Own OAuth App:**
+1. Go to GitHub Settings → Developer Settings → OAuth Apps
+2. Click "New OAuth App"
+3. Fill in the application details:
+   - Application name: `Your AxonHub Instance`
+   - Homepage URL: `https://your-axonhub-domain.com`
+   - Authorization callback URL: `https://your-axonhub-domain.com/api/copilot/oauth/callback`
+4. Click "Register application"
+5. Copy the Client ID and set it as the environment variable
+
+**Examples:**
+```yaml
+copilot:
+  client_id: "Iv1.your-custom-client-id"
+```
+
+```bash
+export GITHUB_COPILOT_CLIENT_ID="Iv1.your-custom-client-id"
+```
+
 ## Configuration Examples
 
 ### Development Configuration
