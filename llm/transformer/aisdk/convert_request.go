@@ -25,9 +25,21 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 func convertToLLMRequestWithOptions(req *Request, options *ConvertToLLMRequestOptions) (*llm.Request, error) {
 	// Base request
 	llmReq := &llm.Request{
-		Model:    req.Model,
-		Messages: []llm.Message{},
-		Stream:   lo.ToPtr(true),
+		Model:       req.Model,
+		Messages:    []llm.Message{},
+		Stream:      lo.ToPtr(true),
+		Temperature: req.Temperature,
+		MaxTokens:   req.MaxTokens,
+	}
+
+	// Prepend system message if provided as a top-level field
+	if req.System != "" {
+		llmReq.Messages = append(llmReq.Messages, llm.Message{
+			Role: "system",
+			Content: llm.MessageContent{
+				Content: lo.ToPtr(req.System),
+			},
+		})
 	}
 
 	// Apply options defaults

@@ -6,10 +6,13 @@ import (
 
 // Request represents the AI SDK request format.
 type Request struct {
-	Messages []UIMessage `json:"messages"`
-	Model    string      `json:"model,omitempty"`
-	Stream   *bool       `json:"stream,omitempty"`
-	Tools    []Tool      `json:"tools,omitempty"`
+	Messages    []UIMessage `json:"messages"`
+	Model       string      `json:"model,omitempty"`
+	Stream      *bool       `json:"stream,omitempty"`
+	Tools       []Tool      `json:"tools,omitempty"`
+	System      string      `json:"system,omitempty"`
+	Temperature *float64    `json:"temperature,omitempty"`
+	MaxTokens   *int64      `json:"max_tokens,omitempty"`
 }
 
 // UIMessage represents a message in AI SDK format.

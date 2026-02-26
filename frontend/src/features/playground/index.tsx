@@ -25,9 +25,8 @@ import { useQueryChannels } from '@/features/channels/data/channels';
 
 export default function Playground() {
   const { t } = useTranslation();
-  const [selectedGroupModel, setSelectedGroupModel] = useState('');
-  const [model, setModel] = useState('gpt-4o');
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<string>('');
+  const [model, setModel] = useState('');
   const [temperature, setTemperature] = useState(0.6);
   const [maxTokens, setMaxTokens] = useState(4096);
   const [systemPrompt, setSystemPrompt] = useState(t('playground.settings.defaultSystemPrompt'));
@@ -203,45 +202,45 @@ export default function Playground() {
     }
   }, [messages, regenerate, setMessages]);
 
-  // 获取按 channel 分组的模型列表
-  const groupedModels = useMemo(() => {
+  // 渠道选项列表
+  const channelOptions = useMemo(() => {
     if (!channelsData?.edges) return [];
-
-    const channelGroups = channelsData.edges.map((edge) => ({
-      channelName: edge.node.name,
-      channelType: edge.node.type,
-      models: edge.node.supportedModels.map((model) => ({
-        value: edge.node.id + '|' + model,
-        label: model,
-        channel: edge.node,
-      })),
-    }));
-
-    return channelGroups.filter((group) => group.models.length > 0);
+    return channelsData.edges
+      .filter((edge) => edge.node.supportedModels.length > 0)
+      .map((edge) => ({
+        value: edge.node.id,
+        label: edge.node.name,
+      }));
   }, [channelsData]);
 
-  // 为选择准备的平面化模型项（value: channelId|model, label: "model — channel"）
-  const modelOptions = useMemo(
-    () => groupedModels.flatMap((group) => group.models.map((m) => ({ value: m.value, label: `${group.channelName} - ${m.label}` }))),
-    [groupedModels]
-  );
+  // 根据选中渠道过滤出模型列表
+  const modelOptions = useMemo(() => {
+    if (!channelsData?.edges || !selectedChannel) return [];
+    const channelEdge = channelsData.edges.find((edge) => edge.node.id === selectedChannel);
+    if (!channelEdge) return [];
+    return channelEdge.node.supportedModels.map((m) => ({
+      value: m,
+      label: m,
+    }));
+  }, [channelsData, selectedChannel]);
 
-  // 处理模型选择，同时设置对应的 channel
-  const handleModelChange = useCallback(
-    (newModel: string) => {
-      setSelectedGroupModel(newModel);
-      const parts = newModel.split('|');
-      setModel(parts[1]);
-      setSelectedChannel(parts[0]);
+  // 处理渠道选择，自动选第一个模型
+  const handleChannelChange = useCallback(
+    (channelId: string) => {
+      setSelectedChannel(channelId);
+      const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === channelId);
+      const firstModel = channelEdge?.node.supportedModels[0] ?? '';
+      setModel(firstModel);
     },
-    [setSelectedGroupModel, setModel, setSelectedChannel]
+    [channelsData]
   );
 
+  // 初始化：默认选第一个渠道和第一个模型
   useEffect(() => {
-    if (!selectedGroupModel && groupedModels.length > 0 && groupedModels[0].models.length > 0) {
-      handleModelChange(groupedModels[0].models[0].value);
+    if (!selectedChannel && channelOptions.length > 0) {
+      handleChannelChange(channelOptions[0].value);
     }
-  }, [groupedModels, handleModelChange, selectedGroupModel]);
+  }, [channelOptions, handleChannelChange, selectedChannel]);
 
   return (
     <TooltipProvider>
@@ -272,12 +271,26 @@ export default function Playground() {
           <ScrollArea className='min-h-0 flex-1 p-4'>
             <div className='space-y-6'>
               <div className='space-y-3'>
+                <Label htmlFor='channel' className='text-xs font-semibold'>
+                  {t('playground.settings.channel')}
+                </Label>
+                <AutoCompleteSelect
+                  selectedValue={selectedChannel}
+                  onSelectedValueChange={(v) => handleChannelChange(v)}
+                  items={channelOptions}
+                  isLoading={channelsLoading}
+                  emptyMessage={t('playground.errors.noChannelsAvailable')}
+                  placeholder={channelsLoading ? t('loading') : t('playground.settings.selectChannel')}
+                />
+              </div>
+
+              <div className='space-y-3'>
                 <Label htmlFor='model' className='text-xs font-semibold'>
                   {t('playground.settings.model')}
                 </Label>
                 <AutoCompleteSelect
-                  selectedValue={selectedGroupModel as string}
-                  onSelectedValueChange={(v) => handleModelChange(v)}
+                  selectedValue={model}
+                  onSelectedValueChange={(v) => setModel(v)}
                   items={modelOptions}
                   isLoading={channelsLoading}
                   emptyMessage={t('playground.errors.noChannelsAvailable')}
@@ -288,7 +301,7 @@ export default function Playground() {
                   <p className='text-muted-foreground text-[10px]'>
                     {t('playground.modelsAvailable', {
                       count: modelOptions.length,
-                      channels: groupedModels.length,
+                      channels: channelOptions.length,
                     })}
                   </p>
                 )}
