@@ -154,3 +154,9 @@ locales_backup
 # Chunkhound local database
 .chunkhound/
 .superset/
+
+# Local AI/tooling artifacts
+.kimi/
+.opencode/
+opencode.jsonc
+axonhub.exe
