@@ -132,6 +132,19 @@ func (ts *InboundPersistentStream) Close() error {
 		return ts.stream.Close()
 	}
 
+	// NEW: Check if we have a complete response even without terminal event
+	// This handles executors that aggregate streams internally (e.g., Codex)
+	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
+		// Try to aggregate and see if we have a valid complete response
+		responseBody, meta, err := ts.transformer.AggregateStreamChunks(ctx, ts.responseChunks)
+		if err == nil && meta.ID != "" && len(responseBody) > 0 {
+			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
+			ts.state.StreamCompleted = true
+			ts.persistResponseChunks(ctx)
+			return ts.stream.Close()
+		}
+	}
+
 	// Stream completed successfully - perform final persistence
 	log.Debug(ctx, "Stream completed successfully, performing final persistence")
 
