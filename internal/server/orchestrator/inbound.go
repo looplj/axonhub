@@ -106,7 +106,7 @@ func (ts *InboundPersistentStream) Close() error {
 	// the client disconnects immediately after receiving the last chunk.
 	if ts.state.StreamCompleted {
 		// Stream completed successfully - perform final persistence
-		log.Debug(ctx, "Stream completed successfully (received [DONE]), performing final persistence")
+		log.Debug(ctx, "Stream completed successfully (received terminal event), performing final persistence")
 		ts.persistResponseChunks(ctx)
 
 		return ts.stream.Close()
