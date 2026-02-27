@@ -471,6 +471,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: Github,
   },
+  github_copilot: {
+    channelType: 'github_copilot',
+    baseURL: 'https://api.githubcopilot.com',
+    defaultModels: [],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-[#6e40c9] text-white border-[#6e40c9]',
+    icon: Github,
+  },
   claudecode: {
     channelType: 'claudecode',
     baseURL: 'https://api.anthropic.com/v1',
@@ -540,6 +548,7 @@ export type Provider =
   | 'bailian'
   | 'jina'
   | 'github'
+  | 'github_copilot'
   | 'cerebras'
   | 'codex'
   | 'antigravity'
@@ -587,6 +596,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   bailian: 'bailian',
   jina: 'jina',
   github: 'github',
+  github_copilot: 'github_copilot',
   codex: 'codex',
   claudecode: 'claudecode',
   cerebras: 'cerebras',

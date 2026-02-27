@@ -244,7 +244,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal responses api response: %w", err)
 	}
 
-	// Convert to unified llm.Response format
+	// Validate that we got a valid response
+	if resp.ID == "" && resp.Model == "" && len(resp.Output) == 0 {
+		return nil, fmt.Errorf("responses api returned empty response: body=%s", string(httpResp.Body))
+	}
+
 	llmResp := &llm.Response{
 		Object:  "chat.completion",
 		ID:      resp.ID,

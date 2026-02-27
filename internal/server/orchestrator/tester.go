@@ -161,7 +161,6 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	rawErr := inbound.TransformError(ctx, err)
 	message := gjson.GetBytes(rawErr.Body, "error.message").String()
 
-	//nolint:nilerr // Checked.
 	if err != nil {
 		return &TestChannelResult{
 			Latency: time.Since(startTime).Seconds(),

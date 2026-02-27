@@ -55,6 +55,7 @@ import {
 import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { ManualModelBadge } from './manual-model-badge';
+import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ProxyType } from './channels-proxy-dialog';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { matchesModelPattern } from '../utils/pattern';
@@ -572,6 +573,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isCodexType = (selectedType || derivedChannelType) === 'codex';
   const isAntigravityType = (selectedType || derivedChannelType) === 'antigravity';
   const isClaudeCodeType = (selectedType || derivedChannelType) === 'claudecode';
+  const isCopilotType = (selectedType || derivedChannelType) === 'github_copilot';
 
   useEffect(() => {
     // Only force stream: 'require' for new Codex channels, not when editing existing ones
@@ -993,24 +995,49 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSupportedModels([]);
     setManualModels([]);
   };
+  // Helper function to parse OAuth token from JSON string
+  const parseOauthToken = (oauthApiKey: string): string => {
+    if (!oauthApiKey) return '';
+    try {
+      const parsed = JSON.parse(oauthApiKey);
+      if (parsed.access_token) {
+        return parsed.access_token;
+      }
+    } catch {
+      // Not JSON, use as-is
+    }
+    return oauthApiKey;
+  };
 
   const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type');
     const baseURL = form.getValues('baseURL');
     const apiKeys = form.getValues('credentials.apiKeys');
+    const oauthApiKey = form.getValues('credentials.apiKey');
 
     if (!channelType || !baseURL) {
       return;
     }
 
     try {
-      // Extract first API key from the array
-      const firstApiKey = apiKeys?.find((key) => key.trim().length > 0) || '';
+      // For OAuth-based providers (like Copilot), prefer oauthApiKey first
+      let firstApiKey = '';
+      if (oauthApiKey) {
+        const parsed = parseOauthToken(oauthApiKey);
+        if (parsed) {
+          firstApiKey = parsed;
+        }
+      }
+
+      // Fall back to apiKeys array if no OAuth token
+      if (!firstApiKey && apiKeys?.length) {
+        firstApiKey = apiKeys.find((key) => key.trim().length > 0) || '';
+      }
 
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: !isEdit ? firstApiKey : firstApiKey || undefined,
+        apiKey: firstApiKey || undefined,
         channelID: isEdit ? currentRow?.id : undefined,
       });
 
@@ -1045,13 +1072,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return !!baseURL;
     }
 
+    if (isCopilotType) {
+      const oauthApiKey = form.watch('credentials.apiKey');
+      const hasOAuthToken = !!parseOauthToken(oauthApiKey);
+      return !!baseURL && hasOAuthToken;
+    }
+
     if (isEdit) {
       return !!baseURL;
     }
 
     return !!baseURL && hasApiKey;
   };
-
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
   const quickModels = useMemo(() => {
@@ -1488,6 +1520,28 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </FormItem>
                       )}
 
+                      {isCopilotType && (
+                        <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <div className='col-span-2' />
+                          <div className='space-y-4 md:col-span-6'>
+                            <CopilotDeviceFlow
+                              existingCredentials={form.watch('credentials.apiKey')}
+                              onSuccess={(token) => {
+                                // Store as OAuth JSON format expected by backend
+                                const oauthCredentials = JSON.stringify({
+                                  access_token: token,
+                                  token_type: 'bearer',
+                                });
+                                form.setValue('credentials.apiKey', oauthCredentials, { shouldDirty: true, shouldValidate: true });
+                              }}
+                              onError={(error) => {
+                                toast.error(error);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <FormField
                         control={form.control}
                         name='name'
@@ -1576,7 +1630,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
-                      {(!(isCodexType || isClaudeCodeType) || authMode === 'third-party') &&
+                      {(!(isCodexType || isClaudeCodeType || isCopilotType) || authMode === 'third-party') &&
                         selectedProvider !== 'antigravity' &&
                         selectedType !== 'anthropic_gcp' && (
                           <FormField
@@ -1876,15 +1930,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               control={form.control}
                               name='autoSyncSupportedModels'
                               render={({ field }) => (
-                                <FormItem className={`flex items-center gap-2 ${isCodexType || isClaudeCodeType ? 'opacity-60' : ''}`}>
+                                <FormItem className={`flex items-center gap-2 ${isCodexType || isClaudeCodeType || isCopilotType ? 'opacity-60' : ''}`}>
                                   {wrapUnsupported(
-                                    isCodexType || isClaudeCodeType,
+                                    isCodexType || isClaudeCodeType || isCopilotType,
                                     <Checkbox
                                       checked={field.value}
                                       onCheckedChange={field.onChange}
                                       data-testid='auto-sync-supported-models-checkbox'
-                                      disabled={isCodexType || isClaudeCodeType}
-                                      className={isCodexType || isClaudeCodeType ? 'pointer-events-none' : undefined}
+                                      disabled={isCodexType || isClaudeCodeType || isCopilotType}
+                                      className={isCodexType || isClaudeCodeType || isCopilotType ? 'pointer-events-none' : undefined}
                                     />,
                                     'inline-flex items-center'
                                   )}

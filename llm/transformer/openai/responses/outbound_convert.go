@@ -346,6 +346,43 @@ func convertFunctionToTool(src llm.Tool) Tool {
 	if len(src.Function.Parameters) > 0 {
 		var params map[string]any
 		if err := json.Unmarshal(src.Function.Parameters, &params); err == nil {
+			// Handle nil map panic - initialize if nil
+			if params == nil {
+				params = map[string]any{}
+			}
+
+			// For strict mode, additionalProperties must be false and all properties must be required
+			// See: https://platform.openai.com/docs/guides/function-calling#strict-mode
+			if src.Function.Strict != nil && *src.Function.Strict {
+				// Always set additionalProperties: false for strict validation
+				// Overwrite any existing value (including true) to ensure false
+				params["additionalProperties"] = false
+
+				// When strict mode is enabled, ALL properties must be listed in "required"
+				if props, ok := params["properties"].(map[string]any); ok && len(props) > 0 {
+					required := make([]string, 0, len(props))
+					// First, check if there's an existing required array and preserve it
+					if existingRequired, ok := params["required"].([]any); ok {
+						for _, r := range existingRequired {
+							if s, ok := r.(string); ok {
+								required = append(required, s)
+							}
+						}
+					}
+					// Add any missing property keys to required
+					requiredSet := make(map[string]bool)
+					for _, r := range required {
+						requiredSet[r] = true
+					}
+					for key := range props {
+						if !requiredSet[key] {
+							required = append(required, key)
+						}
+					}
+					params["required"] = required
+				}
+			}
+
 			tool.Parameters = params
 		}
 	}

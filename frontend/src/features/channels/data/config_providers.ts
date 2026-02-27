@@ -146,6 +146,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['github'],
   },
+  github_copilot: {
+    provider: 'github_copilot',
+    icon: Github,
+    color: 'bg-[#6e40c9] text-white border-[#6e40c9]',
+    channelTypes: ['github_copilot'],
+  },
   ppio: {
     provider: 'ppio',
     icon: PPIO,

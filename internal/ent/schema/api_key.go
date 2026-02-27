@@ -118,7 +118,7 @@ func (APIKey) Policy() ent.Policy {
 			scopes.OwnerRule(), // owner 用户可以访问所有 API Keys
 		},
 		Mutation: scopes.MutationPolicy{
-			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteAPIKeys), // 需要 API Keys 写入权限
+			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteAPIKeys),   // 需要 API Keys 写入权限
 			scopes.APIKeyProjectScopeWriteRule(scopes.ScopeWriteAPIKeys), // API key scope + project 校验
 			scopes.OwnerRule(), // owner 用户可以修改所有 API Keys
 		},
