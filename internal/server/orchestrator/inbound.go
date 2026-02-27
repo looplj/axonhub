@@ -140,7 +140,8 @@ func (ts *InboundPersistentStream) Close() error {
 		if err == nil && meta.ID != "" && len(responseBody) > 0 {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.state.StreamCompleted = true
-			ts.persistResponseChunks(ctx)
+			// Use _persistResponse directly to avoid re-aggregating chunks
+			ts._persistResponse(context.WithoutCancel(ctx), responseBody, meta)
 			return ts.stream.Close()
 		}
 	}
@@ -160,41 +161,48 @@ func (ts *InboundPersistentStream) persistResponseChunks(ctx context.Context) {
 		}
 	}()
 
-	// Update main request with aggregated response
 	// Use context without cancellation to ensure persistence even if client canceled
-	if ts.request != nil {
-		persistCtx := context.WithoutCancel(ctx)
+	persistCtx := context.WithoutCancel(ctx)
 
-		responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
-		if err != nil {
-			log.Warn(persistCtx, "Failed to aggregate chunks for main request", log.Cause(err))
+	// Aggregate stream chunks first, then delegate to _persistResponse
+	responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
+	if err != nil {
+		log.Warn(persistCtx, "Failed to aggregate chunks for main request", log.Cause(err))
+		dumper.DumpStreamEvents(persistCtx, ts.responseChunks, "response_chunks.json")
+	}
 
-			dumper.DumpStreamEvents(persistCtx, ts.responseChunks, "response_chunks.json")
+	ts._persistResponse(persistCtx, responseBody, meta)
+}
+
+// _persistResponse performs the actual persistence with pre-aggregated data.
+// This avoids redundant aggregation when the data is already available.
+func (ts *InboundPersistentStream) _persistResponse(ctx context.Context, responseBody []byte, meta llm.ResponseMeta) {
+	if ts.request == nil {
+		return
+	}
+
+	// Build latency metrics from performance record
+	var metrics *biz.LatencyMetrics
+
+	if ts.perf != nil {
+		firstTokenLatencyMs, requestLatencyMs, _ := ts.perf.Calculate()
+
+		metrics = &biz.LatencyMetrics{
+			LatencyMs: &requestLatencyMs,
 		}
-
-		// Build latency metrics from performance record
-		var metrics *biz.LatencyMetrics
-
-		if ts.perf != nil {
-			firstTokenLatencyMs, requestLatencyMs, _ := ts.perf.Calculate()
-
-			metrics = &biz.LatencyMetrics{
-				LatencyMs: &requestLatencyMs,
-			}
-			if ts.perf.Stream && ts.perf.FirstTokenTime != nil {
-				metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
-			}
+		if ts.perf.Stream && ts.perf.FirstTokenTime != nil {
+			metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
 		}
+	}
 
-		err = ts.requestService.UpdateRequestCompleted(persistCtx, ts.request.ID, meta.ID, responseBody, metrics)
-		if err != nil {
-			log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
-		}
+	err := ts.requestService.UpdateRequestCompleted(ctx, ts.request.ID, meta.ID, responseBody, metrics)
+	if err != nil {
+		log.Warn(ctx, "Failed to update request status to completed", log.Cause(err))
+	}
 
-		// Save all response chunks at once
-		if err := ts.requestService.SaveRequestChunks(persistCtx, ts.request.ID, ts.responseChunks); err != nil {
-			log.Warn(persistCtx, "Failed to save request chunks", log.Cause(err))
-		}
+	// Save all response chunks at once
+	if err := ts.requestService.SaveRequestChunks(ctx, ts.request.ID, ts.responseChunks); err != nil {
+		log.Warn(ctx, "Failed to save request chunks", log.Cause(err))
 	}
 }
 

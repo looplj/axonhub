@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // mockInboundTransformer is a mock transformer for testing.
@@ -101,29 +102,53 @@ func createTestRequestService(t *testing.T, client *ent.Client) *biz.RequestServ
 	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
 }
 
-// TestInboundPersistentStream_Close_WithCompleteResponse tests the NEW behavior:
-// complete response without terminal event (e.g., Codex executor that aggregates internally)
-func TestInboundPersistentStream_Close_WithCompleteResponse(t *testing.T) {
-	// Setup
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-	defer client.Close()
+// newInboundPersistentStreamHelper creates a configured InboundPersistentStream for testing.
+// It encapsulates common setup: ent.Client, context, RequestService, test request/execution, and persistence state.
+// The caller provides the mock stream and transformer to test specific behaviors.
+func newInboundPersistentStreamHelper(
+	t *testing.T,
+	mockStream streams.Stream[*httpclient.StreamEvent],
+	mockTransformer transformer.Inbound,
+) (*InboundPersistentStream, *ent.Client, context.Context, *PersistenceState) {
+	t.Helper()
 
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 
-	// Create a complete response chunk with non-terminal event type
-	// This simulates Codex executor behavior where the response is complete but lacks terminal event
+	requestService := createTestRequestService(t, client)
+
+	testRequest := &ent.Request{ID: 1}
+	testRequestExec := &ent.RequestExecution{ID: 1}
+
+	state := &PersistenceState{StreamCompleted: false}
+
+	stream := NewInboundPersistentStream(
+		ctx,
+		mockStream,
+		testRequest,
+		testRequestExec,
+		requestService,
+		mockTransformer,
+		nil,
+		state,
+	)
+
+	return stream, client, ctx, state
+}
+
+// TestInboundPersistentStream_Close_WithCompleteResponse tests the NEW behavior:
+// complete response without terminal event (e.g., Codex executor that aggregates internally)
+func TestInboundPersistentStream_Close_WithCompleteResponse(t *testing.T) {
 	completeResponseChunk := &httpclient.StreamEvent{
 		Type: "chunk",
 		Data: []byte(`{"id":"chatcmpl-abc123","object":"chat.completion","created":1234567890,"model":"gpt-4","choices":[{"index":0,"message":{"role":"assistant","content":"Hello!"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}`),
 	}
 
-	// Create mock stream with single complete response chunk (no [DONE] event)
 	mockStream := &mockStream{
 		events: []*httpclient.StreamEvent{completeResponseChunk},
 	}
 
-	// Create mock transformer that returns valid aggregated response
 	mockTransformer := &mockInboundTransformer{
 		aggregateResponseBody: []byte(`{"id":"chatcmpl-abc123","object":"chat.completion","created":1234567890,"model":"gpt-4","choices":[{"index":0,"message":{"role":"assistant","content":"Hello!"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}`),
 		aggregateMeta: llm.ResponseMeta{
@@ -137,80 +162,38 @@ func TestInboundPersistentStream_Close_WithCompleteResponse(t *testing.T) {
 		aggregateErr: nil,
 	}
 
-	// Create real request service
-	requestService := createTestRequestService(t, client)
+	stream, client, _, state := newInboundPersistentStreamHelper(t, mockStream, mockTransformer)
+	defer client.Close()
 
-	// Create test request and execution
-	testRequest := &ent.Request{
-		ID: 1,
-	}
-	testRequestExec := &ent.RequestExecution{
-		ID: 1,
-	}
-
-	// Create persistence state
-	state := &PersistenceState{
-		StreamCompleted: false,
-	}
-
-	// Create the InboundPersistentStream
-	stream := NewInboundPersistentStream(
-		ctx,
-		mockStream,
-		testRequest,
-		testRequestExec,
-		requestService,
-		mockTransformer,
-		nil,
-		state,
-	)
-
-	// Execute - Call Next() to process the chunk, then Close()
 	require.True(t, stream.Next(), "Expected Next() to return true")
 	event := stream.Current()
 	require.NotNil(t, event, "Expected current event to not be nil")
 
-	// Verify that StreamCompleted is still false (no terminal event yet)
 	assert.False(t, state.StreamCompleted, "StreamCompleted should be false before Close()")
 
-	// Call Close()
 	err := stream.Close()
 	require.NoError(t, err, "Close() should not return an error")
 
-	// Assert - Verify StreamCompleted is set to true
 	assert.True(t, state.StreamCompleted, "StreamCompleted should be true after Close() with complete response")
-
-	// Verify stream is closed
 	assert.True(t, mockStream.closed, "Stream should be closed")
 }
 
 // TestInboundPersistentStream_Close_WithTerminalEvent tests the EXISTING behavior:
 // terminal event (e.g., [DONE] event from OpenAI)
 func TestInboundPersistentStream_Close_WithTerminalEvent(t *testing.T) {
-	// Setup
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-	defer client.Close()
-
-	ctx := context.Background()
-	ctx = ent.NewContext(ctx, client)
-
-	// Create a regular response chunk
 	regularResponseChunk := &httpclient.StreamEvent{
 		Type: "chunk",
 		Data: []byte(`{"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}`),
 	}
 
-	// Create the [DONE] terminal event
 	doneEvent := &httpclient.StreamEvent{
 		Data: []byte("[DONE]"),
 	}
 
-	// Create mock stream with response chunk followed by [DONE] event
 	mockStream := &mockStream{
 		events: []*httpclient.StreamEvent{regularResponseChunk, doneEvent},
 	}
 
-	// Create mock transformer
 	mockTransformer := &mockInboundTransformer{
 		aggregateResponseBody: []byte(`{"id":"chatcmpl-abc123","object":"chat.completion","created":1234567890,"model":"gpt-4","choices":[{"index":0,"message":{"role":"assistant","content":"Hello"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}`),
 		aggregateMeta: llm.ResponseMeta{
@@ -224,35 +207,9 @@ func TestInboundPersistentStream_Close_WithTerminalEvent(t *testing.T) {
 		aggregateErr: nil,
 	}
 
-	// Create real request service
-	requestService := createTestRequestService(t, client)
+	stream, client, _, state := newInboundPersistentStreamHelper(t, mockStream, mockTransformer)
+	defer client.Close()
 
-	// Create test request and execution
-	testRequest := &ent.Request{
-		ID: 1,
-	}
-	testRequestExec := &ent.RequestExecution{
-		ID: 1,
-	}
-
-	// Create persistence state
-	state := &PersistenceState{
-		StreamCompleted: false,
-	}
-
-	// Create the InboundPersistentStream
-	stream := NewInboundPersistentStream(
-		ctx,
-		mockStream,
-		testRequest,
-		testRequestExec,
-		requestService,
-		mockTransformer,
-		nil,
-		state,
-	)
-
-	// Execute - Process all events
 	require.True(t, stream.Next(), "Expected Next() to return true for first chunk")
 	_ = stream.Current()
 
@@ -260,90 +217,44 @@ func TestInboundPersistentStream_Close_WithTerminalEvent(t *testing.T) {
 	event := stream.Current()
 	require.NotNil(t, event, "Expected current event to not be nil")
 
-	// Verify that StreamCompleted is set to true by the [DONE] event
 	assert.True(t, state.StreamCompleted, "StreamCompleted should be true after [DONE] event")
 
-	// Call Close()
 	err := stream.Close()
 	require.NoError(t, err, "Close() should not return an error")
 
-	// Assert - Verify StreamCompleted is still true
 	assert.True(t, state.StreamCompleted, "StreamCompleted should remain true after Close()")
-
-	// Verify stream is closed
 	assert.True(t, mockStream.closed, "Stream should be closed")
 }
 
 // TestInboundPersistentStream_Close_WithAggregationError tests the error path:
-// aggregation fails but fallback behavior still works (persistResponseChunks called in final block)
+// aggregation fails but fallback behavior still works (persistResponseChunks called in final block).
 func TestInboundPersistentStream_Close_WithAggregationError(t *testing.T) {
-	// Setup
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-	defer client.Close()
-
-	ctx := context.Background()
-	ctx = ent.NewContext(ctx, client)
-
-	// Create a regular response chunk
 	regularResponseChunk := &httpclient.StreamEvent{
 		Type: "chunk",
 		Data: []byte(`{"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}`),
 	}
 
-	// Create mock stream with response chunk (no terminal event)
 	mockStream := &mockStream{
 		events: []*httpclient.StreamEvent{regularResponseChunk},
 	}
 
-	// Create mock transformer with aggregation error
 	mockTransformer := &mockInboundTransformer{
 		aggregateResponseBody: nil,
 		aggregateMeta:         llm.ResponseMeta{},
 		aggregateErr:          errors.New("aggregation failed"),
 	}
 
-	// Create real request service
-	requestService := createTestRequestService(t, client)
+	stream, client, _, state := newInboundPersistentStreamHelper(t, mockStream, mockTransformer)
+	defer client.Close()
 
-	// Create test request and execution
-	testRequest := &ent.Request{
-		ID: 1,
-	}
-	testRequestExec := &ent.RequestExecution{
-		ID: 1,
-	}
-
-	// Create persistence state
-	state := &PersistenceState{
-		StreamCompleted: false,
-	}
-
-	// Create the InboundPersistentStream
-	stream := NewInboundPersistentStream(
-		ctx,
-		mockStream,
-		testRequest,
-		testRequestExec,
-		requestService,
-		mockTransformer,
-		nil,
-		state,
-	)
-
-	// Execute - Process the chunk
 	require.True(t, stream.Next(), "Expected Next() to return true for first chunk")
 	_ = stream.Current()
 
-	// Verify that StreamCompleted is still false (no terminal event yet)
 	assert.False(t, state.StreamCompleted, "StreamCompleted should be false before Close()")
 
-	// Call Close()
 	err := stream.Close()
 	require.NoError(t, err, "Close() should not return an error")
 
-	// Assert - Verify StreamCompleted is still false (no terminal event received)
 	assert.False(t, state.StreamCompleted, "StreamCompleted should remain false after Close() with aggregation error")
-
-	// Verify stream is closed
 	assert.True(t, mockStream.closed, "Stream should be closed")
 }
