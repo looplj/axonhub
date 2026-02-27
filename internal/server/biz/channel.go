@@ -537,6 +537,14 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		mut.ClearRemark()
 	}
 
+	if input.AutoSyncModelPattern != nil {
+		mut.SetAutoSyncModelPattern(*input.AutoSyncModelPattern)
+	}
+
+	if input.ClearAutoSyncModelPattern {
+		mut.ClearAutoSyncModelPattern()
+	}
+
 	if input.ClearErrorMessage {
 		mut.ClearErrorMessage()
 	}
