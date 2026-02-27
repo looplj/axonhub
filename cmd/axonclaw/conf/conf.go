@@ -28,8 +28,8 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		PollInterval:      2 * time.Second,
-		HeartbeatInterval: 10 * time.Second,
+		PollInterval:      5 * time.Second,
+		HeartbeatInterval: 1 * time.Minute,
 	}
 }
 
@@ -173,6 +173,18 @@ func generateInstanceID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func Load(path string) (Config, error) {
+	cfg := DefaultConfig()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return cfg, err
+	}
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return cfg, fmt.Errorf("unmarshal config: %w", err)
+	}
+	return cfg, nil
 }
 
 func ReadYAMLFile(path string) (map[string]any, error) {

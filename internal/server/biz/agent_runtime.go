@@ -258,6 +258,8 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 		return fmt.Errorf("failed to get agent API key: %w", err)
 	}
 
+	println("apiKey:", apiKey.Key)
+
 	var baseURL string
 	if debugLocalPath != "" {
 		baseURL = "http://localhost:8090"
@@ -282,7 +284,7 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 			}
 
 			//nolint:gosec
-			startCmd := fmt.Sprintf("cd %s && AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONHUB_BASE_URL=%s AXONHUB_API_KEY=%s ./start.sh", directory, instanceID, name, baseURL, apiKey.Key)
+			startCmd := fmt.Sprintf("cd %s && AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s ./start.sh", directory, instanceID, name, baseURL, apiKey.Key)
 			if err := exec.CommandContext(ctx, "sh", "-c", startCmd).Run(); err != nil {
 				return fmt.Errorf("failed to start debug axonclaw: %w", err)
 			}
@@ -291,7 +293,7 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 		}
 
 		//nolint:gosec
-		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONHUB_BASE_URL=%s AXONHUB_API_KEY=%s sh", directory, instanceID, name, baseURL, apiKey.Key)
+		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, instanceID, name, baseURL, apiKey.Key)
 		if err := exec.CommandContext(ctx, "sh", "-c", deployCmd).Run(); err != nil {
 			return fmt.Errorf("failed to deploy axonclaw: %w", err)
 		}
@@ -331,7 +333,7 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 	}
 	defer session2.Close()
 
-	deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONHUB_BASE_URL=%s AXONHUB_API_KEY=%s sh", directory, instanceID, name, baseURL, apiKey.Key)
+	deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, instanceID, name, baseURL, apiKey.Key)
 	if err := session2.Run(deployCmd); err != nil {
 		return fmt.Errorf("failed to deploy axonclaw: %w", err)
 	}
@@ -382,7 +384,7 @@ func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent
 		}
 
 		//nolint:gosec
-		runCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_INSTANCE_ID=%s -e AXONCLAW_NAME=%s -e AXONHUB_BASE_URL=%s -e AXONHUB_API_KEY=%s %s", containerName, instanceID, name, baseURL, apiKey.Key, imageName))
+		runCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_INSTANCE_ID=%s -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, instanceID, name, baseURL, apiKey.Key, imageName))
 		if err := runCmd.Run(); err != nil {
 			return fmt.Errorf("failed to start Docker container: %w", err)
 		}
@@ -460,7 +462,7 @@ func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent
 	}
 	defer session4.Close()
 
-	runCmd := fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_INSTANCE_ID=%s -e AXONCLAW_NAME=%s -e AXONHUB_BASE_URL=%s -e AXONHUB_API_KEY=%s %s", containerName, instanceID, name, baseURL, apiKey.Key, imageName)
+	runCmd := fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_INSTANCE_ID=%s -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, instanceID, name, baseURL, apiKey.Key, imageName)
 	if err := session4.Run(runCmd); err != nil {
 		return fmt.Errorf("failed to start Docker container: %w", err)
 	}

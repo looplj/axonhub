@@ -57,4 +57,3 @@ func WithAgentAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 		c.Next()
 	}
 }
-

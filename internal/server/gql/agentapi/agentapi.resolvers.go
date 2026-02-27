@@ -11,7 +11,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -54,20 +53,27 @@ func (r *mutationResolver) HeartbeatAgentInstance(ctx context.Context, input Hea
 }
 
 // SendAgentMessage is the resolver for the sendAgentMessage field.
+// Sends a message from this agent to another agent (inter-agent communication).
 func (r *mutationResolver) SendAgentMessage(ctx context.Context, input SendAgentMessageInput) (*AgentMessage, error) {
 	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	view, err := r.agentRuntimeService.SendAgentMessage(ctx, biz.SendAgentMessageInput{
-		AgentID: agentID,
-		Text:    input.Text,
+	targetAgentID, err := requireGUIDType(input.TargetAgentID, ent.TypeAgent)
+	if err != nil {
+		return nil, err
+	}
+
+	view, err := r.agentRuntimeService.SendPeerMessage(ctx, biz.SendPeerMessageInput{
+		SenderAgentID:    agentID,
+		TargetAgentID:    targetAgentID,
+		TargetInstanceID: input.TargetInstanceID,
+		Text:             input.Text,
 		Content: func() *objects.JSONRawMessage {
 			if len(input.Content) == 0 || string(input.Content) == "null" {
 				return nil
 			}
-
 			return &input.Content
 		}(),
 		Kind:          (*agentmessage.Kind)(input.Kind),
@@ -80,11 +86,8 @@ func (r *mutationResolver) SendAgentMessage(ctx context.Context, input SendAgent
 	return mapMessage(view), nil
 }
 
-// PushAgentMessage is the resolver for the pushAgentMessage field.
-func (r *mutationResolver) PushAgentMessage(ctx context.Context, input PushAgentMessageInput) (*AgentMessage, error) {
-	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "PushAgentMessage", log.Any("input", input))
-	}
+// ReplyMessage is the resolver for the replyMessage field.
+func (r *mutationResolver) ReplyMessage(ctx context.Context, input ReplyMessageInput) (*AgentMessage, error) {
 	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
@@ -98,16 +101,13 @@ func (r *mutationResolver) PushAgentMessage(ctx context.Context, input PushAgent
 			if len(input.Content) == 0 || string(input.Content) == "null" {
 				return nil
 			}
-
 			return &input.Content
 		}(),
 		Kind: func() *agentmessage.Kind {
 			if input.Kind == nil {
 				return nil
 			}
-
 			k := agentmessage.Kind(*input.Kind)
-
 			return &k
 		}(),
 		CorrelationID: input.CorrelationID,
@@ -214,6 +214,31 @@ func (r *queryResolver) AgentBootstrap(ctx context.Context) (*AgentBootstrap, er
 	return out, nil
 }
 
+// PeerAgents is the resolver for the peerAgents field.
+func (r *queryResolver) PeerAgents(ctx context.Context) ([]*PeerAgent, error) {
+	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	peers, err := r.agentRuntimeService.ListPeerAgents(ctx, agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*PeerAgent, 0, len(peers))
+	for _, p := range peers {
+		out = append(out, &PeerAgent{
+			AgentID:    objects.GUID{Type: ent.TypeAgent, ID: p.AgentID},
+			Name:       p.Name,
+			Status:     p.Status,
+			InstanceID: p.InstanceID,
+		})
+	}
+
+	return out, nil
+}
+
 // PullAgentMessages is the resolver for the pullAgentMessages field.
 func (r *queryResolver) PullAgentMessages(ctx context.Context, input PullAgentMessagesInput) ([]*AgentMessage, error) {
 	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
@@ -292,5 +317,7 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
+type (
+	mutationResolver struct{ *Resolver }
+	queryResolver    struct{ *Resolver }
+)

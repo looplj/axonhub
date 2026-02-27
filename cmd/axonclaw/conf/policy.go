@@ -14,6 +14,9 @@ const PolicyFileName = "policy.yml"
 
 var DefaultPolicy = policy.Document{
 	Version: 1,
+	Defaults: policy.Defaults{
+		Mode: "allow_by_default",
+	},
 	Rules: []policy.Rule{
 		// 禁止读取敏感配置文件
 		{
@@ -76,15 +79,6 @@ var DefaultPolicy = policy.Document{
 			Reason: "allow web search",
 			When: policy.When{
 				CapabilityIn: []string{"net.search"},
-			},
-		},
-		// 允许回复消息
-		{
-			ID:     "allow_reply_message",
-			Effect: policy.EffectAllow,
-			Reason: "allow reply message to user",
-			When: policy.When{
-				CapabilityIn: []string{"message.reply"},
 			},
 		},
 	},

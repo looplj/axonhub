@@ -68,7 +68,7 @@ func registerTools(
 		a.RegisterTool(tools.NewAgentTool(tools.NewWebSearchTool(search.NewDuckDuckGoProvider())))
 	}
 
-	a.RegisterTool(tools.NewAgentTool(NewReplyMessageTool(client, instanceID)))
+	a.RegisterTool(tools.NewAgentTool(NewSendMessageTool(client, instanceID)))
 	a.RegisterTool(tools.NewAgentTool(NewAxonClawHelpTool()))
 
 	known := map[string]struct{}{}

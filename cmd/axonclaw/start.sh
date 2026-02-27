@@ -69,38 +69,44 @@ start_axonclaw() {
     
     print_info "Using binary: $binary_path"
     
-    if [[ -z "$AXONCLAW_INSTANCE_ID" ]]; then
-        print_error "AXONCLAW_INSTANCE_ID environment variable is required"
-        print_info "Usage: AXONCLAW_INSTANCE_ID=<your-instance-id> ./start.sh"
-        return 1
+    local config_file=".axonclaw/config.yml"
+    local has_config=false
+    if [[ -f "$config_file" ]]; then
+        has_config=true
+        print_info "Found existing config: $config_file"
     fi
     
-    if [[ -z "$AXONHUB_BASE_URL" ]]; then
-        print_warning "AXONHUB_BASE_URL not set, using default: http://localhost:8090"
-        export AXONHUB_BASE_URL="${AXONHUB_BASE_URL:-http://localhost:8090}"
+    local args=()
+    args+=("--base-url" "${AXONCLAW_BASE_URL:-http://localhost:8090}")
+    
+    if [[ -n "$AXONCLAW_API_KEY" ]]; then
+        args+=("--api-key" "$AXONCLAW_API_KEY")
     fi
     
-    if [[ -z "$AXONHUB_API_KEY" ]]; then
-        print_error "AXONHUB_API_KEY environment variable is required"
-        return 1
+    if [[ -n "$AXONCLAW_INSTANCE_ID" ]]; then
+        args+=("--instance-id" "$AXONCLAW_INSTANCE_ID")
+    fi
+    
+    if [[ -n "$AXONCLAW_NAME" ]]; then
+        args+=("--name" "$AXONCLAW_NAME")
+    fi
+    
+    if [[ -n "$DEBUG_MODE" ]]; then
+        args+=("--debug")
     fi
     
     mkdir -p .axonclaw/logs
     
     print_info "Starting AxonClaw process..."
-    print_info "  Instance ID: $AXONCLAW_INSTANCE_ID"
-    print_info "  Base URL: $AXONHUB_BASE_URL"
+    print_info "  Base URL: ${AXONCLAW_BASE_URL:-http://localhost:8090}"
+    if [[ -n "$AXONCLAW_INSTANCE_ID" ]]; then
+        print_info "  Instance ID: $AXONCLAW_INSTANCE_ID"
+    fi
     if [[ -n "$AXONCLAW_NAME" ]]; then
         print_info "  Name: $AXONCLAW_NAME"
     fi
     
-    "$binary_path" \
-        --base-url "$AXONHUB_BASE_URL" \
-        --api-key "$AXONHUB_API_KEY" \
-        --instance-id "$AXONCLAW_INSTANCE_ID" \
-        ${AXONCLAW_NAME:+--name "$AXONCLAW_NAME"} \
-        ${DEBUG_MODE:+--debug} \
-        >> "$LOG_FILE" 2>&1 &
+    "$binary_path" "${args[@]}" >> "$LOG_FILE" 2>&1 &
     
     local pid=$!
     echo "$pid" > "$PID_FILE"
@@ -111,8 +117,11 @@ start_axonclaw() {
         print_success "AxonClaw started successfully (PID: $pid)"
         print_info "Process information:"
         echo "  • PID: $pid"
-        echo "  • Instance ID: $AXONCLAW_INSTANCE_ID"
         echo "  • Log file: $LOG_FILE"
+        if [[ "$has_config" == "false" ]]; then
+            echo
+            print_info "Config saved to: $config_file"
+        fi
         echo
         print_info "To stop AxonClaw: ./stop.sh"
         print_info "To view logs: tail -f $LOG_FILE"
@@ -131,15 +140,21 @@ case "${1:-}" in
     --help|-h)
         echo "Usage: $0"
         echo
-        echo "Environment variables:"
-        echo "  AXONCLAW_INSTANCE_ID  Required. The unique instance identifier"
-        echo "  AXONHUB_BASE_URL      Optional. AxonHub server URL (default: http://localhost:8090)"
-        echo "  AXONHUB_API_KEY       Required. Agent API key for authentication"
-        echo "  AXONCLAW_NAME         Optional. Agent instance name"
-        echo "  DEBUG_MODE            Optional. Set to 'true' to enable debug logging"
+        echo "Environment variables (all optional if config exists):"
+        echo "  AXONCLAW_BASE_URL      Optional. AxonHub server URL (default: http://localhost:8090)"
+        echo "  AXONCLAW_API_KEY       Optional. Agent API key for authentication"
+        echo "  AXONCLAW_INSTANCE_ID   Optional. Unique instance identifier (auto-generated if not set)"
+        echo "  AXONCLAW_NAME          Optional. Agent instance name"
+        echo "  DEBUG_MODE             Optional. Set to 'true' to enable debug logging"
         echo
-        echo "Example:"
-        echo "  AXONCLAW_INSTANCE_ID=abc123 AXONHUB_API_KEY=your-key ./start.sh"
+        echo "Config file: .axonclaw/config.yml"
+        echo "  On first start, config will be saved and reused on subsequent starts."
+        echo
+        echo "Example (first start):"
+        echo "  AXONCLAW_API_KEY=your-key ./start.sh"
+        echo
+        echo "Example (subsequent starts with saved config):"
+        echo "  ./start.sh"
         exit 0
         ;;
     "")

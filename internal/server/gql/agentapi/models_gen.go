@@ -82,20 +82,20 @@ type HeartbeatAgentInstanceInput struct {
 type Mutation struct {
 }
 
+type PeerAgent struct {
+	AgentID     objects.GUID `json:"agentID"`
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Status      string       `json:"status"`
+	InstanceID  string       `json:"instanceID"`
+}
+
 type PullAgentMessagesInput struct {
 	InstanceID    string             `json:"instanceID"`
 	AfterSequence *int               `json:"afterSequence,omitempty"`
 	Limit         *int               `json:"limit,omitempty"`
 	KindIn        []AgentMessageKind `json:"kindIn,omitempty"`
 	CorrelationID *string            `json:"correlationID,omitempty"`
-}
-
-type PushAgentMessageInput struct {
-	InstanceID    string                 `json:"instanceID"`
-	Text          string                 `json:"text"`
-	Content       objects.JSONRawMessage `json:"content,omitempty"`
-	Kind          *AgentMessageKind      `json:"kind,omitempty"`
-	CorrelationID *string                `json:"correlationID,omitempty"`
 }
 
 type RegisterAgentInstanceInput struct {
@@ -106,11 +106,21 @@ type RegisterAgentInstanceInput struct {
 	ThreadID   *string `json:"threadID,omitempty"`
 }
 
-type SendAgentMessageInput struct {
+type ReplyMessageInput struct {
+	InstanceID    string                 `json:"instanceID"`
 	Text          string                 `json:"text"`
 	Content       objects.JSONRawMessage `json:"content,omitempty"`
 	Kind          *AgentMessageKind      `json:"kind,omitempty"`
 	CorrelationID *string                `json:"correlationID,omitempty"`
+}
+
+type SendAgentMessageInput struct {
+	TargetAgentID    objects.GUID           `json:"targetAgentID"`
+	TargetInstanceID string                 `json:"targetInstanceID,omitempty"`
+	Text             string                 `json:"text"`
+	Content          objects.JSONRawMessage `json:"content,omitempty"`
+	Kind             *AgentMessageKind      `json:"kind,omitempty"`
+	CorrelationID    *string                `json:"correlationID,omitempty"`
 }
 
 type AgentMessageDirection string

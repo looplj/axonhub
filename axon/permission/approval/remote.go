@@ -103,7 +103,7 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 
 	kind := api.AgentMessageKindApprovalRequest
 	correlationID := req.ID
-	if _, err := api.PushAgentMessage(ctx, a.client, &api.PushAgentMessageInput{
+	if _, err := api.ReplyMessage(ctx, a.client, &api.ReplyMessageInput{
 		InstanceID:    a.instanceID,
 		Text:          text,
 		Content:       (*json.RawMessage)(&raw),

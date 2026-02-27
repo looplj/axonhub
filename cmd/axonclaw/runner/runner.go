@@ -151,8 +151,10 @@ func (r *Runner) Run(ctx context.Context) error {
 
 func (r *Runner) processMessage(ctx context.Context, text string) error {
 	traceID := uuid.New().String()
-	traceCtx := axoncontext.WithTraceID(ctx, traceID)
-	return r.Agent.Process(traceCtx, agent.Content{Text: &text})
+	// 显式设置 ThreadID 和 TraceID，确保 provider 调用时能正确传递到 HTTP Header
+	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
+	ctx = axoncontext.WithTraceID(ctx, traceID)
+	return r.Agent.Process(ctx, agent.Content{Text: &text})
 }
 
 func buildLocalSystemPrompt(axonClawPath string) string {

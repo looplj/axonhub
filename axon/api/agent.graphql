@@ -36,8 +36,23 @@ mutation AckAgentMessages($input: AckAgentMessagesInput!) {
   ackAgentMessages(input: $input)
 }
 
-mutation PushAgentMessage($input: PushAgentMessageInput!) {
-  pushAgentMessage(input: $input) {
+mutation ReplyMessage($input: ReplyMessageInput!) {
+  replyMessage(input: $input) {
+    id
+  }
+}
+
+query PeerAgents {
+  peerAgents {
+    agentID
+    name
+    status
+    instanceID
+  }
+}
+
+mutation SendAgentMessage($input: SendAgentMessageInput!) {
+  sendAgentMessage(input: $input) {
     id
   }
 }

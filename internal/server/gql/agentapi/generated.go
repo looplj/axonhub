@@ -109,13 +109,22 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AckAgentMessages       func(childComplexity int, input AckAgentMessagesInput) int
 		HeartbeatAgentInstance func(childComplexity int, input HeartbeatAgentInstanceInput) int
-		PushAgentMessage       func(childComplexity int, input PushAgentMessageInput) int
 		RegisterAgentInstance  func(childComplexity int, input RegisterAgentInstanceInput) int
+		ReplyMessage           func(childComplexity int, input ReplyMessageInput) int
 		SendAgentMessage       func(childComplexity int, input SendAgentMessageInput) int
+	}
+
+	PeerAgent struct {
+		AgentID     func(childComplexity int) int
+		Description func(childComplexity int) int
+		InstanceID  func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Status      func(childComplexity int) int
 	}
 
 	Query struct {
 		AgentBootstrap          func(childComplexity int) int
+		PeerAgents              func(childComplexity int) int
 		PullAgentMessages       func(childComplexity int, input PullAgentMessagesInput) int
 		PullAgentMessagesToUser func(childComplexity int, afterSequence *int, limit *int) int
 	}
@@ -125,11 +134,12 @@ type MutationResolver interface {
 	RegisterAgentInstance(ctx context.Context, input RegisterAgentInstanceInput) (*AgentInstance, error)
 	HeartbeatAgentInstance(ctx context.Context, input HeartbeatAgentInstanceInput) (bool, error)
 	SendAgentMessage(ctx context.Context, input SendAgentMessageInput) (*AgentMessage, error)
-	PushAgentMessage(ctx context.Context, input PushAgentMessageInput) (*AgentMessage, error)
+	ReplyMessage(ctx context.Context, input ReplyMessageInput) (*AgentMessage, error)
 	AckAgentMessages(ctx context.Context, input AckAgentMessagesInput) (bool, error)
 }
 type QueryResolver interface {
 	AgentBootstrap(ctx context.Context) (*AgentBootstrap, error)
+	PeerAgents(ctx context.Context) ([]*PeerAgent, error)
 	PullAgentMessages(ctx context.Context, input PullAgentMessagesInput) ([]*AgentMessage, error)
 	PullAgentMessagesToUser(ctx context.Context, afterSequence *int, limit *int) ([]*AgentMessage, error)
 }
@@ -404,17 +414,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.HeartbeatAgentInstance(childComplexity, args["input"].(HeartbeatAgentInstanceInput)), true
-	case "Mutation.pushAgentMessage":
-		if e.complexity.Mutation.PushAgentMessage == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_pushAgentMessage_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.PushAgentMessage(childComplexity, args["input"].(PushAgentMessageInput)), true
 	case "Mutation.registerAgentInstance":
 		if e.complexity.Mutation.RegisterAgentInstance == nil {
 			break
@@ -426,6 +425,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RegisterAgentInstance(childComplexity, args["input"].(RegisterAgentInstanceInput)), true
+	case "Mutation.replyMessage":
+		if e.complexity.Mutation.ReplyMessage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_replyMessage_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ReplyMessage(childComplexity, args["input"].(ReplyMessageInput)), true
 	case "Mutation.sendAgentMessage":
 		if e.complexity.Mutation.SendAgentMessage == nil {
 			break
@@ -438,12 +448,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SendAgentMessage(childComplexity, args["input"].(SendAgentMessageInput)), true
 
+	case "PeerAgent.agentID":
+		if e.complexity.PeerAgent.AgentID == nil {
+			break
+		}
+
+		return e.complexity.PeerAgent.AgentID(childComplexity), true
+	case "PeerAgent.description":
+		if e.complexity.PeerAgent.Description == nil {
+			break
+		}
+
+		return e.complexity.PeerAgent.Description(childComplexity), true
+	case "PeerAgent.instanceID":
+		if e.complexity.PeerAgent.InstanceID == nil {
+			break
+		}
+
+		return e.complexity.PeerAgent.InstanceID(childComplexity), true
+	case "PeerAgent.name":
+		if e.complexity.PeerAgent.Name == nil {
+			break
+		}
+
+		return e.complexity.PeerAgent.Name(childComplexity), true
+	case "PeerAgent.status":
+		if e.complexity.PeerAgent.Status == nil {
+			break
+		}
+
+		return e.complexity.PeerAgent.Status(childComplexity), true
+
 	case "Query.agentBootstrap":
 		if e.complexity.Query.AgentBootstrap == nil {
 			break
 		}
 
 		return e.complexity.Query.AgentBootstrap(childComplexity), true
+	case "Query.peerAgents":
+		if e.complexity.Query.PeerAgents == nil {
+			break
+		}
+
+		return e.complexity.Query.PeerAgents(childComplexity), true
 	case "Query.pullAgentMessages":
 		if e.complexity.Query.PullAgentMessages == nil {
 			break
@@ -478,8 +525,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAckAgentMessagesInput,
 		ec.unmarshalInputHeartbeatAgentInstanceInput,
 		ec.unmarshalInputPullAgentMessagesInput,
-		ec.unmarshalInputPushAgentMessageInput,
 		ec.unmarshalInputRegisterAgentInstanceInput,
+		ec.unmarshalInputReplyMessageInput,
 		ec.unmarshalInputSendAgentMessageInput,
 	)
 	first := true
@@ -619,10 +666,10 @@ func (ec *executionContext) field_Mutation_heartbeatAgentInstance_args(ctx conte
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_pushAgentMessage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_registerAgentInstance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNPushAgentMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐPushAgentMessageInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterAgentInstanceInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐRegisterAgentInstanceInput)
 	if err != nil {
 		return nil, err
 	}
@@ -630,10 +677,10 @@ func (ec *executionContext) field_Mutation_pushAgentMessage_args(ctx context.Con
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_registerAgentInstance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_replyMessage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterAgentInstanceInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐRegisterAgentInstanceInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNReplyMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐReplyMessageInput)
 	if err != nil {
 		return nil, err
 	}
@@ -2006,15 +2053,15 @@ func (ec *executionContext) fieldContext_Mutation_sendAgentMessage(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_pushAgentMessage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_replyMessage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Mutation_pushAgentMessage,
+		ec.fieldContext_Mutation_replyMessage,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().PushAgentMessage(ctx, fc.Args["input"].(PushAgentMessageInput))
+			return ec.resolvers.Mutation().ReplyMessage(ctx, fc.Args["input"].(ReplyMessageInput))
 		},
 		nil,
 		ec.marshalNAgentMessage2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentMessage,
@@ -2023,7 +2070,7 @@ func (ec *executionContext) _Mutation_pushAgentMessage(ctx context.Context, fiel
 	)
 }
 
-func (ec *executionContext) fieldContext_Mutation_pushAgentMessage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_replyMessage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -2064,7 +2111,7 @@ func (ec *executionContext) fieldContext_Mutation_pushAgentMessage(ctx context.C
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_pushAgentMessage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_replyMessage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2108,6 +2155,151 @@ func (ec *executionContext) fieldContext_Mutation_ackAgentMessages(ctx context.C
 	if fc.Args, err = ec.field_Mutation_ackAgentMessages_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerAgent_agentID(ctx context.Context, field graphql.CollectedField, obj *PeerAgent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PeerAgent_agentID,
+		func(ctx context.Context) (any, error) {
+			return obj.AgentID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PeerAgent_agentID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerAgent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerAgent_name(ctx context.Context, field graphql.CollectedField, obj *PeerAgent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PeerAgent_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PeerAgent_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerAgent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerAgent_description(ctx context.Context, field graphql.CollectedField, obj *PeerAgent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PeerAgent_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PeerAgent_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerAgent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerAgent_status(ctx context.Context, field graphql.CollectedField, obj *PeerAgent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PeerAgent_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PeerAgent_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerAgent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PeerAgent_instanceID(ctx context.Context, field graphql.CollectedField, obj *PeerAgent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PeerAgent_instanceID,
+		func(ctx context.Context) (any, error) {
+			return obj.InstanceID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PeerAgent_instanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerAgent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -2156,6 +2348,47 @@ func (ec *executionContext) fieldContext_Query_agentBootstrap(_ context.Context,
 				return ec.fieldContext_AgentBootstrap_memoryPolicy(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AgentBootstrap", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_peerAgents(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_peerAgents,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().PeerAgents(ctx)
+		},
+		nil,
+		ec.marshalNPeerAgent2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐPeerAgentᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_peerAgents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "agentID":
+				return ec.fieldContext_PeerAgent_agentID(ctx, field)
+			case "name":
+				return ec.fieldContext_PeerAgent_name(ctx, field)
+			case "description":
+				return ec.fieldContext_PeerAgent_description(ctx, field)
+			case "status":
+				return ec.fieldContext_PeerAgent_status(ctx, field)
+			case "instanceID":
+				return ec.fieldContext_PeerAgent_instanceID(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PeerAgent", field.Name)
 		},
 	}
 	return fc, nil
@@ -3965,8 +4198,63 @@ func (ec *executionContext) unmarshalInputPullAgentMessagesInput(ctx context.Con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputPushAgentMessageInput(ctx context.Context, obj any) (PushAgentMessageInput, error) {
-	var it PushAgentMessageInput
+func (ec *executionContext) unmarshalInputRegisterAgentInstanceInput(ctx context.Context, obj any) (RegisterAgentInstanceInput, error) {
+	var it RegisterAgentInstanceInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"instanceID", "name", "platform", "version", "threadID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "instanceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InstanceID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "platform":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("platform"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Platform = data
+		case "version":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Version = data
+		case "threadID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threadID"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThreadID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputReplyMessageInput(ctx context.Context, obj any) (ReplyMessageInput, error) {
+	var it ReplyMessageInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -4027,61 +4315,6 @@ func (ec *executionContext) unmarshalInputPushAgentMessageInput(ctx context.Cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputRegisterAgentInstanceInput(ctx context.Context, obj any) (RegisterAgentInstanceInput, error) {
-	var it RegisterAgentInstanceInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"instanceID", "name", "platform", "version", "threadID"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Name = data
-		case "platform":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("platform"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Platform = data
-		case "version":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Version = data
-		case "threadID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threadID"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ThreadID = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Context, obj any) (SendAgentMessageInput, error) {
 	var it SendAgentMessageInput
 	asMap := map[string]any{}
@@ -4096,13 +4329,27 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 		asMap["correlationID"] = ""
 	}
 
-	fieldsInOrder := [...]string{"text", "content", "kind", "correlationID"}
+	fieldsInOrder := [...]string{"targetAgentID", "targetInstanceID", "text", "content", "kind", "correlationID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "targetAgentID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetAgentID"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TargetAgentID = data
+		case "targetInstanceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetInstanceID"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TargetInstanceID = data
 		case "text":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -4587,9 +4834,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "pushAgentMessage":
+		case "replyMessage":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_pushAgentMessage(ctx, field)
+				return ec._Mutation_replyMessage(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -4598,6 +4845,65 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_ackAgentMessages(ctx, field)
 			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var peerAgentImplementors = []string{"PeerAgent"}
+
+func (ec *executionContext) _PeerAgent(ctx context.Context, sel ast.SelectionSet, obj *PeerAgent) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, peerAgentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PeerAgent")
+		case "agentID":
+			out.Values[i] = ec._PeerAgent_agentID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._PeerAgent_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._PeerAgent_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._PeerAgent_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "instanceID":
+			out.Values[i] = ec._PeerAgent_instanceID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -4653,6 +4959,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_agentBootstrap(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "peerAgents":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_peerAgents(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -5497,18 +5825,72 @@ func (ec *executionContext) marshalNJSONRawMessage2githubᚗcomᚋloopljᚋaxonh
 	return v
 }
 
+func (ec *executionContext) marshalNPeerAgent2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐPeerAgentᚄ(ctx context.Context, sel ast.SelectionSet, v []*PeerAgent) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPeerAgent2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐPeerAgent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPeerAgent2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐPeerAgent(ctx context.Context, sel ast.SelectionSet, v *PeerAgent) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PeerAgent(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNPullAgentMessagesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐPullAgentMessagesInput(ctx context.Context, v any) (PullAgentMessagesInput, error) {
 	res, err := ec.unmarshalInputPullAgentMessagesInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNPushAgentMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐPushAgentMessageInput(ctx context.Context, v any) (PushAgentMessageInput, error) {
-	res, err := ec.unmarshalInputPushAgentMessageInput(ctx, v)
+func (ec *executionContext) unmarshalNRegisterAgentInstanceInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐRegisterAgentInstanceInput(ctx context.Context, v any) (RegisterAgentInstanceInput, error) {
+	res, err := ec.unmarshalInputRegisterAgentInstanceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNRegisterAgentInstanceInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐRegisterAgentInstanceInput(ctx context.Context, v any) (RegisterAgentInstanceInput, error) {
-	res, err := ec.unmarshalInputRegisterAgentInstanceInput(ctx, v)
+func (ec *executionContext) unmarshalNReplyMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐReplyMessageInput(ctx context.Context, v any) (ReplyMessageInput, error) {
+	res, err := ec.unmarshalInputReplyMessageInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

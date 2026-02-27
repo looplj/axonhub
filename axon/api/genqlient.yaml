@@ -1,4 +1,4 @@
-schema: ../../../internal/server/gql/agentapi/agentapi.graphql
+schema: ../../internal/server/gql/agentapi/agentapi.graphql
 operations:
   - agent.graphql
 generated: generated.go
@@ -6,6 +6,8 @@ bindings:
   Time:
     type: time.Time
   JSONRawMessage:
+    type: encoding/json.RawMessage
+  JSONRawMessageInput:
     type: encoding/json.RawMessage
 optional: pointer
 use_struct_references: true

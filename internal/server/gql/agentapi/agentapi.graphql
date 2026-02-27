@@ -69,20 +69,28 @@ input HeartbeatAgentInstanceInput {
   instanceID: String!
 }
 
-# SendAgentMessageInput is used when a user sends a message to the agent.
-# No instanceID is needed as the message is broadcast to all agent instances.
-# Direction: to_agent, SenderType: user
+# PeerAgent represents a discoverable agent instance in the same project.
+type PeerAgent {
+  agentID: ID!
+  name: String!
+  status: String!
+  instanceID: String!
+}
+
+# SendAgentMessageInput is used when an agent sends a message to another agent.
+# Direction: to_agent, SenderType: agent
 input SendAgentMessageInput {
+  targetAgentID: ID!
+  targetInstanceID: String!
   text: String!
   content: JSONRawMessageInput
   kind: AgentMessageKind = chat
   correlationID: String = ""
 }
 
-# PushAgentMessageInput is used when an agent instance pushes a message to the user.
-# The instanceID is required to identify which agent instance is sending the message.
+# ReplyMessageInput is used when an agent instance replies to the user.
 # Direction: to_user, SenderType: agent
-input PushAgentMessageInput {
+input ReplyMessageInput {
   instanceID: String!
   text: String!
   content: JSONRawMessageInput
@@ -119,18 +127,20 @@ input AckAgentMessagesInput {
 
 type Query {
   agentBootstrap: AgentBootstrap!
+  peerAgents: [PeerAgent!]!
   pullAgentMessages(input: PullAgentMessagesInput!): [AgentMessage!]!
   pullAgentMessagesToUser(afterSequence: Int, limit: Int = 50): [AgentMessage!]!
 }
 
 type Mutation {
   registerAgentInstance(input: RegisterAgentInstanceInput!): AgentInstance!
+
   heartbeatAgentInstance(input: HeartbeatAgentInstanceInput!): Boolean!
 
-  # Send a message from user to agent (Direction: to_agent, SenderType: user)
+  # Send a message from this agent to another agent (Direction: to_agent, SenderType: agent)
   sendAgentMessage(input: SendAgentMessageInput!): AgentMessage!
-  # Push a message from agent instance to user (Direction: to_user, SenderType: agent)
-  pushAgentMessage(input: PushAgentMessageInput!): AgentMessage!
+  # Reply to the user (Direction: to_user, SenderType: agent)
+  replyMessage(input: ReplyMessageInput!): AgentMessage!
   # Acknowledge messages have been received/processed by an agent instance.
   # Updates message status from 'pending' to 'acked'.
   ackAgentMessages(input: AckAgentMessagesInput!): Boolean!

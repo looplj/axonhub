@@ -98,13 +98,28 @@ type RegisterAgentInstanceInput struct {
 	ThreadID   *string
 }
 
+type SendPeerMessageInput struct {
+	SenderAgentID    int
+	TargetAgentID    int
+	TargetInstanceID string
+	Text             string
+	Content          *objects.JSONRawMessage
+	Kind             *agentmessage.Kind
+	CorrelationID    *string
+}
+
+type PeerAgentView struct {
+	AgentID    int
+	Name       string
+	Status     string
+	InstanceID string
+}
+
+// SendAgentMessageInput is used by the admin GraphQL API (Web UI) to send a user message to an agent.
 type SendAgentMessageInput struct {
-	AgentID       int
-	InstanceID    string
-	Text          string
-	Content       *objects.JSONRawMessage
-	Kind          *agentmessage.Kind
-	CorrelationID *string
+	AgentID    int
+	InstanceID string
+	Text       string
 }
 
 type PushAgentMessageInput struct {
@@ -158,10 +173,7 @@ func (s *AgentBootstrapService) GetAgentIDFromAPIKey(ctx context.Context) (int, 
 		client := s.entFromContext(bypassCtx)
 
 		a, err := client.Agent.Query().
-			Where(
-				agent.APIKeyIDEQ(apiKey.ID),
-				agent.DeletedAtEQ(0),
-			).
+			Where(agent.APIKeyIDEQ(apiKey.ID)).
 			Only(bypassCtx)
 		if err != nil {
 			return 0, fmt.Errorf("failed to load agent: %w", err)
@@ -1013,7 +1025,56 @@ func extractTextFromMessageContent(raw objects.JSONRawMessage) string {
 	return content.Text
 }
 
-func (s *AgentBootstrapService) SendAgentMessage(ctx context.Context, input SendAgentMessageInput) (*AgentMessageView, error) {
+func (s *AgentBootstrapService) ListPeerAgents(ctx context.Context, agentID int) ([]*PeerAgentView, error) {
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return nil, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-list-peer-agents", func(bypassCtx context.Context) ([]*PeerAgentView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		var out []*PeerAgentView
+
+		instances, err := client.AgentInstance.Query().
+			Where(
+				agentinstance.ProjectIDEQ(projectID),
+				agentinstance.AgentIDEQ(agentID),
+			).
+			Order(agentinstance.ByLastHeartbeatAt(sql.OrderDesc())).
+			All(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query instances for agent %d: %w", agentID, err)
+		}
+
+		for _, inst := range instances {
+			out = append(out, &PeerAgentView{
+				AgentID:    inst.AgentID,
+				Name:       inst.Name,
+				Status:     string(inst.Status),
+				InstanceID: inst.InstanceID,
+			})
+		}
+
+		return out, nil
+	})
+}
+
+func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendPeerMessageInput) (*AgentMessageView, error) {
+	agentID, err := s.GetAgentIDFromAPIKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
+		return nil, fmt.Errorf("agent api key not found in context")
+	}
+
+	projectID := apiKey.ProjectID
+
 	kind := agentmessage.KindChat
 	if input.Kind != nil && *input.Kind != "" {
 		kind = *input.Kind
@@ -1024,7 +1085,99 @@ func (s *AgentBootstrapService) SendAgentMessage(ctx context.Context, input Send
 		corr = *input.CorrelationID
 	}
 
-	return s.createMessage(ctx, input.AgentID, input.InstanceID, input.Text, input.Content, agentmessage.DirectionToAgent, agentmessage.SenderTypeUser, kind, corr)
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-send-peer-message", func(bypassCtx context.Context) (*AgentMessageView, error) {
+		client := s.entFromContext(bypassCtx)
+
+		// Verify target agent exists in the same project.
+		targetAgent, err := client.Agent.Query().
+			Where(
+				agent.IDEQ(input.TargetAgentID),
+				agent.ProjectIDEQ(projectID),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load target agent: %w", err)
+		}
+
+		// Verify target instance exists.
+		targetInst, err := client.AgentInstance.Query().
+			Where(
+				agentinstance.AgentIDEQ(targetAgent.ID),
+				agentinstance.InstanceIDEQ(input.TargetInstanceID),
+			).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load target agent instance: %w", err)
+		}
+
+		raw := objects.JSONRawMessage(nil)
+		if input.Content != nil && len(*input.Content) > 0 && string(*input.Content) != "null" {
+			raw = *input.Content
+		} else {
+			b, err := marshalMessageContent("text", input.Text, nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal message content: %w", err)
+			}
+
+			raw = b
+		}
+
+		var msg *ent.AgentMessage
+
+		for attempt := range 3 {
+			nextSeq, err := s.nextSequence(bypassCtx, targetAgent.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			created, err := client.AgentMessage.Create().
+				SetProjectID(projectID).
+				SetAgentID(targetAgent.ID).
+				SetAgentInstanceID(targetInst.ID).
+				SetDirection(agentmessage.DirectionToAgent).
+				SetSenderType(agentmessage.SenderTypeAgent).
+				SetSenderID(agentID).
+				SetKind(kind).
+				SetCorrelationID(corr).
+				SetContent(raw).
+				SetStatus(agentmessage.StatusPending).
+				SetSequence(nextSeq).
+				Save(bypassCtx)
+			if err == nil {
+				msg = created
+				break
+			}
+
+			if ent.IsConstraintError(err) && attempt < 2 {
+				continue
+			}
+
+			return nil, fmt.Errorf("failed to create peer message: %w", err)
+		}
+
+		if msg == nil {
+			return nil, fmt.Errorf("failed to create peer message: no message created")
+		}
+
+		viewText := extractTextFromMessageContent(msg.Content)
+		if viewText == "" {
+			viewText = input.Text
+		}
+
+		return &AgentMessageView{
+			ID:            msg.ID,
+			AgentID:       targetAgent.ID,
+			Direction:     msg.Direction,
+			SenderType:    msg.SenderType,
+			Kind:          msg.Kind,
+			CorrelationID: msg.CorrelationID,
+			Content:       msg.Content,
+			Text:          viewText,
+			Sequence:      msg.Sequence,
+			Status:        msg.Status,
+			CreatedAt:     msg.CreatedAt,
+		}, nil
+	})
 }
 
 func (s *AgentBootstrapService) PushAgentMessage(ctx context.Context, input PushAgentMessageInput) (*AgentMessageView, error) {

@@ -34,6 +34,7 @@ export function AgentChatPage() {
   const [messages, setMessages] = useState<AgentChatMessage[]>([]);
   const [text, setText] = useState('');
   const [afterSequence, setAfterSequence] = useState(0);
+  const [isComposing, setIsComposing] = useState(false);
 
   const endRef = useRef<HTMLDivElement | null>(null);
 
@@ -116,7 +117,7 @@ export function AgentChatPage() {
     return `${agentName} • ${instanceID}`;
   }, [agent?.name, agentId, instanceID]);
 
-  const handleApprove = async (m: AgentChatMessage, granted: boolean, scope: 'once' | 'workspace' = 'once') => {
+  const handleApprove = async (m: AgentChatMessage, granted: boolean, scope: 'once' | 'thread' | 'workspace' = 'once') => {
     const requestID = m.correlationID || (m.content?.id as string);
     if (!requestID) return;
 
@@ -400,8 +401,13 @@ export function AgentChatPage() {
                 onChange={(e) => setText(e.target.value)}
                 placeholder='Type a message...'
                 className='min-h-10 resize-none'
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={() => setIsComposing(false)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
+                    if (isComposing || e.nativeEvent.isComposing) {
+                      return;
+                    }
                     e.preventDefault();
                     handleSend();
                   }

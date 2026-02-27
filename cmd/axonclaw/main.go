@@ -117,6 +117,11 @@ func newRootCommand(opts newRootCommandOptions) *cobra.Command {
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
+	rootCmd.AddCommand(cmds.NewDiscoverCommand(cmds.DiscoverOptions{
+		ConfigDir: configDir,
+		Stdout:    os.Stdout,
+		Stderr:    os.Stderr,
+	}))
 
 	return rootCmd
 }

@@ -183,6 +183,34 @@ func (v *HeartbeatAgentInstanceResponse) GetHeartbeatAgentInstance() bool {
 	return v.HeartbeatAgentInstance
 }
 
+// PeerAgentsPeerAgentsPeerAgent includes the requested fields of the GraphQL type PeerAgent.
+type PeerAgentsPeerAgentsPeerAgent struct {
+	AgentID    string `json:"agentID"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	InstanceID string `json:"instanceID"`
+}
+
+// GetAgentID returns PeerAgentsPeerAgentsPeerAgent.AgentID, and is useful for accessing the field via an interface.
+func (v *PeerAgentsPeerAgentsPeerAgent) GetAgentID() string { return v.AgentID }
+
+// GetName returns PeerAgentsPeerAgentsPeerAgent.Name, and is useful for accessing the field via an interface.
+func (v *PeerAgentsPeerAgentsPeerAgent) GetName() string { return v.Name }
+
+// GetStatus returns PeerAgentsPeerAgentsPeerAgent.Status, and is useful for accessing the field via an interface.
+func (v *PeerAgentsPeerAgentsPeerAgent) GetStatus() string { return v.Status }
+
+// GetInstanceID returns PeerAgentsPeerAgentsPeerAgent.InstanceID, and is useful for accessing the field via an interface.
+func (v *PeerAgentsPeerAgentsPeerAgent) GetInstanceID() string { return v.InstanceID }
+
+// PeerAgentsResponse is returned by PeerAgents on success.
+type PeerAgentsResponse struct {
+	PeerAgents []*PeerAgentsPeerAgentsPeerAgent `json:"peerAgents"`
+}
+
+// GetPeerAgents returns PeerAgentsResponse.PeerAgents, and is useful for accessing the field via an interface.
+func (v *PeerAgentsResponse) GetPeerAgents() []*PeerAgentsPeerAgentsPeerAgent { return v.PeerAgents }
+
 type PullAgentMessagesInput struct {
 	InstanceID    string             `json:"instanceID"`
 	AfterSequence *int               `json:"afterSequence"`
@@ -248,47 +276,6 @@ func (v *PullAgentMessagesResponse) GetPullAgentMessages() []*PullAgentMessagesP
 	return v.PullAgentMessages
 }
 
-type PushAgentMessageInput struct {
-	InstanceID    string            `json:"instanceID"`
-	Text          string            `json:"text"`
-	Content       *json.RawMessage  `json:"content"`
-	Kind          *AgentMessageKind `json:"kind"`
-	CorrelationID *string           `json:"correlationID"`
-}
-
-// GetInstanceID returns PushAgentMessageInput.InstanceID, and is useful for accessing the field via an interface.
-func (v *PushAgentMessageInput) GetInstanceID() string { return v.InstanceID }
-
-// GetText returns PushAgentMessageInput.Text, and is useful for accessing the field via an interface.
-func (v *PushAgentMessageInput) GetText() string { return v.Text }
-
-// GetContent returns PushAgentMessageInput.Content, and is useful for accessing the field via an interface.
-func (v *PushAgentMessageInput) GetContent() *json.RawMessage { return v.Content }
-
-// GetKind returns PushAgentMessageInput.Kind, and is useful for accessing the field via an interface.
-func (v *PushAgentMessageInput) GetKind() *AgentMessageKind { return v.Kind }
-
-// GetCorrelationID returns PushAgentMessageInput.CorrelationID, and is useful for accessing the field via an interface.
-func (v *PushAgentMessageInput) GetCorrelationID() *string { return v.CorrelationID }
-
-// PushAgentMessagePushAgentMessage includes the requested fields of the GraphQL type AgentMessage.
-type PushAgentMessagePushAgentMessage struct {
-	Id string `json:"id"`
-}
-
-// GetId returns PushAgentMessagePushAgentMessage.Id, and is useful for accessing the field via an interface.
-func (v *PushAgentMessagePushAgentMessage) GetId() string { return v.Id }
-
-// PushAgentMessageResponse is returned by PushAgentMessage on success.
-type PushAgentMessageResponse struct {
-	PushAgentMessage *PushAgentMessagePushAgentMessage `json:"pushAgentMessage"`
-}
-
-// GetPushAgentMessage returns PushAgentMessageResponse.PushAgentMessage, and is useful for accessing the field via an interface.
-func (v *PushAgentMessageResponse) GetPushAgentMessage() *PushAgentMessagePushAgentMessage {
-	return v.PushAgentMessage
-}
-
 type RegisterAgentInstanceInput struct {
 	InstanceID string  `json:"instanceID"`
 	Name       *string `json:"name"`
@@ -330,6 +317,92 @@ func (v *RegisterAgentInstanceResponse) GetRegisterAgentInstance() *RegisterAgen
 	return v.RegisterAgentInstance
 }
 
+type ReplyMessageInput struct {
+	InstanceID    string            `json:"instanceID"`
+	Text          string            `json:"text"`
+	Content       *json.RawMessage  `json:"content"`
+	Kind          *AgentMessageKind `json:"kind"`
+	CorrelationID *string           `json:"correlationID"`
+}
+
+// GetInstanceID returns ReplyMessageInput.InstanceID, and is useful for accessing the field via an interface.
+func (v *ReplyMessageInput) GetInstanceID() string { return v.InstanceID }
+
+// GetText returns ReplyMessageInput.Text, and is useful for accessing the field via an interface.
+func (v *ReplyMessageInput) GetText() string { return v.Text }
+
+// GetContent returns ReplyMessageInput.Content, and is useful for accessing the field via an interface.
+func (v *ReplyMessageInput) GetContent() *json.RawMessage { return v.Content }
+
+// GetKind returns ReplyMessageInput.Kind, and is useful for accessing the field via an interface.
+func (v *ReplyMessageInput) GetKind() *AgentMessageKind { return v.Kind }
+
+// GetCorrelationID returns ReplyMessageInput.CorrelationID, and is useful for accessing the field via an interface.
+func (v *ReplyMessageInput) GetCorrelationID() *string { return v.CorrelationID }
+
+// ReplyMessageReplyMessageAgentMessage includes the requested fields of the GraphQL type AgentMessage.
+type ReplyMessageReplyMessageAgentMessage struct {
+	Id string `json:"id"`
+}
+
+// GetId returns ReplyMessageReplyMessageAgentMessage.Id, and is useful for accessing the field via an interface.
+func (v *ReplyMessageReplyMessageAgentMessage) GetId() string { return v.Id }
+
+// ReplyMessageResponse is returned by ReplyMessage on success.
+type ReplyMessageResponse struct {
+	ReplyMessage *ReplyMessageReplyMessageAgentMessage `json:"replyMessage"`
+}
+
+// GetReplyMessage returns ReplyMessageResponse.ReplyMessage, and is useful for accessing the field via an interface.
+func (v *ReplyMessageResponse) GetReplyMessage() *ReplyMessageReplyMessageAgentMessage {
+	return v.ReplyMessage
+}
+
+type SendAgentMessageInput struct {
+	TargetAgentID    string            `json:"targetAgentID"`
+	TargetInstanceID string            `json:"targetInstanceID"`
+	Text             string            `json:"text"`
+	Content          *json.RawMessage  `json:"content"`
+	Kind             *AgentMessageKind `json:"kind"`
+	CorrelationID    *string           `json:"correlationID"`
+}
+
+// GetTargetAgentID returns SendAgentMessageInput.TargetAgentID, and is useful for accessing the field via an interface.
+func (v *SendAgentMessageInput) GetTargetAgentID() string { return v.TargetAgentID }
+
+// GetTargetInstanceID returns SendAgentMessageInput.TargetInstanceID, and is useful for accessing the field via an interface.
+func (v *SendAgentMessageInput) GetTargetInstanceID() string { return v.TargetInstanceID }
+
+// GetText returns SendAgentMessageInput.Text, and is useful for accessing the field via an interface.
+func (v *SendAgentMessageInput) GetText() string { return v.Text }
+
+// GetContent returns SendAgentMessageInput.Content, and is useful for accessing the field via an interface.
+func (v *SendAgentMessageInput) GetContent() *json.RawMessage { return v.Content }
+
+// GetKind returns SendAgentMessageInput.Kind, and is useful for accessing the field via an interface.
+func (v *SendAgentMessageInput) GetKind() *AgentMessageKind { return v.Kind }
+
+// GetCorrelationID returns SendAgentMessageInput.CorrelationID, and is useful for accessing the field via an interface.
+func (v *SendAgentMessageInput) GetCorrelationID() *string { return v.CorrelationID }
+
+// SendAgentMessageResponse is returned by SendAgentMessage on success.
+type SendAgentMessageResponse struct {
+	SendAgentMessage *SendAgentMessageSendAgentMessage `json:"sendAgentMessage"`
+}
+
+// GetSendAgentMessage returns SendAgentMessageResponse.SendAgentMessage, and is useful for accessing the field via an interface.
+func (v *SendAgentMessageResponse) GetSendAgentMessage() *SendAgentMessageSendAgentMessage {
+	return v.SendAgentMessage
+}
+
+// SendAgentMessageSendAgentMessage includes the requested fields of the GraphQL type AgentMessage.
+type SendAgentMessageSendAgentMessage struct {
+	Id string `json:"id"`
+}
+
+// GetId returns SendAgentMessageSendAgentMessage.Id, and is useful for accessing the field via an interface.
+func (v *SendAgentMessageSendAgentMessage) GetId() string { return v.Id }
+
 // __AckAgentMessagesInput is used internally by genqlient
 type __AckAgentMessagesInput struct {
 	Input *AckAgentMessagesInput `json:"input,omitempty"`
@@ -354,14 +427,6 @@ type __PullAgentMessagesInput struct {
 // GetInput returns __PullAgentMessagesInput.Input, and is useful for accessing the field via an interface.
 func (v *__PullAgentMessagesInput) GetInput() *PullAgentMessagesInput { return v.Input }
 
-// __PushAgentMessageInput is used internally by genqlient
-type __PushAgentMessageInput struct {
-	Input *PushAgentMessageInput `json:"input,omitempty"`
-}
-
-// GetInput returns __PushAgentMessageInput.Input, and is useful for accessing the field via an interface.
-func (v *__PushAgentMessageInput) GetInput() *PushAgentMessageInput { return v.Input }
-
 // __RegisterAgentInstanceInput is used internally by genqlient
 type __RegisterAgentInstanceInput struct {
 	Input *RegisterAgentInstanceInput `json:"input,omitempty"`
@@ -369,6 +434,22 @@ type __RegisterAgentInstanceInput struct {
 
 // GetInput returns __RegisterAgentInstanceInput.Input, and is useful for accessing the field via an interface.
 func (v *__RegisterAgentInstanceInput) GetInput() *RegisterAgentInstanceInput { return v.Input }
+
+// __ReplyMessageInput is used internally by genqlient
+type __ReplyMessageInput struct {
+	Input *ReplyMessageInput `json:"input,omitempty"`
+}
+
+// GetInput returns __ReplyMessageInput.Input, and is useful for accessing the field via an interface.
+func (v *__ReplyMessageInput) GetInput() *ReplyMessageInput { return v.Input }
+
+// __SendAgentMessageInput is used internally by genqlient
+type __SendAgentMessageInput struct {
+	Input *SendAgentMessageInput `json:"input,omitempty"`
+}
+
+// GetInput returns __SendAgentMessageInput.Input, and is useful for accessing the field via an interface.
+func (v *__SendAgentMessageInput) GetInput() *SendAgentMessageInput { return v.Input }
 
 // The mutation executed by AckAgentMessages.
 const AckAgentMessages_Operation = `
@@ -485,6 +566,39 @@ func HeartbeatAgentInstance(
 	return data_, err_
 }
 
+// The query executed by PeerAgents.
+const PeerAgents_Operation = `
+query PeerAgents {
+	peerAgents {
+		agentID
+		name
+		status
+		instanceID
+	}
+}
+`
+
+func PeerAgents(
+	ctx_ context.Context,
+	client_ graphql.Client,
+) (data_ *PeerAgentsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "PeerAgents",
+		Query:  PeerAgents_Operation,
+	}
+
+	data_ = &PeerAgentsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The query executed by PullAgentMessages.
 const PullAgentMessages_Operation = `
 query PullAgentMessages ($input: PullAgentMessagesInput!) {
@@ -524,40 +638,6 @@ func PullAgentMessages(
 	return data_, err_
 }
 
-// The mutation executed by PushAgentMessage.
-const PushAgentMessage_Operation = `
-mutation PushAgentMessage ($input: PushAgentMessageInput!) {
-	pushAgentMessage(input: $input) {
-		id
-	}
-}
-`
-
-func PushAgentMessage(
-	ctx_ context.Context,
-	client_ graphql.Client,
-	input *PushAgentMessageInput,
-) (data_ *PushAgentMessageResponse, err_ error) {
-	req_ := &graphql.Request{
-		OpName: "PushAgentMessage",
-		Query:  PushAgentMessage_Operation,
-		Variables: &__PushAgentMessageInput{
-			Input: input,
-		},
-	}
-
-	data_ = &PushAgentMessageResponse{}
-	resp_ := &graphql.Response{Data: data_}
-
-	err_ = client_.MakeRequest(
-		ctx_,
-		req_,
-		resp_,
-	)
-
-	return data_, err_
-}
-
 // The mutation executed by RegisterAgentInstance.
 const RegisterAgentInstance_Operation = `
 mutation RegisterAgentInstance ($input: RegisterAgentInstanceInput!) {
@@ -581,6 +661,74 @@ func RegisterAgentInstance(
 	}
 
 	data_ = &RegisterAgentInstanceResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by ReplyMessage.
+const ReplyMessage_Operation = `
+mutation ReplyMessage ($input: ReplyMessageInput!) {
+	replyMessage(input: $input) {
+		id
+	}
+}
+`
+
+func ReplyMessage(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input *ReplyMessageInput,
+) (data_ *ReplyMessageResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ReplyMessage",
+		Query:  ReplyMessage_Operation,
+		Variables: &__ReplyMessageInput{
+			Input: input,
+		},
+	}
+
+	data_ = &ReplyMessageResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by SendAgentMessage.
+const SendAgentMessage_Operation = `
+mutation SendAgentMessage ($input: SendAgentMessageInput!) {
+	sendAgentMessage(input: $input) {
+		id
+	}
+}
+`
+
+func SendAgentMessage(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input *SendAgentMessageInput,
+) (data_ *SendAgentMessageResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "SendAgentMessage",
+		Query:  SendAgentMessage_Operation,
+		Variables: &__SendAgentMessageInput{
+			Input: input,
+		},
+	}
+
+	data_ = &SendAgentMessageResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
