@@ -1085,19 +1085,27 @@ export function useBulkUpdateChannelOrdering() {
 }
 
 const SYNC_CHANNEL_MODELS_MUTATION = `
-  mutation SyncChannelModels($channelID: ID!) {
-    syncChannelModels(channelID: $channelID)
+  mutation SyncChannelModels($channelID: ID!, $pattern: String) {
+    syncChannelModels(channelID: $channelID, pattern: $pattern) {
+      channelID
+      supportedModels
+    }
   }
 `;
+
+const syncChannelModelsPayloadSchema = z.object({
+  channelID: z.string(),
+  supportedModels: z.array(z.string()),
+});
 
 export function useSyncChannelModels() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: async (channelID: string) => {
-      const data = await graphqlRequest<{ syncChannelModels: boolean }>(SYNC_CHANNEL_MODELS_MUTATION, { channelID });
-      return data.syncChannelModels;
+    mutationFn: async (input: { channelID: string; pattern?: string }) => {
+      const data = await graphqlRequest<{ syncChannelModels: unknown }>(SYNC_CHANNEL_MODELS_MUTATION, input);
+      return syncChannelModelsPayloadSchema.parse(data.syncChannelModels);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });

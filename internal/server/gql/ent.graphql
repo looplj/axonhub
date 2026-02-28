@@ -1128,11 +1128,11 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   bailian
   jina
   github
+  github_copilot
   claudecode
   cerebras
   antigravity
   nanogpt
-  github_copilot
 }
 """
 ChannelWhereInput is used for filtering Channel objects.

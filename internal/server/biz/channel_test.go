@@ -208,6 +208,35 @@ func TestChannelService_ListModels(t *testing.T) {
 	}
 }
 
+func TestChannelService_CreateChannel_PersistsAutoSyncModelPatternAndManualModels(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	ch, err := svc.CreateChannel(ctx, ent.CreateChannelInput{
+		Type:                    channel.TypeOpenai,
+		BaseURL:                 new("https://api.openai.com/v1"),
+		Name:                    "Create Persist Fields",
+		Credentials:             objects.ChannelCredentials{APIKey: "key"},
+		SupportedModels:         []string{"gpt-4"},
+		ManualModels:            []string{"manual-1"},
+		AutoSyncSupportedModels: new(true),
+		AutoSyncModelPattern:    new("^gpt-"),
+		Tags:                    []string{"tag-1"},
+		DefaultTestModel:        "gpt-4",
+	})
+	require.NoError(t, err)
+
+	got, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"manual-1"}, got.ManualModels)
+	require.Equal(t, "^gpt-", got.AutoSyncModelPattern)
+	require.Equal(t, true, got.AutoSyncSupportedModels)
+}
+
 func setupTestChannelService(t *testing.T) (*ChannelService, *ent.Client) {
 	t.Helper()
 
