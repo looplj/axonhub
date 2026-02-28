@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // convertGeminiToLLMRequest converts Gemini GenerateContentRequest to unified Request.
@@ -298,8 +299,8 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 	)
 
 	for _, part := range content.Parts {
-		if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
-			msg.ReasoningSignature = lo.ToPtr(part.ThoughtSignature)
+		if msg.ReasoningSignature == nil {
+			msg.ReasoningSignature = shared.NormalizeGeminiThoughtSignature(part.ThoughtSignature)
 		}
 
 		switch {
@@ -368,6 +369,7 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 					Arguments: string(argsJSON),
 				},
 			}
+			setGeminiToolCallThoughtSignature(&tc, part.ThoughtSignature)
 
 			toolCalls = append(toolCalls, tc)
 
@@ -526,6 +528,8 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 			}
 		}
 
+		hasToolCallThoughtSignature := false
+
 		for _, toolCall := range msg.ToolCalls {
 			var args map[string]any
 			if toolCall.Function.Arguments != "" {
@@ -539,6 +543,10 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 					Args: args,
 				},
 			}
+			if signature := getGeminiToolCallThoughtSignatureWithPrefix(toolCall); signature != nil {
+				part.ThoughtSignature = *signature
+				hasToolCallThoughtSignature = true
+			}
 
 			parts = append(parts, part)
 
@@ -548,13 +556,13 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 			}
 		}
 
-		msgThoughtSignature := msg.ReasoningSignature
-		if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil {
-			msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
+		var msgThoughtSignature *string
+		if shared.IsGeminiThoughtSignature(msg.ReasoningSignature) {
+			msgThoughtSignature = msg.ReasoningSignature
 		}
 
 		if msgThoughtSignature != nil && lastPart != nil {
-			if firstFunctionCallPart != nil {
+			if firstFunctionCallPart != nil && !hasToolCallThoughtSignature {
 				firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
 			} else {
 				lastPart.ThoughtSignature = *msgThoughtSignature

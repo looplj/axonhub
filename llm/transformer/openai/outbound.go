@@ -170,6 +170,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Convert to OpenAI Request format (this strips helper fields)
 	oaiReq := RequestFromLLM(llmReq)
+	//nolint:exhaustive // Checked.
+	switch t.config.PlatformType {
+	case PlatformOpenAI, PlatformAzure:
+		stripUnsupportedToolCallExtraContentForOpenAI(oaiReq)
+	}
 
 	body, err := json.Marshal(oaiReq)
 	if err != nil {
@@ -290,6 +295,49 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	}
 
 	return t.TransformResponse(ctx, httpResp)
+}
+
+func stripUnsupportedToolCallExtraContentForOpenAI(req *Request) {
+	if req == nil {
+		return
+	}
+
+	for i := range req.Messages {
+		for j := range req.Messages[i].ToolCalls {
+			extraContent := req.Messages[i].ToolCalls[j].ExtraContent
+			if extraContent == nil || extraContent.Google == nil {
+				continue
+			}
+
+			if extraContent.Google.ThoughtSignature == "" {
+				continue
+			}
+
+			extraContent.Google.ThoughtSignature = ""
+
+			// 仅在对象已空时才清理，避免误删其他扩展字段。
+			if isJSONEmptyObject(extraContent.Google) {
+				extraContent.Google = nil
+			}
+
+			if isJSONEmptyObject(extraContent) {
+				req.Messages[i].ToolCalls[j].ExtraContent = nil
+			}
+		}
+	}
+}
+
+func isJSONEmptyObject(v any) bool {
+	if v == nil {
+		return true
+	}
+
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return false
+	}
+
+	return bytes.Equal(raw, []byte("{}")) || bytes.Equal(raw, []byte("null"))
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.

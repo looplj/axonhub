@@ -953,12 +953,20 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.NotNil(t, result.ReasoningSignature)
-				require.Equal(t, "signature_A", *result.ReasoningSignature)
+				require.True(t, shared.IsGeminiThoughtSignature(result.ReasoningSignature))
+				decoded := shared.DecodeGeminiThoughtSignature(result.ReasoningSignature)
+				require.NotNil(t, decoded)
+				require.Equal(t, "signature_A", *decoded)
 				require.Len(t, result.ToolCalls, 1)
 				tc := result.ToolCalls[0]
 				require.Equal(t, "call_001", tc.ID)
 				require.Equal(t, "check_flight", tc.Function.Name)
-				require.Nil(t, tc.TransformerMetadata)
+				require.NotNil(t, tc.TransformerMetadata)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_A",
+					tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 			},
 		},
 		{
@@ -986,20 +994,60 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Message) {
 				t.Helper()
 				require.NotNil(t, result.ReasoningSignature)
-				require.False(t, shared.IsGeminiThoughtSignature(result.ReasoningSignature))
-				require.NotNil(t, result.ReasoningSignature)
-				require.Equal(t, "signature_parallel", *result.ReasoningSignature)
+				require.True(t, shared.IsGeminiThoughtSignature(result.ReasoningSignature))
+				decoded := shared.DecodeGeminiThoughtSignature(result.ReasoningSignature)
+				require.NotNil(t, decoded)
+				require.Equal(t, "signature_parallel", *decoded)
 				require.Len(t, result.ToolCalls, 2)
 
 				// First call should have signature
 				tc1 := result.ToolCalls[0]
 				require.Equal(t, "call_paris", tc1.ID)
-				require.Nil(t, tc1.TransformerMetadata)
+				require.NotNil(t, tc1.TransformerMetadata)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_parallel",
+					tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 
 				// Second call should not have signature
 				tc2 := result.ToolCalls[1]
 				require.Equal(t, "call_london", tc2.ID)
 				require.Nil(t, tc2.TransformerMetadata)
+			},
+		},
+		{
+			name: "function call with already prefixed thought signature",
+			input: &Content{
+				Role: "model",
+				Parts: []*Part{
+					{
+						FunctionCall: &FunctionCall{
+							ID:   "call_003",
+							Name: "check_weather",
+							Args: map[string]any{"city": "Tokyo"},
+						},
+						ThoughtSignature: shared.GeminiThoughtSignaturePrefix + "signature_prefixed",
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Message) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.ReasoningSignature)
+				require.True(t, shared.IsGeminiThoughtSignature(result.ReasoningSignature))
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_prefixed", *result.ReasoningSignature)
+				decoded := shared.DecodeGeminiThoughtSignature(result.ReasoningSignature)
+				require.NotNil(t, decoded)
+				require.Equal(t, "signature_prefixed", *decoded)
+				require.Len(t, result.ToolCalls, 1)
+				require.Equal(t, "call_003", result.ToolCalls[0].ID)
+				require.NotNil(t, result.ToolCalls[0].TransformerMetadata)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
+					result.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 			},
 		},
 		{
@@ -1043,12 +1091,39 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 		validate func(t *testing.T, result *Candidate)
 	}{
 		{
+			name: "tool call with prefixed thought signature",
+			input: &llm.Choice{
+				Index: 0,
+				Message: &llm.Message{
+					Role:               "assistant",
+					ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_prefixed")),
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_001",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "check_flight",
+								Arguments: `{"flight":"AA100"}`,
+							},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *Candidate) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.Content)
+				require.Len(t, result.Content.Parts, 1)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_prefixed", result.Content.Parts[0].ThoughtSignature)
+			},
+		},
+		{
 			name: "tool call with thought signature",
 			input: &llm.Choice{
 				Index: 0,
 				Message: &llm.Message{
 					Role:               "assistant",
-					ReasoningSignature: lo.ToPtr("signature_A"),
+					ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
 					ToolCalls: []llm.ToolCall{
 						{
 							ID:   "call_001",
@@ -1068,7 +1143,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.Len(t, result.Content.Parts, 1)
 				require.NotNil(t, result.Content.Parts[0].FunctionCall)
 				require.Equal(t, "check_flight", result.Content.Parts[0].FunctionCall.Name)
-				require.Equal(t, "signature_A", result.Content.Parts[0].ThoughtSignature)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_A", result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 		{
@@ -1077,7 +1152,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				Index: 0,
 				Message: &llm.Message{
 					Role:               "assistant",
-					ReasoningSignature: lo.ToPtr("signature_A"),
+					ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
 					ToolCalls: []llm.ToolCall{
 						{
 							ID:   "call_001",
@@ -1104,10 +1179,73 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.Len(t, result.Content.Parts, 2)
 
 				require.Equal(t, "check_flight", result.Content.Parts[0].FunctionCall.Name)
-				require.Equal(t, "signature_A", result.Content.Parts[0].ThoughtSignature)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_A", result.Content.Parts[0].ThoughtSignature)
 
 				require.Equal(t, "book_taxi", result.Content.Parts[1].FunctionCall.Name)
 				require.Empty(t, result.Content.Parts[1].ThoughtSignature)
+			},
+		},
+		{
+			name: "multiple tool calls with per-tool thought signature metadata",
+			input: &llm.Choice{
+				Index: 0,
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_001",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "check_flight",
+								Arguments: `{"flight":"AA100"}`,
+							},
+						},
+						{
+							ID:   "call_002",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "book_taxi",
+								Arguments: `{"time":"10 AM"}`,
+							},
+							TransformerMetadata: map[string]any{
+								transformerMetadataKeyGoogleThoughtSignature: "signature_tool_2",
+							},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *Candidate) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Len(t, result.Content.Parts, 2)
+				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_tool_2", result.Content.Parts[1].ThoughtSignature)
+			},
+		},
+		{
+			name: "tool call with non-gemini reasoning signature keeps thought signature empty",
+			input: &llm.Choice{
+				Index: 0,
+				Message: &llm.Message{
+					Role:               "assistant",
+					ReasoningSignature: lo.ToPtr(shared.OpenAIEncryptedContentPrefix + "encrypted_data"),
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_001",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "get_weather",
+								Arguments: `{"location":"NYC"}`,
+							},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *Candidate) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Len(t, result.Content.Parts, 1)
+				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 		{
@@ -1133,11 +1271,11 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 1)
 				require.NotNil(t, result.Content.Parts[0].FunctionCall)
-				require.Equal(t, "context_engineering_is_the_way_to_go", result.Content.Parts[0].ThoughtSignature)
+				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 		{
-			name: "parallel tool calls without signature - only first gets default",
+			name: "parallel tool calls without signature keep thought signatures empty",
 			input: &llm.Choice{
 				Index: 0,
 				Message: &llm.Message{
@@ -1166,7 +1304,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 2)
-				require.Equal(t, "context_engineering_is_the_way_to_go", result.Content.Parts[0].ThoughtSignature)
+				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
 				require.Empty(t, result.Content.Parts[1].ThoughtSignature)
 			},
 		},

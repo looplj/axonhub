@@ -4,11 +4,12 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // ToLLMToolCall converts OpenAI ToolCall to unified llm.ToolCall.
 func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
-	return llm.ToolCall{
+	toolCall := llm.ToolCall{
 		ID:   tc.ID,
 		Type: tc.Type,
 		Function: llm.FunctionCall{
@@ -17,6 +18,27 @@ func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
 		},
 		Index: tc.Index,
 	}
+
+	extraContent := tc.ExtraContent
+	if extraContent == nil && tc.ExtraFields != nil {
+		extraContent = tc.ExtraFields.ExtraContent
+	}
+
+	if extraContent != nil &&
+		extraContent.Google != nil &&
+		extraContent.Google.ThoughtSignature != "" {
+		thoughtSignature := extraContent.Google.ThoughtSignature
+		normalized := shared.NormalizeGeminiThoughtSignature(thoughtSignature)
+		if normalized != nil {
+			thoughtSignature = *normalized
+		}
+
+		toolCall.TransformerMetadata = map[string]any{
+			TransformerMetadataKeyGoogleThoughtSignature: thoughtSignature,
+		}
+	}
+
+	return toolCall
 }
 
 // ToLLMRequest converts OpenAI Request to unified llm.Request.
@@ -121,6 +143,15 @@ func (m Message) ToLLMMessage() llm.Message {
 		msg.ToolCalls = lo.Map(m.ToolCalls, func(tc ToolCall, _ int) llm.ToolCall {
 			return tc.ToLLMToolCall()
 		})
+
+		firstThoughtSignature := lo.FindOrElse(msg.ToolCalls, llm.ToolCall{}, func(tc llm.ToolCall) bool {
+			raw, ok := tc.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string)
+			return ok && raw != ""
+		})
+
+		if raw, ok := firstThoughtSignature.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string); ok {
+			msg.ReasoningSignature = shared.NormalizeGeminiThoughtSignature(raw)
+		}
 	}
 
 	// Convert Annotations

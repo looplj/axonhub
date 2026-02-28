@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Config holds all configuration for the Gemini OpenAI outbound transformer.
@@ -329,6 +330,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Convert llm.Request to openai.Request
 	oaiReq := openai.RequestFromLLM(&req)
+	fillGeminiThoughtSignatureForGeminiOpenAIRequest(&req, oaiReq)
 
 	geminiReq := Request{Request: *oaiReq}
 	if extraBody != nil {
@@ -362,6 +364,74 @@ func (t *OutboundTransformer) TransformRequest(
 		Body:    body,
 		Auth:    auth,
 	}, nil
+}
+
+func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *openai.Request) {
+	if src == nil || dst == nil {
+		return
+	}
+
+	for i := range src.Messages {
+		if i >= len(dst.Messages) {
+			break
+		}
+
+		srcMsg := src.Messages[i]
+		if len(srcMsg.ToolCalls) == 0 || len(dst.Messages[i].ToolCalls) == 0 {
+			continue
+		}
+
+		dstToolCallIndexByID := make(map[string]int, len(dst.Messages[i].ToolCalls))
+		for j := range dst.Messages[i].ToolCalls {
+			if dst.Messages[i].ToolCalls[j].ID != "" {
+				dstToolCallIndexByID[dst.Messages[i].ToolCalls[j].ID] = j
+			}
+		}
+
+		hasToolCallThoughtSignature := false
+		for j := range srcMsg.ToolCalls {
+			raw, ok := srcMsg.ToolCalls[j].TransformerMetadata[openai.TransformerMetadataKeyGoogleThoughtSignature].(string)
+			if !ok || raw == "" {
+				continue
+			}
+
+			dstToolCallIndex := -1
+			if srcMsg.ToolCalls[j].ID != "" {
+				if idx, exists := dstToolCallIndexByID[srcMsg.ToolCalls[j].ID]; exists {
+					dstToolCallIndex = idx
+				}
+			}
+
+			if dstToolCallIndex == -1 && j < len(dst.Messages[i].ToolCalls) {
+				dstToolCallIndex = j
+			}
+
+			if dstToolCallIndex == -1 {
+				continue
+			}
+
+			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = shared.StripGeminiThoughtSignaturePrefix(raw)
+			hasToolCallThoughtSignature = true
+		}
+
+		if hasToolCallThoughtSignature || !shared.IsGeminiThoughtSignature(srcMsg.ReasoningSignature) {
+			continue
+		}
+
+		ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = shared.StripGeminiThoughtSignaturePrefix(*srcMsg.ReasoningSignature)
+	}
+}
+
+func ensureGoogleThoughtSignatureExtraContent(tc *openai.ToolCall) *openai.ToolCallGoogleExtraContent {
+	if tc.ExtraContent == nil {
+		tc.ExtraContent = &openai.ToolCallExtraContent{}
+	}
+
+	if tc.ExtraContent.Google == nil {
+		tc.ExtraContent.Google = &openai.ToolCallGoogleExtraContent{}
+	}
+
+	return tc.ExtraContent.Google
 }
 
 func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {

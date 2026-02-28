@@ -192,7 +192,7 @@ func ToolFromLLM(t llm.Tool) Tool {
 
 // ToolCallFromLLM creates OpenAI ToolCall from unified llm.ToolCall.
 func ToolCallFromLLM(tc llm.ToolCall) ToolCall {
-	return ToolCall{
+	toolCall := ToolCall{
 		ID:   tc.ID,
 		Type: tc.Type,
 		Function: FunctionCall{
@@ -201,6 +201,16 @@ func ToolCallFromLLM(tc llm.ToolCall) ToolCall {
 		},
 		Index: tc.Index,
 	}
+
+	if raw, ok := tc.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string); ok && raw != "" {
+		toolCall.ExtraContent = &ToolCallExtraContent{
+			Google: &ToolCallGoogleExtraContent{
+				ThoughtSignature: raw,
+			},
+		}
+	}
+
+	return toolCall
 }
 
 // ToLLMResponse converts OpenAI Response to unified llm.Response.

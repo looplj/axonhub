@@ -382,6 +382,8 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 	//         Gemini 3 Pro will have the signature on the last part if the model generates a thought.
 	//         Gemini 2.5 won't have a signature in any part.
 
+	hasToolCallThoughtSignature := false
+
 	// Add tool calls
 	for _, toolCall := range msg.ToolCalls {
 		var args map[string]any
@@ -395,6 +397,10 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 				Name: toolCall.Function.Name,
 				Args: args,
 			},
+		}
+		if signature := getGeminiToolCallThoughtSignature(toolCall); signature != nil {
+			part.ThoughtSignature = *signature
+			hasToolCallThoughtSignature = true
 		}
 
 		parts = append(parts, part)
@@ -411,12 +417,12 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 	// We try the best to support this fields to keep this fields in the chat conversions, so we use the ReasoningSignature to hold the field,
 	// And this field will be preserved during claude code trace, will not degrade the gemini model performance.
 	msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.ReasoningSignature)
-	if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil {
+	if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil && !hasToolCallThoughtSignature {
 		msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
 	}
 
 	if msgThoughtSignature != nil && lastPart != nil {
-		if firstFunctionCallPart != nil {
+		if firstFunctionCallPart != nil && !hasToolCallThoughtSignature {
 			firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
 		} else {
 			lastPart.ThoughtSignature = *msgThoughtSignature
@@ -577,8 +583,8 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 		)
 
 		for _, part := range candidate.Content.Parts {
-			if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
-				msg.ReasoningSignature = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
+			if msg.ReasoningSignature == nil {
+				msg.ReasoningSignature = shared.NormalizeGeminiThoughtSignature(part.ThoughtSignature)
 			}
 
 			switch {
@@ -627,6 +633,8 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 				if tc.ID == "" {
 					tc.ID = uuid.NewString()
 				}
+
+				setGeminiToolCallThoughtSignature(&tc, part.ThoughtSignature)
 
 				toolCalls = append(toolCalls, tc)
 				nextToolCallIndex++

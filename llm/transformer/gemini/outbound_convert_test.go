@@ -1592,7 +1592,12 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				tc := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_001", tc.ID)
 				require.Equal(t, "check_flight", tc.Function.Name)
-				require.Nil(t, tc.TransformerMetadata)
+				require.NotNil(t, tc.TransformerMetadata)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_A",
+					tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 			},
 		},
 		{
@@ -1640,12 +1645,63 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				// First call should have signature
 				tc1 := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_paris", tc1.ID)
-				require.Nil(t, tc1.TransformerMetadata)
+				require.NotNil(t, tc1.TransformerMetadata)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_parallel",
+					tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 
 				// Second call should not have signature
 				tc2 := result.Choices[0].Message.ToolCalls[1]
 				require.Equal(t, "call_london", tc2.ID)
 				require.Nil(t, tc2.TransformerMetadata)
+			},
+		},
+		{
+			name: "function call with already prefixed thought signature",
+			input: &GenerateContentResponse{
+				ResponseID:   "resp_prefixed_sig",
+				ModelVersion: "gemini-3-pro",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role: "model",
+							Parts: []*Part{
+								{
+									FunctionCall: &FunctionCall{
+										ID:   "call_prefixed",
+										Name: "check_weather",
+										Args: map[string]any{"city": "Tokyo"},
+									},
+									ThoughtSignature: shared.GeminiThoughtSignaturePrefix + "signature_prefixed",
+								},
+							},
+						},
+						FinishReason: "STOP",
+					},
+				},
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				t.Helper()
+				require.NotNil(t, result.Choices[0].Message)
+				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
+					*result.Choices[0].Message.ReasoningSignature,
+				)
+				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature)
+				require.NotNil(t, decoded)
+				require.Equal(t, "signature_prefixed", *decoded)
+				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+				require.NotNil(t, result.Choices[0].Message.ToolCalls[0].TransformerMetadata)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
+					result.Choices[0].Message.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 			},
 		},
 		{
@@ -1760,9 +1816,44 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 			},
 		},
 		{
-			name: "tool call without signature",
+			name: "multiple tool calls with per-tool thought signature metadata",
 			input: &llm.Message{
 				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_001",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "check_flight",
+							Arguments: `{"flight":"AA100"}`,
+						},
+					},
+					{
+						ID:   "call_002",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "book_taxi",
+							Arguments: `{"time":"10 AM"}`,
+						},
+						TransformerMetadata: map[string]any{
+							transformerMetadataKeyGoogleThoughtSignature: "signature_tool_2",
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *Content) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.Len(t, result.Parts, 2)
+				require.Empty(t, result.Parts[0].ThoughtSignature)
+				require.Equal(t, "signature_tool_2", result.Parts[1].ThoughtSignature)
+			},
+		},
+		{
+			name: "tool call with non-gemini signature uses default signature",
+			input: &llm.Message{
+				Role:               "assistant",
+				ReasoningSignature: lo.ToPtr(shared.OpenAIEncryptedContentPrefix + "encrypted_data"),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_001",

@@ -5,10 +5,14 @@ import (
 	"errors"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // TransformerMetadataKeyCitations is the key used to store citations in TransformerMetadata.
 const TransformerMetadataKeyCitations = "citations"
+
+// TransformerMetadataKeyGoogleThoughtSignature 用于在 ToolCall TransformerMetadata 中保存 Gemini thought signature。
+const TransformerMetadataKeyGoogleThoughtSignature = shared.TransformerMetadataKeyGoogleThoughtSignature
 
 // Request represents an OpenAI chat completion request.
 // This is a clean OpenAI-specific model without helper fields.
@@ -338,12 +342,31 @@ type FunctionCall struct {
 	Arguments string `json:"arguments"`
 }
 
+// ToolCallExtraContent represents provider-specific extension fields for tool calls.
+type ToolCallExtraContent struct {
+	Google *ToolCallGoogleExtraContent `json:"google,omitempty"`
+}
+
+// ToolCallExtraFields represents wrapped extension fields used by some providers.
+type ToolCallExtraFields struct {
+	ExtraContent *ToolCallExtraContent `json:"extra_content,omitempty"`
+}
+
+// ToolCallGoogleExtraContent represents Google-specific extension fields for tool calls.
+type ToolCallGoogleExtraContent struct {
+	ThoughtSignature string `json:"thought_signature,omitempty"`
+}
+
 // ToolCall represents a tool call in the response.
 type ToolCall struct {
 	ID       string       `json:"id,omitempty"`
 	Type     string       `json:"type,omitempty"`
 	Function FunctionCall `json:"function"`
 	Index    int          `json:"index"`
+	// ExtraContent carries provider-specific extension fields, such as Gemini OpenAI thought signature.
+	ExtraContent *ToolCallExtraContent `json:"extra_content,omitempty"`
+	// ExtraFields is a compatibility wrapper for payloads that nest extra_content under extra_fields.
+	ExtraFields *ToolCallExtraFields `json:"extra_fields,omitempty"`
 }
 
 // ToolFunction represents a tool function reference.
