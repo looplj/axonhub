@@ -61,6 +61,7 @@ Minimal message view for Agent thread chat in Web UI.
 type AgentChatMessage {
   id: ID!
   agentID: ID!
+  agentInstanceID: ID!
   direction: AgentMessageDirection!
   senderType: AgentMessageSenderType!
   senderID: Int
@@ -81,6 +82,7 @@ Backed by agent_messages(kind=approval_request, direction=to_user, status=pendin
 type AgentApprovalRequestMessage {
   id: ID!
   agentID: ID!
+  agentInstanceID: ID!
   correlationID: String!
   content: JSONRawMessage!
   sequence: Int!
@@ -89,6 +91,7 @@ type AgentApprovalRequestMessage {
 
 input SendAgentMessageInput {
   agentID: ID!
+  agentInstanceID: ID
   text: String!
 }
 
@@ -96,6 +99,7 @@ enum ApprovalScope { once thread workspace global }
 
 input ResolveApprovalInput {
   agentID: ID!
+  agentInstanceID: ID
   requestID: String!
   granted: Boolean!
   scope: ApprovalScope = once
@@ -104,6 +108,7 @@ input ResolveApprovalInput {
 
 input AckAgentMessagesInput {
   agentID: ID!
+  agentInstanceID: ID
   messageIDs: [ID!]!
 }
 
@@ -111,15 +116,15 @@ extend type Query {
   """
   Pull pending messages from runtime to user (direction=to_user, status=pending).
   """
-  pullAgentMessagesToUser(agentID: ID!, afterSequence: Int, limit: Int = 50): [AgentChatMessage!]!
+  pullAgentMessagesToUser(agentID: ID!, agentInstanceID: ID, afterSequence: Int, limit: Int = 50): [AgentChatMessage!]!
 
   """
   Pull pending approval requests (kind=approval_request, direction=to_user, status=pending).
   """
-  pullAgentApprovalRequests(agentID: ID!, afterSequence: Int, limit: Int = 50): [AgentApprovalRequestMessage!]!
+  pullAgentApprovalRequests(agentID: ID!, agentInstanceID: ID, afterSequence: Int, limit: Int = 50): [AgentApprovalRequestMessage!]!
 
   """
   List messages for an agent (both directions), ordered by sequence asc.
   """
-  agentChatMessages(agentID: ID!, afterSequence: Int, limit: Int = 200): [AgentChatMessage!]!
+  agentChatMessages(agentID: ID!, agentInstanceID: ID, afterSequence: Int, limit: Int = 200): [AgentChatMessage!]!
 }

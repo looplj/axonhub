@@ -21,6 +21,12 @@ type DeployAxonclawResult {
     instance: AgentInstance
 }
 
+type ControlAxonclawInstanceResult {
+    success: Boolean!
+    error: String
+    instance: AgentInstance
+}
+
 extend type Mutation {
     createAgentRuntime(input: CreateAgentRuntimeInput!): AgentRuntime!
     updateAgentRuntime(id: ID!, input: UpdateAgentRuntimeInput!): AgentRuntime!
@@ -30,6 +36,11 @@ extend type Mutation {
     bulkUpdateAgentRuntimeStatus(ids: [ID!]!, status: AgentRuntimeStatus!): Boolean!
     testAgentRuntimeConnection(id: ID!): AgentRuntimeTestResult!
     deployAxonclaw(input: DeployAxonclawInput!): DeployAxonclawResult!
+
+    stopAxonclawInstance(instanceID: ID!): ControlAxonclawInstanceResult!
+    startAxonclawInstance(instanceID: ID!): ControlAxonclawInstanceResult!
+    restartAxonclawInstance(instanceID: ID!): ControlAxonclawInstanceResult!
+    redeployAxonclawInstance(instanceID: ID!): ControlAxonclawInstanceResult!
 }
 
 type AgentRuntimeTestResult {

@@ -74,19 +74,19 @@ type AgentBootstrap struct {
 }
 
 type AgentMessageView struct {
-	ID         int
-	AgentID    int
-	Direction  agentmessage.Direction
-	SenderType agentmessage.SenderType
-	SenderID   *int
-	Kind       agentmessage.Kind
-	// CorrelationID ties messages together (e.g. approval request + result).
-	CorrelationID string
-	Content       objects.JSONRawMessage
-	Text          string
-	Sequence      int64
-	Status        agentmessage.Status
-	CreatedAt     time.Time
+	ID              int
+	AgentID         int
+	AgentInstanceID int
+	Direction       agentmessage.Direction
+	SenderType      agentmessage.SenderType
+	SenderID        *int
+	Kind            agentmessage.Kind
+	CorrelationID   string
+	Content         objects.JSONRawMessage
+	Text            string
+	Sequence        int64
+	Status          agentmessage.Status
+	CreatedAt       time.Time
 }
 
 type RegisterAgentInstanceInput struct {
@@ -116,8 +116,9 @@ type PeerAgentView struct {
 
 // SendAgentMessageInput is used by the admin GraphQL API (Web UI) to send a user message to an agent.
 type SendAgentMessageInput struct {
-	AgentID int
-	Text    string
+	AgentID         int
+	AgentInstanceID *int
+	Text            string
 }
 
 type PushAgentMessageInput struct {
@@ -135,25 +136,28 @@ type PullAgentMessagesInput struct {
 }
 
 type AckAgentMessagesInput struct {
-	AgentID    int
-	MessageIDs []int
+	AgentID         int
+	AgentInstanceID *int
+	MessageIDs      []int
 }
 
 type ResolveApprovalCommandInput struct {
-	AgentID   int
-	RequestID string
-	Granted   bool
-	Scope     string // once|thread|workspace|global
-	Reason    *string
+	AgentID         int
+	AgentInstanceID *int
+	RequestID       string
+	Granted         bool
+	Scope           string // once|thread|workspace|global
+	Reason          *string
 }
 
 type AgentApprovalRequestView struct {
-	ID            int
-	AgentID       int
-	CorrelationID string
-	Content       objects.JSONRawMessage
-	Sequence      int64
-	CreatedAt     time.Time
+	ID              int
+	AgentID         int
+	AgentInstanceID int
+	CorrelationID   string
+	Content         objects.JSONRawMessage
+	Sequence        int64
+	CreatedAt       time.Time
 }
 
 func (s *AgentBootstrapService) GetAgentInstanceFromAPIKey(ctx context.Context) (*ent.AgentInstance, error) {
@@ -298,7 +302,7 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 	})
 }
 
-func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, userID int, agentID int, text string) (*AgentMessageView, error) {
+func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, userID int, input SendAgentMessageInput) (*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -309,7 +313,7 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 
 		a, err := client.Agent.Query().
 			Where(
-				agent.IDEQ(agentID),
+				agent.IDEQ(input.AgentID),
 				agent.ProjectIDEQ(projectID),
 				agent.DeletedAtEQ(0),
 			).
@@ -318,18 +322,31 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		// Get the first active instance for this agent
-		inst, err := client.AgentInstance.Query().
-			Where(
-				agentinstance.AgentIDEQ(a.ID),
-				agentinstance.DeletedAtEQ(0),
-			).
-			First(bypassCtx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load agent instance: %w", err)
+		var inst *ent.AgentInstance
+		if input.AgentInstanceID != nil {
+			inst, err = client.AgentInstance.Query().
+				Where(
+					agentinstance.IDEQ(*input.AgentInstanceID),
+					agentinstance.AgentIDEQ(a.ID),
+					agentinstance.DeletedAtEQ(0),
+				).
+				Only(bypassCtx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load agent instance: %w", err)
+			}
+		} else {
+			inst, err = client.AgentInstance.Query().
+				Where(
+					agentinstance.AgentIDEQ(a.ID),
+					agentinstance.DeletedAtEQ(0),
+				).
+				First(bypassCtx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load agent instance: %w", err)
+			}
 		}
 
-		raw, err := marshalMessageContent("text", text, nil)
+		raw, err := marshalMessageContent("text", input.Text, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal message content: %w", err)
 		}
@@ -370,23 +387,24 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 		}
 
 		return &AgentMessageView{
-			ID:            msg.ID,
-			AgentID:       a.ID,
-			Direction:     msg.Direction,
-			SenderType:    msg.SenderType,
-			SenderID:      new(userID),
-			Kind:          msg.Kind,
-			CorrelationID: msg.CorrelationID,
-			Content:       msg.Content,
-			Text:          text,
-			Sequence:      msg.Sequence,
-			Status:        msg.Status,
-			CreatedAt:     msg.CreatedAt,
+			ID:              msg.ID,
+			AgentID:         a.ID,
+			AgentInstanceID: inst.ID,
+			Direction:       msg.Direction,
+			SenderType:      msg.SenderType,
+			SenderID:        new(userID),
+			Kind:            msg.Kind,
+			CorrelationID:   msg.CorrelationID,
+			Content:         msg.Content,
+			Text:            input.Text,
+			Sequence:        msg.Sequence,
+			Status:          msg.Status,
+			CreatedAt:       msg.CreatedAt,
 		}, nil
 	})
 }
 
-func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Context, agentID int, agentInstanceID *int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -424,6 +442,10 @@ func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Conte
 			Limit(limit).
 			Where(func(s *sql.Selector) {})
 
+		if agentInstanceID != nil {
+			q = q.Where(agentmessage.AgentInstanceIDEQ(*agentInstanceID))
+		}
+
 		if afterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*afterSequence))
 		}
@@ -438,18 +460,19 @@ func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Conte
 			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:            m.ID,
-				AgentID:       a.ID,
-				Direction:     m.Direction,
-				SenderType:    m.SenderType,
-				SenderID:      m.SenderID,
-				Kind:          m.Kind,
-				CorrelationID: m.CorrelationID,
-				Content:       m.Content,
-				Text:          text,
-				Sequence:      m.Sequence,
-				Status:        m.Status,
-				CreatedAt:     m.CreatedAt,
+				ID:              m.ID,
+				AgentID:         a.ID,
+				AgentInstanceID: m.AgentInstanceID,
+				Direction:       m.Direction,
+				SenderType:      m.SenderType,
+				SenderID:        m.SenderID,
+				Kind:            m.Kind,
+				CorrelationID:   m.CorrelationID,
+				Content:         m.Content,
+				Text:            text,
+				Sequence:        m.Sequence,
+				Status:          m.Status,
+				CreatedAt:       m.CreatedAt,
 			})
 		}
 
@@ -457,7 +480,7 @@ func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Conte
 	})
 }
 
-func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentApprovalRequestView, error) {
+func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Context, agentID int, agentInstanceID *int, afterSequence *int64, limit int) ([]*AgentApprovalRequestView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -497,6 +520,10 @@ func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Con
 			Limit(limit).
 			Where(func(s *sql.Selector) {})
 
+		if agentInstanceID != nil {
+			q = q.Where(agentmessage.AgentInstanceIDEQ(*agentInstanceID))
+		}
+
 		if afterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*afterSequence))
 		}
@@ -509,12 +536,13 @@ func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Con
 		out := make([]*AgentApprovalRequestView, 0, len(items))
 		for _, m := range items {
 			out = append(out, &AgentApprovalRequestView{
-				ID:            m.ID,
-				AgentID:       a.ID,
-				CorrelationID: m.CorrelationID,
-				Content:       m.Content,
-				Sequence:      m.Sequence,
-				CreatedAt:     m.CreatedAt,
+				ID:              m.ID,
+				AgentID:         a.ID,
+				AgentInstanceID: m.AgentInstanceID,
+				CorrelationID:   m.CorrelationID,
+				Content:         m.Content,
+				Sequence:        m.Sequence,
+				CreatedAt:       m.CreatedAt,
 			})
 		}
 
@@ -522,7 +550,7 @@ func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Con
 	})
 }
 
-func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, agentID int, agentInstanceID *int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -559,6 +587,10 @@ func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, ag
 			Limit(limit).
 			Where(func(s *sql.Selector) {})
 
+		if agentInstanceID != nil {
+			q = q.Where(agentmessage.AgentInstanceIDEQ(*agentInstanceID))
+		}
+
 		if afterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*afterSequence))
 		}
@@ -573,18 +605,19 @@ func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, ag
 			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:            m.ID,
-				AgentID:       a.ID,
-				Direction:     m.Direction,
-				SenderType:    m.SenderType,
-				SenderID:      m.SenderID,
-				Kind:          m.Kind,
-				CorrelationID: m.CorrelationID,
-				Content:       m.Content,
-				Text:          text,
-				Sequence:      m.Sequence,
-				Status:        m.Status,
-				CreatedAt:     m.CreatedAt,
+				ID:              m.ID,
+				AgentID:         a.ID,
+				AgentInstanceID: m.AgentInstanceID,
+				Direction:       m.Direction,
+				SenderType:      m.SenderType,
+				SenderID:        m.SenderID,
+				Kind:            m.Kind,
+				CorrelationID:   m.CorrelationID,
+				Content:         m.Content,
+				Text:            text,
+				Sequence:        m.Sequence,
+				Status:          m.Status,
+				CreatedAt:       m.CreatedAt,
 			})
 		}
 
@@ -1454,31 +1487,37 @@ func (s *AgentBootstrapService) AckAgentMessagesAsUser(ctx context.Context, user
 			return 0, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		// Verify at least one instance exists for this agent
-		exists, err := client.AgentInstance.Query().
-			Where(
-				agentinstance.AgentIDEQ(a.ID),
-				agentinstance.DeletedAtEQ(0),
-			).
-			Exist(bypassCtx)
-		if err != nil {
-			return 0, fmt.Errorf("failed to check agent instance: %w", err)
+		if input.AgentInstanceID != nil {
+			exists, err := client.AgentInstance.Query().
+				Where(
+					agentinstance.IDEQ(*input.AgentInstanceID),
+					agentinstance.AgentIDEQ(a.ID),
+					agentinstance.DeletedAtEQ(0),
+				).
+				Exist(bypassCtx)
+			if err != nil {
+				return 0, fmt.Errorf("failed to check agent instance: %w", err)
+			}
+
+			if !exists {
+				return 0, fmt.Errorf("agent instance not found")
+			}
 		}
 
-		if !exists {
-			return 0, fmt.Errorf("agent instance not found")
-		}
-
-		affected, err := client.AgentMessage.Update().
+		q := client.AgentMessage.Update().
 			Where(
 				agentmessage.IDIn(input.MessageIDs...),
 				agentmessage.AgentIDEQ(a.ID),
 				agentmessage.ProjectIDEQ(projectID),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.DeletedAtEQ(0),
-			).
-			SetStatus(agentmessage.StatusAcked).
-			Save(bypassCtx)
+			)
+
+		if input.AgentInstanceID != nil {
+			q = q.Where(agentmessage.AgentInstanceIDEQ(*input.AgentInstanceID))
+		}
+
+		affected, err := q.SetStatus(agentmessage.StatusAcked).Save(bypassCtx)
 		if err != nil {
 			return 0, fmt.Errorf("failed to ack messages: %w", err)
 		}

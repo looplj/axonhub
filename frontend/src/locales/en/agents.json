@@ -6,6 +6,10 @@
   "agents.actions.view": "View",
   "agents.actions.addTool": "Add Tool",
   "agents.actions.deploy": "Deploy Axonclaw",
+  "agents.instanceActions.start": "Start",
+  "agents.instanceActions.stop": "Stop",
+  "agents.instanceActions.restart": "Restart",
+  "agents.instanceActions.redeploy": "Redeploy latest",
   "agents.columns.model": "Model",
   "agents.filters.filterByName": "Filter by name...",
   "agents.fields.name": "Name",
@@ -86,5 +90,13 @@
   "agents.dialogs.deploy.fields.directory.placeholder": "/opt/axonclaw/instance-id",
   "agents.dialogs.deploy.noRuntimes": "No runtimes available",
   "agents.messages.deploySuccess": "Axonclaw deployed successfully",
-  "agents.messages.deployError": "Failed to deploy axonclaw: {{error}}"
+  "agents.messages.deployError": "Failed to deploy axonclaw: {{error}}",
+  "agents.messages.instanceStartSuccess": "Instance started",
+  "agents.messages.instanceStartError": "Failed to start instance: {{error}}",
+  "agents.messages.instanceStopSuccess": "Instance stopped",
+  "agents.messages.instanceStopError": "Failed to stop instance: {{error}}",
+  "agents.messages.instanceRestartSuccess": "Instance restarted",
+  "agents.messages.instanceRestartError": "Failed to restart instance: {{error}}",
+  "agents.messages.instanceRedeploySuccess": "Instance redeployed",
+  "agents.messages.instanceRedeployError": "Failed to redeploy instance: {{error}}"
 }

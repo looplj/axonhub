@@ -189,6 +189,58 @@ func (r *mutationResolver) DeployAxonclaw(ctx context.Context, input objects.Dep
 	return result, nil
 }
 
+// StopAxonclawInstance is the resolver for the stopAxonclawInstance field.
+func (r *mutationResolver) StopAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeWriteAgents); err != nil {
+		return nil, err
+	}
+
+	if instanceID.Type != ent.TypeAgentInstance {
+		return nil, fmt.Errorf("invalid agent instance id type")
+	}
+
+	return r.agentRuntimeService.StopAxonclawInstance(ctx, instanceID.ID)
+}
+
+// StartAxonclawInstance is the resolver for the startAxonclawInstance field.
+func (r *mutationResolver) StartAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeWriteAgents); err != nil {
+		return nil, err
+	}
+
+	if instanceID.Type != ent.TypeAgentInstance {
+		return nil, fmt.Errorf("invalid agent instance id type")
+	}
+
+	return r.agentRuntimeService.StartAxonclawInstance(ctx, instanceID.ID)
+}
+
+// RestartAxonclawInstance is the resolver for the restartAxonclawInstance field.
+func (r *mutationResolver) RestartAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeWriteAgents); err != nil {
+		return nil, err
+	}
+
+	if instanceID.Type != ent.TypeAgentInstance {
+		return nil, fmt.Errorf("invalid agent instance id type")
+	}
+
+	return r.agentRuntimeService.RestartAxonclawInstance(ctx, instanceID.ID)
+}
+
+// RedeployAxonclawInstance is the resolver for the redeployAxonclawInstance field.
+func (r *mutationResolver) RedeployAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeWriteAgents); err != nil {
+		return nil, err
+	}
+
+	if instanceID.Type != ent.TypeAgentInstance {
+		return nil, fmt.Errorf("invalid agent instance id type")
+	}
+
+	return r.agentRuntimeService.RedeployAxonclawInstance(ctx, instanceID.ID)
+}
+
 // AgentRuntime is the resolver for the agentRuntime field.
 func (r *queryResolver) AgentRuntime(ctx context.Context, id objects.GUID) (*ent.AgentRuntime, error) {
 	if id.Type != ent.TypeAgentRuntime {

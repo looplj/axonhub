@@ -220,12 +220,13 @@ type ComplexityRoot struct {
 	}
 
 	AgentApprovalRequestMessage struct {
-		AgentID       func(childComplexity int) int
-		Content       func(childComplexity int) int
-		CorrelationID func(childComplexity int) int
-		CreatedAt     func(childComplexity int) int
-		ID            func(childComplexity int) int
-		Sequence      func(childComplexity int) int
+		AgentID         func(childComplexity int) int
+		AgentInstanceID func(childComplexity int) int
+		Content         func(childComplexity int) int
+		CorrelationID   func(childComplexity int) int
+		CreatedAt       func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Sequence        func(childComplexity int) int
 	}
 
 	AgentBuiltinTool struct {
@@ -236,18 +237,19 @@ type ComplexityRoot struct {
 	}
 
 	AgentChatMessage struct {
-		AgentID       func(childComplexity int) int
-		Content       func(childComplexity int) int
-		CorrelationID func(childComplexity int) int
-		CreatedAt     func(childComplexity int) int
-		Direction     func(childComplexity int) int
-		ID            func(childComplexity int) int
-		Kind          func(childComplexity int) int
-		SenderID      func(childComplexity int) int
-		SenderType    func(childComplexity int) int
-		Sequence      func(childComplexity int) int
-		Status        func(childComplexity int) int
-		Text          func(childComplexity int) int
+		AgentID         func(childComplexity int) int
+		AgentInstanceID func(childComplexity int) int
+		Content         func(childComplexity int) int
+		CorrelationID   func(childComplexity int) int
+		CreatedAt       func(childComplexity int) int
+		Direction       func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Kind            func(childComplexity int) int
+		SenderID        func(childComplexity int) int
+		SenderType      func(childComplexity int) int
+		Sequence        func(childComplexity int) int
+		Status          func(childComplexity int) int
+		Text            func(childComplexity int) int
 	}
 
 	AgentConnection struct {
@@ -751,6 +753,12 @@ type ComplexityRoot struct {
 		ResourceType func(childComplexity int) int
 	}
 
+	ControlAxonclawInstanceResult struct {
+		Error    func(childComplexity int) int
+		Instance func(childComplexity int) int
+		Success  func(childComplexity int) int
+	}
+
 	CostItem struct {
 		ItemCode      func(childComplexity int) int
 		Quantity      func(childComplexity int) int
@@ -1058,11 +1066,15 @@ type ComplexityRoot struct {
 		EnableAllChannelAPIKeys              func(childComplexity int, channelID objects.GUID) int
 		EnableChannelAPIKey                  func(childComplexity int, channelID objects.GUID, key string) int
 		EnableSelectedChannelAPIKeys         func(childComplexity int, channelID objects.GUID, keys []string) int
+		RedeployAxonclawInstance             func(childComplexity int, instanceID objects.GUID) int
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
 		ResolveApproval                      func(childComplexity int, input ResolveApprovalInput) int
+		RestartAxonclawInstance              func(childComplexity int, instanceID objects.GUID) int
 		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		SendAgentMessage                     func(childComplexity int, input biz.SendAgentMessageInput) int
+		StartAxonclawInstance                func(childComplexity int, instanceID objects.GUID) int
+		StopAxonclawInstance                 func(childComplexity int, instanceID objects.GUID) int
 		SyncChannelModels                    func(childComplexity int, channelID objects.GUID, pattern *string) int
 		TestAgentRuntimeConnection           func(childComplexity int, id objects.GUID) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
@@ -1288,7 +1300,7 @@ type ComplexityRoot struct {
 	Query struct {
 		APIKeyQuotaUsages            func(childComplexity int, apiKeyID objects.GUID) int
 		APIKeys                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
-		AgentChatMessages            func(childComplexity int, agentID objects.GUID, afterSequence *int, limit *int) int
+		AgentChatMessages            func(childComplexity int, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) int
 		AgentInstances               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentInstanceOrder, where *ent.AgentInstanceWhereInput) int
 		AgentMemories                func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMemoryOrder, where *ent.AgentMemoryWhereInput) int
 		AgentMessages                func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMessageOrder, where *ent.AgentMessageWhereInput) int
@@ -1326,8 +1338,8 @@ type ComplexityRoot struct {
 		Projects                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
 		PromptVersions               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptVersionOrder, where *ent.PromptVersionWhereInput) int
 		Prompts                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) int
-		PullAgentApprovalRequests    func(childComplexity int, agentID objects.GUID, afterSequence *int, limit *int) int
-		PullAgentMessagesToUser      func(childComplexity int, agentID objects.GUID, afterSequence *int, limit *int) int
+		PullAgentApprovalRequests    func(childComplexity int, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) int
+		PullAgentMessagesToUser      func(childComplexity int, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) int
 		QueryChannels                func(childComplexity int, input biz.QueryChannelsInput) int
 		QueryModelChannelConnections func(childComplexity int, associations []*objects.ModelAssociation) int
 		QueryModels                  func(childComplexity int, input QueryModelsInput) int
@@ -2179,6 +2191,10 @@ type MutationResolver interface {
 	BulkUpdateAgentRuntimeStatus(ctx context.Context, ids []*objects.GUID, status agentruntime.Status) (bool, error)
 	TestAgentRuntimeConnection(ctx context.Context, id objects.GUID) (*biz.TestConnectionResult, error)
 	DeployAxonclaw(ctx context.Context, input objects.DeployAxonclawInput) (*biz.DeployAxonclawResult, error)
+	StopAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error)
+	StartAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error)
+	RestartAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error)
+	RedeployAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error)
 	CreatePrompt(ctx context.Context, input ent.CreatePromptInput) (*ent.Prompt, error)
 	UpdatePrompt(ctx context.Context, id objects.GUID, input ent.UpdatePromptInput) (*ent.Prompt, error)
 	DeletePrompt(ctx context.Context, id objects.GUID) (bool, error)
@@ -2279,9 +2295,9 @@ type QueryResolver interface {
 	QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error)
 	AutoBackupSettings(ctx context.Context) (*biz.AutoBackupSettings, error)
 	ChannelProbeData(ctx context.Context, input biz.GetChannelProbeDataInput) ([]*biz.ChannelProbeData, error)
-	PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
-	PullAgentApprovalRequests(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentApprovalRequestMessage, error)
-	AgentChatMessages(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
+	PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
+	PullAgentApprovalRequests(ctx context.Context, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) ([]*AgentApprovalRequestMessage, error)
+	AgentChatMessages(ctx context.Context, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
 	AgentRuntime(ctx context.Context, id objects.GUID) (*ent.AgentRuntime, error)
 }
 type RequestResolver interface {
@@ -2876,6 +2892,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentApprovalRequestMessage.AgentID(childComplexity), true
+	case "AgentApprovalRequestMessage.agentInstanceID":
+		if e.complexity.AgentApprovalRequestMessage.AgentInstanceID == nil {
+			break
+		}
+
+		return e.complexity.AgentApprovalRequestMessage.AgentInstanceID(childComplexity), true
 	case "AgentApprovalRequestMessage.content":
 		if e.complexity.AgentApprovalRequestMessage.Content == nil {
 			break
@@ -2938,6 +2960,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentChatMessage.AgentID(childComplexity), true
+	case "AgentChatMessage.agentInstanceID":
+		if e.complexity.AgentChatMessage.AgentInstanceID == nil {
+			break
+		}
+
+		return e.complexity.AgentChatMessage.AgentInstanceID(childComplexity), true
 	case "AgentChatMessage.content":
 		if e.complexity.AgentChatMessage.Content == nil {
 			break
@@ -4931,6 +4959,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CleanupOption.ResourceType(childComplexity), true
 
+	case "ControlAxonclawInstanceResult.error":
+		if e.complexity.ControlAxonclawInstanceResult.Error == nil {
+			break
+		}
+
+		return e.complexity.ControlAxonclawInstanceResult.Error(childComplexity), true
+	case "ControlAxonclawInstanceResult.instance":
+		if e.complexity.ControlAxonclawInstanceResult.Instance == nil {
+			break
+		}
+
+		return e.complexity.ControlAxonclawInstanceResult.Instance(childComplexity), true
+	case "ControlAxonclawInstanceResult.success":
+		if e.complexity.ControlAxonclawInstanceResult.Success == nil {
+			break
+		}
+
+		return e.complexity.ControlAxonclawInstanceResult.Success(childComplexity), true
+
 	case "CostItem.itemCode":
 		if e.complexity.CostItem.ItemCode == nil {
 			break
@@ -6408,6 +6455,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.EnableSelectedChannelAPIKeys(childComplexity, args["channelID"].(objects.GUID), args["keys"].([]string)), true
+	case "Mutation.redeployAxonclawInstance":
+		if e.complexity.Mutation.RedeployAxonclawInstance == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_redeployAxonclawInstance_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RedeployAxonclawInstance(childComplexity, args["instanceID"].(objects.GUID)), true
 	case "Mutation.removeUserFromProject":
 		if e.complexity.Mutation.RemoveUserFromProject == nil {
 			break
@@ -6430,6 +6488,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ResolveApproval(childComplexity, args["input"].(ResolveApprovalInput)), true
+	case "Mutation.restartAxonclawInstance":
+		if e.complexity.Mutation.RestartAxonclawInstance == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_restartAxonclawInstance_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RestartAxonclawInstance(childComplexity, args["instanceID"].(objects.GUID)), true
 	case "Mutation.restore":
 		if e.complexity.Mutation.Restore == nil {
 			break
@@ -6463,6 +6532,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SendAgentMessage(childComplexity, args["input"].(biz.SendAgentMessageInput)), true
+	case "Mutation.startAxonclawInstance":
+		if e.complexity.Mutation.StartAxonclawInstance == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_startAxonclawInstance_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StartAxonclawInstance(childComplexity, args["instanceID"].(objects.GUID)), true
+	case "Mutation.stopAxonclawInstance":
+		if e.complexity.Mutation.StopAxonclawInstance == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_stopAxonclawInstance_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StopAxonclawInstance(childComplexity, args["instanceID"].(objects.GUID)), true
 	case "Mutation.syncChannelModels":
 		if e.complexity.Mutation.SyncChannelModels == nil {
 			break
@@ -7702,7 +7793,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.AgentChatMessages(childComplexity, args["agentID"].(objects.GUID), args["afterSequence"].(*int), args["limit"].(*int)), true
+		return e.complexity.Query.AgentChatMessages(childComplexity, args["agentID"].(objects.GUID), args["agentInstanceID"].(*objects.GUID), args["afterSequence"].(*int), args["limit"].(*int)), true
 	case "Query.agentInstances":
 		if e.complexity.Query.AgentInstances == nil {
 			break
@@ -8055,7 +8146,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.PullAgentApprovalRequests(childComplexity, args["agentID"].(objects.GUID), args["afterSequence"].(*int), args["limit"].(*int)), true
+		return e.complexity.Query.PullAgentApprovalRequests(childComplexity, args["agentID"].(objects.GUID), args["agentInstanceID"].(*objects.GUID), args["afterSequence"].(*int), args["limit"].(*int)), true
 	case "Query.pullAgentMessagesToUser":
 		if e.complexity.Query.PullAgentMessagesToUser == nil {
 			break
@@ -8066,7 +8157,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.PullAgentMessagesToUser(childComplexity, args["agentID"].(objects.GUID), args["afterSequence"].(*int), args["limit"].(*int)), true
+		return e.complexity.Query.PullAgentMessagesToUser(childComplexity, args["agentID"].(objects.GUID), args["agentInstanceID"].(*objects.GUID), args["afterSequence"].(*int), args["limit"].(*int)), true
 	case "Query.queryChannels":
 		if e.complexity.Query.QueryChannels == nil {
 			break
@@ -12272,6 +12363,17 @@ func (ec *executionContext) field_Mutation_enableSelectedChannelAPIKeys_args(ctx
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_redeployAxonclawInstance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "instanceID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["instanceID"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_removeUserFromProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12291,6 +12393,17 @@ func (ec *executionContext) field_Mutation_resolveApproval_args(ctx context.Cont
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_restartAxonclawInstance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "instanceID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["instanceID"] = arg0
 	return args, nil
 }
 
@@ -12334,6 +12447,28 @@ func (ec *executionContext) field_Mutation_sendAgentMessage_args(ctx context.Con
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_startAxonclawInstance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "instanceID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["instanceID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_stopAxonclawInstance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "instanceID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["instanceID"] = arg0
 	return args, nil
 }
 
@@ -13503,16 +13638,21 @@ func (ec *executionContext) field_Query_agentChatMessages_args(ctx context.Conte
 		return nil, err
 	}
 	args["agentID"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "agentInstanceID", ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
 	if err != nil {
 		return nil, err
 	}
-	args["afterSequence"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
+	args["agentInstanceID"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["limit"] = arg2
+	args["afterSequence"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg3
 	return args, nil
 }
 
@@ -14210,16 +14350,21 @@ func (ec *executionContext) field_Query_pullAgentApprovalRequests_args(ctx conte
 		return nil, err
 	}
 	args["agentID"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "agentInstanceID", ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
 	if err != nil {
 		return nil, err
 	}
-	args["afterSequence"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
+	args["agentInstanceID"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["limit"] = arg2
+	args["afterSequence"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg3
 	return args, nil
 }
 
@@ -14231,16 +14376,21 @@ func (ec *executionContext) field_Query_pullAgentMessagesToUser_args(ctx context
 		return nil, err
 	}
 	args["agentID"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "agentInstanceID", ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
 	if err != nil {
 		return nil, err
 	}
-	args["afterSequence"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
+	args["agentInstanceID"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["limit"] = arg2
+	args["afterSequence"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg3
 	return args, nil
 }
 
@@ -17822,6 +17972,35 @@ func (ec *executionContext) fieldContext_AgentApprovalRequestMessage_agentID(_ c
 	return fc, nil
 }
 
+func (ec *executionContext) _AgentApprovalRequestMessage_agentInstanceID(ctx context.Context, field graphql.CollectedField, obj *AgentApprovalRequestMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentApprovalRequestMessage_agentInstanceID,
+		func(ctx context.Context) (any, error) {
+			return obj.AgentInstanceID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentApprovalRequestMessage_agentInstanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentApprovalRequestMessage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AgentApprovalRequestMessage_correlationID(ctx context.Context, field graphql.CollectedField, obj *AgentApprovalRequestMessage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18100,6 +18279,35 @@ func (ec *executionContext) _AgentChatMessage_agentID(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_AgentChatMessage_agentID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentChatMessage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentChatMessage_agentInstanceID(ctx context.Context, field graphql.CollectedField, obj *AgentChatMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentChatMessage_agentInstanceID,
+		func(ctx context.Context) (any, error) {
+			return obj.AgentInstanceID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentChatMessage_agentInstanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentChatMessage",
 		Field:      field,
@@ -29078,6 +29286,129 @@ func (ec *executionContext) fieldContext_CleanupOption_cleanupDays(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ControlAxonclawInstanceResult_success(ctx context.Context, field graphql.CollectedField, obj *biz.ControlAxonclawInstanceResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ControlAxonclawInstanceResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ControlAxonclawInstanceResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ControlAxonclawInstanceResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ControlAxonclawInstanceResult_error(ctx context.Context, field graphql.CollectedField, obj *biz.ControlAxonclawInstanceResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ControlAxonclawInstanceResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ControlAxonclawInstanceResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ControlAxonclawInstanceResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ControlAxonclawInstanceResult_instance(ctx context.Context, field graphql.CollectedField, obj *biz.ControlAxonclawInstanceResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ControlAxonclawInstanceResult_instance,
+		func(ctx context.Context) (any, error) {
+			return obj.Instance, nil
+		},
+		nil,
+		ec.marshalOAgentInstance2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstance,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ControlAxonclawInstanceResult_instance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ControlAxonclawInstanceResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentInstance_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AgentInstance_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AgentInstance_updatedAt(ctx, field)
+			case "projectID":
+				return ec.fieldContext_AgentInstance_projectID(ctx, field)
+			case "agentID":
+				return ec.fieldContext_AgentInstance_agentID(ctx, field)
+			case "agentRuntimeID":
+				return ec.fieldContext_AgentInstance_agentRuntimeID(ctx, field)
+			case "name":
+				return ec.fieldContext_AgentInstance_name(ctx, field)
+			case "description":
+				return ec.fieldContext_AgentInstance_description(ctx, field)
+			case "platform":
+				return ec.fieldContext_AgentInstance_platform(ctx, field)
+			case "apiKeyID":
+				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
+			case "lastHeartbeatAt":
+				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
+			case "deployment":
+				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentInstance_status(ctx, field)
+			case "agent":
+				return ec.fieldContext_AgentInstance_agent(ctx, field)
+			case "runtime":
+				return ec.fieldContext_AgentInstance_runtime(ctx, field)
+			case "apiKey":
+				return ec.fieldContext_AgentInstance_apiKey(ctx, field)
+			case "messages":
+				return ec.fieldContext_AgentInstance_messages(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentInstance", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CostItem_itemCode(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37754,6 +38085,8 @@ func (ec *executionContext) fieldContext_Mutation_sendAgentMessage(ctx context.C
 				return ec.fieldContext_AgentChatMessage_id(ctx, field)
 			case "agentID":
 				return ec.fieldContext_AgentChatMessage_agentID(ctx, field)
+			case "agentInstanceID":
+				return ec.fieldContext_AgentChatMessage_agentInstanceID(ctx, field)
 			case "direction":
 				return ec.fieldContext_AgentChatMessage_direction(ctx, field)
 			case "senderType":
@@ -38278,6 +38611,202 @@ func (ec *executionContext) fieldContext_Mutation_deployAxonclaw(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deployAxonclaw_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_stopAxonclawInstance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_stopAxonclawInstance,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().StopAxonclawInstance(ctx, fc.Args["instanceID"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNControlAxonclawInstanceResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐControlAxonclawInstanceResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_stopAxonclawInstance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ControlAxonclawInstanceResult_success(ctx, field)
+			case "error":
+				return ec.fieldContext_ControlAxonclawInstanceResult_error(ctx, field)
+			case "instance":
+				return ec.fieldContext_ControlAxonclawInstanceResult_instance(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ControlAxonclawInstanceResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_stopAxonclawInstance_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_startAxonclawInstance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_startAxonclawInstance,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().StartAxonclawInstance(ctx, fc.Args["instanceID"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNControlAxonclawInstanceResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐControlAxonclawInstanceResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_startAxonclawInstance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ControlAxonclawInstanceResult_success(ctx, field)
+			case "error":
+				return ec.fieldContext_ControlAxonclawInstanceResult_error(ctx, field)
+			case "instance":
+				return ec.fieldContext_ControlAxonclawInstanceResult_instance(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ControlAxonclawInstanceResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_startAxonclawInstance_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_restartAxonclawInstance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_restartAxonclawInstance,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RestartAxonclawInstance(ctx, fc.Args["instanceID"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNControlAxonclawInstanceResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐControlAxonclawInstanceResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_restartAxonclawInstance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ControlAxonclawInstanceResult_success(ctx, field)
+			case "error":
+				return ec.fieldContext_ControlAxonclawInstanceResult_error(ctx, field)
+			case "instance":
+				return ec.fieldContext_ControlAxonclawInstanceResult_instance(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ControlAxonclawInstanceResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_restartAxonclawInstance_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_redeployAxonclawInstance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_redeployAxonclawInstance,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RedeployAxonclawInstance(ctx, fc.Args["instanceID"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNControlAxonclawInstanceResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐControlAxonclawInstanceResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_redeployAxonclawInstance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ControlAxonclawInstanceResult_success(ctx, field)
+			case "error":
+				return ec.fieldContext_ControlAxonclawInstanceResult_error(ctx, field)
+			case "instance":
+				return ec.fieldContext_ControlAxonclawInstanceResult_instance(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ControlAxonclawInstanceResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_redeployAxonclawInstance_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -46036,7 +46565,7 @@ func (ec *executionContext) _Query_pullAgentMessagesToUser(ctx context.Context, 
 		ec.fieldContext_Query_pullAgentMessagesToUser,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().PullAgentMessagesToUser(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
+			return ec.resolvers.Query().PullAgentMessagesToUser(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["agentInstanceID"].(*objects.GUID), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
 		},
 		nil,
 		ec.marshalNAgentChatMessage2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAgentChatMessageᚄ,
@@ -46057,6 +46586,8 @@ func (ec *executionContext) fieldContext_Query_pullAgentMessagesToUser(ctx conte
 				return ec.fieldContext_AgentChatMessage_id(ctx, field)
 			case "agentID":
 				return ec.fieldContext_AgentChatMessage_agentID(ctx, field)
+			case "agentInstanceID":
+				return ec.fieldContext_AgentChatMessage_agentInstanceID(ctx, field)
 			case "direction":
 				return ec.fieldContext_AgentChatMessage_direction(ctx, field)
 			case "senderType":
@@ -46103,7 +46634,7 @@ func (ec *executionContext) _Query_pullAgentApprovalRequests(ctx context.Context
 		ec.fieldContext_Query_pullAgentApprovalRequests,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().PullAgentApprovalRequests(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
+			return ec.resolvers.Query().PullAgentApprovalRequests(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["agentInstanceID"].(*objects.GUID), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
 		},
 		nil,
 		ec.marshalNAgentApprovalRequestMessage2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAgentApprovalRequestMessageᚄ,
@@ -46124,6 +46655,8 @@ func (ec *executionContext) fieldContext_Query_pullAgentApprovalRequests(ctx con
 				return ec.fieldContext_AgentApprovalRequestMessage_id(ctx, field)
 			case "agentID":
 				return ec.fieldContext_AgentApprovalRequestMessage_agentID(ctx, field)
+			case "agentInstanceID":
+				return ec.fieldContext_AgentApprovalRequestMessage_agentInstanceID(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentApprovalRequestMessage_correlationID(ctx, field)
 			case "content":
@@ -46158,7 +46691,7 @@ func (ec *executionContext) _Query_agentChatMessages(ctx context.Context, field 
 		ec.fieldContext_Query_agentChatMessages,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().AgentChatMessages(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
+			return ec.resolvers.Query().AgentChatMessages(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["agentInstanceID"].(*objects.GUID), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
 		},
 		nil,
 		ec.marshalNAgentChatMessage2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAgentChatMessageᚄ,
@@ -46179,6 +46712,8 @@ func (ec *executionContext) fieldContext_Query_agentChatMessages(ctx context.Con
 				return ec.fieldContext_AgentChatMessage_id(ctx, field)
 			case "agentID":
 				return ec.fieldContext_AgentChatMessage_agentID(ctx, field)
+			case "agentInstanceID":
+				return ec.fieldContext_AgentChatMessage_agentInstanceID(ctx, field)
 			case "direction":
 				return ec.fieldContext_AgentChatMessage_direction(ctx, field)
 			case "senderType":
@@ -62409,7 +62944,7 @@ func (ec *executionContext) unmarshalInputAckAgentMessagesInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "messageIDs"}
+	fieldsInOrder := [...]string{"agentID", "agentInstanceID", "messageIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -62427,6 +62962,17 @@ func (ec *executionContext) unmarshalInputAckAgentMessagesInput(ctx context.Cont
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.AgentID = converted
+		case "agentInstanceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentInstanceID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.AgentInstanceID = converted
 		case "messageIDs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("messageIDs"))
 			data, err := ec.unmarshalNID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
@@ -83109,7 +83655,7 @@ func (ec *executionContext) unmarshalInputResolveApprovalInput(ctx context.Conte
 		asMap["scope"] = "once"
 	}
 
-	fieldsInOrder := [...]string{"agentID", "requestID", "granted", "scope", "reason"}
+	fieldsInOrder := [...]string{"agentID", "agentInstanceID", "requestID", "granted", "scope", "reason"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83123,6 +83669,13 @@ func (ec *executionContext) unmarshalInputResolveApprovalInput(ctx context.Conte
 				return it, err
 			}
 			it.AgentID = data
+		case "agentInstanceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentInstanceID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AgentInstanceID = data
 		case "requestID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestID"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -83838,7 +84391,7 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "text"}
+	fieldsInOrder := [...]string{"agentID", "agentInstanceID", "text"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83856,6 +84409,17 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.AgentID = converted
+		case "agentInstanceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentInstanceID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.AgentInstanceID = converted
 		case "text":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -94651,6 +95215,11 @@ func (ec *executionContext) _AgentApprovalRequestMessage(ctx context.Context, se
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "agentInstanceID":
+			out.Values[i] = ec._AgentApprovalRequestMessage_agentInstanceID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "correlationID":
 			out.Values[i] = ec._AgentApprovalRequestMessage_correlationID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -94763,6 +95332,11 @@ func (ec *executionContext) _AgentChatMessage(ctx context.Context, sel ast.Selec
 			}
 		case "agentID":
 			out.Values[i] = ec._AgentChatMessage_agentID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "agentInstanceID":
+			out.Values[i] = ec._AgentChatMessage_agentInstanceID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -100413,6 +100987,49 @@ func (ec *executionContext) _CleanupOption(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var controlAxonclawInstanceResultImplementors = []string{"ControlAxonclawInstanceResult"}
+
+func (ec *executionContext) _ControlAxonclawInstanceResult(ctx context.Context, sel ast.SelectionSet, obj *biz.ControlAxonclawInstanceResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, controlAxonclawInstanceResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ControlAxonclawInstanceResult")
+		case "success":
+			out.Values[i] = ec._ControlAxonclawInstanceResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._ControlAxonclawInstanceResult_error(ctx, field, obj)
+		case "instance":
+			out.Values[i] = ec._ControlAxonclawInstanceResult_instance(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var costItemImplementors = []string{"CostItem"}
 
 func (ec *executionContext) _CostItem(ctx context.Context, sel ast.SelectionSet, obj *objects.CostItem) graphql.Marshaler {
@@ -103031,6 +103648,34 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deployAxonclaw":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deployAxonclaw(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stopAxonclawInstance":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_stopAxonclawInstance(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startAxonclawInstance":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_startAxonclawInstance(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "restartAxonclawInstance":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_restartAxonclawInstance(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "redeployAxonclawInstance":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_redeployAxonclawInstance(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -116307,6 +116952,20 @@ func (ec *executionContext) unmarshalNCompleteOnboardingInput2githubᚗcomᚋloo
 func (ec *executionContext) unmarshalNCompleteSystemModelSettingOnboardingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCompleteSystemModelSettingOnboardingInput(ctx context.Context, v any) (CompleteSystemModelSettingOnboardingInput, error) {
 	res, err := ec.unmarshalInputCompleteSystemModelSettingOnboardingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNControlAxonclawInstanceResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐControlAxonclawInstanceResult(ctx context.Context, sel ast.SelectionSet, v biz.ControlAxonclawInstanceResult) graphql.Marshaler {
+	return ec._ControlAxonclawInstanceResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNControlAxonclawInstanceResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐControlAxonclawInstanceResult(ctx context.Context, sel ast.SelectionSet, v *biz.ControlAxonclawInstanceResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ControlAxonclawInstanceResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCostItem2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItem(ctx context.Context, sel ast.SelectionSet, v objects.CostItem) graphql.Marshaler {

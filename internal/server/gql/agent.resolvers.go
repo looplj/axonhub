@@ -47,7 +47,7 @@ func (r *mutationResolver) SendAgentMessage(ctx context.Context, input biz.SendA
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	view, err := r.agentBootstrapService.SendAgentMessageAsUser(ctx, user.ID, input.AgentID, input.Text)
+	view, err := r.agentBootstrapService.SendAgentMessageAsUser(ctx, user.ID, input)
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +71,18 @@ func (r *mutationResolver) ResolveApproval(ctx context.Context, input ResolveApp
 		scope = string(*input.Scope)
 	}
 
+	var agentInstanceID *int
+	if input.AgentInstanceID != nil {
+		agentInstanceID = &input.AgentInstanceID.ID
+	}
+
 	return r.agentBootstrapService.ResolveApprovalAsUser(ctx, user.ID, biz.ResolveApprovalCommandInput{
-		AgentID:   input.AgentID.ID,
-		RequestID: input.RequestID,
-		Granted:   input.Granted,
-		Scope:     scope,
-		Reason:    input.Reason,
+		AgentID:         input.AgentID.ID,
+		AgentInstanceID: agentInstanceID,
+		RequestID:       input.RequestID,
+		Granted:         input.Granted,
+		Scope:           scope,
+		Reason:          input.Reason,
 	})
 }
 
@@ -95,7 +101,7 @@ func (r *mutationResolver) AckAgentMessages(ctx context.Context, input biz.AckAg
 }
 
 // PullAgentMessagesToUser is the resolver for the pullAgentMessagesToUser field.
-func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error) {
+func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeReadAgents); err != nil {
 		return nil, err
 	}
@@ -106,12 +112,17 @@ func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, agentID obj
 		after = &v
 	}
 
+	var instID *int
+	if agentInstanceID != nil {
+		instID = &agentInstanceID.ID
+	}
+
 	lim := 50
 	if limit != nil {
 		lim = *limit
 	}
 
-	views, err := r.agentBootstrapService.PullAgentMessagesToUserAsAdmin(ctx, agentID.ID, after, lim)
+	views, err := r.agentBootstrapService.PullAgentMessagesToUserAsAdmin(ctx, agentID.ID, instID, after, lim)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +135,7 @@ func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, agentID obj
 }
 
 // PullAgentApprovalRequests is the resolver for the pullAgentApprovalRequests field.
-func (r *queryResolver) PullAgentApprovalRequests(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentApprovalRequestMessage, error) {
+func (r *queryResolver) PullAgentApprovalRequests(ctx context.Context, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) ([]*AgentApprovalRequestMessage, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeReadAgents); err != nil {
 		return nil, err
 	}
@@ -135,12 +146,17 @@ func (r *queryResolver) PullAgentApprovalRequests(ctx context.Context, agentID o
 		after = &v
 	}
 
+	var instID *int
+	if agentInstanceID != nil {
+		instID = &agentInstanceID.ID
+	}
+
 	lim := 50
 	if limit != nil {
 		lim = *limit
 	}
 
-	views, err := r.agentBootstrapService.PullAgentApprovalRequestsAsAdmin(ctx, agentID.ID, after, lim)
+	views, err := r.agentBootstrapService.PullAgentApprovalRequestsAsAdmin(ctx, agentID.ID, instID, after, lim)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +169,7 @@ func (r *queryResolver) PullAgentApprovalRequests(ctx context.Context, agentID o
 }
 
 // AgentChatMessages is the resolver for the agentChatMessages field.
-func (r *queryResolver) AgentChatMessages(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error) {
+func (r *queryResolver) AgentChatMessages(ctx context.Context, agentID objects.GUID, agentInstanceID *objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeReadAgents); err != nil {
 		return nil, err
 	}
@@ -165,12 +181,17 @@ func (r *queryResolver) AgentChatMessages(ctx context.Context, agentID objects.G
 		after = &v
 	}
 
+	var instID *int
+	if agentInstanceID != nil {
+		instID = &agentInstanceID.ID
+	}
+
 	lim := 200
 	if limit != nil {
 		lim = *limit
 	}
 
-	views, err := r.agentBootstrapService.ListAgentMessagesAsAdmin(ctx, agentID.ID, after, lim)
+	views, err := r.agentBootstrapService.ListAgentMessagesAsAdmin(ctx, agentID.ID, instID, after, lim)
 	if err != nil {
 		return nil, err
 	}

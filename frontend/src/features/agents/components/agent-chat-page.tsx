@@ -22,13 +22,15 @@ export function AgentChatPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const navigate = useNavigate();
-  const { agentId } = useParams({ from: '/_authenticated/project/agents/$agentId/threads/$threadId' as any }) as { agentId: string };
+  const { agentId, threadId } = useParams({ from: '/_authenticated/project/agents/$agentId/threads/$threadId' as any }) as { agentId: string; threadId: string };
+
+  const agentInstanceId = threadId;
 
   const { data: agent } = useAgentDetail(agentId);
   const send = useSendAgentMessage();
   const resolveApproval = useResolveApproval();
   const ackMessages = useAckAgentMessages();
-  const { data: initialMessages, refetch: refetchInitial } = useAgentChatMessages(agentId);
+  const { data: initialMessages, refetch: refetchInitial } = useAgentChatMessages(agentId, agentInstanceId);
 
   const [messages, setMessages] = useState<AgentChatMessage[]>([]);
   const [text, setText] = useState('');
@@ -47,7 +49,7 @@ export function AgentChatPage() {
     }
   }, [initialMessages]);
 
-  const { data: pulledToUser, refetch: refetchPull } = usePullAgentMessagesToUser(agentId, afterSequence);
+  const { data: pulledToUser, refetch: refetchPull } = usePullAgentMessagesToUser(agentId, agentInstanceId, afterSequence);
 
   useEffect(() => {
     if (!pulledToUser || pulledToUser.length === 0) return;
@@ -63,12 +65,11 @@ export function AgentChatPage() {
     const maxSeq = Math.max(...pulledToUser.map((m) => m.sequence));
     if (maxSeq > afterSequence) setAfterSequence(maxSeq);
 
-    // Acknowledge received messages
     const messageIDs = pulledToUser.map((m) => m.id);
     if (messageIDs.length > 0) {
-      ackMessages.mutate({ agentID: agentId, messageIDs });
+      ackMessages.mutate({ agentID: agentId, agentInstanceID: agentInstanceId, messageIDs });
     }
-  }, [pulledToUser, afterSequence, agentId, ackMessages]);
+  }, [pulledToUser, afterSequence, agentId, agentInstanceId, ackMessages]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
@@ -85,6 +86,7 @@ export function AgentChatPage() {
     const optimistic: AgentChatMessage = {
       id: `optimistic:${Date.now()}`,
       agentID: agentId,
+      agentInstanceID: agentInstanceId,
       direction: 'to_runtime',
       senderType: 'user',
       senderID: null,
@@ -102,7 +104,7 @@ export function AgentChatPage() {
     setAfterSequence((s) => s + 1);
 
     try {
-      const saved = await send.mutateAsync({ agentID: agentId, text: trimmed });
+      const saved = await send.mutateAsync({ agentID: agentId, agentInstanceID: agentInstanceId, text: trimmed });
       setMessages((prev) => prev.map((m) => (m.id === optimistic.id ? saved : m)));
       setAfterSequence((s) => Math.max(s, saved.sequence));
       await refetchInitial();
@@ -122,6 +124,7 @@ export function AgentChatPage() {
     try {
       await resolveApproval.mutateAsync({
         agentID: agentId,
+        agentInstanceID: agentInstanceId,
         requestID,
         granted,
         scope,
@@ -132,7 +135,6 @@ export function AgentChatPage() {
     }
   };
 
-  // Group messages: find approval_result for each approval_request
   const approvalResultsMap = useMemo(() => {
     const map = new Map<string, AgentChatMessage>();
     for (const m of messages) {
@@ -148,7 +150,6 @@ export function AgentChatPage() {
     const kind: AgentMessageKind = m.kind || 'chat';
     const isUser = m.senderType === 'user';
 
-    // Skip rendering approval_result as standalone message (will be rendered inside approval_request)
     if (kind === 'approval_result') {
       return null;
     }
@@ -178,7 +179,6 @@ export function AgentChatPage() {
       const isPending = m.status === 'pending';
       const hasParams = content.resources && Array.isArray(content.resources) && content.resources.length > 0;
 
-      // Find corresponding approval_result
       const approvalResult = m.correlationID ? approvalResultsMap.get(m.correlationID) : undefined;
       const resultGranted = approvalResult ? Boolean(approvalResult.content?.granted) : undefined;
 
@@ -248,7 +248,6 @@ export function AgentChatPage() {
               )}
             </div>
 
-            {/* Approval Result - shown below the request */}
             {approvalResult && resultGranted !== undefined && (
               <div className={cn(
                 "mt-3 rounded-md border px-3 py-2",
@@ -271,7 +270,6 @@ export function AgentChatPage() {
               </div>
             )}
 
-            {/* Action buttons or resolved status */}
             {isPending && !approvalResult ? (
               <div className="flex items-center gap-2 mt-3">
                 <Button
@@ -335,8 +333,6 @@ export function AgentChatPage() {
       );
     }
 
-    // kind === 'chat' (default)
-    // Agent messages (from agent or system) show on left, user messages show on right
     return (
       <div key={messageKey(m)} className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}>
         <div

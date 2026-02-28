@@ -22,6 +22,9 @@ import {
   Calendar,
   User,
   LayoutGrid,
+  Play,
+  Square,
+  RefreshCw,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from '@tanstack/react-router';
@@ -45,6 +48,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { extractNumberID } from '@/lib/utils';
 import { useAgentDetail } from '../data/agent-detail';
 import { DeployAxonclawDialog } from './deploy-axonclaw-dialog';
+import { useControlAxonclawInstance } from '../data/control-axonclaw-instance';
 
 function isInstanceOnline(lastHeartbeatAt: string | Date, thresholdMs: number) {
   const t = new Date(lastHeartbeatAt).getTime();
@@ -104,6 +108,7 @@ export function AgentDetailPage() {
   const [onlineThresholdSeconds, setOnlineThresholdSeconds] = useState(30);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const { agentRuntimesPermissions } = usePermissions();
+  const controlInstance = useControlAxonclawInstance(agentId);
 
   const instances = useMemo(
     () => agent?.instances?.edges?.map((e) => e.node) ?? [],
@@ -427,7 +432,7 @@ export function AgentDetailPage() {
                                     {inst.name}
                                   </div>
                                   <div className='text-muted-foreground truncate text-xs'>
-                                    {inst.platform || '-'} • {inst.description || '-'}
+                                    {inst.platform || '-'} • {inst.description || '-'} • {inst.status}
                                   </div>
                                 </div>
                               </div>
@@ -448,6 +453,55 @@ export function AgentDetailPage() {
                                     </p>
                                   </TooltipContent>
                                 </Tooltip>
+                                {agentRuntimesPermissions.canWrite && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant='ghost'
+                                        size='icon'
+                                        className='h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100'
+                                        disabled={controlInstance.isPending}
+                                      >
+                                        <MoreHorizontal className='h-4 w-4' />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align='end'>
+                                      <DropdownMenuItem
+                                        disabled={controlInstance.isPending || inst.status === 'running'}
+                                        onClick={() => controlInstance.mutate({ instanceID: inst.id, action: 'start' })}
+                                      >
+                                        <Play className='mr-2 h-4 w-4' />
+                                        {t('agents.instanceActions.start')}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        disabled={controlInstance.isPending || inst.status === 'stopped'}
+                                        onClick={() => controlInstance.mutate({ instanceID: inst.id, action: 'stop' })}
+                                      >
+                                        <Square className='mr-2 h-4 w-4' />
+                                        {t('agents.instanceActions.stop')}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        disabled={controlInstance.isPending}
+                                        onClick={() =>
+                                          controlInstance.mutate({ instanceID: inst.id, action: 'restart' })
+                                        }
+                                      >
+                                        <RefreshCw className='mr-2 h-4 w-4' />
+                                        {t('agents.instanceActions.restart')}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        disabled={controlInstance.isPending}
+                                        onClick={() =>
+                                          controlInstance.mutate({ instanceID: inst.id, action: 'redeploy' })
+                                        }
+                                      >
+                                        <Rocket className='mr-2 h-4 w-4' />
+                                        {t('agents.instanceActions.redeploy')}
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
                                 <Button
                                   variant='ghost'
                                   size='icon'

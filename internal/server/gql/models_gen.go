@@ -48,28 +48,30 @@ type AddUserToProjectInput struct {
 //
 // Backed by agent_messages(kind=approval_request, direction=to_user, status=pending).
 type AgentApprovalRequestMessage struct {
-	ID            objects.GUID           `json:"id"`
-	AgentID       objects.GUID           `json:"agentID"`
-	CorrelationID string                 `json:"correlationID"`
-	Content       objects.JSONRawMessage `json:"content"`
-	Sequence      int                    `json:"sequence"`
-	CreatedAt     time.Time              `json:"createdAt"`
+	ID              objects.GUID           `json:"id"`
+	AgentID         objects.GUID           `json:"agentID"`
+	AgentInstanceID objects.GUID           `json:"agentInstanceID"`
+	CorrelationID   string                 `json:"correlationID"`
+	Content         objects.JSONRawMessage `json:"content"`
+	Sequence        int                    `json:"sequence"`
+	CreatedAt       time.Time              `json:"createdAt"`
 }
 
 // Minimal message view for Agent thread chat in Web UI.
 type AgentChatMessage struct {
-	ID            objects.GUID            `json:"id"`
-	AgentID       objects.GUID            `json:"agentID"`
-	Direction     agentmessage.Direction  `json:"direction"`
-	SenderType    agentmessage.SenderType `json:"senderType"`
-	SenderID      *int                    `json:"senderID,omitempty"`
-	Kind          agentmessage.Kind       `json:"kind"`
-	CorrelationID string                  `json:"correlationID"`
-	Content       objects.JSONRawMessage  `json:"content"`
-	Text          string                  `json:"text"`
-	Sequence      int                     `json:"sequence"`
-	Status        agentmessage.Status     `json:"status"`
-	CreatedAt     time.Time               `json:"createdAt"`
+	ID              objects.GUID            `json:"id"`
+	AgentID         objects.GUID            `json:"agentID"`
+	AgentInstanceID objects.GUID            `json:"agentInstanceID"`
+	Direction       agentmessage.Direction  `json:"direction"`
+	SenderType      agentmessage.SenderType `json:"senderType"`
+	SenderID        *int                    `json:"senderID,omitempty"`
+	Kind            agentmessage.Kind       `json:"kind"`
+	CorrelationID   string                  `json:"correlationID"`
+	Content         objects.JSONRawMessage  `json:"content"`
+	Text            string                  `json:"text"`
+	Sequence        int                     `json:"sequence"`
+	Status          agentmessage.Status     `json:"status"`
+	CreatedAt       time.Time               `json:"createdAt"`
 }
 
 type ApplyChannelOverrideTemplateInput struct {
@@ -283,11 +285,12 @@ type RequestStatsByModel struct {
 }
 
 type ResolveApprovalInput struct {
-	AgentID   objects.GUID   `json:"agentID"`
-	RequestID string         `json:"requestID"`
-	Granted   bool           `json:"granted"`
-	Scope     *ApprovalScope `json:"scope,omitempty"`
-	Reason    *string        `json:"reason,omitempty"`
+	AgentID         objects.GUID   `json:"agentID"`
+	AgentInstanceID *objects.GUID  `json:"agentInstanceID,omitempty"`
+	RequestID       string         `json:"requestID"`
+	Granted         bool           `json:"granted"`
+	Scope           *ApprovalScope `json:"scope,omitempty"`
+	Reason          *string        `json:"reason,omitempty"`
 }
 
 type RestorePayload struct {

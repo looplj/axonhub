@@ -604,3 +604,6 @@ models:
   DeployAxonclawResult:
     model:
       - github.com/looplj/axonhub/internal/server/biz.DeployAxonclawResult
+  ControlAxonclawInstanceResult:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ControlAxonclawInstanceResult

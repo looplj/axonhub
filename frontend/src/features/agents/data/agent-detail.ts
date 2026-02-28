@@ -39,7 +39,12 @@ const AGENT_DETAIL_QUERY = `
               name
               platform
               description
+              status
               lastHeartbeatAt
+              deployment {
+                directory
+                dockerContainerName
+              }
               createdAt
               updatedAt
             }
@@ -63,7 +68,9 @@ type AgentInstanceNode = {
   name: string;
   platform: string;
   description: string;
+  status: 'pending' | 'running' | 'stopped' | 'error';
   lastHeartbeatAt: string | Date;
+  deployment?: { directory?: string; dockerContainerName?: string } | null;
   createdAt: string | Date;
   updatedAt: string | Date;
 };
