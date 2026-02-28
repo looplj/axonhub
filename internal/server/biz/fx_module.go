@@ -9,7 +9,6 @@ import (
 var Module = fx.Module("biz",
 	fx.Provide(NewSystemService),
 	fx.Provide(NewAuthService),
-	fx.Provide(NewCopilotTokenExchanger),
 	fx.Provide(NewChannelService),
 	fx.Provide(NewRequestService),
 	fx.Provide(NewUsageLogService),
