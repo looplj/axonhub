@@ -1223,7 +1223,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 			},
 		},
 		{
-			name: "tool call with non-gemini reasoning signature uses default signature",
+			name: "tool call with non-gemini reasoning signature keeps thought signature empty",
 			input: &llm.Choice{
 				Index: 0,
 				Message: &llm.Message{
@@ -1245,11 +1245,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 1)
-				require.Equal(
-					t,
-					shared.GeminiThoughtSignaturePrefix+"context_engineering_is_the_way_to_go",
-					result.Content.Parts[0].ThoughtSignature,
-				)
+				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 		{
@@ -1275,15 +1271,11 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 1)
 				require.NotNil(t, result.Content.Parts[0].FunctionCall)
-				require.Equal(
-					t,
-					shared.GeminiThoughtSignaturePrefix+"context_engineering_is_the_way_to_go",
-					result.Content.Parts[0].ThoughtSignature,
-				)
+				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 		{
-			name: "parallel tool calls without signature - only first gets default",
+			name: "parallel tool calls without signature keep thought signatures empty",
 			input: &llm.Choice{
 				Index: 0,
 				Message: &llm.Message{
@@ -1312,11 +1304,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 2)
-				require.Equal(
-					t,
-					shared.GeminiThoughtSignaturePrefix+"context_engineering_is_the_way_to_go",
-					result.Content.Parts[0].ThoughtSignature,
-				)
+				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
 				require.Empty(t, result.Content.Parts[1].ThoughtSignature)
 			},
 		},

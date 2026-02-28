@@ -561,10 +561,6 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 			msgThoughtSignature = msg.ReasoningSignature
 		}
 
-		if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil && !hasToolCallThoughtSignature {
-			msgThoughtSignature = shared.NormalizeGeminiThoughtSignature("context_engineering_is_the_way_to_go")
-		}
-
 		if msgThoughtSignature != nil && lastPart != nil {
 			if firstFunctionCallPart != nil && !hasToolCallThoughtSignature {
 				firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
