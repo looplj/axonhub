@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func (t *OutboundTransformer) TransformStream(
@@ -231,7 +232,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			case "thinking_delta":
 				choice.Delta.ReasoningContent = streamEvent.Delta.Thinking
 			case "signature_delta":
-				choice.Delta.ReasoningSignature = streamEvent.Delta.Signature
+				choice.Delta.ReasoningSignature = shared.EncodeAnthropicSignature(streamEvent.Delta.Signature)
 			}
 
 			resp.Choices = []llm.Choice{choice}

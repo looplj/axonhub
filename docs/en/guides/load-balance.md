@@ -41,10 +41,10 @@ weight: 50   # Medium priority
 base_url: "https://api.openai.com/v1"
 
 # Channel C - Third-party channel
-name: "azure-openai"
-type: "azure"
+name: "openai-third-party"
+type: "openai"
 weight: 30   # Low priority
-base_url: "https://your-resource.openai.azure.com"
+base_url: "https://api.example.com/v1"
 ```
 
 ### 2. Enable Load Balancing

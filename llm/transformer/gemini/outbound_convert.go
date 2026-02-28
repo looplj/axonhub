@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -324,11 +325,17 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		lastPart              *Part
 	)
 
-	// Add reasoning content (thinking) first if present
+	// Add reasoning content (thinking) first if present.
+	// If the reasoning signature is from another provider (OpenAI/Anthropic),
+	// drop thinking content to avoid invalid signature/thinking pairing.
+	reasoningContent := msg.ReasoningContent
+	// if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" && !shared.IsGeminiThoughtSignature(msg.ReasoningSignature) {
+	// 	reasoningContent = nil
+	// }
 
-	if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+	if reasoningContent != nil && *reasoningContent != "" {
 		p := &Part{
-			Text:    *msg.ReasoningContent,
+			Text:    *reasoningContent,
 			Thought: true,
 		}
 		parts = append(parts, p)
@@ -398,7 +405,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 				Args: args,
 			},
 		}
-		if signature := getGeminiToolCallThoughtSignature(toolCall); signature != nil {
+		if signature := getOutbountGeminiToolCallThoughtSignature(toolCall); signature != nil {
 			part.ThoughtSignature = *signature
 			hasToolCallThoughtSignature = true
 		}
@@ -411,21 +418,23 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		}
 	}
 
-	// https://ai.google.dev/gemini-api/docs/gemini-3#migrating_from_other_models
-	// If there are tool calls but no thought signature, use a default one.
-	// This field is not compatible with OpenAI sdk, so we use the default value.
-	// We try the best to support this fields to keep this fields in the chat conversions, so we use the ReasoningSignature to hold the field,
-	// And this field will be preserved during claude code trace, will not degrade the gemini model performance.
-	msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.ReasoningSignature)
-	if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil && !hasToolCallThoughtSignature {
-		msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
-	}
+	if !hasToolCallThoughtSignature {
+		// https://ai.google.dev/gemini-api/docs/gemini-3#migrating_from_other_models
+		// If there are tool calls but no thought signature, use a default one.
+		// This field is not compatible with OpenAI sdk, so we use the default value.
+		// We try the best to support this fields to keep this fields in the chat conversions, so we use the ReasoningSignature to hold the field,
+		// And this field will be preserved during claude code trace, will not degrade the gemini model performance.
+		msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.ReasoningSignature)
 
-	if msgThoughtSignature != nil && lastPart != nil {
-		if firstFunctionCallPart != nil && !hasToolCallThoughtSignature {
-			firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
-		} else {
-			lastPart.ThoughtSignature = *msgThoughtSignature
+		if (len(msg.ToolCalls) > 0 || msg.ReasoningContent != nil) && msgThoughtSignature == nil {
+			msgThoughtSignature = lo.ToPtr(ContextEngineeringThoughtSignature)
+		}
+		if msgThoughtSignature != nil && (firstFunctionCallPart != nil || lastPart != nil) {
+			if firstFunctionCallPart != nil {
+				firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
+			} else {
+				lastPart.ThoughtSignature = *msgThoughtSignature
+			}
 		}
 	}
 
@@ -583,8 +592,8 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 		)
 
 		for _, part := range candidate.Content.Parts {
-			if msg.ReasoningSignature == nil {
-				msg.ReasoningSignature = shared.NormalizeGeminiThoughtSignature(part.ThoughtSignature)
+			if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
+				msg.ReasoningSignature = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
 			}
 
 			switch {
@@ -631,11 +640,10 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 				}
 				// Gemini may response empty tool call ID.
 				if tc.ID == "" {
-					tc.ID = uuid.NewString()
+					tc.ID = fmt.Sprintf("tc_%s", uuid.NewString())
 				}
 
-				setGeminiToolCallThoughtSignature(&tc, part.ThoughtSignature)
-
+				setOutboundToolCallThoughtSignature(&tc, part.ThoughtSignature)
 				toolCalls = append(toolCalls, tc)
 				nextToolCallIndex++
 			}

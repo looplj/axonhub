@@ -192,18 +192,18 @@ func convertAssistantMessage(msg llm.Message) []Item {
 	// Handle reasoning content first.
 	// For Requests, reasoning is represented as an `input` item with type="reasoning".
 	// The Responses API uses the `summary` field to hold the reasoning summary text.
-	if (msg.ReasoningContent != nil && *msg.ReasoningContent != "") || msg.ReasoningSignature != nil {
+	var encryptedContent *string
+	if msg.ReasoningSignature != nil {
+		encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
+	}
+
+	if encryptedContent != nil {
 		summary := []ReasoningSummary{}
 		if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
 			summary = append(summary, ReasoningSummary{
 				Type: "summary_text",
 				Text: *msg.ReasoningContent,
 			})
-		}
-
-		var encryptedContent *string
-		if msg.ReasoningSignature != nil {
-			encryptedContent = shared.DecodeOpenAIEncryptedContent(msg.ReasoningSignature)
 		}
 
 		items = append(items, Item{
@@ -289,7 +289,6 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 	return Item{
 		Type:   itemType,
 		CallID: lo.FromPtr(msg.ToolCallID),
-		Name:   lo.FromPtr(msg.ToolCallName),
 		Output: &output,
 	}
 }

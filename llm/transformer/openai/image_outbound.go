@@ -147,20 +147,9 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 	url := t.config.BaseURL + "/images/generations"
 
 	// Build auth config
-	var auth *httpclient.AuthConfig
-
-	switch t.config.PlatformType {
-	case PlatformAzure:
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    apiKey,
-			HeaderKey: "Api-Key",
-		}
-	case PlatformOpenAI:
-		auth = &httpclient.AuthConfig{
-			Type:   "bearer",
-			APIKey: apiKey,
-		}
+	auth := &httpclient.AuthConfig{
+		Type:   "bearer",
+		APIKey: apiKey,
 	}
 
 	return &httpclient.Request{
@@ -374,20 +363,9 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 	url := t.config.BaseURL + "/images/edits"
 
 	// Build auth config
-	var auth *httpclient.AuthConfig
-
-	switch t.config.PlatformType {
-	case PlatformAzure:
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    apiKey,
-			HeaderKey: "Api-Key",
-		}
-	case PlatformOpenAI:
-		auth = &httpclient.AuthConfig{
-			Type:   "bearer",
-			APIKey: apiKey,
-		}
+	auth := &httpclient.AuthConfig{
+		Type:   "bearer",
+		APIKey: apiKey,
 	}
 
 	// Marshal JSONBody
@@ -505,20 +483,9 @@ func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, a
 
 	url := t.config.BaseURL + "/images/variations"
 
-	var auth *httpclient.AuthConfig
-
-	switch t.config.PlatformType {
-	case PlatformAzure:
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    apiKey,
-			HeaderKey: "Api-Key",
-		}
-	case PlatformOpenAI:
-		auth = &httpclient.AuthConfig{
-			Type:   "bearer",
-			APIKey: apiKey,
-		}
+	auth := &httpclient.AuthConfig{
+		Type:   "bearer",
+		APIKey: apiKey,
 	}
 
 	jsonBodyBytes, err := json.Marshal(jsonBody)

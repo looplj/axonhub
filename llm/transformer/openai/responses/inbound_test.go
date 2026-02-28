@@ -960,7 +960,7 @@ func TestConvertReasoningWithFollowing(t *testing.T) {
 					Summary: []ReasoningSummary{
 						{Type: "summary_text", Text: "Reasoning summary"},
 					},
-					EncryptedContent: lo.ToPtr("encrypted_data_here"),
+					EncryptedContent: lo.ToPtr(shared.OpenAIEncryptedContentPrefix + "encrypted_data_here"),
 				},
 			},
 			startIdx: 0,
@@ -972,7 +972,7 @@ func TestConvertReasoningWithFollowing(t *testing.T) {
 				require.NotNil(t, result.ReasoningContent)
 				require.Equal(t, "Reasoning summary", *result.ReasoningContent)
 				require.NotNil(t, result.ReasoningSignature)
-				require.Equal(t, "encrypted_data_here", *result.ReasoningSignature)
+				require.Equal(t, shared.OpenAIEncryptedContentPrefix+"encrypted_data_here", *result.ReasoningSignature)
 			},
 		},
 		{
@@ -1266,12 +1266,12 @@ func TestInboundTransformer_TransformResponse_WithReasoning(t *testing.T) {
 				require.Equal(t, "reasoning", reasoningOutput.Type)
 				require.Len(t, reasoningOutput.Summary, 1)
 				require.Equal(t, "summary_text", reasoningOutput.Summary[0].Type)
-				require.Equal(t, "I analyzed the problem step by step.", reasoningOutput.Summary[0].Text)
-				require.NotNil(t, reasoningOutput.EncryptedContent)
-				require.Equal(t, "encrypted_data_here", *reasoningOutput.EncryptedContent)
+					require.Equal(t, "I analyzed the problem step by step.", reasoningOutput.Summary[0].Text)
+					require.NotNil(t, reasoningOutput.EncryptedContent)
+					require.Equal(t, shared.OpenAIEncryptedContentPrefix+"encrypted_data_here", *reasoningOutput.EncryptedContent)
 
-				// Second output should be message
-				messageOutput := resp.Output[1]
+					// Second output should be message
+					messageOutput := resp.Output[1]
 				require.Equal(t, "message", messageOutput.Type)
 				require.Equal(t, "assistant", messageOutput.Role)
 

@@ -7,7 +7,6 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func extractTextFromContent(content *Content) string {
@@ -304,56 +303,6 @@ var defaultGeminiReasoningEffortMapping = map[string]int64{
 	"low":    1024,
 	"medium": 8192,
 	"high":   32768,
-}
-
-const transformerMetadataKeyGoogleThoughtSignature = shared.TransformerMetadataKeyGoogleThoughtSignature
-
-func getGeminiToolCallThoughtSignature(toolCall llm.ToolCall) *string {
-	if toolCall.TransformerMetadata == nil {
-		return nil
-	}
-
-	raw, ok := toolCall.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature].(string)
-	if !ok || raw == "" {
-		return nil
-	}
-
-	normalized := shared.StripGeminiThoughtSignaturePrefix(raw)
-	if normalized == "" {
-		return nil
-	}
-
-	return lo.ToPtr(normalized)
-}
-
-func getGeminiToolCallThoughtSignatureWithPrefix(toolCall llm.ToolCall) *string {
-	if toolCall.TransformerMetadata == nil {
-		return nil
-	}
-
-	raw, ok := toolCall.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature].(string)
-	if !ok || raw == "" {
-		return nil
-	}
-
-	return shared.NormalizeGeminiThoughtSignature(raw)
-}
-
-func setGeminiToolCallThoughtSignature(toolCall *llm.ToolCall, signature string) {
-	if toolCall == nil || signature == "" {
-		return
-	}
-
-	if toolCall.TransformerMetadata == nil {
-		toolCall.TransformerMetadata = map[string]any{}
-	}
-
-	normalized := shared.NormalizeGeminiThoughtSignature(signature)
-	if normalized == nil {
-		return
-	}
-
-	toolCall.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature] = *normalized
 }
 
 func reasoningEffortToThinkingBudget(effort string) int64 {

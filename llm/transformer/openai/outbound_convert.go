@@ -4,6 +4,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // RequestFromLLM creates OpenAI Request from unified llm.Request.
@@ -94,12 +95,19 @@ func RequestFromLLM(r *llm.Request) *Request {
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.
 func MessageFromLLM(m llm.Message) Message {
+	// OpenAI Chat Completions has no notion of provider-specific reasoning signatures.
+	// If we detect a foreign signature (Gemini/Anthropic), drop reasoning_content to avoid upstream validation errors.
+	reasoningContent := m.ReasoningContent
+	if m.ReasoningSignature != nil && *m.ReasoningSignature != "" && !shared.IsOpenAIEncryptedContent(m.ReasoningSignature) {
+		reasoningContent = nil
+	}
+
 	msg := Message{
 		Role:             m.Role,
 		Name:             m.Name,
 		Refusal:          m.Refusal,
 		ToolCallID:       m.ToolCallID,
-		ReasoningContent: m.ReasoningContent,
+		ReasoningContent: reasoningContent,
 	}
 
 	// Convert Content

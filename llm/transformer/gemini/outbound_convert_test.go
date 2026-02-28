@@ -1689,17 +1689,17 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
 				require.Equal(
 					t,
-					shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
+					shared.GeminiThoughtSignaturePrefix+shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
 					*result.Choices[0].Message.ReasoningSignature,
 				)
 				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature)
 				require.NotNil(t, decoded)
-				require.Equal(t, "signature_prefixed", *decoded)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_prefixed", *decoded)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
 				require.NotNil(t, result.Choices[0].Message.ToolCalls[0].TransformerMetadata)
 				require.Equal(
 					t,
-					shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
+					shared.GeminiThoughtSignaturePrefix+shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
 					result.Choices[0].Message.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
 				)
 			},
@@ -1836,7 +1836,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 							Arguments: `{"time":"10 AM"}`,
 						},
 						TransformerMetadata: map[string]any{
-							transformerMetadataKeyGoogleThoughtSignature: "signature_tool_2",
+							transformerMetadataKeyGoogleThoughtSignature: shared.GeminiThoughtSignaturePrefix + "signature_tool_2",
 						},
 					},
 				},
@@ -1870,7 +1870,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Parts, 1)
 				require.NotNil(t, result.Parts[0].FunctionCall)
-				require.Equal(t, "context_engineering_is_the_way_to_go", result.Parts[0].ThoughtSignature)
+				require.Equal(t, ContextEngineeringThoughtSignature, result.Parts[0].ThoughtSignature)
 			},
 		},
 		{
@@ -1900,7 +1900,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.Len(t, result.Parts, 2)
-				require.Equal(t, "context_engineering_is_the_way_to_go", result.Parts[0].ThoughtSignature)
+				require.Equal(t, ContextEngineeringThoughtSignature, result.Parts[0].ThoughtSignature)
 				require.Empty(t, result.Parts[1].ThoughtSignature)
 			},
 		},

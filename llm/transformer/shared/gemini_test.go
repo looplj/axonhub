@@ -20,27 +20,22 @@ func TestIsGeminiThoughtSignature(t *testing.T) {
 		},
 		{
 			name:      "empty string",
-			signature: stringPtr(""),
+			signature: new(""),
 			expected:  false,
 		},
 		{
 			name:      "valid signature",
-			signature: stringPtr(GeminiThoughtSignaturePrefix + "some-signature"),
-			expected:  true,
-		},
-		{
-			name:      "valid legacy signature",
-			signature: stringPtr(legacyGeminiThoughtSignaturePrefix + "some-signature"),
+			signature: new(GeminiThoughtSignaturePrefix + "some-signature"),
 			expected:  true,
 		},
 		{
 			name:      "invalid prefix",
-			signature: stringPtr("some-signature"),
+			signature: new("some-signature"),
 			expected:  false,
 		},
 		{
 			name:      "only prefix",
-			signature: stringPtr(GeminiThoughtSignaturePrefix),
+			signature: new(GeminiThoughtSignaturePrefix),
 			expected:  true,
 		},
 	}
@@ -66,28 +61,23 @@ func TestDecodeGeminiThoughtSignature(t *testing.T) {
 		},
 		{
 			name:      "empty string",
-			signature: stringPtr(""),
+			signature: new(""),
 			expected:  nil,
 		},
 		{
 			name:      "valid signature",
-			signature: stringPtr(GeminiThoughtSignaturePrefix + "some-signature"),
-			expected:  stringPtr("some-signature"),
-		},
-		{
-			name:      "valid legacy signature",
-			signature: stringPtr(legacyGeminiThoughtSignaturePrefix + "some-signature"),
-			expected:  stringPtr("some-signature"),
+			signature: new(GeminiThoughtSignaturePrefix + "some-signature"),
+			expected:  new("some-signature"),
 		},
 		{
 			name:      "invalid prefix",
-			signature: stringPtr("some-signature"),
+			signature: new("some-signature"),
 			expected:  nil,
 		},
 		{
 			name:      "only prefix returns empty string",
-			signature: stringPtr(GeminiThoughtSignaturePrefix),
-			expected:  stringPtr(""),
+			signature: new(GeminiThoughtSignaturePrefix),
+			expected:  new(""),
 		},
 	}
 
@@ -117,60 +107,19 @@ func TestEncodeGeminiThoughtSignature(t *testing.T) {
 		},
 		{
 			name:      "only prefix",
-			signature: stringPtr(""),
-			expected:  stringPtr(GeminiThoughtSignaturePrefix),
+			signature: new(""),
+			expected:  new(GeminiThoughtSignaturePrefix),
 		},
 		{
 			name:      "valid signature",
-			signature: stringPtr("some-signature"),
-			expected:  stringPtr(GeminiThoughtSignaturePrefix + "some-signature"),
+			signature: new("some-signature"),
+			expected:  new(GeminiThoughtSignaturePrefix + "some-signature"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := EncodeGeminiThoughtSignature(tt.signature)
-			if tt.expected == nil {
-				require.Nil(t, result)
-			} else {
-				require.NotNil(t, result)
-				require.Equal(t, *tt.expected, *result)
-			}
-		})
-	}
-}
-
-func TestNormalizeGeminiThoughtSignature(t *testing.T) {
-	tests := []struct {
-		name      string
-		signature string
-		expected  *string
-	}{
-		{
-			name:      "empty signature",
-			signature: "",
-			expected:  nil,
-		},
-		{
-			name:      "already prefixed signature",
-			signature: GeminiThoughtSignaturePrefix + "normalized",
-			expected:  stringPtr(GeminiThoughtSignaturePrefix + "normalized"),
-		},
-		{
-			name:      "already legacy prefixed signature should normalize to new prefix",
-			signature: legacyGeminiThoughtSignaturePrefix + "normalized",
-			expected:  stringPtr(GeminiThoughtSignaturePrefix + "normalized"),
-		},
-		{
-			name:      "plain signature",
-			signature: "normalized",
-			expected:  stringPtr(GeminiThoughtSignaturePrefix + "normalized"),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := NormalizeGeminiThoughtSignature(tt.signature)
 			if tt.expected == nil {
 				require.Nil(t, result)
 			} else {
@@ -190,11 +139,6 @@ func TestStripGeminiThoughtSignaturePrefix(t *testing.T) {
 		{
 			name:      "prefixed signature",
 			signature: GeminiThoughtSignaturePrefix + "stripped",
-			expected:  "stripped",
-		},
-		{
-			name:      "legacy prefixed signature",
-			signature: legacyGeminiThoughtSignaturePrefix + "stripped",
 			expected:  "stripped",
 		},
 		{
@@ -218,7 +162,7 @@ func TestStripGeminiThoughtSignaturePrefix(t *testing.T) {
 }
 
 func TestGeminiEncodeDecodeRoundTrip(t *testing.T) {
-	original := stringPtr("some-random-signature-data")
+	original := new("some-random-signature-data")
 
 	// Encode
 	encoded := EncodeGeminiThoughtSignature(original)
@@ -232,14 +176,10 @@ func TestGeminiEncodeDecodeRoundTrip(t *testing.T) {
 }
 
 func TestGeminiThoughtSignatureWholeValueCanDecodeAsBase64(t *testing.T) {
-	signature := stringPtr("YWJjZA==")
+	signature := new("YWJjZA==")
 
 	encoded := EncodeGeminiThoughtSignature(signature)
 	require.NotNil(t, encoded)
 	_, err := base64.StdEncoding.DecodeString(*encoded)
 	require.NoError(t, err)
-
-	legacy := legacyGeminiThoughtSignaturePrefix + *signature
-	_, err = base64.StdEncoding.DecodeString(legacy)
-	require.Error(t, err)
 }
