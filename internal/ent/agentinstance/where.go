@@ -85,14 +85,14 @@ func AgentRuntimeID(v int) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldEQ(FieldAgentRuntimeID, v))
 }
 
-// InstanceID applies equality check predicate on the "instance_id" field. It's identical to InstanceIDEQ.
-func InstanceID(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldEQ(FieldInstanceID, v))
-}
-
 // Name applies equality check predicate on the "name" field. It's identical to NameEQ.
 func Name(v string) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldEQ(FieldName, v))
+}
+
+// Description applies equality check predicate on the "description" field. It's identical to DescriptionEQ.
+func Description(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldDescription, v))
 }
 
 // Platform applies equality check predicate on the "platform" field. It's identical to PlatformEQ.
@@ -100,9 +100,9 @@ func Platform(v string) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldEQ(FieldPlatform, v))
 }
 
-// Version applies equality check predicate on the "version" field. It's identical to VersionEQ.
-func Version(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldEQ(FieldVersion, v))
+// APIKeyID applies equality check predicate on the "api_key_id" field. It's identical to APIKeyIDEQ.
+func APIKeyID(v int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
 // LastHeartbeatAt applies equality check predicate on the "last_heartbeat_at" field. It's identical to LastHeartbeatAtEQ.
@@ -320,71 +320,6 @@ func AgentRuntimeIDNotNil() predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldNotNull(FieldAgentRuntimeID))
 }
 
-// InstanceIDEQ applies the EQ predicate on the "instance_id" field.
-func InstanceIDEQ(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldEQ(FieldInstanceID, v))
-}
-
-// InstanceIDNEQ applies the NEQ predicate on the "instance_id" field.
-func InstanceIDNEQ(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldNEQ(FieldInstanceID, v))
-}
-
-// InstanceIDIn applies the In predicate on the "instance_id" field.
-func InstanceIDIn(vs ...string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldIn(FieldInstanceID, vs...))
-}
-
-// InstanceIDNotIn applies the NotIn predicate on the "instance_id" field.
-func InstanceIDNotIn(vs ...string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldNotIn(FieldInstanceID, vs...))
-}
-
-// InstanceIDGT applies the GT predicate on the "instance_id" field.
-func InstanceIDGT(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldGT(FieldInstanceID, v))
-}
-
-// InstanceIDGTE applies the GTE predicate on the "instance_id" field.
-func InstanceIDGTE(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldGTE(FieldInstanceID, v))
-}
-
-// InstanceIDLT applies the LT predicate on the "instance_id" field.
-func InstanceIDLT(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldLT(FieldInstanceID, v))
-}
-
-// InstanceIDLTE applies the LTE predicate on the "instance_id" field.
-func InstanceIDLTE(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldLTE(FieldInstanceID, v))
-}
-
-// InstanceIDContains applies the Contains predicate on the "instance_id" field.
-func InstanceIDContains(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldContains(FieldInstanceID, v))
-}
-
-// InstanceIDHasPrefix applies the HasPrefix predicate on the "instance_id" field.
-func InstanceIDHasPrefix(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldHasPrefix(FieldInstanceID, v))
-}
-
-// InstanceIDHasSuffix applies the HasSuffix predicate on the "instance_id" field.
-func InstanceIDHasSuffix(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldHasSuffix(FieldInstanceID, v))
-}
-
-// InstanceIDEqualFold applies the EqualFold predicate on the "instance_id" field.
-func InstanceIDEqualFold(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldEqualFold(FieldInstanceID, v))
-}
-
-// InstanceIDContainsFold applies the ContainsFold predicate on the "instance_id" field.
-func InstanceIDContainsFold(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldContainsFold(FieldInstanceID, v))
-}
-
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldEQ(FieldName, v))
@@ -448,6 +383,71 @@ func NameEqualFold(v string) predicate.AgentInstance {
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldContainsFold(FieldName, v))
+}
+
+// DescriptionEQ applies the EQ predicate on the "description" field.
+func DescriptionEQ(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldDescription, v))
+}
+
+// DescriptionNEQ applies the NEQ predicate on the "description" field.
+func DescriptionNEQ(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNEQ(FieldDescription, v))
+}
+
+// DescriptionIn applies the In predicate on the "description" field.
+func DescriptionIn(vs ...string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldIn(FieldDescription, vs...))
+}
+
+// DescriptionNotIn applies the NotIn predicate on the "description" field.
+func DescriptionNotIn(vs ...string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNotIn(FieldDescription, vs...))
+}
+
+// DescriptionGT applies the GT predicate on the "description" field.
+func DescriptionGT(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldGT(FieldDescription, v))
+}
+
+// DescriptionGTE applies the GTE predicate on the "description" field.
+func DescriptionGTE(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldGTE(FieldDescription, v))
+}
+
+// DescriptionLT applies the LT predicate on the "description" field.
+func DescriptionLT(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldLT(FieldDescription, v))
+}
+
+// DescriptionLTE applies the LTE predicate on the "description" field.
+func DescriptionLTE(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldLTE(FieldDescription, v))
+}
+
+// DescriptionContains applies the Contains predicate on the "description" field.
+func DescriptionContains(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldContains(FieldDescription, v))
+}
+
+// DescriptionHasPrefix applies the HasPrefix predicate on the "description" field.
+func DescriptionHasPrefix(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldHasPrefix(FieldDescription, v))
+}
+
+// DescriptionHasSuffix applies the HasSuffix predicate on the "description" field.
+func DescriptionHasSuffix(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldHasSuffix(FieldDescription, v))
+}
+
+// DescriptionEqualFold applies the EqualFold predicate on the "description" field.
+func DescriptionEqualFold(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEqualFold(FieldDescription, v))
+}
+
+// DescriptionContainsFold applies the ContainsFold predicate on the "description" field.
+func DescriptionContainsFold(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldContainsFold(FieldDescription, v))
 }
 
 // PlatformEQ applies the EQ predicate on the "platform" field.
@@ -515,69 +515,24 @@ func PlatformContainsFold(v string) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldContainsFold(FieldPlatform, v))
 }
 
-// VersionEQ applies the EQ predicate on the "version" field.
-func VersionEQ(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldEQ(FieldVersion, v))
+// APIKeyIDEQ applies the EQ predicate on the "api_key_id" field.
+func APIKeyIDEQ(v int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
-// VersionNEQ applies the NEQ predicate on the "version" field.
-func VersionNEQ(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldNEQ(FieldVersion, v))
+// APIKeyIDNEQ applies the NEQ predicate on the "api_key_id" field.
+func APIKeyIDNEQ(v int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNEQ(FieldAPIKeyID, v))
 }
 
-// VersionIn applies the In predicate on the "version" field.
-func VersionIn(vs ...string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldIn(FieldVersion, vs...))
+// APIKeyIDIn applies the In predicate on the "api_key_id" field.
+func APIKeyIDIn(vs ...int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldIn(FieldAPIKeyID, vs...))
 }
 
-// VersionNotIn applies the NotIn predicate on the "version" field.
-func VersionNotIn(vs ...string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldNotIn(FieldVersion, vs...))
-}
-
-// VersionGT applies the GT predicate on the "version" field.
-func VersionGT(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldGT(FieldVersion, v))
-}
-
-// VersionGTE applies the GTE predicate on the "version" field.
-func VersionGTE(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldGTE(FieldVersion, v))
-}
-
-// VersionLT applies the LT predicate on the "version" field.
-func VersionLT(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldLT(FieldVersion, v))
-}
-
-// VersionLTE applies the LTE predicate on the "version" field.
-func VersionLTE(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldLTE(FieldVersion, v))
-}
-
-// VersionContains applies the Contains predicate on the "version" field.
-func VersionContains(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldContains(FieldVersion, v))
-}
-
-// VersionHasPrefix applies the HasPrefix predicate on the "version" field.
-func VersionHasPrefix(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldHasPrefix(FieldVersion, v))
-}
-
-// VersionHasSuffix applies the HasSuffix predicate on the "version" field.
-func VersionHasSuffix(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldHasSuffix(FieldVersion, v))
-}
-
-// VersionEqualFold applies the EqualFold predicate on the "version" field.
-func VersionEqualFold(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldEqualFold(FieldVersion, v))
-}
-
-// VersionContainsFold applies the ContainsFold predicate on the "version" field.
-func VersionContainsFold(v string) predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldContainsFold(FieldVersion, v))
+// APIKeyIDNotIn applies the NotIn predicate on the "api_key_id" field.
+func APIKeyIDNotIn(vs ...int) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNotIn(FieldAPIKeyID, vs...))
 }
 
 // LastHeartbeatAtEQ applies the EQ predicate on the "last_heartbeat_at" field.
@@ -688,6 +643,29 @@ func HasRuntime() predicate.AgentInstance {
 func HasRuntimeWith(preds ...predicate.AgentRuntime) predicate.AgentInstance {
 	return predicate.AgentInstance(func(s *sql.Selector) {
 		step := newRuntimeStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasAPIKey applies the HasEdge predicate on the "api_key" edge.
+func HasAPIKey() predicate.AgentInstance {
+	return predicate.AgentInstance(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, APIKeyTable, APIKeyColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAPIKeyWith applies the HasEdge predicate on the "api_key" edge with a given conditions (other predicates).
+func HasAPIKeyWith(preds ...predicate.APIKey) predicate.AgentInstance {
+	return predicate.AgentInstance(func(s *sql.Selector) {
+		step := newAPIKeyStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

@@ -11,6 +11,10 @@ const AGENT_DETAIL_QUERY = `
         updatedAt
         projectID
         createdByUserID
+        createdByUser {
+          firstName
+          lastName
+        }
         name
         description
         status
@@ -28,17 +32,13 @@ const AGENT_DETAIL_QUERY = `
           id
           content
         }
-        apiKey {
-          key
-        }
         instances(first: $instancesFirst) {
           edges {
             node {
               id
-              instanceID
               name
               platform
-              version
+              description
               lastHeartbeatAt
               createdAt
               updatedAt
@@ -60,10 +60,9 @@ const AGENT_DETAIL_QUERY = `
 
 type AgentInstanceNode = {
   id: string;
-  instanceID: string;
   name: string;
   platform: string;
-  version: string;
+  description: string;
   lastHeartbeatAt: string | Date;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -75,6 +74,10 @@ type AgentDetail = {
   updatedAt: string | Date;
   projectID: string;
   createdByUserID: string;
+  createdByUser?: {
+    firstName: string;
+    lastName: string;
+  } | null;
   name: string;
   description: string;
   status: 'enabled' | 'disabled' | 'archived';
@@ -82,7 +85,6 @@ type AgentDetail = {
   agentBuiltinTools: any;
   skillsPolicy: any;
   prompt?: { id?: string; content?: string } | null;
-  apiKey?: { key?: string } | null;
   instances?: {
     edges?: { node: AgentInstanceNode }[];
     totalCount?: number;

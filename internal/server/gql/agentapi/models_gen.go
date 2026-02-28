@@ -13,7 +13,6 @@ import (
 )
 
 type AckAgentMessagesInput struct {
-	InstanceID string          `json:"instanceID"`
 	MessageIDs []*objects.GUID `json:"messageIDs"`
 }
 
@@ -39,7 +38,6 @@ type AgentBuiltinTool struct {
 type AgentInstance struct {
 	ID              objects.GUID `json:"id"`
 	AgentID         objects.GUID `json:"agentID"`
-	InstanceID      string       `json:"instanceID"`
 	LastHeartbeatAt time.Time    `json:"lastHeartbeatAt"`
 }
 
@@ -76,22 +74,21 @@ type AgentToolDefinition struct {
 }
 
 type HeartbeatAgentInstanceInput struct {
-	InstanceID string `json:"instanceID"`
+	Dummy *bool `json:"dummy,omitempty"`
 }
 
 type Mutation struct {
 }
 
 type PeerAgent struct {
-	AgentID     objects.GUID `json:"agentID"`
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
-	Status      string       `json:"status"`
-	InstanceID  string       `json:"instanceID"`
+	AgentID         objects.GUID `json:"agentID"`
+	AgentInstanceID objects.GUID `json:"agentInstanceID"`
+	Name            string       `json:"name"`
+	Description     string       `json:"description"`
+	Status          string       `json:"status"`
 }
 
 type PullAgentMessagesInput struct {
-	InstanceID    string             `json:"instanceID"`
 	AfterSequence *int               `json:"afterSequence,omitempty"`
 	Limit         *int               `json:"limit,omitempty"`
 	KindIn        []AgentMessageKind `json:"kindIn,omitempty"`
@@ -99,15 +96,13 @@ type PullAgentMessagesInput struct {
 }
 
 type RegisterAgentInstanceInput struct {
-	InstanceID string  `json:"instanceID"`
-	Name       *string `json:"name,omitempty"`
-	Platform   *string `json:"platform,omitempty"`
-	Version    *string `json:"version,omitempty"`
-	ThreadID   *string `json:"threadID,omitempty"`
+	Name        *string `json:"name,omitempty"`
+	Platform    *string `json:"platform,omitempty"`
+	Description *string `json:"description,omitempty"`
+	ThreadID    *string `json:"threadID,omitempty"`
 }
 
 type ReplyMessageInput struct {
-	InstanceID    string                 `json:"instanceID"`
 	Text          string                 `json:"text"`
 	Content       objects.JSONRawMessage `json:"content,omitempty"`
 	Kind          *AgentMessageKind      `json:"kind,omitempty"`
@@ -115,12 +110,10 @@ type ReplyMessageInput struct {
 }
 
 type SendAgentMessageInput struct {
-	TargetAgentID    objects.GUID           `json:"targetAgentID"`
-	TargetInstanceID string                 `json:"targetInstanceID,omitempty"`
-	Text             string                 `json:"text"`
-	Content          objects.JSONRawMessage `json:"content,omitempty"`
-	Kind             *AgentMessageKind      `json:"kind,omitempty"`
-	CorrelationID    *string                `json:"correlationID,omitempty"`
+	TargetAgentID         objects.GUID           `json:"targetAgentID"`
+	TargetAgentInstanceID *objects.GUID          `json:"targetAgentInstanceID,omitempty"`
+	Text                  string                 `json:"text"`
+	Content               objects.JSONRawMessage `json:"content,omitempty"`
 }
 
 type AgentMessageDirection string

@@ -185,16 +185,16 @@ func (_q *APIKeyQuery) collectField(ctx context.Context, oneNode bool, opCtx *gr
 				*wq = *query
 			})
 
-		case "agent":
+		case "agentInstance":
 			var (
 				alias = field.Alias
 				path  = append(path, alias)
-				query = (&AgentClient{config: _q.config}).Query()
+				query = (&AgentInstanceClient{config: _q.config}).Query()
 			)
-			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentImplementors)...); err != nil {
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentinstanceImplementors)...); err != nil {
 				return err
 			}
-			_q.withAgent = query
+			_q.withAgentInstance = query
 		case "createdAt":
 			if _, ok := fieldSeen[apikey.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, apikey.FieldCreatedAt)
@@ -345,7 +345,7 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 				fieldSeen[agent.FieldProjectID] = struct{}{}
 			}
 
-		case "ownerUser":
+		case "createdByUser":
 			var (
 				alias = field.Alias
 				path  = append(path, alias)
@@ -354,7 +354,7 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
 				return err
 			}
-			_q.withOwnerUser = query
+			_q.withCreatedByUser = query
 			if _, ok := fieldSeen[agent.FieldCreatedByUserID]; !ok {
 				selectedFields = append(selectedFields, agent.FieldCreatedByUserID)
 				fieldSeen[agent.FieldCreatedByUserID] = struct{}{}
@@ -373,21 +373,6 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 			if _, ok := fieldSeen[agent.FieldPromptID]; !ok {
 				selectedFields = append(selectedFields, agent.FieldPromptID)
 				fieldSeen[agent.FieldPromptID] = struct{}{}
-			}
-
-		case "apiKey":
-			var (
-				alias = field.Alias
-				path  = append(path, alias)
-				query = (&APIKeyClient{config: _q.config}).Query()
-			)
-			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, apikeyImplementors)...); err != nil {
-				return err
-			}
-			_q.withAPIKey = query
-			if _, ok := fieldSeen[agent.FieldAPIKeyID]; !ok {
-				selectedFields = append(selectedFields, agent.FieldAPIKeyID)
-				fieldSeen[agent.FieldAPIKeyID] = struct{}{}
 			}
 
 		case "toolBindings":
@@ -433,10 +418,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[4] == nil {
-								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[4][alias] = n
+							nodes[i].Edges.totalCount[3][alias] = n
 						}
 						return nil
 					})
@@ -444,10 +429,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.ToolBindings)
-							if nodes[i].Edges.totalCount[4] == nil {
-								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[4][alias] = n
+							nodes[i].Edges.totalCount[3][alias] = n
 						}
 						return nil
 					})
@@ -522,10 +507,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[5] == nil {
-								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[5][alias] = n
+							nodes[i].Edges.totalCount[4][alias] = n
 						}
 						return nil
 					})
@@ -533,10 +518,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.SkillBindings)
-							if nodes[i].Edges.totalCount[5] == nil {
-								nodes[i].Edges.totalCount[5] = make(map[string]int)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[5][alias] = n
+							nodes[i].Edges.totalCount[4][alias] = n
 						}
 						return nil
 					})
@@ -611,10 +596,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[6] == nil {
-								nodes[i].Edges.totalCount[6] = make(map[string]int)
+							if nodes[i].Edges.totalCount[5] == nil {
+								nodes[i].Edges.totalCount[5] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[6][alias] = n
+							nodes[i].Edges.totalCount[5][alias] = n
 						}
 						return nil
 					})
@@ -622,10 +607,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.Instances)
-							if nodes[i].Edges.totalCount[6] == nil {
-								nodes[i].Edges.totalCount[6] = make(map[string]int)
+							if nodes[i].Edges.totalCount[5] == nil {
+								nodes[i].Edges.totalCount[5] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[6][alias] = n
+							nodes[i].Edges.totalCount[5][alias] = n
 						}
 						return nil
 					})
@@ -700,10 +685,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[7] == nil {
-								nodes[i].Edges.totalCount[7] = make(map[string]int)
+							if nodes[i].Edges.totalCount[6] == nil {
+								nodes[i].Edges.totalCount[6] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[7][alias] = n
+							nodes[i].Edges.totalCount[6][alias] = n
 						}
 						return nil
 					})
@@ -711,10 +696,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.Threads)
-							if nodes[i].Edges.totalCount[7] == nil {
-								nodes[i].Edges.totalCount[7] = make(map[string]int)
+							if nodes[i].Edges.totalCount[6] == nil {
+								nodes[i].Edges.totalCount[6] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[7][alias] = n
+							nodes[i].Edges.totalCount[6][alias] = n
 						}
 						return nil
 					})
@@ -789,10 +774,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[8] == nil {
-								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							if nodes[i].Edges.totalCount[7] == nil {
+								nodes[i].Edges.totalCount[7] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[8][alias] = n
+							nodes[i].Edges.totalCount[7][alias] = n
 						}
 						return nil
 					})
@@ -800,10 +785,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.Messages)
-							if nodes[i].Edges.totalCount[8] == nil {
-								nodes[i].Edges.totalCount[8] = make(map[string]int)
+							if nodes[i].Edges.totalCount[7] == nil {
+								nodes[i].Edges.totalCount[7] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[8][alias] = n
+							nodes[i].Edges.totalCount[7][alias] = n
 						}
 						return nil
 					})
@@ -878,10 +863,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[9] == nil {
-								nodes[i].Edges.totalCount[9] = make(map[string]int)
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[9][alias] = n
+							nodes[i].Edges.totalCount[8][alias] = n
 						}
 						return nil
 					})
@@ -889,10 +874,10 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Agent) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.Memories)
-							if nodes[i].Edges.totalCount[9] == nil {
-								nodes[i].Edges.totalCount[9] = make(map[string]int)
+							if nodes[i].Edges.totalCount[8] == nil {
+								nodes[i].Edges.totalCount[8] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[9][alias] = n
+							nodes[i].Edges.totalCount[8][alias] = n
 						}
 						return nil
 					})
@@ -977,11 +962,6 @@ func (_q *AgentQuery) collectField(ctx context.Context, oneNode bool, opCtx *gra
 			if _, ok := fieldSeen[agent.FieldSkillsPolicy]; !ok {
 				selectedFields = append(selectedFields, agent.FieldSkillsPolicy)
 				fieldSeen[agent.FieldSkillsPolicy] = struct{}{}
-			}
-		case "apiKeyID":
-			if _, ok := fieldSeen[agent.FieldAPIKeyID]; !ok {
-				selectedFields = append(selectedFields, agent.FieldAPIKeyID)
-				fieldSeen[agent.FieldAPIKeyID] = struct{}{}
 			}
 		case "id":
 		case "__typename":
@@ -1098,6 +1078,21 @@ func (_q *AgentInstanceQuery) collectField(ctx context.Context, oneNode bool, op
 				fieldSeen[agentinstance.FieldAgentRuntimeID] = struct{}{}
 			}
 
+		case "apiKey":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&APIKeyClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, apikeyImplementors)...); err != nil {
+				return err
+			}
+			_q.withAPIKey = query
+			if _, ok := fieldSeen[agentinstance.FieldAPIKeyID]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldAPIKeyID)
+				fieldSeen[agentinstance.FieldAPIKeyID] = struct{}{}
+			}
+
 		case "messages":
 			var (
 				alias = field.Alias
@@ -1141,10 +1136,10 @@ func (_q *AgentInstanceQuery) collectField(ctx context.Context, oneNode bool, op
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[2] == nil {
-								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[2][alias] = n
+							nodes[i].Edges.totalCount[3][alias] = n
 						}
 						return nil
 					})
@@ -1152,10 +1147,10 @@ func (_q *AgentInstanceQuery) collectField(ctx context.Context, oneNode bool, op
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*AgentInstance) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.Messages)
-							if nodes[i].Edges.totalCount[2] == nil {
-								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							if nodes[i].Edges.totalCount[3] == nil {
+								nodes[i].Edges.totalCount[3] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[2][alias] = n
+							nodes[i].Edges.totalCount[3][alias] = n
 						}
 						return nil
 					})
@@ -1211,25 +1206,25 @@ func (_q *AgentInstanceQuery) collectField(ctx context.Context, oneNode bool, op
 				selectedFields = append(selectedFields, agentinstance.FieldAgentRuntimeID)
 				fieldSeen[agentinstance.FieldAgentRuntimeID] = struct{}{}
 			}
-		case "instanceID":
-			if _, ok := fieldSeen[agentinstance.FieldInstanceID]; !ok {
-				selectedFields = append(selectedFields, agentinstance.FieldInstanceID)
-				fieldSeen[agentinstance.FieldInstanceID] = struct{}{}
-			}
 		case "name":
 			if _, ok := fieldSeen[agentinstance.FieldName]; !ok {
 				selectedFields = append(selectedFields, agentinstance.FieldName)
 				fieldSeen[agentinstance.FieldName] = struct{}{}
+			}
+		case "description":
+			if _, ok := fieldSeen[agentinstance.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldDescription)
+				fieldSeen[agentinstance.FieldDescription] = struct{}{}
 			}
 		case "platform":
 			if _, ok := fieldSeen[agentinstance.FieldPlatform]; !ok {
 				selectedFields = append(selectedFields, agentinstance.FieldPlatform)
 				fieldSeen[agentinstance.FieldPlatform] = struct{}{}
 			}
-		case "version":
-			if _, ok := fieldSeen[agentinstance.FieldVersion]; !ok {
-				selectedFields = append(selectedFields, agentinstance.FieldVersion)
-				fieldSeen[agentinstance.FieldVersion] = struct{}{}
+		case "apiKeyID":
+			if _, ok := fieldSeen[agentinstance.FieldAPIKeyID]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldAPIKeyID)
+				fieldSeen[agentinstance.FieldAPIKeyID] = struct{}{}
 			}
 		case "lastHeartbeatAt":
 			if _, ok := fieldSeen[agentinstance.FieldLastHeartbeatAt]; !ok {

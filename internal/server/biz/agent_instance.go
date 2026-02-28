@@ -90,41 +90,37 @@ type AgentMessageView struct {
 }
 
 type RegisterAgentInstanceInput struct {
-	AgentID    int
-	InstanceID string
-	Name       *string
-	Platform   *string
-	Version    *string
-	ThreadID   *string
+	AgentID     int
+	Name        *string
+	Platform    *string
+	Description *string
+	ThreadID    *string
 }
 
 type SendPeerMessageInput struct {
-	SenderAgentID    int
-	TargetAgentID    int
-	TargetInstanceID string
-	Text             string
-	Content          *objects.JSONRawMessage
-	Kind             *agentmessage.Kind
-	CorrelationID    *string
+	SenderAgentID         int
+	TargetAgentID         int
+	TargetAgentInstanceID *int
+	Text                  string
+	Content               *objects.JSONRawMessage
+	CorrelationID         *string
 }
 
 type PeerAgentView struct {
-	AgentID    int
-	Name       string
-	Status     string
-	InstanceID string
+	AgentID         int
+	AgentInstanceID int
+	Name            string
+	Description     string
+	Status          string
 }
 
 // SendAgentMessageInput is used by the admin GraphQL API (Web UI) to send a user message to an agent.
 type SendAgentMessageInput struct {
-	AgentID    int
-	InstanceID string
-	Text       string
+	AgentID int
+	Text    string
 }
 
 type PushAgentMessageInput struct {
-	AgentID       int
-	InstanceID    string
 	Text          string
 	Content       *objects.JSONRawMessage
 	Kind          *agentmessage.Kind
@@ -132,8 +128,6 @@ type PushAgentMessageInput struct {
 }
 
 type PullAgentMessagesInput struct {
-	AgentID       int
-	InstanceID    string
 	AfterSequence *int64
 	Limit         int
 	KindIn        []agentmessage.Kind
@@ -142,7 +136,6 @@ type PullAgentMessagesInput struct {
 
 type AckAgentMessagesInput struct {
 	AgentID    int
-	InstanceID string
 	MessageIDs []int
 }
 
@@ -163,42 +156,34 @@ type AgentApprovalRequestView struct {
 	CreatedAt     time.Time
 }
 
-func (s *AgentBootstrapService) GetAgentIDFromAPIKey(ctx context.Context) (int, error) {
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
-		return 0, fmt.Errorf("agent api key not found in context")
-	}
-
-	return authz.RunWithSystemBypass(ctx, "agent-runtime-get-agent-id", func(bypassCtx context.Context) (int, error) {
-		client := s.entFromContext(bypassCtx)
-
-		a, err := client.Agent.Query().
-			Where(agent.APIKeyIDEQ(apiKey.ID)).
-			Only(bypassCtx)
-		if err != nil {
-			return 0, fmt.Errorf("failed to load agent: %w", err)
-		}
-
-		return a.ID, nil
-	})
-}
-
-func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, agentID int) (*AgentBootstrap, error) {
+func (s *AgentBootstrapService) GetAgentInstanceFromAPIKey(ctx context.Context) (*ent.AgentInstance, error) {
 	apiKey, ok := contexts.GetAPIKey(ctx)
 	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
 		return nil, fmt.Errorf("agent api key not found in context")
 	}
 
-	projectID := apiKey.ProjectID
+	return authz.RunWithSystemBypass(ctx, "agent-runtime-get-agent-instance", func(bypassCtx context.Context) (*ent.AgentInstance, error) {
+		client := s.entFromContext(bypassCtx)
 
+		inst, err := client.AgentInstance.Query().
+			Where(agentinstance.APIKeyIDEQ(apiKey.ID)).
+			Only(bypassCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load agent instance: %w", err)
+		}
+
+		return inst, nil
+	})
+}
+
+func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.AgentInstance) (*AgentBootstrap, error) {
 	return authz.RunWithSystemBypass(ctx, "agent-runtime-bootstrap", func(bypassCtx context.Context) (*AgentBootstrap, error) {
 		client := s.entFromContext(bypassCtx)
 
 		a, err := client.Agent.Query().
 			Where(
-				agent.IDEQ(agentID),
-				agent.ProjectIDEQ(projectID),
-				agent.APIKeyIDEQ(apiKey.ID),
+				agent.IDEQ(inst.AgentID),
+				agent.ProjectIDEQ(inst.ProjectID),
 				agent.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
@@ -209,7 +194,7 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, agentID int)
 		p, err := client.Prompt.Query().
 			Where(
 				prompt.IDEQ(a.PromptID),
-				prompt.ProjectIDEQ(projectID),
+				prompt.ProjectIDEQ(inst.ProjectID),
 				prompt.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
@@ -230,7 +215,7 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, agentID int)
 		toolBindings, err := client.AgentTool.Query().
 			Where(
 				agenttool.AgentIDEQ(a.ID),
-				agenttool.ProjectIDEQ(projectID),
+				agenttool.ProjectIDEQ(inst.ProjectID),
 			).
 			Order(agenttool.ByEnabled(sql.OrderDesc()), agenttool.ByOrder()).
 			WithTool().
@@ -260,7 +245,7 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, agentID int)
 		skillBindings, err := client.AgentSkill.Query().
 			Where(
 				agentskill.AgentIDEQ(a.ID),
-				agentskill.ProjectIDEQ(projectID),
+				agentskill.ProjectIDEQ(inst.ProjectID),
 			).
 			Order(agentskill.ByEnabled(sql.OrderDesc()), agentskill.ByOrder()).
 			WithSkill().
@@ -313,7 +298,7 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, agentID int)
 	})
 }
 
-func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, userID int, agentID int, instanceID string, text string) (*AgentMessageView, error) {
+func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, userID int, agentID int, text string) (*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -333,13 +318,13 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
+		// Get the first active instance for this agent
 		inst, err := client.AgentInstance.Query().
 			Where(
 				agentinstance.AgentIDEQ(a.ID),
-				agentinstance.InstanceIDEQ(instanceID),
 				agentinstance.DeletedAtEQ(0),
 			).
-			Only(bypassCtx)
+			First(bypassCtx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load agent instance: %w", err)
 		}
@@ -401,7 +386,7 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 	})
 }
 
-func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Context, agentID int, instanceID *string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -438,21 +423,6 @@ func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Conte
 			Order(agentmessage.BySequence()).
 			Limit(limit).
 			Where(func(s *sql.Selector) {})
-
-		if instanceID != nil && *instanceID != "" {
-			inst, err := client.AgentInstance.Query().
-				Where(
-					agentinstance.AgentIDEQ(a.ID),
-					agentinstance.InstanceIDEQ(*instanceID),
-					agentinstance.DeletedAtEQ(0),
-				).
-				Only(bypassCtx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load agent instance: %w", err)
-			}
-
-			q = q.Where(agentmessage.AgentInstanceIDEQ(inst.ID))
-		}
 
 		if afterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*afterSequence))
@@ -552,7 +522,7 @@ func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Con
 	})
 }
 
-func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, agentID int, instanceID *string, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
+func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
 		return nil, fmt.Errorf("project id not found in context")
@@ -588,21 +558,6 @@ func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, ag
 			Order(agentmessage.BySequence()).
 			Limit(limit).
 			Where(func(s *sql.Selector) {})
-
-		if instanceID != nil && *instanceID != "" {
-			inst, err := client.AgentInstance.Query().
-				Where(
-					agentinstance.AgentIDEQ(a.ID),
-					agentinstance.InstanceIDEQ(*instanceID),
-					agentinstance.DeletedAtEQ(0),
-				).
-				Only(bypassCtx)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load agent instance: %w", err)
-			}
-
-			q = q.Where(agentmessage.AgentInstanceIDEQ(inst.ID))
-		}
 
 		if afterSequence != nil {
 			q = q.Where(agentmessage.SequenceGT(*afterSequence))
@@ -770,11 +725,11 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 	return authz.RunWithSystemBypass(ctx, "agent-runtime-register-instance", func(bypassCtx context.Context) (*ent.AgentInstance, error) {
 		client := s.entFromContext(bypassCtx)
 
+		// Verify agent exists and belongs to the project
 		_, err := client.Agent.Query().
 			Where(
 				agent.IDEQ(input.AgentID),
 				agent.ProjectIDEQ(projectID),
-				agent.APIKeyIDEQ(apiKey.ID),
 				agent.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
@@ -782,10 +737,11 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
+		// Check if an instance already exists for this agent and API key
 		existing, err := client.AgentInstance.Query().
 			Where(
 				agentinstance.AgentIDEQ(input.AgentID),
-				agentinstance.InstanceIDEQ(input.InstanceID),
+				agentinstance.APIKeyIDEQ(apiKey.ID),
 				agentinstance.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
@@ -799,8 +755,9 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 			if input.Platform != nil {
 				upd.SetPlatform(*input.Platform)
 			}
-			if input.Version != nil {
-				upd.SetVersion(*input.Version)
+
+			if input.Description != nil {
+				upd.SetDescription(*input.Description)
 			}
 
 			inst, err := upd.Save(bypassCtx)
@@ -823,7 +780,7 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 		create := client.AgentInstance.Create().
 			SetProjectID(projectID).
 			SetAgentID(input.AgentID).
-			SetInstanceID(input.InstanceID).
+			SetAPIKeyID(apiKey.ID).
 			SetLastHeartbeatAt(now)
 
 		if input.Name != nil {
@@ -832,8 +789,9 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 		if input.Platform != nil {
 			create.SetPlatform(*input.Platform)
 		}
-		if input.Version != nil {
-			create.SetVersion(*input.Version)
+
+		if input.Description != nil {
+			create.SetDescription(*input.Description)
 		}
 
 		created, err := create.Save(bypassCtx)
@@ -842,7 +800,7 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 				existing, getErr := client.AgentInstance.Query().
 					Where(
 						agentinstance.AgentIDEQ(input.AgentID),
-						agentinstance.InstanceIDEQ(input.InstanceID),
+						agentinstance.APIKeyIDEQ(apiKey.ID),
 						agentinstance.DeletedAtEQ(0),
 					).
 					Only(bypassCtx)
@@ -941,44 +899,18 @@ func (s *AgentBootstrapService) createAgentThread(ctx context.Context, client *e
 	return nil
 }
 
-func (s *AgentBootstrapService) HeartbeatAgentInstance(ctx context.Context, agentID int, instanceID string) (bool, error) {
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
-		return false, fmt.Errorf("agent api key not found in context")
-	}
-
-	projectID := apiKey.ProjectID
+func (s *AgentBootstrapService) HeartbeatAgentInstance(ctx context.Context, inst *ent.AgentInstance) error {
 	now := time.Now()
 
-	affected, err := authz.RunWithSystemBypass(ctx, "agent-runtime-heartbeat-instance", func(bypassCtx context.Context) (int, error) {
+	_, err := authz.RunWithSystemBypass(ctx, "agent-runtime-heartbeat-instance", func(bypassCtx context.Context) (*ent.AgentInstance, error) {
 		client := s.entFromContext(bypassCtx)
 
-		_, err := client.Agent.Query().
-			Where(
-				agent.IDEQ(agentID),
-				agent.ProjectIDEQ(projectID),
-				agent.APIKeyIDEQ(apiKey.ID),
-				agent.DeletedAtEQ(0),
-			).
-			Only(bypassCtx)
-		if err != nil {
-			return 0, fmt.Errorf("failed to load agent: %w", err)
-		}
-
-		return client.AgentInstance.Update().
-			Where(
-				agentinstance.AgentIDEQ(agentID),
-				agentinstance.InstanceIDEQ(instanceID),
-				agentinstance.DeletedAtEQ(0),
-			).
+		return client.AgentInstance.UpdateOneID(inst.ID).
 			SetLastHeartbeatAt(now).
 			Save(bypassCtx)
 	})
-	if err != nil {
-		return false, err
-	}
 
-	return affected > 0, nil
+	return err
 }
 
 type agentTextMessageContent struct {
@@ -1025,14 +957,7 @@ func extractTextFromMessageContent(raw objects.JSONRawMessage) string {
 	return content.Text
 }
 
-func (s *AgentBootstrapService) ListPeerAgents(ctx context.Context, agentID int) ([]*PeerAgentView, error) {
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
-		return nil, fmt.Errorf("agent api key not found in context")
-	}
-
-	projectID := apiKey.ProjectID
-
+func (s *AgentBootstrapService) ListPeerAgents(ctx context.Context, inst *ent.AgentInstance) ([]*PeerAgentView, error) {
 	return authz.RunWithSystemBypass(ctx, "agent-runtime-list-peer-agents", func(bypassCtx context.Context) ([]*PeerAgentView, error) {
 		client := s.entFromContext(bypassCtx)
 
@@ -1040,21 +965,22 @@ func (s *AgentBootstrapService) ListPeerAgents(ctx context.Context, agentID int)
 
 		instances, err := client.AgentInstance.Query().
 			Where(
-				agentinstance.ProjectIDEQ(projectID),
-				agentinstance.AgentIDEQ(agentID),
+				agentinstance.ProjectIDEQ(inst.ProjectID),
+				agentinstance.AgentIDEQ(inst.AgentID),
 			).
 			Order(agentinstance.ByLastHeartbeatAt(sql.OrderDesc())).
 			All(bypassCtx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to query instances for agent %d: %w", agentID, err)
+			return nil, fmt.Errorf("failed to query instances for agent %d: %w", inst.AgentID, err)
 		}
 
-		for _, inst := range instances {
+		for _, i := range instances {
 			out = append(out, &PeerAgentView{
-				AgentID:    inst.AgentID,
-				Name:       inst.Name,
-				Status:     string(inst.Status),
-				InstanceID: inst.InstanceID,
+				AgentID:         i.AgentID,
+				AgentInstanceID: i.ID,
+				Name:            i.Name,
+				Description:     i.Description,
+				Status:          string(i.Status),
 			})
 		}
 
@@ -1062,28 +988,52 @@ func (s *AgentBootstrapService) ListPeerAgents(ctx context.Context, agentID int)
 	})
 }
 
+// sendPeerMessageToInstance sends a peer message to a specific agent instance with retry logic.
+func (s *AgentBootstrapService) sendPeerMessageToInstance(
+	bypassCtx context.Context,
+	senderInst *ent.AgentInstance,
+	targetInst *ent.AgentInstance,
+	raw objects.JSONRawMessage,
+) (*ent.AgentMessage, error) {
+	for attempt := range 3 {
+		nextSeq, err := s.nextSequence(bypassCtx, targetInst.AgentID)
+		if err != nil {
+			return nil, err
+		}
+
+		created, err := s.entFromContext(bypassCtx).AgentMessage.Create().
+			SetProjectID(targetInst.ProjectID).
+			SetAgentID(targetInst.AgentID).
+			SetAgentInstanceID(targetInst.ID).
+			SetDirection(agentmessage.DirectionToAgent).
+			SetSenderType(agentmessage.SenderTypeAgent).
+			SetSenderID(senderInst.AgentID).
+			SetKind(agentmessage.KindChat).
+			SetContent(raw).
+			SetStatus(agentmessage.StatusPending).
+			SetSequence(nextSeq).
+			Save(bypassCtx)
+		if err == nil {
+			return created, nil
+		}
+
+		if ent.IsConstraintError(err) && attempt < 2 {
+			continue
+		}
+
+		return nil, fmt.Errorf("failed to create peer message: %w", err)
+	}
+
+	return nil, fmt.Errorf("failed to create peer message: max retries exceeded")
+}
+
 func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendPeerMessageInput) (*AgentMessageView, error) {
-	agentID, err := s.GetAgentIDFromAPIKey(ctx)
+	senderInst, err := s.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
-		return nil, fmt.Errorf("agent api key not found in context")
-	}
-
-	projectID := apiKey.ProjectID
-
-	kind := agentmessage.KindChat
-	if input.Kind != nil && *input.Kind != "" {
-		kind = *input.Kind
-	}
-
-	corr := ""
-	if input.CorrelationID != nil {
-		corr = *input.CorrelationID
-	}
+	projectID := senderInst.ProjectID
 
 	return authz.RunWithSystemBypass(ctx, "agent-runtime-send-peer-message", func(bypassCtx context.Context) (*AgentMessageView, error) {
 		client := s.entFromContext(bypassCtx)
@@ -1099,15 +1049,35 @@ func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendP
 			return nil, fmt.Errorf("failed to load target agent: %w", err)
 		}
 
-		// Verify target instance exists.
-		targetInst, err := client.AgentInstance.Query().
-			Where(
-				agentinstance.AgentIDEQ(targetAgent.ID),
-				agentinstance.InstanceIDEQ(input.TargetInstanceID),
-			).
-			Only(bypassCtx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load target agent instance: %w", err)
+		// Get the target agent instances - either specified one or all active ones (broadcast)
+		var targetInsts []*ent.AgentInstance
+
+		if input.TargetAgentInstanceID != nil {
+			targetInst, err := client.AgentInstance.Query().
+				Where(
+					agentinstance.IDEQ(*input.TargetAgentInstanceID),
+					agentinstance.AgentIDEQ(targetAgent.ID),
+				).
+				Only(bypassCtx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load target agent instance: %w", err)
+			}
+
+			targetInsts = []*ent.AgentInstance{targetInst}
+		} else {
+			targetInsts, err = client.AgentInstance.Query().
+				Where(
+					agentinstance.AgentIDEQ(targetAgent.ID),
+					agentinstance.DeletedAtEQ(0),
+				).
+				All(bypassCtx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load target agent instances: %w", err)
+			}
+
+			if len(targetInsts) == 0 {
+				return nil, fmt.Errorf("no active agent instances found for agent %d", targetAgent.ID)
+			}
 		}
 
 		raw := objects.JSONRawMessage(nil)
@@ -1122,42 +1092,23 @@ func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendP
 			raw = b
 		}
 
-		var msg *ent.AgentMessage
+		var msgs []*ent.AgentMessage
 
-		for attempt := range 3 {
-			nextSeq, err := s.nextSequence(bypassCtx, targetAgent.ID)
+		for _, targetInst := range targetInsts {
+			msg, err := s.sendPeerMessageToInstance(bypassCtx, senderInst, targetInst, raw)
 			if err != nil {
 				return nil, err
 			}
 
-			created, err := client.AgentMessage.Create().
-				SetProjectID(projectID).
-				SetAgentID(targetAgent.ID).
-				SetAgentInstanceID(targetInst.ID).
-				SetDirection(agentmessage.DirectionToAgent).
-				SetSenderType(agentmessage.SenderTypeAgent).
-				SetSenderID(agentID).
-				SetKind(kind).
-				SetCorrelationID(corr).
-				SetContent(raw).
-				SetStatus(agentmessage.StatusPending).
-				SetSequence(nextSeq).
-				Save(bypassCtx)
-			if err == nil {
-				msg = created
-				break
-			}
-
-			if ent.IsConstraintError(err) && attempt < 2 {
-				continue
-			}
-
-			return nil, fmt.Errorf("failed to create peer message: %w", err)
+			msgs = append(msgs, msg)
 		}
 
-		if msg == nil {
+		if len(msgs) == 0 {
 			return nil, fmt.Errorf("failed to create peer message: no message created")
 		}
+
+		// Return the first message as the representative
+		msg := msgs[0]
 
 		viewText := extractTextFromMessageContent(msg.Content)
 		if viewText == "" {
@@ -1180,7 +1131,7 @@ func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendP
 	})
 }
 
-func (s *AgentBootstrapService) PushAgentMessage(ctx context.Context, input PushAgentMessageInput) (*AgentMessageView, error) {
+func (s *AgentBootstrapService) PushAgentMessage(ctx context.Context, inst *ent.AgentInstance, input PushAgentMessageInput) (*AgentMessageView, error) {
 	kind := agentmessage.KindChat
 	if input.Kind != nil && *input.Kind != "" {
 		kind = *input.Kind
@@ -1191,13 +1142,12 @@ func (s *AgentBootstrapService) PushAgentMessage(ctx context.Context, input Push
 		corr = *input.CorrelationID
 	}
 
-	return s.createMessage(ctx, input.AgentID, input.InstanceID, input.Text, input.Content, agentmessage.DirectionToUser, agentmessage.SenderTypeAgent, kind, corr)
+	return s.createMessage(ctx, inst, input.Text, input.Content, agentmessage.DirectionToUser, agentmessage.SenderTypeAgent, kind, corr)
 }
 
 func (s *AgentBootstrapService) createMessage(
 	ctx context.Context,
-	agentID int,
-	instanceID string,
+	inst *ent.AgentInstance,
 	text string,
 	content *objects.JSONRawMessage,
 	direction agentmessage.Direction,
@@ -1205,21 +1155,13 @@ func (s *AgentBootstrapService) createMessage(
 	kind agentmessage.Kind,
 	correlationID string,
 ) (*AgentMessageView, error) {
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
-		return nil, fmt.Errorf("agent api key not found in context")
-	}
-
-	projectID := apiKey.ProjectID
-
 	return authz.RunWithSystemBypass(ctx, "agent-runtime-create-message", func(bypassCtx context.Context) (*AgentMessageView, error) {
 		client := s.entFromContext(bypassCtx)
 
 		a, err := client.Agent.Query().
 			Where(
-				agent.IDEQ(agentID),
-				agent.ProjectIDEQ(projectID),
-				agent.APIKeyIDEQ(apiKey.ID),
+				agent.IDEQ(inst.AgentID),
+				agent.ProjectIDEQ(inst.ProjectID),
 				agent.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
@@ -1227,19 +1169,7 @@ func (s *AgentBootstrapService) createMessage(
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		var senderID *int
-
-		inst, err := client.AgentInstance.Query().
-			Where(
-				agentinstance.AgentIDEQ(a.ID),
-				agentinstance.InstanceIDEQ(instanceID),
-			).
-			Only(bypassCtx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load agent instance: %w", err)
-		}
-
-		senderID = &inst.ID
+		senderID := &inst.ID
 
 		raw := objects.JSONRawMessage(nil)
 		if content != nil && len(*content) > 0 && string(*content) != "null" {
@@ -1261,7 +1191,7 @@ func (s *AgentBootstrapService) createMessage(
 			}
 
 			created, err := client.AgentMessage.Create().
-				SetProjectID(projectID).
+				SetProjectID(inst.ProjectID).
 				SetAgentID(a.ID).
 				SetAgentInstanceID(*senderID).
 				SetDirection(direction).
@@ -1329,13 +1259,7 @@ func (s *AgentBootstrapService) nextSequence(ctx context.Context, agentID int) (
 	return last.Sequence + 1, nil
 }
 
-func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, input PullAgentMessagesInput) ([]*AgentMessageView, error) {
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
-		return nil, fmt.Errorf("agent api key not found in context")
-	}
-
-	projectID := apiKey.ProjectID
+func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent.AgentInstance, input PullAgentMessagesInput) ([]*AgentMessageView, error) {
 	limit := input.Limit
 	if limit <= 0 {
 		limit = 50
@@ -1349,25 +1273,13 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, input Pul
 
 		a, err := client.Agent.Query().
 			Where(
-				agent.IDEQ(input.AgentID),
-				agent.ProjectIDEQ(projectID),
-				agent.APIKeyIDEQ(apiKey.ID),
+				agent.IDEQ(inst.AgentID),
+				agent.ProjectIDEQ(inst.ProjectID),
 				agent.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load agent: %w", err)
-		}
-
-		_, err = client.AgentInstance.Query().
-			Where(
-				agentinstance.AgentIDEQ(a.ID),
-				agentinstance.InstanceIDEQ(input.InstanceID),
-				agentinstance.DeletedAtEQ(0),
-			).
-			Only(bypassCtx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load agent instance: %w", err)
 		}
 
 		q := client.AgentMessage.Query().
@@ -1421,13 +1333,7 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, input Pul
 	})
 }
 
-func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, agentID int, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
-		return nil, fmt.Errorf("agent api key not found in context")
-	}
-
-	projectID := apiKey.ProjectID
+func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, inst *ent.AgentInstance, afterSequence *int64, limit int) ([]*AgentMessageView, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -1440,9 +1346,8 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, age
 
 		a, err := client.Agent.Query().
 			Where(
-				agent.IDEQ(agentID),
-				agent.ProjectIDEQ(projectID),
-				agent.APIKeyIDEQ(apiKey.ID),
+				agent.IDEQ(inst.AgentID),
+				agent.ProjectIDEQ(inst.ProjectID),
 				agent.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
@@ -1494,49 +1399,19 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, age
 	})
 }
 
-func (s *AgentBootstrapService) AckAgentMessages(ctx context.Context, input AckAgentMessagesInput) (bool, error) {
-	if len(input.MessageIDs) == 0 {
-		return true, nil
+func (s *AgentBootstrapService) AckAgentMessages(ctx context.Context, inst *ent.AgentInstance, messageIDs []int) error {
+	if len(messageIDs) == 0 {
+		return nil
 	}
-
-	apiKey, ok := contexts.GetAPIKey(ctx)
-	if !ok || apiKey == nil || apiKey.Type != apikey.TypeAgent {
-		return false, fmt.Errorf("agent api key not found in context")
-	}
-
-	projectID := apiKey.ProjectID
 
 	_, err := authz.RunWithSystemBypass(ctx, "agent-runtime-ack-messages", func(bypassCtx context.Context) (int, error) {
 		client := s.entFromContext(bypassCtx)
 
-		a, err := client.Agent.Query().
-			Where(
-				agent.IDEQ(input.AgentID),
-				agent.ProjectIDEQ(projectID),
-				agent.APIKeyIDEQ(apiKey.ID),
-				agent.DeletedAtEQ(0),
-			).
-			Only(bypassCtx)
-		if err != nil {
-			return 0, fmt.Errorf("failed to load agent: %w", err)
-		}
-
-		_, err = client.AgentInstance.Query().
-			Where(
-				agentinstance.AgentIDEQ(a.ID),
-				agentinstance.InstanceIDEQ(input.InstanceID),
-				agentinstance.DeletedAtEQ(0),
-			).
-			Only(bypassCtx)
-		if err != nil {
-			return 0, fmt.Errorf("failed to load agent instance: %w", err)
-		}
-
 		affected, err := client.AgentMessage.Update().
 			Where(
-				agentmessage.IDIn(input.MessageIDs...),
-				agentmessage.AgentIDEQ(a.ID),
-				agentmessage.ProjectIDEQ(projectID),
+				agentmessage.IDIn(messageIDs...),
+				agentmessage.AgentIDEQ(inst.AgentID),
+				agentmessage.ProjectIDEQ(inst.ProjectID),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.DeletedAtEQ(0),
 			).
@@ -1548,11 +1423,8 @@ func (s *AgentBootstrapService) AckAgentMessages(ctx context.Context, input AckA
 
 		return affected, nil
 	})
-	if err != nil {
-		return false, err
-	}
 
-	return true, nil
+	return err
 }
 
 // AckAgentMessagesAsUser acknowledges messages as a user (for Web UI).
@@ -1582,16 +1454,19 @@ func (s *AgentBootstrapService) AckAgentMessagesAsUser(ctx context.Context, user
 			return 0, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		// Verify instance exists
-		_, err = client.AgentInstance.Query().
+		// Verify at least one instance exists for this agent
+		exists, err := client.AgentInstance.Query().
 			Where(
 				agentinstance.AgentIDEQ(a.ID),
-				agentinstance.InstanceIDEQ(input.InstanceID),
 				agentinstance.DeletedAtEQ(0),
 			).
-			Only(bypassCtx)
+			Exist(bypassCtx)
 		if err != nil {
-			return 0, fmt.Errorf("failed to load agent instance: %w", err)
+			return 0, fmt.Errorf("failed to check agent instance: %w", err)
+		}
+
+		if !exists {
+			return 0, fmt.Errorf("agent instance not found")
 		}
 
 		affected, err := client.AgentMessage.Update().

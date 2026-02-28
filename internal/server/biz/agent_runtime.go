@@ -2,8 +2,6 @@ package biz
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,11 +10,15 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/crypto/ssh"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentruntime"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 var (
@@ -147,6 +149,10 @@ type DeployAxonclawResult struct {
 }
 
 func (svc *AgentRuntimeService) DeployAxonclaw(ctx context.Context, input DeployAxonclawInput) (*DeployAxonclawResult, error) {
+	user, ok := contexts.GetUser(ctx)
+	if !ok || user == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
 	runtime, err := svc.db.AgentRuntime.Query().Where(agentruntime.IDEQ(input.RuntimeID)).Only(ctx)
 	if err != nil {
 		return &DeployAxonclawResult{
@@ -163,7 +169,6 @@ func (svc *AgentRuntimeService) DeployAxonclaw(ctx context.Context, input Deploy
 	}
 
 	entity, err := svc.db.Agent.Query().
-		WithAPIKey().
 		Where(agent.IDEQ(input.AgentID)).
 		Only(ctx)
 	if err != nil {
@@ -173,57 +178,68 @@ func (svc *AgentRuntimeService) DeployAxonclaw(ctx context.Context, input Deploy
 		}, nil
 	}
 
-	instanceID := generateInstanceID()
+	var (
+		instance *ent.AgentInstance
+		apiKey   *ent.APIKey
+	)
 
-	instance, err := svc.db.AgentInstance.Create().
-		SetProjectID(entity.ProjectID).
-		SetAgentID(input.AgentID).
-		SetRuntimeID(input.RuntimeID).
-		SetInstanceID(instanceID).
-		SetName(input.Name).
-		SetStatus(agentinstance.StatusPending).
-		SetDeployment(objects.AgentInstanceDeployment{
-			Directory: input.Directory,
-		}).
-		SetLastHeartbeatAt(time.Now()).
-		Save(ctx)
+	err = svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		client := svc.entFromContext(txCtx)
+
+		apiKeyName := fmt.Sprintf("agent-instance:%d:%s", input.AgentID, input.Name)
+
+		generatedKey, err := GenerateAPIKey()
+		if err != nil {
+			return fmt.Errorf("failed to generate api key: %w", err)
+		}
+
+		apiKey, err = authz.RunWithSystemBypass(txCtx, "create-agent-instance-api-key", func(bypassCtx context.Context) (*ent.APIKey, error) {
+			return client.APIKey.Create().
+				SetName(apiKeyName).
+				SetKey(generatedKey).
+				SetUserID(user.ID).
+				SetProjectID(entity.ProjectID).
+				SetType(apikey.TypeAgent).
+				SetScopes([]string{
+					string(scopes.ScopeReadAgents),
+					string(scopes.ScopeWriteAgents),
+				}).
+				Save(bypassCtx)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create api key: %w", err)
+		}
+
+		instance, err = client.AgentInstance.Create().
+			SetProjectID(entity.ProjectID).
+			SetAgentID(input.AgentID).
+			SetRuntimeID(input.RuntimeID).
+			SetName(input.Name).
+			SetStatus(agentinstance.StatusPending).
+			SetDeployment(objects.AgentInstanceDeployment{
+				Directory: input.Directory,
+			}).
+			SetLastHeartbeatAt(time.Now()).
+			SetAPIKeyID(apiKey.ID).
+			Save(txCtx)
+		if err != nil {
+			return fmt.Errorf("failed to create instance: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
 		return &DeployAxonclawResult{
 			Success: false,
-			Error:   fmt.Sprintf("failed to create instance: %v", err),
+			Error:   err.Error(),
 		}, nil
 	}
 
-	switch runtime.Type {
-	case agentruntime.TypeVM:
-		if err := svc.deployToVM(ctx, runtime, entity, instanceID, input.Name, input.Directory); err != nil {
-			_, _ = svc.db.AgentInstance.UpdateOneID(instance.ID).
-				SetStatus(agentinstance.StatusError).
-				Save(ctx)
-			return &DeployAxonclawResult{
-				Success: false,
-				Error:   fmt.Sprintf("VM deployment failed: %v", err),
-			}, nil
-		}
-	case agentruntime.TypeDocker:
-		if err := svc.deployToDocker(ctx, runtime, entity, instanceID, input.Name); err != nil {
-			_, _ = svc.db.AgentInstance.UpdateOneID(instance.ID).
-				SetStatus(agentinstance.StatusError).
-				Save(ctx)
-			return &DeployAxonclawResult{
-				Success: false,
-				Error:   fmt.Sprintf("Docker deployment failed: %v", err),
-			}, nil
-		}
-	}
-
-	instance, err = svc.db.AgentInstance.UpdateOneID(instance.ID).
-		SetStatus(agentinstance.StatusRunning).
-		Save(ctx)
+	err = svc.executeDeployment(ctx, runtime, instance, apiKey, input)
 	if err != nil {
 		return &DeployAxonclawResult{
 			Success: false,
-			Error:   fmt.Sprintf("failed to update instance status: %v", err),
+			Error:   err.Error(),
 		}, nil
 	}
 
@@ -231,6 +247,31 @@ func (svc *AgentRuntimeService) DeployAxonclaw(ctx context.Context, input Deploy
 		Success:  true,
 		Instance: instance,
 	}, nil
+}
+
+func (svc *AgentRuntimeService) executeDeployment(ctx context.Context, runtime *ent.AgentRuntime, instance *ent.AgentInstance, apiKey *ent.APIKey, input DeployAxonclawInput) error {
+	var err error
+
+	switch runtime.Type {
+	case agentruntime.TypeVM:
+		err = svc.deployToVM(ctx, runtime, apiKey, input.Name, input.Directory)
+	case agentruntime.TypeDocker:
+		err = svc.deployToDocker(ctx, runtime, apiKey, input.Name)
+	}
+
+	if err != nil {
+		_, _ = svc.db.AgentInstance.UpdateOneID(instance.ID).
+			SetStatus(agentinstance.StatusError).
+			Save(ctx)
+
+		return fmt.Errorf("failed to deploy to runtime %s: %w", runtime.Type, err)
+	}
+
+	_, _ = svc.db.AgentInstance.UpdateOneID(instance.ID).
+		SetStatus(agentinstance.StatusRunning).
+		Save(ctx)
+
+	return nil
 }
 
 func validateDeployInput(input DeployAxonclawInput, runtimeType agentruntime.Type, host string) error {
@@ -250,15 +291,8 @@ func validateDeployInput(input DeployAxonclawInput, runtimeType agentruntime.Typ
 	return nil
 }
 
-func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.AgentRuntime, agent *ent.Agent, instanceID, name, directory string) error {
+func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory string) error {
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
-
-	apiKey, err := agent.APIKey(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get agent API key: %w", err)
-	}
-
-	println("apiKey:", apiKey.Key)
 
 	var baseURL string
 	if debugLocalPath != "" {
@@ -284,7 +318,7 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 			}
 
 			//nolint:gosec
-			startCmd := fmt.Sprintf("cd %s && AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s ./start.sh", directory, instanceID, name, baseURL, apiKey.Key)
+			startCmd := fmt.Sprintf("cd %s && AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s ./start.sh", directory, name, baseURL, apiKey.Key)
 			if err := exec.CommandContext(ctx, "sh", "-c", startCmd).Run(); err != nil {
 				return fmt.Errorf("failed to start debug axonclaw: %w", err)
 			}
@@ -293,7 +327,7 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 		}
 
 		//nolint:gosec
-		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, instanceID, name, baseURL, apiKey.Key)
+		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, name, baseURL, apiKey.Key)
 		if err := exec.CommandContext(ctx, "sh", "-c", deployCmd).Run(); err != nil {
 			return fmt.Errorf("failed to deploy axonclaw: %w", err)
 		}
@@ -333,7 +367,7 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 	}
 	defer session2.Close()
 
-	deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_INSTANCE_ID=%s AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, instanceID, name, baseURL, apiKey.Key)
+	deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, name, baseURL, apiKey)
 	if err := session2.Run(deployCmd); err != nil {
 		return fmt.Errorf("failed to deploy axonclaw: %w", err)
 	}
@@ -341,18 +375,13 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 	return nil
 }
 
-func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent.AgentRuntime, agent *ent.Agent, instanceID, name string) error {
+func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name string) error {
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
-	containerName := fmt.Sprintf("axonclaw-%s", instanceID)
+	containerName := fmt.Sprintf("axonclaw-%s", name)
 
 	imageName := "axonclaw/axonclaw:latest"
 	if debugDockerImage != "" {
 		imageName = debugDockerImage
-	}
-
-	apiKey, err := agent.APIKey(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get agent API key: %w", err)
 	}
 
 	var baseURL string
@@ -384,7 +413,7 @@ func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent
 		}
 
 		//nolint:gosec
-		runCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_INSTANCE_ID=%s -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, instanceID, name, baseURL, apiKey.Key, imageName))
+		runCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, name, baseURL, apiKey.Key, imageName))
 		if err := runCmd.Run(); err != nil {
 			return fmt.Errorf("failed to start Docker container: %w", err)
 		}
@@ -462,7 +491,7 @@ func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent
 	}
 	defer session4.Close()
 
-	runCmd := fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_INSTANCE_ID=%s -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, instanceID, name, baseURL, apiKey.Key, imageName)
+	runCmd := fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, name, baseURL, apiKey.Key, imageName)
 	if err := session4.Run(runCmd); err != nil {
 		return fmt.Errorf("failed to start Docker container: %w", err)
 	}
@@ -494,10 +523,4 @@ func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent
 	}
 
 	return nil
-}
-
-func generateInstanceID() string {
-	b := make([]byte, 8)
-	rand.Read(b)
-	return hex.EncodeToString(b)
 }

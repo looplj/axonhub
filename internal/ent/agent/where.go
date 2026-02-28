@@ -100,11 +100,6 @@ func Model(v string) predicate.Agent {
 	return predicate.Agent(sql.FieldEQ(FieldModel, v))
 }
 
-// APIKeyID applies equality check predicate on the "api_key_id" field. It's identical to APIKeyIDEQ.
-func APIKeyID(v int) predicate.Agent {
-	return predicate.Agent(sql.FieldEQ(FieldAPIKeyID, v))
-}
-
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Agent {
 	return predicate.Agent(sql.FieldEQ(FieldCreatedAt, v))
@@ -500,26 +495,6 @@ func ModelContainsFold(v string) predicate.Agent {
 	return predicate.Agent(sql.FieldContainsFold(FieldModel, v))
 }
 
-// APIKeyIDEQ applies the EQ predicate on the "api_key_id" field.
-func APIKeyIDEQ(v int) predicate.Agent {
-	return predicate.Agent(sql.FieldEQ(FieldAPIKeyID, v))
-}
-
-// APIKeyIDNEQ applies the NEQ predicate on the "api_key_id" field.
-func APIKeyIDNEQ(v int) predicate.Agent {
-	return predicate.Agent(sql.FieldNEQ(FieldAPIKeyID, v))
-}
-
-// APIKeyIDIn applies the In predicate on the "api_key_id" field.
-func APIKeyIDIn(vs ...int) predicate.Agent {
-	return predicate.Agent(sql.FieldIn(FieldAPIKeyID, vs...))
-}
-
-// APIKeyIDNotIn applies the NotIn predicate on the "api_key_id" field.
-func APIKeyIDNotIn(vs ...int) predicate.Agent {
-	return predicate.Agent(sql.FieldNotIn(FieldAPIKeyID, vs...))
-}
-
 // HasProject applies the HasEdge predicate on the "project" edge.
 func HasProject() predicate.Agent {
 	return predicate.Agent(func(s *sql.Selector) {
@@ -543,21 +518,21 @@ func HasProjectWith(preds ...predicate.Project) predicate.Agent {
 	})
 }
 
-// HasOwnerUser applies the HasEdge predicate on the "owner_user" edge.
-func HasOwnerUser() predicate.Agent {
+// HasCreatedByUser applies the HasEdge predicate on the "created_by_user" edge.
+func HasCreatedByUser() predicate.Agent {
 	return predicate.Agent(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, OwnerUserTable, OwnerUserColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, CreatedByUserTable, CreatedByUserColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasOwnerUserWith applies the HasEdge predicate on the "owner_user" edge with a given conditions (other predicates).
-func HasOwnerUserWith(preds ...predicate.User) predicate.Agent {
+// HasCreatedByUserWith applies the HasEdge predicate on the "created_by_user" edge with a given conditions (other predicates).
+func HasCreatedByUserWith(preds ...predicate.User) predicate.Agent {
 	return predicate.Agent(func(s *sql.Selector) {
-		step := newOwnerUserStep()
+		step := newCreatedByUserStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -581,29 +556,6 @@ func HasPrompt() predicate.Agent {
 func HasPromptWith(preds ...predicate.Prompt) predicate.Agent {
 	return predicate.Agent(func(s *sql.Selector) {
 		step := newPromptStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasAPIKey applies the HasEdge predicate on the "api_key" edge.
-func HasAPIKey() predicate.Agent {
-	return predicate.Agent(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, APIKeyTable, APIKeyColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasAPIKeyWith applies the HasEdge predicate on the "api_key" edge with a given conditions (other predicates).
-func HasAPIKeyWith(preds ...predicate.APIKey) predicate.Agent {
-	return predicate.Agent(func(s *sql.Selector) {
-		step := newAPIKeyStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

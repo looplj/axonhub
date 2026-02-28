@@ -112,21 +112,21 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	APIKey struct {
-		Agent     func(childComplexity int) int
-		CreatedAt func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Key       func(childComplexity int) int
-		Name      func(childComplexity int) int
-		Profiles  func(childComplexity int) int
-		Project   func(childComplexity int) int
-		ProjectID func(childComplexity int) int
-		Requests  func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
-		Scopes    func(childComplexity int) int
-		Status    func(childComplexity int) int
-		Type      func(childComplexity int) int
-		UpdatedAt func(childComplexity int) int
-		User      func(childComplexity int) int
-		UserID    func(childComplexity int) int
+		AgentInstance func(childComplexity int) int
+		CreatedAt     func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Key           func(childComplexity int) int
+		Name          func(childComplexity int) int
+		Profiles      func(childComplexity int) int
+		Project       func(childComplexity int) int
+		ProjectID     func(childComplexity int) int
+		Requests      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
+		Scopes        func(childComplexity int) int
+		Status        func(childComplexity int) int
+		Type          func(childComplexity int) int
+		UpdatedAt     func(childComplexity int) int
+		User          func(childComplexity int) int
+		UserID        func(childComplexity int) int
 	}
 
 	APIKeyConnection struct {
@@ -196,10 +196,9 @@ type ComplexityRoot struct {
 	}
 
 	Agent struct {
-		APIKey            func(childComplexity int) int
-		APIKeyID          func(childComplexity int) int
 		AgentBuiltinTools func(childComplexity int) int
 		CreatedAt         func(childComplexity int) int
+		CreatedByUser     func(childComplexity int) int
 		CreatedByUserID   func(childComplexity int) int
 		Description       func(childComplexity int) int
 		ID                func(childComplexity int) int
@@ -208,7 +207,6 @@ type ComplexityRoot struct {
 		Messages          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMessageOrder, where *ent.AgentMessageWhereInput) int
 		Model             func(childComplexity int) int
 		Name              func(childComplexity int) int
-		OwnerUser         func(childComplexity int) int
 		Project           func(childComplexity int) int
 		ProjectID         func(childComplexity int) int
 		Prompt            func(childComplexity int) int
@@ -264,13 +262,15 @@ type ComplexityRoot struct {
 	}
 
 	AgentInstance struct {
+		APIKey          func(childComplexity int) int
+		APIKeyID        func(childComplexity int) int
 		Agent           func(childComplexity int) int
 		AgentID         func(childComplexity int) int
 		AgentRuntimeID  func(childComplexity int) int
 		CreatedAt       func(childComplexity int) int
 		Deployment      func(childComplexity int) int
+		Description     func(childComplexity int) int
 		ID              func(childComplexity int) int
-		InstanceID      func(childComplexity int) int
 		LastHeartbeatAt func(childComplexity int) int
 		Messages        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMessageOrder, where *ent.AgentMessageWhereInput) int
 		Name            func(childComplexity int) int
@@ -279,7 +279,6 @@ type ComplexityRoot struct {
 		Runtime         func(childComplexity int) int
 		Status          func(childComplexity int) int
 		UpdatedAt       func(childComplexity int) int
-		Version         func(childComplexity int) int
 	}
 
 	AgentInstanceConnection struct {
@@ -1289,7 +1288,7 @@ type ComplexityRoot struct {
 	Query struct {
 		APIKeyQuotaUsages            func(childComplexity int, apiKeyID objects.GUID) int
 		APIKeys                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.APIKeyOrder, where *ent.APIKeyWhereInput) int
-		AgentChatMessages            func(childComplexity int, agentID objects.GUID, instanceID *string, afterSequence *int, limit *int) int
+		AgentChatMessages            func(childComplexity int, agentID objects.GUID, afterSequence *int, limit *int) int
 		AgentInstances               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentInstanceOrder, where *ent.AgentInstanceWhereInput) int
 		AgentMemories                func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMemoryOrder, where *ent.AgentMemoryWhereInput) int
 		AgentMessages                func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentMessageOrder, where *ent.AgentMessageWhereInput) int
@@ -1328,7 +1327,7 @@ type ComplexityRoot struct {
 		PromptVersions               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptVersionOrder, where *ent.PromptVersionWhereInput) int
 		Prompts                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptOrder, where *ent.PromptWhereInput) int
 		PullAgentApprovalRequests    func(childComplexity int, agentID objects.GUID, afterSequence *int, limit *int) int
-		PullAgentMessagesToUser      func(childComplexity int, agentID objects.GUID, instanceID *string, afterSequence *int, limit *int) int
+		PullAgentMessagesToUser      func(childComplexity int, agentID objects.GUID, afterSequence *int, limit *int) int
 		QueryChannels                func(childComplexity int, input biz.QueryChannelsInput) int
 		QueryModelChannelConnections func(childComplexity int, associations []*objects.ModelAssociation) int
 		QueryModels                  func(childComplexity int, input QueryModelsInput) int
@@ -2003,14 +2002,14 @@ type AgentResolver interface {
 	CreatedByUserID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error)
 
 	PromptID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error)
-
-	APIKeyID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error)
 }
 type AgentInstanceResolver interface {
 	ID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error)
 
 	AgentID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error)
 	AgentRuntimeID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error)
+
+	APIKeyID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error)
 }
 type AgentMemoryResolver interface {
 	ID(ctx context.Context, obj *ent.AgentMemory) (*objects.GUID, error)
@@ -2280,9 +2279,9 @@ type QueryResolver interface {
 	QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error)
 	AutoBackupSettings(ctx context.Context) (*biz.AutoBackupSettings, error)
 	ChannelProbeData(ctx context.Context, input biz.GetChannelProbeDataInput) ([]*biz.ChannelProbeData, error)
-	PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, instanceID *string, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
+	PullAgentMessagesToUser(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
 	PullAgentApprovalRequests(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentApprovalRequestMessage, error)
-	AgentChatMessages(ctx context.Context, agentID objects.GUID, instanceID *string, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
+	AgentChatMessages(ctx context.Context, agentID objects.GUID, afterSequence *int, limit *int) ([]*AgentChatMessage, error)
 	AgentRuntime(ctx context.Context, id objects.GUID) (*ent.AgentRuntime, error)
 }
 type RequestResolver interface {
@@ -2409,12 +2408,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	_ = ec
 	switch typeName + "." + field {
 
-	case "APIKey.agent":
-		if e.complexity.APIKey.Agent == nil {
+	case "APIKey.agentInstance":
+		if e.complexity.APIKey.AgentInstance == nil {
 			break
 		}
 
-		return e.complexity.APIKey.Agent(childComplexity), true
+		return e.complexity.APIKey.AgentInstance(childComplexity), true
 	case "APIKey.createdAt":
 		if e.complexity.APIKey.CreatedAt == nil {
 			break
@@ -2714,18 +2713,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKeyQuotaWindow.Start(childComplexity), true
 
-	case "Agent.apiKey":
-		if e.complexity.Agent.APIKey == nil {
-			break
-		}
-
-		return e.complexity.Agent.APIKey(childComplexity), true
-	case "Agent.apiKeyID":
-		if e.complexity.Agent.APIKeyID == nil {
-			break
-		}
-
-		return e.complexity.Agent.APIKeyID(childComplexity), true
 	case "Agent.agentBuiltinTools":
 		if e.complexity.Agent.AgentBuiltinTools == nil {
 			break
@@ -2738,6 +2725,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Agent.CreatedAt(childComplexity), true
+	case "Agent.createdByUser":
+		if e.complexity.Agent.CreatedByUser == nil {
+			break
+		}
+
+		return e.complexity.Agent.CreatedByUser(childComplexity), true
 	case "Agent.createdByUserID":
 		if e.complexity.Agent.CreatedByUserID == nil {
 			break
@@ -2801,12 +2794,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Agent.Name(childComplexity), true
-	case "Agent.ownerUser":
-		if e.complexity.Agent.OwnerUser == nil {
-			break
-		}
-
-		return e.complexity.Agent.OwnerUser(childComplexity), true
 	case "Agent.project":
 		if e.complexity.Agent.Project == nil {
 			break
@@ -3050,6 +3037,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AgentEdge.Node(childComplexity), true
 
+	case "AgentInstance.apiKey":
+		if e.complexity.AgentInstance.APIKey == nil {
+			break
+		}
+
+		return e.complexity.AgentInstance.APIKey(childComplexity), true
+	case "AgentInstance.apiKeyID":
+		if e.complexity.AgentInstance.APIKeyID == nil {
+			break
+		}
+
+		return e.complexity.AgentInstance.APIKeyID(childComplexity), true
 	case "AgentInstance.agent":
 		if e.complexity.AgentInstance.Agent == nil {
 			break
@@ -3080,18 +3079,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentInstance.Deployment(childComplexity), true
+	case "AgentInstance.description":
+		if e.complexity.AgentInstance.Description == nil {
+			break
+		}
+
+		return e.complexity.AgentInstance.Description(childComplexity), true
 	case "AgentInstance.id":
 		if e.complexity.AgentInstance.ID == nil {
 			break
 		}
 
 		return e.complexity.AgentInstance.ID(childComplexity), true
-	case "AgentInstance.instanceID":
-		if e.complexity.AgentInstance.InstanceID == nil {
-			break
-		}
-
-		return e.complexity.AgentInstance.InstanceID(childComplexity), true
 	case "AgentInstance.lastHeartbeatAt":
 		if e.complexity.AgentInstance.LastHeartbeatAt == nil {
 			break
@@ -3145,12 +3144,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentInstance.UpdatedAt(childComplexity), true
-	case "AgentInstance.version":
-		if e.complexity.AgentInstance.Version == nil {
-			break
-		}
-
-		return e.complexity.AgentInstance.Version(childComplexity), true
 
 	case "AgentInstanceConnection.edges":
 		if e.complexity.AgentInstanceConnection.Edges == nil {
@@ -7709,7 +7702,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.AgentChatMessages(childComplexity, args["agentID"].(objects.GUID), args["instanceID"].(*string), args["afterSequence"].(*int), args["limit"].(*int)), true
+		return e.complexity.Query.AgentChatMessages(childComplexity, args["agentID"].(objects.GUID), args["afterSequence"].(*int), args["limit"].(*int)), true
 	case "Query.agentInstances":
 		if e.complexity.Query.AgentInstances == nil {
 			break
@@ -8073,7 +8066,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.PullAgentMessagesToUser(childComplexity, args["agentID"].(objects.GUID), args["instanceID"].(*string), args["afterSequence"].(*int), args["limit"].(*int)), true
+		return e.complexity.Query.PullAgentMessagesToUser(childComplexity, args["agentID"].(objects.GUID), args["afterSequence"].(*int), args["limit"].(*int)), true
 	case "Query.queryChannels":
 		if e.complexity.Query.QueryChannels == nil {
 			break
@@ -13510,21 +13503,16 @@ func (ec *executionContext) field_Query_agentChatMessages_args(ctx context.Conte
 		return nil, err
 	}
 	args["agentID"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "instanceID", ec.unmarshalOString2ᚖstring)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["instanceID"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
+	args["afterSequence"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["afterSequence"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
-	if err != nil {
-		return nil, err
-	}
-	args["limit"] = arg3
+	args["limit"] = arg2
 	return args, nil
 }
 
@@ -14243,21 +14231,16 @@ func (ec *executionContext) field_Query_pullAgentMessagesToUser_args(ctx context
 		return nil, err
 	}
 	args["agentID"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "instanceID", ec.unmarshalOString2ᚖstring)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["instanceID"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "afterSequence", ec.unmarshalOInt2ᚖint)
+	args["afterSequence"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["afterSequence"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint)
-	if err != nil {
-		return nil, err
-	}
-	args["limit"] = arg3
+	args["limit"] = arg2
 	return args, nil
 }
 
@@ -15766,23 +15749,23 @@ func (ec *executionContext) fieldContext_APIKey_requests(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _APIKey_agent(ctx context.Context, field graphql.CollectedField, obj *ent.APIKey) (ret graphql.Marshaler) {
+func (ec *executionContext) _APIKey_agentInstance(ctx context.Context, field graphql.CollectedField, obj *ent.APIKey) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_APIKey_agent,
+		ec.fieldContext_APIKey_agentInstance,
 		func(ctx context.Context) (any, error) {
-			return obj.Agent(ctx)
+			return obj.AgentInstance(ctx)
 		},
 		nil,
-		ec.marshalOAgent2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgent,
+		ec.marshalOAgentInstance2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstance,
 		true,
 		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_APIKey_agent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_APIKey_agentInstance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "APIKey",
 		Field:      field,
@@ -15791,53 +15774,41 @@ func (ec *executionContext) fieldContext_APIKey_agent(_ context.Context, field g
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_Agent_id(ctx, field)
+				return ec.fieldContext_AgentInstance_id(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_Agent_createdAt(ctx, field)
+				return ec.fieldContext_AgentInstance_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_Agent_updatedAt(ctx, field)
+				return ec.fieldContext_AgentInstance_updatedAt(ctx, field)
 			case "projectID":
-				return ec.fieldContext_Agent_projectID(ctx, field)
-			case "createdByUserID":
-				return ec.fieldContext_Agent_createdByUserID(ctx, field)
+				return ec.fieldContext_AgentInstance_projectID(ctx, field)
+			case "agentID":
+				return ec.fieldContext_AgentInstance_agentID(ctx, field)
+			case "agentRuntimeID":
+				return ec.fieldContext_AgentInstance_agentRuntimeID(ctx, field)
 			case "name":
-				return ec.fieldContext_Agent_name(ctx, field)
+				return ec.fieldContext_AgentInstance_name(ctx, field)
 			case "description":
-				return ec.fieldContext_Agent_description(ctx, field)
-			case "status":
-				return ec.fieldContext_Agent_status(ctx, field)
-			case "promptID":
-				return ec.fieldContext_Agent_promptID(ctx, field)
-			case "model":
-				return ec.fieldContext_Agent_model(ctx, field)
-			case "agentBuiltinTools":
-				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
-			case "skillsPolicy":
-				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
+				return ec.fieldContext_AgentInstance_description(ctx, field)
+			case "platform":
+				return ec.fieldContext_AgentInstance_platform(ctx, field)
 			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
-			case "project":
-				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
-			case "prompt":
-				return ec.fieldContext_Agent_prompt(ctx, field)
+				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
+			case "lastHeartbeatAt":
+				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
+			case "deployment":
+				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "status":
+				return ec.fieldContext_AgentInstance_status(ctx, field)
+			case "agent":
+				return ec.fieldContext_AgentInstance_agent(ctx, field)
+			case "runtime":
+				return ec.fieldContext_AgentInstance_runtime(ctx, field)
 			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
-			case "toolBindings":
-				return ec.fieldContext_Agent_toolBindings(ctx, field)
-			case "skillBindings":
-				return ec.fieldContext_Agent_skillBindings(ctx, field)
-			case "instances":
-				return ec.fieldContext_Agent_instances(ctx, field)
-			case "threads":
-				return ec.fieldContext_Agent_threads(ctx, field)
+				return ec.fieldContext_AgentInstance_apiKey(ctx, field)
 			case "messages":
-				return ec.fieldContext_Agent_messages(ctx, field)
-			case "memories":
-				return ec.fieldContext_Agent_memories(ctx, field)
+				return ec.fieldContext_AgentInstance_messages(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Agent", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type AgentInstance", field.Name)
 		},
 	}
 	return fc, nil
@@ -15998,8 +15969,8 @@ func (ec *executionContext) fieldContext_APIKeyEdge_node(_ context.Context, fiel
 				return ec.fieldContext_APIKey_project(ctx, field)
 			case "requests":
 				return ec.fieldContext_APIKey_requests(ctx, field)
-			case "agent":
-				return ec.fieldContext_APIKey_agent(ctx, field)
+			case "agentInstance":
+				return ec.fieldContext_APIKey_agentInstance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
 		},
@@ -17284,35 +17255,6 @@ func (ec *executionContext) fieldContext_Agent_skillsPolicy(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Agent_apiKeyID(ctx context.Context, field graphql.CollectedField, obj *ent.Agent) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Agent_apiKeyID,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Agent().APIKeyID(ctx, obj)
-		},
-		nil,
-		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Agent_apiKeyID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Agent",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Agent_project(ctx context.Context, field graphql.CollectedField, obj *ent.Agent) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -17386,14 +17328,14 @@ func (ec *executionContext) fieldContext_Agent_project(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Agent_ownerUser(ctx context.Context, field graphql.CollectedField, obj *ent.Agent) (ret graphql.Marshaler) {
+func (ec *executionContext) _Agent_createdByUser(ctx context.Context, field graphql.CollectedField, obj *ent.Agent) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Agent_ownerUser,
+		ec.fieldContext_Agent_createdByUser,
 		func(ctx context.Context) (any, error) {
-			return obj.OwnerUser(ctx)
+			return obj.CreatedByUser(ctx)
 		},
 		nil,
 		ec.marshalNUser2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUser,
@@ -17402,7 +17344,7 @@ func (ec *executionContext) _Agent_ownerUser(ctx context.Context, field graphql.
 	)
 }
 
-func (ec *executionContext) fieldContext_Agent_ownerUser(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Agent_createdByUser(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Agent",
 		Field:      field,
@@ -17523,67 +17465,6 @@ func (ec *executionContext) fieldContext_Agent_prompt(_ context.Context, field g
 				return ec.fieldContext_Prompt_agents(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Prompt", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Agent_apiKey(ctx context.Context, field graphql.CollectedField, obj *ent.Agent) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Agent_apiKey,
-		func(ctx context.Context) (any, error) {
-			return obj.APIKey(ctx)
-		},
-		nil,
-		ec.marshalNAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKey,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Agent_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Agent",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_APIKey_id(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_APIKey_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_APIKey_updatedAt(ctx, field)
-			case "userID":
-				return ec.fieldContext_APIKey_userID(ctx, field)
-			case "projectID":
-				return ec.fieldContext_APIKey_projectID(ctx, field)
-			case "key":
-				return ec.fieldContext_APIKey_key(ctx, field)
-			case "name":
-				return ec.fieldContext_APIKey_name(ctx, field)
-			case "type":
-				return ec.fieldContext_APIKey_type(ctx, field)
-			case "status":
-				return ec.fieldContext_APIKey_status(ctx, field)
-			case "scopes":
-				return ec.fieldContext_APIKey_scopes(ctx, field)
-			case "profiles":
-				return ec.fieldContext_APIKey_profiles(ctx, field)
-			case "user":
-				return ec.fieldContext_APIKey_user(ctx, field)
-			case "project":
-				return ec.fieldContext_APIKey_project(ctx, field)
-			case "requests":
-				return ec.fieldContext_APIKey_requests(ctx, field)
-			case "agent":
-				return ec.fieldContext_APIKey_agent(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
 		},
 	}
 	return fc, nil
@@ -18672,16 +18553,12 @@ func (ec *executionContext) fieldContext_AgentEdge_node(_ context.Context, field
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -18904,35 +18781,6 @@ func (ec *executionContext) fieldContext_AgentInstance_agentRuntimeID(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _AgentInstance_instanceID(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AgentInstance_instanceID,
-		func(ctx context.Context) (any, error) {
-			return obj.InstanceID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AgentInstance_instanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AgentInstance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _AgentInstance_name(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18950,6 +18798,35 @@ func (ec *executionContext) _AgentInstance_name(ctx context.Context, field graph
 }
 
 func (ec *executionContext) fieldContext_AgentInstance_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentInstance_description(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstance_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstance_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentInstance",
 		Field:      field,
@@ -18991,30 +18868,30 @@ func (ec *executionContext) fieldContext_AgentInstance_platform(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _AgentInstance_version(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
+func (ec *executionContext) _AgentInstance_apiKeyID(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AgentInstance_version,
+		ec.fieldContext_AgentInstance_apiKeyID,
 		func(ctx context.Context) (any, error) {
-			return obj.Version, nil
+			return ec.resolvers.AgentInstance().APIKeyID(ctx, obj)
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_AgentInstance_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AgentInstance_apiKeyID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentInstance",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -19161,16 +19038,12 @@ func (ec *executionContext) fieldContext_AgentInstance_agent(_ context.Context, 
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -19236,6 +19109,67 @@ func (ec *executionContext) fieldContext_AgentInstance_runtime(_ context.Context
 				return ec.fieldContext_AgentRuntime_password(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AgentRuntime", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentInstance_apiKey(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstance_apiKey,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKey(ctx)
+		},
+		nil,
+		ec.marshalNAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKey,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstance_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstance",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_APIKey_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_APIKey_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_APIKey_updatedAt(ctx, field)
+			case "userID":
+				return ec.fieldContext_APIKey_userID(ctx, field)
+			case "projectID":
+				return ec.fieldContext_APIKey_projectID(ctx, field)
+			case "key":
+				return ec.fieldContext_APIKey_key(ctx, field)
+			case "name":
+				return ec.fieldContext_APIKey_name(ctx, field)
+			case "type":
+				return ec.fieldContext_APIKey_type(ctx, field)
+			case "status":
+				return ec.fieldContext_APIKey_status(ctx, field)
+			case "scopes":
+				return ec.fieldContext_APIKey_scopes(ctx, field)
+			case "profiles":
+				return ec.fieldContext_APIKey_profiles(ctx, field)
+			case "user":
+				return ec.fieldContext_APIKey_user(ctx, field)
+			case "project":
+				return ec.fieldContext_APIKey_project(ctx, field)
+			case "requests":
+				return ec.fieldContext_APIKey_requests(ctx, field)
+			case "agentInstance":
+				return ec.fieldContext_APIKey_agentInstance(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
 		},
 	}
 	return fc, nil
@@ -19487,14 +19421,14 @@ func (ec *executionContext) fieldContext_AgentInstanceEdge_node(_ context.Contex
 				return ec.fieldContext_AgentInstance_agentID(ctx, field)
 			case "agentRuntimeID":
 				return ec.fieldContext_AgentInstance_agentRuntimeID(ctx, field)
-			case "instanceID":
-				return ec.fieldContext_AgentInstance_instanceID(ctx, field)
 			case "name":
 				return ec.fieldContext_AgentInstance_name(ctx, field)
+			case "description":
+				return ec.fieldContext_AgentInstance_description(ctx, field)
 			case "platform":
 				return ec.fieldContext_AgentInstance_platform(ctx, field)
-			case "version":
-				return ec.fieldContext_AgentInstance_version(ctx, field)
+			case "apiKeyID":
+				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
 			case "deployment":
@@ -19505,6 +19439,8 @@ func (ec *executionContext) fieldContext_AgentInstanceEdge_node(_ context.Contex
 				return ec.fieldContext_AgentInstance_agent(ctx, field)
 			case "runtime":
 				return ec.fieldContext_AgentInstance_runtime(ctx, field)
+			case "apiKey":
+				return ec.fieldContext_AgentInstance_apiKey(ctx, field)
 			case "messages":
 				return ec.fieldContext_AgentInstance_messages(ctx, field)
 			}
@@ -19823,16 +19759,12 @@ func (ec *executionContext) fieldContext_AgentMemory_agent(_ context.Context, fi
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -20516,16 +20448,12 @@ func (ec *executionContext) fieldContext_AgentMessage_agent(_ context.Context, f
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -20581,14 +20509,14 @@ func (ec *executionContext) fieldContext_AgentMessage_agentInstance(_ context.Co
 				return ec.fieldContext_AgentInstance_agentID(ctx, field)
 			case "agentRuntimeID":
 				return ec.fieldContext_AgentInstance_agentRuntimeID(ctx, field)
-			case "instanceID":
-				return ec.fieldContext_AgentInstance_instanceID(ctx, field)
 			case "name":
 				return ec.fieldContext_AgentInstance_name(ctx, field)
+			case "description":
+				return ec.fieldContext_AgentInstance_description(ctx, field)
 			case "platform":
 				return ec.fieldContext_AgentInstance_platform(ctx, field)
-			case "version":
-				return ec.fieldContext_AgentInstance_version(ctx, field)
+			case "apiKeyID":
+				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
 			case "deployment":
@@ -20599,6 +20527,8 @@ func (ec *executionContext) fieldContext_AgentMessage_agentInstance(_ context.Co
 				return ec.fieldContext_AgentInstance_agent(ctx, field)
 			case "runtime":
 				return ec.fieldContext_AgentInstance_runtime(ctx, field)
+			case "apiKey":
+				return ec.fieldContext_AgentInstance_apiKey(ctx, field)
 			case "messages":
 				return ec.fieldContext_AgentInstance_messages(ctx, field)
 			}
@@ -21694,16 +21624,12 @@ func (ec *executionContext) fieldContext_AgentSkill_agent(_ context.Context, fie
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -22295,16 +22221,12 @@ func (ec *executionContext) fieldContext_AgentThread_agent(_ context.Context, fi
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -22863,16 +22785,12 @@ func (ec *executionContext) fieldContext_AgentTool_agent(_ context.Context, fiel
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -30405,14 +30323,14 @@ func (ec *executionContext) fieldContext_DeployAxonclawResult_instance(_ context
 				return ec.fieldContext_AgentInstance_agentID(ctx, field)
 			case "agentRuntimeID":
 				return ec.fieldContext_AgentInstance_agentRuntimeID(ctx, field)
-			case "instanceID":
-				return ec.fieldContext_AgentInstance_instanceID(ctx, field)
 			case "name":
 				return ec.fieldContext_AgentInstance_name(ctx, field)
+			case "description":
+				return ec.fieldContext_AgentInstance_description(ctx, field)
 			case "platform":
 				return ec.fieldContext_AgentInstance_platform(ctx, field)
-			case "version":
-				return ec.fieldContext_AgentInstance_version(ctx, field)
+			case "apiKeyID":
+				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
 			case "deployment":
@@ -30423,6 +30341,8 @@ func (ec *executionContext) fieldContext_DeployAxonclawResult_instance(_ context
 				return ec.fieldContext_AgentInstance_agent(ctx, field)
 			case "runtime":
 				return ec.fieldContext_AgentInstance_runtime(ctx, field)
+			case "apiKey":
+				return ec.fieldContext_AgentInstance_apiKey(ctx, field)
 			case "messages":
 				return ec.fieldContext_AgentInstance_messages(ctx, field)
 			}
@@ -34758,8 +34678,8 @@ func (ec *executionContext) fieldContext_Mutation_createAPIKey(ctx context.Conte
 				return ec.fieldContext_APIKey_project(ctx, field)
 			case "requests":
 				return ec.fieldContext_APIKey_requests(ctx, field)
-			case "agent":
-				return ec.fieldContext_APIKey_agent(ctx, field)
+			case "agentInstance":
+				return ec.fieldContext_APIKey_agentInstance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
 		},
@@ -34831,8 +34751,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKey(ctx context.Conte
 				return ec.fieldContext_APIKey_project(ctx, field)
 			case "requests":
 				return ec.fieldContext_APIKey_requests(ctx, field)
-			case "agent":
-				return ec.fieldContext_APIKey_agent(ctx, field)
+			case "agentInstance":
+				return ec.fieldContext_APIKey_agentInstance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
 		},
@@ -34904,8 +34824,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKeyStatus(ctx context
 				return ec.fieldContext_APIKey_project(ctx, field)
 			case "requests":
 				return ec.fieldContext_APIKey_requests(ctx, field)
-			case "agent":
-				return ec.fieldContext_APIKey_agent(ctx, field)
+			case "agentInstance":
+				return ec.fieldContext_APIKey_agentInstance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
 		},
@@ -34977,8 +34897,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKeyProfiles(ctx conte
 				return ec.fieldContext_APIKey_project(ctx, field)
 			case "requests":
 				return ec.fieldContext_APIKey_requests(ctx, field)
-			case "agent":
-				return ec.fieldContext_APIKey_agent(ctx, field)
+			case "agentInstance":
+				return ec.fieldContext_APIKey_agentInstance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
 		},
@@ -37643,16 +37563,12 @@ func (ec *executionContext) fieldContext_Mutation_createAgent(ctx context.Contex
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -37732,16 +37648,12 @@ func (ec *executionContext) fieldContext_Mutation_updateAgent(ctx context.Contex
 				return ec.fieldContext_Agent_agentBuiltinTools(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_Agent_skillsPolicy(ctx, field)
-			case "apiKeyID":
-				return ec.fieldContext_Agent_apiKeyID(ctx, field)
 			case "project":
 				return ec.fieldContext_Agent_project(ctx, field)
-			case "ownerUser":
-				return ec.fieldContext_Agent_ownerUser(ctx, field)
+			case "createdByUser":
+				return ec.fieldContext_Agent_createdByUser(ctx, field)
 			case "prompt":
 				return ec.fieldContext_Agent_prompt(ctx, field)
-			case "apiKey":
-				return ec.fieldContext_Agent_apiKey(ctx, field)
 			case "toolBindings":
 				return ec.fieldContext_Agent_toolBindings(ctx, field)
 			case "skillBindings":
@@ -46124,7 +46036,7 @@ func (ec *executionContext) _Query_pullAgentMessagesToUser(ctx context.Context, 
 		ec.fieldContext_Query_pullAgentMessagesToUser,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().PullAgentMessagesToUser(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["instanceID"].(*string), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
+			return ec.resolvers.Query().PullAgentMessagesToUser(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
 		},
 		nil,
 		ec.marshalNAgentChatMessage2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAgentChatMessageᚄ,
@@ -46246,7 +46158,7 @@ func (ec *executionContext) _Query_agentChatMessages(ctx context.Context, field 
 		ec.fieldContext_Query_agentChatMessages,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().AgentChatMessages(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["instanceID"].(*string), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
+			return ec.resolvers.Query().AgentChatMessages(ctx, fc.Args["agentID"].(objects.GUID), fc.Args["afterSequence"].(*int), fc.Args["limit"].(*int))
 		},
 		nil,
 		ec.marshalNAgentChatMessage2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐAgentChatMessageᚄ,
@@ -47319,8 +47231,8 @@ func (ec *executionContext) fieldContext_Request_apiKey(_ context.Context, field
 				return ec.fieldContext_APIKey_project(ctx, field)
 			case "requests":
 				return ec.fieldContext_APIKey_requests(ctx, field)
-			case "agent":
-				return ec.fieldContext_APIKey_agent(ctx, field)
+			case "agentInstance":
+				return ec.fieldContext_APIKey_agentInstance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
 		},
@@ -61874,7 +61786,7 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith", "hasAgent", "hasAgentWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith", "hasAgentInstance", "hasAgentInstanceWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -62470,20 +62382,20 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 				return it, err
 			}
 			it.HasRequestsWith = data
-		case "hasAgent":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAgent"))
+		case "hasAgentInstance":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAgentInstance"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HasAgent = data
-		case "hasAgentWith":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAgentWith"))
-			data, err := ec.unmarshalOAgentWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentWhereInputᚄ(ctx, v)
+			it.HasAgentInstance = data
+		case "hasAgentInstanceWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAgentInstanceWith"))
+			data, err := ec.unmarshalOAgentInstanceWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HasAgentWith = data
+			it.HasAgentInstanceWith = data
 		}
 	}
 
@@ -62497,7 +62409,7 @@ func (ec *executionContext) unmarshalInputAckAgentMessagesInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "instanceID", "messageIDs"}
+	fieldsInOrder := [...]string{"agentID", "messageIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -62515,13 +62427,6 @@ func (ec *executionContext) unmarshalInputAckAgentMessagesInput(ctx context.Cont
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.AgentID = converted
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
 		case "messageIDs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("messageIDs"))
 			data, err := ec.unmarshalNID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
@@ -62721,7 +62626,7 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "agentID", "agentIDNEQ", "agentIDIn", "agentIDNotIn", "agentRuntimeID", "agentRuntimeIDNEQ", "agentRuntimeIDIn", "agentRuntimeIDNotIn", "agentRuntimeIDIsNil", "agentRuntimeIDNotNil", "instanceID", "instanceIDNEQ", "instanceIDIn", "instanceIDNotIn", "instanceIDGT", "instanceIDGTE", "instanceIDLT", "instanceIDLTE", "instanceIDContains", "instanceIDHasPrefix", "instanceIDHasSuffix", "instanceIDEqualFold", "instanceIDContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "platform", "platformNEQ", "platformIn", "platformNotIn", "platformGT", "platformGTE", "platformLT", "platformLTE", "platformContains", "platformHasPrefix", "platformHasSuffix", "platformEqualFold", "platformContainsFold", "version", "versionNEQ", "versionIn", "versionNotIn", "versionGT", "versionGTE", "versionLT", "versionLTE", "versionContains", "versionHasPrefix", "versionHasSuffix", "versionEqualFold", "versionContainsFold", "lastHeartbeatAt", "lastHeartbeatAtNEQ", "lastHeartbeatAtIn", "lastHeartbeatAtNotIn", "lastHeartbeatAtGT", "lastHeartbeatAtGTE", "lastHeartbeatAtLT", "lastHeartbeatAtLTE", "status", "statusNEQ", "statusIn", "statusNotIn", "hasAgent", "hasAgentWith", "hasRuntime", "hasRuntimeWith", "hasMessages", "hasMessagesWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "agentID", "agentIDNEQ", "agentIDIn", "agentIDNotIn", "agentRuntimeID", "agentRuntimeIDNEQ", "agentRuntimeIDIn", "agentRuntimeIDNotIn", "agentRuntimeIDIsNil", "agentRuntimeIDNotNil", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionEqualFold", "descriptionContainsFold", "platform", "platformNEQ", "platformIn", "platformNotIn", "platformGT", "platformGTE", "platformLT", "platformLTE", "platformContains", "platformHasPrefix", "platformHasSuffix", "platformEqualFold", "platformContainsFold", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "lastHeartbeatAt", "lastHeartbeatAtNEQ", "lastHeartbeatAtIn", "lastHeartbeatAtNotIn", "lastHeartbeatAtGT", "lastHeartbeatAtGTE", "lastHeartbeatAtLT", "lastHeartbeatAtLTE", "status", "statusNEQ", "statusIn", "statusNotIn", "hasAgent", "hasAgentWith", "hasRuntime", "hasRuntimeWith", "hasAPIKey", "hasAPIKeyWith", "hasMessages", "hasMessagesWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63107,97 +63012,6 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 				return it, err
 			}
 			it.AgentRuntimeIDNotNil = data
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
-		case "instanceIDNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDNEQ = data
-		case "instanceIDIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDIn = data
-		case "instanceIDNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDNotIn = data
-		case "instanceIDGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDGT = data
-		case "instanceIDGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDGTE = data
-		case "instanceIDLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDLT = data
-		case "instanceIDLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDLTE = data
-		case "instanceIDContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDContains = data
-		case "instanceIDHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDHasPrefix = data
-		case "instanceIDHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDHasSuffix = data
-		case "instanceIDEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDEqualFold = data
-		case "instanceIDContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceIDContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceIDContainsFold = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -63289,6 +63103,97 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 				return it, err
 			}
 			it.NameContainsFold = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "descriptionNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionNEQ = data
+		case "descriptionIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionIn = data
+		case "descriptionNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionNotIn = data
+		case "descriptionGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionGT = data
+		case "descriptionGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionGTE = data
+		case "descriptionLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionLT = data
+		case "descriptionLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionLTE = data
+		case "descriptionContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionContains = data
+		case "descriptionHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionHasPrefix = data
+		case "descriptionHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionHasSuffix = data
+		case "descriptionEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionEqualFold = data
+		case "descriptionContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionContainsFold = data
 		case "platform":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("platform"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -63380,97 +63285,50 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 				return it, err
 			}
 			it.PlatformContainsFold = data
-		case "version":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+		case "apiKeyID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Version = data
-		case "versionNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.APIKeyID = converted
+		case "apiKeyIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIDNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VersionNEQ = data
-		case "versionIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.APIKeyIDNEQ = converted
+		case "apiKeyIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIDIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VersionIn = data
-		case "versionNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.APIKeyIDIn = converted
+		case "apiKeyIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIDNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.VersionNotIn = data
-		case "versionGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
 			if err != nil {
-				return it, err
+				return it, graphql.ErrorOnPath(ctx, err)
 			}
-			it.VersionGT = data
-		case "versionGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VersionGTE = data
-		case "versionLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VersionLT = data
-		case "versionLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VersionLTE = data
-		case "versionContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VersionContains = data
-		case "versionHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VersionHasPrefix = data
-		case "versionHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VersionHasSuffix = data
-		case "versionEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VersionEqualFold = data
-		case "versionContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("versionContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VersionContainsFold = data
+			it.APIKeyIDNotIn = converted
 		case "lastHeartbeatAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastHeartbeatAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -63583,6 +63441,20 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 				return it, err
 			}
 			it.HasRuntimeWith = data
+		case "hasAPIKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAPIKey"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasAPIKey = data
+		case "hasAPIKeyWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAPIKeyWith"))
+			data, err := ec.unmarshalOAPIKeyWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasAPIKeyWith = data
 		case "hasMessages":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasMessages"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -67415,7 +67287,7 @@ func (ec *executionContext) unmarshalInputAgentWhereInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "createdByUserID", "createdByUserIDNEQ", "createdByUserIDIn", "createdByUserIDNotIn", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionEqualFold", "descriptionContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "promptID", "promptIDNEQ", "promptIDIn", "promptIDNotIn", "model", "modelNEQ", "modelIn", "modelNotIn", "modelGT", "modelGTE", "modelLT", "modelLTE", "modelContains", "modelHasPrefix", "modelHasSuffix", "modelEqualFold", "modelContainsFold", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "hasProject", "hasProjectWith", "hasOwnerUser", "hasOwnerUserWith", "hasPrompt", "hasPromptWith", "hasAPIKey", "hasAPIKeyWith", "hasToolBindings", "hasToolBindingsWith", "hasSkillBindings", "hasSkillBindingsWith", "hasInstances", "hasInstancesWith", "hasThreads", "hasThreadsWith", "hasMessages", "hasMessagesWith", "hasMemories", "hasMemoriesWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "createdByUserID", "createdByUserIDNEQ", "createdByUserIDIn", "createdByUserIDNotIn", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionEqualFold", "descriptionContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "promptID", "promptIDNEQ", "promptIDIn", "promptIDNotIn", "model", "modelNEQ", "modelIn", "modelNotIn", "modelGT", "modelGTE", "modelLT", "modelLTE", "modelContains", "modelHasPrefix", "modelHasSuffix", "modelEqualFold", "modelContainsFold", "hasProject", "hasProjectWith", "hasCreatedByUser", "hasCreatedByUserWith", "hasPrompt", "hasPromptWith", "hasToolBindings", "hasToolBindingsWith", "hasSkillBindings", "hasSkillBindingsWith", "hasInstances", "hasInstancesWith", "hasThreads", "hasThreadsWith", "hasMessages", "hasMessagesWith", "hasMemories", "hasMemoriesWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68076,50 +67948,6 @@ func (ec *executionContext) unmarshalInputAgentWhereInput(ctx context.Context, o
 				return it, err
 			}
 			it.ModelContainsFold = data
-		case "apiKeyID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyID"))
-			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.APIKeyID = converted
-		case "apiKeyIDNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIDNEQ"))
-			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.APIKeyIDNEQ = converted
-		case "apiKeyIDIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIDIn"))
-			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrsToInts(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.APIKeyIDIn = converted
-		case "apiKeyIDNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIDNotIn"))
-			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrsToInts(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.APIKeyIDNotIn = converted
 		case "hasProject":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasProject"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -68134,20 +67962,20 @@ func (ec *executionContext) unmarshalInputAgentWhereInput(ctx context.Context, o
 				return it, err
 			}
 			it.HasProjectWith = data
-		case "hasOwnerUser":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasOwnerUser"))
+		case "hasCreatedByUser":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCreatedByUser"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HasOwnerUser = data
-		case "hasOwnerUserWith":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasOwnerUserWith"))
+			it.HasCreatedByUser = data
+		case "hasCreatedByUserWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCreatedByUserWith"))
 			data, err := ec.unmarshalOUserWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HasOwnerUserWith = data
+			it.HasCreatedByUserWith = data
 		case "hasPrompt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPrompt"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -68162,20 +67990,6 @@ func (ec *executionContext) unmarshalInputAgentWhereInput(ctx context.Context, o
 				return it, err
 			}
 			it.HasPromptWith = data
-		case "hasAPIKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAPIKey"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HasAPIKey = data
-		case "hasAPIKeyWith":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAPIKeyWith"))
-			data, err := ec.unmarshalOAPIKeyWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyWhereInputᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HasAPIKeyWith = data
 		case "hasToolBindings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasToolBindings"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -72776,7 +72590,7 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectID", "instanceID", "name", "platform", "version", "lastHeartbeatAt", "deployment", "status", "agentID", "runtimeID"}
+	fieldsInOrder := [...]string{"projectID", "name", "description", "platform", "lastHeartbeatAt", "deployment", "status", "agentID", "runtimeID", "apiKeyID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72790,13 +72604,6 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.ProjectID = data
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -72804,6 +72611,13 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.Name = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
 		case "platform":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("platform"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -72811,13 +72625,6 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.Platform = data
-		case "version":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Version = data
 		case "lastHeartbeatAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastHeartbeatAt"))
 			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
@@ -72861,6 +72668,17 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.RuntimeID = converted
+		case "apiKeyID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyID"))
+			data, err := ec.unmarshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToInt(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.APIKeyID = converted
 		}
 	}
 
@@ -84020,7 +83838,7 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "instanceID", "text"}
+	fieldsInOrder := [...]string{"agentID", "text"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84038,13 +83856,6 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.AgentID = converted
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
 		case "text":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -87404,7 +87215,7 @@ func (ec *executionContext) unmarshalInputUpdateAgentInstanceInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "platform", "version", "lastHeartbeatAt", "deployment", "clearDeployment", "status", "runtimeID", "clearRuntime"}
+	fieldsInOrder := [...]string{"name", "description", "platform", "lastHeartbeatAt", "deployment", "clearDeployment", "status", "runtimeID", "clearRuntime"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87418,6 +87229,13 @@ func (ec *executionContext) unmarshalInputUpdateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.Name = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
 		case "platform":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("platform"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -87425,13 +87243,6 @@ func (ec *executionContext) unmarshalInputUpdateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.Platform = data
-		case "version":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Version = data
 		case "lastHeartbeatAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastHeartbeatAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -93730,7 +93541,7 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "agent":
+		case "agentInstance":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -93739,7 +93550,7 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._APIKey_agent(ctx, field, obj)
+				res = ec._APIKey_agentInstance(ctx, field, obj)
 				return res
 			}
 
@@ -94472,42 +94283,6 @@ func (ec *executionContext) _Agent(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "apiKeyID":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Agent_apiKeyID(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "project":
 			field := field
 
@@ -94544,7 +94319,7 @@ func (ec *executionContext) _Agent(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "ownerUser":
+		case "createdByUser":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -94553,7 +94328,7 @@ func (ec *executionContext) _Agent(ctx context.Context, sel ast.SelectionSet, ob
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Agent_ownerUser(ctx, field, obj)
+				res = ec._Agent_createdByUser(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -94590,42 +94365,6 @@ func (ec *executionContext) _Agent(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Agent_prompt(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "apiKey":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Agent_apiKey(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -95315,13 +95054,13 @@ func (ec *executionContext) _AgentInstance(ctx context.Context, sel ast.Selectio
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "instanceID":
-			out.Values[i] = ec._AgentInstance_instanceID(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._AgentInstance_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "name":
-			out.Values[i] = ec._AgentInstance_name(ctx, field, obj)
+		case "description":
+			out.Values[i] = ec._AgentInstance_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -95330,11 +95069,42 @@ func (ec *executionContext) _AgentInstance(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "version":
-			out.Values[i] = ec._AgentInstance_version(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+		case "apiKeyID":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AgentInstance_apiKeyID(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "lastHeartbeatAt":
 			out.Values[i] = ec._AgentInstance_lastHeartbeatAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -95393,6 +95163,42 @@ func (ec *executionContext) _AgentInstance(ctx context.Context, sel ast.Selectio
 					}
 				}()
 				res = ec._AgentInstance_runtime(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "apiKey":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AgentInstance_apiKey(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

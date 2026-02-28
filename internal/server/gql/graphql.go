@@ -126,7 +126,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		// when multiple test requests are sent in parallel from the frontend.
 		// TestChannel performs LLM API calls which can be long-running, and the
 		// database operations within don't require transactional consistency.
-		SkipTxFunc: entgql.SkipOperations("TestChannel"),
+		SkipTxFunc: entgql.SkipOperations("TestChannel", "DeployAxonclaw"),
 	})
 
 	return &GraphqlHandler{

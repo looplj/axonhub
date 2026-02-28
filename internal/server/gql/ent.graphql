@@ -57,7 +57,7 @@ type APIKey implements Node {
     """
     where: RequestWhereInput
   ): RequestConnection!
-  agent: Agent
+  agentInstance: AgentInstance
 }
 """
 A connection to a list of items.
@@ -242,10 +242,10 @@ input APIKeyWhereInput {
   hasRequests: Boolean
   hasRequestsWith: [RequestWhereInput!]
   """
-  agent edge predicates
+  agent_instance edge predicates
   """
-  hasAgent: Boolean
-  hasAgentWith: [AgentWhereInput!]
+  hasAgentInstance: Boolean
+  hasAgentInstanceWith: [AgentInstanceWhereInput!]
 }
 type Agent implements Node {
   id: ID!
@@ -287,14 +287,9 @@ type Agent implements Node {
   Skill add/install policy (JSON)
   """
   skillsPolicy: AgentSkillsPolicy!
-  """
-  Service account API key ID bound to this agent
-  """
-  apiKeyID: ID!
   project: Project!
-  ownerUser: User!
+  createdByUser: User!
   prompt: Prompt!
-  apiKey: APIKey!
   toolBindings(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -526,21 +521,21 @@ type AgentInstance implements Node {
   """
   agentRuntimeID: ID
   """
-  Runtime generated instance identifier
-  """
-  instanceID: String!
-  """
   Human readable name
   """
   name: String!
+  """
+  Instance description
+  """
+  description: String!
   """
   Platform information like os/arch
   """
   platform: String!
   """
-  Runtime version
+  Service account API key ID bound to this agent instance
   """
-  version: String!
+  apiKeyID: ID!
   """
   Last heartbeat timestamp
   """
@@ -555,6 +550,7 @@ type AgentInstance implements Node {
   status: AgentInstanceStatus!
   agent: Agent!
   runtime: AgentRuntime
+  apiKey: APIKey!
   messages(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -715,22 +711,6 @@ input AgentInstanceWhereInput {
   agentRuntimeIDIsNil: Boolean
   agentRuntimeIDNotNil: Boolean
   """
-  instance_id field predicates
-  """
-  instanceID: String
-  instanceIDNEQ: String
-  instanceIDIn: [String!]
-  instanceIDNotIn: [String!]
-  instanceIDGT: String
-  instanceIDGTE: String
-  instanceIDLT: String
-  instanceIDLTE: String
-  instanceIDContains: String
-  instanceIDHasPrefix: String
-  instanceIDHasSuffix: String
-  instanceIDEqualFold: String
-  instanceIDContainsFold: String
-  """
   name field predicates
   """
   name: String
@@ -746,6 +726,22 @@ input AgentInstanceWhereInput {
   nameHasSuffix: String
   nameEqualFold: String
   nameContainsFold: String
+  """
+  description field predicates
+  """
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionEqualFold: String
+  descriptionContainsFold: String
   """
   platform field predicates
   """
@@ -763,21 +759,12 @@ input AgentInstanceWhereInput {
   platformEqualFold: String
   platformContainsFold: String
   """
-  version field predicates
+  api_key_id field predicates
   """
-  version: String
-  versionNEQ: String
-  versionIn: [String!]
-  versionNotIn: [String!]
-  versionGT: String
-  versionGTE: String
-  versionLT: String
-  versionLTE: String
-  versionContains: String
-  versionHasPrefix: String
-  versionHasSuffix: String
-  versionEqualFold: String
-  versionContainsFold: String
+  apiKeyID: ID
+  apiKeyIDNEQ: ID
+  apiKeyIDIn: [ID!]
+  apiKeyIDNotIn: [ID!]
   """
   last_heartbeat_at field predicates
   """
@@ -806,6 +793,11 @@ input AgentInstanceWhereInput {
   """
   hasRuntime: Boolean
   hasRuntimeWith: [AgentRuntimeWhereInput!]
+  """
+  api_key edge predicates
+  """
+  hasAPIKey: Boolean
+  hasAPIKeyWith: [APIKeyWhereInput!]
   """
   messages edge predicates
   """
@@ -2149,32 +2141,20 @@ input AgentWhereInput {
   modelEqualFold: String
   modelContainsFold: String
   """
-  api_key_id field predicates
-  """
-  apiKeyID: ID
-  apiKeyIDNEQ: ID
-  apiKeyIDIn: [ID!]
-  apiKeyIDNotIn: [ID!]
-  """
   project edge predicates
   """
   hasProject: Boolean
   hasProjectWith: [ProjectWhereInput!]
   """
-  owner_user edge predicates
+  created_by_user edge predicates
   """
-  hasOwnerUser: Boolean
-  hasOwnerUserWith: [UserWhereInput!]
+  hasCreatedByUser: Boolean
+  hasCreatedByUserWith: [UserWhereInput!]
   """
   prompt edge predicates
   """
   hasPrompt: Boolean
   hasPromptWith: [PromptWhereInput!]
-  """
-  api_key edge predicates
-  """
-  hasAPIKey: Boolean
-  hasAPIKeyWith: [APIKeyWhereInput!]
   """
   tool_bindings edge predicates
   """
@@ -3335,21 +3315,17 @@ input CreateAgentInstanceInput {
   """
   projectID: Int!
   """
-  Runtime generated instance identifier
-  """
-  instanceID: String!
-  """
   Human readable name
   """
   name: String
   """
+  Instance description
+  """
+  description: String
+  """
   Platform information like os/arch
   """
   platform: String
-  """
-  Runtime version
-  """
-  version: String
   """
   Last heartbeat timestamp
   """
@@ -3364,6 +3340,7 @@ input CreateAgentInstanceInput {
   status: AgentInstanceStatus
   agentID: ID!
   runtimeID: ID
+  apiKeyID: ID!
 }
 """
 CreateAgentMemoryInput is used for create AgentMemory object.
@@ -8906,13 +8883,13 @@ input UpdateAgentInstanceInput {
   """
   name: String
   """
+  Instance description
+  """
+  description: String
+  """
   Platform information like os/arch
   """
   platform: String
-  """
-  Runtime version
-  """
-  version: String
   """
   Last heartbeat timestamp
   """

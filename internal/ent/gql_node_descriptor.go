@@ -180,11 +180,11 @@ func (_m *APIKey) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Edges[3] = &Edge{
-		Type: "Agent",
-		Name: "agent",
+		Type: "AgentInstance",
+		Name: "agent_instance",
 	}
-	err = _m.QueryAgent().
-		Select(agent.FieldID).
+	err = _m.QueryAgentInstance().
+		Select(agentinstance.FieldID).
 		Scan(ctx, &node.Edges[3].IDs)
 	if err != nil {
 		return nil, err
@@ -197,8 +197,8 @@ func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Agent",
-		Fields: make([]*Field, 12),
-		Edges:  make([]*Edge, 10),
+		Fields: make([]*Field, 11),
+		Edges:  make([]*Edge, 9),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -289,14 +289,6 @@ func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "skills_policy",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.APIKeyID); err != nil {
-		return nil, err
-	}
-	node.Fields[11] = &Field{
-		Type:  "int",
-		Name:  "api_key_id",
-		Value: string(buf),
-	}
 	node.Edges[0] = &Edge{
 		Type: "Project",
 		Name: "project",
@@ -309,9 +301,9 @@ func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
 	}
 	node.Edges[1] = &Edge{
 		Type: "User",
-		Name: "owner_user",
+		Name: "created_by_user",
 	}
-	err = _m.QueryOwnerUser().
+	err = _m.QueryCreatedByUser().
 		Select(user.FieldID).
 		Scan(ctx, &node.Edges[1].IDs)
 	if err != nil {
@@ -328,72 +320,62 @@ func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Edges[3] = &Edge{
-		Type: "APIKey",
-		Name: "api_key",
-	}
-	err = _m.QueryAPIKey().
-		Select(apikey.FieldID).
-		Scan(ctx, &node.Edges[3].IDs)
-	if err != nil {
-		return nil, err
-	}
-	node.Edges[4] = &Edge{
 		Type: "AgentTool",
 		Name: "tool_bindings",
 	}
 	err = _m.QueryToolBindings().
 		Select(agenttool.FieldID).
-		Scan(ctx, &node.Edges[4].IDs)
+		Scan(ctx, &node.Edges[3].IDs)
 	if err != nil {
 		return nil, err
 	}
-	node.Edges[5] = &Edge{
+	node.Edges[4] = &Edge{
 		Type: "AgentSkill",
 		Name: "skill_bindings",
 	}
 	err = _m.QuerySkillBindings().
 		Select(agentskill.FieldID).
-		Scan(ctx, &node.Edges[5].IDs)
+		Scan(ctx, &node.Edges[4].IDs)
 	if err != nil {
 		return nil, err
 	}
-	node.Edges[6] = &Edge{
+	node.Edges[5] = &Edge{
 		Type: "AgentInstance",
 		Name: "instances",
 	}
 	err = _m.QueryInstances().
 		Select(agentinstance.FieldID).
-		Scan(ctx, &node.Edges[6].IDs)
+		Scan(ctx, &node.Edges[5].IDs)
 	if err != nil {
 		return nil, err
 	}
-	node.Edges[7] = &Edge{
+	node.Edges[6] = &Edge{
 		Type: "AgentThread",
 		Name: "threads",
 	}
 	err = _m.QueryThreads().
 		Select(agentthread.FieldID).
-		Scan(ctx, &node.Edges[7].IDs)
+		Scan(ctx, &node.Edges[6].IDs)
 	if err != nil {
 		return nil, err
 	}
-	node.Edges[8] = &Edge{
+	node.Edges[7] = &Edge{
 		Type: "AgentMessage",
 		Name: "messages",
 	}
 	err = _m.QueryMessages().
 		Select(agentmessage.FieldID).
-		Scan(ctx, &node.Edges[8].IDs)
+		Scan(ctx, &node.Edges[7].IDs)
 	if err != nil {
 		return nil, err
 	}
-	node.Edges[9] = &Edge{
+	node.Edges[8] = &Edge{
 		Type: "AgentMemory",
 		Name: "memories",
 	}
 	err = _m.QueryMemories().
 		Select(agentmemory.FieldID).
-		Scan(ctx, &node.Edges[9].IDs)
+		Scan(ctx, &node.Edges[8].IDs)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +388,7 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "AgentInstance",
 		Fields: make([]*Field, 12),
-		Edges:  make([]*Edge, 3),
+		Edges:  make([]*Edge, 4),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -449,20 +431,20 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "agent_runtime_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.InstanceID); err != nil {
+	if buf, err = json.Marshal(_m.Name); err != nil {
 		return nil, err
 	}
 	node.Fields[5] = &Field{
 		Type:  "string",
-		Name:  "instance_id",
+		Name:  "name",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Name); err != nil {
+	if buf, err = json.Marshal(_m.Description); err != nil {
 		return nil, err
 	}
 	node.Fields[6] = &Field{
 		Type:  "string",
-		Name:  "name",
+		Name:  "description",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.Platform); err != nil {
@@ -473,12 +455,12 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "platform",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Version); err != nil {
+	if buf, err = json.Marshal(_m.APIKeyID); err != nil {
 		return nil, err
 	}
 	node.Fields[8] = &Field{
-		Type:  "string",
-		Name:  "version",
+		Type:  "int",
+		Name:  "api_key_id",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.LastHeartbeatAt); err != nil {
@@ -526,12 +508,22 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Edges[2] = &Edge{
+		Type: "APIKey",
+		Name: "api_key",
+	}
+	err = _m.QueryAPIKey().
+		Select(apikey.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[3] = &Edge{
 		Type: "AgentMessage",
 		Name: "messages",
 	}
 	err = _m.QueryMessages().
 		Select(agentmessage.FieldID).
-		Scan(ctx, &node.Edges[2].IDs)
+		Scan(ctx, &node.Edges[3].IDs)
 	if err != nil {
 		return nil, err
 	}

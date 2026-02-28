@@ -30,9 +30,6 @@ func (Agent) Indexes() []ent.Index {
 		index.Fields("project_id", "name", "deleted_at").
 			StorageKey("agents_by_project_id_name").
 			Unique(),
-		index.Fields("api_key_id").
-			StorageKey("agents_by_api_key_id").
-			Unique(),
 	}
 }
 
@@ -84,13 +81,6 @@ func (Agent) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
-		field.Int("api_key_id").
-			Immutable().
-			Unique().
-			Comment("Service account API key ID bound to this agent").
-			Annotations(
-				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
-			),
 	}
 }
 
@@ -103,7 +93,7 @@ func (Agent) Edges() []ent.Edge {
 			Immutable().
 			Required().
 			Unique(),
-		edge.From("owner_user", User.Type).
+		edge.From("created_by_user", User.Type).
 			Ref("agents").
 			Field("created_by_user_id").
 			Immutable().
@@ -112,12 +102,6 @@ func (Agent) Edges() []ent.Edge {
 		edge.From("prompt", Prompt.Type).
 			Ref("agents").
 			Field("prompt_id").
-			Immutable().
-			Required().
-			Unique(),
-		edge.From("api_key", APIKey.Type).
-			Ref("agent").
-			Field("api_key_id").
 			Immutable().
 			Required().
 			Unique(),

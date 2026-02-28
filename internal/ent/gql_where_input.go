@@ -145,9 +145,9 @@ type APIKeyWhereInput struct {
 	HasRequests     *bool                `json:"hasRequests,omitempty"`
 	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
 
-	// "agent" edge predicates.
-	HasAgent     *bool              `json:"hasAgent,omitempty"`
-	HasAgentWith []*AgentWhereInput `json:"hasAgentWith,omitempty"`
+	// "agent_instance" edge predicates.
+	HasAgentInstance     *bool                      `json:"hasAgentInstance,omitempty"`
+	HasAgentInstanceWith []*AgentInstanceWhereInput `json:"hasAgentInstanceWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -474,23 +474,23 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 		}
 		predicates = append(predicates, apikey.HasRequestsWith(with...))
 	}
-	if i.HasAgent != nil {
-		p := apikey.HasAgent()
-		if !*i.HasAgent {
+	if i.HasAgentInstance != nil {
+		p := apikey.HasAgentInstance()
+		if !*i.HasAgentInstance {
 			p = apikey.Not(p)
 		}
 		predicates = append(predicates, p)
 	}
-	if len(i.HasAgentWith) > 0 {
-		with := make([]predicate.Agent, 0, len(i.HasAgentWith))
-		for _, w := range i.HasAgentWith {
+	if len(i.HasAgentInstanceWith) > 0 {
+		with := make([]predicate.AgentInstance, 0, len(i.HasAgentInstanceWith))
+		for _, w := range i.HasAgentInstanceWith {
 			p, err := w.P()
 			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasAgentWith'", err)
+				return nil, fmt.Errorf("%w: field 'HasAgentInstanceWith'", err)
 			}
 			with = append(with, p)
 		}
-		predicates = append(predicates, apikey.HasAgentWith(with...))
+		predicates = append(predicates, apikey.HasAgentInstanceWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -608,27 +608,17 @@ type AgentWhereInput struct {
 	ModelEqualFold    *string  `json:"modelEqualFold,omitempty"`
 	ModelContainsFold *string  `json:"modelContainsFold,omitempty"`
 
-	// "api_key_id" field predicates.
-	APIKeyID      *int  `json:"apiKeyID,omitempty"`
-	APIKeyIDNEQ   *int  `json:"apiKeyIDNEQ,omitempty"`
-	APIKeyIDIn    []int `json:"apiKeyIDIn,omitempty"`
-	APIKeyIDNotIn []int `json:"apiKeyIDNotIn,omitempty"`
-
 	// "project" edge predicates.
 	HasProject     *bool                `json:"hasProject,omitempty"`
 	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
 
-	// "owner_user" edge predicates.
-	HasOwnerUser     *bool             `json:"hasOwnerUser,omitempty"`
-	HasOwnerUserWith []*UserWhereInput `json:"hasOwnerUserWith,omitempty"`
+	// "created_by_user" edge predicates.
+	HasCreatedByUser     *bool             `json:"hasCreatedByUser,omitempty"`
+	HasCreatedByUserWith []*UserWhereInput `json:"hasCreatedByUserWith,omitempty"`
 
 	// "prompt" edge predicates.
 	HasPrompt     *bool               `json:"hasPrompt,omitempty"`
 	HasPromptWith []*PromptWhereInput `json:"hasPromptWith,omitempty"`
-
-	// "api_key" edge predicates.
-	HasAPIKey     *bool               `json:"hasAPIKey,omitempty"`
-	HasAPIKeyWith []*APIKeyWhereInput `json:"hasAPIKeyWith,omitempty"`
 
 	// "tool_bindings" edge predicates.
 	HasToolBindings     *bool                  `json:"hasToolBindings,omitempty"`
@@ -963,18 +953,6 @@ func (i *AgentWhereInput) P() (predicate.Agent, error) {
 	if i.ModelContainsFold != nil {
 		predicates = append(predicates, agent.ModelContainsFold(*i.ModelContainsFold))
 	}
-	if i.APIKeyID != nil {
-		predicates = append(predicates, agent.APIKeyIDEQ(*i.APIKeyID))
-	}
-	if i.APIKeyIDNEQ != nil {
-		predicates = append(predicates, agent.APIKeyIDNEQ(*i.APIKeyIDNEQ))
-	}
-	if len(i.APIKeyIDIn) > 0 {
-		predicates = append(predicates, agent.APIKeyIDIn(i.APIKeyIDIn...))
-	}
-	if len(i.APIKeyIDNotIn) > 0 {
-		predicates = append(predicates, agent.APIKeyIDNotIn(i.APIKeyIDNotIn...))
-	}
 
 	if i.HasProject != nil {
 		p := agent.HasProject()
@@ -994,23 +972,23 @@ func (i *AgentWhereInput) P() (predicate.Agent, error) {
 		}
 		predicates = append(predicates, agent.HasProjectWith(with...))
 	}
-	if i.HasOwnerUser != nil {
-		p := agent.HasOwnerUser()
-		if !*i.HasOwnerUser {
+	if i.HasCreatedByUser != nil {
+		p := agent.HasCreatedByUser()
+		if !*i.HasCreatedByUser {
 			p = agent.Not(p)
 		}
 		predicates = append(predicates, p)
 	}
-	if len(i.HasOwnerUserWith) > 0 {
-		with := make([]predicate.User, 0, len(i.HasOwnerUserWith))
-		for _, w := range i.HasOwnerUserWith {
+	if len(i.HasCreatedByUserWith) > 0 {
+		with := make([]predicate.User, 0, len(i.HasCreatedByUserWith))
+		for _, w := range i.HasCreatedByUserWith {
 			p, err := w.P()
 			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasOwnerUserWith'", err)
+				return nil, fmt.Errorf("%w: field 'HasCreatedByUserWith'", err)
 			}
 			with = append(with, p)
 		}
-		predicates = append(predicates, agent.HasOwnerUserWith(with...))
+		predicates = append(predicates, agent.HasCreatedByUserWith(with...))
 	}
 	if i.HasPrompt != nil {
 		p := agent.HasPrompt()
@@ -1029,24 +1007,6 @@ func (i *AgentWhereInput) P() (predicate.Agent, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, agent.HasPromptWith(with...))
-	}
-	if i.HasAPIKey != nil {
-		p := agent.HasAPIKey()
-		if !*i.HasAPIKey {
-			p = agent.Not(p)
-		}
-		predicates = append(predicates, p)
-	}
-	if len(i.HasAPIKeyWith) > 0 {
-		with := make([]predicate.APIKey, 0, len(i.HasAPIKeyWith))
-		for _, w := range i.HasAPIKeyWith {
-			p, err := w.P()
-			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasAPIKeyWith'", err)
-			}
-			with = append(with, p)
-		}
-		predicates = append(predicates, agent.HasAPIKeyWith(with...))
 	}
 	if i.HasToolBindings != nil {
 		p := agent.HasToolBindings()
@@ -1227,21 +1187,6 @@ type AgentInstanceWhereInput struct {
 	AgentRuntimeIDIsNil  bool  `json:"agentRuntimeIDIsNil,omitempty"`
 	AgentRuntimeIDNotNil bool  `json:"agentRuntimeIDNotNil,omitempty"`
 
-	// "instance_id" field predicates.
-	InstanceID             *string  `json:"instanceID,omitempty"`
-	InstanceIDNEQ          *string  `json:"instanceIDNEQ,omitempty"`
-	InstanceIDIn           []string `json:"instanceIDIn,omitempty"`
-	InstanceIDNotIn        []string `json:"instanceIDNotIn,omitempty"`
-	InstanceIDGT           *string  `json:"instanceIDGT,omitempty"`
-	InstanceIDGTE          *string  `json:"instanceIDGTE,omitempty"`
-	InstanceIDLT           *string  `json:"instanceIDLT,omitempty"`
-	InstanceIDLTE          *string  `json:"instanceIDLTE,omitempty"`
-	InstanceIDContains     *string  `json:"instanceIDContains,omitempty"`
-	InstanceIDHasPrefix    *string  `json:"instanceIDHasPrefix,omitempty"`
-	InstanceIDHasSuffix    *string  `json:"instanceIDHasSuffix,omitempty"`
-	InstanceIDEqualFold    *string  `json:"instanceIDEqualFold,omitempty"`
-	InstanceIDContainsFold *string  `json:"instanceIDContainsFold,omitempty"`
-
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
 	NameNEQ          *string  `json:"nameNEQ,omitempty"`
@@ -1256,6 +1201,21 @@ type AgentInstanceWhereInput struct {
 	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
 	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
 	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "description" field predicates.
+	Description             *string  `json:"description,omitempty"`
+	DescriptionNEQ          *string  `json:"descriptionNEQ,omitempty"`
+	DescriptionIn           []string `json:"descriptionIn,omitempty"`
+	DescriptionNotIn        []string `json:"descriptionNotIn,omitempty"`
+	DescriptionGT           *string  `json:"descriptionGT,omitempty"`
+	DescriptionGTE          *string  `json:"descriptionGTE,omitempty"`
+	DescriptionLT           *string  `json:"descriptionLT,omitempty"`
+	DescriptionLTE          *string  `json:"descriptionLTE,omitempty"`
+	DescriptionContains     *string  `json:"descriptionContains,omitempty"`
+	DescriptionHasPrefix    *string  `json:"descriptionHasPrefix,omitempty"`
+	DescriptionHasSuffix    *string  `json:"descriptionHasSuffix,omitempty"`
+	DescriptionEqualFold    *string  `json:"descriptionEqualFold,omitempty"`
+	DescriptionContainsFold *string  `json:"descriptionContainsFold,omitempty"`
 
 	// "platform" field predicates.
 	Platform             *string  `json:"platform,omitempty"`
@@ -1272,20 +1232,11 @@ type AgentInstanceWhereInput struct {
 	PlatformEqualFold    *string  `json:"platformEqualFold,omitempty"`
 	PlatformContainsFold *string  `json:"platformContainsFold,omitempty"`
 
-	// "version" field predicates.
-	Version             *string  `json:"version,omitempty"`
-	VersionNEQ          *string  `json:"versionNEQ,omitempty"`
-	VersionIn           []string `json:"versionIn,omitempty"`
-	VersionNotIn        []string `json:"versionNotIn,omitempty"`
-	VersionGT           *string  `json:"versionGT,omitempty"`
-	VersionGTE          *string  `json:"versionGTE,omitempty"`
-	VersionLT           *string  `json:"versionLT,omitempty"`
-	VersionLTE          *string  `json:"versionLTE,omitempty"`
-	VersionContains     *string  `json:"versionContains,omitempty"`
-	VersionHasPrefix    *string  `json:"versionHasPrefix,omitempty"`
-	VersionHasSuffix    *string  `json:"versionHasSuffix,omitempty"`
-	VersionEqualFold    *string  `json:"versionEqualFold,omitempty"`
-	VersionContainsFold *string  `json:"versionContainsFold,omitempty"`
+	// "api_key_id" field predicates.
+	APIKeyID      *int  `json:"apiKeyID,omitempty"`
+	APIKeyIDNEQ   *int  `json:"apiKeyIDNEQ,omitempty"`
+	APIKeyIDIn    []int `json:"apiKeyIDIn,omitempty"`
+	APIKeyIDNotIn []int `json:"apiKeyIDNotIn,omitempty"`
 
 	// "last_heartbeat_at" field predicates.
 	LastHeartbeatAt      *time.Time  `json:"lastHeartbeatAt,omitempty"`
@@ -1310,6 +1261,10 @@ type AgentInstanceWhereInput struct {
 	// "runtime" edge predicates.
 	HasRuntime     *bool                     `json:"hasRuntime,omitempty"`
 	HasRuntimeWith []*AgentRuntimeWhereInput `json:"hasRuntimeWith,omitempty"`
+
+	// "api_key" edge predicates.
+	HasAPIKey     *bool               `json:"hasAPIKey,omitempty"`
+	HasAPIKeyWith []*APIKeyWhereInput `json:"hasAPIKeyWith,omitempty"`
 
 	// "messages" edge predicates.
 	HasMessages     *bool                     `json:"hasMessages,omitempty"`
@@ -1513,45 +1468,6 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 	if i.AgentRuntimeIDNotNil {
 		predicates = append(predicates, agentinstance.AgentRuntimeIDNotNil())
 	}
-	if i.InstanceID != nil {
-		predicates = append(predicates, agentinstance.InstanceIDEQ(*i.InstanceID))
-	}
-	if i.InstanceIDNEQ != nil {
-		predicates = append(predicates, agentinstance.InstanceIDNEQ(*i.InstanceIDNEQ))
-	}
-	if len(i.InstanceIDIn) > 0 {
-		predicates = append(predicates, agentinstance.InstanceIDIn(i.InstanceIDIn...))
-	}
-	if len(i.InstanceIDNotIn) > 0 {
-		predicates = append(predicates, agentinstance.InstanceIDNotIn(i.InstanceIDNotIn...))
-	}
-	if i.InstanceIDGT != nil {
-		predicates = append(predicates, agentinstance.InstanceIDGT(*i.InstanceIDGT))
-	}
-	if i.InstanceIDGTE != nil {
-		predicates = append(predicates, agentinstance.InstanceIDGTE(*i.InstanceIDGTE))
-	}
-	if i.InstanceIDLT != nil {
-		predicates = append(predicates, agentinstance.InstanceIDLT(*i.InstanceIDLT))
-	}
-	if i.InstanceIDLTE != nil {
-		predicates = append(predicates, agentinstance.InstanceIDLTE(*i.InstanceIDLTE))
-	}
-	if i.InstanceIDContains != nil {
-		predicates = append(predicates, agentinstance.InstanceIDContains(*i.InstanceIDContains))
-	}
-	if i.InstanceIDHasPrefix != nil {
-		predicates = append(predicates, agentinstance.InstanceIDHasPrefix(*i.InstanceIDHasPrefix))
-	}
-	if i.InstanceIDHasSuffix != nil {
-		predicates = append(predicates, agentinstance.InstanceIDHasSuffix(*i.InstanceIDHasSuffix))
-	}
-	if i.InstanceIDEqualFold != nil {
-		predicates = append(predicates, agentinstance.InstanceIDEqualFold(*i.InstanceIDEqualFold))
-	}
-	if i.InstanceIDContainsFold != nil {
-		predicates = append(predicates, agentinstance.InstanceIDContainsFold(*i.InstanceIDContainsFold))
-	}
 	if i.Name != nil {
 		predicates = append(predicates, agentinstance.NameEQ(*i.Name))
 	}
@@ -1590,6 +1506,45 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 	}
 	if i.NameContainsFold != nil {
 		predicates = append(predicates, agentinstance.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.Description != nil {
+		predicates = append(predicates, agentinstance.DescriptionEQ(*i.Description))
+	}
+	if i.DescriptionNEQ != nil {
+		predicates = append(predicates, agentinstance.DescriptionNEQ(*i.DescriptionNEQ))
+	}
+	if len(i.DescriptionIn) > 0 {
+		predicates = append(predicates, agentinstance.DescriptionIn(i.DescriptionIn...))
+	}
+	if len(i.DescriptionNotIn) > 0 {
+		predicates = append(predicates, agentinstance.DescriptionNotIn(i.DescriptionNotIn...))
+	}
+	if i.DescriptionGT != nil {
+		predicates = append(predicates, agentinstance.DescriptionGT(*i.DescriptionGT))
+	}
+	if i.DescriptionGTE != nil {
+		predicates = append(predicates, agentinstance.DescriptionGTE(*i.DescriptionGTE))
+	}
+	if i.DescriptionLT != nil {
+		predicates = append(predicates, agentinstance.DescriptionLT(*i.DescriptionLT))
+	}
+	if i.DescriptionLTE != nil {
+		predicates = append(predicates, agentinstance.DescriptionLTE(*i.DescriptionLTE))
+	}
+	if i.DescriptionContains != nil {
+		predicates = append(predicates, agentinstance.DescriptionContains(*i.DescriptionContains))
+	}
+	if i.DescriptionHasPrefix != nil {
+		predicates = append(predicates, agentinstance.DescriptionHasPrefix(*i.DescriptionHasPrefix))
+	}
+	if i.DescriptionHasSuffix != nil {
+		predicates = append(predicates, agentinstance.DescriptionHasSuffix(*i.DescriptionHasSuffix))
+	}
+	if i.DescriptionEqualFold != nil {
+		predicates = append(predicates, agentinstance.DescriptionEqualFold(*i.DescriptionEqualFold))
+	}
+	if i.DescriptionContainsFold != nil {
+		predicates = append(predicates, agentinstance.DescriptionContainsFold(*i.DescriptionContainsFold))
 	}
 	if i.Platform != nil {
 		predicates = append(predicates, agentinstance.PlatformEQ(*i.Platform))
@@ -1630,44 +1585,17 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 	if i.PlatformContainsFold != nil {
 		predicates = append(predicates, agentinstance.PlatformContainsFold(*i.PlatformContainsFold))
 	}
-	if i.Version != nil {
-		predicates = append(predicates, agentinstance.VersionEQ(*i.Version))
+	if i.APIKeyID != nil {
+		predicates = append(predicates, agentinstance.APIKeyIDEQ(*i.APIKeyID))
 	}
-	if i.VersionNEQ != nil {
-		predicates = append(predicates, agentinstance.VersionNEQ(*i.VersionNEQ))
+	if i.APIKeyIDNEQ != nil {
+		predicates = append(predicates, agentinstance.APIKeyIDNEQ(*i.APIKeyIDNEQ))
 	}
-	if len(i.VersionIn) > 0 {
-		predicates = append(predicates, agentinstance.VersionIn(i.VersionIn...))
+	if len(i.APIKeyIDIn) > 0 {
+		predicates = append(predicates, agentinstance.APIKeyIDIn(i.APIKeyIDIn...))
 	}
-	if len(i.VersionNotIn) > 0 {
-		predicates = append(predicates, agentinstance.VersionNotIn(i.VersionNotIn...))
-	}
-	if i.VersionGT != nil {
-		predicates = append(predicates, agentinstance.VersionGT(*i.VersionGT))
-	}
-	if i.VersionGTE != nil {
-		predicates = append(predicates, agentinstance.VersionGTE(*i.VersionGTE))
-	}
-	if i.VersionLT != nil {
-		predicates = append(predicates, agentinstance.VersionLT(*i.VersionLT))
-	}
-	if i.VersionLTE != nil {
-		predicates = append(predicates, agentinstance.VersionLTE(*i.VersionLTE))
-	}
-	if i.VersionContains != nil {
-		predicates = append(predicates, agentinstance.VersionContains(*i.VersionContains))
-	}
-	if i.VersionHasPrefix != nil {
-		predicates = append(predicates, agentinstance.VersionHasPrefix(*i.VersionHasPrefix))
-	}
-	if i.VersionHasSuffix != nil {
-		predicates = append(predicates, agentinstance.VersionHasSuffix(*i.VersionHasSuffix))
-	}
-	if i.VersionEqualFold != nil {
-		predicates = append(predicates, agentinstance.VersionEqualFold(*i.VersionEqualFold))
-	}
-	if i.VersionContainsFold != nil {
-		predicates = append(predicates, agentinstance.VersionContainsFold(*i.VersionContainsFold))
+	if len(i.APIKeyIDNotIn) > 0 {
+		predicates = append(predicates, agentinstance.APIKeyIDNotIn(i.APIKeyIDNotIn...))
 	}
 	if i.LastHeartbeatAt != nil {
 		predicates = append(predicates, agentinstance.LastHeartbeatAtEQ(*i.LastHeartbeatAt))
@@ -1741,6 +1669,24 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, agentinstance.HasRuntimeWith(with...))
+	}
+	if i.HasAPIKey != nil {
+		p := agentinstance.HasAPIKey()
+		if !*i.HasAPIKey {
+			p = agentinstance.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasAPIKeyWith) > 0 {
+		with := make([]predicate.APIKey, 0, len(i.HasAPIKeyWith))
+		for _, w := range i.HasAPIKeyWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasAPIKeyWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, agentinstance.HasAPIKeyWith(with...))
 	}
 	if i.HasMessages != nil {
 		p := agentinstance.HasMessages()

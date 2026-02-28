@@ -182,17 +182,17 @@ func init() {
 	// agentinstance.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	agentinstance.DefaultDeletedAt = agentinstanceDescDeletedAt.Default.(int)
 	// agentinstanceDescName is the schema descriptor for name field.
-	agentinstanceDescName := agentinstanceFields[4].Descriptor()
+	agentinstanceDescName := agentinstanceFields[3].Descriptor()
 	// agentinstance.DefaultName holds the default value on creation for the name field.
 	agentinstance.DefaultName = agentinstanceDescName.Default.(string)
+	// agentinstanceDescDescription is the schema descriptor for description field.
+	agentinstanceDescDescription := agentinstanceFields[4].Descriptor()
+	// agentinstance.DefaultDescription holds the default value on creation for the description field.
+	agentinstance.DefaultDescription = agentinstanceDescDescription.Default.(string)
 	// agentinstanceDescPlatform is the schema descriptor for platform field.
 	agentinstanceDescPlatform := agentinstanceFields[5].Descriptor()
 	// agentinstance.DefaultPlatform holds the default value on creation for the platform field.
 	agentinstance.DefaultPlatform = agentinstanceDescPlatform.Default.(string)
-	// agentinstanceDescVersion is the schema descriptor for version field.
-	agentinstanceDescVersion := agentinstanceFields[6].Descriptor()
-	// agentinstance.DefaultVersion holds the default value on creation for the version field.
-	agentinstance.DefaultVersion = agentinstanceDescVersion.Default.(string)
 	agentmemoryMixin := schema.AgentMemory{}.Mixin()
 	agentmemory.Policy = privacy.NewPolicies(schema.AgentMemory{})
 	agentmemory.Hooks[0] = func(next ent.Mutator) ent.Mutator {

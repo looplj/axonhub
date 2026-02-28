@@ -93,33 +93,33 @@ const (
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
 type APIKeyMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *int
-	created_at      *time.Time
-	updated_at      *time.Time
-	deleted_at      *int
-	adddeleted_at   *int
-	key             *string
-	name            *string
-	_type           *apikey.Type
-	status          *apikey.Status
-	scopes          *[]string
-	appendscopes    []string
-	profiles        **objects.APIKeyProfiles
-	clearedFields   map[string]struct{}
-	user            *int
-	cleareduser     bool
-	project         *int
-	clearedproject  bool
-	requests        map[int]struct{}
-	removedrequests map[int]struct{}
-	clearedrequests bool
-	agent           *int
-	clearedagent    bool
-	done            bool
-	oldValue        func(context.Context) (*APIKey, error)
-	predicates      []predicate.APIKey
+	op                    Op
+	typ                   string
+	id                    *int
+	created_at            *time.Time
+	updated_at            *time.Time
+	deleted_at            *int
+	adddeleted_at         *int
+	key                   *string
+	name                  *string
+	_type                 *apikey.Type
+	status                *apikey.Status
+	scopes                *[]string
+	appendscopes          []string
+	profiles              **objects.APIKeyProfiles
+	clearedFields         map[string]struct{}
+	user                  *int
+	cleareduser           bool
+	project               *int
+	clearedproject        bool
+	requests              map[int]struct{}
+	removedrequests       map[int]struct{}
+	clearedrequests       bool
+	agent_instance        *int
+	clearedagent_instance bool
+	done                  bool
+	oldValue              func(context.Context) (*APIKey, error)
+	predicates            []predicate.APIKey
 }
 
 var _ ent.Mutation = (*APIKeyMutation)(nil)
@@ -786,43 +786,43 @@ func (m *APIKeyMutation) ResetRequests() {
 	m.removedrequests = nil
 }
 
-// SetAgentID sets the "agent" edge to the Agent entity by id.
-func (m *APIKeyMutation) SetAgentID(id int) {
-	m.agent = &id
+// SetAgentInstanceID sets the "agent_instance" edge to the AgentInstance entity by id.
+func (m *APIKeyMutation) SetAgentInstanceID(id int) {
+	m.agent_instance = &id
 }
 
-// ClearAgent clears the "agent" edge to the Agent entity.
-func (m *APIKeyMutation) ClearAgent() {
-	m.clearedagent = true
+// ClearAgentInstance clears the "agent_instance" edge to the AgentInstance entity.
+func (m *APIKeyMutation) ClearAgentInstance() {
+	m.clearedagent_instance = true
 }
 
-// AgentCleared reports if the "agent" edge to the Agent entity was cleared.
-func (m *APIKeyMutation) AgentCleared() bool {
-	return m.clearedagent
+// AgentInstanceCleared reports if the "agent_instance" edge to the AgentInstance entity was cleared.
+func (m *APIKeyMutation) AgentInstanceCleared() bool {
+	return m.clearedagent_instance
 }
 
-// AgentID returns the "agent" edge ID in the mutation.
-func (m *APIKeyMutation) AgentID() (id int, exists bool) {
-	if m.agent != nil {
-		return *m.agent, true
+// AgentInstanceID returns the "agent_instance" edge ID in the mutation.
+func (m *APIKeyMutation) AgentInstanceID() (id int, exists bool) {
+	if m.agent_instance != nil {
+		return *m.agent_instance, true
 	}
 	return
 }
 
-// AgentIDs returns the "agent" edge IDs in the mutation.
+// AgentInstanceIDs returns the "agent_instance" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// AgentID instead. It exists only for internal usage by the builders.
-func (m *APIKeyMutation) AgentIDs() (ids []int) {
-	if id := m.agent; id != nil {
+// AgentInstanceID instead. It exists only for internal usage by the builders.
+func (m *APIKeyMutation) AgentInstanceIDs() (ids []int) {
+	if id := m.agent_instance; id != nil {
 		ids = append(ids, *id)
 	}
 	return
 }
 
-// ResetAgent resets all changes to the "agent" edge.
-func (m *APIKeyMutation) ResetAgent() {
-	m.agent = nil
-	m.clearedagent = false
+// ResetAgentInstance resets all changes to the "agent_instance" edge.
+func (m *APIKeyMutation) ResetAgentInstance() {
+	m.agent_instance = nil
+	m.clearedagent_instance = false
 }
 
 // Where appends a list predicates to the APIKeyMutation builder.
@@ -1168,8 +1168,8 @@ func (m *APIKeyMutation) AddedEdges() []string {
 	if m.requests != nil {
 		edges = append(edges, apikey.EdgeRequests)
 	}
-	if m.agent != nil {
-		edges = append(edges, apikey.EdgeAgent)
+	if m.agent_instance != nil {
+		edges = append(edges, apikey.EdgeAgentInstance)
 	}
 	return edges
 }
@@ -1192,8 +1192,8 @@ func (m *APIKeyMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case apikey.EdgeAgent:
-		if id := m.agent; id != nil {
+	case apikey.EdgeAgentInstance:
+		if id := m.agent_instance; id != nil {
 			return []ent.Value{*id}
 		}
 	}
@@ -1235,8 +1235,8 @@ func (m *APIKeyMutation) ClearedEdges() []string {
 	if m.clearedrequests {
 		edges = append(edges, apikey.EdgeRequests)
 	}
-	if m.clearedagent {
-		edges = append(edges, apikey.EdgeAgent)
+	if m.clearedagent_instance {
+		edges = append(edges, apikey.EdgeAgentInstance)
 	}
 	return edges
 }
@@ -1251,8 +1251,8 @@ func (m *APIKeyMutation) EdgeCleared(name string) bool {
 		return m.clearedproject
 	case apikey.EdgeRequests:
 		return m.clearedrequests
-	case apikey.EdgeAgent:
-		return m.clearedagent
+	case apikey.EdgeAgentInstance:
+		return m.clearedagent_instance
 	}
 	return false
 }
@@ -1267,8 +1267,8 @@ func (m *APIKeyMutation) ClearEdge(name string) error {
 	case apikey.EdgeProject:
 		m.ClearProject()
 		return nil
-	case apikey.EdgeAgent:
-		m.ClearAgent()
+	case apikey.EdgeAgentInstance:
+		m.ClearAgentInstance()
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey unique edge %s", name)
@@ -1287,8 +1287,8 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 	case apikey.EdgeRequests:
 		m.ResetRequests()
 		return nil
-	case apikey.EdgeAgent:
-		m.ResetAgent()
+	case apikey.EdgeAgentInstance:
+		m.ResetAgentInstance()
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey edge %s", name)
@@ -1314,12 +1314,10 @@ type AgentMutation struct {
 	clearedFields             map[string]struct{}
 	project                   *int
 	clearedproject            bool
-	owner_user                *int
-	clearedowner_user         bool
+	created_by_user           *int
+	clearedcreated_by_user    bool
 	prompt                    *int
 	clearedprompt             bool
-	api_key                   *int
-	clearedapi_key            bool
 	tool_bindings             map[int]struct{}
 	removedtool_bindings      map[int]struct{}
 	clearedtool_bindings      bool
@@ -1607,12 +1605,12 @@ func (m *AgentMutation) ResetProjectID() {
 
 // SetCreatedByUserID sets the "created_by_user_id" field.
 func (m *AgentMutation) SetCreatedByUserID(i int) {
-	m.owner_user = &i
+	m.created_by_user = &i
 }
 
 // CreatedByUserID returns the value of the "created_by_user_id" field in the mutation.
 func (m *AgentMutation) CreatedByUserID() (r int, exists bool) {
-	v := m.owner_user
+	v := m.created_by_user
 	if v == nil {
 		return
 	}
@@ -1638,7 +1636,7 @@ func (m *AgentMutation) OldCreatedByUserID(ctx context.Context) (v int, err erro
 
 // ResetCreatedByUserID resets all changes to the "created_by_user_id" field.
 func (m *AgentMutation) ResetCreatedByUserID() {
-	m.owner_user = nil
+	m.created_by_user = nil
 }
 
 // SetName sets the "name" field.
@@ -1908,42 +1906,6 @@ func (m *AgentMutation) ResetSkillsPolicy() {
 	m.skills_policy = nil
 }
 
-// SetAPIKeyID sets the "api_key_id" field.
-func (m *AgentMutation) SetAPIKeyID(i int) {
-	m.api_key = &i
-}
-
-// APIKeyID returns the value of the "api_key_id" field in the mutation.
-func (m *AgentMutation) APIKeyID() (r int, exists bool) {
-	v := m.api_key
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldAPIKeyID returns the old "api_key_id" field's value of the Agent entity.
-// If the Agent object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AgentMutation) OldAPIKeyID(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAPIKeyID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAPIKeyID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAPIKeyID: %w", err)
-	}
-	return oldValue.APIKeyID, nil
-}
-
-// ResetAPIKeyID resets all changes to the "api_key_id" field.
-func (m *AgentMutation) ResetAPIKeyID() {
-	m.api_key = nil
-}
-
 // ClearProject clears the "project" edge to the Project entity.
 func (m *AgentMutation) ClearProject() {
 	m.clearedproject = true
@@ -1971,44 +1933,31 @@ func (m *AgentMutation) ResetProject() {
 	m.clearedproject = false
 }
 
-// SetOwnerUserID sets the "owner_user" edge to the User entity by id.
-func (m *AgentMutation) SetOwnerUserID(id int) {
-	m.owner_user = &id
-}
-
-// ClearOwnerUser clears the "owner_user" edge to the User entity.
-func (m *AgentMutation) ClearOwnerUser() {
-	m.clearedowner_user = true
+// ClearCreatedByUser clears the "created_by_user" edge to the User entity.
+func (m *AgentMutation) ClearCreatedByUser() {
+	m.clearedcreated_by_user = true
 	m.clearedFields[agent.FieldCreatedByUserID] = struct{}{}
 }
 
-// OwnerUserCleared reports if the "owner_user" edge to the User entity was cleared.
-func (m *AgentMutation) OwnerUserCleared() bool {
-	return m.clearedowner_user
+// CreatedByUserCleared reports if the "created_by_user" edge to the User entity was cleared.
+func (m *AgentMutation) CreatedByUserCleared() bool {
+	return m.clearedcreated_by_user
 }
 
-// OwnerUserID returns the "owner_user" edge ID in the mutation.
-func (m *AgentMutation) OwnerUserID() (id int, exists bool) {
-	if m.owner_user != nil {
-		return *m.owner_user, true
-	}
-	return
-}
-
-// OwnerUserIDs returns the "owner_user" edge IDs in the mutation.
+// CreatedByUserIDs returns the "created_by_user" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// OwnerUserID instead. It exists only for internal usage by the builders.
-func (m *AgentMutation) OwnerUserIDs() (ids []int) {
-	if id := m.owner_user; id != nil {
+// CreatedByUserID instead. It exists only for internal usage by the builders.
+func (m *AgentMutation) CreatedByUserIDs() (ids []int) {
+	if id := m.created_by_user; id != nil {
 		ids = append(ids, *id)
 	}
 	return
 }
 
-// ResetOwnerUser resets all changes to the "owner_user" edge.
-func (m *AgentMutation) ResetOwnerUser() {
-	m.owner_user = nil
-	m.clearedowner_user = false
+// ResetCreatedByUser resets all changes to the "created_by_user" edge.
+func (m *AgentMutation) ResetCreatedByUser() {
+	m.created_by_user = nil
+	m.clearedcreated_by_user = false
 }
 
 // ClearPrompt clears the "prompt" edge to the Prompt entity.
@@ -2036,33 +1985,6 @@ func (m *AgentMutation) PromptIDs() (ids []int) {
 func (m *AgentMutation) ResetPrompt() {
 	m.prompt = nil
 	m.clearedprompt = false
-}
-
-// ClearAPIKey clears the "api_key" edge to the APIKey entity.
-func (m *AgentMutation) ClearAPIKey() {
-	m.clearedapi_key = true
-	m.clearedFields[agent.FieldAPIKeyID] = struct{}{}
-}
-
-// APIKeyCleared reports if the "api_key" edge to the APIKey entity was cleared.
-func (m *AgentMutation) APIKeyCleared() bool {
-	return m.clearedapi_key
-}
-
-// APIKeyIDs returns the "api_key" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// APIKeyID instead. It exists only for internal usage by the builders.
-func (m *AgentMutation) APIKeyIDs() (ids []int) {
-	if id := m.api_key; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetAPIKey resets all changes to the "api_key" edge.
-func (m *AgentMutation) ResetAPIKey() {
-	m.api_key = nil
-	m.clearedapi_key = false
 }
 
 // AddToolBindingIDs adds the "tool_bindings" edge to the AgentTool entity by ids.
@@ -2423,7 +2345,7 @@ func (m *AgentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AgentMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 12)
 	if m.created_at != nil {
 		fields = append(fields, agent.FieldCreatedAt)
 	}
@@ -2436,7 +2358,7 @@ func (m *AgentMutation) Fields() []string {
 	if m.project != nil {
 		fields = append(fields, agent.FieldProjectID)
 	}
-	if m.owner_user != nil {
+	if m.created_by_user != nil {
 		fields = append(fields, agent.FieldCreatedByUserID)
 	}
 	if m.name != nil {
@@ -2459,9 +2381,6 @@ func (m *AgentMutation) Fields() []string {
 	}
 	if m.skills_policy != nil {
 		fields = append(fields, agent.FieldSkillsPolicy)
-	}
-	if m.api_key != nil {
-		fields = append(fields, agent.FieldAPIKeyID)
 	}
 	return fields
 }
@@ -2495,8 +2414,6 @@ func (m *AgentMutation) Field(name string) (ent.Value, bool) {
 		return m.AgentBuiltinTools()
 	case agent.FieldSkillsPolicy:
 		return m.SkillsPolicy()
-	case agent.FieldAPIKeyID:
-		return m.APIKeyID()
 	}
 	return nil, false
 }
@@ -2530,8 +2447,6 @@ func (m *AgentMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldAgentBuiltinTools(ctx)
 	case agent.FieldSkillsPolicy:
 		return m.OldSkillsPolicy(ctx)
-	case agent.FieldAPIKeyID:
-		return m.OldAPIKeyID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Agent field %s", name)
 }
@@ -2624,13 +2539,6 @@ func (m *AgentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSkillsPolicy(v)
-		return nil
-	case agent.FieldAPIKeyID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetAPIKeyID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Agent field %s", name)
@@ -2732,27 +2640,21 @@ func (m *AgentMutation) ResetField(name string) error {
 	case agent.FieldSkillsPolicy:
 		m.ResetSkillsPolicy()
 		return nil
-	case agent.FieldAPIKeyID:
-		m.ResetAPIKeyID()
-		return nil
 	}
 	return fmt.Errorf("unknown Agent field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AgentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 9)
 	if m.project != nil {
 		edges = append(edges, agent.EdgeProject)
 	}
-	if m.owner_user != nil {
-		edges = append(edges, agent.EdgeOwnerUser)
+	if m.created_by_user != nil {
+		edges = append(edges, agent.EdgeCreatedByUser)
 	}
 	if m.prompt != nil {
 		edges = append(edges, agent.EdgePrompt)
-	}
-	if m.api_key != nil {
-		edges = append(edges, agent.EdgeAPIKey)
 	}
 	if m.tool_bindings != nil {
 		edges = append(edges, agent.EdgeToolBindings)
@@ -2783,16 +2685,12 @@ func (m *AgentMutation) AddedIDs(name string) []ent.Value {
 		if id := m.project; id != nil {
 			return []ent.Value{*id}
 		}
-	case agent.EdgeOwnerUser:
-		if id := m.owner_user; id != nil {
+	case agent.EdgeCreatedByUser:
+		if id := m.created_by_user; id != nil {
 			return []ent.Value{*id}
 		}
 	case agent.EdgePrompt:
 		if id := m.prompt; id != nil {
-			return []ent.Value{*id}
-		}
-	case agent.EdgeAPIKey:
-		if id := m.api_key; id != nil {
 			return []ent.Value{*id}
 		}
 	case agent.EdgeToolBindings:
@@ -2837,7 +2735,7 @@ func (m *AgentMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AgentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 9)
 	if m.removedtool_bindings != nil {
 		edges = append(edges, agent.EdgeToolBindings)
 	}
@@ -2905,18 +2803,15 @@ func (m *AgentMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AgentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 10)
+	edges := make([]string, 0, 9)
 	if m.clearedproject {
 		edges = append(edges, agent.EdgeProject)
 	}
-	if m.clearedowner_user {
-		edges = append(edges, agent.EdgeOwnerUser)
+	if m.clearedcreated_by_user {
+		edges = append(edges, agent.EdgeCreatedByUser)
 	}
 	if m.clearedprompt {
 		edges = append(edges, agent.EdgePrompt)
-	}
-	if m.clearedapi_key {
-		edges = append(edges, agent.EdgeAPIKey)
 	}
 	if m.clearedtool_bindings {
 		edges = append(edges, agent.EdgeToolBindings)
@@ -2945,12 +2840,10 @@ func (m *AgentMutation) EdgeCleared(name string) bool {
 	switch name {
 	case agent.EdgeProject:
 		return m.clearedproject
-	case agent.EdgeOwnerUser:
-		return m.clearedowner_user
+	case agent.EdgeCreatedByUser:
+		return m.clearedcreated_by_user
 	case agent.EdgePrompt:
 		return m.clearedprompt
-	case agent.EdgeAPIKey:
-		return m.clearedapi_key
 	case agent.EdgeToolBindings:
 		return m.clearedtool_bindings
 	case agent.EdgeSkillBindings:
@@ -2974,14 +2867,11 @@ func (m *AgentMutation) ClearEdge(name string) error {
 	case agent.EdgeProject:
 		m.ClearProject()
 		return nil
-	case agent.EdgeOwnerUser:
-		m.ClearOwnerUser()
+	case agent.EdgeCreatedByUser:
+		m.ClearCreatedByUser()
 		return nil
 	case agent.EdgePrompt:
 		m.ClearPrompt()
-		return nil
-	case agent.EdgeAPIKey:
-		m.ClearAPIKey()
 		return nil
 	}
 	return fmt.Errorf("unknown Agent unique edge %s", name)
@@ -2994,14 +2884,11 @@ func (m *AgentMutation) ResetEdge(name string) error {
 	case agent.EdgeProject:
 		m.ResetProject()
 		return nil
-	case agent.EdgeOwnerUser:
-		m.ResetOwnerUser()
+	case agent.EdgeCreatedByUser:
+		m.ResetCreatedByUser()
 		return nil
 	case agent.EdgePrompt:
 		m.ResetPrompt()
-		return nil
-	case agent.EdgeAPIKey:
-		m.ResetAPIKey()
 		return nil
 	case agent.EdgeToolBindings:
 		m.ResetToolBindings()
@@ -3037,10 +2924,9 @@ type AgentInstanceMutation struct {
 	adddeleted_at     *int
 	project_id        *int
 	addproject_id     *int
-	instance_id       *string
 	name              *string
+	description       *string
 	platform          *string
-	version           *string
 	last_heartbeat_at *time.Time
 	deployment        *objects.AgentInstanceDeployment
 	status            *agentinstance.Status
@@ -3049,6 +2935,8 @@ type AgentInstanceMutation struct {
 	clearedagent      bool
 	runtime           *int
 	clearedruntime    bool
+	api_key           *int
+	clearedapi_key    bool
 	messages          map[int]struct{}
 	removedmessages   map[int]struct{}
 	clearedmessages   bool
@@ -3424,42 +3312,6 @@ func (m *AgentInstanceMutation) ResetAgentRuntimeID() {
 	delete(m.clearedFields, agentinstance.FieldAgentRuntimeID)
 }
 
-// SetInstanceID sets the "instance_id" field.
-func (m *AgentInstanceMutation) SetInstanceID(s string) {
-	m.instance_id = &s
-}
-
-// InstanceID returns the value of the "instance_id" field in the mutation.
-func (m *AgentInstanceMutation) InstanceID() (r string, exists bool) {
-	v := m.instance_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldInstanceID returns the old "instance_id" field's value of the AgentInstance entity.
-// If the AgentInstance object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AgentInstanceMutation) OldInstanceID(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldInstanceID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldInstanceID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldInstanceID: %w", err)
-	}
-	return oldValue.InstanceID, nil
-}
-
-// ResetInstanceID resets all changes to the "instance_id" field.
-func (m *AgentInstanceMutation) ResetInstanceID() {
-	m.instance_id = nil
-}
-
 // SetName sets the "name" field.
 func (m *AgentInstanceMutation) SetName(s string) {
 	m.name = &s
@@ -3494,6 +3346,42 @@ func (m *AgentInstanceMutation) OldName(ctx context.Context) (v string, err erro
 // ResetName resets all changes to the "name" field.
 func (m *AgentInstanceMutation) ResetName() {
 	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *AgentInstanceMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *AgentInstanceMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the AgentInstance entity.
+// If the AgentInstance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AgentInstanceMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *AgentInstanceMutation) ResetDescription() {
+	m.description = nil
 }
 
 // SetPlatform sets the "platform" field.
@@ -3532,40 +3420,40 @@ func (m *AgentInstanceMutation) ResetPlatform() {
 	m.platform = nil
 }
 
-// SetVersion sets the "version" field.
-func (m *AgentInstanceMutation) SetVersion(s string) {
-	m.version = &s
+// SetAPIKeyID sets the "api_key_id" field.
+func (m *AgentInstanceMutation) SetAPIKeyID(i int) {
+	m.api_key = &i
 }
 
-// Version returns the value of the "version" field in the mutation.
-func (m *AgentInstanceMutation) Version() (r string, exists bool) {
-	v := m.version
+// APIKeyID returns the value of the "api_key_id" field in the mutation.
+func (m *AgentInstanceMutation) APIKeyID() (r int, exists bool) {
+	v := m.api_key
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldVersion returns the old "version" field's value of the AgentInstance entity.
+// OldAPIKeyID returns the old "api_key_id" field's value of the AgentInstance entity.
 // If the AgentInstance object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AgentInstanceMutation) OldVersion(ctx context.Context) (v string, err error) {
+func (m *AgentInstanceMutation) OldAPIKeyID(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
+		return v, errors.New("OldAPIKeyID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldVersion requires an ID field in the mutation")
+		return v, errors.New("OldAPIKeyID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+		return v, fmt.Errorf("querying old value for OldAPIKeyID: %w", err)
 	}
-	return oldValue.Version, nil
+	return oldValue.APIKeyID, nil
 }
 
-// ResetVersion resets all changes to the "version" field.
-func (m *AgentInstanceMutation) ResetVersion() {
-	m.version = nil
+// ResetAPIKeyID resets all changes to the "api_key_id" field.
+func (m *AgentInstanceMutation) ResetAPIKeyID() {
+	m.api_key = nil
 }
 
 // SetLastHeartbeatAt sets the "last_heartbeat_at" field.
@@ -3756,6 +3644,33 @@ func (m *AgentInstanceMutation) ResetRuntime() {
 	m.clearedruntime = false
 }
 
+// ClearAPIKey clears the "api_key" edge to the APIKey entity.
+func (m *AgentInstanceMutation) ClearAPIKey() {
+	m.clearedapi_key = true
+	m.clearedFields[agentinstance.FieldAPIKeyID] = struct{}{}
+}
+
+// APIKeyCleared reports if the "api_key" edge to the APIKey entity was cleared.
+func (m *AgentInstanceMutation) APIKeyCleared() bool {
+	return m.clearedapi_key
+}
+
+// APIKeyIDs returns the "api_key" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// APIKeyID instead. It exists only for internal usage by the builders.
+func (m *AgentInstanceMutation) APIKeyIDs() (ids []int) {
+	if id := m.api_key; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAPIKey resets all changes to the "api_key" edge.
+func (m *AgentInstanceMutation) ResetAPIKey() {
+	m.api_key = nil
+	m.clearedapi_key = false
+}
+
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by ids.
 func (m *AgentInstanceMutation) AddMessageIDs(ids ...int) {
 	if m.messages == nil {
@@ -3863,17 +3778,17 @@ func (m *AgentInstanceMutation) Fields() []string {
 	if m.runtime != nil {
 		fields = append(fields, agentinstance.FieldAgentRuntimeID)
 	}
-	if m.instance_id != nil {
-		fields = append(fields, agentinstance.FieldInstanceID)
-	}
 	if m.name != nil {
 		fields = append(fields, agentinstance.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, agentinstance.FieldDescription)
 	}
 	if m.platform != nil {
 		fields = append(fields, agentinstance.FieldPlatform)
 	}
-	if m.version != nil {
-		fields = append(fields, agentinstance.FieldVersion)
+	if m.api_key != nil {
+		fields = append(fields, agentinstance.FieldAPIKeyID)
 	}
 	if m.last_heartbeat_at != nil {
 		fields = append(fields, agentinstance.FieldLastHeartbeatAt)
@@ -3904,14 +3819,14 @@ func (m *AgentInstanceMutation) Field(name string) (ent.Value, bool) {
 		return m.AgentID()
 	case agentinstance.FieldAgentRuntimeID:
 		return m.AgentRuntimeID()
-	case agentinstance.FieldInstanceID:
-		return m.InstanceID()
 	case agentinstance.FieldName:
 		return m.Name()
+	case agentinstance.FieldDescription:
+		return m.Description()
 	case agentinstance.FieldPlatform:
 		return m.Platform()
-	case agentinstance.FieldVersion:
-		return m.Version()
+	case agentinstance.FieldAPIKeyID:
+		return m.APIKeyID()
 	case agentinstance.FieldLastHeartbeatAt:
 		return m.LastHeartbeatAt()
 	case agentinstance.FieldDeployment:
@@ -3939,14 +3854,14 @@ func (m *AgentInstanceMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldAgentID(ctx)
 	case agentinstance.FieldAgentRuntimeID:
 		return m.OldAgentRuntimeID(ctx)
-	case agentinstance.FieldInstanceID:
-		return m.OldInstanceID(ctx)
 	case agentinstance.FieldName:
 		return m.OldName(ctx)
+	case agentinstance.FieldDescription:
+		return m.OldDescription(ctx)
 	case agentinstance.FieldPlatform:
 		return m.OldPlatform(ctx)
-	case agentinstance.FieldVersion:
-		return m.OldVersion(ctx)
+	case agentinstance.FieldAPIKeyID:
+		return m.OldAPIKeyID(ctx)
 	case agentinstance.FieldLastHeartbeatAt:
 		return m.OldLastHeartbeatAt(ctx)
 	case agentinstance.FieldDeployment:
@@ -4004,19 +3919,19 @@ func (m *AgentInstanceMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAgentRuntimeID(v)
 		return nil
-	case agentinstance.FieldInstanceID:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetInstanceID(v)
-		return nil
 	case agentinstance.FieldName:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case agentinstance.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
 		return nil
 	case agentinstance.FieldPlatform:
 		v, ok := value.(string)
@@ -4025,12 +3940,12 @@ func (m *AgentInstanceMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPlatform(v)
 		return nil
-	case agentinstance.FieldVersion:
-		v, ok := value.(string)
+	case agentinstance.FieldAPIKeyID:
+		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetVersion(v)
+		m.SetAPIKeyID(v)
 		return nil
 	case agentinstance.FieldLastHeartbeatAt:
 		v, ok := value.(time.Time)
@@ -4162,17 +4077,17 @@ func (m *AgentInstanceMutation) ResetField(name string) error {
 	case agentinstance.FieldAgentRuntimeID:
 		m.ResetAgentRuntimeID()
 		return nil
-	case agentinstance.FieldInstanceID:
-		m.ResetInstanceID()
-		return nil
 	case agentinstance.FieldName:
 		m.ResetName()
+		return nil
+	case agentinstance.FieldDescription:
+		m.ResetDescription()
 		return nil
 	case agentinstance.FieldPlatform:
 		m.ResetPlatform()
 		return nil
-	case agentinstance.FieldVersion:
-		m.ResetVersion()
+	case agentinstance.FieldAPIKeyID:
+		m.ResetAPIKeyID()
 		return nil
 	case agentinstance.FieldLastHeartbeatAt:
 		m.ResetLastHeartbeatAt()
@@ -4189,12 +4104,15 @@ func (m *AgentInstanceMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AgentInstanceMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.agent != nil {
 		edges = append(edges, agentinstance.EdgeAgent)
 	}
 	if m.runtime != nil {
 		edges = append(edges, agentinstance.EdgeRuntime)
+	}
+	if m.api_key != nil {
+		edges = append(edges, agentinstance.EdgeAPIKey)
 	}
 	if m.messages != nil {
 		edges = append(edges, agentinstance.EdgeMessages)
@@ -4214,6 +4132,10 @@ func (m *AgentInstanceMutation) AddedIDs(name string) []ent.Value {
 		if id := m.runtime; id != nil {
 			return []ent.Value{*id}
 		}
+	case agentinstance.EdgeAPIKey:
+		if id := m.api_key; id != nil {
+			return []ent.Value{*id}
+		}
 	case agentinstance.EdgeMessages:
 		ids := make([]ent.Value, 0, len(m.messages))
 		for id := range m.messages {
@@ -4226,7 +4148,7 @@ func (m *AgentInstanceMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AgentInstanceMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removedmessages != nil {
 		edges = append(edges, agentinstance.EdgeMessages)
 	}
@@ -4249,12 +4171,15 @@ func (m *AgentInstanceMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AgentInstanceMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.clearedagent {
 		edges = append(edges, agentinstance.EdgeAgent)
 	}
 	if m.clearedruntime {
 		edges = append(edges, agentinstance.EdgeRuntime)
+	}
+	if m.clearedapi_key {
+		edges = append(edges, agentinstance.EdgeAPIKey)
 	}
 	if m.clearedmessages {
 		edges = append(edges, agentinstance.EdgeMessages)
@@ -4270,6 +4195,8 @@ func (m *AgentInstanceMutation) EdgeCleared(name string) bool {
 		return m.clearedagent
 	case agentinstance.EdgeRuntime:
 		return m.clearedruntime
+	case agentinstance.EdgeAPIKey:
+		return m.clearedapi_key
 	case agentinstance.EdgeMessages:
 		return m.clearedmessages
 	}
@@ -4286,6 +4213,9 @@ func (m *AgentInstanceMutation) ClearEdge(name string) error {
 	case agentinstance.EdgeRuntime:
 		m.ClearRuntime()
 		return nil
+	case agentinstance.EdgeAPIKey:
+		m.ClearAPIKey()
+		return nil
 	}
 	return fmt.Errorf("unknown AgentInstance unique edge %s", name)
 }
@@ -4299,6 +4229,9 @@ func (m *AgentInstanceMutation) ResetEdge(name string) error {
 		return nil
 	case agentinstance.EdgeRuntime:
 		m.ResetRuntime()
+		return nil
+	case agentinstance.EdgeAPIKey:
+		m.ResetAPIKey()
 		return nil
 	case agentinstance.EdgeMessages:
 		m.ResetMessages()

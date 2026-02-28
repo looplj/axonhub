@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/agentruntime"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -94,12 +95,6 @@ func (_c *AgentInstanceCreate) SetNillableAgentRuntimeID(v *int) *AgentInstanceC
 	return _c
 }
 
-// SetInstanceID sets the "instance_id" field.
-func (_c *AgentInstanceCreate) SetInstanceID(v string) *AgentInstanceCreate {
-	_c.mutation.SetInstanceID(v)
-	return _c
-}
-
 // SetName sets the "name" field.
 func (_c *AgentInstanceCreate) SetName(v string) *AgentInstanceCreate {
 	_c.mutation.SetName(v)
@@ -110,6 +105,20 @@ func (_c *AgentInstanceCreate) SetName(v string) *AgentInstanceCreate {
 func (_c *AgentInstanceCreate) SetNillableName(v *string) *AgentInstanceCreate {
 	if v != nil {
 		_c.SetName(*v)
+	}
+	return _c
+}
+
+// SetDescription sets the "description" field.
+func (_c *AgentInstanceCreate) SetDescription(v string) *AgentInstanceCreate {
+	_c.mutation.SetDescription(v)
+	return _c
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_c *AgentInstanceCreate) SetNillableDescription(v *string) *AgentInstanceCreate {
+	if v != nil {
+		_c.SetDescription(*v)
 	}
 	return _c
 }
@@ -128,17 +137,9 @@ func (_c *AgentInstanceCreate) SetNillablePlatform(v *string) *AgentInstanceCrea
 	return _c
 }
 
-// SetVersion sets the "version" field.
-func (_c *AgentInstanceCreate) SetVersion(v string) *AgentInstanceCreate {
-	_c.mutation.SetVersion(v)
-	return _c
-}
-
-// SetNillableVersion sets the "version" field if the given value is not nil.
-func (_c *AgentInstanceCreate) SetNillableVersion(v *string) *AgentInstanceCreate {
-	if v != nil {
-		_c.SetVersion(*v)
-	}
+// SetAPIKeyID sets the "api_key_id" field.
+func (_c *AgentInstanceCreate) SetAPIKeyID(v int) *AgentInstanceCreate {
+	_c.mutation.SetAPIKeyID(v)
 	return _c
 }
 
@@ -198,6 +199,11 @@ func (_c *AgentInstanceCreate) SetNillableRuntimeID(id *int) *AgentInstanceCreat
 // SetRuntime sets the "runtime" edge to the AgentRuntime entity.
 func (_c *AgentInstanceCreate) SetRuntime(v *AgentRuntime) *AgentInstanceCreate {
 	return _c.SetRuntimeID(v.ID)
+}
+
+// SetAPIKey sets the "api_key" edge to the APIKey entity.
+func (_c *AgentInstanceCreate) SetAPIKey(v *APIKey) *AgentInstanceCreate {
+	return _c.SetAPIKeyID(v.ID)
 }
 
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
@@ -274,13 +280,13 @@ func (_c *AgentInstanceCreate) defaults() error {
 		v := agentinstance.DefaultName
 		_c.mutation.SetName(v)
 	}
+	if _, ok := _c.mutation.Description(); !ok {
+		v := agentinstance.DefaultDescription
+		_c.mutation.SetDescription(v)
+	}
 	if _, ok := _c.mutation.Platform(); !ok {
 		v := agentinstance.DefaultPlatform
 		_c.mutation.SetPlatform(v)
-	}
-	if _, ok := _c.mutation.Version(); !ok {
-		v := agentinstance.DefaultVersion
-		_c.mutation.SetVersion(v)
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := agentinstance.DefaultStatus
@@ -306,17 +312,17 @@ func (_c *AgentInstanceCreate) check() error {
 	if _, ok := _c.mutation.AgentID(); !ok {
 		return &ValidationError{Name: "agent_id", err: errors.New(`ent: missing required field "AgentInstance.agent_id"`)}
 	}
-	if _, ok := _c.mutation.InstanceID(); !ok {
-		return &ValidationError{Name: "instance_id", err: errors.New(`ent: missing required field "AgentInstance.instance_id"`)}
-	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "AgentInstance.name"`)}
+	}
+	if _, ok := _c.mutation.Description(); !ok {
+		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "AgentInstance.description"`)}
 	}
 	if _, ok := _c.mutation.Platform(); !ok {
 		return &ValidationError{Name: "platform", err: errors.New(`ent: missing required field "AgentInstance.platform"`)}
 	}
-	if _, ok := _c.mutation.Version(); !ok {
-		return &ValidationError{Name: "version", err: errors.New(`ent: missing required field "AgentInstance.version"`)}
+	if _, ok := _c.mutation.APIKeyID(); !ok {
+		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "AgentInstance.api_key_id"`)}
 	}
 	if _, ok := _c.mutation.LastHeartbeatAt(); !ok {
 		return &ValidationError{Name: "last_heartbeat_at", err: errors.New(`ent: missing required field "AgentInstance.last_heartbeat_at"`)}
@@ -331,6 +337,9 @@ func (_c *AgentInstanceCreate) check() error {
 	}
 	if len(_c.mutation.AgentIDs()) == 0 {
 		return &ValidationError{Name: "agent", err: errors.New(`ent: missing required edge "AgentInstance.agent"`)}
+	}
+	if len(_c.mutation.APIKeyIDs()) == 0 {
+		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required edge "AgentInstance.api_key"`)}
 	}
 	return nil
 }
@@ -375,21 +384,17 @@ func (_c *AgentInstanceCreate) createSpec() (*AgentInstance, *sqlgraph.CreateSpe
 		_spec.SetField(agentinstance.FieldProjectID, field.TypeInt, value)
 		_node.ProjectID = value
 	}
-	if value, ok := _c.mutation.InstanceID(); ok {
-		_spec.SetField(agentinstance.FieldInstanceID, field.TypeString, value)
-		_node.InstanceID = value
-	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(agentinstance.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
+	if value, ok := _c.mutation.Description(); ok {
+		_spec.SetField(agentinstance.FieldDescription, field.TypeString, value)
+		_node.Description = value
+	}
 	if value, ok := _c.mutation.Platform(); ok {
 		_spec.SetField(agentinstance.FieldPlatform, field.TypeString, value)
 		_node.Platform = value
-	}
-	if value, ok := _c.mutation.Version(); ok {
-		_spec.SetField(agentinstance.FieldVersion, field.TypeString, value)
-		_node.Version = value
 	}
 	if value, ok := _c.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
@@ -435,6 +440,23 @@ func (_c *AgentInstanceCreate) createSpec() (*AgentInstance, *sqlgraph.CreateSpe
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.AgentRuntimeID = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   agentinstance.APIKeyTable,
+			Columns: []string{agentinstance.APIKeyColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.APIKeyID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.MessagesIDs(); len(nodes) > 0 {
@@ -565,6 +587,18 @@ func (u *AgentInstanceUpsert) UpdateName() *AgentInstanceUpsert {
 	return u
 }
 
+// SetDescription sets the "description" field.
+func (u *AgentInstanceUpsert) SetDescription(v string) *AgentInstanceUpsert {
+	u.Set(agentinstance.FieldDescription, v)
+	return u
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *AgentInstanceUpsert) UpdateDescription() *AgentInstanceUpsert {
+	u.SetExcluded(agentinstance.FieldDescription)
+	return u
+}
+
 // SetPlatform sets the "platform" field.
 func (u *AgentInstanceUpsert) SetPlatform(v string) *AgentInstanceUpsert {
 	u.Set(agentinstance.FieldPlatform, v)
@@ -574,18 +608,6 @@ func (u *AgentInstanceUpsert) SetPlatform(v string) *AgentInstanceUpsert {
 // UpdatePlatform sets the "platform" field to the value that was provided on create.
 func (u *AgentInstanceUpsert) UpdatePlatform() *AgentInstanceUpsert {
 	u.SetExcluded(agentinstance.FieldPlatform)
-	return u
-}
-
-// SetVersion sets the "version" field.
-func (u *AgentInstanceUpsert) SetVersion(v string) *AgentInstanceUpsert {
-	u.Set(agentinstance.FieldVersion, v)
-	return u
-}
-
-// UpdateVersion sets the "version" field to the value that was provided on create.
-func (u *AgentInstanceUpsert) UpdateVersion() *AgentInstanceUpsert {
-	u.SetExcluded(agentinstance.FieldVersion)
 	return u
 }
 
@@ -651,8 +673,8 @@ func (u *AgentInstanceUpsertOne) UpdateNewValues() *AgentInstanceUpsertOne {
 		if _, exists := u.create.mutation.AgentID(); exists {
 			s.SetIgnore(agentinstance.FieldAgentID)
 		}
-		if _, exists := u.create.mutation.InstanceID(); exists {
-			s.SetIgnore(agentinstance.FieldInstanceID)
+		if _, exists := u.create.mutation.APIKeyID(); exists {
+			s.SetIgnore(agentinstance.FieldAPIKeyID)
 		}
 	}))
 	return u
@@ -755,6 +777,20 @@ func (u *AgentInstanceUpsertOne) UpdateName() *AgentInstanceUpsertOne {
 	})
 }
 
+// SetDescription sets the "description" field.
+func (u *AgentInstanceUpsertOne) SetDescription(v string) *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *AgentInstanceUpsertOne) UpdateDescription() *AgentInstanceUpsertOne {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.UpdateDescription()
+	})
+}
+
 // SetPlatform sets the "platform" field.
 func (u *AgentInstanceUpsertOne) SetPlatform(v string) *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
@@ -766,20 +802,6 @@ func (u *AgentInstanceUpsertOne) SetPlatform(v string) *AgentInstanceUpsertOne {
 func (u *AgentInstanceUpsertOne) UpdatePlatform() *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
 		s.UpdatePlatform()
-	})
-}
-
-// SetVersion sets the "version" field.
-func (u *AgentInstanceUpsertOne) SetVersion(v string) *AgentInstanceUpsertOne {
-	return u.Update(func(s *AgentInstanceUpsert) {
-		s.SetVersion(v)
-	})
-}
-
-// UpdateVersion sets the "version" field to the value that was provided on create.
-func (u *AgentInstanceUpsertOne) UpdateVersion() *AgentInstanceUpsertOne {
-	return u.Update(func(s *AgentInstanceUpsert) {
-		s.UpdateVersion()
 	})
 }
 
@@ -1017,8 +1039,8 @@ func (u *AgentInstanceUpsertBulk) UpdateNewValues() *AgentInstanceUpsertBulk {
 			if _, exists := b.mutation.AgentID(); exists {
 				s.SetIgnore(agentinstance.FieldAgentID)
 			}
-			if _, exists := b.mutation.InstanceID(); exists {
-				s.SetIgnore(agentinstance.FieldInstanceID)
+			if _, exists := b.mutation.APIKeyID(); exists {
+				s.SetIgnore(agentinstance.FieldAPIKeyID)
 			}
 		}
 	}))
@@ -1122,6 +1144,20 @@ func (u *AgentInstanceUpsertBulk) UpdateName() *AgentInstanceUpsertBulk {
 	})
 }
 
+// SetDescription sets the "description" field.
+func (u *AgentInstanceUpsertBulk) SetDescription(v string) *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *AgentInstanceUpsertBulk) UpdateDescription() *AgentInstanceUpsertBulk {
+	return u.Update(func(s *AgentInstanceUpsert) {
+		s.UpdateDescription()
+	})
+}
+
 // SetPlatform sets the "platform" field.
 func (u *AgentInstanceUpsertBulk) SetPlatform(v string) *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
@@ -1133,20 +1169,6 @@ func (u *AgentInstanceUpsertBulk) SetPlatform(v string) *AgentInstanceUpsertBulk
 func (u *AgentInstanceUpsertBulk) UpdatePlatform() *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
 		s.UpdatePlatform()
-	})
-}
-
-// SetVersion sets the "version" field.
-func (u *AgentInstanceUpsertBulk) SetVersion(v string) *AgentInstanceUpsertBulk {
-	return u.Update(func(s *AgentInstanceUpsert) {
-		s.SetVersion(v)
-	})
-}
-
-// UpdateVersion sets the "version" field to the value that was provided on create.
-func (u *AgentInstanceUpsertBulk) UpdateVersion() *AgentInstanceUpsertBulk {
-	return u.Update(func(s *AgentInstanceUpsert) {
-		s.UpdateVersion()
 	})
 }
 

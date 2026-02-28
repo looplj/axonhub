@@ -30,14 +30,14 @@ const (
 	FieldAgentID = "agent_id"
 	// FieldAgentRuntimeID holds the string denoting the agent_runtime_id field in the database.
 	FieldAgentRuntimeID = "agent_runtime_id"
-	// FieldInstanceID holds the string denoting the instance_id field in the database.
-	FieldInstanceID = "instance_id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// FieldDescription holds the string denoting the description field in the database.
+	FieldDescription = "description"
 	// FieldPlatform holds the string denoting the platform field in the database.
 	FieldPlatform = "platform"
-	// FieldVersion holds the string denoting the version field in the database.
-	FieldVersion = "version"
+	// FieldAPIKeyID holds the string denoting the api_key_id field in the database.
+	FieldAPIKeyID = "api_key_id"
 	// FieldLastHeartbeatAt holds the string denoting the last_heartbeat_at field in the database.
 	FieldLastHeartbeatAt = "last_heartbeat_at"
 	// FieldDeployment holds the string denoting the deployment field in the database.
@@ -48,6 +48,8 @@ const (
 	EdgeAgent = "agent"
 	// EdgeRuntime holds the string denoting the runtime edge name in mutations.
 	EdgeRuntime = "runtime"
+	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
+	EdgeAPIKey = "api_key"
 	// EdgeMessages holds the string denoting the messages edge name in mutations.
 	EdgeMessages = "messages"
 	// Table holds the table name of the agentinstance in the database.
@@ -66,6 +68,13 @@ const (
 	RuntimeInverseTable = "agent_runtimes"
 	// RuntimeColumn is the table column denoting the runtime relation/edge.
 	RuntimeColumn = "agent_runtime_id"
+	// APIKeyTable is the table that holds the api_key relation/edge.
+	APIKeyTable = "agent_instances"
+	// APIKeyInverseTable is the table name for the APIKey entity.
+	// It exists in this package in order to avoid circular dependency with the "apikey" package.
+	APIKeyInverseTable = "api_keys"
+	// APIKeyColumn is the table column denoting the api_key relation/edge.
+	APIKeyColumn = "api_key_id"
 	// MessagesTable is the table that holds the messages relation/edge.
 	MessagesTable = "agent_messages"
 	// MessagesInverseTable is the table name for the AgentMessage entity.
@@ -84,10 +93,10 @@ var Columns = []string{
 	FieldProjectID,
 	FieldAgentID,
 	FieldAgentRuntimeID,
-	FieldInstanceID,
 	FieldName,
+	FieldDescription,
 	FieldPlatform,
-	FieldVersion,
+	FieldAPIKeyID,
 	FieldLastHeartbeatAt,
 	FieldDeployment,
 	FieldStatus,
@@ -122,10 +131,10 @@ var (
 	DefaultDeletedAt int
 	// DefaultName holds the default value on creation for the "name" field.
 	DefaultName string
+	// DefaultDescription holds the default value on creation for the "description" field.
+	DefaultDescription string
 	// DefaultPlatform holds the default value on creation for the "platform" field.
 	DefaultPlatform string
-	// DefaultVersion holds the default value on creation for the "version" field.
-	DefaultVersion string
 )
 
 // Status defines the type for the "status" enum field.
@@ -194,14 +203,14 @@ func ByAgentRuntimeID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAgentRuntimeID, opts...).ToFunc()
 }
 
-// ByInstanceID orders the results by the instance_id field.
-func ByInstanceID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldInstanceID, opts...).ToFunc()
-}
-
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByDescription orders the results by the description field.
+func ByDescription(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDescription, opts...).ToFunc()
 }
 
 // ByPlatform orders the results by the platform field.
@@ -209,9 +218,9 @@ func ByPlatform(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPlatform, opts...).ToFunc()
 }
 
-// ByVersion orders the results by the version field.
-func ByVersion(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldVersion, opts...).ToFunc()
+// ByAPIKeyID orders the results by the api_key_id field.
+func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAPIKeyID, opts...).ToFunc()
 }
 
 // ByLastHeartbeatAt orders the results by the last_heartbeat_at field.
@@ -235,6 +244,13 @@ func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
 func ByRuntimeField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newRuntimeStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByAPIKeyField orders the results by api_key field.
+func ByAPIKeyField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAPIKeyStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -263,6 +279,13 @@ func newRuntimeStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RuntimeInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, RuntimeTable, RuntimeColumn),
+	)
+}
+func newAPIKeyStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(APIKeyInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, true, APIKeyTable, APIKeyColumn),
 	)
 }
 func newMessagesStep() *sqlgraph.Step {

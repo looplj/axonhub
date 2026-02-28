@@ -43,16 +43,12 @@ const (
 	FieldAgentBuiltinTools = "agent_builtin_tools"
 	// FieldSkillsPolicy holds the string denoting the skills_policy field in the database.
 	FieldSkillsPolicy = "skills_policy"
-	// FieldAPIKeyID holds the string denoting the api_key_id field in the database.
-	FieldAPIKeyID = "api_key_id"
 	// EdgeProject holds the string denoting the project edge name in mutations.
 	EdgeProject = "project"
-	// EdgeOwnerUser holds the string denoting the owner_user edge name in mutations.
-	EdgeOwnerUser = "owner_user"
+	// EdgeCreatedByUser holds the string denoting the created_by_user edge name in mutations.
+	EdgeCreatedByUser = "created_by_user"
 	// EdgePrompt holds the string denoting the prompt edge name in mutations.
 	EdgePrompt = "prompt"
-	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
-	EdgeAPIKey = "api_key"
 	// EdgeToolBindings holds the string denoting the tool_bindings edge name in mutations.
 	EdgeToolBindings = "tool_bindings"
 	// EdgeSkillBindings holds the string denoting the skill_bindings edge name in mutations.
@@ -74,13 +70,13 @@ const (
 	ProjectInverseTable = "projects"
 	// ProjectColumn is the table column denoting the project relation/edge.
 	ProjectColumn = "project_id"
-	// OwnerUserTable is the table that holds the owner_user relation/edge.
-	OwnerUserTable = "agents"
-	// OwnerUserInverseTable is the table name for the User entity.
+	// CreatedByUserTable is the table that holds the created_by_user relation/edge.
+	CreatedByUserTable = "agents"
+	// CreatedByUserInverseTable is the table name for the User entity.
 	// It exists in this package in order to avoid circular dependency with the "user" package.
-	OwnerUserInverseTable = "users"
-	// OwnerUserColumn is the table column denoting the owner_user relation/edge.
-	OwnerUserColumn = "created_by_user_id"
+	CreatedByUserInverseTable = "users"
+	// CreatedByUserColumn is the table column denoting the created_by_user relation/edge.
+	CreatedByUserColumn = "created_by_user_id"
 	// PromptTable is the table that holds the prompt relation/edge.
 	PromptTable = "agents"
 	// PromptInverseTable is the table name for the Prompt entity.
@@ -88,13 +84,6 @@ const (
 	PromptInverseTable = "prompts"
 	// PromptColumn is the table column denoting the prompt relation/edge.
 	PromptColumn = "prompt_id"
-	// APIKeyTable is the table that holds the api_key relation/edge.
-	APIKeyTable = "agents"
-	// APIKeyInverseTable is the table name for the APIKey entity.
-	// It exists in this package in order to avoid circular dependency with the "apikey" package.
-	APIKeyInverseTable = "api_keys"
-	// APIKeyColumn is the table column denoting the api_key relation/edge.
-	APIKeyColumn = "api_key_id"
 	// ToolBindingsTable is the table that holds the tool_bindings relation/edge.
 	ToolBindingsTable = "agent_tools"
 	// ToolBindingsInverseTable is the table name for the AgentTool entity.
@@ -154,7 +143,6 @@ var Columns = []string{
 	FieldModel,
 	FieldAgentBuiltinTools,
 	FieldSkillsPolicy,
-	FieldAPIKeyID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -279,11 +267,6 @@ func ByModel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModel, opts...).ToFunc()
 }
 
-// ByAPIKeyID orders the results by the api_key_id field.
-func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAPIKeyID, opts...).ToFunc()
-}
-
 // ByProjectField orders the results by project field.
 func ByProjectField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -291,10 +274,10 @@ func ByProjectField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
-// ByOwnerUserField orders the results by owner_user field.
-func ByOwnerUserField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByCreatedByUserField orders the results by created_by_user field.
+func ByCreatedByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newOwnerUserStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newCreatedByUserStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -302,13 +285,6 @@ func ByOwnerUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 func ByPromptField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newPromptStep(), sql.OrderByField(field, opts...))
-	}
-}
-
-// ByAPIKeyField orders the results by api_key field.
-func ByAPIKeyField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newAPIKeyStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -402,11 +378,11 @@ func newProjectStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2O, true, ProjectTable, ProjectColumn),
 	)
 }
-func newOwnerUserStep() *sqlgraph.Step {
+func newCreatedByUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(OwnerUserInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, OwnerUserTable, OwnerUserColumn),
+		sqlgraph.To(CreatedByUserInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, CreatedByUserTable, CreatedByUserColumn),
 	)
 }
 func newPromptStep() *sqlgraph.Step {
@@ -414,13 +390,6 @@ func newPromptStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PromptInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, PromptTable, PromptColumn),
-	)
-}
-func newAPIKeyStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(APIKeyInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2O, true, APIKeyTable, APIKeyColumn),
 	)
 }
 func newToolBindingsStep() *sqlgraph.Step {

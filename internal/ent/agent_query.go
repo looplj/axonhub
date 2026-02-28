@@ -20,7 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
-	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -35,9 +34,8 @@ type AgentQuery struct {
 	inters                 []Interceptor
 	predicates             []predicate.Agent
 	withProject            *ProjectQuery
-	withOwnerUser          *UserQuery
+	withCreatedByUser      *UserQuery
 	withPrompt             *PromptQuery
-	withAPIKey             *APIKeyQuery
 	withToolBindings       *AgentToolQuery
 	withSkillBindings      *AgentSkillQuery
 	withInstances          *AgentInstanceQuery
@@ -110,8 +108,8 @@ func (_q *AgentQuery) QueryProject() *ProjectQuery {
 	return query
 }
 
-// QueryOwnerUser chains the current query on the "owner_user" edge.
-func (_q *AgentQuery) QueryOwnerUser() *UserQuery {
+// QueryCreatedByUser chains the current query on the "created_by_user" edge.
+func (_q *AgentQuery) QueryCreatedByUser() *UserQuery {
 	query := (&UserClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -124,7 +122,7 @@ func (_q *AgentQuery) QueryOwnerUser() *UserQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(agent.Table, agent.FieldID, selector),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, agent.OwnerUserTable, agent.OwnerUserColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, agent.CreatedByUserTable, agent.CreatedByUserColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -147,28 +145,6 @@ func (_q *AgentQuery) QueryPrompt() *PromptQuery {
 			sqlgraph.From(agent.Table, agent.FieldID, selector),
 			sqlgraph.To(prompt.Table, prompt.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, agent.PromptTable, agent.PromptColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryAPIKey chains the current query on the "api_key" edge.
-func (_q *AgentQuery) QueryAPIKey() *APIKeyQuery {
-	query := (&APIKeyClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(agent.Table, agent.FieldID, selector),
-			sqlgraph.To(apikey.Table, apikey.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, agent.APIKeyTable, agent.APIKeyColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -501,9 +477,8 @@ func (_q *AgentQuery) Clone() *AgentQuery {
 		inters:            append([]Interceptor{}, _q.inters...),
 		predicates:        append([]predicate.Agent{}, _q.predicates...),
 		withProject:       _q.withProject.Clone(),
-		withOwnerUser:     _q.withOwnerUser.Clone(),
+		withCreatedByUser: _q.withCreatedByUser.Clone(),
 		withPrompt:        _q.withPrompt.Clone(),
-		withAPIKey:        _q.withAPIKey.Clone(),
 		withToolBindings:  _q.withToolBindings.Clone(),
 		withSkillBindings: _q.withSkillBindings.Clone(),
 		withInstances:     _q.withInstances.Clone(),
@@ -528,14 +503,14 @@ func (_q *AgentQuery) WithProject(opts ...func(*ProjectQuery)) *AgentQuery {
 	return _q
 }
 
-// WithOwnerUser tells the query-builder to eager-load the nodes that are connected to
-// the "owner_user" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *AgentQuery) WithOwnerUser(opts ...func(*UserQuery)) *AgentQuery {
+// WithCreatedByUser tells the query-builder to eager-load the nodes that are connected to
+// the "created_by_user" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *AgentQuery) WithCreatedByUser(opts ...func(*UserQuery)) *AgentQuery {
 	query := (&UserClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withOwnerUser = query
+	_q.withCreatedByUser = query
 	return _q
 }
 
@@ -547,17 +522,6 @@ func (_q *AgentQuery) WithPrompt(opts ...func(*PromptQuery)) *AgentQuery {
 		opt(query)
 	}
 	_q.withPrompt = query
-	return _q
-}
-
-// WithAPIKey tells the query-builder to eager-load the nodes that are connected to
-// the "api_key" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *AgentQuery) WithAPIKey(opts ...func(*APIKeyQuery)) *AgentQuery {
-	query := (&APIKeyClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withAPIKey = query
 	return _q
 }
 
@@ -711,11 +675,10 @@ func (_q *AgentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Agent,
 	var (
 		nodes       = []*Agent{}
 		_spec       = _q.querySpec()
-		loadedTypes = [10]bool{
+		loadedTypes = [9]bool{
 			_q.withProject != nil,
-			_q.withOwnerUser != nil,
+			_q.withCreatedByUser != nil,
 			_q.withPrompt != nil,
-			_q.withAPIKey != nil,
 			_q.withToolBindings != nil,
 			_q.withSkillBindings != nil,
 			_q.withInstances != nil,
@@ -751,21 +714,15 @@ func (_q *AgentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Agent,
 			return nil, err
 		}
 	}
-	if query := _q.withOwnerUser; query != nil {
-		if err := _q.loadOwnerUser(ctx, query, nodes, nil,
-			func(n *Agent, e *User) { n.Edges.OwnerUser = e }); err != nil {
+	if query := _q.withCreatedByUser; query != nil {
+		if err := _q.loadCreatedByUser(ctx, query, nodes, nil,
+			func(n *Agent, e *User) { n.Edges.CreatedByUser = e }); err != nil {
 			return nil, err
 		}
 	}
 	if query := _q.withPrompt; query != nil {
 		if err := _q.loadPrompt(ctx, query, nodes, nil,
 			func(n *Agent, e *Prompt) { n.Edges.Prompt = e }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withAPIKey; query != nil {
-		if err := _q.loadAPIKey(ctx, query, nodes, nil,
-			func(n *Agent, e *APIKey) { n.Edges.APIKey = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -890,7 +847,7 @@ func (_q *AgentQuery) loadProject(ctx context.Context, query *ProjectQuery, node
 	}
 	return nil
 }
-func (_q *AgentQuery) loadOwnerUser(ctx context.Context, query *UserQuery, nodes []*Agent, init func(*Agent), assign func(*Agent, *User)) error {
+func (_q *AgentQuery) loadCreatedByUser(ctx context.Context, query *UserQuery, nodes []*Agent, init func(*Agent), assign func(*Agent, *User)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Agent)
 	for i := range nodes {
@@ -941,35 +898,6 @@ func (_q *AgentQuery) loadPrompt(ctx context.Context, query *PromptQuery, nodes 
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "prompt_id" returned %v`, n.ID)
-		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
-	}
-	return nil
-}
-func (_q *AgentQuery) loadAPIKey(ctx context.Context, query *APIKeyQuery, nodes []*Agent, init func(*Agent), assign func(*Agent, *APIKey)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Agent)
-	for i := range nodes {
-		fk := nodes[i].APIKeyID
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
-	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(apikey.IDIn(ids...))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
-		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "api_key_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -1189,14 +1117,11 @@ func (_q *AgentQuery) querySpec() *sqlgraph.QuerySpec {
 		if _q.withProject != nil {
 			_spec.Node.AddColumnOnce(agent.FieldProjectID)
 		}
-		if _q.withOwnerUser != nil {
+		if _q.withCreatedByUser != nil {
 			_spec.Node.AddColumnOnce(agent.FieldCreatedByUserID)
 		}
 		if _q.withPrompt != nil {
 			_spec.Node.AddColumnOnce(agent.FieldPromptID)
-		}
-		if _q.withAPIKey != nil {
-			_spec.Node.AddColumnOnce(agent.FieldAPIKeyID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

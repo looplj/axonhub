@@ -13,7 +13,7 @@ query AgentBootstrap {
 
 mutation RegisterAgentInstance($input: RegisterAgentInstanceInput!) {
   registerAgentInstance(input: $input) {
-    instanceID
+    id
   }
 }
 
@@ -45,9 +45,10 @@ mutation ReplyMessage($input: ReplyMessageInput!) {
 query PeerAgents {
   peerAgents {
     agentID
+    agentInstanceID
     name
+    description
     status
-    instanceID
   }
 }
 

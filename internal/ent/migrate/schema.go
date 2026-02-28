@@ -72,7 +72,6 @@ var (
 		{Name: "model", Type: field.TypeString, Default: ""},
 		{Name: "agent_builtin_tools", Type: field.TypeJSON},
 		{Name: "skills_policy", Type: field.TypeJSON},
-		{Name: "api_key_id", Type: field.TypeInt, Unique: true},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "prompt_id", Type: field.TypeInt},
 		{Name: "created_by_user_id", Type: field.TypeInt},
@@ -84,26 +83,20 @@ var (
 		PrimaryKey: []*schema.Column{AgentsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "agents_api_keys_agent",
-				Columns:    []*schema.Column{AgentsColumns[10]},
-				RefColumns: []*schema.Column{APIKeysColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-			{
 				Symbol:     "agents_projects_agents",
-				Columns:    []*schema.Column{AgentsColumns[11]},
+				Columns:    []*schema.Column{AgentsColumns[10]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "agents_prompts_agents",
-				Columns:    []*schema.Column{AgentsColumns[12]},
+				Columns:    []*schema.Column{AgentsColumns[11]},
 				RefColumns: []*schema.Column{PromptsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "agents_users_agents",
-				Columns:    []*schema.Column{AgentsColumns[13]},
+				Columns:    []*schema.Column{AgentsColumns[12]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -112,12 +105,7 @@ var (
 			{
 				Name:    "agents_by_project_id_name",
 				Unique:  true,
-				Columns: []*schema.Column{AgentsColumns[11], AgentsColumns[4], AgentsColumns[3]},
-			},
-			{
-				Name:    "agents_by_api_key_id",
-				Unique:  true,
-				Columns: []*schema.Column{AgentsColumns[10]},
+				Columns: []*schema.Column{AgentsColumns[10], AgentsColumns[4], AgentsColumns[3]},
 			},
 		},
 	}
@@ -128,13 +116,13 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "project_id", Type: field.TypeInt},
-		{Name: "instance_id", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString, Default: ""},
+		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "platform", Type: field.TypeString, Default: ""},
-		{Name: "version", Type: field.TypeString, Default: ""},
 		{Name: "last_heartbeat_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime(6)"}},
 		{Name: "deployment", Type: field.TypeJSON, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "stopped", "error"}, Default: "running"},
+		{Name: "api_key_id", Type: field.TypeInt, Unique: true},
 		{Name: "agent_id", Type: field.TypeInt},
 		{Name: "agent_runtime_id", Type: field.TypeInt, Nullable: true},
 	}
@@ -144,6 +132,12 @@ var (
 		Columns:    AgentInstancesColumns,
 		PrimaryKey: []*schema.Column{AgentInstancesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "agent_instances_api_keys_agent_instance",
+				Columns:    []*schema.Column{AgentInstancesColumns[11]},
+				RefColumns: []*schema.Column{APIKeysColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
 			{
 				Symbol:     "agent_instances_agents_instances",
 				Columns:    []*schema.Column{AgentInstancesColumns[12]},
@@ -159,19 +153,14 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "agent_instances_by_agent_id_last_heartbeat_at",
-				Unique:  false,
-				Columns: []*schema.Column{AgentInstancesColumns[12], AgentInstancesColumns[9]},
-			},
-			{
-				Name:    "agent_instances_by_agent_id_instance_id",
+				Name:    "agent_instances_by_agent_id_name",
 				Unique:  true,
 				Columns: []*schema.Column{AgentInstancesColumns[12], AgentInstancesColumns[5], AgentInstancesColumns[3]},
 			},
 			{
-				Name:    "agent_instances_by_runtime_id",
-				Unique:  false,
-				Columns: []*schema.Column{AgentInstancesColumns[13], AgentInstancesColumns[3]},
+				Name:    "agent_instances_by_api_key_id",
+				Unique:  true,
+				Columns: []*schema.Column{AgentInstancesColumns[11]},
 			},
 		},
 	}
@@ -1452,12 +1441,12 @@ var (
 func init() {
 	APIKeysTable.ForeignKeys[0].RefTable = ProjectsTable
 	APIKeysTable.ForeignKeys[1].RefTable = UsersTable
-	AgentsTable.ForeignKeys[0].RefTable = APIKeysTable
-	AgentsTable.ForeignKeys[1].RefTable = ProjectsTable
-	AgentsTable.ForeignKeys[2].RefTable = PromptsTable
-	AgentsTable.ForeignKeys[3].RefTable = UsersTable
-	AgentInstancesTable.ForeignKeys[0].RefTable = AgentsTable
-	AgentInstancesTable.ForeignKeys[1].RefTable = AgentRuntimesTable
+	AgentsTable.ForeignKeys[0].RefTable = ProjectsTable
+	AgentsTable.ForeignKeys[1].RefTable = PromptsTable
+	AgentsTable.ForeignKeys[2].RefTable = UsersTable
+	AgentInstancesTable.ForeignKeys[0].RefTable = APIKeysTable
+	AgentInstancesTable.ForeignKeys[1].RefTable = AgentsTable
+	AgentInstancesTable.ForeignKeys[2].RefTable = AgentRuntimesTable
 	AgentMemoriesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[1].RefTable = AgentInstancesTable

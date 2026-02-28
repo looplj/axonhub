@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/agentruntime"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 )
 
@@ -29,6 +30,7 @@ type AgentInstanceQuery struct {
 	predicates        []predicate.AgentInstance
 	withAgent         *AgentQuery
 	withRuntime       *AgentRuntimeQuery
+	withAPIKey        *APIKeyQuery
 	withMessages      *AgentMessageQuery
 	loadTotal         []func(context.Context, []*AgentInstance) error
 	modifiers         []func(*sql.Selector)
@@ -106,6 +108,28 @@ func (_q *AgentInstanceQuery) QueryRuntime() *AgentRuntimeQuery {
 			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, selector),
 			sqlgraph.To(agentruntime.Table, agentruntime.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, agentinstance.RuntimeTable, agentinstance.RuntimeColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAPIKey chains the current query on the "api_key" edge.
+func (_q *AgentInstanceQuery) QueryAPIKey() *APIKeyQuery {
+	query := (&APIKeyClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, selector),
+			sqlgraph.To(apikey.Table, apikey.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, agentinstance.APIKeyTable, agentinstance.APIKeyColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -329,6 +353,7 @@ func (_q *AgentInstanceQuery) Clone() *AgentInstanceQuery {
 		predicates:   append([]predicate.AgentInstance{}, _q.predicates...),
 		withAgent:    _q.withAgent.Clone(),
 		withRuntime:  _q.withRuntime.Clone(),
+		withAPIKey:   _q.withAPIKey.Clone(),
 		withMessages: _q.withMessages.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
@@ -356,6 +381,17 @@ func (_q *AgentInstanceQuery) WithRuntime(opts ...func(*AgentRuntimeQuery)) *Age
 		opt(query)
 	}
 	_q.withRuntime = query
+	return _q
+}
+
+// WithAPIKey tells the query-builder to eager-load the nodes that are connected to
+// the "api_key" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *AgentInstanceQuery) WithAPIKey(opts ...func(*APIKeyQuery)) *AgentInstanceQuery {
+	query := (&APIKeyClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAPIKey = query
 	return _q
 }
 
@@ -454,9 +490,10 @@ func (_q *AgentInstanceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	var (
 		nodes       = []*AgentInstance{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withAgent != nil,
 			_q.withRuntime != nil,
+			_q.withAPIKey != nil,
 			_q.withMessages != nil,
 		}
 	)
@@ -490,6 +527,12 @@ func (_q *AgentInstanceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	if query := _q.withRuntime; query != nil {
 		if err := _q.loadRuntime(ctx, query, nodes, nil,
 			func(n *AgentInstance, e *AgentRuntime) { n.Edges.Runtime = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withAPIKey; query != nil {
+		if err := _q.loadAPIKey(ctx, query, nodes, nil,
+			func(n *AgentInstance, e *APIKey) { n.Edges.APIKey = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -576,6 +619,35 @@ func (_q *AgentInstanceQuery) loadRuntime(ctx context.Context, query *AgentRunti
 	}
 	return nil
 }
+func (_q *AgentInstanceQuery) loadAPIKey(ctx context.Context, query *APIKeyQuery, nodes []*AgentInstance, init func(*AgentInstance), assign func(*AgentInstance, *APIKey)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*AgentInstance)
+	for i := range nodes {
+		fk := nodes[i].APIKeyID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(apikey.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "api_key_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 func (_q *AgentInstanceQuery) loadMessages(ctx context.Context, query *AgentMessageQuery, nodes []*AgentInstance, init func(*AgentInstance), assign func(*AgentInstance, *AgentMessage)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int]*AgentInstance)
@@ -640,6 +712,9 @@ func (_q *AgentInstanceQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if _q.withRuntime != nil {
 			_spec.Node.AddColumnOnce(agentinstance.FieldAgentRuntimeID)
+		}
+		if _q.withAPIKey != nil {
+			_spec.Node.AddColumnOnce(agentinstance.FieldAPIKeyID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

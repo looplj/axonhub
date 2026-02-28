@@ -89,29 +89,28 @@ func (c *APIKeyUpdateOne) SetInput(i UpdateAPIKeyInput) *APIKeyUpdateOne {
 // CreateAgentInstanceInput represents a mutation input for creating agentinstances.
 type CreateAgentInstanceInput struct {
 	ProjectID       int
-	InstanceID      string
 	Name            *string
+	Description     *string
 	Platform        *string
-	Version         *string
 	LastHeartbeatAt time.Time
 	Deployment      *objects.AgentInstanceDeployment
 	Status          *agentinstance.Status
 	AgentID         int
 	RuntimeID       *int
+	APIKeyID        int
 }
 
 // Mutate applies the CreateAgentInstanceInput on the AgentInstanceMutation builder.
 func (i *CreateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
 	m.SetProjectID(i.ProjectID)
-	m.SetInstanceID(i.InstanceID)
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
 	if v := i.Platform; v != nil {
 		m.SetPlatform(*v)
-	}
-	if v := i.Version; v != nil {
-		m.SetVersion(*v)
 	}
 	m.SetLastHeartbeatAt(i.LastHeartbeatAt)
 	if v := i.Deployment; v != nil {
@@ -124,6 +123,7 @@ func (i *CreateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
 	if v := i.RuntimeID; v != nil {
 		m.SetRuntimeID(*v)
 	}
+	m.SetAPIKeyID(i.APIKeyID)
 }
 
 // SetInput applies the change-set in the CreateAgentInstanceInput on the AgentInstanceCreate builder.
@@ -135,8 +135,8 @@ func (c *AgentInstanceCreate) SetInput(i CreateAgentInstanceInput) *AgentInstanc
 // UpdateAgentInstanceInput represents a mutation input for updating agentinstances.
 type UpdateAgentInstanceInput struct {
 	Name            *string
+	Description     *string
 	Platform        *string
-	Version         *string
 	LastHeartbeatAt *time.Time
 	ClearDeployment bool
 	Deployment      *objects.AgentInstanceDeployment
@@ -150,11 +150,11 @@ func (i *UpdateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
 	if v := i.Platform; v != nil {
 		m.SetPlatform(*v)
-	}
-	if v := i.Version; v != nil {
-		m.SetVersion(*v)
 	}
 	if v := i.LastHeartbeatAt; v != nil {
 		m.SetLastHeartbeatAt(*v)

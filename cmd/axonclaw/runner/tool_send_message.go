@@ -12,22 +12,20 @@ import (
 )
 
 type SendMessageTool struct {
-	client     graphql.Client
-	instanceID string
+	client graphql.Client
 }
 
-func NewSendMessageTool(client graphql.Client, instanceID string) *SendMessageTool {
+func NewSendMessageTool(client graphql.Client) *SendMessageTool {
 	return &SendMessageTool{
-		client:     client,
-		instanceID: instanceID,
+		client: client,
 	}
 }
 
 type sendMessageInput struct {
-	Target           string `json:"target"`
-	TargetAgentID    string `json:"target_agent_id,omitempty"`
-	TargetInstanceID string `json:"target_instance_id,omitempty"`
-	Message          string `json:"message"`
+	Target           string  `json:"target"`
+	TargetAgentID    string  `json:"target_agent_id,omitempty"`
+	TargetInstanceID *string `json:"target_agent_instance_id,omitempty"`
+	Message          string  `json:"message"`
 }
 
 var sendMessageParameters = jsonschema.Schema{
@@ -36,16 +34,16 @@ var sendMessageParameters = jsonschema.Schema{
 	Properties: map[string]*jsonschema.Schema{
 		"target": {
 			Type:        "string",
-			Enum:        []interface{}{"user", "peer"},
+			Enum:        []any{"user", "peer"},
 			Description: "The target of the message: 'user' to reply to the user, 'peer' to send to another agent",
 		},
 		"target_agent_id": {
 			Type:        "string",
-			Description: "The agent ID of the target agent (required when target is 'peer', obtained from discover command)",
+			Description: "The agent ID to send the message to, required when target is 'peer'",
 		},
-		"target_instance_id": {
+		"target_agent_instance_id": {
 			Type:        "string",
-			Description: "The instance ID of the target agent instance (required when target is 'peer', obtained from discover command)",
+			Description: "The specific agent instance ID to send the message to, optional and will send to all instances if not provided.",
 		},
 		"message": {
 			Type:        "string",
@@ -76,8 +74,7 @@ func (t *SendMessageTool) Execute(ctx context.Context, input sendMessageInput) a
 
 func (t *SendMessageTool) sendToUser(ctx context.Context, message string) agent.ToolResult {
 	_, err := api.ReplyMessage(ctx, t.client, &api.ReplyMessageInput{
-		InstanceID: t.instanceID,
-		Text:       message,
+		Text: message,
 	})
 	if err != nil {
 		return tools.ErrorResult(err)
@@ -87,19 +84,18 @@ func (t *SendMessageTool) sendToUser(ctx context.Context, message string) agent.
 
 func (t *SendMessageTool) sendToPeer(ctx context.Context, input sendMessageInput) agent.ToolResult {
 	if input.TargetAgentID == "" {
-		return tools.ErrorResult(fmt.Errorf("targetAgentID is required when target is 'peer'"))
-	}
-	if input.TargetInstanceID == "" {
-		return tools.ErrorResult(fmt.Errorf("targetInstanceID is required when target is 'peer'"))
+		return tools.ErrorResult(fmt.Errorf("target_agent_id is required when target is 'peer'"))
 	}
 
-	_, err := api.SendAgentMessage(ctx, t.client, &api.SendAgentMessageInput{
-		TargetAgentID:    input.TargetAgentID,
-		TargetInstanceID: input.TargetInstanceID,
-		Text:             input.Message,
-	})
+	apiInput := &api.SendAgentMessageInput{
+		TargetAgentID:         input.TargetAgentID,
+		TargetAgentInstanceID: input.TargetInstanceID,
+		Text:                  input.Message,
+	}
+
+	_, err := api.SendAgentMessage(ctx, t.client, apiInput)
 	if err != nil {
 		return tools.ErrorResult(err)
 	}
-	return tools.TextResult(fmt.Sprintf("Message sent successfully to agent %s (instance: %s)", input.TargetAgentID, input.TargetInstanceID))
+	return tools.TextResult("Message sent successfully")
 }

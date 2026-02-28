@@ -39,9 +39,7 @@ func NewDiscoverCommand(opts DiscoverOptions) *cobra.Command {
 
 Returns a list of peer agents with their:
 - Agent ID and name
-- Description
 - Status
-- Instance ID
 
 Use this information to communicate with other agents via the SendMessage tool.`,
 		SilenceUsage:  true,
@@ -71,11 +69,11 @@ Use this information to communicate with other agents via the SendMessage tool.`
 				return nil
 			}
 
-			fmt.Fprintf(stdout, "Found %d peer agent instance(s):\n\n", len(peers))
+			fmt.Fprintf(stdout, "Found %d peer agent(s):\n\n", len(peers))
 			for _, p := range peers {
-				fmt.Fprintf(stdout, "- Agent: %s (ID: %s)\n", p.Name, p.AgentID)
-				fmt.Fprintf(stdout, "  Status: %s\n", p.Status)
-				fmt.Fprintf(stdout, "  InstanceID: %s\n\n", p.InstanceID)
+				fmt.Fprintf(stdout, "- Agent: %s (ID: %s, Instance ID: %s)\n", p.Name, p.AgentID, p.AgentInstanceID)
+				fmt.Fprintf(stdout, "  Description: %s\n", p.Description)
+				fmt.Fprintf(stdout, "  Status: %s\n\n", p.Status)
 			}
 
 			return nil

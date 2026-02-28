@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/agent"
-	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -47,8 +46,6 @@ type Agent struct {
 	AgentBuiltinTools []objects.AgentBuiltinTool `json:"agent_builtin_tools,omitempty"`
 	// Skill add/install policy (JSON)
 	SkillsPolicy objects.AgentSkillsPolicy `json:"skills_policy,omitempty"`
-	// Service account API key ID bound to this agent
-	APIKeyID int `json:"api_key_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AgentQuery when eager-loading is set.
 	Edges        AgentEdges `json:"edges"`
@@ -59,12 +56,10 @@ type Agent struct {
 type AgentEdges struct {
 	// Project holds the value of the project edge.
 	Project *Project `json:"project,omitempty"`
-	// OwnerUser holds the value of the owner_user edge.
-	OwnerUser *User `json:"owner_user,omitempty"`
+	// CreatedByUser holds the value of the created_by_user edge.
+	CreatedByUser *User `json:"created_by_user,omitempty"`
 	// Prompt holds the value of the prompt edge.
 	Prompt *Prompt `json:"prompt,omitempty"`
-	// APIKey holds the value of the api_key edge.
-	APIKey *APIKey `json:"api_key,omitempty"`
 	// ToolBindings holds the value of the tool_bindings edge.
 	ToolBindings []*AgentTool `json:"tool_bindings,omitempty"`
 	// SkillBindings holds the value of the skill_bindings edge.
@@ -79,9 +74,9 @@ type AgentEdges struct {
 	Memories []*AgentMemory `json:"memories,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [10]bool
+	loadedTypes [9]bool
 	// totalCount holds the count of the edges above.
-	totalCount [10]map[string]int
+	totalCount [9]map[string]int
 
 	namedToolBindings  map[string][]*AgentTool
 	namedSkillBindings map[string][]*AgentSkill
@@ -102,15 +97,15 @@ func (e AgentEdges) ProjectOrErr() (*Project, error) {
 	return nil, &NotLoadedError{edge: "project"}
 }
 
-// OwnerUserOrErr returns the OwnerUser value or an error if the edge
+// CreatedByUserOrErr returns the CreatedByUser value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e AgentEdges) OwnerUserOrErr() (*User, error) {
-	if e.OwnerUser != nil {
-		return e.OwnerUser, nil
+func (e AgentEdges) CreatedByUserOrErr() (*User, error) {
+	if e.CreatedByUser != nil {
+		return e.CreatedByUser, nil
 	} else if e.loadedTypes[1] {
 		return nil, &NotFoundError{label: user.Label}
 	}
-	return nil, &NotLoadedError{edge: "owner_user"}
+	return nil, &NotLoadedError{edge: "created_by_user"}
 }
 
 // PromptOrErr returns the Prompt value or an error if the edge
@@ -124,21 +119,10 @@ func (e AgentEdges) PromptOrErr() (*Prompt, error) {
 	return nil, &NotLoadedError{edge: "prompt"}
 }
 
-// APIKeyOrErr returns the APIKey value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e AgentEdges) APIKeyOrErr() (*APIKey, error) {
-	if e.APIKey != nil {
-		return e.APIKey, nil
-	} else if e.loadedTypes[3] {
-		return nil, &NotFoundError{label: apikey.Label}
-	}
-	return nil, &NotLoadedError{edge: "api_key"}
-}
-
 // ToolBindingsOrErr returns the ToolBindings value or an error if the edge
 // was not loaded in eager-loading.
 func (e AgentEdges) ToolBindingsOrErr() ([]*AgentTool, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[3] {
 		return e.ToolBindings, nil
 	}
 	return nil, &NotLoadedError{edge: "tool_bindings"}
@@ -147,7 +131,7 @@ func (e AgentEdges) ToolBindingsOrErr() ([]*AgentTool, error) {
 // SkillBindingsOrErr returns the SkillBindings value or an error if the edge
 // was not loaded in eager-loading.
 func (e AgentEdges) SkillBindingsOrErr() ([]*AgentSkill, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[4] {
 		return e.SkillBindings, nil
 	}
 	return nil, &NotLoadedError{edge: "skill_bindings"}
@@ -156,7 +140,7 @@ func (e AgentEdges) SkillBindingsOrErr() ([]*AgentSkill, error) {
 // InstancesOrErr returns the Instances value or an error if the edge
 // was not loaded in eager-loading.
 func (e AgentEdges) InstancesOrErr() ([]*AgentInstance, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[5] {
 		return e.Instances, nil
 	}
 	return nil, &NotLoadedError{edge: "instances"}
@@ -165,7 +149,7 @@ func (e AgentEdges) InstancesOrErr() ([]*AgentInstance, error) {
 // ThreadsOrErr returns the Threads value or an error if the edge
 // was not loaded in eager-loading.
 func (e AgentEdges) ThreadsOrErr() ([]*AgentThread, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[6] {
 		return e.Threads, nil
 	}
 	return nil, &NotLoadedError{edge: "threads"}
@@ -174,7 +158,7 @@ func (e AgentEdges) ThreadsOrErr() ([]*AgentThread, error) {
 // MessagesOrErr returns the Messages value or an error if the edge
 // was not loaded in eager-loading.
 func (e AgentEdges) MessagesOrErr() ([]*AgentMessage, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[7] {
 		return e.Messages, nil
 	}
 	return nil, &NotLoadedError{edge: "messages"}
@@ -183,7 +167,7 @@ func (e AgentEdges) MessagesOrErr() ([]*AgentMessage, error) {
 // MemoriesOrErr returns the Memories value or an error if the edge
 // was not loaded in eager-loading.
 func (e AgentEdges) MemoriesOrErr() ([]*AgentMemory, error) {
-	if e.loadedTypes[9] {
+	if e.loadedTypes[8] {
 		return e.Memories, nil
 	}
 	return nil, &NotLoadedError{edge: "memories"}
@@ -196,7 +180,7 @@ func (*Agent) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case agent.FieldAgentBuiltinTools, agent.FieldSkillsPolicy:
 			values[i] = new([]byte)
-		case agent.FieldID, agent.FieldDeletedAt, agent.FieldProjectID, agent.FieldCreatedByUserID, agent.FieldPromptID, agent.FieldAPIKeyID:
+		case agent.FieldID, agent.FieldDeletedAt, agent.FieldProjectID, agent.FieldCreatedByUserID, agent.FieldPromptID:
 			values[i] = new(sql.NullInt64)
 		case agent.FieldName, agent.FieldDescription, agent.FieldStatus, agent.FieldModel:
 			values[i] = new(sql.NullString)
@@ -299,12 +283,6 @@ func (_m *Agent) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field skills_policy: %w", err)
 				}
 			}
-		case agent.FieldAPIKeyID:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field api_key_id", values[i])
-			} else if value.Valid {
-				_m.APIKeyID = int(value.Int64)
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -323,19 +301,14 @@ func (_m *Agent) QueryProject() *ProjectQuery {
 	return NewAgentClient(_m.config).QueryProject(_m)
 }
 
-// QueryOwnerUser queries the "owner_user" edge of the Agent entity.
-func (_m *Agent) QueryOwnerUser() *UserQuery {
-	return NewAgentClient(_m.config).QueryOwnerUser(_m)
+// QueryCreatedByUser queries the "created_by_user" edge of the Agent entity.
+func (_m *Agent) QueryCreatedByUser() *UserQuery {
+	return NewAgentClient(_m.config).QueryCreatedByUser(_m)
 }
 
 // QueryPrompt queries the "prompt" edge of the Agent entity.
 func (_m *Agent) QueryPrompt() *PromptQuery {
 	return NewAgentClient(_m.config).QueryPrompt(_m)
-}
-
-// QueryAPIKey queries the "api_key" edge of the Agent entity.
-func (_m *Agent) QueryAPIKey() *APIKeyQuery {
-	return NewAgentClient(_m.config).QueryAPIKey(_m)
 }
 
 // QueryToolBindings queries the "tool_bindings" edge of the Agent entity.
@@ -426,9 +399,6 @@ func (_m *Agent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("skills_policy=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SkillsPolicy))
-	builder.WriteString(", ")
-	builder.WriteString("api_key_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.APIKeyID))
 	builder.WriteByte(')')
 	return builder.String()
 }

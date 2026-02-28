@@ -10,10 +10,9 @@ const DEPLOY_AXONCLAW_MUTATION = `
       error
       instance {
         id
-        instanceID
         name
         platform
-        version
+        description
         lastHeartbeatAt
         createdAt
         updatedAt
@@ -34,10 +33,9 @@ export interface DeployAxonclawResult {
   error?: string;
   instance?: {
     id: string;
-    instanceID: string;
     name: string;
     platform: string;
-    version: string;
+    description: string;
     lastHeartbeatAt: string;
     createdAt: string;
     updatedAt: string;

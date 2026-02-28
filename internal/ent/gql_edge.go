@@ -45,10 +45,10 @@ func (_m *APIKey) Requests(
 	return _m.QueryRequests().Paginate(ctx, after, first, before, last, opts...)
 }
 
-func (_m *APIKey) Agent(ctx context.Context) (*Agent, error) {
-	result, err := _m.Edges.AgentOrErr()
+func (_m *APIKey) AgentInstance(ctx context.Context) (*AgentInstance, error) {
+	result, err := _m.Edges.AgentInstanceOrErr()
 	if IsNotLoaded(err) {
-		result, err = _m.QueryAgent().Only(ctx)
+		result, err = _m.QueryAgentInstance().Only(ctx)
 	}
 	return result, MaskNotFound(err)
 }
@@ -61,10 +61,10 @@ func (_m *Agent) Project(ctx context.Context) (*Project, error) {
 	return result, err
 }
 
-func (_m *Agent) OwnerUser(ctx context.Context) (*User, error) {
-	result, err := _m.Edges.OwnerUserOrErr()
+func (_m *Agent) CreatedByUser(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.CreatedByUserOrErr()
 	if IsNotLoaded(err) {
-		result, err = _m.QueryOwnerUser().Only(ctx)
+		result, err = _m.QueryCreatedByUser().Only(ctx)
 	}
 	return result, err
 }
@@ -77,14 +77,6 @@ func (_m *Agent) Prompt(ctx context.Context) (*Prompt, error) {
 	return result, err
 }
 
-func (_m *Agent) APIKey(ctx context.Context) (*APIKey, error) {
-	result, err := _m.Edges.APIKeyOrErr()
-	if IsNotLoaded(err) {
-		result, err = _m.QueryAPIKey().Only(ctx)
-	}
-	return result, err
-}
-
 func (_m *Agent) ToolBindings(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentToolOrder, where *AgentToolWhereInput,
 ) (*AgentToolConnection, error) {
@@ -93,7 +85,7 @@ func (_m *Agent) ToolBindings(
 		WithAgentToolFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[3][alias]
 	if nodes, err := _m.NamedToolBindings(alias); err == nil || hasTotalCount {
 		pager, err := newAgentToolPager(opts, last != nil)
 		if err != nil {
@@ -114,7 +106,7 @@ func (_m *Agent) SkillBindings(
 		WithAgentSkillFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
 	if nodes, err := _m.NamedSkillBindings(alias); err == nil || hasTotalCount {
 		pager, err := newAgentSkillPager(opts, last != nil)
 		if err != nil {
@@ -135,7 +127,7 @@ func (_m *Agent) Instances(
 		WithAgentInstanceFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[6][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
 	if nodes, err := _m.NamedInstances(alias); err == nil || hasTotalCount {
 		pager, err := newAgentInstancePager(opts, last != nil)
 		if err != nil {
@@ -156,7 +148,7 @@ func (_m *Agent) Threads(
 		WithAgentThreadFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[7][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[6][alias]
 	if nodes, err := _m.NamedThreads(alias); err == nil || hasTotalCount {
 		pager, err := newAgentThreadPager(opts, last != nil)
 		if err != nil {
@@ -177,7 +169,7 @@ func (_m *Agent) Messages(
 		WithAgentMessageFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[7][alias]
 	if nodes, err := _m.NamedMessages(alias); err == nil || hasTotalCount {
 		pager, err := newAgentMessagePager(opts, last != nil)
 		if err != nil {
@@ -198,7 +190,7 @@ func (_m *Agent) Memories(
 		WithAgentMemoryFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[9][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
 	if nodes, err := _m.NamedMemories(alias); err == nil || hasTotalCount {
 		pager, err := newAgentMemoryPager(opts, last != nil)
 		if err != nil {
@@ -227,6 +219,14 @@ func (_m *AgentInstance) Runtime(ctx context.Context) (*AgentRuntime, error) {
 	return result, MaskNotFound(err)
 }
 
+func (_m *AgentInstance) APIKey(ctx context.Context) (*APIKey, error) {
+	result, err := _m.Edges.APIKeyOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAPIKey().Only(ctx)
+	}
+	return result, err
+}
+
 func (_m *AgentInstance) Messages(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentMessageOrder, where *AgentMessageWhereInput,
 ) (*AgentMessageConnection, error) {
@@ -235,7 +235,7 @@ func (_m *AgentInstance) Messages(
 		WithAgentMessageFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[3][alias]
 	if nodes, err := _m.NamedMessages(alias); err == nil || hasTotalCount {
 		pager, err := newAgentMessagePager(opts, last != nil)
 		if err != nil {

@@ -83,10 +83,6 @@ start_axonclaw() {
         args+=("--api-key" "$AXONCLAW_API_KEY")
     fi
     
-    if [[ -n "$AXONCLAW_INSTANCE_ID" ]]; then
-        args+=("--instance-id" "$AXONCLAW_INSTANCE_ID")
-    fi
-    
     if [[ -n "$AXONCLAW_NAME" ]]; then
         args+=("--name" "$AXONCLAW_NAME")
     fi
@@ -99,9 +95,6 @@ start_axonclaw() {
     
     print_info "Starting AxonClaw process..."
     print_info "  Base URL: ${AXONCLAW_BASE_URL:-http://localhost:8090}"
-    if [[ -n "$AXONCLAW_INSTANCE_ID" ]]; then
-        print_info "  Instance ID: $AXONCLAW_INSTANCE_ID"
-    fi
     if [[ -n "$AXONCLAW_NAME" ]]; then
         print_info "  Name: $AXONCLAW_NAME"
     fi
@@ -143,7 +136,6 @@ case "${1:-}" in
         echo "Environment variables (all optional if config exists):"
         echo "  AXONCLAW_BASE_URL      Optional. AxonHub server URL (default: http://localhost:8090)"
         echo "  AXONCLAW_API_KEY       Optional. Agent API key for authentication"
-        echo "  AXONCLAW_INSTANCE_ID   Optional. Unique instance identifier (auto-generated if not set)"
         echo "  AXONCLAW_NAME          Optional. Agent instance name"
         echo "  DEBUG_MODE             Optional. Set to 'true' to enable debug logging"
         echo

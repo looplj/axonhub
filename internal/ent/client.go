@@ -623,15 +623,15 @@ func (c *APIKeyClient) QueryRequests(_m *APIKey) *RequestQuery {
 	return query
 }
 
-// QueryAgent queries the agent edge of a APIKey.
-func (c *APIKeyClient) QueryAgent(_m *APIKey) *AgentQuery {
-	query := (&AgentClient{config: c.config}).Query()
+// QueryAgentInstance queries the agent_instance edge of a APIKey.
+func (c *APIKeyClient) QueryAgentInstance(_m *APIKey) *AgentInstanceQuery {
+	query := (&AgentInstanceClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(apikey.Table, apikey.FieldID, id),
-			sqlgraph.To(agent.Table, agent.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, apikey.AgentTable, apikey.AgentColumn),
+			sqlgraph.To(agentinstance.Table, agentinstance.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, apikey.AgentInstanceTable, apikey.AgentInstanceColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -790,15 +790,15 @@ func (c *AgentClient) QueryProject(_m *Agent) *ProjectQuery {
 	return query
 }
 
-// QueryOwnerUser queries the owner_user edge of a Agent.
-func (c *AgentClient) QueryOwnerUser(_m *Agent) *UserQuery {
+// QueryCreatedByUser queries the created_by_user edge of a Agent.
+func (c *AgentClient) QueryCreatedByUser(_m *Agent) *UserQuery {
 	query := (&UserClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(agent.Table, agent.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, agent.OwnerUserTable, agent.OwnerUserColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, agent.CreatedByUserTable, agent.CreatedByUserColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -815,22 +815,6 @@ func (c *AgentClient) QueryPrompt(_m *Agent) *PromptQuery {
 			sqlgraph.From(agent.Table, agent.FieldID, id),
 			sqlgraph.To(prompt.Table, prompt.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, agent.PromptTable, agent.PromptColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryAPIKey queries the api_key edge of a Agent.
-func (c *AgentClient) QueryAPIKey(_m *Agent) *APIKeyQuery {
-	query := (&APIKeyClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(agent.Table, agent.FieldID, id),
-			sqlgraph.To(apikey.Table, apikey.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, agent.APIKeyTable, agent.APIKeyColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1094,6 +1078,22 @@ func (c *AgentInstanceClient) QueryRuntime(_m *AgentInstance) *AgentRuntimeQuery
 			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, id),
 			sqlgraph.To(agentruntime.Table, agentruntime.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, agentinstance.RuntimeTable, agentinstance.RuntimeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAPIKey queries the api_key edge of a AgentInstance.
+func (c *AgentInstanceClient) QueryAPIKey(_m *AgentInstance) *APIKeyQuery {
+	query := (&APIKeyClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, id),
+			sqlgraph.To(apikey.Table, apikey.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, agentinstance.APIKeyTable, agentinstance.APIKeyColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

@@ -41,8 +41,8 @@ const SEND_AGENT_MESSAGE_MUTATION = `
 `;
 
 const PULL_TO_USER_QUERY = `
-  query PullAgentMessagesToUser($agentID: ID!, $instanceID: String, $afterSequence: Int, $limit: Int) {
-    pullAgentMessagesToUser(agentID: $agentID, instanceID: $instanceID, afterSequence: $afterSequence, limit: $limit) {
+  query PullAgentMessagesToUser($agentID: ID!, $afterSequence: Int, $limit: Int) {
+    pullAgentMessagesToUser(agentID: $agentID, afterSequence: $afterSequence, limit: $limit) {
       id
       agentID
       direction
@@ -60,8 +60,8 @@ const PULL_TO_USER_QUERY = `
 `;
 
 const THREAD_MESSAGES_QUERY = `
-  query AgentChatMessages($agentID: ID!, $instanceID: String, $afterSequence: Int, $limit: Int) {
-    agentChatMessages(agentID: $agentID, instanceID: $instanceID, afterSequence: $afterSequence, limit: $limit) {
+  query AgentChatMessages($agentID: ID!, $afterSequence: Int, $limit: Int) {
+    agentChatMessages(agentID: $agentID, afterSequence: $afterSequence, limit: $limit) {
       id
       agentID
       direction
@@ -82,7 +82,7 @@ export function useSendAgentMessage() {
   const selectedProjectId = useSelectedProjectId();
 
   return useMutation({
-    mutationFn: async (input: { agentID: string; instanceID: string; text: string }) => {
+    mutationFn: async (input: { agentID: string; text: string }) => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
       const data = await graphqlRequest<{ sendAgentMessage: AgentChatMessage }>(SEND_AGENT_MESSAGE_MUTATION, { input }, headers);
       return data.sendAgentMessage;
@@ -90,21 +90,21 @@ export function useSendAgentMessage() {
   });
 }
 
-export function useAgentChatMessages(agentID: string, instanceID: string) {
+export function useAgentChatMessages(agentID: string) {
   const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
-    queryKey: ['agentChatMessages', agentID, instanceID, selectedProjectId],
+    queryKey: ['agentChatMessages', agentID, selectedProjectId],
     queryFn: async () => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
       const data = await graphqlRequest<{ agentChatMessages: AgentChatMessage[] }>(
         THREAD_MESSAGES_QUERY,
-        { agentID, instanceID, afterSequence: null, limit: 200 },
+        { agentID, afterSequence: null, limit: 200 },
         headers
       );
       return data.agentChatMessages ?? [];
     },
-    enabled: Boolean(selectedProjectId && agentID && instanceID),
+    enabled: Boolean(selectedProjectId && agentID),
   });
 }
 
@@ -120,21 +120,21 @@ const ACK_AGENT_MESSAGES_MUTATION = `
   }
 `;
 
-export function usePullAgentMessagesToUser(agentID: string, instanceID: string, afterSequence: number) {
+export function usePullAgentMessagesToUser(agentID: string, afterSequence: number) {
   const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
-    queryKey: ['pullAgentMessagesToUser', agentID, instanceID, afterSequence, selectedProjectId],
+    queryKey: ['pullAgentMessagesToUser', agentID, afterSequence, selectedProjectId],
     queryFn: async () => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
       const data = await graphqlRequest<{ pullAgentMessagesToUser: AgentChatMessage[] }>(
         PULL_TO_USER_QUERY,
-        { agentID, instanceID, afterSequence, limit: 50 },
+        { agentID, afterSequence, limit: 50 },
         headers
       );
       return data.pullAgentMessagesToUser ?? [];
     },
-    enabled: Boolean(selectedProjectId && agentID && instanceID),
+    enabled: Boolean(selectedProjectId && agentID),
     refetchInterval: 1500,
   });
 }
@@ -155,7 +155,7 @@ export function useAckAgentMessages() {
   const selectedProjectId = useSelectedProjectId();
 
   return useMutation({
-    mutationFn: async (input: { agentID: string; instanceID: string; messageIDs: string[] }) => {
+    mutationFn: async (input: { agentID: string; messageIDs: string[] }) => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
       const data = await graphqlRequest<{ ackAgentMessages: boolean }>(ACK_AGENT_MESSAGES_MUTATION, { input }, headers);
       return data.ackAgentMessages;

@@ -61,11 +61,10 @@ type newRootCommandOptions struct {
 
 func newRootCommand(opts newRootCommandOptions) *cobra.Command {
 	var (
-		baseURL    string
-		apiKey     string
-		instanceID string
-		name       string
-		debug      bool
+		baseURL string
+		apiKey  string
+		name    string
+		debug   bool
 	)
 
 	rootCmd := &cobra.Command{
@@ -73,7 +72,7 @@ func newRootCommand(opts newRootCommandOptions) *cobra.Command {
 		Short:        "AxonClaw - AxonHub managed agent",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := conf.LoadOrSaveConfig(baseURL, apiKey, instanceID, name)
+			cfg, err := conf.LoadOrSaveConfig(baseURL, apiKey, name)
 			if err != nil {
 				return err
 			}
@@ -88,7 +87,6 @@ func newRootCommand(opts newRootCommandOptions) *cobra.Command {
 
 	rootCmd.Flags().StringVar(&baseURL, "base-url", "", "AxonHub base URL")
 	rootCmd.Flags().StringVar(&apiKey, "api-key", "", "Agent API key")
-	rootCmd.Flags().StringVar(&instanceID, "instance-id", "", "Agent instance ID (auto-generated if not provided)")
 	rootCmd.Flags().StringVar(&name, "name", "", "Agent instance name")
 	rootCmd.Flags().BoolVar(&debug, "debug", false, "Enable debug logging")
 
@@ -136,8 +134,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	gqlClient := api.NewClient(cfg.BaseURL, cfg.APIKey)
 
 	boot, err := bootstrap.Do(ctx, gqlClient, bootstrap.SystemPromptData{
-		Workspace:  wd,
-		InstanceID: cfg.InstanceID,
+		Workspace: wd,
 	})
 	if err != nil {
 		return fmt.Errorf("bootstrap: %w", err)
@@ -146,7 +143,6 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	logger.Info("axonclaw starting",
 		"agent_id", boot.AgentID,
 		"agent_name", boot.AgentName,
-		"instance_id", cfg.InstanceID,
 		"base_url", cfg.BaseURL,
 		"model", boot.Model,
 		"workspace", wd,
@@ -159,14 +155,11 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		instanceName = cfg.Name
 	}
 	platform := runtime.GOOS
-	version := "dev"
 
 	if _, err := api.RegisterAgentInstance(ctx, gqlClient, &api.RegisterAgentInstanceInput{
-		InstanceID: cfg.InstanceID,
-		ThreadID:   &boot.ThreadID,
-		Name:       &instanceName,
-		Platform:   &platform,
-		Version:    &version,
+		ThreadID: &boot.ThreadID,
+		Name:     &instanceName,
+		Platform: &platform,
 	}); err != nil {
 		return fmt.Errorf("register instance: %w", err)
 	}
@@ -221,7 +214,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		return fmt.Errorf("build policy engine: %w", err)
 	}
 
-	remoteApprover := approval.NewRemoteApprover(logger, gqlClient, cfg.InstanceID, cfg.PollInterval)
+	remoteApprover := approval.NewRemoteApprover(logger, gqlClient, cfg.PollInterval)
 	permEvaluator := permission.NewEvaluator(permission.EvaluatorOptions{
 		Logger:   logger,
 		Policy:   eng,

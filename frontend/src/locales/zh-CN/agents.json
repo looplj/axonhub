@@ -1,4 +1,5 @@
 {
+  "agents.detail.notFound": "未找到智能体",
   "agents.title": "智能体",
   "agents.description": "管理智能体定义与其 service account API Key。",
   "agents.actions.create": "添加智能体",

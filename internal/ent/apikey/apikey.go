@@ -47,8 +47,8 @@ const (
 	EdgeProject = "project"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
-	// EdgeAgent holds the string denoting the agent edge name in mutations.
-	EdgeAgent = "agent"
+	// EdgeAgentInstance holds the string denoting the agent_instance edge name in mutations.
+	EdgeAgentInstance = "agent_instance"
 	// Table holds the table name of the apikey in the database.
 	Table = "api_keys"
 	// UserTable is the table that holds the user relation/edge.
@@ -72,13 +72,13 @@ const (
 	RequestsInverseTable = "requests"
 	// RequestsColumn is the table column denoting the requests relation/edge.
 	RequestsColumn = "api_key_id"
-	// AgentTable is the table that holds the agent relation/edge.
-	AgentTable = "agents"
-	// AgentInverseTable is the table name for the Agent entity.
-	// It exists in this package in order to avoid circular dependency with the "agent" package.
-	AgentInverseTable = "agents"
-	// AgentColumn is the table column denoting the agent relation/edge.
-	AgentColumn = "api_key_id"
+	// AgentInstanceTable is the table that holds the agent_instance relation/edge.
+	AgentInstanceTable = "agent_instances"
+	// AgentInstanceInverseTable is the table name for the AgentInstance entity.
+	// It exists in this package in order to avoid circular dependency with the "agentinstance" package.
+	AgentInstanceInverseTable = "agent_instances"
+	// AgentInstanceColumn is the table column denoting the agent_instance relation/edge.
+	AgentInstanceColumn = "api_key_id"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -267,10 +267,10 @@ func ByRequests(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
-// ByAgentField orders the results by agent field.
-func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByAgentInstanceField orders the results by agent_instance field.
+func ByAgentInstanceField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newAgentStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newAgentInstanceStep(), sql.OrderByField(field, opts...))
 	}
 }
 func newUserStep() *sqlgraph.Step {
@@ -294,11 +294,11 @@ func newRequestsStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
 	)
 }
-func newAgentStep() *sqlgraph.Step {
+func newAgentInstanceStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(AgentInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2O, false, AgentTable, AgentColumn),
+		sqlgraph.To(AgentInstanceInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, AgentInstanceTable, AgentInstanceColumn),
 	)
 }
 

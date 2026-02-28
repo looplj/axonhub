@@ -1,4 +1,5 @@
 {
+  "agents.detail.notFound": "Agent not found",
   "agents.title": "Agents",
   "agents.description": "Manage agent definitions and service-account API keys.",
   "agents.actions.create": "Add Agent",

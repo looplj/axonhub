@@ -93,7 +93,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 			agent.FieldModel:             {Type: field.TypeString, Column: agent.FieldModel},
 			agent.FieldAgentBuiltinTools: {Type: field.TypeJSON, Column: agent.FieldAgentBuiltinTools},
 			agent.FieldSkillsPolicy:      {Type: field.TypeJSON, Column: agent.FieldSkillsPolicy},
-			agent.FieldAPIKeyID:          {Type: field.TypeInt, Column: agent.FieldAPIKeyID},
 		},
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
@@ -113,10 +112,10 @@ var schemaGraph = func() *sqlgraph.Schema {
 			agentinstance.FieldProjectID:       {Type: field.TypeInt, Column: agentinstance.FieldProjectID},
 			agentinstance.FieldAgentID:         {Type: field.TypeInt, Column: agentinstance.FieldAgentID},
 			agentinstance.FieldAgentRuntimeID:  {Type: field.TypeInt, Column: agentinstance.FieldAgentRuntimeID},
-			agentinstance.FieldInstanceID:      {Type: field.TypeString, Column: agentinstance.FieldInstanceID},
 			agentinstance.FieldName:            {Type: field.TypeString, Column: agentinstance.FieldName},
+			agentinstance.FieldDescription:     {Type: field.TypeString, Column: agentinstance.FieldDescription},
 			agentinstance.FieldPlatform:        {Type: field.TypeString, Column: agentinstance.FieldPlatform},
-			agentinstance.FieldVersion:         {Type: field.TypeString, Column: agentinstance.FieldVersion},
+			agentinstance.FieldAPIKeyID:        {Type: field.TypeInt, Column: agentinstance.FieldAPIKeyID},
 			agentinstance.FieldLastHeartbeatAt: {Type: field.TypeTime, Column: agentinstance.FieldLastHeartbeatAt},
 			agentinstance.FieldDeployment:      {Type: field.TypeJSON, Column: agentinstance.FieldDeployment},
 			agentinstance.FieldStatus:          {Type: field.TypeEnum, Column: agentinstance.FieldStatus},
@@ -837,16 +836,16 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Request",
 	)
 	graph.MustAddE(
-		"agent",
+		"agent_instance",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2O,
 			Inverse: false,
-			Table:   apikey.AgentTable,
-			Columns: []string{apikey.AgentColumn},
+			Table:   apikey.AgentInstanceTable,
+			Columns: []string{apikey.AgentInstanceColumn},
 			Bidi:    false,
 		},
 		"APIKey",
-		"Agent",
+		"AgentInstance",
 	)
 	graph.MustAddE(
 		"project",
@@ -861,12 +860,12 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"Project",
 	)
 	graph.MustAddE(
-		"owner_user",
+		"created_by_user",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agent.OwnerUserTable,
-			Columns: []string{agent.OwnerUserColumn},
+			Table:   agent.CreatedByUserTable,
+			Columns: []string{agent.CreatedByUserColumn},
 			Bidi:    false,
 		},
 		"Agent",
@@ -883,18 +882,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"Agent",
 		"Prompt",
-	)
-	graph.MustAddE(
-		"api_key",
-		&sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   agent.APIKeyTable,
-			Columns: []string{agent.APIKeyColumn},
-			Bidi:    false,
-		},
-		"Agent",
-		"APIKey",
 	)
 	graph.MustAddE(
 		"tool_bindings",
@@ -991,6 +978,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"AgentInstance",
 		"AgentRuntime",
+	)
+	graph.MustAddE(
+		"api_key",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   agentinstance.APIKeyTable,
+			Columns: []string{agentinstance.APIKeyColumn},
+			Bidi:    false,
+		},
+		"AgentInstance",
+		"APIKey",
 	)
 	graph.MustAddE(
 		"messages",
@@ -2266,14 +2265,14 @@ func (f *APIKeyFilter) WhereHasRequestsWith(preds ...predicate.Request) {
 	})))
 }
 
-// WhereHasAgent applies a predicate to check if query has an edge agent.
-func (f *APIKeyFilter) WhereHasAgent() {
-	f.Where(entql.HasEdge("agent"))
+// WhereHasAgentInstance applies a predicate to check if query has an edge agent_instance.
+func (f *APIKeyFilter) WhereHasAgentInstance() {
+	f.Where(entql.HasEdge("agent_instance"))
 }
 
-// WhereHasAgentWith applies a predicate to check if query has an edge agent with a given conditions (other predicates).
-func (f *APIKeyFilter) WhereHasAgentWith(preds ...predicate.Agent) {
-	f.Where(entql.HasEdgeWith("agent", sqlgraph.WrapFunc(func(s *sql.Selector) {
+// WhereHasAgentInstanceWith applies a predicate to check if query has an edge agent_instance with a given conditions (other predicates).
+func (f *APIKeyFilter) WhereHasAgentInstanceWith(preds ...predicate.AgentInstance) {
+	f.Where(entql.HasEdgeWith("agent_instance", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -2380,11 +2379,6 @@ func (f *AgentFilter) WhereSkillsPolicy(p entql.BytesP) {
 	f.Where(p.Field(agent.FieldSkillsPolicy))
 }
 
-// WhereAPIKeyID applies the entql int predicate on the api_key_id field.
-func (f *AgentFilter) WhereAPIKeyID(p entql.IntP) {
-	f.Where(p.Field(agent.FieldAPIKeyID))
-}
-
 // WhereHasProject applies a predicate to check if query has an edge project.
 func (f *AgentFilter) WhereHasProject() {
 	f.Where(entql.HasEdge("project"))
@@ -2399,14 +2393,14 @@ func (f *AgentFilter) WhereHasProjectWith(preds ...predicate.Project) {
 	})))
 }
 
-// WhereHasOwnerUser applies a predicate to check if query has an edge owner_user.
-func (f *AgentFilter) WhereHasOwnerUser() {
-	f.Where(entql.HasEdge("owner_user"))
+// WhereHasCreatedByUser applies a predicate to check if query has an edge created_by_user.
+func (f *AgentFilter) WhereHasCreatedByUser() {
+	f.Where(entql.HasEdge("created_by_user"))
 }
 
-// WhereHasOwnerUserWith applies a predicate to check if query has an edge owner_user with a given conditions (other predicates).
-func (f *AgentFilter) WhereHasOwnerUserWith(preds ...predicate.User) {
-	f.Where(entql.HasEdgeWith("owner_user", sqlgraph.WrapFunc(func(s *sql.Selector) {
+// WhereHasCreatedByUserWith applies a predicate to check if query has an edge created_by_user with a given conditions (other predicates).
+func (f *AgentFilter) WhereHasCreatedByUserWith(preds ...predicate.User) {
+	f.Where(entql.HasEdgeWith("created_by_user", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -2421,20 +2415,6 @@ func (f *AgentFilter) WhereHasPrompt() {
 // WhereHasPromptWith applies a predicate to check if query has an edge prompt with a given conditions (other predicates).
 func (f *AgentFilter) WhereHasPromptWith(preds ...predicate.Prompt) {
 	f.Where(entql.HasEdgeWith("prompt", sqlgraph.WrapFunc(func(s *sql.Selector) {
-		for _, p := range preds {
-			p(s)
-		}
-	})))
-}
-
-// WhereHasAPIKey applies a predicate to check if query has an edge api_key.
-func (f *AgentFilter) WhereHasAPIKey() {
-	f.Where(entql.HasEdge("api_key"))
-}
-
-// WhereHasAPIKeyWith applies a predicate to check if query has an edge api_key with a given conditions (other predicates).
-func (f *AgentFilter) WhereHasAPIKeyWith(preds ...predicate.APIKey) {
-	f.Where(entql.HasEdgeWith("api_key", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -2595,14 +2575,14 @@ func (f *AgentInstanceFilter) WhereAgentRuntimeID(p entql.IntP) {
 	f.Where(p.Field(agentinstance.FieldAgentRuntimeID))
 }
 
-// WhereInstanceID applies the entql string predicate on the instance_id field.
-func (f *AgentInstanceFilter) WhereInstanceID(p entql.StringP) {
-	f.Where(p.Field(agentinstance.FieldInstanceID))
-}
-
 // WhereName applies the entql string predicate on the name field.
 func (f *AgentInstanceFilter) WhereName(p entql.StringP) {
 	f.Where(p.Field(agentinstance.FieldName))
+}
+
+// WhereDescription applies the entql string predicate on the description field.
+func (f *AgentInstanceFilter) WhereDescription(p entql.StringP) {
+	f.Where(p.Field(agentinstance.FieldDescription))
 }
 
 // WherePlatform applies the entql string predicate on the platform field.
@@ -2610,9 +2590,9 @@ func (f *AgentInstanceFilter) WherePlatform(p entql.StringP) {
 	f.Where(p.Field(agentinstance.FieldPlatform))
 }
 
-// WhereVersion applies the entql string predicate on the version field.
-func (f *AgentInstanceFilter) WhereVersion(p entql.StringP) {
-	f.Where(p.Field(agentinstance.FieldVersion))
+// WhereAPIKeyID applies the entql int predicate on the api_key_id field.
+func (f *AgentInstanceFilter) WhereAPIKeyID(p entql.IntP) {
+	f.Where(p.Field(agentinstance.FieldAPIKeyID))
 }
 
 // WhereLastHeartbeatAt applies the entql time.Time predicate on the last_heartbeat_at field.
@@ -2652,6 +2632,20 @@ func (f *AgentInstanceFilter) WhereHasRuntime() {
 // WhereHasRuntimeWith applies a predicate to check if query has an edge runtime with a given conditions (other predicates).
 func (f *AgentInstanceFilter) WhereHasRuntimeWith(preds ...predicate.AgentRuntime) {
 	f.Where(entql.HasEdgeWith("runtime", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasAPIKey applies a predicate to check if query has an edge api_key.
+func (f *AgentInstanceFilter) WhereHasAPIKey() {
+	f.Where(entql.HasEdge("api_key"))
+}
+
+// WhereHasAPIKeyWith applies a predicate to check if query has an edge api_key with a given conditions (other predicates).
+func (f *AgentInstanceFilter) WhereHasAPIKeyWith(preds ...predicate.APIKey) {
+	f.Where(entql.HasEdgeWith("api_key", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

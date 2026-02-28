@@ -72,14 +72,6 @@ func (r *agentResolver) PromptID(ctx context.Context, obj *ent.Agent) (*objects.
 	}, nil
 }
 
-// APIKeyID is the resolver for the apiKeyID field.
-func (r *agentResolver) APIKeyID(ctx context.Context, obj *ent.Agent) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeAPIKey,
-		ID:   obj.APIKeyID,
-	}, nil
-}
-
 // ID is the resolver for the id field.
 func (r *agentInstanceResolver) ID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -106,6 +98,11 @@ func (r *agentInstanceResolver) AgentRuntimeID(ctx context.Context, obj *ent.Age
 		Type: ent.TypeAgentRuntime,
 		ID:   *obj.AgentRuntimeID,
 	}, nil
+}
+
+// APIKeyID is the resolver for the apiKeyID field.
+func (r *agentInstanceResolver) APIKeyID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: APIKeyID - apiKeyID"))
 }
 
 // ID is the resolver for the id field.

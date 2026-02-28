@@ -17,67 +17,67 @@ import (
 
 // RegisterAgentInstance is the resolver for the registerAgentInstance field.
 func (r *mutationResolver) RegisterAgentInstance(ctx context.Context, input RegisterAgentInstanceInput) (*AgentInstance, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	inst, err := r.agentRuntimeService.RegisterAgentInstance(ctx, biz.RegisterAgentInstanceInput{
-		AgentID:    agentID,
-		InstanceID: input.InstanceID,
-		Name:       input.Name,
-		Platform:   input.Platform,
-		Version:    input.Version,
-		ThreadID:   input.ThreadID,
+	updatedInst, err := r.agentBootstrapService.RegisterAgentInstance(ctx, biz.RegisterAgentInstanceInput{
+		AgentID:     inst.AgentID,
+		Name:        input.Name,
+		Platform:    input.Platform,
+		Description: input.Description,
+		ThreadID:    input.ThreadID,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &AgentInstance{
-		ID:              objects.GUID{Type: ent.TypeAgentInstance, ID: inst.ID},
-		AgentID:         objects.GUID{Type: ent.TypeAgent, ID: inst.AgentID},
-		InstanceID:      inst.InstanceID,
-		LastHeartbeatAt: inst.LastHeartbeatAt,
+		ID:              objects.GUID{Type: ent.TypeAgentInstance, ID: updatedInst.ID},
+		AgentID:         objects.GUID{Type: ent.TypeAgent, ID: updatedInst.AgentID},
+		LastHeartbeatAt: updatedInst.LastHeartbeatAt,
 	}, nil
 }
 
 // HeartbeatAgentInstance is the resolver for the heartbeatAgentInstance field.
 func (r *mutationResolver) HeartbeatAgentInstance(ctx context.Context, input HeartbeatAgentInstanceInput) (bool, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	return r.agentRuntimeService.HeartbeatAgentInstance(ctx, agentID, input.InstanceID)
+	if err := r.agentBootstrapService.HeartbeatAgentInstance(ctx, inst); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // SendAgentMessage is the resolver for the sendAgentMessage field.
 // Sends a message from this agent to another agent (inter-agent communication).
 func (r *mutationResolver) SendAgentMessage(ctx context.Context, input SendAgentMessageInput) (*AgentMessage, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	targetAgentID, err := requireGUIDType(input.TargetAgentID, ent.TypeAgent)
-	if err != nil {
-		return nil, err
-	}
+	view, err := r.agentBootstrapService.SendPeerMessage(ctx, biz.SendPeerMessageInput{
+		TargetAgentID: inst.AgentID,
+		TargetAgentInstanceID: func() *int {
+			if input.TargetAgentInstanceID == nil {
+				return nil
+			}
 
-	view, err := r.agentRuntimeService.SendPeerMessage(ctx, biz.SendPeerMessageInput{
-		SenderAgentID:    agentID,
-		TargetAgentID:    targetAgentID,
-		TargetInstanceID: input.TargetInstanceID,
-		Text:             input.Text,
+			return &input.TargetAgentInstanceID.ID
+		}(),
+		Text: input.Text,
 		Content: func() *objects.JSONRawMessage {
 			if len(input.Content) == 0 || string(input.Content) == "null" {
 				return nil
 			}
 			return &input.Content
 		}(),
-		Kind:          (*agentmessage.Kind)(input.Kind),
-		CorrelationID: input.CorrelationID,
 	})
 	if err != nil {
 		return nil, err
@@ -88,15 +88,13 @@ func (r *mutationResolver) SendAgentMessage(ctx context.Context, input SendAgent
 
 // ReplyMessage is the resolver for the replyMessage field.
 func (r *mutationResolver) ReplyMessage(ctx context.Context, input ReplyMessageInput) (*AgentMessage, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	view, err := r.agentRuntimeService.PushAgentMessage(ctx, biz.PushAgentMessageInput{
-		AgentID:    agentID,
-		InstanceID: input.InstanceID,
-		Text:       input.Text,
+	view, err := r.agentBootstrapService.PushAgentMessage(ctx, inst, biz.PushAgentMessageInput{
+		Text: input.Text,
 		Content: func() *objects.JSONRawMessage {
 			if len(input.Content) == 0 || string(input.Content) == "null" {
 				return nil
@@ -121,7 +119,7 @@ func (r *mutationResolver) ReplyMessage(ctx context.Context, input ReplyMessageI
 
 // AckAgentMessages is the resolver for the ackAgentMessages field.
 func (r *mutationResolver) AckAgentMessages(ctx context.Context, input AckAgentMessagesInput) (bool, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -139,21 +137,21 @@ func (r *mutationResolver) AckAgentMessages(ctx context.Context, input AckAgentM
 		msgIDs = append(msgIDs, id)
 	}
 
-	return r.agentRuntimeService.AckAgentMessages(ctx, biz.AckAgentMessagesInput{
-		AgentID:    agentID,
-		InstanceID: input.InstanceID,
-		MessageIDs: msgIDs,
-	})
+	if err := r.agentBootstrapService.AckAgentMessages(ctx, inst, msgIDs); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // AgentBootstrap is the resolver for the agentBootstrap field.
 func (r *queryResolver) AgentBootstrap(ctx context.Context) (*AgentBootstrap, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	bootstrap, err := r.agentRuntimeService.AgentBootstrap(ctx, agentID)
+	bootstrap, err := r.agentBootstrapService.AgentBootstrap(ctx, inst)
 	if err != nil {
 		return nil, err
 	}
@@ -216,12 +214,12 @@ func (r *queryResolver) AgentBootstrap(ctx context.Context) (*AgentBootstrap, er
 
 // PeerAgents is the resolver for the peerAgents field.
 func (r *queryResolver) PeerAgents(ctx context.Context) ([]*PeerAgent, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	peers, err := r.agentRuntimeService.ListPeerAgents(ctx, agentID)
+	peers, err := r.agentBootstrapService.ListPeerAgents(ctx, inst)
 	if err != nil {
 		return nil, err
 	}
@@ -229,10 +227,10 @@ func (r *queryResolver) PeerAgents(ctx context.Context) ([]*PeerAgent, error) {
 	out := make([]*PeerAgent, 0, len(peers))
 	for _, p := range peers {
 		out = append(out, &PeerAgent{
-			AgentID:    objects.GUID{Type: ent.TypeAgent, ID: p.AgentID},
-			Name:       p.Name,
-			Status:     p.Status,
-			InstanceID: p.InstanceID,
+			AgentID:         objects.GUID{Type: ent.TypeAgent, ID: p.AgentID},
+			AgentInstanceID: objects.GUID{Type: ent.TypeAgentInstance, ID: p.AgentInstanceID},
+			Name:            p.Name,
+			Status:          p.Status,
 		})
 	}
 
@@ -241,7 +239,7 @@ func (r *queryResolver) PeerAgents(ctx context.Context) ([]*PeerAgent, error) {
 
 // PullAgentMessages is the resolver for the pullAgentMessages field.
 func (r *queryResolver) PullAgentMessages(ctx context.Context, input PullAgentMessagesInput) ([]*AgentMessage, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -262,9 +260,7 @@ func (r *queryResolver) PullAgentMessages(ctx context.Context, input PullAgentMe
 		kindIn = append(kindIn, agentmessage.Kind(k))
 	}
 
-	views, err := r.agentRuntimeService.PullAgentMessages(ctx, biz.PullAgentMessagesInput{
-		AgentID:       agentID,
-		InstanceID:    input.InstanceID,
+	views, err := r.agentBootstrapService.PullAgentMessages(ctx, inst, biz.PullAgentMessagesInput{
 		AfterSequence: after,
 		Limit:         lim,
 		KindIn:        kindIn,
@@ -283,7 +279,7 @@ func (r *queryResolver) PullAgentMessages(ctx context.Context, input PullAgentMe
 
 // PullAgentMessagesToUser is the resolver for the pullAgentMessagesToUser field.
 func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, afterSequence *int, limit *int) ([]*AgentMessage, error) {
-	agentID, err := r.agentRuntimeService.GetAgentIDFromAPIKey(ctx)
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +295,7 @@ func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, afterSequen
 		lim = *limit
 	}
 
-	views, err := r.agentRuntimeService.PullAgentMessagesToUser(ctx, agentID, after, lim)
+	views, err := r.agentBootstrapService.PullAgentMessagesToUser(ctx, inst, after, lim)
 	if err != nil {
 		return nil, err
 	}

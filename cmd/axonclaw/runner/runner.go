@@ -25,7 +25,6 @@ type Runner struct {
 	Client       graphql.Client
 	Agent        *agent.Agent
 	Logger       *slog.Logger
-	InstanceID   string
 	Workspace    string
 	Config       conf.Config
 	ThreadID     string
@@ -59,17 +58,16 @@ func New(opts NewOptions) *Runner {
 		agent.WithMiddlewares(permMw),
 	)
 
-	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Config.InstanceID)
+	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client)
 
 	return &Runner{
-		Client:     opts.Client,
-		Agent:      a,
-		Logger:     opts.Logger,
-		InstanceID: opts.Config.InstanceID,
-		Workspace:  opts.Workspace,
-		Config:     opts.Config,
-		ThreadID:   opts.Boot.ThreadID,
-		ThreadMgr:  opts.ThreadMgr,
+		Client:    opts.Client,
+		Agent:     a,
+		Logger:    opts.Logger,
+		Workspace: opts.Workspace,
+		Config:    opts.Config,
+		ThreadID:  opts.Boot.ThreadID,
+		ThreadMgr: opts.ThreadMgr,
 	}
 }
 
@@ -89,9 +87,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return ctx.Err()
 
 		case <-hbTicker.C:
-			_, err := api.HeartbeatAgentInstance(ctx, r.Client, &api.HeartbeatAgentInstanceInput{
-				InstanceID: r.InstanceID,
-			})
+			_, err := api.HeartbeatAgentInstance(ctx, r.Client, &api.HeartbeatAgentInstanceInput{})
 			if err != nil {
 				r.Logger.Warn("heartbeat failed", "error", err)
 				continue
@@ -102,7 +98,6 @@ func (r *Runner) Run(ctx context.Context) error {
 			afterSeq := r.lastSequence
 			kindIn := []api.AgentMessageKind{api.AgentMessageKindChat}
 			resp, err := api.PullAgentMessages(ctx, r.Client, &api.PullAgentMessagesInput{
-				InstanceID:    r.InstanceID,
 				AfterSequence: &afterSeq,
 				Limit:         &limit,
 				KindIn:        kindIn,
@@ -139,7 +134,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 			if len(ackedIDs) > 0 {
 				if _, err := api.AckAgentMessages(ctx, r.Client, &api.AckAgentMessagesInput{
-					InstanceID: r.InstanceID,
 					MessageIDs: ackedIDs,
 				}); err != nil {
 					r.Logger.Warn("ackAgentMessages failed", "error", err, "count", len(ackedIDs))

@@ -93,6 +93,20 @@ func (_u *AgentInstanceUpdate) SetNillableName(v *string) *AgentInstanceUpdate {
 	return _u
 }
 
+// SetDescription sets the "description" field.
+func (_u *AgentInstanceUpdate) SetDescription(v string) *AgentInstanceUpdate {
+	_u.mutation.SetDescription(v)
+	return _u
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *AgentInstanceUpdate) SetNillableDescription(v *string) *AgentInstanceUpdate {
+	if v != nil {
+		_u.SetDescription(*v)
+	}
+	return _u
+}
+
 // SetPlatform sets the "platform" field.
 func (_u *AgentInstanceUpdate) SetPlatform(v string) *AgentInstanceUpdate {
 	_u.mutation.SetPlatform(v)
@@ -103,20 +117,6 @@ func (_u *AgentInstanceUpdate) SetPlatform(v string) *AgentInstanceUpdate {
 func (_u *AgentInstanceUpdate) SetNillablePlatform(v *string) *AgentInstanceUpdate {
 	if v != nil {
 		_u.SetPlatform(*v)
-	}
-	return _u
-}
-
-// SetVersion sets the "version" field.
-func (_u *AgentInstanceUpdate) SetVersion(v string) *AgentInstanceUpdate {
-	_u.mutation.SetVersion(v)
-	return _u
-}
-
-// SetNillableVersion sets the "version" field if the given value is not nil.
-func (_u *AgentInstanceUpdate) SetNillableVersion(v *string) *AgentInstanceUpdate {
-	if v != nil {
-		_u.SetVersion(*v)
 	}
 	return _u
 }
@@ -287,6 +287,9 @@ func (_u *AgentInstanceUpdate) check() error {
 	if _u.mutation.AgentCleared() && len(_u.mutation.AgentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "AgentInstance.agent"`)
 	}
+	if _u.mutation.APIKeyCleared() && len(_u.mutation.APIKeyIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "AgentInstance.api_key"`)
+	}
 	return nil
 }
 
@@ -320,11 +323,11 @@ func (_u *AgentInstanceUpdate) sqlSave(ctx context.Context) (_node int, err erro
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(agentinstance.FieldName, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(agentinstance.FieldDescription, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Platform(); ok {
 		_spec.SetField(agentinstance.FieldPlatform, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Version(); ok {
-		_spec.SetField(agentinstance.FieldVersion, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
@@ -495,6 +498,20 @@ func (_u *AgentInstanceUpdateOne) SetNillableName(v *string) *AgentInstanceUpdat
 	return _u
 }
 
+// SetDescription sets the "description" field.
+func (_u *AgentInstanceUpdateOne) SetDescription(v string) *AgentInstanceUpdateOne {
+	_u.mutation.SetDescription(v)
+	return _u
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *AgentInstanceUpdateOne) SetNillableDescription(v *string) *AgentInstanceUpdateOne {
+	if v != nil {
+		_u.SetDescription(*v)
+	}
+	return _u
+}
+
 // SetPlatform sets the "platform" field.
 func (_u *AgentInstanceUpdateOne) SetPlatform(v string) *AgentInstanceUpdateOne {
 	_u.mutation.SetPlatform(v)
@@ -505,20 +522,6 @@ func (_u *AgentInstanceUpdateOne) SetPlatform(v string) *AgentInstanceUpdateOne 
 func (_u *AgentInstanceUpdateOne) SetNillablePlatform(v *string) *AgentInstanceUpdateOne {
 	if v != nil {
 		_u.SetPlatform(*v)
-	}
-	return _u
-}
-
-// SetVersion sets the "version" field.
-func (_u *AgentInstanceUpdateOne) SetVersion(v string) *AgentInstanceUpdateOne {
-	_u.mutation.SetVersion(v)
-	return _u
-}
-
-// SetNillableVersion sets the "version" field if the given value is not nil.
-func (_u *AgentInstanceUpdateOne) SetNillableVersion(v *string) *AgentInstanceUpdateOne {
-	if v != nil {
-		_u.SetVersion(*v)
 	}
 	return _u
 }
@@ -702,6 +705,9 @@ func (_u *AgentInstanceUpdateOne) check() error {
 	if _u.mutation.AgentCleared() && len(_u.mutation.AgentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "AgentInstance.agent"`)
 	}
+	if _u.mutation.APIKeyCleared() && len(_u.mutation.APIKeyIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "AgentInstance.api_key"`)
+	}
 	return nil
 }
 
@@ -752,11 +758,11 @@ func (_u *AgentInstanceUpdateOne) sqlSave(ctx context.Context) (_node *AgentInst
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(agentinstance.FieldName, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(agentinstance.FieldDescription, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Platform(); ok {
 		_spec.SetField(agentinstance.FieldPlatform, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Version(); ok {
-		_spec.SetField(agentinstance.FieldVersion, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)

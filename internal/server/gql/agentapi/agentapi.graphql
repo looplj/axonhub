@@ -51,47 +51,51 @@ enum AgentMessageSenderType { user runtime system }
 enum AgentMessageKind { chat approval_request approval_result system_event }
 
 input RegisterAgentInstanceInput {
-  instanceID: String!
   name: String
   platform: String
-  version: String
+  description: String
   threadID: String
 }
 
 type AgentInstance {
   id: ID!
   agentID: ID!
-  instanceID: String!
   lastHeartbeatAt: Time!
 }
 
 input HeartbeatAgentInstanceInput {
-  instanceID: String!
+  dummy: Boolean
 }
 
 # PeerAgent represents a discoverable agent instance in the same project.
 type PeerAgent {
   agentID: ID!
+  agentInstanceID: ID!
   name: String!
+  description: String!
   status: String!
-  instanceID: String!
 }
 
 # SendAgentMessageInput is used when an agent sends a message to another agent.
 # Direction: to_agent, SenderType: agent
 input SendAgentMessageInput {
+  # Required: The ID of the target agent to send the message to.
   targetAgentID: ID!
-  targetInstanceID: String!
+
+  # Optional: Specify the target agent instance ID to send the message to.
+  # If not provided, the message will be sent to all instances of the target agent.
+  targetAgentInstanceID: ID
+  
+  # Required: The text content of the message.
   text: String!
+
+  # Optional: The JSON content of the message.
   content: JSONRawMessageInput
-  kind: AgentMessageKind = chat
-  correlationID: String = ""
 }
 
 # ReplyMessageInput is used when an agent instance replies to the user.
 # Direction: to_user, SenderType: agent
 input ReplyMessageInput {
-  instanceID: String!
   text: String!
   content: JSONRawMessageInput
   kind: AgentMessageKind = chat
@@ -113,7 +117,6 @@ type AgentMessage {
 }
 
 input PullAgentMessagesInput {
-  instanceID: String!
   afterSequence: Int
   limit: Int = 50
   kindIn: [AgentMessageKind!]
@@ -121,7 +124,6 @@ input PullAgentMessagesInput {
 }
 
 input AckAgentMessagesInput {
-  instanceID: String!
   messageIDs: [ID!]!
 }
 
@@ -139,6 +141,7 @@ type Mutation {
 
   # Send a message from this agent to another agent (Direction: to_agent, SenderType: agent)
   sendAgentMessage(input: SendAgentMessageInput!): AgentMessage!
+  
   # Reply to the user (Direction: to_user, SenderType: agent)
   replyMessage(input: ReplyMessageInput!): AgentMessage!
   # Acknowledge messages have been received/processed by an agent instance.

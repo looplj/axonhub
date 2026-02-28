@@ -15,14 +15,13 @@ import (
 )
 
 type remoteApprover struct {
-	logger     *slog.Logger
-	client     graphql.Client
-	instanceID string
+	logger *slog.Logger
+	client graphql.Client
 
 	pollInterval time.Duration
 }
 
-func NewRemoteApprover(logger *slog.Logger, client graphql.Client, instanceID string, pollInterval time.Duration) Service {
+func NewRemoteApprover(logger *slog.Logger, client graphql.Client, pollInterval time.Duration) Service {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -32,7 +31,6 @@ func NewRemoteApprover(logger *slog.Logger, client graphql.Client, instanceID st
 	return &remoteApprover{
 		logger:       logger,
 		client:       client,
-		instanceID:   instanceID,
 		pollInterval: pollInterval,
 	}
 }
@@ -63,10 +61,9 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 	exp := time.Now().Add(2 * time.Minute).UTC()
 
 	payload := map[string]any{
-		"type":        "approval_request",
-		"id":          req.ID,
-		"thread_id":   req.ThreadID,
-		"instance_id": a.instanceID,
+		"type":      "approval_request",
+		"id":        req.ID,
+		"thread_id": req.ThreadID,
 		"tool_call_id": func() string {
 			if req.ToolCallID == "" {
 				return ""
@@ -104,7 +101,6 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 	kind := api.AgentMessageKindApprovalRequest
 	correlationID := req.ID
 	if _, err := api.ReplyMessage(ctx, a.client, &api.ReplyMessageInput{
-		InstanceID:    a.instanceID,
 		Text:          text,
 		Content:       (*json.RawMessage)(&raw),
 		Kind:          &kind,
@@ -124,7 +120,6 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 			limit := 10
 			kindIn := []api.AgentMessageKind{api.AgentMessageKindApprovalResult}
 			resp, err := api.PullAgentMessages(ctx, a.client, &api.PullAgentMessagesInput{
-				InstanceID:    a.instanceID,
 				Limit:         &limit,
 				KindIn:        kindIn,
 				CorrelationID: &correlationID,
@@ -164,7 +159,6 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 			}
 
 			if _, err := api.AckAgentMessages(ctx, a.client, &api.AckAgentMessagesInput{
-				InstanceID: a.instanceID,
 				MessageIDs: []string{found.Id},
 			}); err != nil {
 				a.logger.Warn("approval: ackAgentMessages failed", "error", err, "message_id", found.Id, "request_id", req.ID)

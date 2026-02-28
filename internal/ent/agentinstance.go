@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentruntime"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -33,14 +34,14 @@ type AgentInstance struct {
 	AgentID int `json:"agent_id,omitempty"`
 	// Agent Runtime ID (null means unknown/CLI started)
 	AgentRuntimeID *int `json:"agent_runtime_id,omitempty"`
-	// Runtime generated instance identifier
-	InstanceID string `json:"instance_id,omitempty"`
 	// Human readable name
 	Name string `json:"name,omitempty"`
+	// Instance description
+	Description string `json:"description,omitempty"`
 	// Platform information like os/arch
 	Platform string `json:"platform,omitempty"`
-	// Runtime version
-	Version string `json:"version,omitempty"`
+	// Service account API key ID bound to this agent instance
+	APIKeyID int `json:"api_key_id,omitempty"`
 	// Last heartbeat timestamp
 	LastHeartbeatAt time.Time `json:"last_heartbeat_at,omitempty"`
 	// Deployment info - runtime specific deployment details
@@ -59,13 +60,15 @@ type AgentInstanceEdges struct {
 	Agent *Agent `json:"agent,omitempty"`
 	// Runtime holds the value of the runtime edge.
 	Runtime *AgentRuntime `json:"runtime,omitempty"`
+	// APIKey holds the value of the api_key edge.
+	APIKey *APIKey `json:"api_key,omitempty"`
 	// Messages holds the value of the messages edge.
 	Messages []*AgentMessage `json:"messages,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [3]map[string]int
+	totalCount [4]map[string]int
 
 	namedMessages map[string][]*AgentMessage
 }
@@ -92,10 +95,21 @@ func (e AgentInstanceEdges) RuntimeOrErr() (*AgentRuntime, error) {
 	return nil, &NotLoadedError{edge: "runtime"}
 }
 
+// APIKeyOrErr returns the APIKey value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e AgentInstanceEdges) APIKeyOrErr() (*APIKey, error) {
+	if e.APIKey != nil {
+		return e.APIKey, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: apikey.Label}
+	}
+	return nil, &NotLoadedError{edge: "api_key"}
+}
+
 // MessagesOrErr returns the Messages value or an error if the edge
 // was not loaded in eager-loading.
 func (e AgentInstanceEdges) MessagesOrErr() ([]*AgentMessage, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.Messages, nil
 	}
 	return nil, &NotLoadedError{edge: "messages"}
@@ -108,9 +122,9 @@ func (*AgentInstance) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case agentinstance.FieldDeployment:
 			values[i] = new([]byte)
-		case agentinstance.FieldID, agentinstance.FieldDeletedAt, agentinstance.FieldProjectID, agentinstance.FieldAgentID, agentinstance.FieldAgentRuntimeID:
+		case agentinstance.FieldID, agentinstance.FieldDeletedAt, agentinstance.FieldProjectID, agentinstance.FieldAgentID, agentinstance.FieldAgentRuntimeID, agentinstance.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
-		case agentinstance.FieldInstanceID, agentinstance.FieldName, agentinstance.FieldPlatform, agentinstance.FieldVersion, agentinstance.FieldStatus:
+		case agentinstance.FieldName, agentinstance.FieldDescription, agentinstance.FieldPlatform, agentinstance.FieldStatus:
 			values[i] = new(sql.NullString)
 		case agentinstance.FieldCreatedAt, agentinstance.FieldUpdatedAt, agentinstance.FieldLastHeartbeatAt:
 			values[i] = new(sql.NullTime)
@@ -172,17 +186,17 @@ func (_m *AgentInstance) assignValues(columns []string, values []any) error {
 				_m.AgentRuntimeID = new(int)
 				*_m.AgentRuntimeID = int(value.Int64)
 			}
-		case agentinstance.FieldInstanceID:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field instance_id", values[i])
-			} else if value.Valid {
-				_m.InstanceID = value.String
-			}
 		case agentinstance.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				_m.Name = value.String
+			}
+		case agentinstance.FieldDescription:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field description", values[i])
+			} else if value.Valid {
+				_m.Description = value.String
 			}
 		case agentinstance.FieldPlatform:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -190,11 +204,11 @@ func (_m *AgentInstance) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Platform = value.String
 			}
-		case agentinstance.FieldVersion:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field version", values[i])
+		case agentinstance.FieldAPIKeyID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field api_key_id", values[i])
 			} else if value.Valid {
-				_m.Version = value.String
+				_m.APIKeyID = int(value.Int64)
 			}
 		case agentinstance.FieldLastHeartbeatAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -237,6 +251,11 @@ func (_m *AgentInstance) QueryAgent() *AgentQuery {
 // QueryRuntime queries the "runtime" edge of the AgentInstance entity.
 func (_m *AgentInstance) QueryRuntime() *AgentRuntimeQuery {
 	return NewAgentInstanceClient(_m.config).QueryRuntime(_m)
+}
+
+// QueryAPIKey queries the "api_key" edge of the AgentInstance entity.
+func (_m *AgentInstance) QueryAPIKey() *APIKeyQuery {
+	return NewAgentInstanceClient(_m.config).QueryAPIKey(_m)
 }
 
 // QueryMessages queries the "messages" edge of the AgentInstance entity.
@@ -287,17 +306,17 @@ func (_m *AgentInstance) String() string {
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
-	builder.WriteString("instance_id=")
-	builder.WriteString(_m.InstanceID)
-	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
+	builder.WriteString(", ")
+	builder.WriteString("description=")
+	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
 	builder.WriteString("platform=")
 	builder.WriteString(_m.Platform)
 	builder.WriteString(", ")
-	builder.WriteString("version=")
-	builder.WriteString(_m.Version)
+	builder.WriteString("api_key_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.APIKeyID))
 	builder.WriteString(", ")
 	builder.WriteString("last_heartbeat_at=")
 	builder.WriteString(_m.LastHeartbeatAt.Format(time.ANSIC))

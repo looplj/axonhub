@@ -119,8 +119,7 @@ func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput
 			SetNillableModel(input.Model).
 			SetNillableStatus(input.Status).
 			SetNillableSkillsPolicy(input.SkillsPolicy).
-			SetAgentBuiltinTools(input.BuiltinTools).
-			SetAPIKeyID(svcKey.ID)
+			SetAgentBuiltinTools(input.BuiltinTools)
 
 		createdAgent, err := create.Save(txCtx)
 		if err != nil {
@@ -227,4 +226,30 @@ func (svc *AgentService) DeleteAgent(ctx context.Context, id int) error {
 	}
 
 	return nil
+}
+
+// CreateAgentAPIKey creates a new API key for agent instance deployment.
+func (svc *AgentService) CreateAgentAPIKey(ctx context.Context, agentID, userID, projectID int) (*ent.APIKey, error) {
+	return authz.RunWithSystemBypass(ctx, "create-agent-instance-api-key", func(bypassCtx context.Context) (*ent.APIKey, error) {
+		client := svc.entFromContext(bypassCtx)
+
+		apiKeyName := fmt.Sprintf("agent-instance:%d", agentID)
+
+		generatedKey, err := GenerateAPIKey()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate api key: %w", err)
+		}
+
+		return client.APIKey.Create().
+			SetName(apiKeyName).
+			SetKey(generatedKey).
+			SetUserID(userID).
+			SetProjectID(projectID).
+			SetType(apikey.TypeAgent).
+			SetScopes([]string{
+				string(scopes.ScopeReadAgents),
+				string(scopes.ScopeWriteAgents),
+			}).
+			Save(bypassCtx)
+	})
 }

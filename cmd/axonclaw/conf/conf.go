@@ -2,8 +2,6 @@ package conf
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,7 +17,6 @@ const FileName = "config.yml"
 type Config struct {
 	BaseURL           string        `yaml:"base_url"`
 	APIKey            string        `yaml:"api_key"`
-	InstanceID        string        `yaml:"instance_id"`
 	Name              string        `yaml:"name"`
 	PollInterval      time.Duration `yaml:"poll_interval"`
 	HeartbeatInterval time.Duration `yaml:"heartbeat_interval"`
@@ -33,7 +30,7 @@ func DefaultConfig() Config {
 	}
 }
 
-func LoadOrSaveConfig(baseURL, apiKey, instanceID, name string) (Config, error) {
+func LoadOrSaveConfig(baseURL, apiKey, name string) (Config, error) {
 	cfg := DefaultConfig()
 	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
 		ConfigName:     "config",
@@ -54,9 +51,6 @@ func LoadOrSaveConfig(baseURL, apiKey, instanceID, name string) (Config, error) 
 	if res.Value.APIKey != "" {
 		cfg.APIKey = res.Value.APIKey
 	}
-	if res.Value.InstanceID != "" {
-		cfg.InstanceID = res.Value.InstanceID
-	}
 	if res.Value.Name != "" {
 		cfg.Name = res.Value.Name
 	}
@@ -72,7 +66,6 @@ func LoadOrSaveConfig(baseURL, apiKey, instanceID, name string) (Config, error) 
 
 	finalBaseURL := strings.TrimSpace(baseURL)
 	finalAPIKey := strings.TrimSpace(apiKey)
-	finalInstanceID := strings.TrimSpace(instanceID)
 	finalName := strings.TrimSpace(name)
 
 	needSave := false
@@ -84,17 +77,8 @@ func LoadOrSaveConfig(baseURL, apiKey, instanceID, name string) (Config, error) 
 		cfg.APIKey = finalAPIKey
 		needSave = true
 	}
-	if finalInstanceID != "" {
-		cfg.InstanceID = finalInstanceID
-		needSave = true
-	}
 	if finalName != "" {
 		cfg.Name = finalName
-		needSave = true
-	}
-
-	if cfg.InstanceID == "" {
-		cfg.InstanceID = generateInstanceID()
 		needSave = true
 	}
 
@@ -155,9 +139,6 @@ func SaveConfig(cfg Config) error {
 	if cfg.APIKey != "" {
 		existing.APIKey = cfg.APIKey
 	}
-	if cfg.InstanceID != "" {
-		existing.InstanceID = cfg.InstanceID
-	}
 	if cfg.Name != "" {
 		existing.Name = cfg.Name
 	}
@@ -167,12 +148,6 @@ func SaveConfig(cfg Config) error {
 		return fmt.Errorf("marshal config: %w", err)
 	}
 	return os.WriteFile(path, data, 0o600)
-}
-
-func generateInstanceID() string {
-	b := make([]byte, 8)
-	rand.Read(b)
-	return hex.EncodeToString(b)
 }
 
 func Load(path string) (Config, error) {

@@ -419,14 +419,11 @@ func (_u *AgentUpdate) check() error {
 	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Agent.project"`)
 	}
-	if _u.mutation.OwnerUserCleared() && len(_u.mutation.OwnerUserIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Agent.owner_user"`)
+	if _u.mutation.CreatedByUserCleared() && len(_u.mutation.CreatedByUserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Agent.created_by_user"`)
 	}
 	if _u.mutation.PromptCleared() && len(_u.mutation.PromptIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Agent.prompt"`)
-	}
-	if _u.mutation.APIKeyCleared() && len(_u.mutation.APIKeyIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Agent.api_key"`)
 	}
 	return nil
 }
@@ -1168,14 +1165,11 @@ func (_u *AgentUpdateOne) check() error {
 	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Agent.project"`)
 	}
-	if _u.mutation.OwnerUserCleared() && len(_u.mutation.OwnerUserIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Agent.owner_user"`)
+	if _u.mutation.CreatedByUserCleared() && len(_u.mutation.CreatedByUserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Agent.created_by_user"`)
 	}
 	if _u.mutation.PromptCleared() && len(_u.mutation.PromptIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Agent.prompt"`)
-	}
-	if _u.mutation.APIKeyCleared() && len(_u.mutation.APIKeyIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Agent.api_key"`)
 	}
 	return nil
 }

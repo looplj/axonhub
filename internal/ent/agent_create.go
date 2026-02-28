@@ -18,7 +18,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
-	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -161,36 +160,19 @@ func (_c *AgentCreate) SetNillableSkillsPolicy(v *objects.AgentSkillsPolicy) *Ag
 	return _c
 }
 
-// SetAPIKeyID sets the "api_key_id" field.
-func (_c *AgentCreate) SetAPIKeyID(v int) *AgentCreate {
-	_c.mutation.SetAPIKeyID(v)
-	return _c
-}
-
 // SetProject sets the "project" edge to the Project entity.
 func (_c *AgentCreate) SetProject(v *Project) *AgentCreate {
 	return _c.SetProjectID(v.ID)
 }
 
-// SetOwnerUserID sets the "owner_user" edge to the User entity by ID.
-func (_c *AgentCreate) SetOwnerUserID(id int) *AgentCreate {
-	_c.mutation.SetOwnerUserID(id)
-	return _c
-}
-
-// SetOwnerUser sets the "owner_user" edge to the User entity.
-func (_c *AgentCreate) SetOwnerUser(v *User) *AgentCreate {
-	return _c.SetOwnerUserID(v.ID)
+// SetCreatedByUser sets the "created_by_user" edge to the User entity.
+func (_c *AgentCreate) SetCreatedByUser(v *User) *AgentCreate {
+	return _c.SetCreatedByUserID(v.ID)
 }
 
 // SetPrompt sets the "prompt" edge to the Prompt entity.
 func (_c *AgentCreate) SetPrompt(v *Prompt) *AgentCreate {
 	return _c.SetPromptID(v.ID)
-}
-
-// SetAPIKey sets the "api_key" edge to the APIKey entity.
-func (_c *AgentCreate) SetAPIKey(v *APIKey) *AgentCreate {
-	return _c.SetAPIKeyID(v.ID)
 }
 
 // AddToolBindingIDs adds the "tool_bindings" edge to the AgentTool entity by IDs.
@@ -404,20 +386,14 @@ func (_c *AgentCreate) check() error {
 	if _, ok := _c.mutation.SkillsPolicy(); !ok {
 		return &ValidationError{Name: "skills_policy", err: errors.New(`ent: missing required field "Agent.skills_policy"`)}
 	}
-	if _, ok := _c.mutation.APIKeyID(); !ok {
-		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "Agent.api_key_id"`)}
-	}
 	if len(_c.mutation.ProjectIDs()) == 0 {
 		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Agent.project"`)}
 	}
-	if len(_c.mutation.OwnerUserIDs()) == 0 {
-		return &ValidationError{Name: "owner_user", err: errors.New(`ent: missing required edge "Agent.owner_user"`)}
+	if len(_c.mutation.CreatedByUserIDs()) == 0 {
+		return &ValidationError{Name: "created_by_user", err: errors.New(`ent: missing required edge "Agent.created_by_user"`)}
 	}
 	if len(_c.mutation.PromptIDs()) == 0 {
 		return &ValidationError{Name: "prompt", err: errors.New(`ent: missing required edge "Agent.prompt"`)}
-	}
-	if len(_c.mutation.APIKeyIDs()) == 0 {
-		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required edge "Agent.api_key"`)}
 	}
 	return nil
 }
@@ -499,12 +475,12 @@ func (_c *AgentCreate) createSpec() (*Agent, *sqlgraph.CreateSpec) {
 		_node.ProjectID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.OwnerUserIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.CreatedByUserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agent.OwnerUserTable,
-			Columns: []string{agent.OwnerUserColumn},
+			Table:   agent.CreatedByUserTable,
+			Columns: []string{agent.CreatedByUserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
@@ -531,23 +507,6 @@ func (_c *AgentCreate) createSpec() (*Agent, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.PromptID = nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   agent.APIKeyTable,
-			Columns: []string{agent.APIKeyColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(apikey.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.APIKeyID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ToolBindingsIDs(); len(nodes) > 0 {
@@ -822,9 +781,6 @@ func (u *AgentUpsertOne) UpdateNewValues() *AgentUpsertOne {
 		}
 		if _, exists := u.create.mutation.PromptID(); exists {
 			s.SetIgnore(agent.FieldPromptID)
-		}
-		if _, exists := u.create.mutation.APIKeyID(); exists {
-			s.SetIgnore(agent.FieldAPIKeyID)
 		}
 	}))
 	return u
@@ -1163,9 +1119,6 @@ func (u *AgentUpsertBulk) UpdateNewValues() *AgentUpsertBulk {
 			}
 			if _, exists := b.mutation.PromptID(); exists {
 				s.SetIgnore(agent.FieldPromptID)
-			}
-			if _, exists := b.mutation.APIKeyID(); exists {
-				s.SetIgnore(agent.FieldAPIKeyID)
 			}
 		}
 	}))

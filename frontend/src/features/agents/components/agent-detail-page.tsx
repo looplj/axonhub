@@ -148,7 +148,7 @@ export function AgentDetailPage() {
               <div className='space-y-2'>
                 <Activity className='text-muted-foreground mx-auto h-16 w-16' />
                 <p className='text-muted-foreground text-xl font-medium'>
-                  {t('threads.detail.notFound')}
+                  {t('agents.detail.notFound')}
                 </p>
               </div>
               <Button onClick={handleBack} size='lg'>
@@ -285,11 +285,9 @@ export function AgentDetailPage() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className='text-sm font-medium'>
-                              {(() => {
-                                const id = agent.createdByUserID;
-                                const shortId = id.length > 8 ? id.slice(0, 8) + '...' : id;
-                                return <span>{shortId}</span>;
-                              })()}
+                              {agent.createdByUser
+                                ? `${agent.createdByUser.firstName} ${agent.createdByUser.lastName}`
+                                : agent.createdByUserID}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
@@ -327,25 +325,7 @@ export function AgentDetailPage() {
                   </Card>
                 )}
 
-                {/* API Key Card */}
-                {agent.apiKey?.key && (
-                  <Card className='border-0 shadow-sm'>
-                    <CardHeader className='pb-3'>
-                      <CardTitle className='flex items-center gap-2 text-base'>
-                        <Key className='text-primary h-4 w-4' />
-                        {t('agents.fields.apiKey')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className='bg-muted flex items-center justify-between gap-2 rounded-lg p-3'>
-                        <code className='truncate font-mono text-sm'>
-                          {'sk-...' + agent.apiKey.key.slice(-4)}
-                        </code>
-                        <CopyableField value={agent.apiKey.key} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+
 
                 {/* Built-in Tools Card */}
                 {agent.agentBuiltinTools && agent.agentBuiltinTools.length > 0 && (
@@ -444,10 +424,10 @@ export function AgentDetailPage() {
                                 </Tooltip>
                                 <div className='min-w-0'>
                                   <div className='truncate text-sm font-medium'>
-                                    {inst.name || inst.instanceID}
+                                    {inst.name}
                                   </div>
                                   <div className='text-muted-foreground truncate text-xs'>
-                                    {inst.platform || '-'} • {inst.version || '-'}
+                                    {inst.platform || '-'} • {inst.description || '-'}
                                   </div>
                                 </div>
                               </div>
@@ -475,7 +455,7 @@ export function AgentDetailPage() {
                                   onClick={() =>
                                     navigate({
                                       to: '/project/agents/$agentId/threads/$threadId' as any,
-                                      params: { agentId, threadId: inst.instanceID } as any,
+                                      params: { agentId, threadId: inst.id } as any,
                                     })
                                   }
                                 >

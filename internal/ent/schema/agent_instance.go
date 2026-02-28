@@ -27,13 +27,12 @@ func (AgentInstance) Mixin() []ent.Mixin {
 
 func (AgentInstance) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("agent_id", "last_heartbeat_at").
-			StorageKey("agent_instances_by_agent_id_last_heartbeat_at"),
-		index.Fields("agent_id", "instance_id", "deleted_at").
-			StorageKey("agent_instances_by_agent_id_instance_id").
+		index.Fields("agent_id", "name", "deleted_at").
+			StorageKey("agent_instances_by_agent_id_name").
 			Unique(),
-		index.Fields("agent_runtime_id", "deleted_at").
-			StorageKey("agent_instances_by_runtime_id"),
+		index.Fields("api_key_id").
+			StorageKey("agent_instances_by_api_key_id").
+			Unique(),
 	}
 }
 
@@ -48,18 +47,23 @@ func (AgentInstance) Fields() []ent.Field {
 			Nillable().
 			Optional().
 			Comment("Agent Runtime ID (null means unknown/CLI started)"),
-		field.String("instance_id").
-			Immutable().
-			Comment("Runtime generated instance identifier"),
 		field.String("name").
 			Default("").
 			Comment("Human readable name"),
+		field.String("description").
+			Default("").
+			Comment("Instance description"),
 		field.String("platform").
 			Default("").
 			Comment("Platform information like os/arch"),
-		field.String("version").
-			Default("").
-			Comment("Runtime version"),
+
+		field.Int("api_key_id").
+			Immutable().
+			Unique().
+			Comment("Service account API key ID bound to this agent instance").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 		field.Time("last_heartbeat_at").
 			SchemaType(map[string]string{
 				dialect.MySQL: "datetime(6)",
@@ -87,6 +91,12 @@ func (AgentInstance) Edges() []ent.Edge {
 		edge.From("runtime", AgentRuntime.Type).
 			Ref("instances").
 			Field("agent_runtime_id").
+			Unique(),
+		edge.From("api_key", APIKey.Type).
+			Ref("agent_instance").
+			Field("api_key_id").
+			Immutable().
+			Required().
 			Unique(),
 		edge.To("messages", AgentMessage.Type).Annotations(
 			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

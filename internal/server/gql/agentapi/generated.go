@@ -70,7 +70,6 @@ type ComplexityRoot struct {
 	AgentInstance struct {
 		AgentID         func(childComplexity int) int
 		ID              func(childComplexity int) int
-		InstanceID      func(childComplexity int) int
 		LastHeartbeatAt func(childComplexity int) int
 	}
 
@@ -115,11 +114,11 @@ type ComplexityRoot struct {
 	}
 
 	PeerAgent struct {
-		AgentID     func(childComplexity int) int
-		Description func(childComplexity int) int
-		InstanceID  func(childComplexity int) int
-		Name        func(childComplexity int) int
-		Status      func(childComplexity int) int
+		AgentID         func(childComplexity int) int
+		AgentInstanceID func(childComplexity int) int
+		Description     func(childComplexity int) int
+		Name            func(childComplexity int) int
+		Status          func(childComplexity int) int
 	}
 
 	Query struct {
@@ -255,12 +254,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentInstance.ID(childComplexity), true
-	case "AgentInstance.instanceID":
-		if e.complexity.AgentInstance.InstanceID == nil {
-			break
-		}
-
-		return e.complexity.AgentInstance.InstanceID(childComplexity), true
 	case "AgentInstance.lastHeartbeatAt":
 		if e.complexity.AgentInstance.LastHeartbeatAt == nil {
 			break
@@ -454,18 +447,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PeerAgent.AgentID(childComplexity), true
+	case "PeerAgent.agentInstanceID":
+		if e.complexity.PeerAgent.AgentInstanceID == nil {
+			break
+		}
+
+		return e.complexity.PeerAgent.AgentInstanceID(childComplexity), true
 	case "PeerAgent.description":
 		if e.complexity.PeerAgent.Description == nil {
 			break
 		}
 
 		return e.complexity.PeerAgent.Description(childComplexity), true
-	case "PeerAgent.instanceID":
-		if e.complexity.PeerAgent.InstanceID == nil {
-			break
-		}
-
-		return e.complexity.PeerAgent.InstanceID(childComplexity), true
 	case "PeerAgent.name":
 		if e.complexity.PeerAgent.Name == nil {
 			break
@@ -1258,35 +1251,6 @@ func (ec *executionContext) fieldContext_AgentInstance_agentID(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _AgentInstance_instanceID(ctx context.Context, field graphql.CollectedField, obj *AgentInstance) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AgentInstance_instanceID,
-		func(ctx context.Context) (any, error) {
-			return obj.InstanceID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AgentInstance_instanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AgentInstance",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _AgentInstance_lastHeartbeatAt(ctx context.Context, field graphql.CollectedField, obj *AgentInstance) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1925,8 +1889,6 @@ func (ec *executionContext) fieldContext_Mutation_registerAgentInstance(ctx cont
 				return ec.fieldContext_AgentInstance_id(ctx, field)
 			case "agentID":
 				return ec.fieldContext_AgentInstance_agentID(ctx, field)
-			case "instanceID":
-				return ec.fieldContext_AgentInstance_instanceID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
 			}
@@ -2188,6 +2150,35 @@ func (ec *executionContext) fieldContext_PeerAgent_agentID(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _PeerAgent_agentInstanceID(ctx context.Context, field graphql.CollectedField, obj *PeerAgent) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PeerAgent_agentInstanceID,
+		func(ctx context.Context) (any, error) {
+			return obj.AgentInstanceID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PeerAgent_agentInstanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PeerAgent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PeerAgent_name(ctx context.Context, field graphql.CollectedField, obj *PeerAgent) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2275,35 +2266,6 @@ func (ec *executionContext) fieldContext_PeerAgent_status(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _PeerAgent_instanceID(ctx context.Context, field graphql.CollectedField, obj *PeerAgent) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_PeerAgent_instanceID,
-		func(ctx context.Context) (any, error) {
-			return obj.InstanceID, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_PeerAgent_instanceID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PeerAgent",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_agentBootstrap(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2379,14 +2341,14 @@ func (ec *executionContext) fieldContext_Query_peerAgents(_ context.Context, fie
 			switch field.Name {
 			case "agentID":
 				return ec.fieldContext_PeerAgent_agentID(ctx, field)
+			case "agentInstanceID":
+				return ec.fieldContext_PeerAgent_agentInstanceID(ctx, field)
 			case "name":
 				return ec.fieldContext_PeerAgent_name(ctx, field)
 			case "description":
 				return ec.fieldContext_PeerAgent_description(ctx, field)
 			case "status":
 				return ec.fieldContext_PeerAgent_status(ctx, field)
-			case "instanceID":
-				return ec.fieldContext_PeerAgent_instanceID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PeerAgent", field.Name)
 		},
@@ -4085,20 +4047,13 @@ func (ec *executionContext) unmarshalInputAckAgentMessagesInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"instanceID", "messageIDs"}
+	fieldsInOrder := [...]string{"messageIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
 		case "messageIDs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("messageIDs"))
 			data, err := ec.unmarshalNID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
@@ -4119,20 +4074,20 @@ func (ec *executionContext) unmarshalInputHeartbeatAgentInstanceInput(ctx contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"instanceID"}
+	fieldsInOrder := [...]string{"dummy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+		case "dummy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dummy"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.InstanceID = data
+			it.Dummy = data
 		}
 	}
 
@@ -4150,20 +4105,13 @@ func (ec *executionContext) unmarshalInputPullAgentMessagesInput(ctx context.Con
 		asMap["limit"] = 50
 	}
 
-	fieldsInOrder := [...]string{"instanceID", "afterSequence", "limit", "kindIn", "correlationID"}
+	fieldsInOrder := [...]string{"afterSequence", "limit", "kindIn", "correlationID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
 		case "afterSequence":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("afterSequence"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -4205,20 +4153,13 @@ func (ec *executionContext) unmarshalInputRegisterAgentInstanceInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"instanceID", "name", "platform", "version", "threadID"}
+	fieldsInOrder := [...]string{"name", "platform", "description", "threadID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -4233,13 +4174,13 @@ func (ec *executionContext) unmarshalInputRegisterAgentInstanceInput(ctx context
 				return it, err
 			}
 			it.Platform = data
-		case "version":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Version = data
+			it.Description = data
 		case "threadID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threadID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -4267,20 +4208,13 @@ func (ec *executionContext) unmarshalInputReplyMessageInput(ctx context.Context,
 		asMap["correlationID"] = ""
 	}
 
-	fieldsInOrder := [...]string{"instanceID", "text", "content", "kind", "correlationID"}
+	fieldsInOrder := [...]string{"text", "content", "kind", "correlationID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "instanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.InstanceID = data
 		case "text":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -4322,14 +4256,7 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	if _, present := asMap["kind"]; !present {
-		asMap["kind"] = "chat"
-	}
-	if _, present := asMap["correlationID"]; !present {
-		asMap["correlationID"] = ""
-	}
-
-	fieldsInOrder := [...]string{"targetAgentID", "targetInstanceID", "text", "content", "kind", "correlationID"}
+	fieldsInOrder := [...]string{"targetAgentID", "targetAgentInstanceID", "text", "content"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -4343,13 +4270,13 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 				return it, err
 			}
 			it.TargetAgentID = data
-		case "targetInstanceID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetInstanceID"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+		case "targetAgentInstanceID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetAgentInstanceID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.TargetInstanceID = data
+			it.TargetAgentInstanceID = data
 		case "text":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("text"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -4364,20 +4291,6 @@ func (ec *executionContext) unmarshalInputSendAgentMessageInput(ctx context.Cont
 				return it, err
 			}
 			it.Content = data
-		case "kind":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
-			data, err := ec.unmarshalOAgentMessageKind2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentMessageKind(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Kind = data
-		case "correlationID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("correlationID"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CorrelationID = data
 		}
 	}
 
@@ -4534,11 +4447,6 @@ func (ec *executionContext) _AgentInstance(ctx context.Context, sel ast.Selectio
 			}
 		case "agentID":
 			out.Values[i] = ec._AgentInstance_agentID(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "instanceID":
-			out.Values[i] = ec._AgentInstance_instanceID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -4887,6 +4795,11 @@ func (ec *executionContext) _PeerAgent(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "agentInstanceID":
+			out.Values[i] = ec._PeerAgent_agentInstanceID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "name":
 			out.Values[i] = ec._PeerAgent_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -4899,11 +4812,6 @@ func (ec *executionContext) _PeerAgent(ctx context.Context, sel ast.SelectionSet
 			}
 		case "status":
 			out.Values[i] = ec._PeerAgent_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "instanceID":
-			out.Values[i] = ec._PeerAgent_instanceID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -6293,6 +6201,22 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, v any) (*objects.GUID, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(objects.GUID)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx context.Context, sel ast.SelectionSet, v *objects.GUID) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {

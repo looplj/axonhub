@@ -35,7 +35,6 @@ type SystemPromptData struct {
 	Workspace    string
 	AgentID      string
 	AgentName    string
-	InstanceID   string
 	AxonClawPath string
 }
 

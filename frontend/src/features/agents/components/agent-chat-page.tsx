@@ -22,14 +22,13 @@ export function AgentChatPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const navigate = useNavigate();
-  const { agentId, threadId } = useParams({ from: '/_authenticated/project/agents/$agentId/threads/$threadId' as any }) as { agentId: string; threadId: string };
-  const instanceID = threadId;
+  const { agentId } = useParams({ from: '/_authenticated/project/agents/$agentId/threads/$threadId' as any }) as { agentId: string };
 
   const { data: agent } = useAgentDetail(agentId);
   const send = useSendAgentMessage();
   const resolveApproval = useResolveApproval();
   const ackMessages = useAckAgentMessages();
-  const { data: initialMessages, refetch: refetchInitial } = useAgentChatMessages(agentId, instanceID);
+  const { data: initialMessages, refetch: refetchInitial } = useAgentChatMessages(agentId);
 
   const [messages, setMessages] = useState<AgentChatMessage[]>([]);
   const [text, setText] = useState('');
@@ -48,7 +47,7 @@ export function AgentChatPage() {
     }
   }, [initialMessages]);
 
-  const { data: pulledToUser, refetch: refetchPull } = usePullAgentMessagesToUser(agentId, instanceID, afterSequence);
+  const { data: pulledToUser, refetch: refetchPull } = usePullAgentMessagesToUser(agentId, afterSequence);
 
   useEffect(() => {
     if (!pulledToUser || pulledToUser.length === 0) return;
@@ -67,9 +66,9 @@ export function AgentChatPage() {
     // Acknowledge received messages
     const messageIDs = pulledToUser.map((m) => m.id);
     if (messageIDs.length > 0) {
-      ackMessages.mutate({ agentID: agentId, instanceID, messageIDs });
+      ackMessages.mutate({ agentID: agentId, messageIDs });
     }
-  }, [pulledToUser, afterSequence, agentId, instanceID, ackMessages]);
+  }, [pulledToUser, afterSequence, agentId, ackMessages]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
@@ -103,7 +102,7 @@ export function AgentChatPage() {
     setAfterSequence((s) => s + 1);
 
     try {
-      const saved = await send.mutateAsync({ agentID: agentId, instanceID, text: trimmed });
+      const saved = await send.mutateAsync({ agentID: agentId, text: trimmed });
       setMessages((prev) => prev.map((m) => (m.id === optimistic.id ? saved : m)));
       setAfterSequence((s) => Math.max(s, saved.sequence));
       await refetchInitial();
@@ -113,9 +112,8 @@ export function AgentChatPage() {
   };
 
   const headerTitle = useMemo(() => {
-    const agentName = agent?.name || agentId;
-    return `${agentName} • ${instanceID}`;
-  }, [agent?.name, agentId, instanceID]);
+    return agent?.name || agentId;
+  }, [agent?.name, agentId]);
 
   const handleApprove = async (m: AgentChatMessage, granted: boolean, scope: 'once' | 'thread' | 'workspace' = 'once') => {
     const requestID = m.correlationID || (m.content?.id as string);

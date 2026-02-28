@@ -89,7 +89,6 @@ type AgentApprovalRequestMessage {
 
 input SendAgentMessageInput {
   agentID: ID!
-  instanceID: String!
   text: String!
 }
 
@@ -105,7 +104,6 @@ input ResolveApprovalInput {
 
 input AckAgentMessagesInput {
   agentID: ID!
-  instanceID: String!
   messageIDs: [ID!]!
 }
 
@@ -113,7 +111,7 @@ extend type Query {
   """
   Pull pending messages from runtime to user (direction=to_user, status=pending).
   """
-  pullAgentMessagesToUser(agentID: ID!, instanceID: String, afterSequence: Int, limit: Int = 50): [AgentChatMessage!]!
+  pullAgentMessagesToUser(agentID: ID!, afterSequence: Int, limit: Int = 50): [AgentChatMessage!]!
 
   """
   Pull pending approval requests (kind=approval_request, direction=to_user, status=pending).
@@ -123,5 +121,5 @@ extend type Query {
   """
   List messages for an agent (both directions), ordered by sequence asc.
   """
-  agentChatMessages(agentID: ID!, instanceID: String, afterSequence: Int, limit: Int = 200): [AgentChatMessage!]!
+  agentChatMessages(agentID: ID!, afterSequence: Int, limit: Int = 200): [AgentChatMessage!]!
 }

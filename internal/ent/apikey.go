@@ -10,7 +10,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -58,8 +58,8 @@ type APIKeyEdges struct {
 	Project *Project `json:"project,omitempty"`
 	// Requests holds the value of the requests edge.
 	Requests []*Request `json:"requests,omitempty"`
-	// Agent holds the value of the agent edge.
-	Agent *Agent `json:"agent,omitempty"`
+	// AgentInstance holds the value of the agent_instance edge.
+	AgentInstance *AgentInstance `json:"agent_instance,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [4]bool
@@ -100,15 +100,15 @@ func (e APIKeyEdges) RequestsOrErr() ([]*Request, error) {
 	return nil, &NotLoadedError{edge: "requests"}
 }
 
-// AgentOrErr returns the Agent value or an error if the edge
+// AgentInstanceOrErr returns the AgentInstance value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e APIKeyEdges) AgentOrErr() (*Agent, error) {
-	if e.Agent != nil {
-		return e.Agent, nil
+func (e APIKeyEdges) AgentInstanceOrErr() (*AgentInstance, error) {
+	if e.AgentInstance != nil {
+		return e.AgentInstance, nil
 	} else if e.loadedTypes[3] {
-		return nil, &NotFoundError{label: agent.Label}
+		return nil, &NotFoundError{label: agentinstance.Label}
 	}
-	return nil, &NotLoadedError{edge: "agent"}
+	return nil, &NotLoadedError{edge: "agent_instance"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -243,9 +243,9 @@ func (_m *APIKey) QueryRequests() *RequestQuery {
 	return NewAPIKeyClient(_m.config).QueryRequests(_m)
 }
 
-// QueryAgent queries the "agent" edge of the APIKey entity.
-func (_m *APIKey) QueryAgent() *AgentQuery {
-	return NewAPIKeyClient(_m.config).QueryAgent(_m)
+// QueryAgentInstance queries the "agent_instance" edge of the APIKey entity.
+func (_m *APIKey) QueryAgentInstance() *AgentInstanceQuery {
+	return NewAPIKeyClient(_m.config).QueryAgentInstance(_m)
 }
 
 // Update returns a builder for updating this APIKey.

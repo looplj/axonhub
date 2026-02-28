@@ -10,13 +10,13 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	agentRuntimeService *biz.AgentBootstrapService
+	agentBootstrapService *biz.AgentBootstrapService
 }
 
 func NewSchema(agentRuntimeService *biz.AgentBootstrapService) graphql.ExecutableSchema {
 	return NewExecutableSchema(Config{
 		Resolvers: &Resolver{
-			agentRuntimeService: agentRuntimeService,
+			agentBootstrapService: agentRuntimeService,
 		},
 	})
 }

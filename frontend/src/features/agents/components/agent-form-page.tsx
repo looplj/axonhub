@@ -156,7 +156,6 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
 
   // Model autocomplete state
   const [modelSearch, setModelSearch] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
 
   const modelOptions = useMemo(() => {
     return (availableModels || []).map((model) => ({ value: model.id, label: model.id }));
@@ -428,37 +427,6 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
 
                 {/* Right column – Skills Policy & Builtin Tools (1/3) */}
                 <div className='space-y-6 lg:col-span-1'>
-                  {/* API Key Card (edit mode only) */}
-                  {isEdit && agent?.apiKey?.key && (
-                    <Card className='border-0 shadow-sm'>
-                      <CardHeader className='pb-3'>
-                        <CardTitle className='flex items-center gap-2 text-base'>
-                          <Key className='h-4 w-4' />
-                          {t('agents.fields.apiKey')}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className='bg-muted flex items-center justify-between gap-2 rounded-md p-3'>
-                          <code className='truncate font-mono text-sm'>
-                            {showApiKey ? agent.apiKey.key : 'sk-...' + agent.apiKey.key.slice(-4)}
-                          </code>
-                          <div className='flex shrink-0 items-center'>
-                            <Button
-                              type='button'
-                              variant='ghost'
-                              size='icon'
-                              className='h-6 w-6'
-                              onClick={() => setShowApiKey((v) => !v)}
-                            >
-                              {showApiKey ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
-                            </Button>
-                            <CopyButton content={agent.apiKey.key} copyMessage={t('agents.messages.keyCopied')} />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
                   {/* Skills Policy Card */}
                   <Card className='border-0 shadow-sm'>
                     <CardHeader className='pb-3'>
