@@ -420,8 +420,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		SetName(input.Name).
 		SetCredentials(input.Credentials).
 		SetSupportedModels(input.SupportedModels).
+		SetManualModels(input.ManualModels).
 		SetDefaultTestModel(input.DefaultTestModel).
 		SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels).
+		SetNillableAutoSyncModelPattern(input.AutoSyncModelPattern).
 		SetSettings(input.Settings)
 
 	if input.Tags != nil {

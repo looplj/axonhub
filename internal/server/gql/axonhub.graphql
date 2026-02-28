@@ -42,6 +42,11 @@ type TransformOptions {
   replaceDeveloperRoleWithSystem: Boolean!
 }
 
+type SyncChannelModelsPayload {
+  channelID: ID!
+  supportedModels: [String!]!
+}
+
 input TransformOptionsInput {
   forceArrayInstructions: Boolean
   forceArrayInputs: Boolean
@@ -666,7 +671,7 @@ type Mutation {
   ): ApplyChannelOverrideTemplatePayload!
 
   # Trigger immediate model sync for a channel
-  syncChannelModels(channelID: ID!): Boolean!
+  syncChannelModels(channelID: ID!, pattern: String): SyncChannelModelsPayload!
 }
 
 input QueryChannelInput {

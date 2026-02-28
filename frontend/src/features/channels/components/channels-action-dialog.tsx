@@ -1023,7 +1023,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       // For OAuth-based providers (like Copilot), prefer oauthApiKey first
       let firstApiKey = '';
       if (oauthApiKey) {
-        const parsed = parseOauthToken(oauthApiKey);
+        const parsed = parseOauthToken(oauthApiKey || '');
         if (parsed) {
           firstApiKey = parsed;
         }
@@ -1063,6 +1063,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
   }, [fetchModels, form, isEdit, currentRow]);
 
+  const handleSyncNow = useCallback(async () => {
+    if (!currentRow) return [];
+    if (patternError) {
+      toast.error(patternError);
+      return [];
+    }
+
+    const channelId = currentRow.id;
+    const formPattern = form.getValues('autoSyncModelPattern') || '';
+    const result = await syncChannelModels.mutateAsync({
+      channelID: channelId,
+      pattern: formPattern.trim() ? formPattern : undefined,
+    });
+
+    setSupportedModels(result.supportedModels || []);
+    return result.supportedModels || [];
+  }, [currentRow, form, patternError, syncChannelModels]);
+
   const canFetchModels = () => {
     const baseURL = form.watch('baseURL');
     const apiKeys = form.watch('credentials.apiKeys');
@@ -1074,7 +1092,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     if (isCopilotType) {
       const oauthApiKey = form.watch('credentials.apiKey');
-      const hasOAuthToken = !!parseOauthToken(oauthApiKey);
+      const hasOAuthToken = !!parseOauthToken(oauthApiKey || '');
       return !!baseURL && hasOAuthToken;
     }
 
@@ -1956,12 +1974,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         type='button'
                                         size='sm'
                                         variant='outline'
-                                        onClick={() => {
-                                          if (currentRow?.id) {
-                                            syncChannelModels.mutate(currentRow.id);
-                                          }
-                                        }}
-                                        disabled={syncChannelModels.isPending}
+                                        onClick={handleSyncNow}
+                                        disabled={syncChannelModels.isPending || updateChannel.isPending}
                                       >
                                         <Play className={`mr-1 h-3 w-3 ${syncChannelModels.isPending ? 'animate-spin' : ''}`} />
                                         {syncChannelModels.isPending

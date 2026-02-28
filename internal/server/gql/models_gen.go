@@ -274,6 +274,11 @@ type SignInPayload struct {
 	Token string    `json:"token"`
 }
 
+type SyncChannelModelsPayload struct {
+	ChannelID       objects.GUID `json:"channelID"`
+	SupportedModels []string     `json:"supportedModels"`
+}
+
 type SystemModelSettingOnboarding struct {
 	Onboarded   bool       `json:"onboarded"`
 	CompletedAt *time.Time `json:"completedAt,omitempty"`

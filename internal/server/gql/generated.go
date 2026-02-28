@@ -764,7 +764,7 @@ type ComplexityRoot struct {
 		RemoveUserFromProject                func(childComplexity int, input RemoveUserFromProjectInput) int
 		Restore                              func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		SaveChannelModelPrices               func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
-		SyncChannelModels                    func(childComplexity int, channelID objects.GUID) int
+		SyncChannelModels                    func(childComplexity int, channelID objects.GUID, pattern *string) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
 		TriggerAutoBackup                    func(childComplexity int) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
@@ -1251,6 +1251,11 @@ type ComplexityRoot struct {
 		StoreResponseBody func(childComplexity int) int
 	}
 
+	SyncChannelModelsPayload struct {
+		ChannelID       func(childComplexity int) int
+		SupportedModels func(childComplexity int) int
+	}
+
 	System struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
@@ -1659,7 +1664,7 @@ type MutationResolver interface {
 	UpdateChannelOverrideTemplate(ctx context.Context, id objects.GUID, input ent.UpdateChannelOverrideTemplateInput) (*ent.ChannelOverrideTemplate, error)
 	DeleteChannelOverrideTemplate(ctx context.Context, id objects.GUID) (bool, error)
 	ApplyChannelOverrideTemplate(ctx context.Context, input ApplyChannelOverrideTemplateInput) (*ApplyChannelOverrideTemplatePayload, error)
-	SyncChannelModels(ctx context.Context, channelID objects.GUID) (bool, error)
+	SyncChannelModels(ctx context.Context, channelID objects.GUID, pattern *string) (*SyncChannelModelsPayload, error)
 	UpdateMe(ctx context.Context, input UpdateMeInput) (*ent.User, error)
 	UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error)
 	UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error)
@@ -4691,7 +4696,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SyncChannelModels(childComplexity, args["channelID"].(objects.GUID)), true
+		return e.complexity.Mutation.SyncChannelModels(childComplexity, args["channelID"].(objects.GUID), args["pattern"].(*string)), true
 	case "Mutation.testChannel":
 		if e.complexity.Mutation.TestChannel == nil {
 			break
@@ -7026,6 +7031,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StoragePolicy.StoreResponseBody(childComplexity), true
 
+	case "SyncChannelModelsPayload.channelID":
+		if e.complexity.SyncChannelModelsPayload.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.SyncChannelModelsPayload.ChannelID(childComplexity), true
+	case "SyncChannelModelsPayload.supportedModels":
+		if e.complexity.SyncChannelModelsPayload.SupportedModels == nil {
+			break
+		}
+
+		return e.complexity.SyncChannelModelsPayload.SupportedModels(childComplexity), true
+
 	case "System.createdAt":
 		if e.complexity.System.CreatedAt == nil {
 			break
@@ -9330,6 +9348,11 @@ func (ec *executionContext) field_Mutation_syncChannelModels_args(ctx context.Co
 		return nil, err
 	}
 	args["channelID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pattern", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["pattern"] = arg1
 	return args, nil
 }
 
@@ -25588,10 +25611,10 @@ func (ec *executionContext) _Mutation_syncChannelModels(ctx context.Context, fie
 		ec.fieldContext_Mutation_syncChannelModels,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().SyncChannelModels(ctx, fc.Args["channelID"].(objects.GUID))
+			return ec.resolvers.Mutation().SyncChannelModels(ctx, fc.Args["channelID"].(objects.GUID), fc.Args["pattern"].(*string))
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalNSyncChannelModelsPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSyncChannelModelsPayload,
 		true,
 		true,
 	)
@@ -25604,7 +25627,13 @@ func (ec *executionContext) fieldContext_Mutation_syncChannelModels(ctx context.
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "channelID":
+				return ec.fieldContext_SyncChannelModelsPayload_channelID(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_SyncChannelModelsPayload_supportedModels(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncChannelModelsPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -37902,6 +37931,64 @@ func (ec *executionContext) fieldContext_StoragePolicy_cleanupOptions(_ context.
 				return ec.fieldContext_CleanupOption_cleanupDays(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CleanupOption", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncChannelModelsPayload_channelID(ctx context.Context, field graphql.CollectedField, obj *SyncChannelModelsPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncChannelModelsPayload_channelID,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncChannelModelsPayload_channelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncChannelModelsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncChannelModelsPayload_supportedModels(ctx context.Context, field graphql.CollectedField, obj *SyncChannelModelsPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncChannelModelsPayload_supportedModels,
+		func(ctx context.Context) (any, error) {
+			return obj.SupportedModels, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncChannelModelsPayload_supportedModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncChannelModelsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -79193,6 +79280,50 @@ func (ec *executionContext) _StoragePolicy(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var syncChannelModelsPayloadImplementors = []string{"SyncChannelModelsPayload"}
+
+func (ec *executionContext) _SyncChannelModelsPayload(ctx context.Context, sel ast.SelectionSet, obj *SyncChannelModelsPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, syncChannelModelsPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SyncChannelModelsPayload")
+		case "channelID":
+			out.Values[i] = ec._SyncChannelModelsPayload_channelID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "supportedModels":
+			out.Values[i] = ec._SyncChannelModelsPayload_supportedModels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var systemImplementors = []string{"System", "Node"}
 
 func (ec *executionContext) _System(ctx context.Context, sel ast.SelectionSet, obj *ent.System) graphql.Marshaler {
@@ -86539,6 +86670,20 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNSyncChannelModelsPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSyncChannelModelsPayload(ctx context.Context, sel ast.SelectionSet, v SyncChannelModelsPayload) graphql.Marshaler {
+	return ec._SyncChannelModelsPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSyncChannelModelsPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSyncChannelModelsPayload(ctx context.Context, sel ast.SelectionSet, v *SyncChannelModelsPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SyncChannelModelsPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSystemChannelSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemChannelSettings(ctx context.Context, sel ast.SelectionSet, v biz.SystemChannelSettings) graphql.Marshaler {
