@@ -3,14 +3,18 @@ package provider_quota
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
@@ -88,7 +92,12 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 	req.Header.Set("Chatgpt-Account-Id", accountID)
 
 	// Execute request
-	resp, err := c.httpClient.Do(req)
+	httpClient, err := c.newHTTPClient(ch)
+	if err != nil {
+		return QuotaData{}, fmt.Errorf("failed to create http client: %w", err)
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
 	}
@@ -171,6 +180,69 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 func (c *CodexQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	return ch.Type == channel.TypeCodex
+}
+
+func (c *CodexQuotaChecker) newHTTPClient(ch *ent.Channel) (*http.Client, error) {
+	proxyConfig := &httpclient.ProxyConfig{Type: httpclient.ProxyTypeEnvironment}
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		proxyConfig = ch.Settings.Proxy
+	}
+
+	proxyFunc, err := resolveProxyFunc(proxyConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	baseTransport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok || baseTransport == nil {
+		baseTransport = &http.Transport{}
+	}
+
+	transport := baseTransport.Clone()
+	transport.Proxy = proxyFunc
+
+	return &http.Client{
+		Transport: transport,
+		Timeout:   c.httpClient.Timeout,
+	}, nil
+}
+
+func resolveProxyFunc(config *httpclient.ProxyConfig) (func(*http.Request) (*url.URL, error), error) {
+	if config == nil {
+		return http.ProxyFromEnvironment, nil
+	}
+
+	switch config.Type {
+	case httpclient.ProxyTypeDisabled:
+		return func(*http.Request) (*url.URL, error) {
+			return nil, nil
+		}, nil
+	case httpclient.ProxyTypeEnvironment:
+		return http.ProxyFromEnvironment, nil
+	case httpclient.ProxyTypeURL:
+		if config.URL == "" {
+			return func(*http.Request) (*url.URL, error) {
+				return nil, errors.New("proxy URL is required when type is 'url'")
+			}, nil
+		}
+
+		proxyURL, err := url.Parse(config.URL)
+		if err != nil {
+			return func(*http.Request) (*url.URL, error) {
+				return nil, fmt.Errorf("invalid proxy URL: %w", err)
+			}, nil
+		}
+
+		if config.Username != "" && config.Password != "" {
+			proxyURL.User = url.UserPassword(config.Username, config.Password)
+		}
+
+		slog.DebugContext(context.Background(), "use custom proxy", slog.Any("proxy_url", proxyURL.Redacted()))
+
+		return http.ProxyURL(proxyURL), nil
+	default:
+		return http.ProxyFromEnvironment, nil
+	}
 }
 
 func convertRateLimitToMap(rateLimit *CodeRateLimitInfo) map[string]any {
