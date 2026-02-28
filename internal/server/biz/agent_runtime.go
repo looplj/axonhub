@@ -203,6 +203,8 @@ func (svc *AgentRuntimeService) DeployAxonclaw(ctx context.Context, input Deploy
 				SetScopes([]string{
 					string(scopes.ScopeReadAgents),
 					string(scopes.ScopeWriteAgents),
+					string(scopes.ScopeReadRequests),
+					string(scopes.ScopeWriteRequests),
 				}).
 				Save(bypassCtx)
 		})

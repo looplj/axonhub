@@ -10,10 +10,8 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agent"
-	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type AgentService struct {
@@ -45,23 +43,18 @@ type CreateAgentInput struct {
 	SkillsPolicy *objects.AgentSkillsPolicy
 }
 
-type CreateAgentResult struct {
-	Agent  *ent.Agent
-	APIKey *ent.APIKey
-}
-
-func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput) (CreateAgentResult, error) {
+func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput) (*ent.Agent, error) {
 	projectID, ok := contexts.GetProjectID(ctx)
 	if !ok {
-		return CreateAgentResult{}, fmt.Errorf("project id not found in context")
+		return nil, fmt.Errorf("project id not found in context")
 	}
 
 	user, ok := contexts.GetUser(ctx)
 	if !ok || user == nil {
-		return CreateAgentResult{}, fmt.Errorf("user not found in context")
+		return nil, fmt.Errorf("user not found in context")
 	}
 
-	return RunInTransaction(ctx, svc.AbstractService, func(txCtx context.Context) (CreateAgentResult, error) {
+	return RunInTransaction(ctx, svc.AbstractService, func(txCtx context.Context) (*ent.Agent, error) {
 		client := svc.entFromContext(txCtx)
 
 		promptName := fmt.Sprintf("agent:%s", input.Name)
@@ -84,33 +77,10 @@ func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput
 				Save(bypassCtx)
 		})
 		if err != nil {
-			return CreateAgentResult{}, fmt.Errorf("failed to create prompt: %w", err)
+			return nil, fmt.Errorf("failed to create prompt: %w", err)
 		}
 
-		apiKeyName := fmt.Sprintf("agent:%s", input.Name)
-		svcKey, err := authz.RunWithSystemBypass(txCtx, "create-agent-api-key", func(bypassCtx context.Context) (*ent.APIKey, error) {
-			generatedKey, err := GenerateAPIKey()
-			if err != nil {
-				return nil, fmt.Errorf("failed to generate api key: %w", err)
-			}
-
-			return client.APIKey.Create().
-				SetName(apiKeyName).
-				SetKey(generatedKey).
-				SetUserID(user.ID).
-				SetProjectID(projectID).
-				SetType(apikey.TypeAgent).
-				SetScopes([]string{
-					string(scopes.ScopeReadAgents),
-					string(scopes.ScopeWriteAgents),
-				}).
-				Save(bypassCtx)
-		})
-		if err != nil {
-			return CreateAgentResult{}, fmt.Errorf("failed to create service account api key: %w", err)
-		}
-
-		create := client.Agent.Create().
+		agent, err := client.Agent.Create().
 			SetProjectID(projectID).
 			SetCreatedByUserID(user.ID).
 			SetName(input.Name).
@@ -119,17 +89,12 @@ func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput
 			SetNillableModel(input.Model).
 			SetNillableStatus(input.Status).
 			SetNillableSkillsPolicy(input.SkillsPolicy).
-			SetAgentBuiltinTools(input.BuiltinTools)
-
-		createdAgent, err := create.Save(txCtx)
+			SetAgentBuiltinTools(input.BuiltinTools).Save(txCtx)
 		if err != nil {
-			return CreateAgentResult{}, fmt.Errorf("failed to create agent: %w", err)
+			return nil, fmt.Errorf("failed to create agent: %w", err)
 		}
 
-		return CreateAgentResult{
-			Agent:  createdAgent,
-			APIKey: svcKey,
-		}, nil
+		return agent, nil
 	})
 }
 
@@ -226,30 +191,4 @@ func (svc *AgentService) DeleteAgent(ctx context.Context, id int) error {
 	}
 
 	return nil
-}
-
-// CreateAgentAPIKey creates a new API key for agent instance deployment.
-func (svc *AgentService) CreateAgentAPIKey(ctx context.Context, agentID, userID, projectID int) (*ent.APIKey, error) {
-	return authz.RunWithSystemBypass(ctx, "create-agent-instance-api-key", func(bypassCtx context.Context) (*ent.APIKey, error) {
-		client := svc.entFromContext(bypassCtx)
-
-		apiKeyName := fmt.Sprintf("agent-instance:%d", agentID)
-
-		generatedKey, err := GenerateAPIKey()
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate api key: %w", err)
-		}
-
-		return client.APIKey.Create().
-			SetName(apiKeyName).
-			SetKey(generatedKey).
-			SetUserID(userID).
-			SetProjectID(projectID).
-			SetType(apikey.TypeAgent).
-			SetScopes([]string{
-				string(scopes.ScopeReadAgents),
-				string(scopes.ScopeWriteAgents),
-			}).
-			Save(bypassCtx)
-	})
 }

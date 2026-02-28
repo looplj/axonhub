@@ -19,12 +19,7 @@ import (
 
 // CreateAgent is the resolver for the createAgent field.
 func (r *mutationResolver) CreateAgent(ctx context.Context, input biz.CreateAgentInput) (*ent.Agent, error) {
-	res, err := r.agentService.CreateAgent(ctx, input)
-	if err != nil {
-		return nil, err
-	}
-
-	return res.Agent, nil
+	return r.agentService.CreateAgent(ctx, input)
 }
 
 // UpdateAgent is the resolver for the updateAgent field.
