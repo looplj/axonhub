@@ -112,8 +112,24 @@ func (ts *InboundPersistentStream) Close() error {
 		return ts.stream.Close()
 	}
 
-	// Check if context was canceled (client disconnected before [DONE])
-	if ctxErr != nil || streamErr != nil {
+	// If we haven't received a terminal event, check if the chunks we DO have form a complete response.
+	// This handles models that aggregate internally (like Codex) or upstream proxy hung connections
+	// where the provider sent the full JSON payload but failed to send [DONE] before dropping.
+	var responseBody []byte
+	var meta llm.ResponseMeta
+	var aggErr error
+
+	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
+		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
+		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 {
+			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
+			ts.state.StreamCompleted = true
+		}
+	}
+
+	// Check if context was canceled (client disconnected before [DONE]).
+	// Skip the error path if we determined the stream actually completed successfully above.
+	if (ctxErr != nil || streamErr != nil) && !ts.state.StreamCompleted {
 		// Use context without cancellation to ensure persistence even if client canceled
 		if ts.request != nil {
 			persistCtx := context.WithoutCancel(ctx)
@@ -132,24 +148,15 @@ func (ts *InboundPersistentStream) Close() error {
 		return ts.stream.Close()
 	}
 
-	// NEW: Check if we have a complete response even without terminal event
-	// This handles executors that aggregate streams internally (e.g., Codex)
-	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
-		// Try to aggregate and see if we have a valid complete response
-		responseBody, meta, err := ts.transformer.AggregateStreamChunks(ctx, ts.responseChunks)
-		if err == nil && meta.ID != "" && len(responseBody) > 0 {
-			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
-			ts.state.StreamCompleted = true
-			// Use _persistResponse directly to avoid re-aggregating chunks
-			ts._persistResponse(context.WithoutCancel(ctx), responseBody, meta)
-			return ts.stream.Close()
-		}
-	}
-
 	// Stream completed successfully - perform final persistence
 	log.Debug(ctx, "Stream completed successfully, performing final persistence")
 
-	ts.persistResponseChunks(ctx)
+	// We already aggregated the chunks above, so pass them directly to avoid double-aggregation
+	if len(responseBody) > 0 {
+		ts._persistResponse(context.WithoutCancel(ctx), responseBody, meta)
+	} else {
+		ts.persistResponseChunks(ctx)
+	}
 
 	return ts.stream.Close()
 }
