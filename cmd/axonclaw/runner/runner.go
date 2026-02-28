@@ -58,7 +58,7 @@ func New(opts NewOptions) *Runner {
 		agent.WithMiddlewares(permMw),
 	)
 
-	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client)
+	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.ThreadMgr, opts.Boot.ThreadID)
 
 	return &Runner{
 		Client:    opts.Client,

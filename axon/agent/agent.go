@@ -213,6 +213,13 @@ func (a *Agent) Messages() []Message {
 	return out
 }
 
+// ClearMessages clears all messages from the agent's history.
+func (a *Agent) ClearMessages() {
+	a.msgMu.Lock()
+	defer a.msgMu.Unlock()
+	a.messages = nil
+}
+
 // Inject inserts a message into the agent's history mid-process
 // (e.g. an out-of-band system or user message).
 func (a *Agent) Inject(ctx context.Context, msg Message) {

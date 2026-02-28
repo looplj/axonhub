@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/api"
 	"github.com/looplj/axonhub/axon/pkg/search"
+	"github.com/looplj/axonhub/axon/thread"
 	"github.com/looplj/axonhub/axon/tools"
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 )
@@ -22,6 +23,8 @@ func registerTools(
 	boot *bootstrap.Result,
 	logger *slog.Logger,
 	client graphql.Client,
+	threadMgr *thread.Manager,
+	threadID string,
 ) {
 	enabledBuiltin := map[string]bool{}
 	for _, t := range boot.BuiltinTools {
@@ -69,6 +72,15 @@ func registerTools(
 
 	a.RegisterTool(tools.NewAgentTool(NewSendMessageTool(client)))
 	a.RegisterTool(tools.NewAgentTool(NewAxonClawHelpTool()))
+	a.RegisterTool(tools.NewAgentTool(NewReloadTool(ReloadToolOptions{
+		Client:    client,
+		Agent:     a,
+		ThreadMgr: threadMgr,
+		ThreadID:  threadID,
+		Workspace: threadWorkspace,
+		Boot:      boot,
+		Logger:    logger,
+	})))
 
 	known := map[string]struct{}{}
 	for name := range enabledBuiltin {
