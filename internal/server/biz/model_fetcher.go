@@ -20,17 +20,128 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
+	"github.com/looplj/axonhub/llm/transformer/gemini/vertex"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 )
 
 // ModelFetcher handles fetching models from provider APIs.
 type ModelFetcher struct {
-	httpClient            *httpclient.HttpClient
-	channelService        *ChannelService
-	copilotModelsCache    []ModelIdentify
-	copilotCacheMu        sync.RWMutex
-	copilotCacheTimestamp time.Time
+	httpClient          *httpclient.HttpClient
+	channelService      *ChannelService
+	copilotFetcher      *providerConfFetcher
+	geminiVertexFetcher *providerConfFetcher
+}
+
+// providerConfFetcher handles fetching models from PublicProviderConf with caching.
+type providerConfFetcher struct {
+	modelsCache    []ModelIdentify
+	cacheMu        sync.RWMutex
+	cacheTimestamp time.Time
+	cacheDuration  time.Duration
+	providerURL    string
+	providerSHA256 string
+}
+
+// fetch fetches models with caching using double-check locking.
+func (f *providerConfFetcher) fetch(ctx context.Context, httpClient *httpclient.HttpClient) []ModelIdentify {
+	f.cacheMu.RLock()
+	if len(f.modelsCache) > 0 && time.Since(f.cacheTimestamp) < f.cacheDuration {
+		models := make([]ModelIdentify, len(f.modelsCache))
+		copy(models, f.modelsCache)
+		f.cacheMu.RUnlock()
+		return models
+	}
+	f.cacheMu.RUnlock()
+
+	f.cacheMu.Lock()
+	defer f.cacheMu.Unlock()
+
+	// Double-check after acquiring write lock
+	if len(f.modelsCache) > 0 && time.Since(f.cacheTimestamp) < f.cacheDuration {
+		models := make([]ModelIdentify, len(f.modelsCache))
+		copy(models, f.modelsCache)
+		return models
+	}
+
+	models, err := f.fetchFromSource(ctx, httpClient)
+	if err != nil {
+		// If fetch failed but cache exists, return defensive copy
+		if len(f.modelsCache) > 0 {
+			cached := make([]ModelIdentify, len(f.modelsCache))
+			copy(cached, f.modelsCache)
+			return cached
+		}
+		return nil
+	}
+	if len(models) > 0 {
+		// Store a copy in cache to avoid shared backing array
+		f.modelsCache = make([]ModelIdentify, len(models))
+		copy(f.modelsCache, models)
+		f.cacheTimestamp = time.Now()
+
+		// Return a copy to callers
+		copied := make([]ModelIdentify, len(models))
+		copy(copied, models)
+		return copied
+	}
+
+	return nil
+}
+
+// fetchFromSource fetches models from PublicProviderConf.
+func (f *providerConfFetcher) fetchFromSource(ctx context.Context, httpClient *httpclient.HttpClient) ([]ModelIdentify, error) {
+	req := &httpclient.Request{
+		Method: http.MethodGet,
+		URL:    f.providerURL,
+		Headers: http.Header{
+			"Accept": []string{"application/json"},
+		},
+	}
+
+	resp, err := httpClient.Do(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch models: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch models: non-OK status %d: %s", resp.StatusCode, string(resp.Body))
+	}
+
+	// Verify integrity if SHA256 is configured
+	if f.providerSHA256 != "" {
+		hash := sha256.Sum256(resp.Body)
+		hashHex := hex.EncodeToString(hash[:])
+		if hashHex != f.providerSHA256 {
+			return nil, fmt.Errorf("provider conf integrity check failed: expected SHA256 %s, got %s", f.providerSHA256, hashHex)
+		}
+	}
+
+	type providerConfResponse struct {
+		ID     string `json:"id"`
+		Models []struct {
+			ID string `json:"id"`
+		} `json:"models"`
+	}
+
+	var conf providerConfResponse
+	if err := json.Unmarshal(resp.Body, &conf); err != nil {
+		return nil, fmt.Errorf("failed to parse provider conf: %w", err)
+	}
+
+	if conf.ID == "" {
+		return nil, fmt.Errorf("provider ID not found in response")
+	}
+
+	// Build models slice, filtering out empty IDs
+	models := make([]ModelIdentify, 0, len(conf.Models))
+	for _, m := range conf.Models {
+		if m.ID != "" {
+			models = append(models, ModelIdentify{ID: m.ID})
+		}
+	}
+
+	return models, nil
 }
 
 // NewModelFetcher creates a new ModelFetcher instance.
@@ -38,6 +149,16 @@ func NewModelFetcher(httpClient *httpclient.HttpClient, channelService *ChannelS
 	return &ModelFetcher{
 		httpClient:     httpClient,
 		channelService: channelService,
+		copilotFetcher: &providerConfFetcher{
+			cacheDuration:  1 * time.Hour,
+			providerURL:    copilot.ProviderConfURL,
+			providerSHA256: copilot.ProviderConfSHA256,
+		},
+		geminiVertexFetcher: &providerConfFetcher{
+			cacheDuration:  1 * time.Hour,
+			providerURL:    vertex.ProviderConfURL,
+			providerSHA256: vertex.ProviderConfSHA256,
+		},
 	}
 }
 
@@ -61,7 +182,7 @@ func (f *ModelFetcher) getDefaultModels(ctx context.Context, channelType string)
 }
 
 func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.Type) []ModelIdentify {
-	//nolint:exhaustive // only support antigravity, codex, claudecode, and github_copilot for now.
+	//nolint:exhaustive // only supports default model fetching for specific channel types (antigravity, codex, claudecode, github_copilot, gemini_vertex).
 	switch typ {
 	case channel.TypeAntigravity:
 		return lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
@@ -71,118 +192,21 @@ func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.T
 		return lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeGithubCopilot:
 		return f.fetchCopilotModels(ctx)
+	case channel.TypeGeminiVertex:
+		return f.fetchGeminiVertexModels(ctx)
 	default:
 		return nil
 	}
 }
 
-// copilotModelsCacheDuration is the duration to cache Copilot models.
-const copilotModelsCacheDuration = 1 * time.Hour
-
-// copilotProviderConfResponse represents the structure of the GitHub Copilot provider conf JSON.
-// The JSON structure is different from other providers - models are at the root level.
-type copilotProviderConfResponse struct {
-	ID     string `json:"id"`
-	Models []struct {
-		ID string `json:"id"`
-	} `json:"models"`
-}
-
 // fetchCopilotModels fetches GitHub Copilot models from PublicProviderConf with caching.
 func (f *ModelFetcher) fetchCopilotModels(ctx context.Context) []ModelIdentify {
-	f.copilotCacheMu.RLock()
-	if len(f.copilotModelsCache) > 0 && time.Since(f.copilotCacheTimestamp) < copilotModelsCacheDuration {
-		models := make([]ModelIdentify, len(f.copilotModelsCache))
-		copy(models, f.copilotModelsCache)
-		f.copilotCacheMu.RUnlock()
-		return models
-	}
-	f.copilotCacheMu.RUnlock()
-
-	f.copilotCacheMu.Lock()
-	defer f.copilotCacheMu.Unlock()
-
-	// Double-check after acquiring write lock
-	if len(f.copilotModelsCache) > 0 && time.Since(f.copilotCacheTimestamp) < copilotModelsCacheDuration {
-		models := make([]ModelIdentify, len(f.copilotModelsCache))
-		copy(models, f.copilotModelsCache)
-		return models
-	}
-
-	models, err := f.fetchCopilotModelsFromSource(ctx)
-	if err != nil {
-		// If fetch failed but cache exists, return defensive copy
-		if len(f.copilotModelsCache) > 0 {
-			cached := make([]ModelIdentify, len(f.copilotModelsCache))
-			copy(cached, f.copilotModelsCache)
-
-			return cached
-		}
-
-		return nil
-	}
-	if len(models) > 0 {
-		// Store a copy in cache to avoid shared backing array
-		f.copilotModelsCache = make([]ModelIdentify, len(models))
-		copy(f.copilotModelsCache, models)
-		f.copilotCacheTimestamp = time.Now()
-
-		// Return a copy to callers
-		copied := make([]ModelIdentify, len(models))
-		copy(copied, models)
-		return copied
-	}
-
-	return nil
+	return f.copilotFetcher.fetch(ctx, f.httpClient)
 }
 
-// fetchCopilotModelsFromSource fetches models from PublicProviderConf.
-func (f *ModelFetcher) fetchCopilotModelsFromSource(ctx context.Context) ([]ModelIdentify, error) {
-	req := &httpclient.Request{
-		Method: http.MethodGet,
-		URL:    copilot.ProviderConfURL,
-		Headers: http.Header{
-			"Accept": []string{"application/json"},
-		},
-	}
-
-	resp, err := f.httpClient.Do(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch copilot models: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch copilot models: non-OK status %d: %s", resp.StatusCode, string(resp.Body))
-	}
-
-	// Verify integrity if SHA256 is configured
-	if copilot.ProviderConfSHA256 != "" {
-		hash := sha256.Sum256(resp.Body)
-
-		hashHex := hex.EncodeToString(hash[:])
-		if hashHex != copilot.ProviderConfSHA256 {
-			return nil, fmt.Errorf("provider conf integrity check failed: expected SHA256 %s, got %s", copilot.ProviderConfSHA256, hashHex)
-		}
-	}
-
-	var conf copilotProviderConfResponse
-	if err := json.Unmarshal(resp.Body, &conf); err != nil {
-		return nil, fmt.Errorf("failed to parse provider conf: %w", err)
-	}
-
-	if conf.ID == "" {
-		return nil, fmt.Errorf("provider ID not found in response")
-	}
-
-	// Build models slice, filtering out empty IDs
-	models := make([]ModelIdentify, 0, len(conf.Models))
-	for _, m := range conf.Models {
-		if m.ID != "" {
-			models = append(models, ModelIdentify{ID: m.ID})
-		}
-	}
-
-	return models, nil
+// fetchGeminiVertexModels fetches Gemini Vertex models from PublicProviderConf with caching.
+func (f *ModelFetcher) fetchGeminiVertexModels(ctx context.Context) []ModelIdentify {
+	return f.geminiVertexFetcher.fetch(ctx, f.httpClient)
 }
 
 func (f *ModelFetcher) tryReturnDefaultModels(ctx context.Context, channelType string) (*FetchModelsResult, bool) {
