@@ -71,11 +71,10 @@ type Channel struct {
 type ChannelServiceParams struct {
 	fx.In
 
-	CacheConfig           xcache.Config
-	Executor              executors.ScheduledExecutor
-	Ent                   *ent.Client
-	SystemService         *SystemService
-	CopilotTokenExchanger *CopilotTokenExchanger
+	CacheConfig   xcache.Config
+	Executor      executors.ScheduledExecutor
+	Ent           *ent.Client
+	SystemService *SystemService
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
@@ -83,13 +82,12 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		Executors:             params.Executor,
-		SystemService:         params.SystemService,
-		channelPerfMetrics:    make(map[int]*channelMetrics),
-		channelErrorCounts:    make(map[int]map[int]int),
-		apiKeyErrorCounts:     make(map[int]map[string]map[int]int),
-		perfCh:                make(chan *PerformanceRecord, 1024),
-		copilotTokenExchanger: params.CopilotTokenExchanger,
+		Executors:          params.Executor,
+		SystemService:      params.SystemService,
+		channelPerfMetrics: make(map[int]*channelMetrics),
+		channelErrorCounts: make(map[int]map[int]int),
+		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
+		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
 	svc.initChannelPerformances(context.Background())
 
@@ -168,9 +166,6 @@ type ChannelService struct {
 
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
-
-	// copilotTokenExchanger handles OAuth access token to Copilot token exchange
-	copilotTokenExchanger *CopilotTokenExchanger
 }
 
 func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {

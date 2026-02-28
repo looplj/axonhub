@@ -608,10 +608,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 
 		// Create CopilotTokenProvider with the token exchanger
 		p, err := copilot.NewTokenProvider(copilot.TokenProviderParams{
-			Credentials:    creds,
-			HTTPClient:     httpClient,
-			TokenExchanger: svc.copilotTokenExchanger,
-			OnRefreshed:    svc.onTokenRefreshed(c),
+			Credentials: creds,
+			HTTPClient:  httpClient,
+			OnRefreshed: svc.onTokenRefreshed(c),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create CopilotTokenProvider: %w", err)
