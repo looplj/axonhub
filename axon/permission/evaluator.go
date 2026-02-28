@@ -53,11 +53,6 @@ func (e *Evaluator) Evaluate(ctx context.Context, req ToolRequest) error {
 		req.StartedAt = time.Now()
 	}
 
-	caps := e.extractor.Capabilities(req.ToolName)
-	if len(caps) == 0 {
-		caps = []string{"unknown"}
-	}
-
 	extracted, err := e.extractor.Extract(req.Workspace, req.ToolName, req.ToolInput)
 	if err != nil {
 		e.logger.Warn("permission: resource extraction failed, forcing approval",
@@ -65,11 +60,10 @@ func (e *Evaluator) Evaluate(ctx context.Context, req ToolRequest) error {
 			"err", err,
 		)
 		decision := ToolDecision{
-			Effect:       EffectRequireApproval,
-			RuleID:       "extract.failed",
-			Reason:       fmt.Sprintf("cannot extract resources safely: %v; approval required", err),
-			RiskLevel:    RiskHigh,
-			Capabilities: caps,
+			Effect:    EffectRequireApproval,
+			RuleID:    "extract.failed",
+			Reason:    fmt.Sprintf("cannot extract resources safely: %v; approval required", err),
+			RiskLevel: RiskHigh,
 		}
 		decision.Display = DecisionDisplay{
 			Summary: fmt.Sprintf("%s (%s)", req.ToolName, decision.Effect),
@@ -79,40 +73,36 @@ func (e *Evaluator) Evaluate(ctx context.Context, req ToolRequest) error {
 				"risk: " + string(decision.RiskLevel),
 			},
 		}
-		return e.handleDecision(ctx, req, decision, caps)
+		return e.handleDecision(ctx, req, decision)
 	}
 
 	resources := fromExtractorResources(extracted)
 
-	if dec, ok := HardDeny(caps, resources, req.Workspace); ok {
+	if dec, ok := HardDeny(req.ToolName, resources, req.Workspace); ok {
 		e.auditDecision(req, dec)
 		return fmt.Errorf("%w: %s: %s", ErrToolCallBlocked, dec.RuleID, dec.Reason)
 	}
 
-	for _, c := range caps {
-		if e.grants.Match(toGrantRequest(req), c, toGrantResources(resources)) {
-			dec := ToolDecision{
-				Effect:       EffectAllow,
-				RuleID:       "grant.match",
-				Reason:       "allowed by previously granted approval",
-				RiskLevel:    RiskLow,
-				Capabilities: caps,
-				Resources:    resources,
-			}
-			e.auditDecision(req, dec)
-			return nil
+	if e.grants.Match(toGrantRequest(req), toGrantResources(resources)) {
+		dec := ToolDecision{
+			Effect:    EffectAllow,
+			RuleID:    "grant.match",
+			Reason:    "allowed by previously granted approval",
+			RiskLevel: RiskLow,
+			Resources: resources,
 		}
+		e.auditDecision(req, dec)
+		return nil
 	}
 
 	pres := toPolicyResources(resources)
-	pd := e.policy.Evaluate(caps, pres)
+	pd := e.policy.Evaluate(req.ToolName, pres)
 	decision := ToolDecision{
-		Effect:       Effect(pd.Effect),
-		RuleID:       pd.RuleID,
-		Reason:       pd.Reason,
-		RiskLevel:    RiskLevel(pd.RiskLevel),
-		Capabilities: caps,
-		Resources:    resources,
+		Effect:    Effect(pd.Effect),
+		RuleID:    pd.RuleID,
+		Reason:    pd.Reason,
+		RiskLevel: RiskLevel(pd.RiskLevel),
+		Resources: resources,
 	}
 
 	decision.Display = DecisionDisplay{
@@ -125,10 +115,10 @@ func (e *Evaluator) Evaluate(ctx context.Context, req ToolRequest) error {
 		},
 	}
 
-	return e.handleDecision(ctx, req, decision, caps)
+	return e.handleDecision(ctx, req, decision)
 }
 
-func (e *Evaluator) handleDecision(ctx context.Context, req ToolRequest, decision ToolDecision, caps []string) error {
+func (e *Evaluator) handleDecision(ctx context.Context, req ToolRequest, decision ToolDecision) error {
 	switch decision.Effect {
 	case EffectAllow:
 		e.auditDecision(req, decision)
@@ -138,16 +128,15 @@ func (e *Evaluator) handleDecision(ctx context.Context, req ToolRequest, decisio
 		return fmt.Errorf("%w: %s: %s", ErrToolCallDenied, decision.RuleID, decision.Reason)
 	case EffectRequireApproval:
 		resp, err := e.approver.Request(ctx, approval.Request{
-			ID:           uuid.NewString(),
-			ThreadID:     req.ThreadID,
-			Workspace:    req.Workspace,
-			ToolCallID:   req.ToolCallID,
-			ToolName:     req.ToolName,
-			Capabilities: caps,
-			Summary:      decision.Display.Summary,
-			Reason:       decision.Reason,
-			RiskLevel:    string(decision.RiskLevel),
-			Resources:    json.RawMessage(mustJSON(decision.Resources)),
+			ID:         uuid.NewString(),
+			ThreadID:   req.ThreadID,
+			Workspace:  req.Workspace,
+			ToolCallID: req.ToolCallID,
+			ToolName:   req.ToolName,
+			Summary:    decision.Display.Summary,
+			Reason:     decision.Reason,
+			RiskLevel:  string(decision.RiskLevel),
+			Resources:  json.RawMessage(mustJSON(decision.Resources)),
 		})
 		if err != nil {
 			e.auditDecision(req, decision)
@@ -155,9 +144,7 @@ func (e *Evaluator) handleDecision(ctx context.Context, req ToolRequest, decisio
 		}
 
 		if resp.Granted {
-			for _, c := range caps {
-				e.grants.Add(toGrantRequest(req), resp.Scope, c, toGrantResources(decision.Resources))
-			}
+			e.grants.Add(toGrantRequest(req), resp.Scope, toGrantResources(decision.Resources))
 			if resp.Scope == grant.ScopeWorkspace {
 				_ = e.grants.SaveWorkspace(req.Workspace)
 			}

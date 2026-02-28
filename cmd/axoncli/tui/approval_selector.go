@@ -43,6 +43,7 @@ func newApprovalSelector() *approvalSelector {
 			{label: "Approve (once)", scope: grant.ScopeOnce, deny: false},
 			{label: "Approve (thread)", scope: grant.ScopeThread, deny: false},
 			{label: "Approve (workspace)", scope: grant.ScopeWorkspace, deny: false},
+			{label: "Approve (global)", scope: grant.ScopeGlobal, deny: false},
 			{label: "Deny", scope: "", deny: true},
 		},
 		selectedIdx: 0,

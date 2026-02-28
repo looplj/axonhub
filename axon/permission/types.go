@@ -71,6 +71,5 @@ type ToolDecision struct {
 	RiskLevel RiskLevel       `json:"risk_level,omitempty"`
 	Display   DecisionDisplay `json:"display,omitempty"`
 
-	Capabilities []string   `json:"capabilities,omitempty"`
-	Resources    []Resource `json:"resources,omitempty"`
+	Resources []Resource `json:"resources,omitempty"`
 }

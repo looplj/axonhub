@@ -8,18 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-)
 
-type StoreMode int
-
-const (
-	ModeGlobal StoreMode = iota
-	ModeLocal
+	"github.com/spf13/afero"
 )
 
 type FileStore struct {
 	BaseDir string
-	Mode    StoreMode
+	fsys    afero.Fs
 }
 
 type fileFormat struct {
@@ -28,20 +23,36 @@ type fileFormat struct {
 	Keys      []string  `json:"keys"`
 }
 
-func NewGlobalFileStore(baseDir string) FileStore {
-	return FileStore{BaseDir: baseDir, Mode: ModeGlobal}
+func NewFileStore(baseDir string) FileStore {
+	return FileStore{BaseDir: baseDir, fsys: afero.NewOsFs()}
 }
 
-func NewLocalFileStore(workspaceDir string) FileStore {
-	return FileStore{BaseDir: workspaceDir, Mode: ModeLocal}
+func NewFileStoreWithFS(baseDir string, fsys afero.Fs) FileStore {
+	return FileStore{BaseDir: baseDir, fsys: fsys}
 }
 
-func (s FileStore) Load(workspace string) (map[string]struct{}, error) {
-	path, err := s.pathForWorkspace(workspace)
-	if err != nil {
-		return nil, err
-	}
-	data, err := os.ReadFile(path)
+func (s FileStore) LoadWorkspace(workspace string) (map[string]struct{}, error) {
+	path := s.workspacePath(workspace)
+	return s.loadFile(path)
+}
+
+func (s FileStore) SaveWorkspace(workspace string, keys map[string]struct{}) error {
+	path := s.workspacePath(workspace)
+	return s.saveFile(path, keys)
+}
+
+func (s FileStore) LoadGlobal() (map[string]struct{}, error) {
+	path := s.globalPath()
+	return s.loadFile(path)
+}
+
+func (s FileStore) SaveGlobal(keys map[string]struct{}) error {
+	path := s.globalPath()
+	return s.saveFile(path, keys)
+}
+
+func (s FileStore) loadFile(path string) (map[string]struct{}, error) {
+	data, err := afero.ReadFile(s.fsys, path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return make(map[string]struct{}), nil
@@ -59,12 +70,8 @@ func (s FileStore) Load(workspace string) (map[string]struct{}, error) {
 	return out, nil
 }
 
-func (s FileStore) Save(workspace string, keys map[string]struct{}) error {
-	path, err := s.pathForWorkspace(workspace)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+func (s FileStore) saveFile(path string, keys map[string]struct{}) error {
+	if err := s.fsys.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("grant: mkdir: %w", err)
 	}
 	var list []string
@@ -81,36 +88,26 @@ func (s FileStore) Save(workspace string, keys map[string]struct{}) error {
 		return fmt.Errorf("grant: marshal: %w", err)
 	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+	if err := afero.WriteFile(s.fsys, tmp, data, 0o600); err != nil {
 		return fmt.Errorf("grant: write: %w", err)
 	}
-	if err := os.Rename(tmp, path); err != nil {
+	if err := s.fsys.Rename(tmp, path); err != nil {
 		return fmt.Errorf("grant: rename: %w", err)
 	}
 	return nil
 }
 
-func (s FileStore) pathForWorkspace(workspace string) (string, error) {
-	if s.BaseDir == "" {
-		return "", fmt.Errorf("grant: BaseDir is empty")
-	}
-	switch s.Mode {
-	case ModeLocal:
-		return filepath.Join(s.BaseDir, ".axonclaw", "permission", "grants.json"), nil
-	case ModeGlobal:
-		ws := filepath.Clean(workspace)
-		hash := workspaceHash(ws)
-		return filepath.Join(s.BaseDir, "workspaces", hash+".json"), nil
-	default:
-		return "", fmt.Errorf("grant: unknown store mode %d", s.Mode)
-	}
+func (s FileStore) workspacePath(workspace string) string {
+	ws := filepath.Clean(workspace)
+	hash := workspaceHash(ws)
+	return filepath.Join(s.BaseDir, "workspaces", hash+".json")
+}
+
+func (s FileStore) globalPath() string {
+	return filepath.Join(s.BaseDir, "global.json")
 }
 
 func workspaceHash(ws string) string {
-	// Keep deterministic short filename.
-	// Reuse the same hashing logic as BuildKey without importing permission.
-	// (This file store is independent of the key algorithm.)
-	// sha256 hex shortened to 16 bytes (32 chars) to keep paths tidy.
 	sum := sha256.Sum256([]byte(ws))
 	return hex.EncodeToString(sum[:])[:32]
 }

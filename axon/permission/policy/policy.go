@@ -39,19 +39,19 @@ type Document struct {
 	// Defaults controls the engine's fallback decision when no rule matches.
 	Defaults Defaults `yaml:"defaults,omitempty"`
 
-	// Allow is a low-precedence capability allowlist. It is evaluated after all
+	// Allow is a low-precedence tool allowlist. It is evaluated after all
 	// rules. Prefer rules when you need resource constraints.
 	Allow []AllowEntry `yaml:"allow,omitempty"`
 
-	// Rules are evaluated top-to-bottom. Rules can match on capability and
+	// Rules are evaluated top-to-bottom. Rules can match on tool name and
 	// resource constraints (paths/domains/schemes/command regexes).
 	Rules []Rule `yaml:"rules,omitempty"`
 }
 
-// AllowEntry allows a capability without requiring approval. This is a
+// AllowEntry allows a tool without requiring approval. This is a
 // low-precedence fallback and does not support resource constraints.
 type AllowEntry struct {
-	Capability string `yaml:"capability"`
+	Tool string `yaml:"tool"`
 }
 
 // Rule is a single policy rule.
@@ -70,8 +70,8 @@ type Rule struct {
 
 // When describes rule match conditions.
 type When struct {
-	// CapabilityIn matches if any of the tool capabilities is in this list.
-	CapabilityIn []string `yaml:"capability_in,omitempty"`
+	// ToolIn matches if the tool name is in this list.
+	ToolIn []string `yaml:"tool_in,omitempty"`
 
 	// Resource matches against extracted resources (paths, domains, commands, URLs).
 	Resource ResourceWhen `yaml:"resource,omitempty"`

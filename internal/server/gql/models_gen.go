@@ -425,17 +425,19 @@ const (
 	ApprovalScopeOnce      ApprovalScope = "once"
 	ApprovalScopeThread    ApprovalScope = "thread"
 	ApprovalScopeWorkspace ApprovalScope = "workspace"
+	ApprovalScopeGlobal    ApprovalScope = "global"
 )
 
 var AllApprovalScope = []ApprovalScope{
 	ApprovalScopeOnce,
 	ApprovalScopeThread,
 	ApprovalScopeWorkspace,
+	ApprovalScopeGlobal,
 }
 
 func (e ApprovalScope) IsValid() bool {
 	switch e {
-	case ApprovalScopeOnce, ApprovalScopeThread, ApprovalScopeWorkspace:
+	case ApprovalScopeOnce, ApprovalScopeThread, ApprovalScopeWorkspace, ApprovalScopeGlobal:
 		return true
 	}
 	return false

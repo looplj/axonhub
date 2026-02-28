@@ -18,27 +18,24 @@ var hardDenyCommandPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`/dev/tcp/`),
 }
 
-func HardDeny(capabilities []string, resources []Resource, workspace string) (ToolDecision, bool) {
-	for _, c := range capabilities {
-		if c == "proc.exec" {
-			for _, r := range resources {
-				if r.Type != ResourceCommand {
-					continue
-				}
-				for _, p := range hardDenyCommandPatterns {
-					if p.MatchString(r.Command) {
-						return ToolDecision{
-							Effect:       EffectDeny,
-							RuleID:       "hard_deny.proc.exec",
-							Reason:       "command denied by hard deny filter",
-							RiskLevel:    RiskCritical,
-							Capabilities: capabilities,
-							Resources:    resources,
-							Display: DecisionDisplay{
-								Summary: "Hard deny: dangerous command pattern",
-							},
-						}, true
-					}
+func HardDeny(toolName string, resources []Resource, workspace string) (ToolDecision, bool) {
+	if toolName == "Bash" {
+		for _, r := range resources {
+			if r.Type != ResourceCommand {
+				continue
+			}
+			for _, p := range hardDenyCommandPatterns {
+				if p.MatchString(r.Command) {
+					return ToolDecision{
+						Effect:    EffectDeny,
+						RuleID:    "hard_deny.bash",
+						Reason:    "command denied by hard deny filter",
+						RiskLevel: RiskCritical,
+						Resources: resources,
+						Display: DecisionDisplay{
+							Summary: "Hard deny: dangerous command pattern",
+						},
+					}, true
 				}
 			}
 		}
@@ -51,12 +48,11 @@ func HardDeny(capabilities []string, resources []Resource, workspace string) (To
 		}
 		if isSensitivePath(r.Path) {
 			return ToolDecision{
-				Effect:       EffectDeny,
-				RuleID:       "hard_deny.sensitive_path",
-				Reason:       "access to sensitive path denied",
-				RiskLevel:    RiskCritical,
-				Capabilities: capabilities,
-				Resources:    resources,
+				Effect:    EffectDeny,
+				RuleID:    "hard_deny.sensitive_path",
+				Reason:    "access to sensitive path denied",
+				RiskLevel: RiskCritical,
+				Resources: resources,
 				Display: DecisionDisplay{
 					Summary: "Hard deny: sensitive path",
 				},
@@ -71,12 +67,11 @@ func HardDeny(capabilities []string, resources []Resource, workspace string) (To
 		}
 		if r.Scheme != "" && r.Scheme != "http" && r.Scheme != "https" {
 			return ToolDecision{
-				Effect:       EffectDeny,
-				RuleID:       "hard_deny.net.scheme",
-				Reason:       "non-http(s) scheme denied",
-				RiskLevel:    RiskHigh,
-				Capabilities: capabilities,
-				Resources:    resources,
+				Effect:    EffectDeny,
+				RuleID:    "hard_deny.net.scheme",
+				Reason:    "non-http(s) scheme denied",
+				RiskLevel: RiskHigh,
+				Resources: resources,
 				Display: DecisionDisplay{
 					Summary: "Hard deny: non-http(s) URL scheme",
 				},

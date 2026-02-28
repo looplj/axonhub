@@ -68,6 +68,7 @@
   "agents.chat.approveOnce": "Approve Once",
   "agents.chat.approveThread": "Approve Thread",
   "agents.chat.approveWorkspace": "Approve Workspace",
+  "agents.chat.approveGlobal": "Approve Global",
   "agents.chat.deny": "Deny",
   "agents.chat.approvalResolved": "Resolved",
   "agents.chat.risk": "Risk",

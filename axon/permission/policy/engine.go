@@ -78,12 +78,12 @@ func New(doc Document) (*Engine, error) {
 // - require_approval_by_default (default)
 // - deny_by_default
 // - allow_by_default
-func (e *Engine) Evaluate(capabilities []string, resources []Resource) Decision {
+func (e *Engine) Evaluate(toolName string, resources []Resource) Decision {
 	var allow *Decision
 	var require *Decision
 
 	for _, cr := range e.compiledRules {
-		if !matchCapabilities(cr.rule.When.CapabilityIn, capabilities) {
+		if !matchTools(cr.rule.When.ToolIn, toolName) {
 			continue
 		}
 		if !matchResources(cr, resources) {
@@ -125,12 +125,10 @@ func (e *Engine) Evaluate(capabilities []string, resources []Resource) Decision 
 		}
 	}
 
-	// Capability allowlist is low precedence: rules override it.
+	// Tool allowlist is low precedence: rules override it.
 	for _, a := range e.doc.Allow {
-		for _, c := range capabilities {
-			if c == a.Capability {
-				return Decision{Effect: EffectAllow, RuleID: "allow.capability", Reason: "allowed by capability allowlist", RiskLevel: "low"}
-			}
+		if toolName == a.Tool {
+			return Decision{Effect: EffectAllow, RuleID: "allow.tool", Reason: "allowed by tool allowlist", RiskLevel: "low"}
 		}
 	}
 
@@ -151,15 +149,13 @@ func (e *Engine) Evaluate(capabilities []string, resources []Resource) Decision 
 	}
 }
 
-func matchCapabilities(ruleCaps []string, caps []string) bool {
-	if len(ruleCaps) == 0 {
+func matchTools(ruleTools []string, toolName string) bool {
+	if len(ruleTools) == 0 {
 		return true
 	}
-	for _, rc := range ruleCaps {
-		for _, c := range caps {
-			if c == rc {
-				return true
-			}
+	for _, t := range ruleTools {
+		if t == toolName {
+			return true
 		}
 	}
 	return false

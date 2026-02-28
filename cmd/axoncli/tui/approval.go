@@ -35,12 +35,9 @@ func (m Model) renderApprovalModal() string {
 	b.WriteString(approvalTitleStyle.Render(title))
 	b.WriteString("\n")
 
-	b.WriteString(fmt.Sprintf("Tool: %s\n", req.ToolName))
-	if len(req.Capabilities) > 0 {
-		b.WriteString(fmt.Sprintf("Capability: %s\n", strings.Join(req.Capabilities, ", ")))
-	}
+	fmt.Fprintf(&b, "Tool: %s\n", req.ToolName)
 	if req.Reason != "" {
-		b.WriteString(fmt.Sprintf("Reason: %s\n", req.Reason))
+		fmt.Fprintf(&b, "Reason: %s\n", req.Reason)
 	}
 
 	if len(req.Resources) > 0 {
@@ -100,11 +97,4 @@ func formatApprovalResources(raw json.RawMessage) string {
 		}
 	}
 	return approvalDimStyle.Render(strings.Join(lines, "\n"))
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

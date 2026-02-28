@@ -14,10 +14,9 @@ type Request struct {
 	ToolCallID string
 	ToolName   string
 
-	Capabilities []string
-	Summary      string
-	Reason       string
-	RiskLevel    string
+	Summary   string
+	Reason    string
+	RiskLevel string
 
 	// JSON-safe, redacted resources for UI display.
 	Resources json.RawMessage

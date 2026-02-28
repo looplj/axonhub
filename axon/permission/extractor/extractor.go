@@ -36,15 +36,10 @@ type Resource struct {
 }
 
 type Extractor interface {
-	Capabilities(toolName string) []string
 	Extract(workspace, toolName string, input json.RawMessage) ([]Resource, error)
 }
 
 type DefaultExtractor struct{}
-
-func (e DefaultExtractor) Capabilities(toolName string) []string {
-	return CapabilityForTool(toolName)
-}
 
 func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMessage) ([]Resource, error) {
 	switch toolName {
@@ -148,38 +143,6 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 		return out, nil
 	default:
 		return nil, nil
-	}
-}
-
-// CapabilityForTool maps built-in tool names to stable capabilities.
-func CapabilityForTool(toolName string) []string {
-	switch toolName {
-	case "Read", "Glob", "Grep":
-		return []string{"fs.read"}
-	case "Write":
-		return []string{"fs.write"}
-	case "Edit":
-		return []string{"fs.edit"}
-	case "Bash":
-		return []string{"proc.exec"}
-	case "WebFetch":
-		return []string{"net.fetch"}
-	case "WebSearch":
-		return []string{"net.search"}
-	case "Skill":
-		return []string{"skill.run"}
-	case "ReplyMessage":
-		return []string{"message.reply"}
-	default:
-		if strings.HasPrefix(toolName, "Memory") {
-			switch toolName {
-			case "MemoryAdd", "MemoryDelete":
-				return []string{"memory.write"}
-			default:
-				return []string{"memory.read"}
-			}
-		}
-		return nil
 	}
 }
 

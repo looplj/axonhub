@@ -70,12 +70,11 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 			}
 			return req.ToolCallID
 		}(),
-		"tool_name":    req.ToolName,
-		"capabilities": req.Capabilities,
-		"risk_level":   req.RiskLevel,
-		"summary":      req.Summary,
-		"reason":       req.Reason,
-		"expires_at":   exp.Format(time.RFC3339),
+		"tool_name":  req.ToolName,
+		"risk_level": req.RiskLevel,
+		"summary":    req.Summary,
+		"reason":     req.Reason,
+		"expires_at": exp.Format(time.RFC3339),
 		"resources": func() any {
 			if len(req.Resources) == 0 {
 				return []any{}
@@ -154,6 +153,8 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 				respScope = grant.ScopeThread
 			case "workspace":
 				respScope = grant.ScopeWorkspace
+			case "global":
+				respScope = grant.ScopeGlobal
 			default:
 				respScope = grant.ScopeOnce
 			}

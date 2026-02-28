@@ -143,7 +143,7 @@ type ResolveApprovalCommandInput struct {
 	AgentID   int
 	RequestID string
 	Granted   bool
-	Scope     string // once|thread|workspace
+	Scope     string // once|thread|workspace|global
 	Reason    *string
 }
 
@@ -605,7 +605,7 @@ func (s *AgentBootstrapService) ResolveApprovalAsUser(ctx context.Context, userI
 	}
 
 	switch scope {
-	case "once", "thread", "workspace":
+	case "once", "thread", "workspace", "global":
 	default:
 		return false, fmt.Errorf("invalid approval scope: %q", scope)
 	}

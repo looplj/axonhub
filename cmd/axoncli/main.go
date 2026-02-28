@@ -183,7 +183,10 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 
 	approver := approval.NewInProcessService()
 
-	grants := grant.NewMemoryStore(grant.NewGlobalFileStore(filepath.Join(configDir, "permission")))
+	grants := grant.NewMemoryStore(grant.NewFileStore(filepath.Join(configDir, "permission")))
+	if err := grants.LoadGlobal(); err != nil {
+		return fmt.Errorf("failed to load global grants: %w", err)
+	}
 	if err := grants.LoadWorkspace(workspaceDir); err != nil {
 		return fmt.Errorf("failed to load workspace grants: %w", err)
 	}

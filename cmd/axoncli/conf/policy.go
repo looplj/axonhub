@@ -14,12 +14,15 @@ const PolicyFileName = "policy.yml"
 
 var DefaultPolicy = policy.Document{
 	Version: 1,
+	Defaults: policy.Defaults{
+		Mode: "require_approval_by_default",
+	},
 	Rules: []policy.Rule{
 		{
 			ID:     "allow_workspace_read",
 			Effect: policy.EffectAllow,
 			When: policy.When{
-				CapabilityIn: []string{"fs.read", "fs.write", "fs.edit"},
+				ToolIn: []string{"Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"},
 				Resource: policy.ResourceWhen{
 					OutsideWorkspace: lo.ToPtr(false),
 				},

@@ -68,6 +68,7 @@
   "agents.chat.approveOnce": "批准一次",
   "agents.chat.approveThread": "批准当前会话",
   "agents.chat.approveWorkspace": "批准工作空间",
+  "agents.chat.approveGlobal": "全局批准",
   "agents.chat.deny": "拒绝",
   "agents.chat.approvalResolved": "已处理",
   "agents.chat.risk": "风险",

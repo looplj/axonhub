@@ -19,7 +19,7 @@ export type AgentChatMessage = {
   createdAt: string | Date;
 };
 
-export type ApprovalScope = 'once' | 'thread' | 'workspace';
+export type ApprovalScope = 'once' | 'thread' | 'workspace' | 'global';
 
 const SEND_AGENT_MESSAGE_MUTATION = `
   mutation SendAgentMessage($input: SendAgentMessageInput!) {

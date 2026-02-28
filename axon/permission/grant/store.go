@@ -15,6 +15,7 @@ const (
 	ScopeOnce      Scope = "once"
 	ScopeThread    Scope = "thread"
 	ScopeWorkspace Scope = "workspace"
+	ScopeGlobal    Scope = "global"
 )
 
 type Request struct {
@@ -44,59 +45,58 @@ type Resource struct {
 }
 
 type Entry struct {
-	ID         string    `json:"id"`
-	CreatedAt  time.Time `json:"created_at"`
-	Scope      Scope     `json:"scope"`
-	ThreadID   string    `json:"thread_id,omitempty"`
-	Workspace  string    `json:"workspace,omitempty"`
-	ToolName   string    `json:"tool_name"`
-	Capability string    `json:"capability"`
-	Key        string    `json:"key"`
+	ID        string    `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	Scope     Scope     `json:"scope"`
+	ThreadID  string    `json:"thread_id,omitempty"`
+	Workspace string    `json:"workspace,omitempty"`
+	ToolName  string    `json:"tool_name"`
+	Key       string    `json:"key"`
 }
 
 // Store persists approval grants and answers whether a request should be allowed
 // without prompting the user.
 //
-// Matching is done against a derived key from (capability, tool name, resources),
+// Matching is done against a derived key from (tool name, resources),
 // with additional scoping rules:
 //   - once: keyed by ToolCallID only; it is consumed on first match. For the same
 //     ToolCallID, the store records it only once, and the next permission check
 //     for that ToolCallID will pass immediately (and the one-time grant is removed).
 //   - thread: keyed by (ThreadID, key)
 //   - workspace: keyed by (Workspace, key) and persisted via SaveWorkspace/LoadWorkspace
+//   - global: keyed by key only, applies to all workspaces, persisted via SaveGlobal/LoadGlobal
 type Store interface {
-	Add(req Request, scope Scope, capability string, resources []Resource)
-	Match(req Request, capability string, resources []Resource) bool
+	Add(req Request, scope Scope, resources []Resource)
+	Match(req Request, resources []Resource) bool
 	LoadWorkspace(workspace string) error
 	SaveWorkspace(workspace string) error
+	LoadGlobal() error
+	SaveGlobal() error
 }
 
 type MemoryStore struct {
 	mu sync.RWMutex
 
-	once      map[string]struct{}            // tool_call_id
-	thread    map[string]map[string]struct{} // threadID -> key
-	workspace map[string]map[string]struct{} // workspace -> key
+	once      map[string]struct{}
+	thread    map[string]map[string]struct{}
+	workspace map[string]map[string]struct{}
+	global    map[string]struct{}
 
-	workspaceFile WorkspaceFileStore
+	fileStore FileStore
 }
 
-type WorkspaceFileStore interface {
-	Load(workspace string) (map[string]struct{}, error)
-	Save(workspace string, keys map[string]struct{}) error
-}
-
-func NewMemoryStore(fileStore WorkspaceFileStore) *MemoryStore {
+func NewMemoryStore(fileStore FileStore) *MemoryStore {
 	return &MemoryStore{
-		once:          make(map[string]struct{}),
-		thread:        make(map[string]map[string]struct{}),
-		workspace:     make(map[string]map[string]struct{}),
-		workspaceFile: fileStore,
+		once:      make(map[string]struct{}),
+		thread:    make(map[string]map[string]struct{}),
+		workspace: make(map[string]map[string]struct{}),
+		global:    make(map[string]struct{}),
+		fileStore: fileStore,
 	}
 }
 
-func (s *MemoryStore) Match(req Request, capability string, resources []Resource) bool {
-	key := BuildKey(req, capability, resources)
+func (s *MemoryStore) Match(req Request, resources []Resource) bool {
+	key := BuildKey(req, resources)
 
 	s.mu.Lock()
 	if _, ok := s.once[req.ToolCallID]; ok {
@@ -107,10 +107,11 @@ func (s *MemoryStore) Match(req Request, capability string, resources []Resource
 	s.mu.Unlock()
 
 	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	if req.ThreadID != "" {
 		if m := s.thread[req.ThreadID]; m != nil {
 			if _, ok := m[key]; ok {
-				s.mu.RUnlock()
 				return true
 			}
 		}
@@ -118,17 +119,18 @@ func (s *MemoryStore) Match(req Request, capability string, resources []Resource
 	if req.Workspace != "" {
 		if m := s.workspace[req.Workspace]; m != nil {
 			if _, ok := m[key]; ok {
-				s.mu.RUnlock()
 				return true
 			}
 		}
 	}
-	s.mu.RUnlock()
+	if _, ok := s.global[key]; ok {
+		return true
+	}
 	return false
 }
 
-func (s *MemoryStore) Add(req Request, scope Scope, capability string, resources []Resource) {
-	key := BuildKey(req, capability, resources)
+func (s *MemoryStore) Add(req Request, scope Scope, resources []Resource) {
+	key := BuildKey(req, resources)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -152,6 +154,8 @@ func (s *MemoryStore) Add(req Request, scope Scope, capability string, resources
 			s.workspace[req.Workspace] = make(map[string]struct{})
 		}
 		s.workspace[req.Workspace][key] = struct{}{}
+	case ScopeGlobal:
+		s.global[key] = struct{}{}
 	}
 }
 
@@ -159,7 +163,7 @@ func (s *MemoryStore) LoadWorkspace(workspace string) error {
 	if strings.TrimSpace(workspace) == "" {
 		return nil
 	}
-	keys, err := s.workspaceFile.Load(workspace)
+	keys, err := s.fileStore.LoadWorkspace(workspace)
 	if err != nil {
 		return err
 	}
@@ -180,31 +184,41 @@ func (s *MemoryStore) SaveWorkspace(workspace string) error {
 	if keys == nil {
 		keys = make(map[string]struct{})
 	}
-	return s.workspaceFile.Save(ws, keys)
+	return s.fileStore.SaveWorkspace(ws, keys)
 }
 
-func BuildKey(req Request, capability string, resources []Resource) string {
+func (s *MemoryStore) LoadGlobal() error {
+	keys, err := s.fileStore.LoadGlobal()
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.global = keys
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *MemoryStore) SaveGlobal() error {
+	s.mu.RLock()
+	keys := s.global
+	s.mu.RUnlock()
+	if keys == nil {
+		keys = make(map[string]struct{})
+	}
+	return s.fileStore.SaveGlobal(keys)
+}
+
+func BuildKey(req Request, resources []Resource) string {
 	var parts []string
-	parts = append(parts, capability)
 	parts = append(parts, strings.ToLower(req.ToolName))
 
-	// Prefer stable resource keys; avoid embedding full content.
 	for _, r := range resources {
 		switch r.Type {
 		case ResourcePath:
-			if capability == "fs.read" {
-				// Reduce approval spam: read grants are directory-scoped by default.
-				if r.WorkspaceRel != "" {
-					parts = append(parts, "path_dir:"+filepath.Dir(filepath.Clean(r.WorkspaceRel)))
-				} else {
-					parts = append(parts, "path_dir_abs:"+filepath.Dir(filepath.Clean(r.Path)))
-				}
-				break
-			}
 			if r.WorkspaceRel != "" {
-				parts = append(parts, "path:"+filepath.Clean(r.WorkspaceRel))
+				parts = append(parts, "path_dir:"+filepath.Dir(filepath.Clean(r.WorkspaceRel)))
 			} else {
-				parts = append(parts, "path_abs:"+filepath.Clean(r.Path))
+				parts = append(parts, "path_dir_abs:"+filepath.Dir(filepath.Clean(r.Path)))
 			}
 		case ResourceDomain:
 			if r.Domain != "" {
@@ -226,7 +240,6 @@ func commandSummary(cmd string) string {
 	if cmd == "" {
 		return ""
 	}
-	// Keep only the first token as a stable summary key.
 	fields := strings.Fields(cmd)
 	if len(fields) == 0 {
 		return ""

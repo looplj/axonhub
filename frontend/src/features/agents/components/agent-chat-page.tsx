@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeft, Send, MessageSquare, ShieldCheck, CheckCircle, XCircle, Info, Check, X, Globe, MessagesSquare } from 'lucide-react';
+import { ArrowLeft, Send, MessageSquare, ShieldCheck, CheckCircle, XCircle, Info, Check, X, Globe, MessagesSquare, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -115,7 +115,7 @@ export function AgentChatPage() {
     return agent?.name || agentId;
   }, [agent?.name, agentId]);
 
-  const handleApprove = async (m: AgentChatMessage, granted: boolean, scope: 'once' | 'thread' | 'workspace' = 'once') => {
+  const handleApprove = async (m: AgentChatMessage, granted: boolean, scope: 'once' | 'thread' | 'workspace' | 'global' = 'once') => {
     const requestID = m.correlationID || (m.content?.id as string);
     if (!requestID) return;
 
@@ -303,6 +303,16 @@ export function AgentChatPage() {
                 >
                   <Globe className="h-3 w-3 mr-1" />
                   {t('agents.chat.approveWorkspace')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900"
+                  onClick={() => handleApprove(m, true, 'global')}
+                  disabled={resolveApproval.isPending}
+                >
+                  <Shield className="h-3 w-3 mr-1" />
+                  {t('agents.chat.approveGlobal')}
                 </Button>
                 <Button
                   size="sm"

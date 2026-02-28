@@ -92,7 +92,7 @@ input SendAgentMessageInput {
   text: String!
 }
 
-enum ApprovalScope { once thread workspace }
+enum ApprovalScope { once thread workspace global }
 
 input ResolveApprovalInput {
   agentID: ID!

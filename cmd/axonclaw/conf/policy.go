@@ -18,67 +18,61 @@ var DefaultPolicy = policy.Document{
 		Mode: "allow_by_default",
 	},
 	Rules: []policy.Rule{
-		// 禁止读取敏感配置文件
 		{
 			ID:     "deny_config_yml",
 			Effect: policy.EffectDeny,
 			Reason: "deny reading sensitive config file",
 			When: policy.When{
-				CapabilityIn: []string{"fs.read"},
+				ToolIn: []string{"Read", "Glob", "Grep"},
 				Resource: policy.ResourceWhen{
 					PathMatches: []string{"**/.axonclaw/config.yml"},
 				},
 			},
 		},
-		// 禁止使用 cat 读取任何文件
 		{
 			ID:     "deny_cat_command",
 			Effect: policy.EffectDeny,
 			Reason: "deny using cat command to read files",
 			When: policy.When{
-				CapabilityIn: []string{"proc.exec"},
+				ToolIn: []string{"Bash"},
 				Resource: policy.ResourceWhen{
 					CommandMatches: []string{"^cat\\s+.*"},
 				},
 			},
 		},
-		// 允许工作区文件访问
 		{
 			ID:     "allow_workspace_fs",
 			Effect: policy.EffectAllow,
 			Reason: "allow workspace file access",
 			When: policy.When{
-				CapabilityIn: []string{"fs.read", "fs.write", "fs.edit"},
+				ToolIn: []string{"Read", "Write", "Edit", "Glob", "Grep"},
 				Resource: policy.ResourceWhen{
 					OutsideWorkspace: lo.ToPtr(false),
 				},
 			},
 		},
-		// 允许执行所有命令
 		{
 			ID:     "allow_all_commands",
 			Effect: policy.EffectAllow,
 			Reason: "allow executing all commands",
 			When: policy.When{
-				CapabilityIn: []string{"proc.exec"},
+				ToolIn: []string{"Bash"},
 			},
 		},
-		// 允许 WebFetch
 		{
 			ID:     "allow_web_fetch",
 			Effect: policy.EffectAllow,
 			Reason: "allow web fetch",
 			When: policy.When{
-				CapabilityIn: []string{"net.fetch"},
+				ToolIn: []string{"WebFetch"},
 			},
 		},
-		// 允许 WebSearch
 		{
 			ID:     "allow_web_search",
 			Effect: policy.EffectAllow,
 			Reason: "allow web search",
 			When: policy.When{
-				CapabilityIn: []string{"net.search"},
+				ToolIn: []string{"WebSearch"},
 			},
 		},
 	},
