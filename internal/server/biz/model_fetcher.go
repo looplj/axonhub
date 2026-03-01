@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -22,6 +23,8 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 )
+
+const providerConfCacheDuration = 1 * time.Hour
 
 // ModelFetcher handles fetching models from provider APIs.
 type ModelFetcher struct {
@@ -63,6 +66,7 @@ func (f *providerConfFetcher) fetch(ctx context.Context, httpClient *httpclient.
 
 	models, err := f.fetchFromSource(ctx, httpClient)
 	if err != nil {
+		slog.Error("failed to fetch models from source", "providerURL", f.providerURL, "error", err)
 		// If fetch failed but cache exists, return defensive copy
 		if len(f.modelsCache) > 0 {
 			cached := make([]ModelIdentify, len(f.modelsCache))
@@ -138,11 +142,11 @@ func NewModelFetcher(httpClient *httpclient.HttpClient, channelService *ChannelS
 		httpClient:     httpClient,
 		channelService: channelService,
 		copilotFetcher: &providerConfFetcher{
-			cacheDuration: 1 * time.Hour,
+			cacheDuration: providerConfCacheDuration,
 			providerURL:   copilot.ProviderConfURL,
 		},
 		geminiVertexFetcher: &providerConfFetcher{
-			cacheDuration: 1 * time.Hour,
+			cacheDuration: providerConfCacheDuration,
 			providerURL:   vertex.ProviderConfURL,
 		},
 	}
@@ -152,8 +156,9 @@ func NewModelFetcher(httpClient *httpclient.HttpClient, channelService *ChannelS
 type FetchModelsInput struct {
 	ChannelType string
 	BaseURL     string
-	APIKey      *string
-	ChannelID   *int
+	//nolint:gosec // G117: Field name contains "APIKey" but this is input data, not a hardcoded secret
+	APIKey    *string
+	ChannelID *int
 }
 
 // FetchModelsResult represents the result of fetching models.
