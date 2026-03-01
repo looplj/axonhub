@@ -2,8 +2,6 @@ package biz
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -40,7 +38,6 @@ type providerConfFetcher struct {
 	cacheTimestamp time.Time
 	cacheDuration  time.Duration
 	providerURL    string
-	providerSHA256 string
 }
 
 // fetch fetches models with caching using double-check locking.
@@ -108,15 +105,6 @@ func (f *providerConfFetcher) fetchFromSource(ctx context.Context, httpClient *h
 		return nil, fmt.Errorf("failed to fetch models: non-OK status %d: %s", resp.StatusCode, string(resp.Body))
 	}
 
-	// Verify integrity if SHA256 is configured
-	if f.providerSHA256 != "" {
-		hash := sha256.Sum256(resp.Body)
-		hashHex := hex.EncodeToString(hash[:])
-		if hashHex != f.providerSHA256 {
-			return nil, fmt.Errorf("provider conf integrity check failed: expected SHA256 %s, got %s", f.providerSHA256, hashHex)
-		}
-	}
-
 	type providerConfResponse struct {
 		ID     string `json:"id"`
 		Models []struct {
@@ -150,14 +138,12 @@ func NewModelFetcher(httpClient *httpclient.HttpClient, channelService *ChannelS
 		httpClient:     httpClient,
 		channelService: channelService,
 		copilotFetcher: &providerConfFetcher{
-			cacheDuration:  1 * time.Hour,
-			providerURL:    copilot.ProviderConfURL,
-			providerSHA256: copilot.ProviderConfSHA256,
+			cacheDuration: 1 * time.Hour,
+			providerURL:   copilot.ProviderConfURL,
 		},
 		geminiVertexFetcher: &providerConfFetcher{
-			cacheDuration:  1 * time.Hour,
-			providerURL:    vertex.ProviderConfURL,
-			providerSHA256: vertex.ProviderConfSHA256,
+			cacheDuration: 1 * time.Hour,
+			providerURL:   vertex.ProviderConfURL,
 		},
 	}
 }

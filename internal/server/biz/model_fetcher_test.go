@@ -2,8 +2,6 @@ package biz
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -519,7 +517,6 @@ func TestProviderConfFetcher_Caching(t *testing.T) {
 		cacheTimestamp: time.Time{},
 		cacheDuration:  100 * time.Millisecond,
 		providerURL:    server.URL,
-		providerSHA256: "",
 	}
 
 	httpClient := httpclient.NewHttpClientWithClient(server.Client())
@@ -559,99 +556,6 @@ func TestProviderConfFetcher_Caching(t *testing.T) {
 	}
 }
 
-func TestProviderConfFetcher_SHA256Verification(t *testing.T) {
-	validBody := []byte(`{
-		"id": "test-provider",
-		"models": [
-			{"id": "model-1"}
-		]
-	}`)
-
-	// Calculate valid SHA256
-	validHash := sha256.Sum256(validBody)
-	validHashHex := hex.EncodeToString(validHash[:])
-
-	t.Run("valid hash succeeds", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write(validBody)
-		}))
-		defer server.Close()
-
-		fetcher := &providerConfFetcher{
-			modelsCache:    nil,
-			cacheMu:        sync.RWMutex{},
-			cacheTimestamp: time.Time{},
-			cacheDuration:  1 * time.Hour,
-			providerURL:    server.URL,
-			providerSHA256: validHashHex,
-		}
-
-		httpClient := httpclient.NewHttpClientWithClient(server.Client())
-		ctx := context.Background()
-
-		models := fetcher.fetch(ctx, httpClient)
-		if len(models) != 1 {
-			t.Fatalf("expected 1 model, got %d", len(models))
-		}
-		if models[0].ID != "model-1" {
-			t.Errorf("expected model-1, got %s", models[0].ID)
-		}
-	})
-
-	t.Run("invalid hash fails", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write(validBody)
-		}))
-		defer server.Close()
-
-		fetcher := &providerConfFetcher{
-			modelsCache:    nil,
-			cacheMu:        sync.RWMutex{},
-			cacheTimestamp: time.Time{},
-			cacheDuration:  1 * time.Hour,
-			providerURL:    server.URL,
-			providerSHA256: "invalid_hash_00000000000000000000000000000000000000000000000000000000",
-		}
-
-		httpClient := httpclient.NewHttpClientWithClient(server.Client())
-		ctx := context.Background()
-
-		models := fetcher.fetch(ctx, httpClient)
-		if len(models) != 0 {
-			t.Fatalf("expected 0 models on hash mismatch, got %d", len(models))
-		}
-	})
-
-	t.Run("empty hash skips verification", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write(validBody)
-		}))
-		defer server.Close()
-
-		fetcher := &providerConfFetcher{
-			modelsCache:    nil,
-			cacheMu:        sync.RWMutex{},
-			cacheTimestamp: time.Time{},
-			cacheDuration:  1 * time.Hour,
-			providerURL:    server.URL,
-			providerSHA256: "",
-		}
-
-		httpClient := httpclient.NewHttpClientWithClient(server.Client())
-		ctx := context.Background()
-
-		models := fetcher.fetch(ctx, httpClient)
-		if len(models) != 1 {
-			t.Fatalf("expected 1 model, got %d", len(models))
-		}
-		if models[0].ID != "model-1" {
-			t.Errorf("expected model-1, got %s", models[0].ID)
-		}
-	})
-}
 
 func TestFetchModelsGeminiVertex(t *testing.T) {
 	var callCount atomic.Int32
@@ -670,7 +574,6 @@ func TestFetchModelsGeminiVertex(t *testing.T) {
 
 	// Override the gemini vertex fetcher URL to use test server
 	fetcher.geminiVertexFetcher.providerURL = server.URL
-	fetcher.geminiVertexFetcher.providerSHA256 = ""
 
 	ctx := context.Background()
 	models := fetcher.getDefaultModelsByType(ctx, channel.TypeGeminiVertex)
@@ -719,7 +622,6 @@ func TestFetchCopilotModels(t *testing.T) {
 
 	// Override the copilot fetcher URL to use test server
 	fetcher.copilotFetcher.providerURL = server.URL
-	fetcher.copilotFetcher.providerSHA256 = ""
 
 	ctx := context.Background()
 	models := fetcher.fetchCopilotModels(ctx)
