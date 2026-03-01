@@ -9,6 +9,7 @@ import {
   IconBan,
   IconServer,
   IconContainer,
+  IconDeviceDesktop,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -68,10 +69,16 @@ const ActionCell = memo(({ row }: { row: Row<AgentRuntime> }) => {
   const { setOpen, setCurrentRow } = useAgentRuntimes();
   const { agentRuntimesPermissions } = usePermissions();
 
+  const isLocal = agentRuntime.type === 'local';
+
   const handleEdit = useCallback(() => {
     setCurrentRow(agentRuntime);
     setOpen('edit');
   }, [agentRuntime, setCurrentRow, setOpen]);
+
+  if (isLocal) {
+    return null;
+  }
 
   return (
     <div className="flex items-center justify-center gap-1">
@@ -111,6 +118,7 @@ const TypeCell = memo(({ row }: { row: Row<AgentRuntime> }) => {
   const typeConfig: Record<AgentRuntimeType, { icon: React.ElementType; label: string; color: string }> = {
     vm: { icon: IconServer, label: t('agentRuntimes.types.vm'), color: 'bg-blue-100 text-blue-700 border-blue-200' },
     docker: { icon: IconContainer, label: t('agentRuntimes.types.docker'), color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
+    local: { icon: IconDeviceDesktop, label: t('agentRuntimes.types.local'), color: 'bg-purple-100 text-purple-700 border-purple-200' },
   };
 
   const config = typeConfig[type];

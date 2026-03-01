@@ -8,6 +8,7 @@
   "agentRuntimes.columns.user": "用户",
   "agentRuntimes.types.vm": "虚拟机",
   "agentRuntimes.types.docker": "Docker",
+  "agentRuntimes.types.local": "本机",
   "agentRuntimes.status.active": "活跃",
   "agentRuntimes.status.inactive": "非活跃",
   "agentRuntimes.status.error": "错误",

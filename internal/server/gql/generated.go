@@ -290,6 +290,7 @@ type ComplexityRoot struct {
 	}
 
 	AgentInstanceDeployment struct {
+		AxonhubBaseURL      func(childComplexity int) int
 		Directory           func(childComplexity int) int
 		DockerContainerName func(childComplexity int) int
 	}
@@ -1061,7 +1062,7 @@ type ComplexityRoot struct {
 		DeleteModel                          func(childComplexity int, id objects.GUID) int
 		DeletePrompt                         func(childComplexity int, id objects.GUID) int
 		DeleteRole                           func(childComplexity int, id objects.GUID) int
-		DeployAxonclaw                       func(childComplexity int, input objects.DeployAxonclawInput) int
+		DeployAxonclaw                       func(childComplexity int, input biz.DeployAxonclawInput) int
 		DisableChannelAPIKey                 func(childComplexity int, channelID objects.GUID, key string) int
 		EnableAllChannelAPIKeys              func(childComplexity int, channelID objects.GUID) int
 		EnableChannelAPIKey                  func(childComplexity int, channelID objects.GUID, key string) int
@@ -2190,7 +2191,7 @@ type MutationResolver interface {
 	BulkDeleteAgentRuntimes(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkUpdateAgentRuntimeStatus(ctx context.Context, ids []*objects.GUID, status agentruntime.Status) (bool, error)
 	TestAgentRuntimeConnection(ctx context.Context, id objects.GUID) (*biz.TestConnectionResult, error)
-	DeployAxonclaw(ctx context.Context, input objects.DeployAxonclawInput) (*biz.DeployAxonclawResult, error)
+	DeployAxonclaw(ctx context.Context, input biz.DeployAxonclawInput) (*biz.DeployAxonclawResult, error)
 	StopAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error)
 	StartAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error)
 	RestartAxonclawInstance(ctx context.Context, instanceID objects.GUID) (*biz.ControlAxonclawInstanceResult, error)
@@ -3192,6 +3193,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AgentInstanceConnection.TotalCount(childComplexity), true
 
+	case "AgentInstanceDeployment.axonhubBaseUrl":
+		if e.complexity.AgentInstanceDeployment.AxonhubBaseURL == nil {
+			break
+		}
+
+		return e.complexity.AgentInstanceDeployment.AxonhubBaseURL(childComplexity), true
 	case "AgentInstanceDeployment.directory":
 		if e.complexity.AgentInstanceDeployment.Directory == nil {
 			break
@@ -6410,7 +6417,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeployAxonclaw(childComplexity, args["input"].(objects.DeployAxonclawInput)), true
+		return e.complexity.Mutation.DeployAxonclaw(childComplexity, args["input"].(biz.DeployAxonclawInput)), true
 	case "Mutation.disableChannelAPIKey":
 		if e.complexity.Mutation.DisableChannelAPIKey == nil {
 			break
@@ -12296,7 +12303,7 @@ func (ec *executionContext) field_Mutation_deleteRole_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_deployAxonclaw_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNDeployAxonclawInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDeployAxonclawInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNDeployAxonclawInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐDeployAxonclawInput)
 	if err != nil {
 		return nil, err
 	}
@@ -19162,6 +19169,8 @@ func (ec *executionContext) fieldContext_AgentInstance_deployment(_ context.Cont
 				return ec.fieldContext_AgentInstanceDeployment_directory(ctx, field)
 			case "dockerContainerName":
 				return ec.fieldContext_AgentInstanceDeployment_dockerContainerName(ctx, field)
+			case "axonhubBaseUrl":
+				return ec.fieldContext_AgentInstanceDeployment_axonhubBaseUrl(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AgentInstanceDeployment", field.Name)
 		},
@@ -19581,6 +19590,35 @@ func (ec *executionContext) _AgentInstanceDeployment_dockerContainerName(ctx con
 }
 
 func (ec *executionContext) fieldContext_AgentInstanceDeployment_dockerContainerName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentInstanceDeployment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentInstanceDeployment_axonhubBaseUrl(ctx context.Context, field graphql.CollectedField, obj *objects.AgentInstanceDeployment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentInstanceDeployment_axonhubBaseUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.AxonhubBaseURL, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentInstanceDeployment_axonhubBaseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentInstanceDeployment",
 		Field:      field,
@@ -38576,7 +38614,7 @@ func (ec *executionContext) _Mutation_deployAxonclaw(ctx context.Context, field 
 		ec.fieldContext_Mutation_deployAxonclaw,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().DeployAxonclaw(ctx, fc.Args["input"].(objects.DeployAxonclawInput))
+			return ec.resolvers.Mutation().DeployAxonclaw(ctx, fc.Args["input"].(biz.DeployAxonclawInput))
 		},
 		nil,
 		ec.marshalNDeployAxonclawResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐDeployAxonclawResult,
@@ -63100,7 +63138,7 @@ func (ec *executionContext) unmarshalInputAgentInstanceDeploymentInput(ctx conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"directory", "dockerContainerName"}
+	fieldsInOrder := [...]string{"directory", "dockerContainerName", "axonhubBaseUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63121,6 +63159,13 @@ func (ec *executionContext) unmarshalInputAgentInstanceDeploymentInput(ctx conte
 				return it, err
 			}
 			it.DockerContainerName = data
+		case "axonhubBaseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseUrl"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURL = data
 		}
 	}
 
@@ -75665,14 +75710,14 @@ func (ec *executionContext) unmarshalInputDataStorageWhereInput(ctx context.Cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputDeployAxonclawInput(ctx context.Context, obj any) (objects.DeployAxonclawInput, error) {
-	var it objects.DeployAxonclawInput
+func (ec *executionContext) unmarshalInputDeployAxonclawInput(ctx context.Context, obj any) (biz.DeployAxonclawInput, error) {
+	var it biz.DeployAxonclawInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "runtimeID", "name", "directory"}
+	fieldsInOrder := [...]string{"agentID", "runtimeID", "name", "directory", "axonhubBaseUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75681,18 +75726,26 @@ func (ec *executionContext) unmarshalInputDeployAxonclawInput(ctx context.Contex
 		switch k {
 		case "agentID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agentID"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			data, err := ec.unmarshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.AgentID = data
+			converted, err := objects.ConvertGUIDPtrToInt(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.AgentID = converted
 		case "runtimeID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("runtimeID"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			data, err := ec.unmarshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RuntimeID = data
+			converted, err := objects.ConvertGUIDPtrToInt(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.RuntimeID = converted
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -75707,6 +75760,13 @@ func (ec *executionContext) unmarshalInputDeployAxonclawInput(ctx context.Contex
 				return it, err
 			}
 			it.Directory = data
+		case "axonhubBaseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseUrl"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURL = data
 		}
 	}
 
@@ -95916,6 +95976,8 @@ func (ec *executionContext) _AgentInstanceDeployment(ctx context.Context, sel as
 			out.Values[i] = ec._AgentInstanceDeployment_directory(ctx, field, obj)
 		case "dockerContainerName":
 			out.Values[i] = ec._AgentInstanceDeployment_dockerContainerName(ctx, field, obj)
+		case "axonhubBaseUrl":
+			out.Values[i] = ec._AgentInstanceDeployment_axonhubBaseUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -117255,7 +117317,7 @@ func (ec *executionContext) marshalNDeleteDisabledAPIKeysPayload2ᚖgithubᚗcom
 	return ec._DeleteDisabledAPIKeysPayload(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNDeployAxonclawInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐDeployAxonclawInput(ctx context.Context, v any) (objects.DeployAxonclawInput, error) {
+func (ec *executionContext) unmarshalNDeployAxonclawInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐDeployAxonclawInput(ctx context.Context, v any) (biz.DeployAxonclawInput, error) {
 	res, err := ec.unmarshalInputDeployAxonclawInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }

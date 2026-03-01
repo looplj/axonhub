@@ -26,6 +26,11 @@ type Result struct {
 	Skills       []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition
 	BuiltinTools []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
 	AxonClawPath string
+	SkillsRoot   string
+	ConfigDir    string
+	Date         string
+	Timezone     string
+	OS           string
 }
 
 type SystemPromptData struct {
@@ -36,6 +41,9 @@ type SystemPromptData struct {
 	AgentID      string
 	AgentName    string
 	AxonClawPath string
+	ThreadID     string
+	SkillsRoot   string
+	ConfigDir    string
 }
 
 func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Result, error) {
@@ -57,12 +65,15 @@ func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Res
 	_, offset := now.Zone()
 	timezone := fmt.Sprintf("UTC%+d", offset/3600)
 
+	threadID := fmt.Sprintf("th-%s", uuid.New().String())
+
 	data.Date = now.Format("2006-01-02")
 	data.Timezone = timezone
 	data.OS = runtime.GOOS
 	data.AgentID = bootstrap.AgentID
 	data.AgentName = bootstrap.AgentName
 	data.AxonClawPath = getAxonClawPath()
+	data.ThreadID = threadID
 
 	systemPrompt, err := buildSystemPrompt(bootstrap.SystemPrompt, data)
 	if err != nil {
@@ -76,11 +87,16 @@ func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Res
 		AgentName:    bootstrap.AgentName,
 		Model:        model,
 		SystemPrompt: systemPrompt,
-		ThreadID:     fmt.Sprintf("th-%s", uuid.New().String()),
+		ThreadID:     threadID,
 		Tools:        bootstrap.Tools,
 		Skills:       bootstrap.Skills,
 		BuiltinTools: bootstrap.BuiltinTools,
 		AxonClawPath: data.AxonClawPath,
+		SkillsRoot:   data.SkillsRoot,
+		ConfigDir:    data.ConfigDir,
+		Date:         data.Date,
+		Timezone:     data.Timezone,
+		OS:           data.OS,
 	}, nil
 }
 

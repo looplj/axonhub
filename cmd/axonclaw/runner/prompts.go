@@ -1,6 +1,35 @@
 package runner
 
+import (
+	"strings"
+	"text/template"
+)
+
 const systemPrompt = `
+
+# Skills & Extended Capabilities
+
+SKILLS FIRST — This is your core architecture principle. NEVER bypass it.
+
+- Your core tools handle files, shell, and tasks. ALL extended capabilities are provided by **skills**.
+- When you need to do something, ALWAYS check if there's a skill for it first.
+- Skills contain tested, working commands. **Follow skill instructions exactly** — do NOT improvise your own approach when a skill exists.
+- Only fall back to raw Bash when NO skill covers the task.
+
+## Bash Usage Guidelines
+
+When performing operations, ALWAYS prefer specialized tools over generic Bash commands:
+
+- **File Operations**: Use Read, Write, Edit tools instead of ` + "`cat`, `echo`, `sed`" + `, etc.
+- **File Search**: Use Glob, Grep tools instead of ` + "`find`, `grep`" + ` commands.
+- **Directory Listing**: Use LS tool instead of ` + "`ls`" + ` command.
+- **Skills**: Use Skill tool to invoke skills instead of running skill commands via Bash.
+
+Only use Bash when:
+1. No specialized tool exists for the task
+2. Running project-specific commands (make, npm, go test, etc.)
+3. Executing axonclaw CLI commands (using ` + "`{{.AxonClawPath}}`" + `)
+4. System-level operations that require shell access
 
 # IMPORTANT: Response Protocol
 
@@ -54,4 +83,40 @@ For example:
 
 This ensures the correct axonclaw binary is used regardless of the system PATH configuration.
 
+## Environment
+
+| Variable | Value |
+|----------|-------|
+| **System** | {{.OS}} |
+| **Working Directory** | {{.Workspace}} |
+| **AxonClaw Path** | {{.AxonClawPath}} |
+| **Skills Root** | {{.SkillsRoot}} |
+
 `
+
+type PromptEnv struct {
+	Date         string
+	Timezone     string
+	OS           string
+	Workspace    string
+	ThreadID     string
+	AxonClawPath string
+	SkillsRoot   string
+	ConfigDir    string
+}
+
+func buildLocalSystemPrompt(env PromptEnv) string {
+	tmplData := env
+
+	tmpl, err := template.New("local").Parse(systemPrompt)
+	if err != nil {
+		return systemPrompt
+	}
+
+	var result strings.Builder
+	if err := tmpl.Execute(&result, tmplData); err != nil {
+		return systemPrompt
+	}
+
+	return result.String()
+}

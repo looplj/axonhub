@@ -7,7 +7,7 @@ build:
 	go build -o $(BINARY_NAME) .
 
 package: build
-	@COPYFILE_DISABLE=1 zip -r $(ZIP_NAME) $(BINARY_NAME) start.sh stop.sh -x "*.DS_Store" -x "__MACOSX/*"
+	@COPYFILE_DISABLE=1 zip -r $(ZIP_NAME) $(BINARY_NAME) *.sh *.bat *.ps1 -x "*.DS_Store" -x "__MACOSX/*"
 
 clean:
 	rm -f $(BINARY_NAME) $(ZIP_NAME)

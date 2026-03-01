@@ -125,6 +125,7 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
   const runtimeTypes: { value: AgentRuntimeType; label: string }[] = [
     { value: 'vm', label: t('agentRuntimes.types.vm') },
     { value: 'docker', label: t('agentRuntimes.types.docker') },
+    { value: 'local', label: t('agentRuntimes.types.local') },
   ];
 
   const hostSuggestions = useMemo(() => [
@@ -132,7 +133,9 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
     { value: '127.0.0.1', label: '127.0.0.1' },
   ], []);
 
+  const typeValue = form.watch('type');
   const hostValue = form.watch('host');
+  const isLocalType = typeValue === 'local';
   const isLocalhost = hostValue === 'localhost' || hostValue === '127.0.0.1';
 
   const runtimeStatuses: { value: 'active' | 'inactive' | 'error'; label: string }[] = [
@@ -231,34 +234,36 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="host"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('agentRuntimes.dialogs.fields.host.label')}</FormLabel>
-                  <FormControl>
-                    <AutoComplete
-                      selectedValue={field.value}
-                      onSelectedValueChange={(value) => {
-                        field.onChange(value);
-                      }}
-                      searchValue={hostSearchValue}
-                      onSearchValueChange={(value) => {
-                        setHostSearchValue(value);
-                        field.onChange(value);
-                      }}
-                      items={hostSuggestions}
-                      placeholder={t('agentRuntimes.dialogs.fields.host.placeholder')}
-                      emptyMessage={t('agentRuntimes.dialogs.fields.host.emptyMessage')}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!isLocalType && (
+              <FormField
+                control={form.control}
+                name="host"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('agentRuntimes.dialogs.fields.host.label')}</FormLabel>
+                    <FormControl>
+                      <AutoComplete
+                        selectedValue={field.value}
+                        onSelectedValueChange={(value) => {
+                          field.onChange(value);
+                        }}
+                        searchValue={hostSearchValue}
+                        onSearchValueChange={(value) => {
+                          setHostSearchValue(value);
+                          field.onChange(value);
+                        }}
+                        items={hostSuggestions}
+                        placeholder={t('agentRuntimes.dialogs.fields.host.placeholder')}
+                        emptyMessage={t('agentRuntimes.dialogs.fields.host.emptyMessage')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            {!isLocalhost && (
+            {!isLocalType && !isLocalhost && (
               <>
                 <FormField
                   control={form.control}

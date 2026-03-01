@@ -114,8 +114,11 @@ export function AgentChatPage() {
   };
 
   const headerTitle = useMemo(() => {
-    return agent?.name || agentId;
-  }, [agent?.name, agentId]);
+    const agentName = agent?.name || agentId;
+    const instance = agent?.instances?.edges?.find((e) => e.node.id === agentInstanceId)?.node;
+    const instanceName = instance?.name || agentInstanceId;
+    return `${agentName} - ${instanceName}`;
+  }, [agent?.name, agent?.instances, agentId, agentInstanceId]);
 
   const handleApprove = async (m: AgentChatMessage, granted: boolean, scope: 'once' | 'thread' | 'workspace' | 'global' = 'once') => {
     const requestID = m.correlationID || (m.content?.id as string);

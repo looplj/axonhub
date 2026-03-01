@@ -598,9 +598,6 @@ models:
   AgentInstanceDeploymentInput:
     model:
       - github.com/looplj/axonhub/internal/objects.AgentInstanceDeployment
-  DeployAxonclawInput:
-    model:
-      - github.com/looplj/axonhub/internal/objects.DeployAxonclawInput
   DeployAxonclawResult:
     model:
       - github.com/looplj/axonhub/internal/server/biz.DeployAxonclawResult

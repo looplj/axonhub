@@ -77,7 +77,10 @@ start_axonclaw() {
     fi
     
     local args=()
-    args+=("--base-url" "${AXONCLAW_BASE_URL:-http://localhost:8090}")
+    
+    if [[ -n "$AXONCLAW_BASE_URL" ]]; then
+        args+=("--base-url" "$AXONCLAW_BASE_URL")
+    fi
     
     if [[ -n "$AXONCLAW_API_KEY" ]]; then
         args+=("--api-key" "$AXONCLAW_API_KEY")
@@ -92,14 +95,16 @@ start_axonclaw() {
     fi
     
     mkdir -p .axonclaw/logs
-    
+
     print_info "Starting AxonClaw process..."
-    print_info "  Base URL: ${AXONCLAW_BASE_URL:-http://localhost:8090}"
+    if [[ -n "$AXONCLAW_BASE_URL" ]]; then
+        print_info "  Base URL: $AXONCLAW_BASE_URL"
+    fi
     if [[ -n "$AXONCLAW_NAME" ]]; then
         print_info "  Name: $AXONCLAW_NAME"
     fi
-    
-    "$binary_path" "${args[@]}" >> "$LOG_FILE" 2>&1 &
+
+    nohup "$binary_path" "${args[@]}" >> "$LOG_FILE" 2>&1 &
     
     local pid=$!
     echo "$pid" > "$PID_FILE"
@@ -134,7 +139,7 @@ case "${1:-}" in
         echo "Usage: $0"
         echo
         echo "Environment variables (all optional if config exists):"
-        echo "  AXONCLAW_BASE_URL      Optional. AxonHub server URL (default: http://localhost:8090)"
+        echo "  AXONCLAW_BASE_URL      Optional. AxonHub server URL"
         echo "  AXONCLAW_API_KEY       Optional. Agent API key for authentication"
         echo "  AXONCLAW_NAME          Optional. Agent instance name"
         echo "  DEBUG_MODE             Optional. Set to 'true' to enable debug logging"

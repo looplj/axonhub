@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { pageInfoSchema } from '@/gql/pagination';
 
 // Agent Runtime Type
-export const agentRuntimeTypeSchema = z.enum(['vm', 'docker']);
+export const agentRuntimeTypeSchema = z.enum(['vm', 'docker', 'local']);
 export type AgentRuntimeType = z.infer<typeof agentRuntimeTypeSchema>;
 
 // Agent Runtime Status
@@ -28,11 +28,17 @@ export const createAgentRuntimeInputSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   type: agentRuntimeTypeSchema,
   status: agentRuntimeStatusSchema.optional(),
-  host: z.string().min(1, 'Host is required'),
+  host: z.string().optional(),
   user: z.string().optional(),
   password: z.string().optional(),
 }).refine(
   (data) => {
+    if (data.type === 'local') {
+      return true;
+    }
+    if (!data.host || data.host.length === 0) {
+      return false;
+    }
     const isLocalhost = data.host === 'localhost' || data.host === '127.0.0.1';
     if (isLocalhost) {
       return true;
@@ -40,8 +46,8 @@ export const createAgentRuntimeInputSchema = z.object({
     return data.user && data.user.length > 0 && data.password && data.password.length > 0;
   },
   {
-    message: 'User and password are required for non-localhost hosts',
-    path: ['user'],
+    message: 'Host is required for VM and Docker types. User and password are required for non-localhost hosts.',
+    path: ['host'],
   }
 );
 export type CreateAgentRuntimeInput = z.infer<typeof createAgentRuntimeInputSchema>;

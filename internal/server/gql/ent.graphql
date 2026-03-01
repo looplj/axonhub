@@ -1307,7 +1307,7 @@ type AgentRuntime implements Node {
   """
   name: String!
   """
-  Runtime type: vm or docker
+  Runtime type: vm, docker or local
   """
   type: AgentRuntimeType!
   """
@@ -1418,6 +1418,7 @@ AgentRuntimeType is enum for the field type
 enum AgentRuntimeType @goModel(model: "github.com/looplj/axonhub/internal/ent/agentruntime.Type") {
   vm
   docker
+  local
 }
 """
 AgentRuntimeWhereInput is used for filtering AgentRuntime objects.
@@ -3414,7 +3415,7 @@ input CreateAgentRuntimeInput {
   """
   name: String!
   """
-  Runtime type: vm or docker
+  Runtime type: vm, docker or local
   """
   type: AgentRuntimeType
   """
@@ -8975,7 +8976,7 @@ input UpdateAgentRuntimeInput {
   """
   name: String
   """
-  Runtime type: vm or docker
+  Runtime type: vm, docker or local
   """
   type: AgentRuntimeType
   """

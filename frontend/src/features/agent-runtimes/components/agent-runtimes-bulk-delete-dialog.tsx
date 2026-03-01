@@ -12,9 +12,15 @@ export function AgentRuntimesBulkDeleteDialog() {
   const { open, setOpen, selectedAgentRuntimes, resetRowSelection } = useAgentRuntimes();
   const bulkDelete = useBulkDeleteAgentRuntimes();
 
+  const deletableAgentRuntimes = selectedAgentRuntimes.filter((ar) => ar.type !== 'local');
+
   const handleConfirm = async () => {
     try {
-      const ids = selectedAgentRuntimes.map((ar) => ar.id);
+      const ids = deletableAgentRuntimes.map((ar) => ar.id);
+      if (ids.length === 0) {
+        setOpen(null);
+        return;
+      }
       await bulkDelete.mutateAsync(ids);
       setOpen(null);
       resetRowSelection();
@@ -22,6 +28,10 @@ export function AgentRuntimesBulkDeleteDialog() {
       // Error is handled by the mutation
     }
   };
+
+  if (deletableAgentRuntimes.length === 0) {
+    return null;
+  }
 
   return (
     <ConfirmDialog
@@ -42,13 +52,13 @@ export function AgentRuntimesBulkDeleteDialog() {
             <AlertTitle>{t('agentRuntimes.dialogs.bulkDelete.warning')}</AlertTitle>
             <AlertDescription>
               {t('agentRuntimes.dialogs.bulkDelete.warningDescription', {
-                count: selectedAgentRuntimes.length,
+                count: deletableAgentRuntimes.length,
               })}
             </AlertDescription>
           </Alert>
           <div className="max-h-32 overflow-y-auto rounded-md border p-2">
             <ul className="space-y-1">
-              {selectedAgentRuntimes.map((ar) => (
+              {deletableAgentRuntimes.map((ar) => (
                 <li key={ar.id} className="text-sm">
                   • {ar.name}
                 </li>

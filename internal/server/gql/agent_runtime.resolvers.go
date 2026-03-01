@@ -171,16 +171,21 @@ func (r *mutationResolver) TestAgentRuntimeConnection(ctx context.Context, id ob
 }
 
 // DeployAxonclaw is the resolver for the deployAxonclaw field.
-func (r *mutationResolver) DeployAxonclaw(ctx context.Context, input objects.DeployAxonclawInput) (*biz.DeployAxonclawResult, error) {
+func (r *mutationResolver) DeployAxonclaw(ctx context.Context, input biz.DeployAxonclawInput) (*biz.DeployAxonclawResult, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeWriteAgents); err != nil {
 		return nil, err
 	}
 
+	if input.AxonhubBaseURL == "" {
+		return nil, fmt.Errorf("axonhub base url is required")
+	}
+
 	result, err := r.agentRuntimeService.DeployAxonclaw(ctx, biz.DeployAxonclawInput{
-		AgentID:   input.AgentID.ID,
-		RuntimeID: input.RuntimeID.ID,
-		Name:      input.Name,
-		Directory: input.Directory,
+		AgentID:        input.AgentID,
+		RuntimeID:      input.RuntimeID,
+		Name:           input.Name,
+		Directory:      input.Directory,
+		AxonhubBaseURL: input.AxonhubBaseURL,
 	})
 	if err != nil {
 		return nil, err

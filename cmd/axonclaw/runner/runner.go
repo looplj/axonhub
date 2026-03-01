@@ -3,8 +3,6 @@ package runner
 import (
 	"context"
 	"log/slog"
-	"strings"
-	"text/template"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -47,7 +45,16 @@ type NewOptions struct {
 func New(opts NewOptions) *Runner {
 	permMw := NewPermissionMiddleware(opts.PermEvaluator)
 
-	localPrompt := buildLocalSystemPrompt(opts.Boot.AxonClawPath)
+	localPrompt := buildLocalSystemPrompt(PromptEnv{
+		Date:         opts.Boot.Date,
+		Timezone:     opts.Boot.Timezone,
+		OS:           opts.Boot.OS,
+		Workspace:    opts.Workspace,
+		ThreadID:     opts.Boot.ThreadID,
+		AxonClawPath: opts.Boot.AxonClawPath,
+		SkillsRoot:   opts.Boot.SkillsRoot,
+		ConfigDir:    opts.Boot.ConfigDir,
+	})
 
 	a := agent.New(agent.Config{
 		Model:         opts.Boot.Model,
@@ -149,24 +156,4 @@ func (r *Runner) processMessage(ctx context.Context, text string) error {
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
 	ctx = axoncontext.WithTraceID(ctx, traceID)
 	return r.Agent.Process(ctx, agent.Content{Text: &text})
-}
-
-func buildLocalSystemPrompt(axonClawPath string) string {
-	tmplData := struct {
-		AxonClawPath string
-	}{
-		AxonClawPath: axonClawPath,
-	}
-
-	tmpl, err := template.New("local").Parse(systemPrompt)
-	if err != nil {
-		return systemPrompt
-	}
-
-	var result strings.Builder
-	if err := tmpl.Execute(&result, tmplData); err != nil {
-		return systemPrompt
-	}
-
-	return result.String()
 }

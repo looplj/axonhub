@@ -21,6 +21,12 @@ export function AgentRuntimesDeleteDialog({ open, onOpenChange, currentRow }: Pr
   const [value, setValue] = useState('');
   const deleteAgentRuntime = useDeleteAgentRuntime();
 
+  const isLocal = currentRow.type === 'local';
+
+  if (isLocal) {
+    return null;
+  }
+
   const handleDelete = async () => {
     if (value.trim() !== currentRow.name) return;
 

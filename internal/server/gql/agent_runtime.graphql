@@ -1,11 +1,13 @@
 type AgentInstanceDeployment {
     directory: String
     dockerContainerName: String
+    axonhubBaseUrl: String
 }
 
 input AgentInstanceDeploymentInput {
     directory: String
     dockerContainerName: String
+    axonhubBaseUrl: String
 }
 
 input DeployAxonclawInput {
@@ -13,6 +15,7 @@ input DeployAxonclawInput {
     runtimeID: ID!
     name: String!
     directory: String
+    axonhubBaseUrl: String
 }
 
 type DeployAxonclawResult {

@@ -940,6 +940,7 @@ func (s *AgentBootstrapService) HeartbeatAgentInstance(ctx context.Context, inst
 
 		return client.AgentInstance.UpdateOneID(inst.ID).
 			SetLastHeartbeatAt(now).
+			SetStatus(agentinstance.StatusRunning).
 			Save(bypassCtx)
 	})
 

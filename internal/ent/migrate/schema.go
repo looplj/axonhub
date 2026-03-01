@@ -265,7 +265,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"vm", "docker"}, Default: "vm"},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"vm", "docker", "local"}, Default: "vm"},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive", "error"}, Default: "active"},
 		{Name: "host", Type: field.TypeString, Default: ""},
 		{Name: "user", Type: field.TypeString, Default: ""},

@@ -8,6 +8,7 @@
   "agentRuntimes.columns.user": "User",
   "agentRuntimes.types.vm": "Virtual Machine",
   "agentRuntimes.types.docker": "Docker",
+  "agentRuntimes.types.local": "Local",
   "agentRuntimes.status.active": "Active",
   "agentRuntimes.status.inactive": "Inactive",
   "agentRuntimes.status.error": "Error",

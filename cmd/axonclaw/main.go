@@ -99,8 +99,7 @@ func newRootCommand(opts newRootCommandOptions) *cobra.Command {
 		Use:                  "skills",
 		Stdout:               os.Stdout,
 		Stderr:               os.Stderr,
-		WorkspaceDir:         filepath.Join(workspaceDir, "skills"),
-		GlobalDir:            filepath.Join(configDir, "skills"),
+		WorkspaceDir:         filepath.Join(workspaceDir, configDirName, "skills"),
 		Commands:             []string{"search", "list", "add", "remove"},
 		EnableAgentDiscovery: false,
 		EnableAgentFlags:     false,
@@ -134,7 +133,9 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	gqlClient := api.NewClient(cfg.BaseURL, cfg.APIKey)
 
 	boot, err := bootstrap.Do(ctx, gqlClient, bootstrap.SystemPromptData{
-		Workspace: wd,
+		Workspace:  wd,
+		SkillsRoot: filepath.Join(wd, configDirName, "skills"),
+		ConfigDir:  filepath.Join(wd, configDirName),
 	})
 	if err != nil {
 		return fmt.Errorf("bootstrap: %w", err)

@@ -25,7 +25,7 @@ type AgentRuntime struct {
 	DeletedAt int `json:"deleted_at,omitempty"`
 	// Runtime name
 	Name string `json:"name,omitempty"`
-	// Runtime type: vm or docker
+	// Runtime type: vm, docker or local
 	Type agentruntime.Type `json:"type,omitempty"`
 	// Runtime status
 	Status agentruntime.Status `json:"status,omitempty"`

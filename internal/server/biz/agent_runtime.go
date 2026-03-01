@@ -1,3 +1,4 @@
+//nolint:gosec // G204: Subprocess launched with variable.
 package biz
 
 import (
@@ -5,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -137,10 +139,11 @@ func (svc *AgentRuntimeService) testConnection(_ context.Context, runtime *ent.A
 }
 
 type DeployAxonclawInput struct {
-	AgentID   int
-	RuntimeID int
-	Name      string
-	Directory string
+	AgentID        int
+	RuntimeID      int
+	Name           string
+	Directory      string
+	AxonhubBaseURL string
 }
 
 type DeployAxonclawResult struct {
@@ -213,13 +216,17 @@ func (svc *AgentRuntimeService) DeployAxonclaw(ctx context.Context, input Deploy
 			return fmt.Errorf("failed to create api key: %w", err)
 		}
 
-		deployment := objects.AgentInstanceDeployment{}
+		deployment := objects.AgentInstanceDeployment{
+			AxonhubBaseURL: input.AxonhubBaseURL,
+		}
 
 		switch runtime.Type {
 		case agentruntime.TypeVM:
 			deployment.Directory = input.Directory
 		case agentruntime.TypeDocker:
 			deployment.DockerContainerName = dockerContainerName(input.Name)
+		case agentruntime.TypeLocal:
+			deployment.Directory = input.Directory
 		}
 
 		instance, err = client.AgentInstance.Create().
@@ -262,11 +269,14 @@ func (svc *AgentRuntimeService) DeployAxonclaw(ctx context.Context, input Deploy
 func (svc *AgentRuntimeService) executeDeployment(ctx context.Context, runtime *ent.AgentRuntime, instance *ent.AgentInstance, apiKey *ent.APIKey, input DeployAxonclawInput) error {
 	var err error
 
+	baseURL := input.AxonhubBaseURL
 	switch runtime.Type {
 	case agentruntime.TypeVM:
-		err = svc.deployToVM(ctx, runtime, apiKey, input.Name, input.Directory)
+		err = svc.deployToVM(ctx, runtime, apiKey, input.Name, input.Directory, baseURL)
 	case agentruntime.TypeDocker:
-		err = svc.deployToDocker(ctx, runtime, apiKey, input.Name)
+		err = svc.deployToDocker(ctx, runtime, apiKey, input.Name, baseURL)
+	case agentruntime.TypeLocal:
+		err = svc.deployToLocal(ctx, runtime, apiKey, input.Name, input.Directory, baseURL)
 	}
 
 	if err != nil {
@@ -298,18 +308,15 @@ func validateDeployInput(input DeployAxonclawInput, runtimeType agentruntime.Typ
 	if runtimeType == agentruntime.TypeVM && input.Directory == "" {
 		return fmt.Errorf("directory is required for VM runtime")
 	}
+
+	if runtimeType == agentruntime.TypeLocal && input.Directory == "" {
+		return fmt.Errorf("directory is required for local runtime")
+	}
 	return nil
 }
 
-func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory string) error {
+func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
-
-	var baseURL string
-	if debugLocalPath != "" {
-		baseURL = "http://localhost:8090"
-	} else {
-		baseURL = "http://" + runtime.Host + ":8090"
-	}
 
 	if isLocalhost {
 		if err := os.MkdirAll(directory, 0o755); err != nil {
@@ -391,20 +398,13 @@ func (svc *AgentRuntimeService) deployToVM(ctx context.Context, runtime *ent.Age
 	return nil
 }
 
-func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name string) error {
+func (svc *AgentRuntimeService) deployToDocker(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, baseURL string) error {
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
 	containerName := fmt.Sprintf("axonclaw-%s", name)
 
 	imageName := "axonclaw/axonclaw:latest"
 	if debugDockerImage != "" {
 		imageName = debugDockerImage
-	}
-
-	var baseURL string
-	if debugLocalPath != "" {
-		baseURL = "http://localhost:8090"
-	} else {
-		baseURL = "http://" + runtime.Host + ":8090"
 	}
 
 	if isLocalhost {
@@ -681,6 +681,12 @@ func (svc *AgentRuntimeService) stopAxonclaw(ctx context.Context, runtime *ent.A
 		}
 
 		return svc.dockerStop(ctx, runtime, containerName)
+	case agentruntime.TypeLocal:
+		if strings.TrimSpace(deployment.Directory) == "" {
+			return fmt.Errorf("deployment directory not recorded")
+		}
+
+		return svc.localStop(ctx, deployment.Directory)
 	default:
 		return fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 	}
@@ -693,7 +699,7 @@ func (svc *AgentRuntimeService) startAxonclaw(ctx context.Context, runtime *ent.
 			return fmt.Errorf("deployment directory not recorded")
 		}
 
-		return svc.vmStart(ctx, runtime, apiKey, name, deployment.Directory)
+		return svc.vmStart(ctx, runtime, apiKey, name, deployment.Directory, deployment.AxonhubBaseURL)
 	case agentruntime.TypeDocker:
 		containerName := deployment.DockerContainerName
 		if strings.TrimSpace(containerName) == "" {
@@ -701,6 +707,12 @@ func (svc *AgentRuntimeService) startAxonclaw(ctx context.Context, runtime *ent.
 		}
 
 		return svc.dockerStart(ctx, runtime, containerName)
+	case agentruntime.TypeLocal:
+		if strings.TrimSpace(deployment.Directory) == "" {
+			return fmt.Errorf("deployment directory not recorded")
+		}
+
+		return svc.localStart(ctx, apiKey, name, deployment.Directory, deployment.AxonhubBaseURL)
 	default:
 		return fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 	}
@@ -713,11 +725,7 @@ func (svc *AgentRuntimeService) restartAxonclaw(ctx context.Context, runtime *en
 			return fmt.Errorf("deployment directory not recorded")
 		}
 
-		if err := svc.vmStop(ctx, runtime, deployment.Directory); err != nil {
-			return err
-		}
-
-		return svc.vmStart(ctx, runtime, apiKey, name, deployment.Directory)
+		return svc.vmRestart(ctx, runtime, apiKey, name, deployment.Directory, deployment.AxonhubBaseURL)
 	case agentruntime.TypeDocker:
 		containerName := deployment.DockerContainerName
 		if strings.TrimSpace(containerName) == "" {
@@ -725,12 +733,20 @@ func (svc *AgentRuntimeService) restartAxonclaw(ctx context.Context, runtime *en
 		}
 
 		return svc.dockerRestart(ctx, runtime, containerName)
+	case agentruntime.TypeLocal:
+		if strings.TrimSpace(deployment.Directory) == "" {
+			return fmt.Errorf("deployment directory not recorded")
+		}
+
+		return svc.localRestart(ctx, apiKey, name, deployment.Directory, deployment.AxonhubBaseURL)
 	default:
 		return fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 	}
 }
 
 func (svc *AgentRuntimeService) redeployAxonclaw(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name string, deployment objects.AgentInstanceDeployment) error {
+	baseURL := deployment.AxonhubBaseURL
+
 	switch runtime.Type {
 	case agentruntime.TypeVM:
 		if strings.TrimSpace(deployment.Directory) == "" {
@@ -738,18 +754,29 @@ func (svc *AgentRuntimeService) redeployAxonclaw(ctx context.Context, runtime *e
 		}
 
 		_ = svc.vmStop(ctx, runtime, deployment.Directory)
-		if err := svc.vmInstallLatest(ctx, runtime, apiKey, name, deployment.Directory); err != nil {
+		if err := svc.vmInstallLatest(ctx, runtime, apiKey, name, deployment.Directory, baseURL); err != nil {
 			return err
 		}
 
-		return svc.vmStart(ctx, runtime, apiKey, name, deployment.Directory)
+		return svc.vmStart(ctx, runtime, apiKey, name, deployment.Directory, baseURL)
 	case agentruntime.TypeDocker:
 		containerName := deployment.DockerContainerName
 		if strings.TrimSpace(containerName) == "" {
 			containerName = dockerContainerName(name)
 		}
 
-		return svc.dockerRedeploy(ctx, runtime, apiKey, name, containerName)
+		return svc.dockerRedeploy(ctx, runtime, apiKey, name, containerName, baseURL)
+	case agentruntime.TypeLocal:
+		if strings.TrimSpace(deployment.Directory) == "" {
+			return fmt.Errorf("deployment directory not recorded")
+		}
+
+		_ = svc.localStop(ctx, deployment.Directory)
+		if err := svc.localInstallLatest(ctx, apiKey, name, deployment.Directory, baseURL); err != nil {
+			return err
+		}
+
+		return svc.localStart(ctx, apiKey, name, deployment.Directory, baseURL)
 	default:
 		return fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 	}
@@ -796,9 +823,7 @@ func (svc *AgentRuntimeService) vmStop(ctx context.Context, runtime *ent.AgentRu
 	return nil
 }
 
-func (svc *AgentRuntimeService) vmStart(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory string) error {
-	baseURL := runtimeBaseURL(runtime)
-
+func (svc *AgentRuntimeService) vmStart(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
 	if isLocalhost {
 		cmd := exec.CommandContext(ctx, "./start.sh") //nolint:gosec
@@ -809,6 +834,8 @@ func (svc *AgentRuntimeService) vmStart(ctx context.Context, runtime *ent.AgentR
 			"AXONCLAW_BASE_URL="+baseURL,
 			"AXONCLAW_API_KEY="+apiKey.Key,
 		)
+
+		setProcessGroup(cmd)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("start axonclaw: %w", err)
 		}
@@ -842,8 +869,54 @@ func (svc *AgentRuntimeService) vmStart(ctx context.Context, runtime *ent.AgentR
 	return nil
 }
 
-func (svc *AgentRuntimeService) vmInstallLatest(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory string) error {
-	baseURL := runtimeBaseURL(runtime)
+func (svc *AgentRuntimeService) vmRestart(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+	if isLocalhost {
+		cmd := exec.CommandContext(ctx, "./restart.sh") //nolint:gosec
+		cmd.Dir = directory
+
+		cmd.Env = append(os.Environ(),
+			"AXONCLAW_NAME="+name,
+			"AXONCLAW_BASE_URL="+baseURL,
+			"AXONCLAW_API_KEY="+apiKey.Key,
+		)
+
+		setProcessGroup(cmd)
+
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("restart axonclaw: %w", err)
+		}
+
+		return nil
+	}
+
+	client, err := sshDial(runtime)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return fmt.Errorf("create ssh session: %w", err)
+	}
+	defer session.Close()
+
+	restartCmd := fmt.Sprintf(
+		"cd %s && AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s ./restart.sh",
+		shellQuote(directory),
+		shellQuote(name),
+		shellQuote(baseURL),
+		shellQuote(apiKey.Key),
+	)
+	if err := session.Run(restartCmd); err != nil {
+		return fmt.Errorf("restart axonclaw: %w", err)
+	}
+
+	return nil
+}
+
+func (svc *AgentRuntimeService) vmInstallLatest(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
 
 	if isLocalhost {
@@ -977,13 +1050,11 @@ func (svc *AgentRuntimeService) dockerRestart(ctx context.Context, runtime *ent.
 	return nil
 }
 
-func (svc *AgentRuntimeService) dockerRedeploy(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, containerName string) error {
+func (svc *AgentRuntimeService) dockerRedeploy(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, containerName, baseURL string) error {
 	imageName := "axonclaw/axonclaw:latest"
 	if debugDockerImage != "" {
 		imageName = debugDockerImage
 	}
-
-	baseURL := runtimeBaseURL(runtime)
 
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
 	if isLocalhost {
@@ -1052,14 +1123,6 @@ func (svc *AgentRuntimeService) dockerRedeploy(ctx context.Context, runtime *ent
 	return nil
 }
 
-func runtimeBaseURL(runtime *ent.AgentRuntime) string {
-	if debugLocalPath != "" {
-		return "http://localhost:8090"
-	}
-
-	return "http://" + runtime.Host + ":8090"
-}
-
 func sshDial(runtime *ent.AgentRuntime) (*ssh.Client, error) {
 	config := &ssh.ClientConfig{
 		User: runtime.User,
@@ -1077,4 +1140,162 @@ func sshDial(runtime *ent.AgentRuntime) (*ssh.Client, error) {
 	}
 
 	return client, nil
+}
+
+func isWindows() bool {
+	return runtime.GOOS == "windows"
+}
+
+func (svc *AgentRuntimeService) deployToLocal(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", directory, err)
+	}
+
+	if debugLocalPath != "" {
+		if _, err := os.Stat(debugLocalPath); os.IsNotExist(err) {
+			return fmt.Errorf("debug package not found at %s", debugLocalPath)
+		}
+
+		if isWindows() {
+			return svc.deployToLocalWindows(ctx, apiKey, name, directory, baseURL)
+		}
+
+		unzipCmd := fmt.Sprintf("unzip -o %s -d %s && chmod +x %s/start.sh %s/stop.sh", debugLocalPath, directory, directory, directory)
+		if err := exec.CommandContext(ctx, "sh", "-c", unzipCmd).Run(); err != nil {
+			return fmt.Errorf("failed to unzip debug package: %w", err)
+		}
+
+		startCmd := fmt.Sprintf("cd %s && AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s ./start.sh", directory, name, baseURL, apiKey.Key)
+		if err := exec.CommandContext(ctx, "sh", "-c", startCmd).Run(); err != nil {
+			return fmt.Errorf("failed to start debug axonclaw: %w", err)
+		}
+
+		return nil
+	}
+
+	return svc.localInstallLatest(ctx, apiKey, name, directory, baseURL)
+}
+
+func (svc *AgentRuntimeService) deployToLocalWindows(ctx context.Context, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	expandCmd := fmt.Sprintf("Expand-Archive -Path '%s' -DestinationPath '%s' -Force", debugLocalPath, directory)
+	if err := exec.CommandContext(ctx, "powershell", "-Command", expandCmd).Run(); err != nil {
+		return fmt.Errorf("failed to expand archive: %w", err)
+	}
+
+	startCmd := fmt.Sprintf("cd %s; $env:AXONCLAW_NAME='%s'; $env:AXONCLAW_BASE_URL='%s'; $env:AXONCLAW_API_KEY='%s'; .\\start.bat", directory, name, baseURL, apiKey.Key)
+	if err := exec.CommandContext(ctx, "powershell", "-Command", startCmd).Run(); err != nil {
+		return fmt.Errorf("failed to start axonclaw: %w", err)
+	}
+
+	return nil
+}
+
+func (svc *AgentRuntimeService) localStop(ctx context.Context, directory string) error {
+	if isWindows() {
+		cmd := exec.CommandContext(ctx, "powershell", "-Command", fmt.Sprintf("cd %s; .\\stop.bat", directory))
+
+		cmd.Dir = directory
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("stop axonclaw: %w", err)
+		}
+
+		return nil
+	}
+
+	cmd := exec.CommandContext(ctx, "./stop.sh")
+
+	cmd.Dir = directory
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("stop axonclaw: %w", err)
+	}
+
+	return nil
+}
+
+func (svc *AgentRuntimeService) localStart(ctx context.Context, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	if isWindows() {
+		cmd := exec.CommandContext(ctx, "powershell", "-Command", fmt.Sprintf("cd %s; $env:AXONCLAW_NAME='%s'; $env:AXONCLAW_BASE_URL='%s'; $env:AXONCLAW_API_KEY='%s'; .\\start.bat", directory, name, baseURL, apiKey.Key))
+
+		cmd.Dir = directory
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("start axonclaw: %w", err)
+		}
+
+		return nil
+	}
+
+	cmd := exec.CommandContext(ctx, "./start.sh")
+	cmd.Dir = directory
+
+	cmd.Env = append(os.Environ(),
+		"AXONCLAW_NAME="+name,
+		"AXONCLAW_BASE_URL="+baseURL,
+		"AXONCLAW_API_KEY="+apiKey.Key,
+	)
+
+	setProcessGroup(cmd)
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("start axonclaw: %w", err)
+	}
+
+	return nil
+}
+
+func (svc *AgentRuntimeService) localRestart(ctx context.Context, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	if isWindows() {
+		cmd := exec.CommandContext(ctx, "powershell", "-Command", fmt.Sprintf("cd %s; $env:AXONCLAW_NAME='%s'; $env:AXONCLAW_BASE_URL='%s'; $env:AXONCLAW_API_KEY='%s'; .\\restart.bat", directory, name, baseURL, apiKey.Key))
+
+		cmd.Dir = directory
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("restart axonclaw: %w", err)
+		}
+
+		return nil
+	}
+
+	cmd := exec.CommandContext(ctx, "./restart.sh")
+	cmd.Dir = directory
+
+	cmd.Env = append(os.Environ(),
+		"AXONCLAW_NAME="+name,
+		"AXONCLAW_BASE_URL="+baseURL,
+		"AXONCLAW_API_KEY="+apiKey.Key,
+	)
+
+	setProcessGroup(cmd)
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("restart axonclaw: %w", err)
+	}
+
+	return nil
+}
+
+func (svc *AgentRuntimeService) localInstallLatest(ctx context.Context, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	if isWindows() {
+		installCmd := fmt.Sprintf("cd %s; $env:AXONCLAW_NAME='%s'; $env:AXONCLAW_BASE_URL='%s'; $env:AXONCLAW_API_KEY='%s'; Invoke-Expression (Invoke-WebRequest -Uri 'https://get.axonclaw.io/install.ps1' -UseBasicParsing).Content", directory, name, baseURL, apiKey.Key)
+		cmd := exec.CommandContext(ctx, "powershell", "-Command", installCmd)
+
+		cmd.Dir = directory
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("install latest axonclaw: %w", err)
+		}
+
+		return nil
+	}
+
+	cmd := exec.CommandContext(ctx, "sh", "-c", "curl -sSL https://get.axonclaw.io/install.sh | sh")
+	cmd.Dir = directory
+
+	cmd.Env = append(os.Environ(),
+		"AXONCLAW_NAME="+name,
+		"AXONCLAW_BASE_URL="+baseURL,
+		"AXONCLAW_API_KEY="+apiKey.Key,
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("install latest axonclaw: %w", err)
+	}
+
+	return nil
 }

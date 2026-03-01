@@ -66,7 +66,9 @@ type reloadInput struct {
 
 func (t *ReloadTool) Execute(ctx context.Context, input reloadInput) agent.ToolResult {
 	newBoot, err := bootstrap.Do(ctx, t.client, bootstrap.SystemPromptData{
-		Workspace: t.workspace,
+		Workspace:  t.workspace,
+		SkillsRoot: t.boot.SkillsRoot,
+		ConfigDir:  t.boot.ConfigDir,
 	})
 	if err != nil {
 		return agent.ToolResult{Error: fmt.Errorf("reload bootstrap failed: %w", err)}
@@ -80,8 +82,20 @@ func (t *ReloadTool) Execute(ctx context.Context, input reloadInput) agent.ToolR
 	t.boot.Skills = newBoot.Skills
 	t.boot.BuiltinTools = newBoot.BuiltinTools
 	t.boot.AxonClawPath = newBoot.AxonClawPath
+	t.boot.Date = newBoot.Date
+	t.boot.Timezone = newBoot.Timezone
+	t.boot.OS = newBoot.OS
 
-	localPrompt := buildLocalSystemPrompt(t.boot.AxonClawPath)
+	localPrompt := buildLocalSystemPrompt(PromptEnv{
+		Date:         t.boot.Date,
+		Timezone:     t.boot.Timezone,
+		OS:           t.boot.OS,
+		Workspace:    t.workspace,
+		ThreadID:     t.threadID,
+		AxonClawPath: t.boot.AxonClawPath,
+		SkillsRoot:   t.boot.SkillsRoot,
+		ConfigDir:    t.boot.ConfigDir,
+	})
 
 	t.agent.UpdateConfig(func(cfg agent.Config) agent.Config {
 		cfg.SystemPrompts = []string{newBoot.SystemPrompt, localPrompt}
