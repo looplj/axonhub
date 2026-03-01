@@ -50,56 +50,6 @@ func TestValidateConfig(t *testing.T) {
 			errorMsg:    "base URL is required",
 		},
 		{
-			name: "valid Azure config with base URL",
-			config: &Config{
-				PlatformType:   PlatformAzure,
-				APIKeyProvider: auth.NewStaticKeyProvider("azure-api-key"),
-				APIVersion:     "2024-06-01",
-				BaseURL:        "https://my-resource.openai.azure.com",
-			},
-			expectError: false,
-		},
-		{
-			name: "valid Azure config with custom base URL",
-			config: &Config{
-				PlatformType:   PlatformAzure,
-				APIKeyProvider: auth.NewStaticKeyProvider("azure-api-key"),
-				APIVersion:     "2024-06-01",
-				BaseURL:        "https://custom-azure-endpoint.example.com",
-			},
-			expectError: false,
-		},
-		{
-			name: "Azure config missing API key provider",
-			config: &Config{
-				PlatformType: PlatformAzure,
-				APIVersion:   "2024-06-01",
-				BaseURL:      "https://my-resource.openai.azure.com",
-			},
-			expectError: true,
-			errorMsg:    "API key provider is required",
-		},
-		{
-			name: "Azure config missing API version",
-			config: &Config{
-				PlatformType:   PlatformAzure,
-				APIKeyProvider: auth.NewStaticKeyProvider("azure-api-key"),
-				BaseURL:        "https://my-resource.openai.azure.com",
-			},
-			expectError: true,
-			errorMsg:    "API version is required for Azure platform",
-		},
-		{
-			name: "Azure config missing both base URL and resource name",
-			config: &Config{
-				PlatformType:   PlatformAzure,
-				APIKeyProvider: auth.NewStaticKeyProvider("azure-api-key"),
-				APIVersion:     "2024-06-01",
-			},
-			expectError: true,
-			errorMsg:    "base URL is required",
-		},
-		{
 			name: "unsupported platform type",
 			config: &Config{
 				PlatformType:   "invalid-platform", // Invalid platform type
@@ -163,17 +113,6 @@ func TestNewOutboundTransformerWithConfig_Validation(t *testing.T) {
 			},
 			expectError: true,
 			errorMsg:    "base URL is required",
-		},
-		{
-			name: "Azure config missing API version",
-			config: &Config{
-				PlatformType:   PlatformAzure,
-				APIKeyProvider: auth.NewStaticKeyProvider("azure-key"),
-				BaseURL:        "https://my-resource.openai.azure.com",
-				// Missing API version
-			},
-			expectError: true,
-			errorMsg:    "API version is required for Azure platform",
 		},
 	}
 

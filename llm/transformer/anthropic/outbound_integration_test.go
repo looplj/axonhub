@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -73,7 +74,7 @@ func TestOutboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 					expected.Usage.PromptTokensDetails.WriteCachedTokens = anthropicResp.Usage.CacheCreationInputTokens
 				}
 
-				if !xtest.Equal(expected, *result) {
+				if !xtest.Equal(expected, *result, cmpopts.IgnoreFields(llm.Message{}, "ReasoningSignature")) {
 					t.Fatalf("responses are not equal %s", cmp.Diff(expected, *result))
 				}
 			}

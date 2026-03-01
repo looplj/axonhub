@@ -17,7 +17,6 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 var _ transformer.Inbound = (*InboundTransformer)(nil)
@@ -788,11 +787,13 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			}
 
 			resp.Output = append(resp.Output, Item{
-				ID:               generateItemID(),
-				Type:             "reasoning",
-				Status:           lo.ToPtr("completed"),
-				Summary:          summary,
-				EncryptedContent: shared.DecodeOpenAIEncryptedContent(message.ReasoningSignature),
+				ID:      generateItemID(),
+				Type:    "reasoning",
+				Status:  lo.ToPtr("completed"),
+				Summary: summary,
+				// Preserve the internal signature representation (with prefix) so clients can
+				// round-trip it back in the next request without losing provider identity.
+				EncryptedContent: message.ReasoningSignature,
 			})
 		}
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -76,21 +75,9 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	apiKey := t.config.APIKeyProvider.Get(ctx)
 
 	// Build auth config
-	var auth *httpclient.AuthConfig
-
-	//nolint:exhaustive // Checked.
-	switch t.config.PlatformType {
-	case PlatformAzure:
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    apiKey,
-			HeaderKey: "Api-Key",
-		}
-	default:
-		auth = &httpclient.AuthConfig{
-			Type:   "bearer",
-			APIKey: apiKey,
-		}
+	auth := &httpclient.AuthConfig{
+		Type:   "bearer",
+		APIKey: apiKey,
 	}
 
 	httpReq := &httpclient.Request{
@@ -108,27 +95,7 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 
 // buildEmbeddingURL constructs the embedding API URL.
 func (t *OutboundTransformer) buildEmbeddingURL() string {
-	//nolint:exhaustive // Checked.
-	switch t.config.PlatformType {
-	case PlatformAzure:
-		if strings.HasSuffix(t.config.BaseURL, "/openai/v1") {
-			// Azure URL already includes /openai/v1
-			return fmt.Sprintf("%s/embeddings?api-version=%s",
-				t.config.BaseURL, t.config.APIVersion)
-		}
-
-		if strings.HasSuffix(t.config.BaseURL, "/openai") {
-			// Azure URL includes /openai but not /v1
-			return fmt.Sprintf("%s/v1/embeddings?api-version=%s",
-				t.config.BaseURL, t.config.APIVersion)
-		}
-		// Default case for other Azure URLs
-		return fmt.Sprintf("%s/openai/v1/embeddings?api-version=%s",
-			t.config.BaseURL, t.config.APIVersion)
-	default:
-		// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
-		return t.config.BaseURL + "/embeddings"
-	}
+	return t.config.BaseURL + "/embeddings"
 }
 
 // transformEmbeddingResponse transforms HTTP embedding response to unified llm.Response.

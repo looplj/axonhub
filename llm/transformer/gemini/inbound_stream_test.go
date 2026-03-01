@@ -3,6 +3,7 @@ package gemini
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -305,6 +306,87 @@ func TestInboundTransformer_TransformStream(t *testing.T) {
 	err = json.Unmarshal(results[1].Data, &resp2)
 	require.NoError(t, err)
 	require.Len(t, resp2.Candidates, 1)
+}
+
+func TestInboundTransformer_TransformStream_AggregatesToolCallArguments(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	responses := []*llm.Response{
+		{
+			ID:     "chatcmpl-tool-agg-1",
+			Model:  "gemini-2.0-flash",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						ToolCalls: []llm.ToolCall{
+							{
+								Index: 0,
+								ID:    "call_1",
+								Type:  "function",
+								Function: llm.FunctionCall{
+									Name:      "calculate",
+									Arguments: `{"expression":"15 *`,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			ID:     "chatcmpl-tool-agg-1",
+			Model:  "gemini-2.0-flash",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								Index: 0,
+								Function: llm.FunctionCall{
+									Arguments: ` 23"}`,
+								},
+							},
+						},
+					},
+					FinishReason: lo.ToPtr("tool_calls"),
+				},
+			},
+		},
+	}
+
+	inputStream := streams.SliceStream(responses)
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+
+	var last GenerateContentResponse
+	for outputStream.Next() {
+		var r GenerateContentResponse
+		require.NoError(t, json.Unmarshal(outputStream.Current().Data, &r))
+		last = r
+	}
+	require.NoError(t, outputStream.Err())
+
+	require.Len(t, last.Candidates, 1)
+	require.NotNil(t, last.Candidates[0].Content)
+	parts := last.Candidates[0].Content.Parts
+
+	var fc *FunctionCall
+	for _, p := range parts {
+		if p != nil && p.FunctionCall != nil {
+			fc = p.FunctionCall
+			break
+		}
+	}
+
+	require.NotNil(t, fc)
+	require.Equal(t, "call_1", fc.ID)
+	require.Equal(t, "calculate", fc.Name)
+	require.Equal(t, "15 * 23", fc.Args["expression"])
 }
 
 func TestInboundTransformer_AggregateStreamChunks(t *testing.T) {
@@ -622,6 +704,84 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			},
 		},
 		{
+			name:               "stream transformation with text and aggregated tool call deltas",
+			inputStreamFile:    "llm-tool2.stream.jsonl",
+			expectedStreamFile: "gemini-tool2.stream.jsonl",
+			expectedAggregated: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Equal(t, "chatcmpl-C2W6446YQfJg7YrSTSPbxFlnlM14H", result.ResponseID)
+				require.Equal(t, "gpt-4o-2024-11-20", result.ModelVersion)
+				require.Len(t, result.Candidates, 1)
+				require.NotNil(t, result.Candidates[0].Content)
+
+				var (
+					fullText        strings.Builder
+					hasFunctionCall bool
+				)
+
+				for _, part := range result.Candidates[0].Content.Parts {
+					if part == nil {
+						continue
+					}
+
+					if part.FunctionCall != nil {
+						hasFunctionCall = true
+						require.Equal(t, "get_user_city", part.FunctionCall.Name)
+						require.Equal(t, "123", part.FunctionCall.Args["user_id"])
+						continue
+					}
+
+					if !part.Thought {
+						fullText.WriteString(part.Text)
+					}
+				}
+
+				require.Equal(t, "Let me check that for you.", fullText.String())
+				require.True(t, hasFunctionCall, "should have function call part")
+			},
+		},
+		{
+			name:               "stream transformation with text and parallel aggregated tool call deltas",
+			inputStreamFile:    "llm-tool-parallel.stream.jsonl",
+			expectedStreamFile: "gemini-tool-parallel.stream.jsonl",
+			expectedAggregated: func(t *testing.T, result *GenerateContentResponse) {
+				t.Helper()
+				require.Equal(t, "msg_bdrk_01UJYyE5HVJvdHL9cSvFeFg2", result.ResponseID)
+				require.Equal(t, "claude-sonnet-4-20250514", result.ModelVersion)
+				require.Len(t, result.Candidates, 1)
+				require.NotNil(t, result.Candidates[0].Content)
+
+				var (
+					fullText     strings.Builder
+					toolCalls    []*FunctionCall
+					finishReason string
+				)
+
+				for _, part := range result.Candidates[0].Content.Parts {
+					if part == nil {
+						continue
+					}
+					if part.FunctionCall != nil {
+						toolCalls = append(toolCalls, part.FunctionCall)
+						continue
+					}
+					if !part.Thought {
+						fullText.WriteString(part.Text)
+					}
+				}
+
+				finishReason = result.Candidates[0].FinishReason
+
+				require.Equal(t, "I'll help you get the weather information for San Francisco, CA. Let me start by getting the coordinates for San Francisco and determining the appropriate temperature unit for the US.", fullText.String())
+				require.Equal(t, "STOP", finishReason)
+				require.Len(t, toolCalls, 2)
+				require.Equal(t, "get_coordinates", toolCalls[0].Name)
+				require.Equal(t, "San Francisco, CA", toolCalls[0].Args["location"])
+				require.Equal(t, "get_temperature_unit", toolCalls[1].Name)
+				require.Equal(t, "United States", toolCalls[1].Args["country"])
+			},
+		},
+		{
 			name:               "stream transformation with thinking content",
 			inputStreamFile:    "llm-think.stream.jsonl",
 			expectedStreamFile: "gemini-think.stream.jsonl",
@@ -680,6 +840,10 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			llmResponses, err := xtest.LoadLlmResponses(t, tt.inputStreamFile)
 			require.NoError(t, err)
 
+			// Load expected events from the expected stream file
+			expectedEvents, err := xtest.LoadStreamChunks(t, tt.expectedStreamFile)
+			require.NoError(t, err)
+
 			// Create a mock stream from LLM responses
 			mockStream := streams.SliceStream(llmResponses)
 
@@ -698,6 +862,20 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 
 			require.NoError(t, transformedStream.Err())
+
+			// Compare transformed events against golden file (semantic JSON equality).
+			require.Equal(t, len(expectedEvents), len(actualEvents), "event count should match expected")
+			for i := range expectedEvents {
+				var expected, actual GenerateContentResponse
+
+				err := json.Unmarshal(expectedEvents[i].Data, &expected)
+				require.NoError(t, err, "unmarshal expected event %d", i)
+
+				err = json.Unmarshal(actualEvents[i].Data, &actual)
+				require.NoError(t, err, "unmarshal actual event %d", i)
+
+				require.Equal(t, expected, actual, fmt.Sprintf("event %d mismatch", i))
+			}
 
 			// Test aggregation
 			aggregatedBytes, meta, err := transformer.AggregateStreamChunks(t.Context(), actualEvents)

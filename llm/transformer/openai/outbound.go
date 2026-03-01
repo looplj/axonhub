@@ -23,10 +23,8 @@ type PlatformType string
 
 const (
 	PlatformOpenAI PlatformType = "openai"
-	PlatformAzure  PlatformType = "azure"
+	PlatformGoogle PlatformType = "google"
 )
-
-const DefaultAzureAPIVersion = "2025-04-01-preview"
 
 // Config holds all configuration for the OpenAI outbound transformer.
 type Config struct {
@@ -42,9 +40,6 @@ type Config struct {
 
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
-
-	// APIVersion is the API version for Azure platform, required for Azure.
-	APIVersion string `json:"api_version,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format.
@@ -79,12 +74,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		config.RawURL = true
 		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
 	} else if !config.RawURL {
-		// For Azure, don't normalize with version - it has special URL format
-		if config.PlatformType == PlatformAzure {
-			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
-		} else {
-			config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
-		}
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 	}
 
 	return &OutboundTransformer{
@@ -108,17 +98,11 @@ func validateConfig(config *Config) error {
 	}
 
 	switch config.PlatformType {
-	case PlatformOpenAI:
+	case PlatformOpenAI, PlatformGoogle:
 		return nil
-	case PlatformAzure:
-		if config.APIVersion == "" {
-			return fmt.Errorf("API version is required for Azure platform")
-		}
 	default:
 		return fmt.Errorf("unsupported platform type: %v", config.PlatformType)
 	}
-
-	return nil
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
@@ -141,24 +125,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	case llm.RequestTypeEmbedding:
 		return t.transformEmbeddingRequest(ctx, llmReq)
 	case llm.RequestTypeImage:
-		//nolint:exhaustive // Checked.
-		switch t.config.PlatformType {
-		case PlatformAzure:
-			return nil, fmt.Errorf("image generation via Image Generation API is not yet supported for Azure platform")
-		default:
-			// ok
-		}
-
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeVideo:
-		//nolint:exhaustive // Checked.
-		switch t.config.PlatformType {
-		case PlatformAzure:
-			return nil, fmt.Errorf("video generation is not yet supported for Azure platform")
-		default:
-			// ok
-		}
-
 		return t.buildVideoGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeRerank:
 		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
@@ -172,8 +140,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	oaiReq := RequestFromLLM(llmReq)
 	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
-	case PlatformOpenAI, PlatformAzure:
-		stripUnsupportedToolCallExtraContentForOpenAI(oaiReq)
+	case PlatformOpenAI:
+		stripUnsupportedToolCallExtraContent(oaiReq)
 	}
 
 	body, err := json.Marshal(oaiReq)
@@ -189,21 +157,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
-	var authConfig *httpclient.AuthConfig
-
-	//nolint:exhaustive // Chcked.
-	switch t.config.PlatformType {
-	case PlatformAzure:
-		authConfig = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    apiKey,
-			HeaderKey: "Api-Key",
-		}
-	default:
-		authConfig = &httpclient.AuthConfig{
-			Type:   "bearer",
-			APIKey: apiKey,
-		}
+	authConfig := &httpclient.AuthConfig{
+		Type:   "bearer",
+		APIKey: apiKey,
 	}
 
 	// Build platform-specific URL
@@ -297,74 +253,13 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	return t.TransformResponse(ctx, httpResp)
 }
 
-func stripUnsupportedToolCallExtraContentForOpenAI(req *Request) {
-	if req == nil {
-		return
-	}
-
-	for i := range req.Messages {
-		for j := range req.Messages[i].ToolCalls {
-			extraContent := req.Messages[i].ToolCalls[j].ExtraContent
-			if extraContent == nil || extraContent.Google == nil {
-				continue
-			}
-
-			if extraContent.Google.ThoughtSignature == "" {
-				continue
-			}
-
-			extraContent.Google.ThoughtSignature = ""
-
-			// 仅在对象已空时才清理，避免误删其他扩展字段。
-			if isJSONEmptyObject(extraContent.Google) {
-				extraContent.Google = nil
-			}
-
-			if isJSONEmptyObject(extraContent) {
-				req.Messages[i].ToolCalls[j].ExtraContent = nil
-			}
-		}
-	}
-}
-
-func isJSONEmptyObject(v any) bool {
-	if v == nil {
-		return true
-	}
-
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return false
-	}
-
-	return bytes.Equal(raw, []byte("{}")) || bytes.Equal(raw, []byte("null"))
-}
-
 // buildFullRequestURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
-	//nolint:exhaustive // Checked.
-	switch t.config.PlatformType {
-	case PlatformAzure:
-		if strings.HasSuffix(t.config.BaseURL, "/openai/v1") {
-			// Azure URL already includes /openai/v1
-			return fmt.Sprintf("%s/chat/completions?api-version=%s",
-				t.config.BaseURL, t.config.APIVersion), nil
-		}
-
-		if strings.HasSuffix(t.config.BaseURL, "/openai") {
-			// Azure URL includes /openai but not /v1
-			return fmt.Sprintf("%s/v1/chat/completions?api-version=%s",
-				t.config.BaseURL, t.config.APIVersion), nil
-		}
-		// Default case for other Azure URLs
-		return fmt.Sprintf("%s/openai/v1/chat/completions?api-version=%s",
-			t.config.BaseURL, t.config.APIVersion), nil
-	default:
-		if t.config.RawURL {
-			return t.config.BaseURL, nil
-		}
-		return t.config.BaseURL + "/chat/completions", nil
+	if t.config.RawURL {
+		return t.config.BaseURL, nil
 	}
+
+	return t.config.BaseURL + "/chat/completions", nil
 }
 
 // SetAPIKey updates the API key.

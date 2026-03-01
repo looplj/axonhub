@@ -37,6 +37,7 @@ type responsesInboundStream struct {
 	hasResponseCreated      bool
 	hasMessageItemStarted   bool
 	hasReasoningItemStarted bool
+	hasReasoningSummaryPart bool
 	hasContentPartStarted   bool
 	hasFinished             bool
 	responseCompleted       bool
@@ -195,6 +196,12 @@ func (s *responsesInboundStream) Next() bool {
 
 		// Handle encrypted reasoning content delta (stored in ReasoningSignature)
 		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
+			// Encrypted reasoning may appear without any summary text. Ensure we still
+			// create a reasoning output item so encrypted_content isn't silently dropped.
+			if err := s.ensureReasoningItemStarted(); err != nil {
+				s.err = err
+				return false
+			}
 			s.accumulatedReasoningSignature.WriteString(*choice.Delta.ReasoningSignature)
 		}
 
@@ -257,33 +264,15 @@ func (s *responsesInboundStream) Next() bool {
 }
 
 func (s *responsesInboundStream) handleReasoningContent(content *string) error {
-	// Start reasoning output item if not started
-	if !s.hasReasoningItemStarted {
-		// Close any previous output item
-		if err := s.closeCurrentOutputItem(); err != nil {
-			return err
-		}
+	if err := s.ensureReasoningItemStarted(); err != nil {
+		return err
+	}
 
-		s.hasReasoningItemStarted = true
-
-		s.currentItemID = generateItemID()
-		item := &Item{
-			ID:      s.currentItemID,
-			Type:    "reasoning",
-			Status:  lo.ToPtr("in_progress"),
-			Summary: []ReasoningSummary{},
-		}
+	// Start reasoning summary part only when we actually have summary text.
+	if !s.hasReasoningSummaryPart {
+		s.hasReasoningSummaryPart = true
 
 		err := s.enqueueEvent(&StreamEvent{
-			Type:        StreamEventTypeOutputItemAdded,
-			OutputIndex: s.outputIndex,
-			Item:        item,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
-		}
-
-		err = s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeReasoningSummaryPartAdded,
 			ItemID:       &s.currentItemID,
 			OutputIndex:  s.outputIndex,
@@ -308,6 +297,40 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to enqueue reasoning_summary_text.delta event: %w", err)
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) ensureReasoningItemStarted() error {
+	// Start reasoning output item if not started.
+	if s.hasReasoningItemStarted {
+		return nil
+	}
+
+	// Close any previous output item.
+	if err := s.closeCurrentOutputItem(); err != nil {
+		return err
+	}
+
+	s.hasReasoningItemStarted = true
+	s.hasReasoningSummaryPart = false
+
+	s.currentItemID = generateItemID()
+	item := &Item{
+		ID:      s.currentItemID,
+		Type:    "reasoning",
+		Status:  lo.ToPtr("in_progress"),
+		Summary: []ReasoningSummary{},
+	}
+
+	err := s.enqueueEvent(&StreamEvent{
+		Type:        StreamEventTypeOutputItemAdded,
+		OutputIndex: s.outputIndex,
+		Item:        item,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
 	}
 
 	return nil
@@ -559,51 +582,64 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 
 	s.hasReasoningItemStarted = false
 	fullReasoning := s.accumulatedReasoning.String()
+	hadSummaryPart := s.hasReasoningSummaryPart
 
-	// Emit reasoning_summary_text.done with accumulated text
-	err := s.enqueueEvent(&StreamEvent{
-		Type:         StreamEventTypeReasoningSummaryTextDone,
-		ItemID:       &s.currentItemID,
-		OutputIndex:  s.outputIndex,
-		SummaryIndex: lo.ToPtr(0),
-		Text:         fullReasoning,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to enqueue reasoning_summary_text.done event: %w", err)
-	}
+	// Emit reasoning summary done events only if we started the summary part.
+	if hadSummaryPart {
+		// Emit reasoning_summary_text.done with accumulated text
+		err := s.enqueueEvent(&StreamEvent{
+			Type:         StreamEventTypeReasoningSummaryTextDone,
+			ItemID:       &s.currentItemID,
+			OutputIndex:  s.outputIndex,
+			SummaryIndex: lo.ToPtr(0),
+			Text:         fullReasoning,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue reasoning_summary_text.done event: %w", err)
+		}
 
-	// Emit reasoning_summary_part.done
-	err = s.enqueueEvent(&StreamEvent{
-		Type:         StreamEventTypeReasoningSummaryPartDone,
-		ItemID:       &s.currentItemID,
-		OutputIndex:  s.outputIndex,
-		SummaryIndex: lo.ToPtr(0),
-		Part: &StreamEventContentPart{
-			Type: "summary_text",
-			Text: &fullReasoning,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to enqueue reasoning_summary_part.done event: %w", err)
+		// Emit reasoning_summary_part.done
+		err = s.enqueueEvent(&StreamEvent{
+			Type:         StreamEventTypeReasoningSummaryPartDone,
+			ItemID:       &s.currentItemID,
+			OutputIndex:  s.outputIndex,
+			SummaryIndex: lo.ToPtr(0),
+			Part: &StreamEventContentPart{
+				Type: "summary_text",
+				Text: &fullReasoning,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue reasoning_summary_part.done event: %w", err)
+		}
 	}
+	s.hasReasoningSummaryPart = false
 
 	// Emit output_item.done with complete reasoning item
 	var encryptedContent *string
 	if s.accumulatedReasoningSignature.Len() > 0 {
-		encryptedContent = lo.ToPtr(s.accumulatedReasoningSignature.String())
+		encoded := s.accumulatedReasoningSignature.String()
+		encryptedContent = lo.ToPtr(encoded)
+	}
+
+	var summary []ReasoningSummary
+	if hadSummaryPart {
+		summary = []ReasoningSummary{{
+			Type: "summary_text",
+			Text: fullReasoning,
+		}}
+	} else {
+		summary = []ReasoningSummary{}
 	}
 
 	item := Item{
-		ID:   s.currentItemID,
-		Type: "reasoning",
-		Summary: []ReasoningSummary{{
-			Type: "summary_text",
-			Text: fullReasoning,
-		}},
+		ID:               s.currentItemID,
+		Type:             "reasoning",
+		Summary:          summary,
 		EncryptedContent: encryptedContent,
 	}
 
-	err = s.enqueueEvent(&StreamEvent{
+	err := s.enqueueEvent(&StreamEvent{
 		Type:        StreamEventTypeOutputItemDone,
 		OutputIndex: s.outputIndex,
 		Item:        &item,

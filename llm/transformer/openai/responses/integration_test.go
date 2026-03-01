@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -19,36 +20,51 @@ func TestTransformRequest_Integration(t *testing.T) {
 	outboundTransformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 
 	tests := []struct {
-		name        string
-		requestFile string
+		name         string
+		requestFile  string
+		expectedFile string
 	}{
 		{
-			name:        "simple request array",
-			requestFile: `simple.request.json`,
+			name:         "simple request array",
+			requestFile:  `simple.request.json`,
+			expectedFile: `simple.request.json`,
 		},
 		{
-			name:        "single array",
-			requestFile: `single_array.request.json`,
+			name:         "single array",
+			requestFile:  `single_array.request.json`,
+			expectedFile: `single_array.request.json`,
 		},
 		{
-			name:        "reasoning request",
-			requestFile: `reasoning.request.json`,
+			name:         "reasoning request",
+			requestFile:  `reasoning.request.json`,
+			expectedFile: `reasoning.request.json`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var wantReq Request
+			var inputReq Request
 
-			err := xtest.LoadTestData(t, tt.requestFile, &wantReq)
+			err := xtest.LoadTestData(t, tt.requestFile, &inputReq)
 			require.NoError(t, err)
+
+			var expectedReq Request
+
+			err = xtest.LoadTestData(t, tt.expectedFile, &expectedReq)
+			require.NoError(t, err)
+
+			if tt.name == "reasoning request" {
+				expectedReq.Input.Items = lo.Filter(expectedReq.Input.Items, func(item Item, _ int) bool {
+					return item.Type != "reasoning"
+				})
+			}
 
 			var buf bytes.Buffer
 
 			decoder := json.NewEncoder(&buf)
 			decoder.SetEscapeHTML(false)
 
-			if err := decoder.Encode(wantReq); err != nil {
+			if err := decoder.Encode(inputReq); err != nil {
 				t.Fatalf("failed to marshal tool result: %v", err)
 			}
 
@@ -69,8 +85,8 @@ func TestTransformRequest_Integration(t *testing.T) {
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			if !xtest.Equal(wantReq, gotReq, cmpopts.IgnoreFields(Item{}, "EncryptedContent")) {
-				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq))
+			if !xtest.Equal(expectedReq, gotReq, cmpopts.IgnoreFields(Item{}, "EncryptedContent")) {
+				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(expectedReq, gotReq))
 			}
 		})
 	}

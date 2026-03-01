@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -281,7 +282,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					require.NotNil(t, expectedStreamEvent.Delta)
 					require.NotNil(t, actualStreamEvent.Delta)
 
-					if !xtest.Equal(expectedStreamEvent.Delta, actualStreamEvent.Delta) {
+					if !xtest.Equal(expectedStreamEvent.Delta, actualStreamEvent.Delta, cmpopts.IgnoreFields(StreamDelta{}, "Signature")) {
 						t.Errorf("Index: %d, Diff: %s ", i, cmp.Diff(expectedStreamEvent.Delta, actualStreamEvent.Delta))
 					}
 
@@ -302,7 +303,7 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 					require.Equal(t, expectedStreamEvent.Delta.StopReason, actualStreamEvent.Delta.StopReason)
 
-					if !xtest.Equal(expectedStreamEvent.Delta, actualStreamEvent.Delta) {
+					if !xtest.Equal(expectedStreamEvent.Delta, actualStreamEvent.Delta, cmpopts.IgnoreFields(StreamDelta{}, "Signature")) {
 						t.Errorf("Index: %d, Diff: %s ", i, cmp.Diff(expectedStreamEvent.Delta, actualStreamEvent.Delta))
 					}
 

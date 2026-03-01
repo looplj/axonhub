@@ -39,7 +39,7 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
 	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-	require.Equal(t, signature, *result.Choices[0].Message.ReasoningSignature)
+	require.Equal(t, *shared.EncodeAnthropicSignature(lo.ToPtr(signature)), *result.Choices[0].Message.ReasoningSignature)
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
 	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
 	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
@@ -139,7 +139,7 @@ func TestConvertToChatCompletionResponse_WithThinkingAndRedactedThinking(t *test
 	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
 	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-	require.Equal(t, signature, *result.Choices[0].Message.ReasoningSignature)
+	require.Equal(t, *shared.EncodeAnthropicSignature(lo.ToPtr(signature)), *result.Choices[0].Message.ReasoningSignature)
 	require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
 	require.Equal(t, redactedData, *result.Choices[0].Message.RedactedReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
@@ -983,6 +983,9 @@ func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 		textContent  = "Based on my analysis..."
 	)
 
+	// Signatures in unified format are encoded with the Anthropic prefix
+	encodedSignature := shared.AnthropicSignaturePrefix + signature
+
 	chatReq := &llm.Request{
 		Model:           "claude-sonnet-4-5-20250929",
 		MaxTokens:       lo.ToPtr(int64(16000)),
@@ -997,7 +1000,7 @@ func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 			{
 				Role:                     "assistant",
 				ReasoningContent:         lo.ToPtr(thinking),
-				ReasoningSignature:       lo.ToPtr(signature),
+				ReasoningSignature:       lo.ToPtr(encodedSignature),
 				RedactedReasoningContent: lo.ToPtr(redactedData),
 				Content: llm.MessageContent{
 					Content: lo.ToPtr(textContent),
@@ -1028,6 +1031,7 @@ func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 	require.NotNil(t, assistantMsg.Content.MultipleContent[0].Thinking)
 	require.Equal(t, thinking, *assistantMsg.Content.MultipleContent[0].Thinking)
 	require.NotNil(t, assistantMsg.Content.MultipleContent[0].Signature)
+	// Signature should be decoded (prefix stripped) when sending to Anthropic API
 	require.Equal(t, signature, *assistantMsg.Content.MultipleContent[0].Signature)
 
 	// Second block should be redacted_thinking

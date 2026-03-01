@@ -953,10 +953,7 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.NotNil(t, result.ReasoningSignature)
-				require.True(t, shared.IsGeminiThoughtSignature(result.ReasoningSignature))
-				decoded := shared.DecodeGeminiThoughtSignature(result.ReasoningSignature)
-				require.NotNil(t, decoded)
-				require.Equal(t, "signature_A", *decoded)
+				require.Equal(t, "signature_A", *result.ReasoningSignature)
 				require.Len(t, result.ToolCalls, 1)
 				tc := result.ToolCalls[0]
 				require.Equal(t, "call_001", tc.ID)
@@ -964,7 +961,7 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, tc.TransformerMetadata)
 				require.Equal(
 					t,
-					shared.GeminiThoughtSignaturePrefix+"signature_A",
+					"signature_A",
 					tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
 				)
 			},
@@ -994,10 +991,7 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 			validate: func(t *testing.T, result *llm.Message) {
 				t.Helper()
 				require.NotNil(t, result.ReasoningSignature)
-				require.True(t, shared.IsGeminiThoughtSignature(result.ReasoningSignature))
-				decoded := shared.DecodeGeminiThoughtSignature(result.ReasoningSignature)
-				require.NotNil(t, decoded)
-				require.Equal(t, "signature_parallel", *decoded)
+				require.Equal(t, "signature_parallel", *result.ReasoningSignature)
 				require.Len(t, result.ToolCalls, 2)
 
 				// First call should have signature
@@ -1006,7 +1000,7 @@ func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, tc1.TransformerMetadata)
 				require.Equal(
 					t,
-					shared.GeminiThoughtSignaturePrefix+"signature_parallel",
+					"signature_parallel",
 					tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
 				)
 
@@ -1219,7 +1213,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 2)
 				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
-				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_tool_2", result.Content.Parts[1].ThoughtSignature)
+				require.Equal(t, "signature_tool_2", result.Content.Parts[1].ThoughtSignature)
 			},
 		},
 		{
@@ -1245,7 +1239,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.Len(t, result.Content.Parts, 1)
-				require.Empty(t, result.Content.Parts[0].ThoughtSignature)
+				require.Equal(t, shared.OpenAIEncryptedContentPrefix+"encrypted_data", result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 		{

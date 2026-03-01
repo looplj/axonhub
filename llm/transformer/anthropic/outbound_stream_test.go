@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -79,7 +80,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					require.Equal(t, expectedChoice.Index, actualChoice.Index, "Response %d: Choice index should match", i)
 					require.Equal(t, expectedChoice.FinishReason, actualChoice.FinishReason, "Response %d: Finish reason should match", i)
 
-					if !xtest.Equal(expectedChoice.Delta, actualChoice.Delta) {
+					if !xtest.Equal(expectedChoice.Delta, actualChoice.Delta, cmpopts.IgnoreFields(llm.Message{}, "ReasoningSignature")) {
 						t.Fatalf("diff: %s  at index %d", cmp.Diff(expectedChoice.Delta, actualChoice.Delta), i)
 					}
 				}

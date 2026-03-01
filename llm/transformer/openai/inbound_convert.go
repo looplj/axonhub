@@ -27,14 +27,10 @@ func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
 	if extraContent != nil &&
 		extraContent.Google != nil &&
 		extraContent.Google.ThoughtSignature != "" {
-		thoughtSignature := extraContent.Google.ThoughtSignature
-		normalized := shared.NormalizeGeminiThoughtSignature(thoughtSignature)
-		if normalized != nil {
-			thoughtSignature = *normalized
-		}
-
-		toolCall.TransformerMetadata = map[string]any{
-			TransformerMetadataKeyGoogleThoughtSignature: thoughtSignature,
+		if normalized := shared.NormalizeGeminiThoughtSignature(extraContent.Google.ThoughtSignature); normalized != nil {
+			toolCall.TransformerMetadata = map[string]any{
+				TransformerMetadataKeyGoogleThoughtSignature: *normalized,
+			}
 		}
 	}
 
@@ -150,7 +146,7 @@ func (m Message) ToLLMMessage() llm.Message {
 		})
 
 		if raw, ok := firstThoughtSignature.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string); ok {
-			msg.ReasoningSignature = shared.NormalizeGeminiThoughtSignature(raw)
+			msg.ReasoningSignature = lo.ToPtr(raw)
 		}
 	}
 

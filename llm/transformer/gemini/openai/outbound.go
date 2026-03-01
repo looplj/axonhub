@@ -138,7 +138,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v1beta/openai")
 
 	oaiConfig := &openai.Config{
-		PlatformType:   openai.PlatformOpenAI,
+		PlatformType:   openai.PlatformGoogle,
 		BaseURL:        baseURL,
 		APIKeyProvider: config.APIKeyProvider,
 	}

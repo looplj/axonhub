@@ -5,14 +5,10 @@ import (
 	"errors"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // TransformerMetadataKeyCitations is the key used to store citations in TransformerMetadata.
 const TransformerMetadataKeyCitations = "citations"
-
-// TransformerMetadataKeyGoogleThoughtSignature 用于在 ToolCall TransformerMetadata 中保存 Gemini thought signature。
-const TransformerMetadataKeyGoogleThoughtSignature = shared.TransformerMetadataKeyGoogleThoughtSignature
 
 // Request represents an OpenAI chat completion request.
 // This is a clean OpenAI-specific model without helper fields.
@@ -350,11 +346,6 @@ type ToolCallExtraContent struct {
 // ToolCallExtraFields represents wrapped extension fields used by some providers.
 type ToolCallExtraFields struct {
 	ExtraContent *ToolCallExtraContent `json:"extra_content,omitempty"`
-}
-
-// ToolCallGoogleExtraContent represents Google-specific extension fields for tool calls.
-type ToolCallGoogleExtraContent struct {
-	ThoughtSignature string `json:"thought_signature,omitempty"`
 }
 
 // ToolCall represents a tool call in the response.

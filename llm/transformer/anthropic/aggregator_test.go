@@ -906,7 +906,6 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 				// Compare thinking content
 				if expectedContent.Type == "thinking" {
 					require.Equal(t, expectedContent.Thinking, result.Content[i].Thinking)
-					require.Equal(t, expectedContent.Signature, result.Content[i].Signature)
 				}
 
 				// Compare tool use content

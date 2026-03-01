@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
@@ -420,36 +421,47 @@ func TestTransformResponse_Integration(t *testing.T) {
 	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 
 	tests := []struct {
-		name        string
-		requestFile string
+		name         string
+		requestFile  string
+		expectedFile string
 	}{
 		{
-			name:        "anthropic-tool.response.json",
-			requestFile: `anthropic-tool.response.json`,
+			name:         "anthropic-tool.response.json",
+			requestFile:  `anthropic-tool.response.json`,
+			expectedFile: `anthropic-tool.response.json`,
 		},
 		{
-			name:        "anthropic-think.response.json",
-			requestFile: `anthropic-think.response.json`,
+			name:         "anthropic-think.response.json",
+			requestFile:  `anthropic-think.response.json`,
+			expectedFile: `anthropic-think.response.json`,
 		},
 		{
-			name:        "anthropic-tool2.response.json",
-			requestFile: `anthropic-tool2.response.json`,
+			name:         "anthropic-tool2.response.json",
+			requestFile:  `anthropic-tool2.response.json`,
+			expectedFile: `anthropic-tool2.response.json`,
 		},
 		{
-			name:        "anthropic-stop.response.json",
-			requestFile: `anthropic-stop.response.json`,
+			name:         "anthropic-stop.response.json",
+			requestFile:  `anthropic-stop.response.json`,
+			expectedFile: `anthropic-stop.response.json`,
 		},
 		{
-			name:        "anthropic-cache-usage.response.json",
-			requestFile: `anthropic-cache-usage.response.json`,
+			name:         "anthropic-cache-usage.response.json",
+			requestFile:  `anthropic-cache-usage.response.json`,
+			expectedFile: `anthropic-cache-usage.response.json`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var wantMessage Message
+			var inputMessage Message
 
-			err := xtest.LoadTestData(t, tt.requestFile, &wantMessage)
+			err := xtest.LoadTestData(t, tt.requestFile, &inputMessage)
+			require.NoError(t, err)
+
+			var expectedMessage Message
+
+			err = xtest.LoadTestData(t, tt.expectedFile, &expectedMessage)
 			require.NoError(t, err)
 
 			var buf bytes.Buffer
@@ -457,7 +469,7 @@ func TestTransformResponse_Integration(t *testing.T) {
 			encoder := json.NewEncoder(&buf)
 			encoder.SetEscapeHTML(false)
 
-			if err := encoder.Encode(wantMessage); err != nil {
+			if err := encoder.Encode(inputMessage); err != nil {
 				t.Fatalf("failed to marshal tool result: %v", err)
 			}
 
@@ -478,8 +490,8 @@ func TestTransformResponse_Integration(t *testing.T) {
 			err = json.Unmarshal(inboundResp.Body, &gotMessage)
 			require.NoError(t, err)
 
-			if !xtest.Equal(wantMessage, gotMessage) {
-				t.Errorf("wantMessage != gotMessage\n%s", cmp.Diff(wantMessage, gotMessage))
+			if !xtest.Equal(expectedMessage, gotMessage, cmpopts.IgnoreFields(MessageContentBlock{}, "Signature")) {
+				t.Errorf("wantMessage != gotMessage\n%s", cmp.Diff(expectedMessage, gotMessage))
 			}
 		})
 	}

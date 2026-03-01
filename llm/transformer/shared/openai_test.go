@@ -19,22 +19,22 @@ func TestIsOpenAIEncryptedContent(t *testing.T) {
 		},
 		{
 			name:     "empty string",
-			content:  stringPtr(""),
+			content:  new(string),
 			expected: false,
 		},
 		{
 			name:     "valid encrypted content",
-			content:  stringPtr(OpenAIEncryptedContentPrefix + "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			content:  new(OpenAIEncryptedContentPrefix + "some-encrypted-content"),
 			expected: true,
 		},
 		{
 			name:     "invalid prefix",
-			content:  stringPtr("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			content:  new("some-encrypted-content"),
 			expected: false,
 		},
 		{
 			name:     "only prefix",
-			content:  stringPtr(OpenAIEncryptedContentPrefix),
+			content:  new(OpenAIEncryptedContentPrefix),
 			expected: true,
 		},
 	}
@@ -60,23 +60,23 @@ func TestDecodeOpenAIEncryptedContent(t *testing.T) {
 		},
 		{
 			name:     "empty string",
-			content:  stringPtr(""),
+			content:  new(""),
 			expected: nil,
 		},
 		{
 			name:     "valid encrypted content",
-			content:  stringPtr(OpenAIEncryptedContentPrefix + "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
-			expected: stringPtr("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			content:  new(OpenAIEncryptedContentPrefix + "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			expected: new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
 		},
 		{
 			name:     "invalid prefix",
-			content:  stringPtr("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			content:  new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
 			expected: nil,
 		},
 		{
 			name:     "only prefix returns empty string",
-			content:  stringPtr(OpenAIEncryptedContentPrefix),
-			expected: stringPtr(""),
+			content:  new(OpenAIEncryptedContentPrefix),
+			expected: new(""),
 		},
 	}
 
@@ -106,13 +106,13 @@ func TestEncodeOpenAIEncryptedContent(t *testing.T) {
 		},
 		{
 			name:     "only prefix",
-			content:  stringPtr(""),
-			expected: stringPtr(OpenAIEncryptedContentPrefix),
+			content:  new(""),
+			expected: new(OpenAIEncryptedContentPrefix),
 		},
 		{
 			name:     "valid encrypted content",
-			content:  stringPtr("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
-			expected: stringPtr(OpenAIEncryptedContentPrefix + "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			content:  new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			expected: new(OpenAIEncryptedContentPrefix + "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
 		},
 	}
 
@@ -130,7 +130,7 @@ func TestEncodeOpenAIEncryptedContent(t *testing.T) {
 }
 
 func TestEncodeDecodeRoundTrip(t *testing.T) {
-	original := stringPtr("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp")
+	original := new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp")
 
 	// Encode
 	encoded := EncodeOpenAIEncryptedContent(original)
@@ -141,8 +141,4 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	decoded := DecodeOpenAIEncryptedContent(encoded)
 	require.NotNil(t, decoded)
 	require.Equal(t, *original, *decoded)
-}
-
-func stringPtr(s string) *string {
-	return &s
 }

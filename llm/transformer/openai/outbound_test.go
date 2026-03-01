@@ -203,15 +203,6 @@ func TestOutboundTransformer_TransformRequest_StripsUnsupportedToolCallExtraCont
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 		},
-		{
-			name: "azure platform",
-			config: &Config{
-				PlatformType:   PlatformAzure,
-				BaseURL:        "https://example.openai.azure.com",
-				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-				APIVersion:     DefaultAzureAPIVersion,
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -290,7 +281,7 @@ func TestStripUnsupportedToolCallExtraContentForOpenAI_OnlyStripsThoughtSignatur
 		},
 	}
 
-	stripUnsupportedToolCallExtraContentForOpenAI(req)
+	stripUnsupportedToolCallExtraContent(req)
 
 	if !assert.NotNil(t, req.Messages[0].ToolCalls[0].ExtraContent) {
 		return

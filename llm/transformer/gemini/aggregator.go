@@ -7,6 +7,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // candidateAggregator is a helper struct to aggregate data for each candidate.
@@ -104,6 +105,9 @@ func AggregateStreamChunks(
 								Arguments: string(argsJSON),
 							},
 						}
+						if normalized := shared.NormalizeGeminiThoughtSignature(part.ThoughtSignature); normalized != nil {
+							setOutboundToolCallThoughtSignature(agg.toolCalls[toolCallIndex], *normalized)
+						}
 
 					case part.InlineData != nil:
 						agg.inlineDataParts = append(agg.inlineDataParts, part.InlineData)
@@ -181,12 +185,18 @@ func buildGeminiResponse(
 				_ = json.Unmarshal([]byte(tc.Function.Arguments), &args)
 			}
 
+			var thoughtSignature string
+			if signature := getInboundGeminiToolCallThoughtSignature(*tc); signature != nil {
+				thoughtSignature = *signature
+			}
+
 			parts = append(parts, &Part{
 				FunctionCall: &FunctionCall{
 					ID:   tc.ID,
 					Name: tc.Function.Name,
 					Args: args,
 				},
+				ThoughtSignature: thoughtSignature,
 			})
 		}
 

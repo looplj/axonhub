@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Workflow, ChevronsDownUp, ExternalLink, Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -447,6 +447,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(true);
   const [selectedSpanTypes, setSelectedSpanTypes] = useState<Set<string>>(new Set());
+  const initializedTraceIdRef = useRef<string | null>(null);
 
   const timelineData = useMemo(() => {
     const earliestStart = findEarliestStart(trace);
@@ -499,15 +500,6 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     const totalTokens = tokenSum > 0 ? tokenSum : null;
     const totalCachedTokens = cachedTokenSum > 0 ? cachedTokenSum : null;
 
-    // Initialize expanded segments for first 10 items
-    const initialExpanded = new Set<string>();
-    flatSegments.slice(0, 10).forEach((seg) => {
-      if (seg.spans.length > 0) {
-        initialExpanded.add(seg.segment.id);
-      }
-    });
-    setExpandedSegments(initialExpanded);
-
     return {
       flatSegments,
       totalDuration: Math.max(totalDuration, 1),
@@ -518,18 +510,68 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     };
   }, [trace]);
 
+  useEffect(() => {
+    if (!timelineData) return;
+    if (initializedTraceIdRef.current === trace.id) return;
+
+    initializedTraceIdRef.current = trace.id;
+
+    const storageKey = `axonhub_traces_flat_timeline_expanded_segments_${trace.id}`;
+    const expandableSegments = timelineData.flatSegments.filter((seg) => seg.spans.length > 0).map((seg) => seg.segment.id);
+    const expandableSegmentSet = new Set(expandableSegments);
+
+    let nextExpanded = new Set<string>();
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed)) {
+        nextExpanded = new Set(parsed.filter((id) => typeof id === 'string' && expandableSegmentSet.has(id)));
+      }
+    } catch (_error) {
+      void _error;
+    }
+
+    if (nextExpanded.size === 0) {
+      timelineData.flatSegments.slice(0, 10).forEach((seg) => {
+        if (seg.spans.length > 0) {
+          nextExpanded.add(seg.segment.id);
+        }
+      });
+    }
+
+    setExpandedSegments(nextExpanded);
+    setAllExpanded(nextExpanded.size === expandableSegments.length && expandableSegments.length > 0);
+  }, [timelineData, trace.id]);
+
+  useEffect(() => {
+    if (!timelineData) return;
+    if (initializedTraceIdRef.current !== trace.id) return;
+
+    const storageKey = `axonhub_traces_flat_timeline_expanded_segments_${trace.id}`;
+    const next = Array.from(expandedSegments);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(next));
+    } catch (_error) {
+      void _error;
+    }
+  }, [expandedSegments, timelineData, trace.id]);
+
+  useEffect(() => {
+    if (!timelineData) return;
+    const expandableCount = timelineData.flatSegments.filter((seg) => seg.spans.length > 0).length;
+    setAllExpanded(expandableCount > 0 && expandedSegments.size === expandableCount);
+  }, [expandedSegments, timelineData]);
+
   const handleToggleAll = () => {
     if (!timelineData) return;
 
     if (allExpanded) {
       // Collapse all
       setExpandedSegments(new Set());
-      setAllExpanded(false);
     } else {
       // Expand all
       const allSegmentIds = new Set(timelineData.flatSegments.filter((seg) => seg.spans.length > 0).map((seg) => seg.segment.id));
       setExpandedSegments(allSegmentIds);
-      setAllExpanded(true);
     }
   };
 
@@ -597,7 +639,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     );
   }
 
-  const { flatSegments, totalDuration, totalItems, totalTokens, totalCachedTokens, allSpanTypes } = timelineData;
+  const { totalDuration, totalItems, totalTokens, totalCachedTokens, allSpanTypes } = timelineData;
   const activeFilterCount = selectedSpanTypes.size;
 
   return (

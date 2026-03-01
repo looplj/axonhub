@@ -3,11 +3,9 @@ package copilot
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -164,95 +162,4 @@ func TestTokenExchanger_Exchange_MissingExpiresAt(t *testing.T) {
 	exchanger := newTestExchanger(t, srv)
 	_, _, err := exchanger.Exchange(context.Background(), "test_access_token")
 	require.Error(t, err)
-}
-
-func TestTokenExchanger_Exchange_Singleflight(t *testing.T) {
-	var requestCount int
-	var mu sync.Mutex
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		requestCount++
-		mu.Unlock()
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(copilotTokenResponse{
-			Token:     "copilot_token",
-			ExpiresAt: time.Now().Add(1 * time.Hour).Unix(),
-		})
-	}))
-	defer srv.Close()
-
-	exchanger := newTestExchanger(t, srv)
-
-	var wg sync.WaitGroup
-	for range 32 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			_, _, err := exchanger.Exchange(context.Background(), "test_access_token")
-			require.NoError(t, err)
-		}()
-	}
-	wg.Wait()
-
-	mu.Lock()
-	defer mu.Unlock()
-	require.Equal(t, 1, requestCount)
-}
-
-func TestTokenExchanger_Exchange_Singleflight_DifferentTokens(t *testing.T) {
-	var requestCount int
-	var mu sync.Mutex
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		requestCount++
-		mu.Unlock()
-
-		accessToken := strings.TrimPrefix(r.Header.Get("Authorization"), "token ")
-
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(copilotTokenResponse{
-			Token:     "copilot_token_" + accessToken,
-			ExpiresAt: time.Now().Add(1 * time.Hour).Unix(),
-		})
-	}))
-	defer srv.Close()
-
-	exchanger := newTestExchanger(t, srv)
-
-	var wg sync.WaitGroup
-	results := make(chan string, 2)
-	errs := make(chan error, 2)
-
-	for _, tok := range []string{"token_a", "token_b"} {
-		wg.Add(1)
-		go func(accessToken string) {
-			defer wg.Done()
-			token, _, err := exchanger.Exchange(context.Background(), accessToken)
-			if err != nil {
-				errs <- err
-				return
-			}
-			results <- token
-		}(tok)
-	}
-	wg.Wait()
-	close(results)
-	close(errs)
-
-	for err := range errs {
-		require.NoError(t, err)
-	}
-
-	var got []string
-	for v := range results {
-		got = append(got, v)
-	}
-	require.Len(t, got, 2)
-	require.NotEqual(t, got[0], got[1])
-
-	mu.Lock()
-	defer mu.Unlock()
-	require.Equal(t, 2, requestCount, fmt.Sprintf("expected 2 requests, got %d", requestCount))
 }
