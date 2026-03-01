@@ -42,7 +42,7 @@ func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.Agen
 		}
 
 		//nolint:gosec
-		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, name, baseURL, apiKey.Key)
+		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/main/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, name, baseURL, apiKey.Key)
 		if err := exec.CommandContext(ctx, "sh", "-c", deployCmd).Run(); err != nil {
 			return fmt.Errorf("failed to deploy axonclaw: %w", err)
 		}
@@ -83,7 +83,7 @@ func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.Agen
 	defer session2.Close()
 
 	deployCmd := fmt.Sprintf(
-		"cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh",
+		"cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/main/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh",
 		shellQuote(directory),
 		shellQuote(name),
 		shellQuote(baseURL),
@@ -227,7 +227,7 @@ func (svc *AgentDeployService) vmInstallLatest(ctx context.Context, runtime *ent
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
 
 	if isLocalhost {
-		cmd := exec.CommandContext(ctx, "sh", "-c", "curl -sSL https://get.axonclaw.io/install.sh | sh") //nolint:gosec
+		cmd := exec.CommandContext(ctx, "sh", "-c", "curl -sSL https://raw.githubusercontent.com/looplj/axonhub/main/cmd/axonclaw/install.sh | sh") //nolint:gosec
 		cmd.Dir = directory
 
 		cmd.Env = append(os.Environ(),
@@ -255,7 +255,7 @@ func (svc *AgentDeployService) vmInstallLatest(ctx context.Context, runtime *ent
 	defer session.Close()
 
 	installCmd := fmt.Sprintf(
-		"cd %s && curl -sSL https://get.axonclaw.io/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh",
+		"cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/main/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh",
 		shellQuote(directory),
 		shellQuote(name),
 		shellQuote(baseURL),

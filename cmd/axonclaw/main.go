@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/axon/provider/anthropic"
 	"github.com/looplj/axonhub/axon/thread"
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
+	"github.com/looplj/axonhub/cmd/axonclaw/build"
 	"github.com/looplj/axonhub/cmd/axonclaw/cmds"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 	"github.com/looplj/axonhub/cmd/axonclaw/runner"
@@ -68,8 +69,14 @@ func newRootCommand(opts newRootCommandOptions) *cobra.Command {
 	)
 
 	rootCmd := &cobra.Command{
-		Use:          "axonclaw",
-		Short:        "AxonClaw - AxonHub managed agent",
+		Use:     "axonclaw",
+		Short:   "AxonClaw - AxonHub managed agent",
+		Version: build.GetVersion(),
+		Long: fmt.Sprintf(`AxonClaw - AxonHub managed agent
+
+Version:    %s
+Build Time: %s
+Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit()),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := conf.LoadOrSaveConfig(baseURL, apiKey, name)
