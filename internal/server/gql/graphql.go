@@ -71,6 +71,7 @@ type Dependencies struct {
 	PromptService                  *biz.PromptService
 	AgentService                   *biz.AgentService
 	AgentRuntimeService            *biz.AgentRuntimeService
+	AgentDeployService             *biz.AgentDeployService
 	AgentBootstrapService          *biz.AgentBootstrapService
 	ProviderQuotaService           *biz.ProviderQuotaService
 }
@@ -103,6 +104,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.PromptService,
 			deps.AgentService,
 			deps.AgentRuntimeService,
+			deps.AgentDeployService,
 			deps.AgentBootstrapService,
 			deps.ProviderQuotaService,
 		),

@@ -681,12 +681,12 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "sender_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Kind); err != nil {
+	if buf, err = json.Marshal(_m.Type); err != nil {
 		return nil, err
 	}
 	node.Fields[8] = &Field{
-		Type:  "agentmessage.Kind",
-		Name:  "kind",
+		Type:  "agentmessage.Type",
+		Name:  "type",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.CorrelationID); err != nil {

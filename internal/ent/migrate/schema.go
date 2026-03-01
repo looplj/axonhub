@@ -212,7 +212,7 @@ var (
 		{Name: "direction", Type: field.TypeEnum, Enums: []string{"to_agent", "to_user"}},
 		{Name: "sender_type", Type: field.TypeEnum, Enums: []string{"user", "agent", "system"}},
 		{Name: "sender_id", Type: field.TypeInt, Nullable: true},
-		{Name: "kind", Type: field.TypeEnum, Enums: []string{"chat", "approval_request", "approval_result", "system_event"}, Default: "chat"},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"chat", "approval_request", "approval_result", "system_event"}, Default: "chat"},
 		{Name: "correlation_id", Type: field.TypeString, Default: ""},
 		{Name: "content", Type: field.TypeJSON},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "acked", "expired"}, Default: "pending"},

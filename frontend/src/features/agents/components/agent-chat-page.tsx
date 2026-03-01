@@ -12,7 +12,7 @@ import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { cn } from '@/lib/utils';
 import { useAgentDetail } from '../data/agent-detail';
-import { AgentChatMessage, AgentMessageKind, useAgentChatMessages, usePullAgentMessagesToUser, useSendAgentMessage, useResolveApproval, useAckAgentMessages } from '../data/agent-chat';
+import { AgentChatMessage, AgentMessageType, useAgentChatMessages, usePullAgentMessagesToUser, useSendAgentMessage, useResolveApproval, useAckAgentMessages } from '../data/agent-chat';
 
 function messageKey(m: AgentChatMessage) {
   return `${m.id}:${m.sequence}`;
@@ -90,7 +90,7 @@ export function AgentChatPage() {
       direction: 'to_runtime',
       senderType: 'user',
       senderID: null,
-      kind: 'chat',
+      type: 'chat',
       correlationID: '',
       content: {},
       text: trimmed,
@@ -141,7 +141,7 @@ export function AgentChatPage() {
   const approvalResultsMap = useMemo(() => {
     const map = new Map<string, AgentChatMessage>();
     for (const m of messages) {
-      if (m.kind === 'approval_result' && m.correlationID) {
+      if (m.type === 'approval_result' && m.correlationID) {
         map.set(m.correlationID, m);
       }
     }
@@ -150,14 +150,14 @@ export function AgentChatPage() {
 
   const renderMessage = (m: AgentChatMessage) => {
     const ts = m.createdAt ? format(new Date(m.createdAt), 'HH:mm:ss', { locale }) : '';
-    const kind: AgentMessageKind = m.kind || 'chat';
+    const msgType: AgentMessageType = m.type || 'chat';
     const isUser = m.senderType === 'user';
 
-    if (kind === 'approval_result') {
+    if (msgType === 'approval_result') {
       return null;
     }
 
-    if (kind === 'system_event') {
+    if (msgType === 'system_event') {
       return (
         <div key={messageKey(m)} className="flex w-full justify-center">
           <div className="flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
@@ -168,7 +168,7 @@ export function AgentChatPage() {
       );
     }
 
-    if (kind === 'approval_request') {
+    if (msgType === 'approval_request') {
       const content = m.content as {
         tool_name?: string;
         tool_call_id?: string;

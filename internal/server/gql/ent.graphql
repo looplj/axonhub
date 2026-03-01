@@ -1018,9 +1018,9 @@ type AgentMessage implements Node {
   """
   senderID: Int
   """
-  Message kind for operator/runtime routing
+  Message type for operator/runtime routing
   """
-  kind: AgentMessageKind!
+  type: AgentMessageType!
   """
   Correlation ID for request/response matching (e.g. approval request id)
   """
@@ -1076,15 +1076,6 @@ type AgentMessageEdge {
   cursor: Cursor!
 }
 """
-AgentMessageKind is enum for the field kind
-"""
-enum AgentMessageKind @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.Kind") {
-  chat
-  approval_request
-  approval_result
-  system_event
-}
-"""
 Ordering options for AgentMessage connections
 """
 input AgentMessageOrder {
@@ -1119,6 +1110,15 @@ enum AgentMessageStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/
   pending
   acked
   expired
+}
+"""
+AgentMessageType is enum for the field type
+"""
+enum AgentMessageType @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.Type") {
+  chat
+  approval_request
+  approval_result
+  system_event
 }
 """
 AgentMessageWhereInput is used for filtering AgentMessage objects.
@@ -1214,12 +1214,12 @@ input AgentMessageWhereInput {
   senderIDIsNil: Boolean
   senderIDNotNil: Boolean
   """
-  kind field predicates
+  type field predicates
   """
-  kind: AgentMessageKind
-  kindNEQ: AgentMessageKind
-  kindIn: [AgentMessageKind!]
-  kindNotIn: [AgentMessageKind!]
+  type: AgentMessageType
+  typeNEQ: AgentMessageType
+  typeIn: [AgentMessageType!]
+  typeNotIn: [AgentMessageType!]
   """
   correlation_id field predicates
   """
@@ -3385,9 +3385,9 @@ input CreateAgentMessageInput {
   """
   senderID: Int
   """
-  Message kind for operator/runtime routing
+  Message type for operator/runtime routing
   """
-  kind: AgentMessageKind
+  type: AgentMessageType
   """
   Correlation ID for request/response matching (e.g. approval request id)
   """
@@ -8946,9 +8946,9 @@ input UpdateAgentMessageInput {
   senderID: Int
   clearSenderID: Boolean
   """
-  Message kind for operator/runtime routing
+  Message type for operator/runtime routing
   """
-  kind: AgentMessageKind
+  type: AgentMessageType
   """
   Correlation ID for request/response matching (e.g. approval request id)
   """

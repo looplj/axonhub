@@ -23,7 +23,7 @@ func mapMessage(m *biz.AgentMessageView) *AgentMessage {
 		SenderType:    AgentMessageSenderType(m.SenderType),
 		Text:          m.Text,
 		Content:       m.Content,
-		Kind:          AgentMessageKind(m.Kind),
+		Type:          AgentMessageType(m.Type),
 		CorrelationID: m.CorrelationID,
 		Sequence:      int(m.Sequence),
 		Status:        AgentMessageStatus(m.Status),

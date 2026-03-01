@@ -162,7 +162,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			agentmessage.FieldDirection:       {Type: field.TypeEnum, Column: agentmessage.FieldDirection},
 			agentmessage.FieldSenderType:      {Type: field.TypeEnum, Column: agentmessage.FieldSenderType},
 			agentmessage.FieldSenderID:        {Type: field.TypeInt, Column: agentmessage.FieldSenderID},
-			agentmessage.FieldKind:            {Type: field.TypeEnum, Column: agentmessage.FieldKind},
+			agentmessage.FieldType:            {Type: field.TypeEnum, Column: agentmessage.FieldType},
 			agentmessage.FieldCorrelationID:   {Type: field.TypeString, Column: agentmessage.FieldCorrelationID},
 			agentmessage.FieldContent:         {Type: field.TypeJSON, Column: agentmessage.FieldContent},
 			agentmessage.FieldStatus:          {Type: field.TypeEnum, Column: agentmessage.FieldStatus},
@@ -2845,9 +2845,9 @@ func (f *AgentMessageFilter) WhereSenderID(p entql.IntP) {
 	f.Where(p.Field(agentmessage.FieldSenderID))
 }
 
-// WhereKind applies the entql string predicate on the kind field.
-func (f *AgentMessageFilter) WhereKind(p entql.StringP) {
-	f.Where(p.Field(agentmessage.FieldKind))
+// WhereType applies the entql string predicate on the type field.
+func (f *AgentMessageFilter) WhereType(p entql.StringP) {
+	f.Where(p.Field(agentmessage.FieldType))
 }
 
 // WhereCorrelationID applies the entql string predicate on the correlation_id field.

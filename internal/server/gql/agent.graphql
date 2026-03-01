@@ -65,7 +65,7 @@ type AgentChatMessage {
   direction: AgentMessageDirection!
   senderType: AgentMessageSenderType!
   senderID: Int
-  kind: AgentMessageKind!
+  type: AgentMessageType!
   correlationID: String!
   content: JSONRawMessage!
   text: String!

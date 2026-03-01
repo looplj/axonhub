@@ -146,20 +146,20 @@ func (v *AgentBootstrapResponse) GetAgentBootstrap() *AgentBootstrapAgentBootstr
 	return v.AgentBootstrap
 }
 
-type AgentMessageKind string
+type AgentMessageType string
 
 const (
-	AgentMessageKindChat            AgentMessageKind = "chat"
-	AgentMessageKindApprovalRequest AgentMessageKind = "approval_request"
-	AgentMessageKindApprovalResult  AgentMessageKind = "approval_result"
-	AgentMessageKindSystemEvent     AgentMessageKind = "system_event"
+	AgentMessageTypeChat            AgentMessageType = "chat"
+	AgentMessageTypeApprovalRequest AgentMessageType = "approval_request"
+	AgentMessageTypeApprovalResult  AgentMessageType = "approval_result"
+	AgentMessageTypeSystemEvent     AgentMessageType = "system_event"
 )
 
-var AllAgentMessageKind = []AgentMessageKind{
-	AgentMessageKindChat,
-	AgentMessageKindApprovalRequest,
-	AgentMessageKindApprovalResult,
-	AgentMessageKindSystemEvent,
+var AllAgentMessageType = []AgentMessageType{
+	AgentMessageTypeChat,
+	AgentMessageTypeApprovalRequest,
+	AgentMessageTypeApprovalResult,
+	AgentMessageTypeSystemEvent,
 }
 
 type HeartbeatAgentInstanceInput struct {
@@ -214,7 +214,7 @@ func (v *PeerAgentsResponse) GetPeerAgents() []*PeerAgentsPeerAgentsPeerAgent { 
 type PullAgentMessagesInput struct {
 	AfterSequence *int               `json:"afterSequence"`
 	Limit         *int               `json:"limit"`
-	KindIn        []AgentMessageKind `json:"kindIn"`
+	TypeIn        []AgentMessageType `json:"typeIn"`
 	CorrelationID *string            `json:"correlationID"`
 }
 
@@ -224,8 +224,8 @@ func (v *PullAgentMessagesInput) GetAfterSequence() *int { return v.AfterSequenc
 // GetLimit returns PullAgentMessagesInput.Limit, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesInput) GetLimit() *int { return v.Limit }
 
-// GetKindIn returns PullAgentMessagesInput.KindIn, and is useful for accessing the field via an interface.
-func (v *PullAgentMessagesInput) GetKindIn() []AgentMessageKind { return v.KindIn }
+// GetTypeIn returns PullAgentMessagesInput.TypeIn, and is useful for accessing the field via an interface.
+func (v *PullAgentMessagesInput) GetTypeIn() []AgentMessageType { return v.TypeIn }
 
 // GetCorrelationID returns PullAgentMessagesInput.CorrelationID, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesInput) GetCorrelationID() *string { return v.CorrelationID }
@@ -234,7 +234,7 @@ func (v *PullAgentMessagesInput) GetCorrelationID() *string { return v.Correlati
 type PullAgentMessagesPullAgentMessagesAgentMessage struct {
 	Id            string           `json:"id"`
 	Text          string           `json:"text"`
-	Kind          AgentMessageKind `json:"kind"`
+	Type          AgentMessageType `json:"type"`
 	CorrelationID string           `json:"correlationID"`
 	Content       json.RawMessage  `json:"content"`
 	Sequence      int              `json:"sequence"`
@@ -246,8 +246,8 @@ func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetId() string { return
 // GetText returns PullAgentMessagesPullAgentMessagesAgentMessage.Text, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetText() string { return v.Text }
 
-// GetKind returns PullAgentMessagesPullAgentMessagesAgentMessage.Kind, and is useful for accessing the field via an interface.
-func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetKind() AgentMessageKind { return v.Kind }
+// GetType returns PullAgentMessagesPullAgentMessagesAgentMessage.Type, and is useful for accessing the field via an interface.
+func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetType() AgentMessageType { return v.Type }
 
 // GetCorrelationID returns PullAgentMessagesPullAgentMessagesAgentMessage.CorrelationID, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetCorrelationID() string {
@@ -312,7 +312,7 @@ func (v *RegisterAgentInstanceResponse) GetRegisterAgentInstance() *RegisterAgen
 type ReplyMessageInput struct {
 	Text          string            `json:"text"`
 	Content       *json.RawMessage  `json:"content"`
-	Kind          *AgentMessageKind `json:"kind"`
+	Type          *AgentMessageType `json:"type"`
 	CorrelationID *string           `json:"correlationID"`
 }
 
@@ -322,8 +322,8 @@ func (v *ReplyMessageInput) GetText() string { return v.Text }
 // GetContent returns ReplyMessageInput.Content, and is useful for accessing the field via an interface.
 func (v *ReplyMessageInput) GetContent() *json.RawMessage { return v.Content }
 
-// GetKind returns ReplyMessageInput.Kind, and is useful for accessing the field via an interface.
-func (v *ReplyMessageInput) GetKind() *AgentMessageKind { return v.Kind }
+// GetType returns ReplyMessageInput.Type, and is useful for accessing the field via an interface.
+func (v *ReplyMessageInput) GetType() *AgentMessageType { return v.Type }
 
 // GetCorrelationID returns ReplyMessageInput.CorrelationID, and is useful for accessing the field via an interface.
 func (v *ReplyMessageInput) GetCorrelationID() *string { return v.CorrelationID }
@@ -586,7 +586,7 @@ query PullAgentMessages ($input: PullAgentMessagesInput!) {
 	pullAgentMessages(input: $input) {
 		id
 		text
-		kind
+		type
 		correlationID
 		content
 		sequence

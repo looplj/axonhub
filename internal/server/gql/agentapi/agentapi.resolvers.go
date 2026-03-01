@@ -101,12 +101,14 @@ func (r *mutationResolver) ReplyMessage(ctx context.Context, input ReplyMessageI
 			}
 			return &input.Content
 		}(),
-		Kind: func() *agentmessage.Kind {
-			if input.Kind == nil {
+		Type: func() *agentmessage.Type {
+			if input.Type == nil {
 				return nil
 			}
-			k := agentmessage.Kind(*input.Kind)
-			return &k
+
+			t := agentmessage.Type(*input.Type)
+
+			return &t
 		}(),
 		CorrelationID: input.CorrelationID,
 	})
@@ -255,15 +257,15 @@ func (r *queryResolver) PullAgentMessages(ctx context.Context, input PullAgentMe
 		lim = *input.Limit
 	}
 
-	kindIn := make([]agentmessage.Kind, 0, len(input.KindIn))
-	for _, k := range input.KindIn {
-		kindIn = append(kindIn, agentmessage.Kind(k))
+	typeIn := make([]agentmessage.Type, 0, len(input.TypeIn))
+	for _, t := range input.TypeIn {
+		typeIn = append(typeIn, agentmessage.Type(t))
 	}
 
 	views, err := r.agentBootstrapService.PullAgentMessages(ctx, inst, biz.PullAgentMessagesInput{
 		AfterSequence: after,
 		Limit:         lim,
-		KindIn:        kindIn,
+		TypeIn:        typeIn,
 		CorrelationID: input.CorrelationID,
 	})
 	if err != nil {

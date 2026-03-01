@@ -12,12 +12,9 @@ import {
   Edit,
   Trash2,
   MoreHorizontal,
-  Copy,
-  Check,
   Terminal,
   Settings,
   Info,
-  Key,
   Cpu,
   Calendar,
   User,
@@ -45,10 +42,29 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { extractNumberID } from '@/lib/utils';
 import { useAgentDetail } from '../data/agent-detail';
 import { DeployAxonclawDialog } from './deploy-axonclaw-dialog';
 import { useControlAxonclawInstance } from '../data/control-axonclaw-instance';
+
+type ControlAction = 'start' | 'stop' | 'restart' | 'redeploy';
+
+interface ConfirmDialogState {
+  open: boolean;
+  action: ControlAction | null;
+  instanceID: string | null;
+  instanceName: string | null;
+}
 
 function isInstanceOnline(lastHeartbeatAt: string | Date, thresholdMs: number) {
   const t = new Date(lastHeartbeatAt).getTime();
@@ -66,35 +82,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function CopyableField({ value, label }: { value: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className='flex items-center gap-2'>
-      {label && <span className='text-muted-foreground text-xs'>{label}</span>}
-      <code className='bg-muted max-w-[200px] truncate rounded px-2 py-1 font-mono text-xs'>
-        {value}
-      </code>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant='ghost' size='icon' className='h-6 w-6' onClick={handleCopy}>
-            {copied ? <Check className='h-3 w-3 text-green-500' /> : <Copy className='h-3 w-3' />}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{copied ? 'Copied!' : 'Copy'}</p>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  );
-}
-
 export function AgentDetailPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
@@ -107,6 +94,12 @@ export function AgentDetailPage() {
   const { data: agent, isLoading, refetch } = useAgentDetail(agentId);
   const [onlineThresholdSeconds, setOnlineThresholdSeconds] = useState(30);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    open: false,
+    action: null,
+    instanceID: null,
+    instanceName: null,
+  });
   const { agentRuntimesPermissions } = usePermissions();
   const controlInstance = useControlAxonclawInstance(agentId);
 
@@ -125,6 +118,35 @@ export function AgentDetailPage() {
 
   const handleEdit = () => {
     navigate({ to: '/project/agents/$agentId/edit' as any, params: { agentId } as any });
+  };
+
+  const openConfirmDialog = (instanceID: string, instanceName: string, action: ControlAction) => {
+    setConfirmDialog({
+      open: true,
+      action,
+      instanceID,
+      instanceName,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({
+      open: false,
+      action: null,
+      instanceID: null,
+      instanceName: null,
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmDialog.instanceID || !confirmDialog.action) return;
+    
+    await controlInstance.mutateAsync({
+      instanceID: confirmDialog.instanceID,
+      action: confirmDialog.action,
+    });
+    
+    closeConfirmDialog();
   };
 
   if (isLoading) {
@@ -468,23 +490,21 @@ export function AgentDetailPage() {
                                     <DropdownMenuContent align='end'>
                                       <DropdownMenuItem
                                         disabled={controlInstance.isPending || inst.status === 'running'}
-                                        onClick={() => controlInstance.mutate({ instanceID: inst.id, action: 'start' })}
+                                        onClick={() => openConfirmDialog(inst.id, inst.name, 'start')}
                                       >
                                         <Play className='mr-2 h-4 w-4' />
                                         {t('agents.instanceActions.start')}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         disabled={controlInstance.isPending || inst.status === 'stopped'}
-                                        onClick={() => controlInstance.mutate({ instanceID: inst.id, action: 'stop' })}
+                                        onClick={() => openConfirmDialog(inst.id, inst.name, 'stop')}
                                       >
                                         <Square className='mr-2 h-4 w-4' />
                                         {t('agents.instanceActions.stop')}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         disabled={controlInstance.isPending}
-                                        onClick={() =>
-                                          controlInstance.mutate({ instanceID: inst.id, action: 'restart' })
-                                        }
+                                        onClick={() => openConfirmDialog(inst.id, inst.name, 'restart')}
                                       >
                                         <RefreshCw className='mr-2 h-4 w-4' />
                                         {t('agents.instanceActions.restart')}
@@ -492,9 +512,7 @@ export function AgentDetailPage() {
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem
                                         disabled={controlInstance.isPending}
-                                        onClick={() =>
-                                          controlInstance.mutate({ instanceID: inst.id, action: 'redeploy' })
-                                        }
+                                        onClick={() => openConfirmDialog(inst.id, inst.name, 'redeploy')}
                                       >
                                         <Rocket className='mr-2 h-4 w-4' />
                                         {t('agents.instanceActions.redeploy')}
@@ -534,6 +552,47 @@ export function AgentDetailPage() {
         open={deployDialogOpen}
         onOpenChange={setDeployDialogOpen}
       />
+
+      <AlertDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => {
+          if (!open) closeConfirmDialog();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDialog.action === 'start'
+                ? t('agents.instanceDialogs.start.title')
+                : confirmDialog.action === 'stop'
+                  ? t('agents.instanceDialogs.stop.title')
+                  : confirmDialog.action === 'restart'
+                    ? t('agents.instanceDialogs.restart.title')
+                    : t('agents.instanceDialogs.redeploy.title')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.action === 'start'
+                ? t('agents.instanceDialogs.start.description', { name: confirmDialog.instanceName })
+                : confirmDialog.action === 'stop'
+                  ? t('agents.instanceDialogs.stop.description', { name: confirmDialog.instanceName })
+                  : confirmDialog.action === 'restart'
+                    ? t('agents.instanceDialogs.restart.description', { name: confirmDialog.instanceName })
+                    : t('agents.instanceDialogs.redeploy.description', { name: confirmDialog.instanceName })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={closeConfirmDialog}>
+              {t('common.buttons.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmAction}
+              disabled={controlInstance.isPending}
+            >
+              {controlInstance.isPending ? t('common.buttons.processing') : t('common.buttons.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

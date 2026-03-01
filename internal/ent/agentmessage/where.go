@@ -395,24 +395,24 @@ func SenderIDNotNil() predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldNotNull(FieldSenderID))
 }
 
-// KindEQ applies the EQ predicate on the "kind" field.
-func KindEQ(v Kind) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldEQ(FieldKind, v))
+// TypeEQ applies the EQ predicate on the "type" field.
+func TypeEQ(v Type) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldType, v))
 }
 
-// KindNEQ applies the NEQ predicate on the "kind" field.
-func KindNEQ(v Kind) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldNEQ(FieldKind, v))
+// TypeNEQ applies the NEQ predicate on the "type" field.
+func TypeNEQ(v Type) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNEQ(FieldType, v))
 }
 
-// KindIn applies the In predicate on the "kind" field.
-func KindIn(vs ...Kind) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldIn(FieldKind, vs...))
+// TypeIn applies the In predicate on the "type" field.
+func TypeIn(vs ...Type) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldIn(FieldType, vs...))
 }
 
-// KindNotIn applies the NotIn predicate on the "kind" field.
-func KindNotIn(vs ...Kind) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldNotIn(FieldKind, vs...))
+// TypeNotIn applies the NotIn predicate on the "type" field.
+func TypeNotIn(vs ...Type) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNotIn(FieldType, vs...))
 }
 
 // CorrelationIDEQ applies the EQ predicate on the "correlation_id" field.

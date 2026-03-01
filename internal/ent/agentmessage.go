@@ -39,8 +39,8 @@ type AgentMessage struct {
 	SenderType agentmessage.SenderType `json:"sender_type,omitempty"`
 	// Sender ID, user_id or agent_instance_id
 	SenderID *int `json:"sender_id,omitempty"`
-	// Message kind for operator/runtime routing
-	Kind agentmessage.Kind `json:"kind,omitempty"`
+	// Message type for operator/runtime routing
+	Type agentmessage.Type `json:"type,omitempty"`
 	// Correlation ID for request/response matching (e.g. approval request id)
 	CorrelationID string `json:"correlation_id,omitempty"`
 	// Message content (JSON)
@@ -101,7 +101,7 @@ func (*AgentMessage) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case agentmessage.FieldID, agentmessage.FieldDeletedAt, agentmessage.FieldProjectID, agentmessage.FieldAgentID, agentmessage.FieldAgentInstanceID, agentmessage.FieldSenderID, agentmessage.FieldSequence:
 			values[i] = new(sql.NullInt64)
-		case agentmessage.FieldDirection, agentmessage.FieldSenderType, agentmessage.FieldKind, agentmessage.FieldCorrelationID, agentmessage.FieldStatus:
+		case agentmessage.FieldDirection, agentmessage.FieldSenderType, agentmessage.FieldType, agentmessage.FieldCorrelationID, agentmessage.FieldStatus:
 			values[i] = new(sql.NullString)
 		case agentmessage.FieldCreatedAt, agentmessage.FieldUpdatedAt, agentmessage.FieldExpiresAt:
 			values[i] = new(sql.NullTime)
@@ -181,11 +181,11 @@ func (_m *AgentMessage) assignValues(columns []string, values []any) error {
 				_m.SenderID = new(int)
 				*_m.SenderID = int(value.Int64)
 			}
-		case agentmessage.FieldKind:
+		case agentmessage.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field kind", values[i])
+				return fmt.Errorf("unexpected type %T for field type", values[i])
 			} else if value.Valid {
-				_m.Kind = agentmessage.Kind(value.String)
+				_m.Type = agentmessage.Type(value.String)
 			}
 		case agentmessage.FieldCorrelationID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -295,8 +295,8 @@ func (_m *AgentMessage) String() string {
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
-	builder.WriteString("kind=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Kind))
+	builder.WriteString("type=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Type))
 	builder.WriteString(", ")
 	builder.WriteString("correlation_id=")
 	builder.WriteString(_m.CorrelationID)

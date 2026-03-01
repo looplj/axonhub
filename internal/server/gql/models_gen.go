@@ -65,7 +65,7 @@ type AgentChatMessage struct {
 	Direction       agentmessage.Direction  `json:"direction"`
 	SenderType      agentmessage.SenderType `json:"senderType"`
 	SenderID        *int                    `json:"senderID,omitempty"`
-	Kind            agentmessage.Kind       `json:"kind"`
+	Type            agentmessage.Type       `json:"type"`
 	CorrelationID   string                  `json:"correlationID"`
 	Content         objects.JSONRawMessage  `json:"content"`
 	Text            string                  `json:"text"`

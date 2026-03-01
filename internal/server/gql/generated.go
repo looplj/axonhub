@@ -244,12 +244,12 @@ type ComplexityRoot struct {
 		CreatedAt       func(childComplexity int) int
 		Direction       func(childComplexity int) int
 		ID              func(childComplexity int) int
-		Kind            func(childComplexity int) int
 		SenderID        func(childComplexity int) int
 		SenderType      func(childComplexity int) int
 		Sequence        func(childComplexity int) int
 		Status          func(childComplexity int) int
 		Text            func(childComplexity int) int
+		Type            func(childComplexity int) int
 	}
 
 	AgentConnection struct {
@@ -334,12 +334,12 @@ type ComplexityRoot struct {
 		Direction       func(childComplexity int) int
 		ExpiresAt       func(childComplexity int) int
 		ID              func(childComplexity int) int
-		Kind            func(childComplexity int) int
 		ProjectID       func(childComplexity int) int
 		SenderID        func(childComplexity int) int
 		SenderType      func(childComplexity int) int
 		Sequence        func(childComplexity int) int
 		Status          func(childComplexity int) int
+		Type            func(childComplexity int) int
 		UpdatedAt       func(childComplexity int) int
 	}
 
@@ -2997,12 +2997,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentChatMessage.ID(childComplexity), true
-	case "AgentChatMessage.kind":
-		if e.complexity.AgentChatMessage.Kind == nil {
-			break
-		}
-
-		return e.complexity.AgentChatMessage.Kind(childComplexity), true
 	case "AgentChatMessage.senderID":
 		if e.complexity.AgentChatMessage.SenderID == nil {
 			break
@@ -3033,6 +3027,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentChatMessage.Text(childComplexity), true
+	case "AgentChatMessage.type":
+		if e.complexity.AgentChatMessage.Type == nil {
+			break
+		}
+
+		return e.complexity.AgentChatMessage.Type(childComplexity), true
 
 	case "AgentConnection.edges":
 		if e.complexity.AgentConnection.Edges == nil {
@@ -3372,12 +3372,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentMessage.ID(childComplexity), true
-	case "AgentMessage.kind":
-		if e.complexity.AgentMessage.Kind == nil {
-			break
-		}
-
-		return e.complexity.AgentMessage.Kind(childComplexity), true
 	case "AgentMessage.projectID":
 		if e.complexity.AgentMessage.ProjectID == nil {
 			break
@@ -3408,6 +3402,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentMessage.Status(childComplexity), true
+	case "AgentMessage.type":
+		if e.complexity.AgentMessage.Type == nil {
+			break
+		}
+
+		return e.complexity.AgentMessage.Type(childComplexity), true
 	case "AgentMessage.updatedAt":
 		if e.complexity.AgentMessage.UpdatedAt == nil {
 			break
@@ -18414,30 +18414,30 @@ func (ec *executionContext) fieldContext_AgentChatMessage_senderID(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _AgentChatMessage_kind(ctx context.Context, field graphql.CollectedField, obj *AgentChatMessage) (ret graphql.Marshaler) {
+func (ec *executionContext) _AgentChatMessage_type(ctx context.Context, field graphql.CollectedField, obj *AgentChatMessage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AgentChatMessage_kind,
+		ec.fieldContext_AgentChatMessage_type,
 		func(ctx context.Context) (any, error) {
-			return obj.Kind, nil
+			return obj.Type, nil
 		},
 		nil,
-		ec.marshalNAgentMessageKind2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind,
+		ec.marshalNAgentMessageType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_AgentChatMessage_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AgentChatMessage_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentChatMessage",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type AgentMessageKind does not have child fields")
+			return nil, errors.New("field of type AgentMessageType does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20472,30 +20472,30 @@ func (ec *executionContext) fieldContext_AgentMessage_senderID(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _AgentMessage_kind(ctx context.Context, field graphql.CollectedField, obj *ent.AgentMessage) (ret graphql.Marshaler) {
+func (ec *executionContext) _AgentMessage_type(ctx context.Context, field graphql.CollectedField, obj *ent.AgentMessage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AgentMessage_kind,
+		ec.fieldContext_AgentMessage_type,
 		func(ctx context.Context) (any, error) {
-			return obj.Kind, nil
+			return obj.Type, nil
 		},
 		nil,
-		ec.marshalNAgentMessageKind2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind,
+		ec.marshalNAgentMessageType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_AgentMessage_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AgentMessage_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentMessage",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type AgentMessageKind does not have child fields")
+			return nil, errors.New("field of type AgentMessageType does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20929,8 +20929,8 @@ func (ec *executionContext) fieldContext_AgentMessageEdge_node(_ context.Context
 				return ec.fieldContext_AgentMessage_senderType(ctx, field)
 			case "senderID":
 				return ec.fieldContext_AgentMessage_senderID(ctx, field)
-			case "kind":
-				return ec.fieldContext_AgentMessage_kind(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentMessage_type(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentMessage_correlationID(ctx, field)
 			case "content":
@@ -38131,8 +38131,8 @@ func (ec *executionContext) fieldContext_Mutation_sendAgentMessage(ctx context.C
 				return ec.fieldContext_AgentChatMessage_senderType(ctx, field)
 			case "senderID":
 				return ec.fieldContext_AgentChatMessage_senderID(ctx, field)
-			case "kind":
-				return ec.fieldContext_AgentChatMessage_kind(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentChatMessage_type(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentChatMessage_correlationID(ctx, field)
 			case "content":
@@ -46632,8 +46632,8 @@ func (ec *executionContext) fieldContext_Query_pullAgentMessagesToUser(ctx conte
 				return ec.fieldContext_AgentChatMessage_senderType(ctx, field)
 			case "senderID":
 				return ec.fieldContext_AgentChatMessage_senderID(ctx, field)
-			case "kind":
-				return ec.fieldContext_AgentChatMessage_kind(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentChatMessage_type(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentChatMessage_correlationID(ctx, field)
 			case "content":
@@ -46758,8 +46758,8 @@ func (ec *executionContext) fieldContext_Query_agentChatMessages(ctx context.Con
 				return ec.fieldContext_AgentChatMessage_senderType(ctx, field)
 			case "senderID":
 				return ec.fieldContext_AgentChatMessage_senderID(ctx, field)
-			case "kind":
-				return ec.fieldContext_AgentChatMessage_kind(ctx, field)
+			case "type":
+				return ec.fieldContext_AgentChatMessage_type(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentChatMessage_correlationID(ctx, field)
 			case "content":
@@ -64791,7 +64791,7 @@ func (ec *executionContext) unmarshalInputAgentMessageWhereInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "agentID", "agentIDNEQ", "agentIDIn", "agentIDNotIn", "agentInstanceID", "agentInstanceIDNEQ", "agentInstanceIDIn", "agentInstanceIDNotIn", "direction", "directionNEQ", "directionIn", "directionNotIn", "senderType", "senderTypeNEQ", "senderTypeIn", "senderTypeNotIn", "senderID", "senderIDNEQ", "senderIDIn", "senderIDNotIn", "senderIDGT", "senderIDGTE", "senderIDLT", "senderIDLTE", "senderIDIsNil", "senderIDNotNil", "kind", "kindNEQ", "kindIn", "kindNotIn", "correlationID", "correlationIDNEQ", "correlationIDIn", "correlationIDNotIn", "correlationIDGT", "correlationIDGTE", "correlationIDLT", "correlationIDLTE", "correlationIDContains", "correlationIDHasPrefix", "correlationIDHasSuffix", "correlationIDEqualFold", "correlationIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "sequence", "sequenceNEQ", "sequenceIn", "sequenceNotIn", "sequenceGT", "sequenceGTE", "sequenceLT", "sequenceLTE", "expiresAt", "expiresAtNEQ", "expiresAtIn", "expiresAtNotIn", "expiresAtGT", "expiresAtGTE", "expiresAtLT", "expiresAtLTE", "expiresAtIsNil", "expiresAtNotNil", "hasAgent", "hasAgentWith", "hasAgentInstance", "hasAgentInstanceWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "agentID", "agentIDNEQ", "agentIDIn", "agentIDNotIn", "agentInstanceID", "agentInstanceIDNEQ", "agentInstanceIDIn", "agentInstanceIDNotIn", "direction", "directionNEQ", "directionIn", "directionNotIn", "senderType", "senderTypeNEQ", "senderTypeIn", "senderTypeNotIn", "senderID", "senderIDNEQ", "senderIDIn", "senderIDNotIn", "senderIDGT", "senderIDGTE", "senderIDLT", "senderIDLTE", "senderIDIsNil", "senderIDNotNil", "type", "typeNEQ", "typeIn", "typeNotIn", "correlationID", "correlationIDNEQ", "correlationIDIn", "correlationIDNotIn", "correlationIDGT", "correlationIDGTE", "correlationIDLT", "correlationIDLTE", "correlationIDContains", "correlationIDHasPrefix", "correlationIDHasSuffix", "correlationIDEqualFold", "correlationIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "sequence", "sequenceNEQ", "sequenceIn", "sequenceNotIn", "sequenceGT", "sequenceGTE", "sequenceLT", "sequenceLTE", "expiresAt", "expiresAtNEQ", "expiresAtIn", "expiresAtNotIn", "expiresAtGT", "expiresAtGTE", "expiresAtLT", "expiresAtLTE", "expiresAtIsNil", "expiresAtNotNil", "hasAgent", "hasAgentWith", "hasAgentInstance", "hasAgentInstanceWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65289,34 +65289,34 @@ func (ec *executionContext) unmarshalInputAgentMessageWhereInput(ctx context.Con
 				return it, err
 			}
 			it.SenderIDNotNil = data
-		case "kind":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
-			data, err := ec.unmarshalOAgentMessageKind2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx, v)
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAgentMessageType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Kind = data
-		case "kindNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kindNEQ"))
-			data, err := ec.unmarshalOAgentMessageKind2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx, v)
+			it.Type = data
+		case "typeNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeNEQ"))
+			data, err := ec.unmarshalOAgentMessageType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.KindNEQ = data
-		case "kindIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kindIn"))
-			data, err := ec.unmarshalOAgentMessageKind2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKindᚄ(ctx, v)
+			it.TypeNEQ = data
+		case "typeIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeIn"))
+			data, err := ec.unmarshalOAgentMessageType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐTypeᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.KindIn = data
-		case "kindNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kindNotIn"))
-			data, err := ec.unmarshalOAgentMessageKind2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKindᚄ(ctx, v)
+			it.TypeIn = data
+		case "typeNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeNotIn"))
+			data, err := ec.unmarshalOAgentMessageType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐTypeᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.KindNotIn = data
+			it.TypeNotIn = data
 		case "correlationID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("correlationID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -73342,7 +73342,7 @@ func (ec *executionContext) unmarshalInputCreateAgentMessageInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectID", "direction", "senderType", "senderID", "kind", "correlationID", "content", "status", "sequence", "expiresAt", "agentID", "agentInstanceID"}
+	fieldsInOrder := [...]string{"projectID", "direction", "senderType", "senderID", "type", "correlationID", "content", "status", "sequence", "expiresAt", "agentID", "agentInstanceID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73377,13 +73377,13 @@ func (ec *executionContext) unmarshalInputCreateAgentMessageInput(ctx context.Co
 				return it, err
 			}
 			it.SenderID = data
-		case "kind":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
-			data, err := ec.unmarshalOAgentMessageKind2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx, v)
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAgentMessageType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Kind = data
+			it.Type = data
 		case "correlationID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("correlationID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -87985,7 +87985,7 @@ func (ec *executionContext) unmarshalInputUpdateAgentMessageInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"direction", "senderType", "senderID", "clearSenderID", "kind", "correlationID", "content", "appendContent", "status", "sequence", "expiresAt", "clearExpiresAt"}
+	fieldsInOrder := [...]string{"direction", "senderType", "senderID", "clearSenderID", "type", "correlationID", "content", "appendContent", "status", "sequence", "expiresAt", "clearExpiresAt"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88020,13 +88020,13 @@ func (ec *executionContext) unmarshalInputUpdateAgentMessageInput(ctx context.Co
 				return it, err
 			}
 			it.ClearSenderID = data
-		case "kind":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
-			data, err := ec.unmarshalOAgentMessageKind2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx, v)
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOAgentMessageType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Kind = data
+			it.Type = data
 		case "correlationID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("correlationID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -95412,8 +95412,8 @@ func (ec *executionContext) _AgentChatMessage(ctx context.Context, sel ast.Selec
 			}
 		case "senderID":
 			out.Values[i] = ec._AgentChatMessage_senderID(ctx, field, obj)
-		case "kind":
-			out.Values[i] = ec._AgentChatMessage_kind(ctx, field, obj)
+		case "type":
+			out.Values[i] = ec._AgentChatMessage_type(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -96441,8 +96441,8 @@ func (ec *executionContext) _AgentMessage(ctx context.Context, sel ast.Selection
 			}
 		case "senderID":
 			out.Values[i] = ec._AgentMessage_senderID(ctx, field, obj)
-		case "kind":
-			out.Values[i] = ec._AgentMessage_kind(ctx, field, obj)
+		case "type":
+			out.Values[i] = ec._AgentMessage_type(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -115690,16 +115690,6 @@ func (ec *executionContext) marshalNAgentMessageDirection2githubᚗcomᚋlooplj�
 	return v
 }
 
-func (ec *executionContext) unmarshalNAgentMessageKind2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx context.Context, v any) (agentmessage.Kind, error) {
-	var res agentmessage.Kind
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNAgentMessageKind2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx context.Context, sel ast.SelectionSet, v agentmessage.Kind) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) unmarshalNAgentMessageOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentMessageOrderField(ctx context.Context, v any) (*ent.AgentMessageOrderField, error) {
 	var res = new(ent.AgentMessageOrderField)
 	err := res.UnmarshalGQL(v)
@@ -115733,6 +115723,16 @@ func (ec *executionContext) unmarshalNAgentMessageStatus2githubᚗcomᚋlooplj�
 }
 
 func (ec *executionContext) marshalNAgentMessageStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐStatus(ctx context.Context, sel ast.SelectionSet, v agentmessage.Status) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNAgentMessageType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx context.Context, v any) (agentmessage.Type, error) {
+	var res agentmessage.Type
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAgentMessageType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx context.Context, sel ast.SelectionSet, v agentmessage.Type) graphql.Marshaler {
 	return v
 }
 
@@ -121492,87 +121492,6 @@ func (ec *executionContext) marshalOAgentMessageEdge2ᚖgithubᚗcomᚋloopljᚋ
 	return ec._AgentMessageEdge(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOAgentMessageKind2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKindᚄ(ctx context.Context, v any) ([]agentmessage.Kind, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]agentmessage.Kind, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNAgentMessageKind2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalOAgentMessageKind2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKindᚄ(ctx context.Context, sel ast.SelectionSet, v []agentmessage.Kind) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNAgentMessageKind2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalOAgentMessageKind2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx context.Context, v any) (*agentmessage.Kind, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(agentmessage.Kind)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOAgentMessageKind2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐKind(ctx context.Context, sel ast.SelectionSet, v *agentmessage.Kind) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
-}
-
 func (ec *executionContext) unmarshalOAgentMessageOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentMessageOrder(ctx context.Context, v any) (*ent.AgentMessageOrder, error) {
 	if v == nil {
 		return nil, nil
@@ -121737,6 +121656,87 @@ func (ec *executionContext) unmarshalOAgentMessageStatus2ᚖgithubᚗcomᚋloopl
 }
 
 func (ec *executionContext) marshalOAgentMessageStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐStatus(ctx context.Context, sel ast.SelectionSet, v *agentmessage.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOAgentMessageType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐTypeᚄ(ctx context.Context, v any) ([]agentmessage.Type, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]agentmessage.Type, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAgentMessageType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOAgentMessageType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []agentmessage.Type) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAgentMessageType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOAgentMessageType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx context.Context, v any) (*agentmessage.Type, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(agentmessage.Type)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAgentMessageType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentmessageᚐType(ctx context.Context, sel ast.SelectionSet, v *agentmessage.Type) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

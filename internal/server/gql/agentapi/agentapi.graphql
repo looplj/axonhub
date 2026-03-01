@@ -48,7 +48,7 @@ type AgentBootstrap {
 enum AgentMessageDirection { to_runtime to_user }
 enum AgentMessageStatus { pending acked expired }
 enum AgentMessageSenderType { user runtime system }
-enum AgentMessageKind { chat approval_request approval_result system_event }
+enum AgentMessageType { chat approval_request approval_result system_event }
 
 input RegisterAgentInstanceInput {
   name: String
@@ -98,7 +98,7 @@ input SendAgentMessageInput {
 input ReplyMessageInput {
   text: String!
   content: JSONRawMessageInput
-  kind: AgentMessageKind = chat
+  type: AgentMessageType = chat
   correlationID: String = ""
 }
 
@@ -109,7 +109,7 @@ type AgentMessage {
   senderType: AgentMessageSenderType!
   text: String!
   content: JSONRawMessage!
-  kind: AgentMessageKind!
+  type: AgentMessageType!
   correlationID: String!
   sequence: Int!
   status: AgentMessageStatus!
@@ -119,7 +119,7 @@ type AgentMessage {
 input PullAgentMessagesInput {
   afterSequence: Int
   limit: Int = 50
-  kindIn: [AgentMessageKind!]
+  typeIn: [AgentMessageType!]
   correlationID: String
 }
 

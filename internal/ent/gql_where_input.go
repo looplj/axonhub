@@ -2235,11 +2235,11 @@ type AgentMessageWhereInput struct {
 	SenderIDIsNil  bool  `json:"senderIDIsNil,omitempty"`
 	SenderIDNotNil bool  `json:"senderIDNotNil,omitempty"`
 
-	// "kind" field predicates.
-	Kind      *agentmessage.Kind  `json:"kind,omitempty"`
-	KindNEQ   *agentmessage.Kind  `json:"kindNEQ,omitempty"`
-	KindIn    []agentmessage.Kind `json:"kindIn,omitempty"`
-	KindNotIn []agentmessage.Kind `json:"kindNotIn,omitempty"`
+	// "type" field predicates.
+	Type      *agentmessage.Type  `json:"type,omitempty"`
+	TypeNEQ   *agentmessage.Type  `json:"typeNEQ,omitempty"`
+	TypeIn    []agentmessage.Type `json:"typeIn,omitempty"`
+	TypeNotIn []agentmessage.Type `json:"typeNotIn,omitempty"`
 
 	// "correlation_id" field predicates.
 	CorrelationID             *string  `json:"correlationID,omitempty"`
@@ -2538,17 +2538,17 @@ func (i *AgentMessageWhereInput) P() (predicate.AgentMessage, error) {
 	if i.SenderIDNotNil {
 		predicates = append(predicates, agentmessage.SenderIDNotNil())
 	}
-	if i.Kind != nil {
-		predicates = append(predicates, agentmessage.KindEQ(*i.Kind))
+	if i.Type != nil {
+		predicates = append(predicates, agentmessage.TypeEQ(*i.Type))
 	}
-	if i.KindNEQ != nil {
-		predicates = append(predicates, agentmessage.KindNEQ(*i.KindNEQ))
+	if i.TypeNEQ != nil {
+		predicates = append(predicates, agentmessage.TypeNEQ(*i.TypeNEQ))
 	}
-	if len(i.KindIn) > 0 {
-		predicates = append(predicates, agentmessage.KindIn(i.KindIn...))
+	if len(i.TypeIn) > 0 {
+		predicates = append(predicates, agentmessage.TypeIn(i.TypeIn...))
 	}
-	if len(i.KindNotIn) > 0 {
-		predicates = append(predicates, agentmessage.KindNotIn(i.KindNotIn...))
+	if len(i.TypeNotIn) > 0 {
+		predicates = append(predicates, agentmessage.TypeNotIn(i.TypeNotIn...))
 	}
 	if i.CorrelationID != nil {
 		predicates = append(predicates, agentmessage.CorrelationIDEQ(*i.CorrelationID))

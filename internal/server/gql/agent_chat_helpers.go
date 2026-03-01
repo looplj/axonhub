@@ -18,7 +18,7 @@ func mapAgentChatMessage(v *biz.AgentMessageView) *AgentChatMessage {
 		Direction:       v.Direction,
 		SenderType:      v.SenderType,
 		SenderID:        v.SenderID,
-		Kind:            v.Kind,
+		Type:            v.Type,
 		CorrelationID:   v.CorrelationID,
 		Content:         v.Content,
 		Text:            v.Text,

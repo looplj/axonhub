@@ -262,7 +262,7 @@ type CreateAgentMessageInput struct {
 	Direction       agentmessage.Direction
 	SenderType      agentmessage.SenderType
 	SenderID        *int
-	Kind            *agentmessage.Kind
+	Type            *agentmessage.Type
 	CorrelationID   *string
 	Content         objects.JSONRawMessage
 	Status          *agentmessage.Status
@@ -280,8 +280,8 @@ func (i *CreateAgentMessageInput) Mutate(m *AgentMessageMutation) {
 	if v := i.SenderID; v != nil {
 		m.SetSenderID(*v)
 	}
-	if v := i.Kind; v != nil {
-		m.SetKind(*v)
+	if v := i.Type; v != nil {
+		m.SetType(*v)
 	}
 	if v := i.CorrelationID; v != nil {
 		m.SetCorrelationID(*v)
@@ -312,7 +312,7 @@ type UpdateAgentMessageInput struct {
 	SenderType     *agentmessage.SenderType
 	ClearSenderID  bool
 	SenderID       *int
-	Kind           *agentmessage.Kind
+	Type           *agentmessage.Type
 	CorrelationID  *string
 	Content        objects.JSONRawMessage
 	AppendContent  objects.JSONRawMessage
@@ -336,8 +336,8 @@ func (i *UpdateAgentMessageInput) Mutate(m *AgentMessageMutation) {
 	if v := i.SenderID; v != nil {
 		m.SetSenderID(*v)
 	}
-	if v := i.Kind; v != nil {
-		m.SetKind(*v)
+	if v := i.Type; v != nil {
+		m.SetType(*v)
 	}
 	if v := i.CorrelationID; v != nil {
 		m.SetCorrelationID(*v)

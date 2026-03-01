@@ -40,6 +40,7 @@ type Resolver struct {
 	promptService                  *biz.PromptService
 	agentService                   *biz.AgentService
 	agentRuntimeService            *biz.AgentRuntimeService
+	agentDeployService             *biz.AgentDeployService
 	agentBootstrapService          *biz.AgentBootstrapService
 	providerQuotaService           *biz.ProviderQuotaService
 	httpClient                     *httpclient.HttpClient
@@ -69,6 +70,7 @@ func NewSchema(
 	promptService *biz.PromptService,
 	agentService *biz.AgentService,
 	agentRuntimeService *biz.AgentRuntimeService,
+	agentDeployService *biz.AgentDeployService,
 	agentBootstrapService *biz.AgentBootstrapService,
 	providerQuotaService *biz.ProviderQuotaService,
 ) graphql.ExecutableSchema {
@@ -96,6 +98,7 @@ func NewSchema(
 			promptService:                  promptService,
 			agentService:                   agentService,
 			agentRuntimeService:            agentRuntimeService,
+			agentDeployService:             agentDeployService,
 			agentBootstrapService:          agentBootstrapService,
 			providerQuotaService:           providerQuotaService,
 			httpClient:                     httpClient,

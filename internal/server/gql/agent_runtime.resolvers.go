@@ -180,7 +180,7 @@ func (r *mutationResolver) DeployAxonclaw(ctx context.Context, input biz.DeployA
 		return nil, fmt.Errorf("axonhub base url is required")
 	}
 
-	result, err := r.agentRuntimeService.DeployAxonclaw(ctx, biz.DeployAxonclawInput{
+	result, err := r.agentDeployService.DeployAxonclaw(ctx, biz.DeployAxonclawInput{
 		AgentID:        input.AgentID,
 		RuntimeID:      input.RuntimeID,
 		Name:           input.Name,
@@ -204,7 +204,7 @@ func (r *mutationResolver) StopAxonclawInstance(ctx context.Context, instanceID 
 		return nil, fmt.Errorf("invalid agent instance id type")
 	}
 
-	return r.agentRuntimeService.StopAxonclawInstance(ctx, instanceID.ID)
+	return r.agentDeployService.StopAxonclawInstance(ctx, instanceID.ID)
 }
 
 // StartAxonclawInstance is the resolver for the startAxonclawInstance field.
@@ -217,7 +217,7 @@ func (r *mutationResolver) StartAxonclawInstance(ctx context.Context, instanceID
 		return nil, fmt.Errorf("invalid agent instance id type")
 	}
 
-	return r.agentRuntimeService.StartAxonclawInstance(ctx, instanceID.ID)
+	return r.agentDeployService.StartAxonclawInstance(ctx, instanceID.ID)
 }
 
 // RestartAxonclawInstance is the resolver for the restartAxonclawInstance field.
@@ -230,7 +230,7 @@ func (r *mutationResolver) RestartAxonclawInstance(ctx context.Context, instance
 		return nil, fmt.Errorf("invalid agent instance id type")
 	}
 
-	return r.agentRuntimeService.RestartAxonclawInstance(ctx, instanceID.ID)
+	return r.agentDeployService.RestartAxonclawInstance(ctx, instanceID.ID)
 }
 
 // RedeployAxonclawInstance is the resolver for the redeployAxonclawInstance field.
@@ -243,7 +243,7 @@ func (r *mutationResolver) RedeployAxonclawInstance(ctx context.Context, instanc
 		return nil, fmt.Errorf("invalid agent instance id type")
 	}
 
-	return r.agentRuntimeService.RedeployAxonclawInstance(ctx, instanceID.ID)
+	return r.agentDeployService.RedeployAxonclawInstance(ctx, instanceID.ID)
 }
 
 // AgentRuntime is the resolver for the agentRuntime field.

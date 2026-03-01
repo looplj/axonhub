@@ -80,7 +80,7 @@ type AgentMessageView struct {
 	Direction       agentmessage.Direction
 	SenderType      agentmessage.SenderType
 	SenderID        *int
-	Kind            agentmessage.Kind
+	Type            agentmessage.Type
 	CorrelationID   string
 	Content         objects.JSONRawMessage
 	Text            string
@@ -124,14 +124,14 @@ type SendAgentMessageInput struct {
 type PushAgentMessageInput struct {
 	Text          string
 	Content       *objects.JSONRawMessage
-	Kind          *agentmessage.Kind
+	Type          *agentmessage.Type
 	CorrelationID *string
 }
 
 type PullAgentMessagesInput struct {
 	AfterSequence *int64
 	Limit         int
-	KindIn        []agentmessage.Kind
+	TypeIn        []agentmessage.Type
 	CorrelationID *string
 }
 
@@ -365,7 +365,7 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 				SetDirection(agentmessage.DirectionToAgent).
 				SetSenderType(agentmessage.SenderTypeUser).
 				SetSenderID(userID).
-				SetKind(agentmessage.KindChat).
+				SetType(agentmessage.TypeChat).
 				SetCorrelationID("").
 				SetContent(objects.JSONRawMessage(raw)).
 				SetStatus(agentmessage.StatusPending).
@@ -393,7 +393,7 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 			Direction:       msg.Direction,
 			SenderType:      msg.SenderType,
 			SenderID:        new(userID),
-			Kind:            msg.Kind,
+			Type:            msg.Type,
 			CorrelationID:   msg.CorrelationID,
 			Content:         msg.Content,
 			Text:            input.Text,
@@ -466,7 +466,7 @@ func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Conte
 				Direction:       m.Direction,
 				SenderType:      m.SenderType,
 				SenderID:        m.SenderID,
-				Kind:            m.Kind,
+				Type:            m.Type,
 				CorrelationID:   m.CorrelationID,
 				Content:         m.Content,
 				Text:            text,
@@ -512,7 +512,7 @@ func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Con
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
-				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.TypeEQ(agentmessage.TypeApprovalRequest),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.DeletedAtEQ(0),
 			).
@@ -611,7 +611,7 @@ func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, ag
 				Direction:       m.Direction,
 				SenderType:      m.SenderType,
 				SenderID:        m.SenderID,
-				Kind:            m.Kind,
+				Type:            m.Type,
 				CorrelationID:   m.CorrelationID,
 				Content:         m.Content,
 				Text:            text,
@@ -662,7 +662,7 @@ func (s *AgentBootstrapService) ResolveApprovalAsUser(ctx context.Context, userI
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
-				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.TypeEQ(agentmessage.TypeApprovalRequest),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.CorrelationIDEQ(input.RequestID),
 				agentmessage.DeletedAtEQ(0),
@@ -706,7 +706,7 @@ func (s *AgentBootstrapService) ResolveApprovalAsUser(ctx context.Context, userI
 				SetDirection(agentmessage.DirectionToAgent).
 				SetSenderType(agentmessage.SenderTypeUser).
 				SetSenderID(userID).
-				SetKind(agentmessage.KindApprovalResult).
+				SetType(agentmessage.TypeApprovalResult).
 				SetCorrelationID(input.RequestID).
 				SetContent(objects.JSONRawMessage(raw)).
 				SetStatus(agentmessage.StatusPending).
@@ -734,7 +734,7 @@ func (s *AgentBootstrapService) ResolveApprovalAsUser(ctx context.Context, userI
 				agentmessage.AgentIDEQ(a.ID),
 				agentmessage.ProjectIDEQ(projectID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
-				agentmessage.KindEQ(agentmessage.KindApprovalRequest),
+				agentmessage.TypeEQ(agentmessage.TypeApprovalRequest),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.CorrelationIDEQ(input.RequestID),
 				agentmessage.DeletedAtEQ(0),
@@ -1042,7 +1042,7 @@ func (s *AgentBootstrapService) sendPeerMessageToInstance(
 			SetDirection(agentmessage.DirectionToAgent).
 			SetSenderType(agentmessage.SenderTypeAgent).
 			SetSenderID(senderInst.AgentID).
-			SetKind(agentmessage.KindChat).
+			SetType(agentmessage.TypeChat).
 			SetContent(raw).
 			SetStatus(agentmessage.StatusPending).
 			SetSequence(nextSeq).
@@ -1154,7 +1154,7 @@ func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendP
 			AgentID:       targetAgent.ID,
 			Direction:     msg.Direction,
 			SenderType:    msg.SenderType,
-			Kind:          msg.Kind,
+			Type:          msg.Type,
 			CorrelationID: msg.CorrelationID,
 			Content:       msg.Content,
 			Text:          viewText,
@@ -1166,9 +1166,9 @@ func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendP
 }
 
 func (s *AgentBootstrapService) PushAgentMessage(ctx context.Context, inst *ent.AgentInstance, input PushAgentMessageInput) (*AgentMessageView, error) {
-	kind := agentmessage.KindChat
-	if input.Kind != nil && *input.Kind != "" {
-		kind = *input.Kind
+	msgType := agentmessage.TypeChat
+	if input.Type != nil && *input.Type != "" {
+		msgType = *input.Type
 	}
 
 	corr := ""
@@ -1176,7 +1176,7 @@ func (s *AgentBootstrapService) PushAgentMessage(ctx context.Context, inst *ent.
 		corr = *input.CorrelationID
 	}
 
-	return s.createMessage(ctx, inst, input.Text, input.Content, agentmessage.DirectionToUser, agentmessage.SenderTypeAgent, kind, corr)
+	return s.createMessage(ctx, inst, input.Text, input.Content, agentmessage.DirectionToUser, agentmessage.SenderTypeAgent, msgType, corr)
 }
 
 func (s *AgentBootstrapService) createMessage(
@@ -1186,7 +1186,7 @@ func (s *AgentBootstrapService) createMessage(
 	content *objects.JSONRawMessage,
 	direction agentmessage.Direction,
 	senderType agentmessage.SenderType,
-	kind agentmessage.Kind,
+	msgType agentmessage.Type,
 	correlationID string,
 ) (*AgentMessageView, error) {
 	return authz.RunWithSystemBypass(ctx, "agent-runtime-create-message", func(bypassCtx context.Context) (*AgentMessageView, error) {
@@ -1231,7 +1231,7 @@ func (s *AgentBootstrapService) createMessage(
 				SetDirection(direction).
 				SetSenderType(senderType).
 				SetNillableSenderID(senderID).
-				SetKind(kind).
+				SetType(msgType).
 				SetCorrelationID(correlationID).
 				SetContent(raw).
 				SetStatus(agentmessage.StatusPending).
@@ -1263,7 +1263,7 @@ func (s *AgentBootstrapService) createMessage(
 			Direction:     msg.Direction,
 			SenderType:    msg.SenderType,
 			SenderID:      senderID,
-			Kind:          msg.Kind,
+			Type:          msg.Type,
 			CorrelationID: msg.CorrelationID,
 			Content:       msg.Content,
 			Text:          viewText,
@@ -1327,8 +1327,8 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent
 			Limit(limit).
 			Where(func(s *sql.Selector) {})
 
-		if len(input.KindIn) > 0 {
-			q = q.Where(agentmessage.KindIn(input.KindIn...))
+		if len(input.TypeIn) > 0 {
+			q = q.Where(agentmessage.TypeIn(input.TypeIn...))
 		}
 
 		if input.CorrelationID != nil && *input.CorrelationID != "" {
@@ -1353,7 +1353,7 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent
 				Direction:     m.Direction,
 				SenderType:    m.SenderType,
 				SenderID:      m.SenderID,
-				Kind:          m.Kind,
+				Type:          m.Type,
 				CorrelationID: m.CorrelationID,
 				Content:       m.Content,
 				Text:          text,
@@ -1393,7 +1393,7 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, ins
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
-				agentmessage.KindEQ(agentmessage.KindChat),
+				agentmessage.TypeEQ(agentmessage.TypeChat),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.DeletedAtEQ(0),
 			).
@@ -1419,7 +1419,7 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, ins
 				Direction:     m.Direction,
 				SenderType:    m.SenderType,
 				SenderID:      m.SenderID,
-				Kind:          m.Kind,
+				Type:          m.Type,
 				CorrelationID: m.CorrelationID,
 				Content:       m.Content,
 				Text:          text,

@@ -111,16 +111,16 @@ func (_c *AgentMessageCreate) SetNillableSenderID(v *int) *AgentMessageCreate {
 	return _c
 }
 
-// SetKind sets the "kind" field.
-func (_c *AgentMessageCreate) SetKind(v agentmessage.Kind) *AgentMessageCreate {
-	_c.mutation.SetKind(v)
+// SetType sets the "type" field.
+func (_c *AgentMessageCreate) SetType(v agentmessage.Type) *AgentMessageCreate {
+	_c.mutation.SetType(v)
 	return _c
 }
 
-// SetNillableKind sets the "kind" field if the given value is not nil.
-func (_c *AgentMessageCreate) SetNillableKind(v *agentmessage.Kind) *AgentMessageCreate {
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_c *AgentMessageCreate) SetNillableType(v *agentmessage.Type) *AgentMessageCreate {
 	if v != nil {
-		_c.SetKind(*v)
+		_c.SetType(*v)
 	}
 	return _c
 }
@@ -244,9 +244,9 @@ func (_c *AgentMessageCreate) defaults() error {
 		v := agentmessage.DefaultDeletedAt
 		_c.mutation.SetDeletedAt(v)
 	}
-	if _, ok := _c.mutation.Kind(); !ok {
-		v := agentmessage.DefaultKind
-		_c.mutation.SetKind(v)
+	if _, ok := _c.mutation.GetType(); !ok {
+		v := agentmessage.DefaultType
+		_c.mutation.SetType(v)
 	}
 	if _, ok := _c.mutation.CorrelationID(); !ok {
 		v := agentmessage.DefaultCorrelationID
@@ -299,12 +299,12 @@ func (_c *AgentMessageCreate) check() error {
 			return &ValidationError{Name: "sender_type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.sender_type": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.Kind(); !ok {
-		return &ValidationError{Name: "kind", err: errors.New(`ent: missing required field "AgentMessage.kind"`)}
+	if _, ok := _c.mutation.GetType(); !ok {
+		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "AgentMessage.type"`)}
 	}
-	if v, ok := _c.mutation.Kind(); ok {
-		if err := agentmessage.KindValidator(v); err != nil {
-			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.kind": %w`, err)}
+	if v, ok := _c.mutation.GetType(); ok {
+		if err := agentmessage.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.type": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.CorrelationID(); !ok {
@@ -385,9 +385,9 @@ func (_c *AgentMessageCreate) createSpec() (*AgentMessage, *sqlgraph.CreateSpec)
 		_spec.SetField(agentmessage.FieldSenderID, field.TypeInt, value)
 		_node.SenderID = &value
 	}
-	if value, ok := _c.mutation.Kind(); ok {
-		_spec.SetField(agentmessage.FieldKind, field.TypeEnum, value)
-		_node.Kind = value
+	if value, ok := _c.mutation.GetType(); ok {
+		_spec.SetField(agentmessage.FieldType, field.TypeEnum, value)
+		_node.Type = value
 	}
 	if value, ok := _c.mutation.CorrelationID(); ok {
 		_spec.SetField(agentmessage.FieldCorrelationID, field.TypeString, value)
@@ -573,15 +573,15 @@ func (u *AgentMessageUpsert) ClearSenderID() *AgentMessageUpsert {
 	return u
 }
 
-// SetKind sets the "kind" field.
-func (u *AgentMessageUpsert) SetKind(v agentmessage.Kind) *AgentMessageUpsert {
-	u.Set(agentmessage.FieldKind, v)
+// SetType sets the "type" field.
+func (u *AgentMessageUpsert) SetType(v agentmessage.Type) *AgentMessageUpsert {
+	u.Set(agentmessage.FieldType, v)
 	return u
 }
 
-// UpdateKind sets the "kind" field to the value that was provided on create.
-func (u *AgentMessageUpsert) UpdateKind() *AgentMessageUpsert {
-	u.SetExcluded(agentmessage.FieldKind)
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *AgentMessageUpsert) UpdateType() *AgentMessageUpsert {
+	u.SetExcluded(agentmessage.FieldType)
 	return u
 }
 
@@ -802,17 +802,17 @@ func (u *AgentMessageUpsertOne) ClearSenderID() *AgentMessageUpsertOne {
 	})
 }
 
-// SetKind sets the "kind" field.
-func (u *AgentMessageUpsertOne) SetKind(v agentmessage.Kind) *AgentMessageUpsertOne {
+// SetType sets the "type" field.
+func (u *AgentMessageUpsertOne) SetType(v agentmessage.Type) *AgentMessageUpsertOne {
 	return u.Update(func(s *AgentMessageUpsert) {
-		s.SetKind(v)
+		s.SetType(v)
 	})
 }
 
-// UpdateKind sets the "kind" field to the value that was provided on create.
-func (u *AgentMessageUpsertOne) UpdateKind() *AgentMessageUpsertOne {
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *AgentMessageUpsertOne) UpdateType() *AgentMessageUpsertOne {
 	return u.Update(func(s *AgentMessageUpsert) {
-		s.UpdateKind()
+		s.UpdateType()
 	})
 }
 
@@ -1211,17 +1211,17 @@ func (u *AgentMessageUpsertBulk) ClearSenderID() *AgentMessageUpsertBulk {
 	})
 }
 
-// SetKind sets the "kind" field.
-func (u *AgentMessageUpsertBulk) SetKind(v agentmessage.Kind) *AgentMessageUpsertBulk {
+// SetType sets the "type" field.
+func (u *AgentMessageUpsertBulk) SetType(v agentmessage.Type) *AgentMessageUpsertBulk {
 	return u.Update(func(s *AgentMessageUpsert) {
-		s.SetKind(v)
+		s.SetType(v)
 	})
 }
 
-// UpdateKind sets the "kind" field to the value that was provided on create.
-func (u *AgentMessageUpsertBulk) UpdateKind() *AgentMessageUpsertBulk {
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *AgentMessageUpsertBulk) UpdateType() *AgentMessageUpsertBulk {
 	return u.Update(func(s *AgentMessageUpsert) {
-		s.UpdateKind()
+		s.UpdateType()
 	})
 }
 

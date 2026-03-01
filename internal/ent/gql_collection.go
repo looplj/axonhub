@@ -1529,10 +1529,10 @@ func (_q *AgentMessageQuery) collectField(ctx context.Context, oneNode bool, opC
 				selectedFields = append(selectedFields, agentmessage.FieldSenderID)
 				fieldSeen[agentmessage.FieldSenderID] = struct{}{}
 			}
-		case "kind":
-			if _, ok := fieldSeen[agentmessage.FieldKind]; !ok {
-				selectedFields = append(selectedFields, agentmessage.FieldKind)
-				fieldSeen[agentmessage.FieldKind] = struct{}{}
+		case "type":
+			if _, ok := fieldSeen[agentmessage.FieldType]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldType)
+				fieldSeen[agentmessage.FieldType] = struct{}{}
 			}
 		case "correlationID":
 			if _, ok := fieldSeen[agentmessage.FieldCorrelationID]; !ok {

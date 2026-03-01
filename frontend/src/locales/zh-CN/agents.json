@@ -103,5 +103,13 @@
   "agents.messages.instanceRestartSuccess": "实例已重启",
   "agents.messages.instanceRestartError": "重启实例失败：{{error}}",
   "agents.messages.instanceRedeploySuccess": "实例已重部署",
-  "agents.messages.instanceRedeployError": "重部署实例失败：{{error}}"
+  "agents.messages.instanceRedeployError": "重部署实例失败：{{error}}",
+  "agents.instanceDialogs.start.title": "启动实例",
+  "agents.instanceDialogs.start.description": "确定要启动实例 \"{{name}}\" 吗？",
+  "agents.instanceDialogs.stop.title": "停止实例",
+  "agents.instanceDialogs.stop.description": "确定要停止实例 \"{{name}}\" 吗？",
+  "agents.instanceDialogs.restart.title": "重启实例",
+  "agents.instanceDialogs.restart.description": "确定要重启实例 \"{{name}}\" 吗？",
+  "agents.instanceDialogs.redeploy.title": "重部署实例",
+  "agents.instanceDialogs.redeploy.description": "确定要重部署实例 \"{{name}}\" 吗？这将拉取最新版本并重新部署。"
 }

@@ -5105,7 +5105,7 @@ type AgentMessageMutation struct {
 	sender_type           *agentmessage.SenderType
 	sender_id             *int
 	addsender_id          *int
-	kind                  *agentmessage.Kind
+	_type                 *agentmessage.Type
 	correlation_id        *string
 	content               *objects.JSONRawMessage
 	appendcontent         objects.JSONRawMessage
@@ -5619,40 +5619,40 @@ func (m *AgentMessageMutation) ResetSenderID() {
 	delete(m.clearedFields, agentmessage.FieldSenderID)
 }
 
-// SetKind sets the "kind" field.
-func (m *AgentMessageMutation) SetKind(a agentmessage.Kind) {
-	m.kind = &a
+// SetType sets the "type" field.
+func (m *AgentMessageMutation) SetType(a agentmessage.Type) {
+	m._type = &a
 }
 
-// Kind returns the value of the "kind" field in the mutation.
-func (m *AgentMessageMutation) Kind() (r agentmessage.Kind, exists bool) {
-	v := m.kind
+// GetType returns the value of the "type" field in the mutation.
+func (m *AgentMessageMutation) GetType() (r agentmessage.Type, exists bool) {
+	v := m._type
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldKind returns the old "kind" field's value of the AgentMessage entity.
+// OldType returns the old "type" field's value of the AgentMessage entity.
 // If the AgentMessage object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AgentMessageMutation) OldKind(ctx context.Context) (v agentmessage.Kind, err error) {
+func (m *AgentMessageMutation) OldType(ctx context.Context) (v agentmessage.Type, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldKind is only allowed on UpdateOne operations")
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldKind requires an ID field in the mutation")
+		return v, errors.New("OldType requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldKind: %w", err)
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
 	}
-	return oldValue.Kind, nil
+	return oldValue.Type, nil
 }
 
-// ResetKind resets all changes to the "kind" field.
-func (m *AgentMessageMutation) ResetKind() {
-	m.kind = nil
+// ResetType resets all changes to the "type" field.
+func (m *AgentMessageMutation) ResetType() {
+	m._type = nil
 }
 
 // SetCorrelationID sets the "correlation_id" field.
@@ -5999,8 +5999,8 @@ func (m *AgentMessageMutation) Fields() []string {
 	if m.sender_id != nil {
 		fields = append(fields, agentmessage.FieldSenderID)
 	}
-	if m.kind != nil {
-		fields = append(fields, agentmessage.FieldKind)
+	if m._type != nil {
+		fields = append(fields, agentmessage.FieldType)
 	}
 	if m.correlation_id != nil {
 		fields = append(fields, agentmessage.FieldCorrelationID)
@@ -6043,8 +6043,8 @@ func (m *AgentMessageMutation) Field(name string) (ent.Value, bool) {
 		return m.SenderType()
 	case agentmessage.FieldSenderID:
 		return m.SenderID()
-	case agentmessage.FieldKind:
-		return m.Kind()
+	case agentmessage.FieldType:
+		return m.GetType()
 	case agentmessage.FieldCorrelationID:
 		return m.CorrelationID()
 	case agentmessage.FieldContent:
@@ -6082,8 +6082,8 @@ func (m *AgentMessageMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldSenderType(ctx)
 	case agentmessage.FieldSenderID:
 		return m.OldSenderID(ctx)
-	case agentmessage.FieldKind:
-		return m.OldKind(ctx)
+	case agentmessage.FieldType:
+		return m.OldType(ctx)
 	case agentmessage.FieldCorrelationID:
 		return m.OldCorrelationID(ctx)
 	case agentmessage.FieldContent:
@@ -6166,12 +6166,12 @@ func (m *AgentMessageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetSenderID(v)
 		return nil
-	case agentmessage.FieldKind:
-		v, ok := value.(agentmessage.Kind)
+	case agentmessage.FieldType:
+		v, ok := value.(agentmessage.Type)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetKind(v)
+		m.SetType(v)
 		return nil
 	case agentmessage.FieldCorrelationID:
 		v, ok := value.(string)
@@ -6350,8 +6350,8 @@ func (m *AgentMessageMutation) ResetField(name string) error {
 	case agentmessage.FieldSenderID:
 		m.ResetSenderID()
 		return nil
-	case agentmessage.FieldKind:
-		m.ResetKind()
+	case agentmessage.FieldType:
+		m.ResetType()
 		return nil
 	case agentmessage.FieldCorrelationID:
 		m.ResetCorrelationID()

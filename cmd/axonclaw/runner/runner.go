@@ -103,11 +103,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		case <-pollTicker.C:
 			limit := 50
 			afterSeq := r.lastSequence
-			kindIn := []api.AgentMessageKind{api.AgentMessageKindChat}
+			typeIn := []api.AgentMessageType{api.AgentMessageTypeChat}
 			resp, err := api.PullAgentMessages(ctx, r.Client, &api.PullAgentMessagesInput{
 				AfterSequence: &afterSeq,
 				Limit:         &limit,
-				KindIn:        kindIn,
+				TypeIn:        typeIn,
 			})
 			if err != nil {
 				r.Logger.Warn("pullAgentMessages failed", "error", err)

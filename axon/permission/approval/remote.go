@@ -97,12 +97,12 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 		text = fmt.Sprintf("approval required: %s", req.ToolName)
 	}
 
-	kind := api.AgentMessageKindApprovalRequest
+	msgType := api.AgentMessageTypeApprovalRequest
 	correlationID := req.ID
 	if _, err := api.ReplyMessage(ctx, a.client, &api.ReplyMessageInput{
 		Text:          text,
 		Content:       (*json.RawMessage)(&raw),
-		Kind:          &kind,
+		Type:          &msgType,
 		CorrelationID: &correlationID,
 	}); err != nil {
 		return Response{}, fmt.Errorf("push approval_request: %w", err)
@@ -117,10 +117,10 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 			return Response{}, ctx.Err()
 		case <-ticker.C:
 			limit := 10
-			kindIn := []api.AgentMessageKind{api.AgentMessageKindApprovalResult}
+			typeIn := []api.AgentMessageType{api.AgentMessageTypeApprovalResult}
 			resp, err := api.PullAgentMessages(ctx, a.client, &api.PullAgentMessagesInput{
 				Limit:         &limit,
-				KindIn:        kindIn,
+				TypeIn:        typeIn,
 				CorrelationID: &correlationID,
 			})
 			if err != nil {
@@ -130,7 +130,7 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 
 			var found *api.PullAgentMessagesPullAgentMessagesAgentMessage
 			for _, m := range resp.PullAgentMessages {
-				if m.CorrelationID == correlationID && m.Kind == api.AgentMessageKindApprovalResult {
+				if m.CorrelationID == correlationID && m.Type == api.AgentMessageTypeApprovalResult {
 					found = m
 					break
 				}

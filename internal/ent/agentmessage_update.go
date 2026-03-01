@@ -113,16 +113,16 @@ func (_u *AgentMessageUpdate) ClearSenderID() *AgentMessageUpdate {
 	return _u
 }
 
-// SetKind sets the "kind" field.
-func (_u *AgentMessageUpdate) SetKind(v agentmessage.Kind) *AgentMessageUpdate {
-	_u.mutation.SetKind(v)
+// SetType sets the "type" field.
+func (_u *AgentMessageUpdate) SetType(v agentmessage.Type) *AgentMessageUpdate {
+	_u.mutation.SetType(v)
 	return _u
 }
 
-// SetNillableKind sets the "kind" field if the given value is not nil.
-func (_u *AgentMessageUpdate) SetNillableKind(v *agentmessage.Kind) *AgentMessageUpdate {
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_u *AgentMessageUpdate) SetNillableType(v *agentmessage.Type) *AgentMessageUpdate {
 	if v != nil {
-		_u.SetKind(*v)
+		_u.SetType(*v)
 	}
 	return _u
 }
@@ -267,9 +267,9 @@ func (_u *AgentMessageUpdate) check() error {
 			return &ValidationError{Name: "sender_type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.sender_type": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Kind(); ok {
-		if err := agentmessage.KindValidator(v); err != nil {
-			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.kind": %w`, err)}
+	if v, ok := _u.mutation.GetType(); ok {
+		if err := agentmessage.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.type": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Status(); ok {
@@ -328,8 +328,8 @@ func (_u *AgentMessageUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if _u.mutation.SenderIDCleared() {
 		_spec.ClearField(agentmessage.FieldSenderID, field.TypeInt)
 	}
-	if value, ok := _u.mutation.Kind(); ok {
-		_spec.SetField(agentmessage.FieldKind, field.TypeEnum, value)
+	if value, ok := _u.mutation.GetType(); ok {
+		_spec.SetField(agentmessage.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.CorrelationID(); ok {
 		_spec.SetField(agentmessage.FieldCorrelationID, field.TypeString, value)
@@ -461,16 +461,16 @@ func (_u *AgentMessageUpdateOne) ClearSenderID() *AgentMessageUpdateOne {
 	return _u
 }
 
-// SetKind sets the "kind" field.
-func (_u *AgentMessageUpdateOne) SetKind(v agentmessage.Kind) *AgentMessageUpdateOne {
-	_u.mutation.SetKind(v)
+// SetType sets the "type" field.
+func (_u *AgentMessageUpdateOne) SetType(v agentmessage.Type) *AgentMessageUpdateOne {
+	_u.mutation.SetType(v)
 	return _u
 }
 
-// SetNillableKind sets the "kind" field if the given value is not nil.
-func (_u *AgentMessageUpdateOne) SetNillableKind(v *agentmessage.Kind) *AgentMessageUpdateOne {
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_u *AgentMessageUpdateOne) SetNillableType(v *agentmessage.Type) *AgentMessageUpdateOne {
 	if v != nil {
-		_u.SetKind(*v)
+		_u.SetType(*v)
 	}
 	return _u
 }
@@ -628,9 +628,9 @@ func (_u *AgentMessageUpdateOne) check() error {
 			return &ValidationError{Name: "sender_type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.sender_type": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Kind(); ok {
-		if err := agentmessage.KindValidator(v); err != nil {
-			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.kind": %w`, err)}
+	if v, ok := _u.mutation.GetType(); ok {
+		if err := agentmessage.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "AgentMessage.type": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Status(); ok {
@@ -706,8 +706,8 @@ func (_u *AgentMessageUpdateOne) sqlSave(ctx context.Context) (_node *AgentMessa
 	if _u.mutation.SenderIDCleared() {
 		_spec.ClearField(agentmessage.FieldSenderID, field.TypeInt)
 	}
-	if value, ok := _u.mutation.Kind(); ok {
-		_spec.SetField(agentmessage.FieldKind, field.TypeEnum, value)
+	if value, ok := _u.mutation.GetType(); ok {
+		_spec.SetField(agentmessage.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.CorrelationID(); ok {
 		_spec.SetField(agentmessage.FieldCorrelationID, field.TypeString, value)

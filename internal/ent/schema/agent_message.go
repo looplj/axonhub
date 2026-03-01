@@ -56,10 +56,10 @@ func (AgentMessage) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			Comment("Sender ID, user_id or agent_instance_id"),
-		field.Enum("kind").
+		field.Enum("type").
 			Values("chat", "approval_request", "approval_result", "system_event").
 			Default("chat").
-			Comment("Message kind for operator/runtime routing"),
+			Comment("Message type for operator/runtime routing"),
 		field.String("correlation_id").
 			Default("").
 			Comment("Correlation ID for request/response matching (e.g. approval request id)"),

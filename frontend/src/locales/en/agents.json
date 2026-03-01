@@ -103,5 +103,13 @@
   "agents.messages.instanceRestartSuccess": "Instance restarted",
   "agents.messages.instanceRestartError": "Failed to restart instance: {{error}}",
   "agents.messages.instanceRedeploySuccess": "Instance redeployed",
-  "agents.messages.instanceRedeployError": "Failed to redeploy instance: {{error}}"
+  "agents.messages.instanceRedeployError": "Failed to redeploy instance: {{error}}",
+  "agents.instanceDialogs.start.title": "Start Instance",
+  "agents.instanceDialogs.start.description": "Are you sure you want to start instance \"{{name}}\"?",
+  "agents.instanceDialogs.stop.title": "Stop Instance",
+  "agents.instanceDialogs.stop.description": "Are you sure you want to stop instance \"{{name}}\"?",
+  "agents.instanceDialogs.restart.title": "Restart Instance",
+  "agents.instanceDialogs.restart.description": "Are you sure you want to restart instance \"{{name}}\"?",
+  "agents.instanceDialogs.redeploy.title": "Redeploy Instance",
+  "agents.instanceDialogs.redeploy.description": "Are you sure you want to redeploy instance \"{{name}}\"? This will pull the latest version and redeploy."
 }

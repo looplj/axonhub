@@ -37,8 +37,8 @@ const (
 	FieldSenderType = "sender_type"
 	// FieldSenderID holds the string denoting the sender_id field in the database.
 	FieldSenderID = "sender_id"
-	// FieldKind holds the string denoting the kind field in the database.
-	FieldKind = "kind"
+	// FieldType holds the string denoting the type field in the database.
+	FieldType = "type"
 	// FieldCorrelationID holds the string denoting the correlation_id field in the database.
 	FieldCorrelationID = "correlation_id"
 	// FieldContent holds the string denoting the content field in the database.
@@ -83,7 +83,7 @@ var Columns = []string{
 	FieldDirection,
 	FieldSenderType,
 	FieldSenderID,
-	FieldKind,
+	FieldType,
 	FieldCorrelationID,
 	FieldContent,
 	FieldStatus,
@@ -171,31 +171,31 @@ func SenderTypeValidator(st SenderType) error {
 	}
 }
 
-// Kind defines the type for the "kind" enum field.
-type Kind string
+// Type defines the type for the "type" enum field.
+type Type string
 
-// KindChat is the default value of the Kind enum.
-const DefaultKind = KindChat
+// TypeChat is the default value of the Type enum.
+const DefaultType = TypeChat
 
-// Kind values.
+// Type values.
 const (
-	KindChat            Kind = "chat"
-	KindApprovalRequest Kind = "approval_request"
-	KindApprovalResult  Kind = "approval_result"
-	KindSystemEvent     Kind = "system_event"
+	TypeChat            Type = "chat"
+	TypeApprovalRequest Type = "approval_request"
+	TypeApprovalResult  Type = "approval_result"
+	TypeSystemEvent     Type = "system_event"
 )
 
-func (k Kind) String() string {
-	return string(k)
+func (_type Type) String() string {
+	return string(_type)
 }
 
-// KindValidator is a validator for the "kind" field enum values. It is called by the builders before save.
-func KindValidator(k Kind) error {
-	switch k {
-	case KindChat, KindApprovalRequest, KindApprovalResult, KindSystemEvent:
+// TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
+func TypeValidator(_type Type) error {
+	switch _type {
+	case TypeChat, TypeApprovalRequest, TypeApprovalResult, TypeSystemEvent:
 		return nil
 	default:
-		return fmt.Errorf("agentmessage: invalid enum value for kind field: %q", k)
+		return fmt.Errorf("agentmessage: invalid enum value for type field: %q", _type)
 	}
 }
 
@@ -279,9 +279,9 @@ func BySenderID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSenderID, opts...).ToFunc()
 }
 
-// ByKind orders the results by the kind field.
-func ByKind(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldKind, opts...).ToFunc()
+// ByType orders the results by the type field.
+func ByType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldType, opts...).ToFunc()
 }
 
 // ByCorrelationID orders the results by the correlation_id field.
@@ -369,19 +369,19 @@ func (e *SenderType) UnmarshalGQL(val interface{}) error {
 }
 
 // MarshalGQL implements graphql.Marshaler interface.
-func (e Kind) MarshalGQL(w io.Writer) {
+func (e Type) MarshalGQL(w io.Writer) {
 	io.WriteString(w, strconv.Quote(e.String()))
 }
 
 // UnmarshalGQL implements graphql.Unmarshaler interface.
-func (e *Kind) UnmarshalGQL(val interface{}) error {
+func (e *Type) UnmarshalGQL(val interface{}) error {
 	str, ok := val.(string)
 	if !ok {
 		return fmt.Errorf("enum %T must be a string", val)
 	}
-	*e = Kind(str)
-	if err := KindValidator(*e); err != nil {
-		return fmt.Errorf("%s is not a valid Kind", str)
+	*e = Type(str)
+	if err := TypeValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Type", str)
 	}
 	return nil
 }

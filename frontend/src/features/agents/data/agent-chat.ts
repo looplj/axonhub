@@ -2,7 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
 
-export type AgentMessageKind = 'chat' | 'approval_request' | 'approval_result' | 'system_event';
+export type AgentMessageType = 'chat' | 'approval_request' | 'approval_result' | 'system_event';
 
 export type AgentChatMessage = {
   id: string;
@@ -11,7 +11,7 @@ export type AgentChatMessage = {
   direction: 'to_runtime' | 'to_user';
   senderType: 'user' | 'agent' | 'system';
   senderID?: number | null;
-  kind: AgentMessageKind;
+  type: AgentMessageType;
   correlationID: string;
   content: Record<string, unknown>;
   text: string;
@@ -31,7 +31,7 @@ const SEND_AGENT_MESSAGE_MUTATION = `
       direction
       senderType
       senderID
-      kind
+      type
       correlationID
       content
       text
@@ -51,7 +51,7 @@ const PULL_TO_USER_QUERY = `
       direction
       senderType
       senderID
-      kind
+      type
       correlationID
       content
       text
@@ -71,7 +71,7 @@ const THREAD_MESSAGES_QUERY = `
       direction
       senderType
       senderID
-      kind
+      type
       correlationID
       content
       text
