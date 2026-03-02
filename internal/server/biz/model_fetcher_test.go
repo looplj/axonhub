@@ -4,12 +4,31 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+// setupProviderConfMockServer creates a mock HTTP server returning provider conf JSON.
+// The callCounter is incremented on each request (if not nil).
+func setupProviderConfMockServer(t *testing.T, responseBody string, callCounter *atomic.Int32) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if callCounter != nil {
+			callCounter.Add(1)
+		}
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(responseBody))
+	}))
+}
 
 func TestExtractJSONArray(t *testing.T) {
 	tests := []struct {
@@ -473,5 +492,159 @@ func TestFetchModelsGeminiPagination(t *testing.T) {
 		if _, ok := ids[want]; !ok {
 			t.Fatalf("missing model id %q in result: %#v", want, result.Models)
 		}
+	}
+}
+
+func TestProviderConfFetcher_Caching(t *testing.T) {
+	var callCount atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id": "test-provider",
+			"models": [
+				{"id": "model-1"},
+				{"id": "model-2"}
+			]
+		}`))
+	}))
+	defer server.Close()
+
+	fetcher := &providerConfFetcher{
+		modelsCache:    nil,
+		cacheMu:        sync.RWMutex{},
+		cacheTimestamp: time.Time{},
+		cacheDuration:  100 * time.Millisecond,
+		providerURL:    server.URL,
+	}
+
+	httpClient := httpclient.NewHttpClientWithClient(server.Client())
+	ctx := context.Background()
+
+	// First call should hit the server
+	models1 := fetcher.fetch(ctx, httpClient)
+	if len(models1) != 2 {
+		t.Fatalf("expected 2 models, got %d", len(models1))
+	}
+	firstCallCount := int(callCount.Load())
+	if firstCallCount != 1 {
+		t.Fatalf("expected 1 server call after first fetch, got %d", firstCallCount)
+	}
+
+	// Second call should use cache (no server hit)
+	models2 := fetcher.fetch(ctx, httpClient)
+	if len(models2) != 2 {
+		t.Fatalf("expected 2 models from cache, got %d", len(models2))
+	}
+	secondCallCount := int(callCount.Load())
+	if secondCallCount != 1 {
+		t.Fatalf("expected cache hit (still 1 server call), got %d", secondCallCount)
+	}
+
+	// Wait for cache to expire
+	time.Sleep(150 * time.Millisecond)
+
+	// Third call should hit server again after cache expiry
+	models3 := fetcher.fetch(ctx, httpClient)
+	if len(models3) != 2 {
+		t.Fatalf("expected 2 models after cache expiry, got %d", len(models3))
+	}
+	thirdCallCount := int(callCount.Load())
+	if thirdCallCount != 2 {
+		t.Fatalf("expected 2 server calls after cache expiry, got %d", thirdCallCount)
+	}
+}
+
+
+func TestFetchModelsGeminiVertex(t *testing.T) {
+	var callCount atomic.Int32
+
+	server := setupProviderConfMockServer(t, `{
+		"id": "google-vertex",
+		"models": [
+			{"id": "gemini-1.5-pro"},
+			{"id": "gemini-1.5-flash"},
+			{"id": "gemini-1.0-pro"}
+		]
+	}`, &callCount)
+	defer server.Close()
+
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+
+	// Override the gemini vertex fetcher URL to use test server
+	fetcher.geminiVertexFetcher.providerURL = server.URL
+
+	ctx := context.Background()
+	models := fetcher.getDefaultModelsByType(ctx, channel.TypeGeminiVertex)
+
+	if len(models) == 0 {
+		t.Fatal("expected models, got none")
+	}
+
+	expectedModels := []string{"gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"}
+	modelIDs := make(map[string]struct{})
+	for _, m := range models {
+		modelIDs[m.ID] = struct{}{}
+	}
+
+	for _, expected := range expectedModels {
+		if _, ok := modelIDs[expected]; !ok {
+			t.Errorf("expected model %s not found", expected)
+		}
+	}
+
+	// Verify caching works - second call should not hit server
+	_ = fetcher.getDefaultModelsByType(ctx, channel.TypeGeminiVertex)
+	if int(callCount.Load()) != 1 {
+		t.Errorf("expected 1 server call (cached), got %d", callCount.Load())
+	}
+}
+
+func TestFetchCopilotModels(t *testing.T) {
+	var callCount atomic.Int32
+
+	server := setupProviderConfMockServer(t, `{
+		"id": "github-copilot",
+		"models": [
+			{"id": "gpt-4o"},
+			{"id": "gpt-4o-mini"},
+			{"id": "o1"},
+			{"id": "o3-mini"},
+			{"id": "claude-3-7-sonnet"},
+			{"id": "claude-sonnet-4"},
+			{"id": "gemini-2.5-pro"}
+		]
+	}`, &callCount)
+	defer server.Close()
+
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+
+	// Override the copilot fetcher URL to use test server
+	fetcher.copilotFetcher.providerURL = server.URL
+
+	ctx := context.Background()
+	models := fetcher.fetchCopilotModels(ctx)
+
+	if len(models) == 0 {
+		t.Fatal("expected models, got none")
+	}
+
+	expectedModels := []string{"gpt-4o", "gpt-4o-mini", "o1", "o3-mini", "claude-3-7-sonnet", "claude-sonnet-4", "gemini-2.5-pro"}
+	modelIDs := make(map[string]struct{})
+	for _, m := range models {
+		modelIDs[m.ID] = struct{}{}
+	}
+
+	for _, expected := range expectedModels {
+		if _, ok := modelIDs[expected]; !ok {
+			t.Errorf("expected model %s not found", expected)
+		}
+	}
+
+	// Verify caching works - second call should not hit server
+	_ = fetcher.fetchCopilotModels(ctx)
+	if int(callCount.Load()) != 1 {
+		t.Errorf("expected 1 server call (cached), got %d", callCount.Load())
 	}
 }
