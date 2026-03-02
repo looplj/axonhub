@@ -109,6 +109,11 @@ export function useSidebarData(): SidebarData {
       title: t('sidebar.groups.project'),
       items: [
         {
+          title: t('sidebar.items.dashboard'),
+          url: '/project/dashboard',
+          icon: IconLayoutDashboard,
+        } as NavLink,
+        {
           title: t('sidebar.items.apiKeys'),
           url: '/project/api-keys',
           icon: IconKey,

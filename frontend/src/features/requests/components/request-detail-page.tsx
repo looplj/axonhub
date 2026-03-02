@@ -42,7 +42,7 @@ export default function RequestDetailPage() {
   const [curlCommand, setCurlCommand] = useState('');
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
 
-  const { data: settings } = useGeneralSettings();
+  const { data: settings } = useGeneralSettings({ gracefulFallback: true });
   const { data: request, isLoading } = useRequest(requestId);
   const { data: executions } = useRequestExecutions(requestId, {
     first: 10,

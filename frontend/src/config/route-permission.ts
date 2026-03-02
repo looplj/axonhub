@@ -72,6 +72,11 @@ export const routeConfigs: RouteGroup[] = [
     scopeLevel: 'any', // Project 路由组可以通过 system-level 或 project-level 权限访问
     routes: [
       {
+        path: '/project/dashboard',
+        requiredScopes: ['read_requests'],
+        mode: 'hidden',
+      },
+      {
         path: '/project/api-keys',
         requiredScopes: ['read_api_keys'],
         mode: 'hidden',

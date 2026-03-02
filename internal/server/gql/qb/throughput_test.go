@@ -357,6 +357,36 @@ func TestBuildThroughputQuery_SQLStructure(t *testing.T) {
 	}
 }
 
+func TestBuildThroughputQueryWithProjectFilter(t *testing.T) {
+	rowNumberQuery := BuildThroughputQueryWithProjectFilter(
+		true,
+		ThroughputQueryByChannel,
+		10,
+		ThroughputModeRowNumber,
+		"$2",
+	)
+	assert.Contains(t, rowNumberQuery, "created_at >= $1 AND project_id = $2")
+
+	maxIDQuery := BuildThroughputQueryWithProjectFilter(
+		false,
+		ThroughputQueryByModel,
+		10,
+		ThroughputModeMaxID,
+		"?",
+	)
+	assert.Contains(t, maxIDQuery, "AND se.project_id = ?")
+	assert.Contains(t, maxIDQuery, "AND re2.project_id = ?")
+
+	queryWithoutProjectFilter := BuildThroughputQueryWithProjectFilter(
+		true,
+		ThroughputQueryByChannel,
+		10,
+		ThroughputModeRowNumber,
+		"",
+	)
+	assert.NotContains(t, queryWithoutProjectFilter, "project_id =")
+}
+
 // TestBuildProbeStatsQuery tests the BuildProbeStatsQuery function.
 func TestBuildProbeStatsQuery(t *testing.T) {
 	tests := []struct {

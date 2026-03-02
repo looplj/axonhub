@@ -233,6 +233,20 @@ func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limi
 //
 // Returns: SQL query string ready for execution
 func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeconds int, queryType DailyThroughputQueryType, placeholder string, mode ThroughputQueryMode) string {
+	return BuildDailyPerformanceStatsQueryWithProjectFilter(dialect, timezone, offsetSeconds, queryType, placeholder, mode, "")
+}
+
+// BuildDailyPerformanceStatsQueryWithProjectFilter constructs a SQL query for
+// daily performance statistics with an optional project_id placeholder filter.
+func BuildDailyPerformanceStatsQueryWithProjectFilter(
+	dialect string,
+	timezone string,
+	offsetSeconds int,
+	queryType DailyThroughputQueryType,
+	placeholder string,
+	mode ThroughputQueryMode,
+	projectIDPlaceholder string,
+) string {
 	config, ok := AllowedDailyQueryConfigs[queryType]
 	if !ok {
 		config = AllowedDailyQueryConfigs[DailyThroughputByModel]
@@ -248,14 +262,43 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 	}
 
 	if mode == ThroughputModeMaxID {
-		return buildDailyPerformanceStatsMaxIDQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
+		return buildDailyPerformanceStatsMaxIDQuery(
+			dateExpr,
+			config,
+			queryType,
+			placeholder,
+			joinRequests,
+			throughputSQL,
+			projectIDPlaceholder,
+		)
 	}
 
-	return buildDailyPerformanceStatsRowNumberQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
+	return buildDailyPerformanceStatsRowNumberQuery(
+		dateExpr,
+		config,
+		queryType,
+		placeholder,
+		joinRequests,
+		throughputSQL,
+		projectIDPlaceholder,
+	)
 }
 
 // buildDailyPerformanceStatsRowNumberQuery constructs the ROW_NUMBER() version of the daily performance stats query.
-func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, placeholder string, joinRequests string, throughputSQL string) string {
+func buildDailyPerformanceStatsRowNumberQuery(
+	dateExpr string,
+	config DailyQueryFragmentConfig,
+	queryType DailyThroughputQueryType,
+	placeholder string,
+	joinRequests string,
+	throughputSQL string,
+	projectIDPlaceholder string,
+) string {
+	projectFilter := ""
+	if projectIDPlaceholder != "" {
+		projectFilter = "        AND se.project_id = " + projectIDPlaceholder + "\n"
+	}
+
 	return "WITH successful_execs AS (\n" +
 		"    SELECT\n" +
 		"        se.request_id,\n" +
@@ -270,6 +313,7 @@ func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQuery
 		"    WHERE se.status = 'completed'\n" +
 		"        AND se.metrics_latency_ms > 0\n" +
 		"        AND se.created_at >= " + placeholder + "\n" +
+		projectFilter +
 		"),\n" +
 		"daily AS (\n" +
 		"    SELECT\n" +
@@ -301,7 +345,22 @@ func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQuery
 }
 
 // buildDailyPerformanceStatsMaxIDQuery constructs the MAX(id) fallback version for older databases.
-func buildDailyPerformanceStatsMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, placeholder string, joinRequests string, throughputSQL string) string {
+func buildDailyPerformanceStatsMaxIDQuery(
+	dateExpr string,
+	config DailyQueryFragmentConfig,
+	queryType DailyThroughputQueryType,
+	placeholder string,
+	joinRequests string,
+	throughputSQL string,
+	projectIDPlaceholder string,
+) string {
+	outerProjectFilter := ""
+	subqueryProjectFilter := ""
+	if projectIDPlaceholder != "" {
+		outerProjectFilter = "        AND se.project_id = " + projectIDPlaceholder + "\n"
+		subqueryProjectFilter = "                AND se2.project_id = " + projectIDPlaceholder + "\n"
+	}
+
 	return "WITH latest_execs AS (\n" +
 		"    SELECT\n" +
 		"        se.request_id,\n" +
@@ -315,12 +374,14 @@ func buildDailyPerformanceStatsMaxIDQuery(dateExpr string, config DailyQueryFrag
 		"    WHERE se.status = 'completed'\n" +
 		"        AND se.metrics_latency_ms > 0\n" +
 		"        AND se.created_at >= " + placeholder + "\n" +
+		outerProjectFilter +
 		"        AND se.id = (\n" +
 		"            SELECT MAX(se2.id)\n" +
 		"            FROM request_executions se2\n" +
 		"            WHERE se2.request_id = se.request_id\n" +
 		"                AND se2.status = 'completed'\n" +
 		"                AND se2.metrics_latency_ms > 0\n" +
+		subqueryProjectFilter +
 		"        )\n" +
 		"),\n" +
 		"daily AS (\n" +

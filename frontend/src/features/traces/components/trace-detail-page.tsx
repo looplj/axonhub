@@ -31,7 +31,7 @@ export default function TraceDetailPage() {
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
 
   const { data: trace, isLoading, refetch } = useTraceWithSegments(traceId);
-  const { data: settings } = useGeneralSettings();
+  const { data: settings } = useGeneralSettings({ gracefulFallback: true });
 
   // Parse rawRootSegment JSON once per trace
   // 仅解析 rawRootSegment（完整 JSON）

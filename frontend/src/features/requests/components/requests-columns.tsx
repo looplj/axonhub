@@ -24,7 +24,7 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const permissions = useRequestPermissions();
-  const { data: settings } = useGeneralSettings();
+  const { data: settings } = useGeneralSettings({ gracefulFallback: true });
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
   const [displayMode, setDisplayMode] = useDisplayMode();
 

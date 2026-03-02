@@ -656,3 +656,39 @@ func TestBuildDailyPerformanceStatsQuery_ConditionalJoinRequests(t *testing.T) {
 	assert.NotContains(t, channelQuery, "JOIN requests r ON se.request_id = r.id", "channel query should not join requests")
 	assert.NotContains(t, channelQuery, "r.model_id", "channel query should not reference r.model_id")
 }
+
+func TestBuildDailyPerformanceStatsQueryWithProjectFilter(t *testing.T) {
+	rowNumberQuery := BuildDailyPerformanceStatsQueryWithProjectFilter(
+		"postgres",
+		"UTC",
+		0,
+		DailyThroughputByModel,
+		"$1",
+		ThroughputModeRowNumber,
+		"$2",
+	)
+	assert.Contains(t, rowNumberQuery, "AND se.project_id = $2")
+
+	maxIDQuery := BuildDailyPerformanceStatsQueryWithProjectFilter(
+		"sqlite",
+		"UTC",
+		0,
+		DailyThroughputByChannel,
+		"?",
+		ThroughputModeMaxID,
+		"?",
+	)
+	assert.Contains(t, maxIDQuery, "AND se.project_id = ?")
+	assert.Contains(t, maxIDQuery, "AND se2.project_id = ?")
+
+	queryWithoutProjectFilter := BuildDailyPerformanceStatsQueryWithProjectFilter(
+		"postgres",
+		"UTC",
+		0,
+		DailyThroughputByModel,
+		"$1",
+		ThroughputModeRowNumber,
+		"",
+	)
+	assert.NotContains(t, queryWithoutProjectFilter, "project_id =")
+}

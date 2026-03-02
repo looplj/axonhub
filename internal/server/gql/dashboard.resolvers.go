@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -30,11 +31,56 @@ import (
 	"github.com/samber/lo"
 )
 
+func (r *queryResolver) resolveDashboardContext(ctx context.Context) (context.Context, *int) {
+	projectID, hasProjectID := contexts.GetProjectID(ctx)
+	if hasProjectID {
+		return ctx, &projectID
+	}
+
+	return authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard), nil
+}
+
+func (r *queryResolver) ensureProjectDashboardAccess(ctx context.Context, projectID *int) error {
+	if projectID == nil {
+		return nil
+	}
+
+	_, err := r.client.Request.Query().
+		Where(request.IDLT(0)).
+		Count(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to authorize project dashboard access: %w", err)
+	}
+
+	return nil
+}
+
+func buildThroughputQueryArgs(mode qb.ThroughputQueryMode, since time.Time, projectID *int) []any {
+	sinceUTC := since.UTC()
+
+	if mode == qb.ThroughputModeMaxID {
+		if projectID != nil {
+			// Placeholder order in MAX_ID mode (SQLite/MySQL) is:
+			// outer since, outer project, subquery since, subquery project.
+			return []any{sinceUTC, *projectID, sinceUTC, *projectID}
+		}
+
+		// MAX_ID mode references the since timestamp in both outer and subquery WHERE clauses.
+		return []any{sinceUTC, sinceUTC}
+	}
+
+	if projectID != nil {
+		return []any{sinceUTC, *projectID}
+	}
+
+	return []any{sinceUTC}
+}
+
 // DashboardOverview is the resolver for the dashboardOverview field.
 // Note: This resolver provides high-level dashboard metrics.
 // For detailed request statistics, see RequestStats resolver documentation.
 func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOverview, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	// Initialize response with defaults to handle partial failures gracefully
 	stats := &DashboardOverview{
@@ -87,7 +133,7 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 // For process tracking (e.g., failed requests), use request/request_execution tables.
 // For channel-level statistics, use request_execution table.
 func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	// Initialize response with defaults to handle partial failures gracefully
 	stats := &RequestStats{
@@ -139,7 +185,7 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 // Note: Uses usage_logs table for result-only statistics aggregated by channel.
 // For channel-level process tracking (e.g., success/failure rates), use request_execution table.
 func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	// Use efficient aggregation query with JOIN to get channel details and filter out deleted channels
 	type channelStats struct {
@@ -191,7 +237,7 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 // Note: Uses usage_logs table for result-only statistics aggregated by model.
 // This provides successful request counts per model.
 func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	type modelStats struct {
 		ModelID string `json:"model_id"`
@@ -231,7 +277,7 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 // Note: Uses usage_logs table for result-only statistics aggregated by API key.
 // This provides successful request counts per API key.
 func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	type apiKeyStats struct {
 		APIKeyID int `json:"api_key_id"`
@@ -268,10 +314,12 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 		return item.APIKeyID
 	})
 
-	// Fetch API key details
-	apiKeys, err := r.client.APIKey.Query().
-		Where(apikey.IDIn(apiKeyIDs...)).
-		All(ctx)
+	// Fetch API key details with system bypass so dashboard visibility only depends on request access.
+	apiKeys, err := authz.RunWithSystemBypass(ctx, "dashboard-api-key-details", func(bypassCtx context.Context) ([]*ent.APIKey, error) {
+		return r.client.APIKey.Query().
+			Where(apikey.IDIn(apiKeyIDs...)).
+			All(bypassCtx)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API keys: %w", err)
 	}
@@ -301,7 +349,7 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 // Note: Uses usage_logs table for token consumption statistics aggregated by API key.
 // This provides actual token usage (input, output, cached, reasoning) per API key.
 func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	type tokenStats struct {
 		APIKeyID        int   `json:"api_key_id"`
@@ -366,10 +414,12 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 		return item.APIKeyID
 	})
 
-	// Fetch API key details
-	apiKeys, err := r.client.APIKey.Query().
-		Where(apikey.IDIn(apiKeyIDs...)).
-		All(ctx)
+	// Fetch API key details with system bypass so dashboard visibility only depends on request access.
+	apiKeys, err := authz.RunWithSystemBypass(ctx, "dashboard-api-key-details", func(bypassCtx context.Context) ([]*ent.APIKey, error) {
+		return r.client.APIKey.Query().
+			Where(apikey.IDIn(apiKeyIDs...)).
+			All(bypassCtx)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API keys: %w", err)
 	}
@@ -406,7 +456,7 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 // Note: Uses usage_logs table for daily aggregated statistics (count, tokens, cost).
 // Provides result-only daily metrics for the last 30 days.
 func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	daysCount := 30
 
@@ -503,7 +553,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 // Note: Uses usage_logs table for project-level request statistics.
 // Provides result-only request counts per project.
 func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequestsProjects, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	limitCount := 10
 
@@ -539,9 +589,11 @@ func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequests
 		return item.ProjectID
 	})
 
-	projects, err := r.client.Project.Query().
-		Where(project.IDIn(projectIDs...)).
-		All(ctx)
+	projects, err := authz.RunWithSystemBypass(ctx, "dashboard-project-details", func(bypassCtx context.Context) ([]*ent.Project, error) {
+		return r.client.Project.Query().
+			Where(project.IDIn(projectIDs...)).
+			All(bypassCtx)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project details: %w", err)
 	}
@@ -571,7 +623,7 @@ func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequests
 // Note: Uses usage_logs table for token consumption statistics (today, this week, this month).
 // Provides result-only token metrics aggregated by calendar periods.
 func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, _ = r.resolveDashboardContext(ctx)
 
 	// Initialize response with defaults to handle partial failures gracefully
 	stats := &TokenStats{
@@ -655,7 +707,10 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 // This provides success/failure rates per channel, suitable for monitoring channel health.
 // For result-only channel statistics, use RequestStatsByChannel instead.
 func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSuccessRate, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, projectID := r.resolveDashboardContext(ctx)
+	if err := r.ensureProjectDashboardAccess(ctx, projectID); err != nil {
+		return nil, err
+	}
 
 	limitCount := 5
 
@@ -674,9 +729,14 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSucc
 				requestexecution.FieldChannelID,
 				sql.As("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)", "success_count"),
 				sql.As("SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)", "failed_count"),
-			).
-				Where(sql.NotNull(requestexecution.FieldChannelID)).
-				GroupBy(requestexecution.FieldChannelID)
+			)
+
+			s.Where(sql.NotNull(s.C(requestexecution.FieldChannelID)))
+			if projectID != nil {
+				s.Where(sql.EQ(s.C(requestexecution.FieldProjectID), *projectID))
+			}
+
+			s.GroupBy(requestexecution.FieldChannelID)
 		}).
 		Scan(ctx, &results)
 	if err != nil {
@@ -724,11 +784,13 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSucc
 		return item.ChannelID.ID
 	})
 
-	ctx = schematype.SkipSoftDelete(ctx)
+	channels, err := authz.RunWithSystemBypass(ctx, "dashboard-channel-details", func(bypassCtx context.Context) ([]*ent.Channel, error) {
+		bypassCtx = schematype.SkipSoftDelete(bypassCtx)
 
-	channels, err := r.client.Channel.Query().
-		Where(channel.IDIn(channelIDs...)).
-		All(ctx)
+		return r.client.Channel.Query().
+			Where(channel.IDIn(channelIDs...)).
+			All(bypassCtx)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel details: %w", err)
 	}
@@ -752,7 +814,10 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context) ([]*ChannelSucc
 // Returns the fastest channels by throughput (tokens per second) based on completed request executions.
 // Groups by channel_id and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
 func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, projectID := r.resolveDashboardContext(ctx)
+	if err := r.ensureProjectDashboardAccess(ctx, projectID); err != nil {
+		return nil, err
+	}
 
 	// Validate and set default limit
 	if input.Limit == nil || *input.Limit <= 0 {
@@ -811,11 +876,21 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	// Build query using shared helper function
 	// Fetch more items than needed to allow confidence-based filtering
 	sqlLimit := max(*input.Limit*4, 20)
-	query := qb.BuildThroughputQuery(
+	projectIDPlaceholder := ""
+	if projectID != nil {
+		if useDollarPlaceholders {
+			projectIDPlaceholder = "$2"
+		} else {
+			projectIDPlaceholder = "?"
+		}
+	}
+
+	query := qb.BuildThroughputQueryWithProjectFilter(
 		useDollarPlaceholders,
 		qb.ThroughputQueryByChannel,
 		sqlLimit,
 		queryMode,
+		projectIDPlaceholder,
 	)
 
 	// Use UTC for the time parameter to match the timezone of the created_at column.
@@ -823,14 +898,7 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
-	// MaxID mode requires the timestamp twice (outer WHERE and subquery WHERE)
-	// ROW_NUMBER mode only needs it once (in the CTE)
-	var queryArgs []any
-	if queryMode == qb.ThroughputModeMaxID {
-		queryArgs = []any{since.UTC(), since.UTC()}
-	} else {
-		queryArgs = []any{since.UTC()}
-	}
+	queryArgs := buildThroughputQueryArgs(queryMode, since, projectID)
 
 	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
 	if err != nil {
@@ -892,7 +960,10 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 // Returns the fastest models by throughput (tokens per second) based on completed request executions.
 // Groups by request.model_id (AxonHub model) and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
 func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, projectID := r.resolveDashboardContext(ctx)
+	if err := r.ensureProjectDashboardAccess(ctx, projectID); err != nil {
+		return nil, err
+	}
 
 	// Validate and set default limit
 	if input.Limit == nil || *input.Limit <= 0 {
@@ -954,24 +1025,27 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 		sqlLimit = 20
 	}
 
-	query := qb.BuildThroughputQuery(
+	projectIDPlaceholder := ""
+	if projectID != nil {
+		if useDollarPlaceholders {
+			projectIDPlaceholder = "$2"
+		} else {
+			projectIDPlaceholder = "?"
+		}
+	}
+
+	query := qb.BuildThroughputQueryWithProjectFilter(
 		useDollarPlaceholders,
 		qb.ThroughputQueryByModel,
 		sqlLimit,
 		queryMode,
+		projectIDPlaceholder,
 	)
 
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
-	// MaxID mode requires the timestamp twice (outer WHERE and subquery WHERE)
-	// ROW_NUMBER mode only needs it once (in the CTE)
-	var queryArgs []any
-	if queryMode == qb.ThroughputModeMaxID {
-		queryArgs = []any{since.UTC(), since.UTC()}
-	} else {
-		queryArgs = []any{since.UTC()}
-	}
+	queryArgs := buildThroughputQueryArgs(queryMode, since, projectID)
 
 	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
 	if err != nil {
@@ -1032,7 +1106,10 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 // Aggregates by date and model_id, calculating throughput (tokens per second).
 // Only includes successful (completed) requests with valid latency metrics.
 func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, projectID := r.resolveDashboardContext(ctx)
+	if err := r.ensureProjectDashboardAccess(ctx, projectID); err != nil {
+		return nil, err
+	}
 
 	// Add 30-second timeout to prevent long-running queries
 	var cancel context.CancelFunc
@@ -1062,6 +1139,15 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		placeholder = "$1"
 	}
 
+	projectIDPlaceholder := ""
+	if projectID != nil {
+		if useDollarPlaceholders {
+			projectIDPlaceholder = "$2"
+		} else {
+			projectIDPlaceholder = "?"
+		}
+	}
+
 	// Select throughput mode based on dialect: ROW_NUMBER for PostgreSQL, MaxID for older SQLite
 	queryMode := qb.ThroughputModeRowNumber
 	if !useDollarPlaceholders {
@@ -1069,20 +1155,30 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 	}
 
 	// Use shared query builder for daily performance stats
-	query := qb.BuildDailyPerformanceStatsQuery(
+	query := qb.BuildDailyPerformanceStatsQueryWithProjectFilter(
 		dialectName,
 		loc.String(),
 		offsetSeconds,
 		qb.DailyThroughputByModel,
 		placeholder,
 		queryMode,
+		projectIDPlaceholder,
 	)
 
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
 
-	rows, err := sqlDB.DB().QueryContext(ctx, query, startDateUTC)
+	queryArgs := []any{startDateUTC}
+	if projectID != nil {
+		if queryMode == qb.ThroughputModeMaxID {
+			queryArgs = append(queryArgs, *projectID, *projectID)
+		} else {
+			queryArgs = append(queryArgs, *projectID)
+		}
+	}
+
+	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query model performance stats: %w", err)
 	}
@@ -1179,7 +1275,10 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 
 // ChannelPerformanceStats is the resolver for the channelPerformanceStats field.
 func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx, projectID := r.resolveDashboardContext(ctx)
+	if err := r.ensureProjectDashboardAccess(ctx, projectID); err != nil {
+		return nil, err
+	}
 
 	var cancel context.CancelFunc
 
@@ -1195,13 +1294,17 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	startTimestamp := startDateLocal.UTC().Unix()
 	_, offsetSeconds := nowLocal.Zone()
 
+	if projectID != nil {
+		return r.buildChannelPerformanceStatsFromExecutions(ctx, startDateLocal, offsetSeconds, daysCount, projectID)
+	}
+
 	probeResults, err := r.queryChannelProbeStats(ctx, startTimestamp, loc.String(), offsetSeconds)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(probeResults) == 0 {
-		return r.buildChannelPerformanceStatsFromExecutions(ctx, startDateLocal, offsetSeconds, daysCount)
+		return r.buildChannelPerformanceStatsFromExecutions(ctx, startDateLocal, offsetSeconds, daysCount, nil)
 	}
 
 	statsMap := aggregateProbeStats(probeResults)

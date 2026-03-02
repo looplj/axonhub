@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
+import { useDashboardScope } from './scope';
 
 // Refetch interval constant (30 seconds)
 const REFETCH_INTERVAL_MS = 30000;
@@ -63,34 +64,47 @@ const FASTEST_MODELS_QUERY = `
   }
 `;
 
+function buildDashboardHeaders(scopeProjectID: string | null) {
+  return scopeProjectID ? { 'X-Project-ID': scopeProjectID } : undefined;
+}
+
 // Query hooks
 export function useFastestChannels(timeWindow: string = 'day', limit: number = 5) {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['fastestChannels', timeWindow, limit],
+    queryKey: ['fastestChannels', timeWindow, limit, scopeProjectID],
     queryFn: async () => {
       const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(
         FASTEST_CHANNELS_QUERY,
-        { input: { timeWindow, limit } }
+        { input: { timeWindow, limit } },
+        buildDashboardHeaders(scopeProjectID)
       );
       return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
     },
     refetchInterval: REFETCH_INTERVAL_MS,
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useFastestModels(timeWindow: string = 'day', limit: number = 5) {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['fastestModels', timeWindow, limit],
+    queryKey: ['fastestModels', timeWindow, limit, scopeProjectID],
     queryFn: async () => {
       const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(
         FASTEST_MODELS_QUERY,
-        { input: { timeWindow, limit } }
+        { input: { timeWindow, limit } },
+        buildDashboardHeaders(scopeProjectID)
       );
       return data.fastestModels.map((item) => fastestModelSchema.parse(item));
     },
     refetchInterval: REFETCH_INTERVAL_MS,
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
-

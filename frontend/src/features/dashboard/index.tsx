@@ -21,6 +21,7 @@ import { FastestModelsCard } from './components/fastest-models-card';
 import { ModelPerformanceStats } from './components/model-performance-stats';
 import { ChannelPerformanceStats } from './components/channel-performance-stats';
 import { useDashboardStats } from './data/dashboard';
+import { DashboardScopeProvider } from './data/scope';
 
 interface CollapsibleSectionProps {
   title: string;
@@ -85,7 +86,7 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
   );
 }
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const { t } = useTranslation();
   const { isLoading, error } = useDashboardStats();
   const [modelTotalRequests, setModelTotalRequests] = useState(0);
@@ -257,5 +258,21 @@ export default function DashboardPage() {
         </div>
       </CollapsibleSection>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <DashboardScopeProvider projectScoped={false}>
+      <DashboardPageContent />
+    </DashboardScopeProvider>
+  );
+}
+
+export function ProjectDashboardPage() {
+  return (
+    <DashboardScopeProvider projectScoped={true}>
+      <DashboardPageContent />
+    </DashboardScopeProvider>
   );
 }

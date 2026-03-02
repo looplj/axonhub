@@ -149,9 +149,18 @@ export interface SystemGeneralSettings {
   timezone: string;
 }
 
+export const DEFAULT_SYSTEM_GENERAL_SETTINGS: SystemGeneralSettings = {
+  currencyCode: 'USD',
+  timezone: 'UTC',
+};
+
 export interface UpdateSystemGeneralSettingsInput {
   currencyCode?: string;
   timezone?: string;
+}
+
+interface UseGeneralSettingsOptions {
+  gracefulFallback?: boolean;
 }
 
 export interface VideoStorageSettings {
@@ -689,20 +698,34 @@ export function useUpdateChannelSetting() {
   });
 }
 
-export function useGeneralSettings() {
+function shouldFallbackGeneralSettings(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /(default deny|deny rule|permission denied|read_settings)/i.test(error.message);
+}
+
+export function useGeneralSettings(options: UseGeneralSettingsOptions = {}) {
   const { handleError } = useErrorHandler();
+  const { gracefulFallback = false } = options;
 
   return useQuery({
-    queryKey: ['generalSettings'],
+    queryKey: ['generalSettings', gracefulFallback ? 'graceful' : 'strict'],
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ systemGeneralSettings: SystemGeneralSettings }>(SYSTEM_GENERAL_SETTINGS_QUERY);
         return data.systemGeneralSettings;
       } catch (error) {
+        if (gracefulFallback && shouldFallbackGeneralSettings(error)) {
+          return DEFAULT_SYSTEM_GENERAL_SETTINGS;
+        }
+
         handleError(error, i18n.t('common.errors.internalServerError'));
         throw error;
       }
     },
+    placeholderData: gracefulFallback ? DEFAULT_SYSTEM_GENERAL_SETTINGS : undefined,
   });
 }
 

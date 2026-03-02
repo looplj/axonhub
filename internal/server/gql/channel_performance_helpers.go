@@ -9,6 +9,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/log"
@@ -134,10 +136,12 @@ func (r *queryResolver) fetchChannelNames(ctx context.Context, channelIDs []int)
 		return channelNames
 	}
 
-	queriedChannels, err := r.client.Channel.Query().
-		Where(channel.IDIn(channelIDs...)).
-		Select(channel.FieldID, channel.FieldName).
-		All(ctx)
+	queriedChannels, err := authz.RunWithSystemBypass(ctx, "dashboard-channel-names", func(bypassCtx context.Context) ([]*ent.Channel, error) {
+		return r.client.Channel.Query().
+			Where(channel.IDIn(channelIDs...)).
+			Select(channel.FieldID, channel.FieldName).
+			All(bypassCtx)
+	})
 	if err != nil {
 		log.Error(ctx, "failed to query channel names for performance stats",
 			log.Any("channelIDs", channelIDs),
@@ -198,7 +202,13 @@ func buildChannelPerformanceResponse(
 	return response
 }
 
-func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.Context, startDateLocal time.Time, offsetSeconds int, daysCount int) ([]*ChannelPerformanceStat, error) {
+func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(
+	ctx context.Context,
+	startDateLocal time.Time,
+	offsetSeconds int,
+	daysCount int,
+	projectID *int,
+) ([]*ChannelPerformanceStat, error) {
 	dbDriver := r.client.Driver()
 	sqlDB, ok := dbDriver.(*sql.Driver)
 	if !ok {
@@ -213,25 +223,44 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 		placeholder = "$1"
 	}
 
+	projectIDPlaceholder := ""
+	if projectID != nil {
+		if useDollarPlaceholders {
+			projectIDPlaceholder = "$2"
+		} else {
+			projectIDPlaceholder = "?"
+		}
+	}
+
 	queryMode := qb.ThroughputModeRowNumber
 	if !useDollarPlaceholders {
 		queryMode = qb.ThroughputModeMaxID
 	}
 
-	query := qb.BuildDailyPerformanceStatsQuery(
+	query := qb.BuildDailyPerformanceStatsQueryWithProjectFilter(
 		dialectName,
 		r.systemService.TimeLocation(ctx).String(),
 		offsetSeconds,
 		qb.DailyThroughputByChannel,
 		placeholder,
 		queryMode,
+		projectIDPlaceholder,
 	)
 
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
 
-	rows, err := sqlDB.DB().QueryContext(ctx, query, startDateLocal.UTC())
+	queryArgs := []any{startDateLocal.UTC()}
+	if projectID != nil {
+		if queryMode == qb.ThroughputModeMaxID {
+			queryArgs = append(queryArgs, *projectID, *projectID)
+		} else {
+			queryArgs = append(queryArgs, *projectID)
+		}
+	}
+
+	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channel performance stats from executions: %w", err)
 	}
@@ -315,22 +344,7 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 		validChannelIDs = append(validChannelIDs, chID)
 	}
 
-	channelNames := make(map[int]string)
-	if len(validChannelIDs) > 0 {
-		queriedChannels, err := r.client.Channel.Query().
-			Where(channel.IDIn(validChannelIDs...)).
-			Select(channel.FieldID, channel.FieldName).
-			All(ctx)
-		if err != nil {
-			log.Error(ctx, "failed to query channel names for performance stats",
-				log.Any("channelIDs", validChannelIDs),
-				log.Cause(err))
-		} else {
-			for _, ch := range queriedChannels {
-				channelNames[ch.ID] = ch.Name
-			}
-		}
-	}
+	channelNames := r.fetchChannelNames(ctx, validChannelIDs)
 
 	response := make([]*ChannelPerformanceStat, 0)
 	for i := range daysCount {

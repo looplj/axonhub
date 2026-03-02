@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
+import { useDashboardScope } from './scope';
 
 // Schema definitions
 export const requestStatsSchema = z.object({
@@ -264,135 +265,235 @@ const TOKEN_STATS_AGGR_QUERY = `
   }
 `;
 
+function buildDashboardHeaders(scopeProjectID: string | null) {
+  return scopeProjectID ? { 'X-Project-ID': scopeProjectID } : undefined;
+}
+
 // Query hooks
 export function useDashboardStats() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['dashboardStats'],
+    queryKey: ['dashboardStats', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ dashboardOverview: DashboardStats }>(DASHBOARD_STATS_QUERY);
+      const data = await graphqlRequest<{ dashboardOverview: DashboardStats }>(
+        DASHBOARD_STATS_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return dashboardStatsSchema.parse(data.dashboardOverview);
     },
     refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useRequestsByChannel() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['requestStatsByChannel'],
+    queryKey: ['requestStatsByChannel', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByChannel: RequestsByChannel[] }>(REQUESTS_BY_CHANNEL_QUERY);
+      const data = await graphqlRequest<{ requestStatsByChannel: RequestsByChannel[] }>(
+        REQUESTS_BY_CHANNEL_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.requestStatsByChannel.map((item) => requestsByChannelSchema.parse(item));
     },
     refetchInterval: 60000,
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useRequestsByModel() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['requestStatsByModel'],
+    queryKey: ['requestStatsByModel', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByModel: RequestsByModel[] }>(REQUESTS_BY_MODEL_QUERY);
+      const data = await graphqlRequest<{ requestStatsByModel: RequestsByModel[] }>(
+        REQUESTS_BY_MODEL_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.requestStatsByModel.map((item) => requestsByModelSchema.parse(item));
     },
     refetchInterval: 60000,
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useRequestsByAPIKey() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['requestStatsByAPIKey'],
+    queryKey: ['requestStatsByAPIKey', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByAPIKey: RequestsByAPIKey[] }>(REQUESTS_BY_API_KEY_QUERY);
+      const data = await graphqlRequest<{ requestStatsByAPIKey: RequestsByAPIKey[] }>(
+        REQUESTS_BY_API_KEY_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.requestStatsByAPIKey.map((item) => requestsByAPIKeySchema.parse(item));
     },
     refetchInterval: 60000,
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useTokensByAPIKey() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['tokenStatsByAPIKey'],
+    queryKey: ['tokenStatsByAPIKey', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ tokenStatsByAPIKey: TokensByAPIKey[] }>(TOKENS_BY_API_KEY_QUERY);
+      const data = await graphqlRequest<{ tokenStatsByAPIKey: TokensByAPIKey[] }>(
+        TOKENS_BY_API_KEY_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.tokenStatsByAPIKey.map((item) => tokensByAPIKeySchema.parse(item));
     },
     refetchInterval: 60000, // Auto-refresh every 60 seconds
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useDailyRequestStats() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['dailyRequestStats'],
+    queryKey: ['dailyRequestStats', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ dailyRequestStats: DailyRequestStats[] }>(DAILY_REQUEST_STATS_QUERY);
+      const data = await graphqlRequest<{ dailyRequestStats: DailyRequestStats[] }>(
+        DAILY_REQUEST_STATS_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.dailyRequestStats.map((item) => dailyRequestStatsSchema.parse(item));
     },
     refetchInterval: 300000, // Refetch every 5 minutes
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useHourlyRequestStats(date?: string) {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['hourlyRequestStats', date],
+    queryKey: ['hourlyRequestStats', date, scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ hourlyRequestStats: HourlyRequestStats[] }>(HOURLY_REQUEST_STATS_QUERY, { date });
+      const data = await graphqlRequest<{ hourlyRequestStats: HourlyRequestStats[] }>(
+        HOURLY_REQUEST_STATS_QUERY,
+        { date },
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.hourlyRequestStats.map((item) => hourlyRequestStatsSchema.parse(item));
     },
     refetchInterval: 300000,
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useTopProjects() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['topRequestsProjects'],
+    queryKey: ['topRequestsProjects', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ topRequestsProjects: TopProjects[] }>(TOP_PROJECTS_QUERY);
+      const data = await graphqlRequest<{ topRequestsProjects: TopProjects[] }>(
+        TOP_PROJECTS_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.topRequestsProjects.map((item) => topProjectsSchema.parse(item));
     },
     refetchInterval: 300000,
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useTokenStats() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['tokenStats'],
+    queryKey: ['tokenStats', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ tokenStats: TokenStats }>(TOKEN_STATS_AGGR_QUERY);
+      const data = await graphqlRequest<{ tokenStats: TokenStats }>(
+        TOKEN_STATS_AGGR_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return tokenStatsSchema.parse(data.tokenStats);
     },
     refetchInterval: 300000, // Refetch every 5 minutes
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useChannelSuccessRates() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['channelSuccessRates'],
+    queryKey: ['channelSuccessRates', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ channelSuccessRates: ChannelSuccessRate[] }>(CHANNEL_SUCCESS_RATES_QUERY);
+      const data = await graphqlRequest<{ channelSuccessRates: ChannelSuccessRate[] }>(
+        CHANNEL_SUCCESS_RATES_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.channelSuccessRates.map((item) => channelSuccessRateSchema.parse(item));
     },
     refetchInterval: 300000,
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useModelPerformanceStats() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['modelPerformanceStats'],
+    queryKey: ['modelPerformanceStats', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(MODEL_PERFORMANCE_STATS_QUERY);
+      const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(
+        MODEL_PERFORMANCE_STATS_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.modelPerformanceStats.map((item) => modelPerformanceStatSchema.parse(item));
     },
     refetchInterval: 300000, // Refetch every 5 minutes
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }
 
 export function useChannelPerformanceStats() {
+  const { projectScoped, selectedProjectId } = useDashboardScope();
+  const scopeProjectID = projectScoped ? selectedProjectId : null;
+
   return useQuery({
-    queryKey: ['channelPerformanceStats'],
+    queryKey: ['channelPerformanceStats', scopeProjectID],
     queryFn: async () => {
-      const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(CHANNEL_PERFORMANCE_STATS_QUERY);
+      const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(
+        CHANNEL_PERFORMANCE_STATS_QUERY,
+        undefined,
+        buildDashboardHeaders(scopeProjectID)
+      );
       return data.channelPerformanceStats.map((item) => channelPerformanceStatSchema.parse(item));
     },
     refetchInterval: 300000, // Refetch every 5 minutes
+    enabled: !projectScoped || !!scopeProjectID,
   });
 }

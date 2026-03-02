@@ -2,7 +2,9 @@ package gql
 
 import (
 	"testing"
+	"time"
 
+	"github.com/looplj/axonhub/internal/server/gql/qb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -327,5 +329,49 @@ func TestCalculateConfidenceAndSort_LargeDataset(t *testing.T) {
 			assert.True(t, got[i].score > got[i+1].score,
 				"items should be sorted by confidence score descending")
 		}
+	}
+}
+
+func TestBuildThroughputQueryArgs(t *testing.T) {
+	since := time.Date(2026, 1, 2, 15, 4, 5, 0, time.FixedZone("UTC+8", 8*60*60))
+	sinceUTC := since.UTC()
+	projectID := 42
+
+	tests := []struct {
+		name      string
+		mode      qb.ThroughputQueryMode
+		projectID *int
+		expected  []any
+	}{
+		{
+			name:      "row number without project",
+			mode:      qb.ThroughputModeRowNumber,
+			projectID: nil,
+			expected:  []any{sinceUTC},
+		},
+		{
+			name:      "row number with project",
+			mode:      qb.ThroughputModeRowNumber,
+			projectID: &projectID,
+			expected:  []any{sinceUTC, projectID},
+		},
+		{
+			name:      "max id without project",
+			mode:      qb.ThroughputModeMaxID,
+			projectID: nil,
+			expected:  []any{sinceUTC, sinceUTC},
+		},
+		{
+			name:      "max id with project",
+			mode:      qb.ThroughputModeMaxID,
+			projectID: &projectID,
+			expected:  []any{sinceUTC, projectID, sinceUTC, projectID},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, buildThroughputQueryArgs(tt.mode, since, tt.projectID))
+		})
 	}
 }

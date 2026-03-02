@@ -77,6 +77,18 @@ var AllowedQueryConfigs = map[ThroughputQueryType]QueryFragmentConfig{
 //
 // Returns: SQL query string with placeholders for the since timestamp
 func BuildThroughputQuery(useDollarPlaceholders bool, queryType ThroughputQueryType, limit int, mode ThroughputQueryMode) string {
+	return BuildThroughputQueryWithProjectFilter(useDollarPlaceholders, queryType, limit, mode, "")
+}
+
+// BuildThroughputQueryWithProjectFilter constructs a throughput query with an
+// optional project_id placeholder filter.
+func BuildThroughputQueryWithProjectFilter(
+	useDollarPlaceholders bool,
+	queryType ThroughputQueryType,
+	limit int,
+	mode ThroughputQueryMode,
+	projectIDPlaceholder string,
+) string {
 	// Validate that limit is positive to prevent malformed queries
 	if limit <= 0 {
 		limit = 20 // Default fallback
@@ -96,15 +108,20 @@ func BuildThroughputQuery(useDollarPlaceholders bool, queryType ThroughputQueryT
 	}
 
 	if mode == ThroughputModeMaxID {
-		return buildMaxIDQuery(placeholder, config, limit)
+		return buildMaxIDQuery(placeholder, config, limit, projectIDPlaceholder)
 	}
 
-	return buildRowNumberQuery(placeholder, config, limit)
+	return buildRowNumberQuery(placeholder, config, limit, projectIDPlaceholder)
 }
 
 // buildRowNumberQuery constructs a SQL query using ROW_NUMBER() window function.
 // This is the preferred approach for all modern database systems.
-func buildRowNumberQuery(placeholder string, config QueryFragmentConfig, limit int) string {
+func buildRowNumberQuery(placeholder string, config QueryFragmentConfig, limit int, projectIDPlaceholder string) string {
+	projectFilter := ""
+	if projectIDPlaceholder != "" {
+		projectFilter = " AND project_id = " + projectIDPlaceholder
+	}
+
 	return `
 WITH successful_execs AS (
     SELECT
@@ -115,7 +132,7 @@ WITH successful_execs AS (
         stream,
         ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
     FROM request_executions
-    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + `
+    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + projectFilter + `
 )
 SELECT
     ` + config.SelectColumns + `
@@ -147,7 +164,14 @@ LIMIT ` + fmt.Sprintf("%d", limit)
 
 // buildMaxIDQuery constructs a SQL query using MAX(id) subquery for SQLite compatibility.
 // This approach works on older SQLite versions that don't support window functions.
-func buildMaxIDQuery(placeholder string, config QueryFragmentConfig, limit int) string {
+func buildMaxIDQuery(placeholder string, config QueryFragmentConfig, limit int, projectIDPlaceholder string) string {
+	outerProjectFilter := ""
+	subqueryProjectFilter := ""
+	if projectIDPlaceholder != "" {
+		outerProjectFilter = "\n    AND se.project_id = " + projectIDPlaceholder
+		subqueryProjectFilter = "\n            AND re2.project_id = " + projectIDPlaceholder
+	}
+
 	// For MAX_ID mode, we need to adjust the query to not use the CTE pattern
 	// and instead use a correlated subquery to get the latest execution per request
 
@@ -177,6 +201,7 @@ JOIN usage_logs ul ON se.request_id = ul.request_id
 WHERE se.status = 'completed'
     AND se.metrics_latency_ms > 0
     AND se.created_at >= ` + placeholder + `
+    ` + outerProjectFilter + `
     AND se.id = (
         SELECT MAX(re2.id)
         FROM request_executions re2
@@ -184,6 +209,7 @@ WHERE se.status = 'completed'
             AND re2.status = 'completed'
             AND re2.metrics_latency_ms > 0
             AND re2.created_at >= ` + placeholder + `
+            ` + subqueryProjectFilter + `
     )
 GROUP BY ` + config.GroupBy + `
 ORDER BY throughput DESC

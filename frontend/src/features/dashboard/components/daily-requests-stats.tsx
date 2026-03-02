@@ -7,11 +7,15 @@ import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGeneralSettings } from '../../system/data/system';
 import { useDailyRequestStats } from '../data/dashboard';
+import { useDashboardScope } from '../data/scope';
 
 export function DailyRequestStats() {
   const { t, i18n } = useTranslation();
+  const { projectScoped } = useDashboardScope();
   const { data: dailyStats, isLoading: isStatsLoading, error } = useDailyRequestStats();
-  const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
+  const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings({
+    gracefulFallback: projectScoped,
+  });
 
   const isLoading = isStatsLoading || isSettingsLoading;
 

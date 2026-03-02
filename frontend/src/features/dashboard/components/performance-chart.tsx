@@ -6,6 +6,7 @@ import { formatDuration } from '@/utils/format-duration';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeneralSettings } from '../../system/data/system';
+import { useDashboardScope } from '../data/scope';
 
 function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
   return array.reduce((acc, item) => {
@@ -143,13 +144,15 @@ export function PerformanceChart({
   nameField,
 }: PerformanceChartProps) {
   const { t, i18n } = useTranslation();
-  const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
+  const { projectScoped } = useDashboardScope();
+  const { isLoading: isSettingsLoading } = useGeneralSettings({
+    gracefulFallback: projectScoped,
+  });
   const [activeSeries, setActiveSeries] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<PerformanceDisplayMode>('throughput');
 
   const isLoadingData = isLoading || isSettingsLoading;
 
-  const timezone = generalSettings?.timezone || 'UTC';
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
 
   const memoizedSafeData = useMemo(() => data ?? [], [data]);

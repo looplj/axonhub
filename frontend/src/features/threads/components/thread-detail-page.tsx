@@ -35,7 +35,7 @@ export default function ThreadDetailPage() {
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const { data: settings } = useGeneralSettings();
+  const { data: settings } = useGeneralSettings({ gracefulFallback: true });
 
   const { pageSize, setCursors, paginationArgs, getSearchParams } = usePaginationSearch({
     defaultPageSize: 20,
