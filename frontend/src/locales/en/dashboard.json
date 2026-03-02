@@ -42,6 +42,7 @@
   "dashboard.stats.month": "MO",
   "dashboard.stats.week": "WK",
   "dashboard.stats.day": "Day",
+  "dashboard.stats.all": "All",
   "dashboard.stats.failedRequests": "Failed requests",
   "dashboard.stats.requests": "Requests",
   "dashboard.stats.inputTokens": "Input Tokens",

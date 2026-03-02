@@ -42,6 +42,7 @@
   "dashboard.stats.month": "月",
   "dashboard.stats.week": "周",
   "dashboard.stats.day": "日",
+  "dashboard.stats.all": "全部",
   "dashboard.stats.failedRequests": "失败请求",
   "dashboard.stats.requests": "请求",
   "dashboard.stats.inputTokens": "输入Token",
