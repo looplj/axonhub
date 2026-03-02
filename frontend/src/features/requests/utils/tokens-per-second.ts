@@ -8,7 +8,7 @@ export type DisplayMode = 'latency' | 'tokensPerSecond';
 // Minimum latency value (in milliseconds) used for tokens/second calculations
 // when a cache hit occurs (effective latency is zero or negative).
 // This ensures we display a reasonable tokens/second value instead of infinity.
-const MINIMUM_LATENCY_MS_FOR_CACHE_HITS = 100;
+const MINIMUM_LATENCY_MS_FOR_CACHE_HITS = 10;
 
 const VALID_DISPLAY_MODES: DisplayMode[] = ['latency', 'tokensPerSecond'];
 

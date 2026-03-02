@@ -96,6 +96,10 @@ func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, htt
 	if state.Perf != nil {
 		firstTokenLatencyMs, requestLatencyMs, _ := state.Perf.Calculate()
 
+		// Enforce minimum latency to prevent extreme TPS calculations
+		requestLatencyMs = biz.ClampLatency(requestLatencyMs)
+		firstTokenLatencyMs = biz.ClampLatency(firstTokenLatencyMs)
+
 		metrics = &biz.LatencyMetrics{
 			LatencyMs: &requestLatencyMs,
 		}

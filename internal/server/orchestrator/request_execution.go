@@ -141,13 +141,9 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 			}
 		}
 
-		if requestLatencyMs < 0 {
-			requestLatencyMs = 0
-		}
-
-		if firstTokenLatencyMs < 0 {
-			firstTokenLatencyMs = 0
-		}
+		// Enforce minimum latency to prevent extreme TPS calculations
+		requestLatencyMs = biz.ClampLatency(requestLatencyMs)
+		firstTokenLatencyMs = biz.ClampLatency(firstTokenLatencyMs)
 
 		metrics = &biz.LatencyMetrics{
 			LatencyMs: &requestLatencyMs,

@@ -194,6 +194,10 @@ func (ts *InboundPersistentStream) _persistResponse(ctx context.Context, respons
 	if ts.perf != nil {
 		firstTokenLatencyMs, requestLatencyMs, _ := ts.perf.Calculate()
 
+		// Enforce minimum latency to prevent extreme TPS calculations
+		requestLatencyMs = biz.ClampLatency(requestLatencyMs)
+		firstTokenLatencyMs = biz.ClampLatency(firstTokenLatencyMs)
+
 		metrics = &biz.LatencyMetrics{
 			LatencyMs: &requestLatencyMs,
 		}

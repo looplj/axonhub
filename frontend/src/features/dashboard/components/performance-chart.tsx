@@ -25,6 +25,9 @@ const COLORS = [
   'var(--chart-6)',
 ];
 
+const MAX_CHART_THROUGHPUT = 1000;
+const MAX_CHART_TTFT_MS = 60000;
+
 export type PerformanceDisplayMode = 'throughput' | 'ttft';
 
 export interface LegendItem {
@@ -79,13 +82,17 @@ function PerformanceTooltip({ active, payload, label, displayMode }: Performance
   if (!dataPoint) return null;
 
   const filteredPayload = displayMode === 'throughput'
-    ? payload.filter((item) => !item.dataKey.toString().includes('-ttft') && item.value != null && item.value > 0)
-    : payload.filter((item) => item.dataKey.toString().includes('-ttft') && item.value != null && item.value > 0);
+    ? payload.filter((item) => item.dataKey.toString().includes('-capped') && !item.dataKey.toString().includes('-ttft') && item.value != null && item.value > 0)
+    : payload.filter((item) => item.dataKey.toString().includes('-ttft-capped') && item.value != null && item.value > 0);
 
   const itemData = filteredPayload
     .map((item) => {
       const dataKey = item.dataKey.toString();
-      const id = displayMode === 'throughput' ? dataKey : dataKey.replace('-ttft', '');
+      // Extract base ID by removing capped suffixes
+      const id = displayMode === 'throughput'
+        ? dataKey.replace('-capped', '')
+        : dataKey.replace('-ttft-capped', '');
+      // Read actual values (not capped) from original data keys
       const throughputValue = dataPoint[id] as number ?? 0;
       const ttftValue = dataPoint[`${id}-ttft`] as number ?? 0;
       return {
@@ -282,6 +289,8 @@ export function PerformanceChart({
 
       dataPoint[id] = stat?.throughput ?? (isThroughputOutsideRange ? 0 : null);
       dataPoint[`${id}-ttft`] = stat?.ttftMs ?? (isTtftOutsideRange ? 0 : null);
+      dataPoint[`${id}-capped`] = Math.min(stat?.throughput ?? 0, MAX_CHART_THROUGHPUT);
+      dataPoint[`${id}-ttft-capped`] = Math.min(stat?.ttftMs ?? 0, MAX_CHART_TTFT_MS);
     });
 
     return dataPoint;
@@ -306,7 +315,10 @@ export function PerformanceChart({
 
   const visibleItems = activeSeries ? [activeSeries] : topItems;
 
-  const yAxisDomain = displayMode === 'throughput' ? [0, throughputMax] : [0, ttftMax];
+  // Dynamic Y-axis: use actual max if below cap, otherwise use cap
+  const yAxisDomain = displayMode === 'throughput'
+    ? [0, Math.min(throughputMax, MAX_CHART_THROUGHPUT)]
+    : [0, Math.min(ttftMax, MAX_CHART_TTFT_MS)];
   const yAxisTickFormatter = displayMode === 'throughput'
     ? (value: number) => formatNumber(value, { digits: 0 })
     : (value: number) => formatDuration(value);
@@ -353,8 +365,9 @@ export function PerformanceChart({
             axisLine={true}
             domain={yAxisDomain}
             tickFormatter={yAxisTickFormatter}
-            width={40}
+            width={50}
             tickMargin={8}
+            tickCount={6}
           />
           <Tooltip content={<PerformanceTooltip displayMode={displayMode} />} />
           {topItems.map((id, index) => {
@@ -362,7 +375,7 @@ export function PerformanceChart({
             const isActive = !activeSeries || activeSeries === id;
             const opacity = isActive ? 1 : 0.2;
             const itemName = legendItems.find((item) => item.id === id)?.name || id;
-            const dataKey = displayMode === 'throughput' ? id : `${id}-ttft`;
+            const dataKey = displayMode === 'throughput' ? `${id}-capped` : `${id}-ttft-capped`;
             return (
               <Area
                 key={id}
