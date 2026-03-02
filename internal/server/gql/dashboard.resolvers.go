@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -28,6 +29,13 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 	"github.com/samber/lo"
+)
+
+var (
+	allTimeCache     *TokenStats
+	allTimeCacheMu   sync.RWMutex
+	allTimeCacheTime time.Time
+	cacheTTL         = 24 * time.Hour
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -646,6 +654,56 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	stats.TotalInputTokensThisMonth = input
 	stats.TotalOutputTokensThisMonth = output
 	stats.TotalCachedTokensThisMonth = cached
+
+	// Get all-time token stats with caching
+	allTimeCacheMu.RLock()
+	cacheValid := allTimeCache != nil && time.Since(allTimeCacheTime) < cacheTTL
+	allTimeCacheMu.RUnlock()
+
+	if cacheValid {
+		stats.TotalInputTokensAllTime = allTimeCache.TotalInputTokensAllTime
+		stats.TotalOutputTokensAllTime = allTimeCache.TotalOutputTokensAllTime
+		stats.TotalCachedTokensAllTime = allTimeCache.TotalCachedTokensAllTime
+	} else {
+		// Query all usage_logs records without time filter
+		type allTimeTokenSums struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+			CachedTokens int `json:"cached_tokens"`
+		}
+
+		var allTimeRecords []allTimeTokenSums
+
+		err := r.client.UsageLog.Query().
+			Modify(func(s *sql.Selector) {
+				s.Select(
+					sql.As(sql.Sum(usagelog.FieldPromptTokens), "input_tokens"),
+					sql.As(sql.Sum(usagelog.FieldCompletionTokens), "output_tokens"),
+					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+				)
+			}).
+			Scan(ctx, &allTimeRecords)
+
+		if err != nil || len(allTimeRecords) == 0 {
+			log.Warn(ctx, "failed to aggregate all-time token stats", log.Cause(err))
+			stats.TotalInputTokensAllTime = 0
+			stats.TotalOutputTokensAllTime = 0
+			stats.TotalCachedTokensAllTime = 0
+		} else {
+			allTimeCacheMu.Lock()
+			allTimeCache = &TokenStats{
+				TotalInputTokensAllTime:  allTimeRecords[0].InputTokens,
+				TotalOutputTokensAllTime: allTimeRecords[0].OutputTokens,
+				TotalCachedTokensAllTime: allTimeRecords[0].CachedTokens,
+			}
+			allTimeCacheTime = time.Now()
+			allTimeCacheMu.Unlock()
+
+			stats.TotalInputTokensAllTime = allTimeCache.TotalInputTokensAllTime
+			stats.TotalOutputTokensAllTime = allTimeCache.TotalOutputTokensAllTime
+			stats.TotalCachedTokensAllTime = allTimeCache.TotalCachedTokensAllTime
+		}
+	}
 
 	return stats, nil
 }
