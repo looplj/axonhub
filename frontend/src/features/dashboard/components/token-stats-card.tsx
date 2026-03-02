@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTokenStats } from '../data/dashboard';
 
-type TimeRange = 'thisMonth' | 'thisWeek' | 'thisDay';
+type TimeRange = 'allTime' | 'thisMonth' | 'thisWeek' | 'thisDay';
 
 export function TokenStatsCard() {
   const { t } = useTranslation();
@@ -67,6 +67,13 @@ export function TokenStatsCard() {
   }
 
   const getTokens = (range: TimeRange) => {
+    if (range === 'allTime') {
+      return {
+        input: stats?.totalInputTokensAllTime || 0,
+        output: stats?.totalOutputTokensAllTime || 0,
+        cached: stats?.totalCachedTokensAllTime || 0,
+      };
+    }
     if (range === 'thisDay') {
       return {
         input: stats?.totalInputTokensToday || 0,
@@ -103,6 +110,9 @@ export function TokenStatsCard() {
           {/* <span className='text-xs text-muted-foreground'>{t('dashboard.stats.this')}</span> */}
           <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
             <TabsList className='h-6 p-0.5'>
+              <TabsTrigger value='allTime' className='h-5 px-2 text-[10px]'>
+                {t('dashboard.stats.all')}
+              </TabsTrigger>
               <TabsTrigger value='thisMonth' className='h-5 px-2 text-[10px]'>
                 {t('dashboard.stats.month')}
               </TabsTrigger>
