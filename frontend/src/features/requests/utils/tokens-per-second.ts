@@ -5,6 +5,11 @@ import { Request } from '../data/schema';
 
 export type DisplayMode = 'latency' | 'tokensPerSecond';
 
+// Minimum latency value (in milliseconds) used for tokens/second calculations
+// when a cache hit occurs (effective latency is zero or negative).
+// This ensures we display a reasonable tokens/second value instead of infinity.
+const MINIMUM_LATENCY_MS_FOR_CACHE_HITS = 100;
+
 const VALID_DISPLAY_MODES: DisplayMode[] = ['latency', 'tokensPerSecond'];
 
 /**
@@ -41,9 +46,10 @@ export function calculateTokensPerSecond(request: Request): string {
     }
   }
 
-  // For cache hits (TTFT == Latency), use minimum 100ms to calculate T/s based on total time
+  // For cache hits (TTFT == Latency), effective latency becomes 0 or negative.
+  // Use a fixed minimum to avoid division by zero and show reasonable tokens/second.
   if (effectiveLatencyMs <= 0) {
-    effectiveLatencyMs = 100; // Minimum 100ms to show sane T/s for cache hits
+    effectiveLatencyMs = MINIMUM_LATENCY_MS_FOR_CACHE_HITS;
   }
 
   const latencySeconds = effectiveLatencyMs / 1000;
