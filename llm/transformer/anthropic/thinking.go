@@ -1,5 +1,19 @@
 package anthropic
 
+func supportsAdaptiveThinking(config *Config) bool {
+	if config == nil {
+		return true
+	}
+
+	//nolint:exhaustive // Checked.
+	switch config.Type {
+	case PlatformDirect, PlatformClaudeCode, PlatformBedrock, PlatformVertex:
+		return true
+	default:
+		return false
+	}
+}
+
 // thinkingBudgetToReasoningEffort converts thinking budget tokens to reasoning effort string.
 func thinkingBudgetToReasoningEffort(budgetTokens int64) string {
 	// Map budget tokens to reasoning effort based on the same logic used in outbound
@@ -17,6 +31,7 @@ var defaultReasoningEffortMapping = map[string]int64{
 	"low":    5000,
 	"medium": 15000,
 	"high":   30000,
+	"max":    30000,
 }
 
 // getThinkingBudgetTokensWithConfig returns the thinking budget tokens for a given reasoning effort with config.

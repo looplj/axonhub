@@ -47,7 +47,8 @@ type Config struct {
 	Region string `json:"region,omitempty"` // For Vertex
 
 	ProjectID string `json:"project_id,omitempty"` // For Vertex
-	JSONData  string `json:"json_data,omitempty"`  // For Vertex
+
+	JSONData string `json:"json_data,omitempty"` // For Vertex
 
 	// BaseURL is the base URL for the Anthropic API, required.
 	BaseURL string `json:"base_url,omitempty"`
