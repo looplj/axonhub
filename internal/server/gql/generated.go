@@ -1348,12 +1348,15 @@ type ComplexityRoot struct {
 	}
 
 	TokenStats struct {
+		TotalCachedTokensAllTime   func(childComplexity int) int
 		TotalCachedTokensThisMonth func(childComplexity int) int
 		TotalCachedTokensThisWeek  func(childComplexity int) int
 		TotalCachedTokensToday     func(childComplexity int) int
+		TotalInputTokensAllTime    func(childComplexity int) int
 		TotalInputTokensThisMonth  func(childComplexity int) int
 		TotalInputTokensThisWeek   func(childComplexity int) int
 		TotalInputTokensToday      func(childComplexity int) int
+		TotalOutputTokensAllTime   func(childComplexity int) int
 		TotalOutputTokensThisMonth func(childComplexity int) int
 		TotalOutputTokensThisWeek  func(childComplexity int) int
 		TotalOutputTokensToday     func(childComplexity int) int
@@ -7340,6 +7343,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TieredPricing.Tiers(childComplexity), true
 
+	case "TokenStats.totalCachedTokensAllTime":
+		if e.complexity.TokenStats.TotalCachedTokensAllTime == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalCachedTokensAllTime(childComplexity), true
 	case "TokenStats.totalCachedTokensThisMonth":
 		if e.complexity.TokenStats.TotalCachedTokensThisMonth == nil {
 			break
@@ -7358,6 +7367,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TokenStats.TotalCachedTokensToday(childComplexity), true
+	case "TokenStats.totalInputTokensAllTime":
+		if e.complexity.TokenStats.TotalInputTokensAllTime == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalInputTokensAllTime(childComplexity), true
 	case "TokenStats.totalInputTokensThisMonth":
 		if e.complexity.TokenStats.TotalInputTokensThisMonth == nil {
 			break
@@ -7376,6 +7391,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TokenStats.TotalInputTokensToday(childComplexity), true
+	case "TokenStats.totalOutputTokensAllTime":
+		if e.complexity.TokenStats.TotalOutputTokensAllTime == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.TotalOutputTokensAllTime(childComplexity), true
 	case "TokenStats.totalOutputTokensThisMonth":
 		if e.complexity.TokenStats.TotalOutputTokensThisMonth == nil {
 			break
@@ -31449,6 +31470,12 @@ func (ec *executionContext) fieldContext_Query_tokenStats(_ context.Context, fie
 				return ec.fieldContext_TokenStats_totalOutputTokensThisMonth(ctx, field)
 			case "totalCachedTokensThisMonth":
 				return ec.fieldContext_TokenStats_totalCachedTokensThisMonth(ctx, field)
+			case "totalInputTokensAllTime":
+				return ec.fieldContext_TokenStats_totalInputTokensAllTime(ctx, field)
+			case "totalOutputTokensAllTime":
+				return ec.fieldContext_TokenStats_totalOutputTokensAllTime(ctx, field)
+			case "totalCachedTokensAllTime":
+				return ec.fieldContext_TokenStats_totalCachedTokensAllTime(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TokenStats", field.Name)
 		},
@@ -39719,6 +39746,93 @@ func (ec *executionContext) _TokenStats_totalCachedTokensThisMonth(ctx context.C
 }
 
 func (ec *executionContext) fieldContext_TokenStats_totalCachedTokensThisMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalInputTokensAllTime(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStats_totalInputTokensAllTime,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalInputTokensAllTime, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalInputTokensAllTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalOutputTokensAllTime(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStats_totalOutputTokensAllTime,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalOutputTokensAllTime, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalOutputTokensAllTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_totalCachedTokensAllTime(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStats_totalCachedTokensAllTime,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCachedTokensAllTime, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_totalCachedTokensAllTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TokenStats",
 		Field:      field,
@@ -80304,6 +80418,21 @@ func (ec *executionContext) _TokenStats(ctx context.Context, sel ast.SelectionSe
 			}
 		case "totalCachedTokensThisMonth":
 			out.Values[i] = ec._TokenStats_totalCachedTokensThisMonth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalInputTokensAllTime":
+			out.Values[i] = ec._TokenStats_totalInputTokensAllTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalOutputTokensAllTime":
+			out.Values[i] = ec._TokenStats_totalOutputTokensAllTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCachedTokensAllTime":
+			out.Values[i] = ec._TokenStats_totalCachedTokensAllTime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

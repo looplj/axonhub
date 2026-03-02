@@ -311,6 +311,9 @@ type TokenStats struct {
 	TotalInputTokensThisMonth  int `json:"totalInputTokensThisMonth"`
 	TotalOutputTokensThisMonth int `json:"totalOutputTokensThisMonth"`
 	TotalCachedTokensThisMonth int `json:"totalCachedTokensThisMonth"`
+	TotalInputTokensAllTime    int `json:"totalInputTokensAllTime"`
+	TotalOutputTokensAllTime   int `json:"totalOutputTokensAllTime"`
+	TotalCachedTokensAllTime   int `json:"totalCachedTokensAllTime"`
 }
 
 type TokenStatsByAPIKey struct {
