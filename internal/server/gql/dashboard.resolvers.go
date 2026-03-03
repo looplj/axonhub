@@ -701,7 +701,11 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 		if err != nil {
 			return nil, err
 		}
-		return result.(*TokenStats), nil
+		newStats, ok := result.(*TokenStats)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type from singleflight: %T", result)
+		}
+		return newStats, nil
 	}
 
 	// Stale-while-revalidate logic
