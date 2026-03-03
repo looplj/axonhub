@@ -19,10 +19,24 @@ type Config struct {
 	// LLMRequestTimeout is the maximum duration for processing a request to LLM.
 	LLMRequestTimeout time.Duration `conf:"llm_request_timeout" yaml:"llm_request_timeout" json:"llm_request_timeout"`
 
-	Trace tracing.Config `conf:"trace" yaml:"trace" json:"trace"`
+	Trace     tracing.Config `conf:"trace" yaml:"trace" json:"trace"`
+	Dashboard Dashboard      `conf:"dashboard" yaml:"dashboard" json:"dashboard"`
 
 	Debug bool `conf:"debug" yaml:"debug" json:"debug"`
 	CORS  CORS `conf:"cors" yaml:"cors" json:"cors"`
+}
+
+// Dashboard holds configuration for the dashboard cache settings.
+type Dashboard struct {
+	// AllTimeTokenStatsSoftTTL is the duration after which cached all-time token stats
+	// are considered stale and will be refreshed asynchronously (stale-while-revalidate).
+	// Default: 1 hour
+	AllTimeTokenStatsSoftTTL time.Duration `conf:"all_time_token_stats_soft_ttl" yaml:"all_time_token_stats_soft_ttl" json:"all_time_token_stats_soft_ttl"`
+
+	// AllTimeTokenStatsHardTTL is the maximum duration for which cached all-time token stats
+	// are considered valid. After this, synchronous refresh is required.
+	// Default: 24 hours
+	AllTimeTokenStatsHardTTL time.Duration `conf:"all_time_token_stats_hard_ttl" yaml:"all_time_token_stats_hard_ttl" json:"all_time_token_stats_hard_ttl"`
 }
 
 type CORS struct {

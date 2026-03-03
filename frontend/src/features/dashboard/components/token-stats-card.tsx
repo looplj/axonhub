@@ -1,13 +1,29 @@
 import { useState } from 'react';
 import { BarChart4 } from 'lucide-react';
+import { IconInfoCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '@/utils/format-number';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useTokenStats } from '../data/dashboard';
 
 type TimeRange = 'allTime' | 'thisMonth' | 'thisWeek' | 'thisDay';
+
+function formatLastUpdated(timestamp: string | null): string {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
 
 export function TokenStatsCard() {
   const { t } = useTranslation();
@@ -106,7 +122,7 @@ export function TokenStatsCard() {
           </div>
           <CardTitle className='text-sm font-medium whitespace-normal leading-tight'>{t('dashboard.cards.tokenStats')}</CardTitle>
         </div>
-        <div className='flex items-center gap-1 shrink-0'>
+        <div className='flex items-center gap-2 shrink-0'>
           {/* <span className='text-xs text-muted-foreground'>{t('dashboard.stats.this')}</span> */}
           <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
             <TabsList className='h-6 p-0.5'>
@@ -124,6 +140,36 @@ export function TokenStatsCard() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          <div className='hidden sm:block w-6 h-6'>
+            {timeRange === 'allTime' && stats?.lastUpdated && (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className='text-muted-foreground hover:text-foreground transition-colors w-6 h-6 flex items-center justify-center'>
+                      <IconInfoCircle className='h-4 w-4' />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>Updated: {formatLastUpdated(stats.lastUpdated)}</span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+          <div className='sm:hidden w-11 h-11'>
+            {timeRange === 'allTime' && stats?.lastUpdated && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className='text-muted-foreground hover:text-foreground transition-colors w-11 h-11 flex items-center justify-center'>
+                    <IconInfoCircle className='h-5 w-5' />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className='w-fit'>
+                  <span className='text-sm'>Updated: {formatLastUpdated(stats.lastUpdated)}</span>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>

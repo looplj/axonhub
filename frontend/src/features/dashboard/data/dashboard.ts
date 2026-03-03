@@ -115,6 +115,7 @@ export const tokenStatsSchema = z.object({
   totalInputTokensAllTime: z.number(),
   totalOutputTokensAllTime: z.number(),
   totalCachedTokensAllTime: z.number(),
+  lastUpdated: z.string().nullable(),
 });
 
 export type TokenStats = z.infer<typeof tokenStatsSchema>;
@@ -266,6 +267,7 @@ const TOKEN_STATS_AGGR_QUERY = `
       totalInputTokensAllTime
       totalOutputTokensAllTime
       totalCachedTokensAllTime
+      lastUpdated
     }
   }
 `;

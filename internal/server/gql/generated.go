@@ -1348,6 +1348,7 @@ type ComplexityRoot struct {
 	}
 
 	TokenStats struct {
+		LastUpdated                func(childComplexity int) int
 		TotalCachedTokensAllTime   func(childComplexity int) int
 		TotalCachedTokensThisMonth func(childComplexity int) int
 		TotalCachedTokensThisWeek  func(childComplexity int) int
@@ -7343,6 +7344,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TieredPricing.Tiers(childComplexity), true
 
+	case "TokenStats.lastUpdated":
+		if e.complexity.TokenStats.LastUpdated == nil {
+			break
+		}
+
+		return e.complexity.TokenStats.LastUpdated(childComplexity), true
 	case "TokenStats.totalCachedTokensAllTime":
 		if e.complexity.TokenStats.TotalCachedTokensAllTime == nil {
 			break
@@ -31476,6 +31483,8 @@ func (ec *executionContext) fieldContext_Query_tokenStats(_ context.Context, fie
 				return ec.fieldContext_TokenStats_totalOutputTokensAllTime(ctx, field)
 			case "totalCachedTokensAllTime":
 				return ec.fieldContext_TokenStats_totalCachedTokensAllTime(ctx, field)
+			case "lastUpdated":
+				return ec.fieldContext_TokenStats_lastUpdated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TokenStats", field.Name)
 		},
@@ -39840,6 +39849,35 @@ func (ec *executionContext) fieldContext_TokenStats_totalCachedTokensAllTime(_ c
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TokenStats_lastUpdated(ctx context.Context, field graphql.CollectedField, obj *TokenStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TokenStats_lastUpdated,
+		func(ctx context.Context) (any, error) {
+			return obj.LastUpdated, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TokenStats_lastUpdated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TokenStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -80436,6 +80474,8 @@ func (ec *executionContext) _TokenStats(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "lastUpdated":
+			out.Values[i] = ec._TokenStats_lastUpdated(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
