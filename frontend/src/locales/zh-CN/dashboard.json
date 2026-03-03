@@ -66,5 +66,6 @@
   "dashboard.cards.fastestPerformers.noData": "暂无数据",
   "dashboard.cards.fastestPerformers.description": "最快的{{type}} by tokens/second · {{count}} 次请求",
   "dashboard.cards.fastestPerformers.channelType": "通道",
-  "dashboard.cards.fastestPerformers.modelType": "模型"
+  "dashboard.cards.fastestPerformers.modelType": "模型",
+  "dashboard.stats.updated": "更新时间: {{time}}"
 }

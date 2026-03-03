@@ -12,10 +12,10 @@ import { useTokenStats } from '../data/dashboard';
 
 type TimeRange = 'allTime' | 'thisMonth' | 'thisWeek' | 'thisDay';
 
-function formatLastUpdated(timestamp: string | null): string {
+function formatLastUpdated(timestamp: string | null, locale: string): string {
   if (!timestamp) return '';
   const date = new Date(timestamp);
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -25,8 +25,52 @@ function formatLastUpdated(timestamp: string | null): string {
   });
 }
 
+interface LastUpdatedInfoProps {
+  lastUpdated: string | null;
+  locale: string;
+  t: (key: string, options?: Record<string, string>) => string;
+}
+
+function LastUpdatedInfo({ lastUpdated, locale, t }: LastUpdatedInfoProps) {
+  if (!lastUpdated) return null;
+
+  const formattedTime = formatLastUpdated(lastUpdated, locale);
+  const label = t('dashboard.stats.updated', { time: formattedTime });
+
+  return (
+    <>
+      <div className='hidden sm:block w-6 h-6'>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className='text-muted-foreground hover:text-foreground transition-colors w-6 h-6 flex items-center justify-center'>
+                <IconInfoCircle className='h-4 w-4' />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <span>{label}</span>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      <div className='sm:hidden w-11 h-11'>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className='text-muted-foreground hover:text-foreground transition-colors w-11 h-11 flex items-center justify-center'>
+              <IconInfoCircle className='h-5 w-5' />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className='w-fit'>
+            <span className='text-sm'>{label}</span>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </>
+  );
+}
+
 export function TokenStatsCard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data: stats, isLoading, error } = useTokenStats();
   const [timeRange, setTimeRange] = useState<TimeRange>('thisDay');
 
@@ -140,36 +184,13 @@ export function TokenStatsCard() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <div className='hidden sm:block w-6 h-6'>
-            {timeRange === 'allTime' && stats?.lastUpdated && (
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className='text-muted-foreground hover:text-foreground transition-colors w-6 h-6 flex items-center justify-center'>
-                      <IconInfoCircle className='h-4 w-4' />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <span>Updated: {formatLastUpdated(stats.lastUpdated)}</span>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          <div className='sm:hidden w-11 h-11'>
-            {timeRange === 'allTime' && stats?.lastUpdated && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className='text-muted-foreground hover:text-foreground transition-colors w-11 h-11 flex items-center justify-center'>
-                    <IconInfoCircle className='h-5 w-5' />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className='w-fit'>
-                  <span className='text-sm'>Updated: {formatLastUpdated(stats.lastUpdated)}</span>
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
+          {timeRange === 'allTime' && (
+            <LastUpdatedInfo
+              lastUpdated={stats?.lastUpdated ?? null}
+              locale={i18n.language}
+              t={t}
+            />
+          )}
         </div>
       </CardHeader>
       <CardContent>

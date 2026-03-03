@@ -66,5 +66,6 @@
   "dashboard.cards.fastestPerformers.noData": "No data available",
   "dashboard.cards.fastestPerformers.description": "Fastest {{type}} by tokens/second · {{count}} requests across top performers",
   "dashboard.cards.fastestPerformers.channelType": "channels",
-  "dashboard.cards.fastestPerformers.modelType": "models"
+  "dashboard.cards.fastestPerformers.modelType": "models",
+  "dashboard.stats.updated": "Updated: {{time}}"
 }
