@@ -658,7 +658,8 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	allTimeCacheMu.RUnlock()
 
 	// Helper function to refresh cache data
-	refreshCache := func(ctx context.Context) (*TokenStats, error) {
+	// Returns the stats, the cache timestamp, and any error
+	refreshCache := func(ctx context.Context) (*TokenStats, time.Time, error) {
 		// Use singleflight to prevent concurrent refresh attempts
 		result, err, _ := allTimeRefreshGroup.Do("allTimeTokenStats", func() (interface{}, error) {
 			// Query all usage_logs records without time filter
@@ -690,42 +691,49 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 				TotalCachedTokensAllTime: allTimeRecords[0].CachedTokens,
 			}
 
+			cacheTime := time.Now().UTC()
+
 			allTimeCacheMu.Lock()
 			allTimeCache = newStats
-			allTimeCacheTime = time.Now().UTC()
+			allTimeCacheTime = cacheTime
 			allTimeCacheMu.Unlock()
 
-			return newStats, nil
+			return &cacheResult{
+				stats: newStats,
+				time:  cacheTime,
+			}, nil
 		})
 
 		if err != nil {
-			return nil, err
+			return nil, time.Time{}, err
 		}
-		newStats, ok := result.(*TokenStats)
+		cacheRes, ok := result.(*cacheResult)
 		if !ok {
-			return nil, fmt.Errorf("unexpected type from singleflight: %T", result)
+			return nil, time.Time{}, fmt.Errorf("unexpected type from singleflight: %T", result)
 		}
-		return newStats, nil
+		return cacheRes.stats, cacheRes.time, nil
 	}
 
 	// Stale-while-revalidate logic
 	if cacheExists && cacheAge < hardTTL {
 		// Cache is valid (within hard TTL)
+		// Capture all cache data under a single read lock to prevent race conditions
 		allTimeCacheMu.RLock()
-		stats.TotalInputTokensAllTime = allTimeCache.TotalInputTokensAllTime
-		stats.TotalOutputTokensAllTime = allTimeCache.TotalOutputTokensAllTime
-		stats.TotalCachedTokensAllTime = allTimeCache.TotalCachedTokensAllTime
+		cachedStats := allTimeCache
 		lastUpdated := allTimeCacheTime
 		allTimeCacheMu.RUnlock()
 
-		// Set LastUpdated from cache timestamp
+		// Safe to access cachedStats here since we have a local copy
+		stats.TotalInputTokensAllTime = cachedStats.TotalInputTokensAllTime
+		stats.TotalOutputTokensAllTime = cachedStats.TotalOutputTokensAllTime
+		stats.TotalCachedTokensAllTime = cachedStats.TotalCachedTokensAllTime
 		stats.LastUpdated = &lastUpdated
 
 		// If cache is stale (exceeded soft TTL), trigger async refresh
 		if cacheAge >= softTTL {
 			go func() {
 				bgCtx := context.Background()
-				if _, err := refreshCache(bgCtx); err != nil {
+				if _, _, err := refreshCache(bgCtx); err != nil {
 					log.Error(bgCtx, "async all-time token stats cache refresh failed",
 						log.Cause(err),
 						log.Duration("cache_age", cacheAge),
@@ -737,7 +745,7 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 		}
 	} else {
 		// Cache is invalid or expired (exceeded hard TTL) - compute synchronously
-		newStats, err := refreshCache(ctx)
+		newStats, newCacheTime, err := refreshCache(ctx)
 		if err != nil || newStats == nil {
 			log.Error(ctx, "synchronous all-time token stats aggregation failed - cache exceeded hard TTL",
 				log.Cause(err),
@@ -759,10 +767,7 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 			stats.TotalInputTokensAllTime = newStats.TotalInputTokensAllTime
 			stats.TotalOutputTokensAllTime = newStats.TotalOutputTokensAllTime
 			stats.TotalCachedTokensAllTime = newStats.TotalCachedTokensAllTime
-			allTimeCacheMu.RLock()
-			lastUpdated := allTimeCacheTime
-			allTimeCacheMu.RUnlock()
-			stats.LastUpdated = &lastUpdated
+			stats.LastUpdated = &newCacheTime
 		}
 	}
 
@@ -1341,6 +1346,12 @@ var (
 	hardTTL             = 24 * time.Hour
 	allTimeRefreshGroup singleflight.Group
 )
+
+// cacheResult holds the result of a cache refresh operation.
+type cacheResult struct {
+	stats *TokenStats
+	time  time.Time
+}
 
 // SetTokenStatsCacheTTL sets the cache TTL values for all-time token stats.
 // Call this during server initialization to override defaults.
