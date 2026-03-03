@@ -20,6 +20,8 @@
   "agentRuntimes.dialogs.fields.name.placeholder": "Enter runtime name",
   "agentRuntimes.dialogs.fields.type.label": "Type",
   "agentRuntimes.dialogs.fields.type.placeholder": "Select runtime type",
+  "agentRuntimes.dialogs.fields.type.help": "Select the runtime environment type for deploying Axonclaw agents.",
+  "agentRuntimes.dialogs.fields.type.vmLinuxHint": "VM type requires Linux operating system.",
   "agentRuntimes.dialogs.fields.status.label": "Status",
   "agentRuntimes.dialogs.fields.status.placeholder": "Select status",
   "agentRuntimes.dialogs.fields.host.label": "Host",

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,7 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
   const updateAgentRuntime = useUpdateAgentRuntime();
 
   const [hostSearchValue, setHostSearchValue] = useState('');
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
   const formSchema = isEdit ? updateAgentRuntimeInputSchema : createAgentRuntimeInputSchema;
 
@@ -65,7 +67,6 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
       ? {
           name: currentRow?.name || '',
           type: currentRow?.type || 'vm',
-          status: currentRow?.status || 'active',
           host: currentRow?.host || '',
           user: currentRow?.user || '',
           password: currentRow?.password || '',
@@ -75,7 +76,6 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
       : {
           name: '',
           type: 'vm',
-          status: 'active',
           host: '',
           user: '',
           password: '',
@@ -94,7 +94,6 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
           ? {
               name: currentRow?.name || '',
               type: currentRow?.type || 'vm',
-              status: currentRow?.status || 'active',
               host: hostValue,
               user: currentRow?.user || '',
               password: currentRow?.password || '',
@@ -104,7 +103,6 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
           : {
               name: '',
               type: 'vm',
-              status: 'active',
               host: '',
               user: '',
               password: '',
@@ -132,11 +130,16 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
     }
   };
 
-  const runtimeTypes: { value: AgentRuntimeType; label: string }[] = [
-    { value: 'vm', label: t('agentRuntimes.types.vm') },
-    { value: 'docker', label: t('agentRuntimes.types.docker') },
-    { value: 'local', label: t('agentRuntimes.types.local') },
-  ];
+  const runtimeTypes = useMemo(() => {
+    const types: { value: AgentRuntimeType; label: string }[] = [
+      { value: 'vm', label: t('agentRuntimes.types.vm') },
+      { value: 'docker', label: t('agentRuntimes.types.docker') },
+    ];
+    if (isEdit && currentRow?.type === 'local') {
+      types.push({ value: 'local', label: t('agentRuntimes.types.local') });
+    }
+    return types;
+  }, [isEdit, currentRow?.type, t]);
 
   const hostSuggestions = useMemo(() => [
     { value: 'localhost', label: 'localhost' },
@@ -154,11 +157,7 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
     { value: 'ssh_key', label: t('agentRuntimes.authMethods.ssh_key') },
   ];
 
-  const runtimeStatuses: { value: 'active' | 'inactive' | 'error'; label: string }[] = [
-    { value: 'active', label: t('agentRuntimes.status.active') },
-    { value: 'inactive', label: t('agentRuntimes.status.inactive') },
-    { value: 'error', label: t('agentRuntimes.status.error') },
-  ];
+  const showAuthPanel = !isLocalType && !isLocalhost;
 
   return (
     <Dialog
@@ -170,8 +169,14 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
         onOpenChange(state);
       }}
     >
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent
+        ref={setDialogContent}
+        className={cn(
+          'h-[600px] max-h-[90vh] flex flex-col overflow-hidden transition-all duration-300',
+          showAuthPanel ? 'sm:max-w-4xl' : 'sm:max-w-[500px]'
+        )}
+      >
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>
             {isEdit ? t('agentRuntimes.dialogs.edit.title') : t('agentRuntimes.dialogs.create.title')}
           </DialogTitle>
@@ -182,114 +187,19 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('agentRuntimes.dialogs.fields.name.label')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t('agentRuntimes.dialogs.fields.name.placeholder')}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('agentRuntimes.dialogs.fields.type.label')}</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('agentRuntimes.dialogs.fields.type.placeholder')} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {runtimeTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('agentRuntimes.dialogs.fields.status.label')}</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('agentRuntimes.dialogs.fields.status.placeholder')} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {runtimeStatuses.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {!isLocalType && (
-              <FormField
-                control={form.control}
-                name="host"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('agentRuntimes.dialogs.fields.host.label')}</FormLabel>
-                    <FormControl>
-                      <AutoComplete
-                        selectedValue={field.value}
-                        onSelectedValueChange={(value) => {
-                          field.onChange(value);
-                        }}
-                        searchValue={hostSearchValue}
-                        onSearchValueChange={(value) => {
-                          setHostSearchValue(value);
-                          field.onChange(value);
-                        }}
-                        items={hostSuggestions}
-                        placeholder={t('agentRuntimes.dialogs.fields.host.placeholder')}
-                        emptyMessage={t('agentRuntimes.dialogs.fields.host.emptyMessage')}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {!isLocalType && !isLocalhost && (
-              <>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex min-h-0 flex-1 gap-6 overflow-hidden">
+              {/* Left Panel - Basic Info */}
+              <div className="flex-1 overflow-y-auto pr-2 space-y-4">
                 <FormField
                   control={form.control}
-                  name="user"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('agentRuntimes.dialogs.fields.user.label')}</FormLabel>
+                      <FormLabel>{t('agentRuntimes.dialogs.fields.name.label')}</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder={t('agentRuntimes.dialogs.fields.user.placeholder')}
+                          placeholder={t('agentRuntimes.dialogs.fields.name.placeholder')}
                           {...field}
                         />
                       </FormControl>
@@ -300,40 +210,80 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
 
                 <FormField
                   control={form.control}
-                  name="authMethod"
+                  name="type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('agentRuntimes.dialogs.fields.authMethod.label')}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value || 'password'}>
+                      <FormLabel>{t('agentRuntimes.dialogs.fields.type.label')}</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={t('agentRuntimes.dialogs.fields.authMethod.placeholder')} />
+                            <SelectValue placeholder={t('agentRuntimes.dialogs.fields.type.placeholder')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {authMethods.map((method) => (
-                            <SelectItem key={method.value} value={method.value}>
-                              {method.label}
+                          {runtimeTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t('agentRuntimes.dialogs.fields.type.help')}
+                      </p>
+                      {typeValue === 'vm' && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          {t('agentRuntimes.dialogs.fields.type.vmLinuxHint')}
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {authMethodValue === 'password' && (
+                {!isLocalType && (
                   <FormField
                     control={form.control}
-                    name="password"
+                    name="host"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('agentRuntimes.dialogs.fields.password.label')}</FormLabel>
+                        <FormLabel>{t('agentRuntimes.dialogs.fields.host.label')}</FormLabel>
+                        <FormControl>
+                          <AutoComplete
+                            selectedValue={field.value || ''}
+                            onSelectedValueChange={(value) => {
+                              field.onChange(value);
+                            }}
+                            searchValue={hostSearchValue}
+                            onSearchValueChange={(value) => {
+                              setHostSearchValue(value);
+                              field.onChange(value);
+                            }}
+                            items={hostSuggestions}
+                            placeholder={t('agentRuntimes.dialogs.fields.host.placeholder')}
+                            emptyMessage={t('agentRuntimes.dialogs.fields.host.emptyMessage')}
+                            portalContainer={dialogContent}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
+              {/* Right Panel - Auth Info */}
+              {showAuthPanel && (
+                <div className="flex-1 overflow-y-auto border-l pl-6 space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="user"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('agentRuntimes.dialogs.fields.user.label')}</FormLabel>
                         <FormControl>
                           <Input
-                            type="password"
-                            placeholder={t('agentRuntimes.dialogs.fields.password.placeholder')}
+                            placeholder={t('agentRuntimes.dialogs.fields.user.placeholder')}
                             {...field}
                           />
                         </FormControl>
@@ -341,32 +291,76 @@ export function AgentRuntimesActionDialog({ currentRow, open, onOpenChange }: Pr
                       </FormItem>
                     )}
                   />
-                )}
 
-                {authMethodValue === 'ssh_key' && (
                   <FormField
                     control={form.control}
-                    name="sshPrivateKey"
+                    name="authMethod"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('agentRuntimes.dialogs.fields.sshPrivateKey.label')}</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder={t('agentRuntimes.dialogs.fields.sshPrivateKey.placeholder')}
-                            className="font-mono text-xs"
-                            rows={6}
-                            {...field}
-                          />
-                        </FormControl>
+                        <FormLabel>{t('agentRuntimes.dialogs.fields.authMethod.label')}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || 'password'}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('agentRuntimes.dialogs.fields.authMethod.placeholder')} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {authMethods.map((method) => (
+                              <SelectItem key={method.value} value={method.value}>
+                                {method.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                )}
-              </>
-            )}
 
-            <DialogFooter>
+                  {authMethodValue === 'password' && (
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('agentRuntimes.dialogs.fields.password.label')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder={t('agentRuntimes.dialogs.fields.password.placeholder')}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {authMethodValue === 'ssh_key' && (
+                    <FormField
+                      control={form.control}
+                      name="sshPrivateKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('agentRuntimes.dialogs.fields.sshPrivateKey.label')}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                            placeholder={t('agentRuntimes.dialogs.fields.sshPrivateKey.placeholder')}
+                            className="font-mono text-xs resize-none h-[300px]"
+                            {...field}
+                          />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex-shrink-0 pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"

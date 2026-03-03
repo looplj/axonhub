@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -155,7 +155,8 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
 
   const isEdit = mode === 'edit';
 
-  // Model autocomplete state
+  const lastAgentDataRef = useRef<string | null>(null);
+
   const [modelSearch, setModelSearch] = useState('');
 
   const modelOptions = useMemo(() => {
@@ -213,7 +214,6 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
 
     if (oldIndex !== -1 && newIndex !== -1) {
       move(oldIndex, newIndex);
-      // Update order values after move
       const currentTools = form.getValues('builtinTools') || [];
       currentTools.forEach((tool, idx) => {
         form.setValue(`builtinTools.${idx}.order`, idx);
@@ -221,26 +221,52 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
     }
   };
 
-  useEffect(() => {
-    if (isEdit && agent) {
-      const existingBuiltinTools = Array.isArray(agent.agentBuiltinTools) ? agent.agentBuiltinTools : [];
-      const existingSkillsPolicyAdd =
-        agent.skillsPolicy && typeof agent.skillsPolicy === 'object' && 'add' in agent.skillsPolicy
-          ? (agent.skillsPolicy as any).add
-          : 'open';
+  const normalizedAgentData = useMemo(() => {
+    if (!isEdit || !agent) return null;
 
-      form.reset({
-        name: agent.name,
-        description: agent.description || '',
-        model: agent.model || '',
-        reasoningEffort: agent.reasoningEffort || 'none',
-        systemPrompt: agent.prompt?.content || '',
-        skillsPolicyAdd: existingSkillsPolicyAdd,
-        builtinTools: existingBuiltinTools,
-      });
-      setModelSearch(agent.model || '');
+    const existingBuiltinTools = Array.isArray(agent.agentBuiltinTools) ? agent.agentBuiltinTools : [];
+    const existingSkillsPolicyAdd =
+      agent.skillsPolicy && typeof agent.skillsPolicy === 'object' && 'add' in agent.skillsPolicy
+        ? (agent.skillsPolicy as any).add
+        : 'open';
+
+    return {
+      name: agent.name,
+      description: agent.description || '',
+      model: agent.model || '',
+      reasoningEffort: agent.reasoningEffort || 'none',
+      systemPrompt: agent.prompt?.content || '',
+      skillsPolicyAdd: existingSkillsPolicyAdd,
+      builtinTools: existingBuiltinTools,
+    };
+  }, [isEdit, agent]);
+
+  const normalizedAgentSerialized = useMemo(() => {
+    return normalizedAgentData ? JSON.stringify(normalizedAgentData) : null;
+  }, [normalizedAgentData]);
+
+  useEffect(() => {
+    if (!isEdit) {
+      return;
     }
-  }, [isEdit, agent, form]);
+
+    if (agentLoading) {
+      return;
+    }
+
+    if (!normalizedAgentSerialized) {
+      return;
+    }
+
+    if (lastAgentDataRef.current === normalizedAgentSerialized) {
+      return;
+    }
+
+    form.reset(normalizedAgentData!);
+    lastAgentDataRef.current = normalizedAgentSerialized;
+
+    setModelSearch(agent?.model || '');
+  }, [isEdit, agentLoading, agent, form, normalizedAgentData, normalizedAgentSerialized]);
 
   const handleBack = () => {
     navigate({ to: '/project/agents' as any });
@@ -413,10 +439,14 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className='text-sm font-medium'>{t('agents.fields.reasoningEffort')}</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
+                              <Select
+                                key={field.value || 'empty'}
+                                onValueChange={field.onChange}
+                                value={field.value || 'none'}
+                              >
                                 <FormControl>
                                   <SelectTrigger className='h-10'>
-                                    <SelectValue />
+                                    <SelectValue placeholder={t('agents.reasoningEffort.none')} />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>

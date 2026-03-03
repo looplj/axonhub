@@ -9,26 +9,27 @@ import (
 	"time"
 
 	axonconf "github.com/looplj/axonhub/axon/conf"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
 const FileName = "config.yml"
 
 type Config struct {
-	BaseURL            string        `yaml:"base_url"`
-	APIKey             string        `yaml:"api_key"`
-	Name               string        `yaml:"name"`
-	PollInterval       time.Duration `yaml:"poll_interval"`
-	HeartbeatInterval  time.Duration `yaml:"heartbeat_interval"`
-	AutoSyncConfig         bool          `yaml:"auto_sync_config"`
-	AutoSyncConfigInterval time.Duration `yaml:"auto_sync_config_interval"`
-	Debug              bool          `yaml:"debug"`
+	BaseURL                string        `yml:"base_url"`
+	APIKey                 string        `yml:"api_key"`
+	Name                   string        `yml:"name"`
+	PollInterval           time.Duration `yml:"poll_interval"`
+	HeartbeatInterval      time.Duration `yml:"heartbeat_interval"`
+	AutoSyncConfig         bool          `yml:"auto_sync_config"`
+	AutoSyncConfigInterval time.Duration `yml:"auto_sync_config_interval"`
+	Debug                  bool          `yml:"debug"`
 }
 
 func DefaultConfig() Config {
 	return Config{
-		PollInterval:       5 * time.Second,
-		HeartbeatInterval:  1 * time.Minute,
+		PollInterval:           5 * time.Second,
+		HeartbeatInterval:      1 * time.Minute,
 		AutoSyncConfigInterval: 5 * time.Minute,
 	}
 }
@@ -42,7 +43,17 @@ func LoadOrSaveConfig(baseURL, apiKey, name string) (Config, error) {
 		AllowMissing:   true,
 		EnvPrefix:      "AXONCLAW",
 		EnvKeyReplacer: strings.NewReplacer(".", "_"),
-		UnmarshalTag:   "yaml",
+		UnmarshalTag:   "yml",
+		SetDefaults: func(v *viper.Viper) {
+			v.SetDefault("base_url", "")
+			v.SetDefault("api_key", "")
+			v.SetDefault("name", "")
+			v.SetDefault("poll_interval", "5s")
+			v.SetDefault("heartbeat_interval", "1m")
+			v.SetDefault("auto_sync_config", false)
+			v.SetDefault("auto_sync_config_interval", "5m")
+			v.SetDefault("debug", false)
+		},
 	})
 	res, err := loader.Load(context.Background())
 	if err != nil {
@@ -169,6 +180,33 @@ func Load(path string) (Config, error) {
 		return cfg, fmt.Errorf("unmarshal config: %w", err)
 	}
 	return cfg, nil
+}
+
+func LoadConfig() (Config, error) {
+	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
+		ConfigName:     "config",
+		ConfigType:     "yml",
+		SearchPaths:    []string{".axonclaw"},
+		AllowMissing:   true,
+		EnvPrefix:      "AXONCLAW",
+		EnvKeyReplacer: strings.NewReplacer(".", "_"),
+		UnmarshalTag:   "yml",
+		SetDefaults: func(v *viper.Viper) {
+			v.SetDefault("base_url", "")
+			v.SetDefault("api_key", "")
+			v.SetDefault("name", "")
+			v.SetDefault("poll_interval", "5s")
+			v.SetDefault("heartbeat_interval", "1m")
+			v.SetDefault("auto_sync_config", false)
+			v.SetDefault("auto_sync_config_interval", "5m")
+			v.SetDefault("debug", false)
+		},
+	})
+	res, err := loader.Load(context.Background())
+	if err != nil {
+		return Config{}, err
+	}
+	return res.Value, nil
 }
 
 func ReadYAMLFile(path string) (map[string]any, error) {

@@ -242,8 +242,7 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 				Parameters:  t.Schema,
 			}
 			if len(b.Config) > 0 && string(b.Config) != "{}" {
-				cfg := objects.JSONRawMessage(b.Config)
-				def.Config = &cfg
+				def.Config = &b.Config
 			}
 			tools = append(tools, def)
 		}
@@ -370,7 +369,7 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 				SetSenderID(userID).
 				SetType(agentmessage.TypeChat).
 				SetCorrelationID("").
-				SetContent(objects.JSONRawMessage(raw)).
+				SetContent(raw).
 				SetStatus(agentmessage.StatusPending).
 				SetSequence(nextSeq).
 				Save(bypassCtx)
@@ -727,7 +726,7 @@ func (s *AgentBootstrapService) ResolveApprovalAsUser(ctx context.Context, userI
 				SetSenderID(userID).
 				SetType(agentmessage.TypeApprovalResult).
 				SetCorrelationID(input.RequestID).
-				SetContent(objects.JSONRawMessage(raw)).
+				SetContent(raw).
 				SetStatus(agentmessage.StatusPending).
 				SetSequence(nextSeq).
 				Save(bypassCtx)

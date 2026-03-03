@@ -267,7 +267,7 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"vm", "docker", "local"}, Default: "vm"},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive", "error"}, Default: "active"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive"}, Default: "active"},
 		{Name: "host", Type: field.TypeString, Default: ""},
 		{Name: "user", Type: field.TypeString, Default: ""},
 		{Name: "auth_method", Type: field.TypeEnum, Enums: []string{"password", "ssh_key"}, Default: "password"},

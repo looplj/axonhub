@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/pkg/xcontext"
 )
 
 func dockerContainerName(name string) string {
@@ -23,47 +24,37 @@ func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.
 		imageName = debugDockerImage
 	}
 
+	deployCtx, deployCancel := xcontext.DetachWithTimeout(ctx, 5*time.Minute)
+	defer deployCancel()
+
 	if isLocalhost {
-		//nolint:gosec
-		stopCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker stop %s 2>/dev/null || true", containerName))
-		if err := stopCmd.Run(); err != nil {
-			return fmt.Errorf("failed to stop existing container: %w", err)
-		}
+		_ = exec.CommandContext(deployCtx, "docker", "stop", containerName).Run()
+		_ = exec.CommandContext(deployCtx, "docker", "rm", containerName).Run()
 
-		//nolint:gosec
-		rmCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker rm %s 2>/dev/null || true", containerName))
-		if err := rmCmd.Run(); err != nil {
-			return fmt.Errorf("failed to remove existing container: %w", err)
+		runArgs := []string{
+			"run", "-d",
+			"--name", containerName,
+			"--restart", "unless-stopped",
+			"-e", "AXONCLAW_NAME=" + name,
+			"-e", "AXONCLAW_BASE_URL=" + baseURL,
+			"-e", "AXONCLAW_API_KEY=" + apiKey.Key,
+			imageName,
 		}
-
-		if debugDockerImage == "" {
-			//nolint:gosec
-			pullCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker pull %s", imageName))
-			if err := pullCmd.Run(); err != nil {
-				return fmt.Errorf("failed to pull latest image: %w", err)
-			}
-		}
-
-		//nolint:gosec
-		runCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, name, baseURL, apiKey.Key, imageName))
-		if err := runCmd.Run(); err != nil {
-			return fmt.Errorf("failed to start Docker container: %w", err)
+		if output, err := exec.CommandContext(deployCtx, "docker", runArgs...).CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to start Docker container: %w, output: %s", err, string(output))
 		}
 
 		time.Sleep(2 * time.Second)
 
-		//nolint:gosec
-		checkCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker inspect --format='{{.State.Running}}' %s", containerName))
+		checkArgs := []string{"inspect", "--format={{.State.Running}}", containerName}
 
-		output, err := checkCmd.Output()
+		output, err := exec.CommandContext(deployCtx, "docker", checkArgs...).Output()
 		if err != nil {
 			return fmt.Errorf("failed to check container status: %w", err)
 		}
 
 		if string(output) != "true\n" {
-			//nolint:gosec
-			logsCmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf("docker logs %s", containerName))
-			logsOutput, _ := logsCmd.CombinedOutput()
+			logsOutput, _ := exec.CommandContext(deployCtx, "docker", "logs", containerName).CombinedOutput()
 
 			return fmt.Errorf("container is not running. Logs: %s", string(logsOutput))
 		}
@@ -105,9 +96,9 @@ func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.
 	}
 	defer session3.Close()
 
-	pullCmd := fmt.Sprintf("docker pull %s", imageName)
-	if err := session3.Run(pullCmd); err != nil {
-		return fmt.Errorf("failed to pull latest image: %w", err)
+	runCmd := fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, name, baseURL, apiKey.Key, imageName)
+	if output, err := session3.CombinedOutput(runCmd); err != nil {
+		return fmt.Errorf("failed to start Docker container: %w, output: %s", err, string(output))
 	}
 
 	session4, err := client.NewSession()
@@ -116,22 +107,11 @@ func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.
 	}
 	defer session4.Close()
 
-	runCmd := fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, name, baseURL, apiKey.Key, imageName)
-	if err := session4.Run(runCmd); err != nil {
-		return fmt.Errorf("failed to start Docker container: %w", err)
-	}
-
-	session5, err := client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-	defer session5.Close()
-
 	time.Sleep(2 * time.Second)
 
 	checkCmd := fmt.Sprintf("docker inspect --format='{{.State.Running}}' %s", containerName)
 
-	output, err := session5.CombinedOutput(checkCmd)
+	output, err := session4.CombinedOutput(checkCmd)
 	if err != nil {
 		return fmt.Errorf("failed to check container status: %w", err)
 	}
@@ -248,16 +228,13 @@ func (svc *AgentDeployService) dockerRedeploy(ctx context.Context, runtime *ent.
 		imageName = debugDockerImage
 	}
 
+	redeployCtx, redeployCancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer redeployCancel()
+
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
 	if isLocalhost {
-		_ = exec.CommandContext(ctx, "docker", "stop", containerName).Run()
-		_ = exec.CommandContext(ctx, "docker", "rm", containerName).Run()
-
-		if debugDockerImage == "" {
-			if err := exec.CommandContext(ctx, "docker", "pull", imageName).Run(); err != nil {
-				return fmt.Errorf("docker pull: %w", err)
-			}
-		}
+		_ = exec.CommandContext(redeployCtx, "docker", "stop", containerName).Run()
+		_ = exec.CommandContext(redeployCtx, "docker", "rm", containerName).Run()
 
 		runArgs := []string{
 			"run", "-d",
@@ -268,8 +245,8 @@ func (svc *AgentDeployService) dockerRedeploy(ctx context.Context, runtime *ent.
 			"-e", "AXONCLAW_API_KEY=" + apiKey.Key,
 			imageName,
 		}
-		if err := exec.CommandContext(ctx, "docker", runArgs...).Run(); err != nil {
-			return fmt.Errorf("docker run: %w", err)
+		if output, err := exec.CommandContext(redeployCtx, "docker", runArgs...).CombinedOutput(); err != nil {
+			return fmt.Errorf("docker run: %w, output: %s", err, string(output))
 		}
 
 		return nil
@@ -281,24 +258,18 @@ func (svc *AgentDeployService) dockerRedeploy(ctx context.Context, runtime *ent.
 	}
 	defer client.Close()
 
-	runSSH := func(cmd string) error {
+	runSSH := func(cmd string) ([]byte, error) {
 		s, err := client.NewSession()
 		if err != nil {
-			return fmt.Errorf("create ssh session: %w", err)
+			return nil, fmt.Errorf("create ssh session: %w", err)
 		}
 		defer s.Close()
 
-		return s.Run(cmd)
+		return s.CombinedOutput(cmd)
 	}
 
-	if debugDockerImage == "" {
-		if err := runSSH(fmt.Sprintf("docker pull %s", shellQuote(imageName))); err != nil {
-			return fmt.Errorf("docker pull: %w", err)
-		}
-	}
-
-	_ = runSSH(fmt.Sprintf("docker stop %s 2>/dev/null || true", shellQuote(containerName)))
-	_ = runSSH(fmt.Sprintf("docker rm %s 2>/dev/null || true", shellQuote(containerName)))
+	_, _ = runSSH(fmt.Sprintf("docker stop %s 2>/dev/null || true", shellQuote(containerName)))
+	_, _ = runSSH(fmt.Sprintf("docker rm %s 2>/dev/null || true", shellQuote(containerName)))
 
 	runCmd := fmt.Sprintf(
 		"docker run -d --name %s --restart unless-stopped -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s",
@@ -308,8 +279,8 @@ func (svc *AgentDeployService) dockerRedeploy(ctx context.Context, runtime *ent.
 		shellQuote(apiKey.Key),
 		shellQuote(imageName),
 	)
-	if err := runSSH(runCmd); err != nil {
-		return fmt.Errorf("docker run: %w", err)
+	if output, err := runSSH(runCmd); err != nil {
+		return fmt.Errorf("docker run: %w, output: %s", err, string(output))
 	}
 
 	return nil

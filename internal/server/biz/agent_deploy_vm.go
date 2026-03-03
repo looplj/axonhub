@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -43,8 +44,8 @@ func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.Agen
 		}
 
 		//nolint:gosec
-		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/feature/agent/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh", directory, name, baseURL, apiKey.Key)
-		if err := exec.CommandContext(ctx, "sh", "-c", deployCmd).Run(); err != nil {
+		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s bash", directory, name, baseURL, apiKey.Key)
+		if err := exec.CommandContext(ctx, "bash", "-c", deployCmd).Run(); err != nil {
 			return fmt.Errorf("failed to deploy axonclaw: %w", err)
 		}
 
@@ -75,14 +76,16 @@ func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.Agen
 	defer session2.Close()
 
 	deployCmd := fmt.Sprintf(
-		"cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/main/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh",
+		"cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s bash",
 		shellQuote(directory),
 		shellQuote(name),
 		shellQuote(baseURL),
 		shellQuote(apiKey.Key),
 	)
-	if err := session2.Run(deployCmd); err != nil {
-		return fmt.Errorf("failed to deploy axonclaw: %w", err)
+
+	output, err := session2.CombinedOutput(deployCmd)
+	if err != nil {
+		return fmt.Errorf("failed to deploy axonclaw: %w, output: %s", err, string(output))
 	}
 
 	return nil
@@ -219,7 +222,7 @@ func (svc *AgentDeployService) vmInstallLatest(ctx context.Context, runtime *ent
 	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
 
 	if isLocalhost {
-		cmd := exec.CommandContext(ctx, "sh", "-c", "curl -sSL https://raw.githubusercontent.com/looplj/axonhub/main/cmd/axonclaw/install.sh | sh") //nolint:gosec
+		cmd := exec.CommandContext(ctx, "bash", "-c", "curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | bash") //nolint:gosec
 		cmd.Dir = directory
 
 		cmd.Env = append(os.Environ(),
@@ -247,14 +250,16 @@ func (svc *AgentDeployService) vmInstallLatest(ctx context.Context, runtime *ent
 	defer session.Close()
 
 	installCmd := fmt.Sprintf(
-		"cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/main/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s sh",
+		"cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s bash",
 		shellQuote(directory),
 		shellQuote(name),
 		shellQuote(baseURL),
 		shellQuote(apiKey.Key),
 	)
-	if err := session.Run(installCmd); err != nil {
-		return fmt.Errorf("install latest axonclaw: %w", err)
+
+	output, err := session.CombinedOutput(installCmd)
+	if err != nil {
+		return fmt.Errorf("install latest axonclaw: %w, output: %s", err, string(output))
 	}
 
 	return nil
@@ -274,9 +279,14 @@ func sshDial(runtime *ent.AgentRuntime) (*ssh.Client, error) {
 		Timeout:         30 * time.Second,
 	}
 
-	client, err := ssh.Dial("tcp", runtime.Host, config)
+	host := runtime.Host
+	if !strings.Contains(host, ":") {
+		host = host + ":22"
+	}
+
+	client, err := ssh.Dial("tcp", host, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to host %s: %w", runtime.Host, err)
+		return nil, fmt.Errorf("failed to connect to host %s: %w", host, err)
 	}
 
 	return client, nil

@@ -165,7 +165,7 @@ func (svc *AgentDeployService) localInstallLatest(ctx context.Context, apiKey *e
 	}
 
 	if isWindows() {
-		installCmd := fmt.Sprintf("cd %s; $env:AXONCLAW_NAME='%s'; $env:AXONCLAW_BASE_URL='%s'; $env:AXONCLAW_API_KEY='%s'; Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/looplj/axonhub/feature/agent/cmd/axonclaw/install.ps1' -UseBasicParsing).Content", directory, name, baseURL, apiKey.Key)
+		installCmd := fmt.Sprintf("cd %s; $env:AXONCLAW_NAME='%s'; $env:AXONCLAW_BASE_URL='%s'; $env:AXONCLAW_API_KEY='%s'; Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.ps1' -UseBasicParsing).Content", directory, name, baseURL, apiKey.Key)
 		cmd := exec.CommandContext(ctx, "powershell", "-Command", installCmd)
 
 		cmd.Dir = directory
@@ -176,7 +176,7 @@ func (svc *AgentDeployService) localInstallLatest(ctx context.Context, apiKey *e
 		return nil
 	}
 
-	cmd := exec.CommandContext(ctx, "sh", "-c", "curl -sSL https://raw.githubusercontent.com/looplj/axonhub/feature/agent/cmd/axonclaw/install.sh | sh")
+	cmd := exec.CommandContext(ctx, "sh", "-c", "curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | sh")
 	cmd.Dir = directory
 
 	cmd.Env = append(os.Environ(),

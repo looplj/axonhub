@@ -32,7 +32,7 @@ export type AgentRuntime = z.infer<typeof agentRuntimeSchema>;
 // Create Agent Runtime Input
 export const createAgentRuntimeInputSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  type: agentRuntimeTypeSchema,
+  type: z.enum(['vm', 'docker']),
   status: agentRuntimeStatusSchema.optional(),
   host: z.string().optional(),
   user: z.string().optional(),
@@ -41,9 +41,6 @@ export const createAgentRuntimeInputSchema = z.object({
   sshPrivateKey: z.string().optional(),
 }).refine(
   (data) => {
-    if (data.type === 'local') {
-      return true;
-    }
     if (!data.host || data.host.length === 0) {
       return false;
     }
@@ -56,9 +53,9 @@ export const createAgentRuntimeInputSchema = z.object({
     }
     const method = data.authMethod || 'password';
     if (method === 'password') {
-      return data.password && data.password.length > 0;
+      return !!(data.password && data.password.length > 0);
     }
-    return data.sshPrivateKey && data.sshPrivateKey.length > 0;
+    return !!(data.sshPrivateKey && data.sshPrivateKey.length > 0);
   },
   {
     message: 'Host is required for VM and Docker types. User and credentials are required for non-localhost hosts.',

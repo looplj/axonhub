@@ -20,6 +20,8 @@
   "agentRuntimes.dialogs.fields.name.placeholder": "输入运行时名称",
   "agentRuntimes.dialogs.fields.type.label": "类型",
   "agentRuntimes.dialogs.fields.type.placeholder": "选择运行时类型",
+  "agentRuntimes.dialogs.fields.type.help": "选择用于部署 Axonclaw 智能体的运行时环境类型。",
+  "agentRuntimes.dialogs.fields.type.vmLinuxHint": "虚拟机类型需要 Linux 操作系统。",
   "agentRuntimes.dialogs.fields.status.label": "状态",
   "agentRuntimes.dialogs.fields.status.placeholder": "选择状态",
   "agentRuntimes.dialogs.fields.host.label": "主机",

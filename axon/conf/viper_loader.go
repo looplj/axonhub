@@ -2,13 +2,21 @@ package conf
 
 import (
 	"context"
+	"encoding"
 	"errors"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"strings"
+	"time"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
+)
+
+var (
+	_TypeTextUnmarshaler = reflect.TypeFor[encoding.TextUnmarshaler]()
+	_TypeDuration        = reflect.TypeFor[time.Duration]()
 )
 
 type ViperLoaderOptions struct {
@@ -20,6 +28,7 @@ type ViperLoaderOptions struct {
 	EnvKeyReplacer  *strings.Replacer
 	UnmarshalTag    string
 	DefaultFileName string
+	SetDefaults     func(v *viper.Viper)
 }
 
 type ViperLoader[T any] struct {
@@ -58,6 +67,10 @@ func (l *ViperLoader[T]) Load(_ context.Context) (LoadResult[T], error) {
 		}
 	}
 
+	if l.opts.SetDefaults != nil {
+		l.opts.SetDefaults(v)
+	}
+
 	if err := v.ReadInConfig(); err != nil {
 		var notFound viper.ConfigFileNotFoundError
 		if errors.As(err, &notFound) {
@@ -72,6 +85,7 @@ func (l *ViperLoader[T]) Load(_ context.Context) (LoadResult[T], error) {
 	var cfg T
 	if err := v.Unmarshal(&cfg, func(dc *mapstructure.DecoderConfig) {
 		dc.TagName = l.opts.UnmarshalTag
+		dc.DecodeHook = customizedDecodeHook
 	}); err != nil {
 		return LoadResult[T]{ConfigFile: l.configFileUsedOrDefault(v)}, fmt.Errorf("failed to parse settings: %w", err)
 	}
@@ -116,3 +130,28 @@ func (l *ViperLoader[T]) defaultConfigFile() string {
 	return filepath.Join(l.opts.SearchPaths[0], l.opts.DefaultFileName)
 }
 
+func customizedDecodeHook(srcType reflect.Type, dstType reflect.Type, data any) (any, error) {
+	str, ok := data.(string)
+	if !ok {
+		return data, nil
+	}
+
+	switch {
+	case reflect.PointerTo(dstType).Implements(_TypeTextUnmarshaler):
+		value := reflect.New(dstType)
+
+		u, _ := value.Interface().(encoding.TextUnmarshaler)
+		if err := u.UnmarshalText([]byte(str)); err != nil {
+			return nil, err
+		}
+
+		return u, nil
+	case dstType == _TypeDuration:
+		if strings.TrimSpace(str) == "" {
+			return time.Duration(0), nil
+		}
+		return time.ParseDuration(str)
+	default:
+		return data, nil
+	}
+}

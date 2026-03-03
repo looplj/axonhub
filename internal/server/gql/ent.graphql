@@ -1434,7 +1434,6 @@ AgentRuntimeStatus is enum for the field status
 enum AgentRuntimeStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/agentruntime.Status") {
   active
   inactive
-  error
 }
 """
 AgentRuntimeType is enum for the field type

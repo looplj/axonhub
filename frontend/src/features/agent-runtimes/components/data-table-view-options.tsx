@@ -21,12 +21,6 @@ export function DataTableViewOptions({ table }: DataTableViewOptionsProps<AgentR
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="ml-auto hidden h-8 lg:flex">
-          <IconAdjustmentsHorizontal className="mr-2 h-4 w-4" />
-          {t('common.viewOptions')}
-        </Button>
-      </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
         <DropdownMenuLabel>{t('common.toggleColumns')}</DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -59,7 +59,7 @@ Notes:
 	return root
 }
 
-var confKeys = []string{"base_url", "api_key", "instance_id", "name", "poll_interval", "heartbeat_interval"}
+var confKeys = []string{"base_url", "api_key", "instance_id", "name", "poll_interval", "heartbeat_interval", "auto_sync_config", "auto_sync_config_interval", "debug"}
 
 func isValidConfKey(k string) bool {
 	return lo.Contains(confKeys, k)
@@ -113,17 +113,33 @@ axonclaw conf get api_key
 func newConfListCmd(out *os.File, dir *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List config keys",
+		Short: "List config keys (supports environment variables)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := filepath.Join(*dir, conf.FileName)
+			cfg, err := conf.LoadConfig()
+			if err != nil {
+				return fmt.Errorf("load config: %w", err)
+			}
+
+			values := map[string]string{
+				"base_url":                  cfg.BaseURL,
+				"api_key":                   maskSecret(cfg.APIKey),
+				"name":                      cfg.Name,
+				"poll_interval":             cfg.PollInterval.String(),
+				"heartbeat_interval":        cfg.HeartbeatInterval.String(),
+				"auto_sync_config":          fmt.Sprintf("%v", cfg.AutoSyncConfig),
+				"auto_sync_config_interval": cfg.AutoSyncConfigInterval.String(),
+				"debug":                     fmt.Sprintf("%v", cfg.Debug),
+			}
+
 			for _, key := range confKeys {
-				val, _, err := conf.GetYAMLString(path, key)
-				if err != nil {
-					return err
+				if key == "instance_id" {
+					fmt.Fprintf(out, "%s\t%s\n", key, "")
+					continue
 				}
-				if key == "api_key" {
-					val = maskSecret(val)
+				val, ok := values[key]
+				if !ok {
+					val = ""
 				}
 				fmt.Fprintf(out, "%s\t%s\n", key, val)
 			}

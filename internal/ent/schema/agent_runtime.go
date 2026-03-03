@@ -42,7 +42,7 @@ func (AgentRuntime) Fields() []ent.Field {
 			Default("vm").
 			Comment("Runtime type: vm, docker or local"),
 		field.Enum("status").
-			Values("active", "inactive", "error").
+			Values("active", "inactive").
 			Default("active").
 			Comment("Runtime status"),
 		field.String("host").
