@@ -454,6 +454,7 @@ type PerformanceRecord struct {
 }
 
 // Calculate calculates performance metrics from collected data.
+// It enforces minimum latency to prevent extreme TPS calculations.
 func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLatencyMs int64, tokensPerSecond float64) {
 	totalDuration := m.EndTime.Sub(m.StartTime)
 	requestLatencyMs = totalDuration.Milliseconds()
@@ -463,6 +464,10 @@ func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLaten
 		firstTokenLatency := m.FirstTokenTime.Sub(m.StartTime)
 		firstTokenLatencyMs = firstTokenLatency.Milliseconds()
 	}
+
+	// Enforce minimum latency to prevent extreme TPS calculations
+	requestLatencyMs = ClampLatency(requestLatencyMs)
+	firstTokenLatencyMs = ClampLatency(firstTokenLatencyMs)
 
 	return firstTokenLatencyMs, requestLatencyMs, tokensPerSecond
 }
