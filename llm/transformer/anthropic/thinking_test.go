@@ -651,6 +651,7 @@ func TestOutputConfig_Outbound(t *testing.T) {
 	tests := []struct {
 		name     string
 		chatReq  *llm.Request
+		config   *Config
 		validate func(t *testing.T, anthropicReq *MessageRequest)
 	}{
 		{
@@ -675,6 +676,32 @@ func TestOutputConfig_Outbound(t *testing.T) {
 			},
 		},
 		{
+			name: "unsupported platform output_config_effort=max -> Thinking enabled high budget",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyOutputConfigEffort: "max",
+				},
+			},
+			config: &Config{
+				Type: PlatformDeepSeek,
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.Nil(t, anthropicReq.OutputConfig)
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+				require.Equal(t, int64(30000), anthropicReq.Thinking.BudgetTokens)
+			},
+		},
+		{
 			name: "without output_config metadata -> OutputConfig nil",
 			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -695,7 +722,12 @@ func TestOutputConfig_Outbound(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			anthropicReq := convertToAnthropicRequest(tt.chatReq)
+			var anthropicReq *MessageRequest
+			if tt.config != nil {
+				anthropicReq = convertToAnthropicRequestWithConfig(tt.chatReq, tt.config)
+			} else {
+				anthropicReq = convertToAnthropicRequest(tt.chatReq)
+			}
 			tt.validate(t, anthropicReq)
 		})
 	}

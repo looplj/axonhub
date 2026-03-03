@@ -83,24 +83,24 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 	// Validate thinking configuration
 	if anthropicReq.Thinking != nil {
 		switch anthropicReq.Thinking.Type {
-		case "enabled", "disabled", "adaptive":
+		case "disabled":
 			// valid
+		case "enabled":
+			if anthropicReq.Thinking.BudgetTokens <= 0 {
+				return nil, fmt.Errorf("%w: budget_tokens is required and must be positive when thinking type is enabled", transformer.ErrInvalidRequest)
+			}
+		case "adaptive":
+			if anthropicReq.OutputConfig == nil || anthropicReq.OutputConfig.Effort == "" {
+				return nil, fmt.Errorf("%w: output_config is required when thinking type is adaptive", transformer.ErrInvalidRequest)
+			}
+			switch anthropicReq.OutputConfig.Effort {
+			case "low", "medium", "high", "max":
+				// valid
+			default:
+				return nil, fmt.Errorf("%w: output_config.effort must be one of: low, medium, high, max", transformer.ErrInvalidRequest)
+			}
 		default:
 			return nil, fmt.Errorf("%w: thinking.type must be one of: enabled, disabled, adaptive", transformer.ErrInvalidRequest)
-		}
-
-		if anthropicReq.Thinking.Type == "enabled" && anthropicReq.Thinking.BudgetTokens <= 0 {
-			return nil, fmt.Errorf("%w: budget_tokens is required and must be positive when thinking type is enabled", transformer.ErrInvalidRequest)
-		}
-	}
-
-	// Validate output_config effort value
-	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
-		switch anthropicReq.OutputConfig.Effort {
-		case "low", "medium", "high", "max":
-			// valid
-		default:
-			return nil, fmt.Errorf("%w: output_config.effort must be one of: low, medium, high, max", transformer.ErrInvalidRequest)
 		}
 	}
 

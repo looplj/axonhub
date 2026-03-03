@@ -467,10 +467,3 @@ func TestThreadWithStreaming(t *testing.T) {
 
 	t.Logf("Thread streaming test completed successfully")
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

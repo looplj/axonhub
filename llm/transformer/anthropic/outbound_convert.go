@@ -55,7 +55,14 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	// Restore output_config from TransformerMetadata
 	if chatReq.TransformerMetadata != nil {
 		if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
-			req.OutputConfig = &OutputConfig{Effort: effort}
+			if supportsAdaptiveThinking(config) {
+				req.OutputConfig = &OutputConfig{Effort: effort}
+			} else if req.Thinking == nil || req.Thinking.Type == "adaptive" {
+				req.Thinking = &Thinking{
+					Type:         "enabled",
+					BudgetTokens: getThinkingBudgetTokensWithConfig(effort, config),
+				}
+			}
 		}
 	}
 
