@@ -81,12 +81,17 @@ export function SearchChannelDialog({
   const [selectedType, setSelectedType] = useState<ChannelType>(defaultType);
   const [showApiKey, setShowApiKey] = useState(false);
 
+  const getInitialBaseURL = (row: typeof initialRow) => {
+    const stored = row?.baseURL;
+    return stored != null && stored !== '' ? stored : getDefaultBaseURL(defaultType);
+  };
+
   const form = useForm<FormValues>({
     resolver: zodResolver(createSchema),
     defaultValues: {
       type: defaultType,
       name: initialRow?.name || '',
-      baseURL: initialRow?.baseURL || getDefaultBaseURL(defaultType),
+      baseURL: getInitialBaseURL(initialRow),
       apiKeysText: (initialRow?.credentials?.apiKeys || []).join('\n'),
       tags: initialRow?.tags || [],
       orderingWeight: initialRow?.orderingWeight || 0,
@@ -101,7 +106,7 @@ export function SearchChannelDialog({
     form.reset({
       type: defaultType,
       name: initialRow?.name || '',
-      baseURL: initialRow?.baseURL || getDefaultBaseURL(defaultType),
+      baseURL: getInitialBaseURL(initialRow),
       apiKeysText: (initialRow?.credentials?.apiKeys || []).join('\n'),
       tags: initialRow?.tags || [],
       orderingWeight: initialRow?.orderingWeight || 0,
@@ -110,11 +115,14 @@ export function SearchChannelDialog({
   }, [open, defaultType, initialRow, form]);
 
   useEffect(() => {
-    const url = getDefaultBaseURL(selectedType);
-    if (url) {
-      form.setValue('baseURL', url, { shouldDirty: true });
-    }
     form.setValue('type', selectedType, { shouldDirty: true });
+    const currentBaseURL = form.getValues('baseURL');
+    if (!currentBaseURL) {
+      const url = getDefaultBaseURL(selectedType);
+      if (url) {
+        form.setValue('baseURL', url, { shouldDirty: true });
+      }
+    }
   }, [selectedType, form]);
 
   const title = isEdit
@@ -135,7 +143,6 @@ export function SearchChannelDialog({
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
-          type: channelType,
           name: values.name,
           baseURL: values.baseURL,
           supportedModels,

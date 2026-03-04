@@ -211,7 +211,7 @@ export const channelSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   type: channelTypeSchema,
-  baseURL: z.string(),
+  baseURL: z.string().optional().nullable(),
   name: z.string(),
   status: channelStatusSchema,
   policies: channelPoliciesSchema.optional().nullable(),
