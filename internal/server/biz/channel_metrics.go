@@ -30,6 +30,7 @@ func ClampLatency(latencyMs int64) int64 {
 	if latencyMs < MinLatencyMs {
 		return MinLatencyMs
 	}
+
 	return latencyMs
 }
 
