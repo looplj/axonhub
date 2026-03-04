@@ -139,14 +139,8 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 			if state.Perf.Stream && state.Perf.FirstTokenTime != nil {
 				firstTokenLatencyMs = state.Perf.FirstTokenTime.Sub(state.Perf.StartTime).Milliseconds()
 			}
-		}
-
-		if requestLatencyMs < 0 {
-			requestLatencyMs = 0
-		}
-
-		if firstTokenLatencyMs < 0 {
-			firstTokenLatencyMs = 0
+			requestLatencyMs = biz.ClampLatency(requestLatencyMs)
+			firstTokenLatencyMs = biz.ClampLatency(firstTokenLatencyMs)
 		}
 
 		metrics = &biz.LatencyMetrics{

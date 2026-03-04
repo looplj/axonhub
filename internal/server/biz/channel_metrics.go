@@ -18,7 +18,20 @@ import (
 const (
 	// defaultPerformanceWindowSize is the default size of the sliding window in seconds (10 minutes).
 	defaultPerformanceWindowSize = 600
+
+	// MinLatencyMs is the minimum latency value (10ms) used for tokens/second calculations.
+	// This matches the frontend standard MINIMUM_LATENCY_MS_FOR_CACHE_HITS.
+	MinLatencyMs = 10
 )
+
+// ClampLatency enforces the minimum latency value to prevent extreme TPS calculations.
+// Returns the latency if it's >= MinLatencyMs, otherwise returns MinLatencyMs.
+func ClampLatency(latencyMs int64) int64 {
+	if latencyMs < MinLatencyMs {
+		return MinLatencyMs
+	}
+	return latencyMs
+}
 
 // channelMetrics holds the performance metrics for a channel in memory.
 type channelMetrics struct {
@@ -441,6 +454,7 @@ type PerformanceRecord struct {
 }
 
 // Calculate calculates performance metrics from collected data.
+// It enforces minimum latency to prevent extreme TPS calculations.
 func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLatencyMs int64, tokensPerSecond float64) {
 	totalDuration := m.EndTime.Sub(m.StartTime)
 	requestLatencyMs = totalDuration.Milliseconds()
@@ -450,6 +464,10 @@ func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLaten
 		firstTokenLatency := m.FirstTokenTime.Sub(m.StartTime)
 		firstTokenLatencyMs = firstTokenLatency.Milliseconds()
 	}
+
+	// Enforce minimum latency to prevent extreme TPS calculations
+	requestLatencyMs = ClampLatency(requestLatencyMs)
+	firstTokenLatencyMs = ClampLatency(firstTokenLatencyMs)
 
 	return firstTokenLatencyMs, requestLatencyMs, tokensPerSecond
 }
