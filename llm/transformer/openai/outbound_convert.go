@@ -58,9 +58,11 @@ func RequestFromLLM(r *llm.Request) *Request {
 		}
 	}
 
-	// Convert Tools
-	req.Tools = lo.Map(r.Tools, func(t llm.Tool, _ int) Tool {
-		return ToolFromLLM(t)
+	// Convert Tools – only include function tools; other types
+	// (image_generation, responses_custom_tool, etc.) are not supported
+	// by the Chat Completions API and must be filtered out.
+	req.Tools = lo.FilterMap(r.Tools, func(t llm.Tool, _ int) (Tool, bool) {
+		return ToolFromLLM(t), t.Type == llm.ToolTypeFunction
 	})
 
 	// Convert ToolChoice
