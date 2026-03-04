@@ -5,9 +5,11 @@ on:
   push:
     branches:
       - "unstable"
+      - "release/**"
   pull_request:
     branches:
       - "unstable"
+      - "release/**"
 env:
   GO111MODULE: on
 jobs:
