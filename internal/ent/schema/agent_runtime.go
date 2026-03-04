@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -61,6 +62,9 @@ func (AgentRuntime) Fields() []ent.Field {
 			Comment("Runtime password for authentication"),
 		field.String("ssh_private_key").
 			Default("").
+			SchemaType(map[string]string{
+				dialect.MySQL: "text",
+			}).
 			Sensitive().
 			Comment("SSH private key for authentication"),
 	}

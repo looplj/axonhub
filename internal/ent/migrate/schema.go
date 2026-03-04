@@ -272,7 +272,7 @@ var (
 		{Name: "user", Type: field.TypeString, Default: ""},
 		{Name: "auth_method", Type: field.TypeEnum, Enums: []string{"password", "ssh_key"}, Default: "password"},
 		{Name: "password", Type: field.TypeString, Default: ""},
-		{Name: "ssh_private_key", Type: field.TypeString, Default: ""},
+		{Name: "ssh_private_key", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "text"}},
 	}
 	// AgentRuntimesTable holds the schema information for the "agent_runtimes" table.
 	AgentRuntimesTable = &schema.Table{
@@ -534,7 +534,7 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Nullable: true},
-		{Name: "override_parameters", Type: field.TypeString, Default: "{}"},
+		{Name: "override_parameters", Type: field.TypeString, Default: "{}", SchemaType: map[string]string{"mysql": "mediumtext"}},
 		{Name: "override_headers", Type: field.TypeJSON},
 		{Name: "header_override_operations", Type: field.TypeJSON, Nullable: true},
 		{Name: "body_override_operations", Type: field.TypeJSON, Nullable: true},
@@ -687,7 +687,7 @@ var (
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "role", Type: field.TypeString},
-		{Name: "content", Type: field.TypeString},
+		{Name: "content", Type: field.TypeString, SchemaType: map[string]string{"mysql": "mediumtext"}},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "disabled"},
 		{Name: "order", Type: field.TypeInt, Default: 0},
 		{Name: "settings", Type: field.TypeJSON},

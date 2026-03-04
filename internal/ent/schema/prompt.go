@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -55,6 +56,9 @@ func (Prompt) Fields() []ent.Field {
 		field.String("role").
 			Comment("prompt role"),
 		field.String("content").
+			SchemaType(map[string]string{
+				dialect.MySQL: "mediumtext",
+			}).
 			Comment("prompt content"),
 		field.Enum("status").
 			Values("enabled", "disabled").
