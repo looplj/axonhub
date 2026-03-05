@@ -14,7 +14,18 @@ globs: "frontend/**/*.ts, frontend/**/*.tsx"
 5. Update GraphQL query and schema when adding new fields.
 6. Search filters should use debounce to avoid excessive requests.
 7. Add sidebar data and route when adding new feature pages.
-8. Use `extractNumberID` to extract int ID from the GUID.
+8. Use `extractNumberID` (from `src/lib/utils.ts`) to extract int ID from the GUID.
+
+## Development Commands
+
+```bash
+cd frontend
+pnpm install                      # Install dependencies
+pnpm dev                          # Start dev server (port 5173)
+pnpm format                       # Format code
+pnpm knip                         # Check unused dependencies
+pnpm test:e2e                     # E2E tests
+```
 
 ## Development Guides
 

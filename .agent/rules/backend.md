@@ -12,6 +12,27 @@ globs: "**/*.go"
 3. During active development, rely on `air` for automatic rebuilding and avoid running `go build` or `make build-backend` manually.
 4. DO NOT run `golangci-lint run` — user will run manually.
 
+## Development Commands
+
+```bash
+go run cmd/axonhub/main.go       # Run the main server
+air                               # Hot reload (development)
+```
+
+### Make Commands
+
+```bash
+make generate                     # Generate GraphQL and Ent code
+make build                        # Build both frontend and backend
+make build-backend                # Build backend only
+make build-frontend               # Build frontend only
+make cleanup-db                   # Cleanup test database
+make e2e-test                     # Run full E2E test suite
+make migration-test TAG=v0.1.0    # Test migration from specific tag
+make sync-faq                     # Sync FAQ from GitHub issues
+make sync-models                  # Sync model developers data
+```
+
 ## Multi-Module Structure
 
 This project uses Go workspace with multiple modules:
@@ -22,6 +43,7 @@ This project uses Go workspace with multiple modules:
 | Axon | `/axon` | Agent framework with LLM providers, tools, memory |
 | LLM | `/llm` | LLM related utilities (replaced by main module) |
 | CLI | `/cmd/axoncli` | Terminal UI CLI tool |
+| Axonclaw | `/cmd/axonclaw` | CLI tool |
 
 ### Running Tests
 
@@ -38,6 +60,11 @@ cd axon && go test ./provider/anthropic/... -v  # Run anthropic provider tests
 # CLI Module
 cd cmd/axoncli && go test ./...  # Run CLI tests
 ```
+
+## Error Handling
+
+1. Always handle errors using the unified error response format from `internal/pkg/xerrors`.
+2. Implement proper error wrapping with context.
 
 ## Golang Rules
 
@@ -68,5 +95,4 @@ cd cmd/axoncli && go test ./...  # Run CLI tests
 
 ## Biz Service Rules
 
-1. Ensure the dependency service is not nil — logic code should not check if the service is nil.
-2. Dependency services are guaranteed initialized; business logic must not add nil checks.
+1. Dependency services are guaranteed to be initialized by the framework, so your business logic must not add nil checks for them.
