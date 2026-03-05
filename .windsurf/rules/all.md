@@ -1,7 +1,7 @@
 ---
-trigger: manual
+trigger: always
 ---
 
 # Rules
 
-1. All SUMMARY FILE SHOULD STORE IN .windsurf/summary directory if any.
+Please read the project root `AGENTS.md` file for complete project rules.
