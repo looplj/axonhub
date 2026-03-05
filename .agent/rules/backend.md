@@ -8,8 +8,8 @@ globs: "**/*.go"
 ## Server & Build
 
 1. The server in development is managed by air — it will rebuild and start when code changes, so DO NOT restart manually.
-2. Use `make build-backend` to build the server to make sure it builds successfully.
-3. DO NOT run `go build` or `make build-backend` unless explicitly asked.
+2. Use `make build-backend` to verify your changes build successfully before committing.
+3. During active development, rely on `air` for automatic rebuilding and avoid running `go build` or `make build-backend` manually.
 4. DO NOT run `golangci-lint run` — user will run manually.
 
 ## Multi-Module Structure
