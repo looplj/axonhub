@@ -185,7 +185,10 @@ func (_c *ChannelOverrideTemplateCreate) defaults() error {
 		_c.mutation.SetDeletedAt(v)
 	}
 	if _, ok := _c.mutation.OverrideParameters(); !ok {
-		v := channeloverridetemplate.DefaultOverrideParameters
+		if channeloverridetemplate.DefaultOverrideParameters == nil {
+			return fmt.Errorf("ent: uninitialized channeloverridetemplate.DefaultOverrideParameters (forgotten import ent/runtime?)")
+		}
+		v := channeloverridetemplate.DefaultOverrideParameters()
 		_c.mutation.SetOverrideParameters(v)
 	}
 	if _, ok := _c.mutation.OverrideHeaders(); !ok {

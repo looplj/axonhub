@@ -50,7 +50,7 @@ func (ChannelOverrideTemplate) Fields() []ent.Field {
 			Optional().
 			Comment("Template description"),
 		field.String("override_parameters").
-			Default("{}").
+			DefaultFunc(func() string { return "{}" }).
 			Deprecated("Use body_override_operations instead").
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),

@@ -165,7 +165,7 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Nullable: true},
-		{Name: "override_parameters", Type: field.TypeString, Default: "{}"},
+		{Name: "override_parameters", Type: field.TypeString},
 		{Name: "override_headers", Type: field.TypeJSON},
 		{Name: "header_override_operations", Type: field.TypeJSON, Nullable: true},
 		{Name: "body_override_operations", Type: field.TypeJSON, Nullable: true},

@@ -30,6 +30,33 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 		ChannelService: nil, // nil is fine for these tests
 	})
 
+	t.Run("override_parameters default value via DefaultFunc", func(t *testing.T) {
+		input := ent.CreateChannelOverrideTemplateInput{
+			Name: "Default Params Template",
+		}
+
+		tmpl, err := service.CreateTemplate(ctx, user.ID, input)
+		require.NoError(t, err)
+		require.Equal(t, "{}", tmpl.OverrideParameters)
+	})
+
+	t.Run("override_parameters default value is independent per entity", func(t *testing.T) {
+		input1 := ent.CreateChannelOverrideTemplateInput{
+			Name: "Template A",
+		}
+		tmpl1, err := service.CreateTemplate(ctx, user.ID, input1)
+		require.NoError(t, err)
+
+		input2 := ent.CreateChannelOverrideTemplateInput{
+			Name: "Template B",
+		}
+		tmpl2, err := service.CreateTemplate(ctx, user.ID, input2)
+		require.NoError(t, err)
+
+		require.Equal(t, "{}", tmpl1.OverrideParameters)
+		require.Equal(t, "{}", tmpl2.OverrideParameters)
+	})
+
 	t.Run("create template successfully", func(t *testing.T) {
 		headerOps := []objects.OverrideOperation{
 			{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"},
