@@ -97,7 +97,7 @@ var (
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
 	// DefaultOverrideParameters holds the default value on creation for the "override_parameters" field.
-	DefaultOverrideParameters string
+	DefaultOverrideParameters func() string
 	// DefaultOverrideHeaders holds the default value on creation for the "override_headers" field.
 	DefaultOverrideHeaders []objects.HeaderEntry
 	// DefaultHeaderOverrideOperations holds the default value on creation for the "header_override_operations" field.
