@@ -35,24 +35,24 @@ FORCE="false"
 YES="false"
 
 print_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1" 1>&2
 }
 
 print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    echo -e "${GREEN}[SUCCESS]${NC} $1" 1>&2
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}[WARNING]${NC} $1" 1>&2
 }
 
 print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" 1>&2
 }
 
 debug() {
     if [[ "$VERBOSE" == "true" ]]; then
-        echo -e "${YELLOW}[DEBUG]${NC} $1"
+        echo -e "${YELLOW}[DEBUG]${NC} $1" 1>&2
     fi
 }
 
