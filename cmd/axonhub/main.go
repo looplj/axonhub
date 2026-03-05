@@ -33,6 +33,7 @@ func main() {
 			return
 		case "help", "--help", "-h":
 			showHelp()
+			return
 		case "build-info":
 			showBuildInfo()
 			return
