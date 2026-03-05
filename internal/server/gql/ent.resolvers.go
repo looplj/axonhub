@@ -73,6 +73,14 @@ func (r *agentResolver) PromptID(ctx context.Context, obj *ent.Agent) (*objects.
 }
 
 // ID is the resolver for the id field.
+func (r *agentHostResolver) ID(ctx context.Context, obj *ent.AgentHost) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgentHost,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *agentInstanceResolver) ID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeAgentInstance,
@@ -88,15 +96,15 @@ func (r *agentInstanceResolver) AgentID(ctx context.Context, obj *ent.AgentInsta
 	}, nil
 }
 
-// AgentRuntimeID is the resolver for the agentRuntimeID field.
-func (r *agentInstanceResolver) AgentRuntimeID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error) {
-	if obj.AgentRuntimeID == nil {
+// AgentHostID is the resolver for the agentHostID field.
+func (r *agentInstanceResolver) AgentHostID(ctx context.Context, obj *ent.AgentInstance) (*objects.GUID, error) {
+	if obj.AgentHostID == nil {
 		//nolint:nilnil // Checked.
 		return nil, nil
 	}
 	return &objects.GUID{
-		Type: ent.TypeAgentRuntime,
-		ID:   *obj.AgentRuntimeID,
+		Type: ent.TypeAgentHost,
+		ID:   *obj.AgentHostID,
 	}, nil
 }
 
@@ -145,14 +153,6 @@ func (r *agentMessageResolver) AgentInstanceID(ctx context.Context, obj *ent.Age
 	return &objects.GUID{
 		Type: ent.TypeAgentInstance,
 		ID:   obj.AgentInstanceID,
-	}, nil
-}
-
-// ID is the resolver for the id field.
-func (r *agentRuntimeResolver) ID(ctx context.Context, obj *ent.AgentRuntime) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeAgentRuntime,
-		ID:   obj.ID,
 	}, nil
 }
 
@@ -562,6 +562,22 @@ func (r *queryResolver) Agents(ctx context.Context, after *entgql.Cursor[int], f
 	)
 }
 
+// AgentHosts is the resolver for the agentHosts field.
+func (r *queryResolver) AgentHosts(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentHostOrder, where *ent.AgentHostWhereInput) (*ent.AgentHostConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultAgentHostOrder.Field
+	}
+
+	return r.client.AgentHost.Query().Paginate(ctx, after, first, before, last,
+		ent.WithAgentHostOrder(orderBy),
+		ent.WithAgentHostFilter(where.Filter),
+	)
+}
+
 // AgentInstances is the resolver for the agentInstances field.
 func (r *queryResolver) AgentInstances(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentInstanceOrder, where *ent.AgentInstanceWhereInput) (*ent.AgentInstanceConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
@@ -607,22 +623,6 @@ func (r *queryResolver) AgentMessages(ctx context.Context, after *entgql.Cursor[
 	return r.client.AgentMessage.Query().Paginate(ctx, after, first, before, last,
 		ent.WithAgentMessageOrder(orderBy),
 		ent.WithAgentMessageFilter(where.Filter),
-	)
-}
-
-// AgentRuntimes is the resolver for the agentRuntimes field.
-func (r *queryResolver) AgentRuntimes(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentRuntimeOrder, where *ent.AgentRuntimeWhereInput) (*ent.AgentRuntimeConnection, error) {
-	if err := validatePaginationArgs(first, last); err != nil {
-		return nil, err
-	}
-
-	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
-		orderBy.Field = ent.DefaultAgentRuntimeOrder.Field
-	}
-
-	return r.client.AgentRuntime.Query().Paginate(ctx, after, first, before, last,
-		ent.WithAgentRuntimeOrder(orderBy),
-		ent.WithAgentRuntimeFilter(where.Filter),
 	)
 }
 
@@ -1349,6 +1349,9 @@ func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 // Agent returns AgentResolver implementation.
 func (r *Resolver) Agent() AgentResolver { return &agentResolver{r} }
 
+// AgentHost returns AgentHostResolver implementation.
+func (r *Resolver) AgentHost() AgentHostResolver { return &agentHostResolver{r} }
+
 // AgentInstance returns AgentInstanceResolver implementation.
 func (r *Resolver) AgentInstance() AgentInstanceResolver { return &agentInstanceResolver{r} }
 
@@ -1357,9 +1360,6 @@ func (r *Resolver) AgentMemory() AgentMemoryResolver { return &agentMemoryResolv
 
 // AgentMessage returns AgentMessageResolver implementation.
 func (r *Resolver) AgentMessage() AgentMessageResolver { return &agentMessageResolver{r} }
-
-// AgentRuntime returns AgentRuntimeResolver implementation.
-func (r *Resolver) AgentRuntime() AgentRuntimeResolver { return &agentRuntimeResolver{r} }
 
 // AgentSkill returns AgentSkillResolver implementation.
 func (r *Resolver) AgentSkill() AgentSkillResolver { return &agentSkillResolver{r} }
@@ -1452,10 +1452,10 @@ func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
 type aPIKeyResolver struct{ *Resolver }
 type agentResolver struct{ *Resolver }
+type agentHostResolver struct{ *Resolver }
 type agentInstanceResolver struct{ *Resolver }
 type agentMemoryResolver struct{ *Resolver }
 type agentMessageResolver struct{ *Resolver }
-type agentRuntimeResolver struct{ *Resolver }
 type agentSkillResolver struct{ *Resolver }
 type agentThreadResolver struct{ *Resolver }
 type agentToolResolver struct{ *Resolver }

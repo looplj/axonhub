@@ -1336,23 +1336,23 @@ extend type Mutation {
 
 ---
 
-## 方案新增：AgentRuntime 与 Cloudflare Sandbox 部署
+## 方案新增：AgentHost 与 Cloudflare Sandbox 部署
 
 本节描述如何将 Agent 部署到 Cloudflare Sandbox Container，实现用户在 Web UI 点击即可部署的体验。
 
-### 1) AgentRuntime 实体设计
+### 1) AgentHost 实体设计
 
-AgentRuntime 是管理员可创建的运行时配置，支持多种部署类型（Docker、Cloudflare Sandbox）。
+AgentHost 是管理员可创建的主机配置，支持多种部署类型（Docker、Cloudflare Sandbox）。
 
 #### 数据模型
 
 ```go
-type AgentRuntime struct {
+type AgentHost struct {
     ID              int
-    Name            string            // Runtime name (unique)
-    Type            RuntimeType       // docker | cf_sandbox
-    Status          RuntimeStatus     // active | inactive | error
-    Endpoint        string            // Runtime endpoint URL
+    Name            string            // Host name (unique)
+    Type            HostType          // docker | cf_sandbox
+    Status          HostStatus        // active | inactive | error
+    Endpoint        string            // Host endpoint URL
     
     // Docker 配置
     DockerHost      string
@@ -1368,7 +1368,7 @@ type AgentRuntime struct {
     CFMaxInstances  int
     CFSleepAfter    string  // e.g., "10m"
     
-    Config          JSONRawMessage    // Runtime-specific config
+    Config          JSONRawMessage    // Host-specific config
     LastError       string
     LastHealthCheck *time.Time
 }
@@ -1380,8 +1380,8 @@ type AgentRuntime struct {
 type AgentInstance struct {
     // ... existing fields ...
     
-    AgentRuntimeID  *int              // FK to AgentRuntime (nullable = unknown/CLI started)
-    Deployment      JSONRawMessage    // Deployment info (runtime-specific)
+    AgentHostID     *int              // FK to AgentHost (nullable = unknown/CLI started)
+    Deployment      JSONRawMessage    // Deployment info (host-specific)
     
     // Cloudflare specific
     CFWorkerURL     string
@@ -1429,17 +1429,17 @@ type AgentInstance struct {
 
 ### 3) GraphQL API
 
-#### 创建 AgentRuntime（管理员）
+#### 创建 AgentHost（管理员）
 
 ```graphql
-input DockerRuntimeConfigInput {
+input DockerHostConfigInput {
     host: String!
     certPath: String
     caPath: String
     keyPath: String
 }
 
-input CFSandboxRuntimeConfigInput {
+input CFSandboxHostConfigInput {
     accountID: String!
     apiToken: String!
     workerName: String!
@@ -1448,22 +1448,22 @@ input CFSandboxRuntimeConfigInput {
     sleepAfter: String = "10m"
 }
 
-input CreateAgentRuntimeInput {
+input CreateAgentHostInput {
     name: String!
-    type: AgentRuntimeType!
+    type: AgentHostType!
     endpoint: String
-    dockerConfig: DockerRuntimeConfigInput
-    cfSandboxConfig: CFSandboxRuntimeConfigInput
+    dockerConfig: DockerHostConfigInput
+    cfSandboxConfig: CFSandboxHostConfigInput
 }
 
 extend type Mutation {
-    createAgentRuntime(input: CreateAgentRuntimeInput!): AgentRuntime!
-    updateAgentRuntime(id: ID!, input: UpdateAgentRuntimeInput!): AgentRuntime!
-    deleteAgentRuntime(id: ID!): Boolean!
-    testAgentRuntimeConnection(id: ID!): AgentRuntimeTestResult!
+    createAgentHost(input: CreateAgentHostInput!): AgentHost!
+    updateAgentHost(id: ID!, input: UpdateAgentHostInput!): AgentHost!
+    deleteAgentHost(id: ID!): Boolean!
+    testAgentHostConnection(id: ID!): AgentHostTestResult!
 }
 
-type AgentRuntimeTestResult {
+type AgentHostTestResult {
     success: Boolean!
     error: String
     latency: Int
@@ -1514,10 +1514,10 @@ type AgentRuntimeTestResult {
 
 ### 6) 实现文件
 
-- Ent Schema: [internal/ent/schema/agent_runtime.go](file:///Users/September_1/Projects/AI/axonhub/internal/ent/schema/agent_runtime.go)
+- Ent Schema: [internal/ent/schema/agent_host.go](file:///Users/September_1/Projects/AI/axonhub/internal/ent/schema/agent_host.go)
 - Cloudflare Client: [internal/cloudflare/client.go](file:///Users/September_1/Projects/AI/axonhub/internal/cloudflare/client.go)
-- AgentRuntime Service: [internal/server/biz/agent_runtime_mgmt.go](file:///Users/September_1/Projects/AI/axonhub/internal/server/biz/agent_runtime_mgmt.go)
-- GraphQL Schema: [internal/server/gql/agent_runtime.graphql](file:///Users/September_1/Projects/AI/axonhub/internal/server/gql/agent_runtime.graphql)
+- AgentHost Service: [internal/server/biz/](file:///Users/September_1/Projects/AI/axonhub/internal/server/biz/)
+- GraphQL Schema: [internal/server/gql/agent_host.graphql](file:///Users/September_1/Projects/AI/axonhub/internal/server/gql/agent_host.graphql)
 - Worker Gateway: [deployments/cloudflare/worker/src/index.ts](file:///Users/September_1/Projects/AI/axonhub/deployments/cloudflare/worker/src/index.ts)
 - Dockerfile: [deployments/cloudflare/Dockerfile.axonclaw](file:///Users/September_1/Projects/AI/axonhub/deployments/cloudflare/Dockerfile.axonclaw)
 

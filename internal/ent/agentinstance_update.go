@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -59,23 +59,23 @@ func (_u *AgentInstanceUpdate) AddDeletedAt(v int) *AgentInstanceUpdate {
 	return _u
 }
 
-// SetAgentRuntimeID sets the "agent_runtime_id" field.
-func (_u *AgentInstanceUpdate) SetAgentRuntimeID(v int) *AgentInstanceUpdate {
-	_u.mutation.SetAgentRuntimeID(v)
+// SetAgentHostID sets the "agent_host_id" field.
+func (_u *AgentInstanceUpdate) SetAgentHostID(v int) *AgentInstanceUpdate {
+	_u.mutation.SetAgentHostID(v)
 	return _u
 }
 
-// SetNillableAgentRuntimeID sets the "agent_runtime_id" field if the given value is not nil.
-func (_u *AgentInstanceUpdate) SetNillableAgentRuntimeID(v *int) *AgentInstanceUpdate {
+// SetNillableAgentHostID sets the "agent_host_id" field if the given value is not nil.
+func (_u *AgentInstanceUpdate) SetNillableAgentHostID(v *int) *AgentInstanceUpdate {
 	if v != nil {
-		_u.SetAgentRuntimeID(*v)
+		_u.SetAgentHostID(*v)
 	}
 	return _u
 }
 
-// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
-func (_u *AgentInstanceUpdate) ClearAgentRuntimeID() *AgentInstanceUpdate {
-	_u.mutation.ClearAgentRuntimeID()
+// ClearAgentHostID clears the value of the "agent_host_id" field.
+func (_u *AgentInstanceUpdate) ClearAgentHostID() *AgentInstanceUpdate {
+	_u.mutation.ClearAgentHostID()
 	return _u
 }
 
@@ -169,23 +169,23 @@ func (_u *AgentInstanceUpdate) SetNillableStatus(v *agentinstance.Status) *Agent
 	return _u
 }
 
-// SetRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID.
-func (_u *AgentInstanceUpdate) SetRuntimeID(id int) *AgentInstanceUpdate {
-	_u.mutation.SetRuntimeID(id)
+// SetHostID sets the "host" edge to the AgentHost entity by ID.
+func (_u *AgentInstanceUpdate) SetHostID(id int) *AgentInstanceUpdate {
+	_u.mutation.SetHostID(id)
 	return _u
 }
 
-// SetNillableRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID if the given value is not nil.
-func (_u *AgentInstanceUpdate) SetNillableRuntimeID(id *int) *AgentInstanceUpdate {
+// SetNillableHostID sets the "host" edge to the AgentHost entity by ID if the given value is not nil.
+func (_u *AgentInstanceUpdate) SetNillableHostID(id *int) *AgentInstanceUpdate {
 	if id != nil {
-		_u = _u.SetRuntimeID(*id)
+		_u = _u.SetHostID(*id)
 	}
 	return _u
 }
 
-// SetRuntime sets the "runtime" edge to the AgentRuntime entity.
-func (_u *AgentInstanceUpdate) SetRuntime(v *AgentRuntime) *AgentInstanceUpdate {
-	return _u.SetRuntimeID(v.ID)
+// SetHost sets the "host" edge to the AgentHost entity.
+func (_u *AgentInstanceUpdate) SetHost(v *AgentHost) *AgentInstanceUpdate {
+	return _u.SetHostID(v.ID)
 }
 
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
@@ -208,9 +208,9 @@ func (_u *AgentInstanceUpdate) Mutation() *AgentInstanceMutation {
 	return _u.mutation
 }
 
-// ClearRuntime clears the "runtime" edge to the AgentRuntime entity.
-func (_u *AgentInstanceUpdate) ClearRuntime() *AgentInstanceUpdate {
-	_u.mutation.ClearRuntime()
+// ClearHost clears the "host" edge to the AgentHost entity.
+func (_u *AgentInstanceUpdate) ClearHost() *AgentInstanceUpdate {
+	_u.mutation.ClearHost()
 	return _u
 }
 
@@ -341,28 +341,28 @@ func (_u *AgentInstanceUpdate) sqlSave(ctx context.Context) (_node int, err erro
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(agentinstance.FieldStatus, field.TypeEnum, value)
 	}
-	if _u.mutation.RuntimeCleared() {
+	if _u.mutation.HostCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agentinstance.RuntimeTable,
-			Columns: []string{agentinstance.RuntimeColumn},
+			Table:   agentinstance.HostTable,
+			Columns: []string{agentinstance.HostColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(agenthost.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RuntimeIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.HostIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agentinstance.RuntimeTable,
-			Columns: []string{agentinstance.RuntimeColumn},
+			Table:   agentinstance.HostTable,
+			Columns: []string{agentinstance.HostColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(agenthost.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -464,23 +464,23 @@ func (_u *AgentInstanceUpdateOne) AddDeletedAt(v int) *AgentInstanceUpdateOne {
 	return _u
 }
 
-// SetAgentRuntimeID sets the "agent_runtime_id" field.
-func (_u *AgentInstanceUpdateOne) SetAgentRuntimeID(v int) *AgentInstanceUpdateOne {
-	_u.mutation.SetAgentRuntimeID(v)
+// SetAgentHostID sets the "agent_host_id" field.
+func (_u *AgentInstanceUpdateOne) SetAgentHostID(v int) *AgentInstanceUpdateOne {
+	_u.mutation.SetAgentHostID(v)
 	return _u
 }
 
-// SetNillableAgentRuntimeID sets the "agent_runtime_id" field if the given value is not nil.
-func (_u *AgentInstanceUpdateOne) SetNillableAgentRuntimeID(v *int) *AgentInstanceUpdateOne {
+// SetNillableAgentHostID sets the "agent_host_id" field if the given value is not nil.
+func (_u *AgentInstanceUpdateOne) SetNillableAgentHostID(v *int) *AgentInstanceUpdateOne {
 	if v != nil {
-		_u.SetAgentRuntimeID(*v)
+		_u.SetAgentHostID(*v)
 	}
 	return _u
 }
 
-// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
-func (_u *AgentInstanceUpdateOne) ClearAgentRuntimeID() *AgentInstanceUpdateOne {
-	_u.mutation.ClearAgentRuntimeID()
+// ClearAgentHostID clears the value of the "agent_host_id" field.
+func (_u *AgentInstanceUpdateOne) ClearAgentHostID() *AgentInstanceUpdateOne {
+	_u.mutation.ClearAgentHostID()
 	return _u
 }
 
@@ -574,23 +574,23 @@ func (_u *AgentInstanceUpdateOne) SetNillableStatus(v *agentinstance.Status) *Ag
 	return _u
 }
 
-// SetRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID.
-func (_u *AgentInstanceUpdateOne) SetRuntimeID(id int) *AgentInstanceUpdateOne {
-	_u.mutation.SetRuntimeID(id)
+// SetHostID sets the "host" edge to the AgentHost entity by ID.
+func (_u *AgentInstanceUpdateOne) SetHostID(id int) *AgentInstanceUpdateOne {
+	_u.mutation.SetHostID(id)
 	return _u
 }
 
-// SetNillableRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID if the given value is not nil.
-func (_u *AgentInstanceUpdateOne) SetNillableRuntimeID(id *int) *AgentInstanceUpdateOne {
+// SetNillableHostID sets the "host" edge to the AgentHost entity by ID if the given value is not nil.
+func (_u *AgentInstanceUpdateOne) SetNillableHostID(id *int) *AgentInstanceUpdateOne {
 	if id != nil {
-		_u = _u.SetRuntimeID(*id)
+		_u = _u.SetHostID(*id)
 	}
 	return _u
 }
 
-// SetRuntime sets the "runtime" edge to the AgentRuntime entity.
-func (_u *AgentInstanceUpdateOne) SetRuntime(v *AgentRuntime) *AgentInstanceUpdateOne {
-	return _u.SetRuntimeID(v.ID)
+// SetHost sets the "host" edge to the AgentHost entity.
+func (_u *AgentInstanceUpdateOne) SetHost(v *AgentHost) *AgentInstanceUpdateOne {
+	return _u.SetHostID(v.ID)
 }
 
 // AddMessageIDs adds the "messages" edge to the AgentMessage entity by IDs.
@@ -613,9 +613,9 @@ func (_u *AgentInstanceUpdateOne) Mutation() *AgentInstanceMutation {
 	return _u.mutation
 }
 
-// ClearRuntime clears the "runtime" edge to the AgentRuntime entity.
-func (_u *AgentInstanceUpdateOne) ClearRuntime() *AgentInstanceUpdateOne {
-	_u.mutation.ClearRuntime()
+// ClearHost clears the "host" edge to the AgentHost entity.
+func (_u *AgentInstanceUpdateOne) ClearHost() *AgentInstanceUpdateOne {
+	_u.mutation.ClearHost()
 	return _u
 }
 
@@ -776,28 +776,28 @@ func (_u *AgentInstanceUpdateOne) sqlSave(ctx context.Context) (_node *AgentInst
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(agentinstance.FieldStatus, field.TypeEnum, value)
 	}
-	if _u.mutation.RuntimeCleared() {
+	if _u.mutation.HostCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agentinstance.RuntimeTable,
-			Columns: []string{agentinstance.RuntimeColumn},
+			Table:   agentinstance.HostTable,
+			Columns: []string{agentinstance.HostColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(agenthost.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RuntimeIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.HostIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agentinstance.RuntimeTable,
-			Columns: []string{agentinstance.RuntimeColumn},
+			Table:   agentinstance.HostTable,
+			Columns: []string{agentinstance.HostColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(agenthost.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -39,7 +39,7 @@ type Resolver struct {
 	channelProbeService            *biz.ChannelProbeService
 	promptService                  *biz.PromptService
 	agentService                   *biz.AgentService
-	agentRuntimeService            *biz.AgentRuntimeService
+	agentHostService               *biz.AgentHostService
 	agentDeployService             *biz.AgentDeployService
 	agentBootstrapService          *biz.AgentBootstrapService
 	providerQuotaService           *biz.ProviderQuotaService
@@ -69,7 +69,7 @@ func NewSchema(
 	channelProbeService *biz.ChannelProbeService,
 	promptService *biz.PromptService,
 	agentService *biz.AgentService,
-	agentRuntimeService *biz.AgentRuntimeService,
+	agentHostService *biz.AgentHostService,
 	agentDeployService *biz.AgentDeployService,
 	agentBootstrapService *biz.AgentBootstrapService,
 	providerQuotaService *biz.ProviderQuotaService,
@@ -97,7 +97,7 @@ func NewSchema(
 			channelProbeService:            channelProbeService,
 			promptService:                  promptService,
 			agentService:                   agentService,
-			agentRuntimeService:            agentRuntimeService,
+			agentHostService:               agentHostService,
 			agentDeployService:             agentDeployService,
 			agentBootstrapService:          agentBootstrapService,
 			providerQuotaService:           providerQuotaService,

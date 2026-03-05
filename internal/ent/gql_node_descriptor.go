@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -391,6 +391,108 @@ func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
 }
 
 // Node implements Noder interface
+func (_m *AgentHost) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "AgentHost",
+		Fields: make([]*Field, 10),
+		Edges:  make([]*Edge, 1),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Type); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "agenthost.Type",
+		Name:  "type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "agenthost.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Addr); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "string",
+		Name:  "addr",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.User); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "string",
+		Name:  "user",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AuthMethod); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "agenthost.AuthMethod",
+		Name:  "auth_method",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Password); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "string",
+		Name:  "password",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SSHPrivateKey); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "string",
+		Name:  "ssh_private_key",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "AgentInstance",
+		Name: "instances",
+	}
+	err = _m.QueryInstances().
+		Select(agentinstance.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
 func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
@@ -431,12 +533,12 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "agent_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.AgentRuntimeID); err != nil {
+	if buf, err = json.Marshal(_m.AgentHostID); err != nil {
 		return nil, err
 	}
 	node.Fields[4] = &Field{
 		Type:  "int",
-		Name:  "agent_runtime_id",
+		Name:  "agent_host_id",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.Name); err != nil {
@@ -506,11 +608,11 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Edges[1] = &Edge{
-		Type: "AgentRuntime",
-		Name: "runtime",
+		Type: "AgentHost",
+		Name: "host",
 	}
-	err = _m.QueryRuntime().
-		Select(agentruntime.FieldID).
+	err = _m.QueryHost().
+		Select(agenthost.FieldID).
 		Scan(ctx, &node.Edges[1].IDs)
 	if err != nil {
 		return nil, err
@@ -754,108 +856,6 @@ func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
 	err = _m.QueryAgentInstance().
 		Select(agentinstance.FieldID).
 		Scan(ctx, &node.Edges[1].IDs)
-	if err != nil {
-		return nil, err
-	}
-	return node, nil
-}
-
-// Node implements Noder interface
-func (_m *AgentRuntime) Node(ctx context.Context) (node *Node, err error) {
-	node = &Node{
-		ID:     _m.ID,
-		Type:   "AgentRuntime",
-		Fields: make([]*Field, 10),
-		Edges:  make([]*Edge, 1),
-	}
-	var buf []byte
-	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
-		return nil, err
-	}
-	node.Fields[0] = &Field{
-		Type:  "time.Time",
-		Name:  "created_at",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
-		return nil, err
-	}
-	node.Fields[1] = &Field{
-		Type:  "time.Time",
-		Name:  "updated_at",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.Name); err != nil {
-		return nil, err
-	}
-	node.Fields[2] = &Field{
-		Type:  "string",
-		Name:  "name",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.Type); err != nil {
-		return nil, err
-	}
-	node.Fields[3] = &Field{
-		Type:  "agentruntime.Type",
-		Name:  "type",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.Status); err != nil {
-		return nil, err
-	}
-	node.Fields[4] = &Field{
-		Type:  "agentruntime.Status",
-		Name:  "status",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.Host); err != nil {
-		return nil, err
-	}
-	node.Fields[5] = &Field{
-		Type:  "string",
-		Name:  "host",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.User); err != nil {
-		return nil, err
-	}
-	node.Fields[6] = &Field{
-		Type:  "string",
-		Name:  "user",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.AuthMethod); err != nil {
-		return nil, err
-	}
-	node.Fields[7] = &Field{
-		Type:  "agentruntime.AuthMethod",
-		Name:  "auth_method",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.Password); err != nil {
-		return nil, err
-	}
-	node.Fields[8] = &Field{
-		Type:  "string",
-		Name:  "password",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.SSHPrivateKey); err != nil {
-		return nil, err
-	}
-	node.Fields[9] = &Field{
-		Type:  "string",
-		Name:  "ssh_private_key",
-		Value: string(buf),
-	}
-	node.Edges[0] = &Edge{
-		Type: "AgentInstance",
-		Name: "instances",
-	}
-	err = _m.QueryInstances().
-		Select(agentinstance.FieldID).
-		Scan(ctx, &node.Edges[0].IDs)
 	if err != nil {
 		return nil, err
 	}

@@ -33,6 +33,18 @@ func (f AgentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AgentMutation", m)
 }
 
+// The AgentHostFunc type is an adapter to allow the use of ordinary
+// function as AgentHost mutator.
+type AgentHostFunc func(context.Context, *ent.AgentHostMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AgentHostFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AgentHostMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AgentHostMutation", m)
+}
+
 // The AgentInstanceFunc type is an adapter to allow the use of ordinary
 // function as AgentInstance mutator.
 type AgentInstanceFunc func(context.Context, *ent.AgentInstanceMutation) (ent.Value, error)
@@ -67,18 +79,6 @@ func (f AgentMessageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AgentMessageMutation", m)
-}
-
-// The AgentRuntimeFunc type is an adapter to allow the use of ordinary
-// function as AgentRuntime mutator.
-type AgentRuntimeFunc func(context.Context, *ent.AgentRuntimeMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f AgentRuntimeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.AgentRuntimeMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AgentRuntimeMutation", m)
 }
 
 // The AgentSkillFunc type is an adapter to allow the use of ordinary

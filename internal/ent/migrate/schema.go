@@ -110,6 +110,39 @@ var (
 			},
 		},
 	}
+	// AgentHostsColumns holds the columns for the "agent_hosts" table.
+	AgentHostsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"vm", "docker", "local"}, Default: "vm"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive"}, Default: "active"},
+		{Name: "addr", Type: field.TypeString, Default: ""},
+		{Name: "user", Type: field.TypeString, Default: ""},
+		{Name: "auth_method", Type: field.TypeEnum, Enums: []string{"password", "ssh_key"}, Default: "password"},
+		{Name: "password", Type: field.TypeString, Default: ""},
+		{Name: "ssh_private_key", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "text"}},
+	}
+	// AgentHostsTable holds the schema information for the "agent_hosts" table.
+	AgentHostsTable = &schema.Table{
+		Name:       "agent_hosts",
+		Columns:    AgentHostsColumns,
+		PrimaryKey: []*schema.Column{AgentHostsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_hosts_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{AgentHostsColumns[4], AgentHostsColumns[3]},
+			},
+			{
+				Name:    "agent_hosts_by_type",
+				Unique:  false,
+				Columns: []*schema.Column{AgentHostsColumns[5], AgentHostsColumns[3]},
+			},
+		},
+	}
 	// AgentInstancesColumns holds the columns for the "agent_instances" table.
 	AgentInstancesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -125,7 +158,7 @@ var (
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "stopped", "error"}, Default: "running"},
 		{Name: "api_key_id", Type: field.TypeInt, Unique: true},
 		{Name: "agent_id", Type: field.TypeInt},
-		{Name: "agent_runtime_id", Type: field.TypeInt, Nullable: true},
+		{Name: "agent_host_id", Type: field.TypeInt, Nullable: true},
 	}
 	// AgentInstancesTable holds the schema information for the "agent_instances" table.
 	AgentInstancesTable = &schema.Table{
@@ -146,9 +179,9 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "agent_instances_agent_runtimes_instances",
+				Symbol:     "agent_instances_agent_hosts_instances",
 				Columns:    []*schema.Column{AgentInstancesColumns[13]},
-				RefColumns: []*schema.Column{AgentRuntimesColumns[0]},
+				RefColumns: []*schema.Column{AgentHostsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 		},
@@ -256,39 +289,6 @@ var (
 				Name:    "agent_messages_by_agent_id_correlation_id",
 				Unique:  false,
 				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[9], AgentMessagesColumns[3]},
-			},
-		},
-	}
-	// AgentRuntimesColumns holds the columns for the "agent_runtimes" table.
-	AgentRuntimesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "name", Type: field.TypeString},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"vm", "docker", "local"}, Default: "vm"},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive"}, Default: "active"},
-		{Name: "host", Type: field.TypeString, Default: ""},
-		{Name: "user", Type: field.TypeString, Default: ""},
-		{Name: "auth_method", Type: field.TypeEnum, Enums: []string{"password", "ssh_key"}, Default: "password"},
-		{Name: "password", Type: field.TypeString, Default: ""},
-		{Name: "ssh_private_key", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "text"}},
-	}
-	// AgentRuntimesTable holds the schema information for the "agent_runtimes" table.
-	AgentRuntimesTable = &schema.Table{
-		Name:       "agent_runtimes",
-		Columns:    AgentRuntimesColumns,
-		PrimaryKey: []*schema.Column{AgentRuntimesColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "agent_runtimes_by_name",
-				Unique:  true,
-				Columns: []*schema.Column{AgentRuntimesColumns[4], AgentRuntimesColumns[3]},
-			},
-			{
-				Name:    "agent_runtimes_by_type",
-				Unique:  false,
-				Columns: []*schema.Column{AgentRuntimesColumns[5], AgentRuntimesColumns[3]},
 			},
 		},
 	}
@@ -1407,10 +1407,10 @@ var (
 	Tables = []*schema.Table{
 		APIKeysTable,
 		AgentsTable,
+		AgentHostsTable,
 		AgentInstancesTable,
 		AgentMemoriesTable,
 		AgentMessagesTable,
-		AgentRuntimesTable,
 		AgentSkillsTable,
 		AgentThreadsTable,
 		AgentToolsTable,
@@ -1449,7 +1449,7 @@ func init() {
 	AgentsTable.ForeignKeys[2].RefTable = UsersTable
 	AgentInstancesTable.ForeignKeys[0].RefTable = APIKeysTable
 	AgentInstancesTable.ForeignKeys[1].RefTable = AgentsTable
-	AgentInstancesTable.ForeignKeys[2].RefTable = AgentRuntimesTable
+	AgentInstancesTable.ForeignKeys[2].RefTable = AgentHostsTable
 	AgentMemoriesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[1].RefTable = AgentInstancesTable

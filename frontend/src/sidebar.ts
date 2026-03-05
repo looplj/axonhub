@@ -85,8 +85,8 @@ export function useSidebarData(): SidebarData {
           icon: IconRobot,
         } as NavLink,
         {
-          title: t('sidebar.items.agentRuntimes'),
-          url: '/agent-runtimes',
+          title: t('sidebar.items.agentHosts'),
+          url: '/agent-hosts',
           icon: IconServer,
         } as NavLink,
         {

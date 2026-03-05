@@ -15,10 +15,10 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/hashicorp/go-multierror"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -65,6 +65,11 @@ var agentImplementors = []string{"Agent", "Node"}
 // IsNode implements the Node interface check for GQLGen.
 func (*Agent) IsNode() {}
 
+var agenthostImplementors = []string{"AgentHost", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentHost) IsNode() {}
+
 var agentinstanceImplementors = []string{"AgentInstance", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
@@ -79,11 +84,6 @@ var agentmessageImplementors = []string{"AgentMessage", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*AgentMessage) IsNode() {}
-
-var agentruntimeImplementors = []string{"AgentRuntime", "Node"}
-
-// IsNode implements the Node interface check for GQLGen.
-func (*AgentRuntime) IsNode() {}
 
 var agentskillImplementors = []string{"AgentSkill", "Node"}
 
@@ -291,6 +291,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			}
 		}
 		return query.Only(ctx)
+	case agenthost.Table:
+		query := c.AgentHost.Query().
+			Where(agenthost.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agenthostImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
 	case agentinstance.Table:
 		query := c.AgentInstance.Query().
 			Where(agentinstance.ID(id))
@@ -314,15 +323,6 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(agentmessage.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentmessageImplementors...); err != nil {
-				return nil, err
-			}
-		}
-		return query.Only(ctx)
-	case agentruntime.Table:
-		query := c.AgentRuntime.Query().
-			Where(agentruntime.ID(id))
-		if fc := graphql.GetFieldContext(ctx); fc != nil {
-			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentruntimeImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -666,6 +666,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 				*noder = node
 			}
 		}
+	case agenthost.Table:
+		query := c.AgentHost.Query().
+			Where(agenthost.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agenthostImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
 	case agentinstance.Table:
 		query := c.AgentInstance.Query().
 			Where(agentinstance.IDIn(ids...))
@@ -702,22 +718,6 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.AgentMessage.Query().
 			Where(agentmessage.IDIn(ids...))
 		query, err := query.CollectFields(ctx, agentmessageImplementors...)
-		if err != nil {
-			return nil, err
-		}
-		nodes, err := query.All(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, node := range nodes {
-			for _, noder := range idmap[node.ID] {
-				*noder = node
-			}
-		}
-	case agentruntime.Table:
-		query := c.AgentRuntime.Query().
-			Where(agentruntime.IDIn(ids...))
-		query, err := query.CollectFields(ctx, agentruntimeImplementors...)
 		if err != nil {
 			return nil, err
 		}

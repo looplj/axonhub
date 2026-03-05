@@ -7,7 +7,7 @@
   "sidebar.items.models": "模型",
   "sidebar.items.prompts": "提示词",
   "sidebar.items.agents": "智能体",
-  "sidebar.items.agentRuntimes": "智能体运行时",
+  "sidebar.items.agentHosts": "智能体主机",
   "sidebar.items.dataStorages": "数据存储",
   "sidebar.items.users": "用户",
   "sidebar.items.roles": "角色",

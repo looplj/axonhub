@@ -62,7 +62,7 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
-        path: '/agent-runtimes',
+        path: '/agent-hosts',
         requiredScopes: ['read_agents'],
         mode: 'hidden',
       },

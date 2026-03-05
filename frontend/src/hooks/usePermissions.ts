@@ -179,8 +179,8 @@ export function usePermissions() {
     [hasScope]
   );
 
-  // Common permission checks for agent runtime operations
-  const agentRuntimesPermissions = useMemo(
+  // Common permission checks for agent host operations
+  const agentHostsPermissions = useMemo(
     () => ({
       canRead: hasScope('read_agents'),
       canWrite: hasScope('write_agents'),
@@ -205,6 +205,6 @@ export function usePermissions() {
     apiKeyPermissions,
     modelPermissions,
     projectPermissions,
-    agentRuntimesPermissions,
+    agentHostsPermissions,
   };
 }

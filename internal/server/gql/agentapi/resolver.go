@@ -13,10 +13,10 @@ type Resolver struct {
 	agentBootstrapService *biz.AgentBootstrapService
 }
 
-func NewSchema(agentRuntimeService *biz.AgentBootstrapService) graphql.ExecutableSchema {
+func NewSchema(agentHostService *biz.AgentBootstrapService) graphql.ExecutableSchema {
 	return NewExecutableSchema(Config{
 		Resolvers: &Resolver{
-			agentBootstrapService: agentRuntimeService,
+			agentBootstrapService: agentHostService,
 		},
 	})
 }

@@ -15,7 +15,7 @@ func isWindows() bool {
 	return runtime.GOOS == "windows"
 }
 
-func (svc *AgentDeployService) deployToLocal(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
+func (svc *AgentDeployService) deployToLocal(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, directory, baseURL string) error {
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", directory, err)
 	}

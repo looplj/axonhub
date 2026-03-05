@@ -16,10 +16,10 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -70,7 +70,7 @@ type Dependencies struct {
 	ChannelProbeService            *biz.ChannelProbeService
 	PromptService                  *biz.PromptService
 	AgentService                   *biz.AgentService
-	AgentRuntimeService            *biz.AgentRuntimeService
+	AgentHostService               *biz.AgentHostService
 	AgentDeployService             *biz.AgentDeployService
 	AgentBootstrapService          *biz.AgentBootstrapService
 	ProviderQuotaService           *biz.ProviderQuotaService
@@ -103,7 +103,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.ChannelProbeService,
 			deps.PromptService,
 			deps.AgentService,
-			deps.AgentRuntimeService,
+			deps.AgentHostService,
 			deps.AgentDeployService,
 			deps.AgentBootstrapService,
 			deps.ProviderQuotaService,
@@ -172,7 +172,7 @@ var guidTypeToNodeType = map[string]string{
 	ent.TypeAgentInstance:           agentinstance.Table,
 	ent.TypeAgentMessage:            agentmessage.Table,
 	ent.TypeAgentMemory:             agentmemory.Table,
-	ent.TypeAgentRuntime:            agentruntime.Table,
+	ent.TypeAgentHost:               agenthost.Table,
 }
 
 func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (*ent.Channel, error) {

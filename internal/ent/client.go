@@ -16,10 +16,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -58,14 +58,14 @@ type Client struct {
 	APIKey *APIKeyClient
 	// Agent is the client for interacting with the Agent builders.
 	Agent *AgentClient
+	// AgentHost is the client for interacting with the AgentHost builders.
+	AgentHost *AgentHostClient
 	// AgentInstance is the client for interacting with the AgentInstance builders.
 	AgentInstance *AgentInstanceClient
 	// AgentMemory is the client for interacting with the AgentMemory builders.
 	AgentMemory *AgentMemoryClient
 	// AgentMessage is the client for interacting with the AgentMessage builders.
 	AgentMessage *AgentMessageClient
-	// AgentRuntime is the client for interacting with the AgentRuntime builders.
-	AgentRuntime *AgentRuntimeClient
 	// AgentSkill is the client for interacting with the AgentSkill builders.
 	AgentSkill *AgentSkillClient
 	// AgentThread is the client for interacting with the AgentThread builders.
@@ -133,10 +133,10 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.APIKey = NewAPIKeyClient(c.config)
 	c.Agent = NewAgentClient(c.config)
+	c.AgentHost = NewAgentHostClient(c.config)
 	c.AgentInstance = NewAgentInstanceClient(c.config)
 	c.AgentMemory = NewAgentMemoryClient(c.config)
 	c.AgentMessage = NewAgentMessageClient(c.config)
-	c.AgentRuntime = NewAgentRuntimeClient(c.config)
 	c.AgentSkill = NewAgentSkillClient(c.config)
 	c.AgentThread = NewAgentThreadClient(c.config)
 	c.AgentTool = NewAgentToolClient(c.config)
@@ -257,10 +257,10 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:                   cfg,
 		APIKey:                   NewAPIKeyClient(cfg),
 		Agent:                    NewAgentClient(cfg),
+		AgentHost:                NewAgentHostClient(cfg),
 		AgentInstance:            NewAgentInstanceClient(cfg),
 		AgentMemory:              NewAgentMemoryClient(cfg),
 		AgentMessage:             NewAgentMessageClient(cfg),
-		AgentRuntime:             NewAgentRuntimeClient(cfg),
 		AgentSkill:               NewAgentSkillClient(cfg),
 		AgentThread:              NewAgentThreadClient(cfg),
 		AgentTool:                NewAgentToolClient(cfg),
@@ -308,10 +308,10 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:                   cfg,
 		APIKey:                   NewAPIKeyClient(cfg),
 		Agent:                    NewAgentClient(cfg),
+		AgentHost:                NewAgentHostClient(cfg),
 		AgentInstance:            NewAgentInstanceClient(cfg),
 		AgentMemory:              NewAgentMemoryClient(cfg),
 		AgentMessage:             NewAgentMessageClient(cfg),
-		AgentRuntime:             NewAgentRuntimeClient(cfg),
 		AgentSkill:               NewAgentSkillClient(cfg),
 		AgentThread:              NewAgentThreadClient(cfg),
 		AgentTool:                NewAgentToolClient(cfg),
@@ -367,10 +367,10 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.APIKey, c.Agent, c.AgentInstance, c.AgentMemory, c.AgentMessage,
-		c.AgentRuntime, c.AgentSkill, c.AgentThread, c.AgentTool, c.Channel,
-		c.ChannelModelPrice, c.ChannelModelPriceVersion, c.ChannelOverrideTemplate,
-		c.ChannelProbe, c.DataStorage, c.Model, c.Project, c.Prompt, c.PromptVersion,
+		c.APIKey, c.Agent, c.AgentHost, c.AgentInstance, c.AgentMemory, c.AgentMessage,
+		c.AgentSkill, c.AgentThread, c.AgentTool, c.Channel, c.ChannelModelPrice,
+		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
+		c.DataStorage, c.Model, c.Project, c.Prompt, c.PromptVersion,
 		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.Skill,
 		c.System, c.Thread, c.Tool, c.Trace, c.UsageLog, c.User, c.UserProject,
 		c.UserRole,
@@ -383,10 +383,10 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.APIKey, c.Agent, c.AgentInstance, c.AgentMemory, c.AgentMessage,
-		c.AgentRuntime, c.AgentSkill, c.AgentThread, c.AgentTool, c.Channel,
-		c.ChannelModelPrice, c.ChannelModelPriceVersion, c.ChannelOverrideTemplate,
-		c.ChannelProbe, c.DataStorage, c.Model, c.Project, c.Prompt, c.PromptVersion,
+		c.APIKey, c.Agent, c.AgentHost, c.AgentInstance, c.AgentMemory, c.AgentMessage,
+		c.AgentSkill, c.AgentThread, c.AgentTool, c.Channel, c.ChannelModelPrice,
+		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
+		c.DataStorage, c.Model, c.Project, c.Prompt, c.PromptVersion,
 		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.Skill,
 		c.System, c.Thread, c.Tool, c.Trace, c.UsageLog, c.User, c.UserProject,
 		c.UserRole,
@@ -402,14 +402,14 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.APIKey.mutate(ctx, m)
 	case *AgentMutation:
 		return c.Agent.mutate(ctx, m)
+	case *AgentHostMutation:
+		return c.AgentHost.mutate(ctx, m)
 	case *AgentInstanceMutation:
 		return c.AgentInstance.mutate(ctx, m)
 	case *AgentMemoryMutation:
 		return c.AgentMemory.mutate(ctx, m)
 	case *AgentMessageMutation:
 		return c.AgentMessage.mutate(ctx, m)
-	case *AgentRuntimeMutation:
-		return c.AgentRuntime.mutate(ctx, m)
 	case *AgentSkillMutation:
 		return c.AgentSkill.mutate(ctx, m)
 	case *AgentThreadMutation:
@@ -945,6 +945,157 @@ func (c *AgentClient) mutate(ctx context.Context, m *AgentMutation) (Value, erro
 	}
 }
 
+// AgentHostClient is a client for the AgentHost schema.
+type AgentHostClient struct {
+	config
+}
+
+// NewAgentHostClient returns a client for the AgentHost from the given config.
+func NewAgentHostClient(c config) *AgentHostClient {
+	return &AgentHostClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `agenthost.Hooks(f(g(h())))`.
+func (c *AgentHostClient) Use(hooks ...Hook) {
+	c.hooks.AgentHost = append(c.hooks.AgentHost, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `agenthost.Intercept(f(g(h())))`.
+func (c *AgentHostClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AgentHost = append(c.inters.AgentHost, interceptors...)
+}
+
+// Create returns a builder for creating a AgentHost entity.
+func (c *AgentHostClient) Create() *AgentHostCreate {
+	mutation := newAgentHostMutation(c.config, OpCreate)
+	return &AgentHostCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AgentHost entities.
+func (c *AgentHostClient) CreateBulk(builders ...*AgentHostCreate) *AgentHostCreateBulk {
+	return &AgentHostCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AgentHostClient) MapCreateBulk(slice any, setFunc func(*AgentHostCreate, int)) *AgentHostCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AgentHostCreateBulk{err: fmt.Errorf("calling to AgentHostClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AgentHostCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AgentHostCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AgentHost.
+func (c *AgentHostClient) Update() *AgentHostUpdate {
+	mutation := newAgentHostMutation(c.config, OpUpdate)
+	return &AgentHostUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AgentHostClient) UpdateOne(_m *AgentHost) *AgentHostUpdateOne {
+	mutation := newAgentHostMutation(c.config, OpUpdateOne, withAgentHost(_m))
+	return &AgentHostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AgentHostClient) UpdateOneID(id int) *AgentHostUpdateOne {
+	mutation := newAgentHostMutation(c.config, OpUpdateOne, withAgentHostID(id))
+	return &AgentHostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AgentHost.
+func (c *AgentHostClient) Delete() *AgentHostDelete {
+	mutation := newAgentHostMutation(c.config, OpDelete)
+	return &AgentHostDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AgentHostClient) DeleteOne(_m *AgentHost) *AgentHostDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AgentHostClient) DeleteOneID(id int) *AgentHostDeleteOne {
+	builder := c.Delete().Where(agenthost.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AgentHostDeleteOne{builder}
+}
+
+// Query returns a query builder for AgentHost.
+func (c *AgentHostClient) Query() *AgentHostQuery {
+	return &AgentHostQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAgentHost},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AgentHost entity by its id.
+func (c *AgentHostClient) Get(ctx context.Context, id int) (*AgentHost, error) {
+	return c.Query().Where(agenthost.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AgentHostClient) GetX(ctx context.Context, id int) *AgentHost {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryInstances queries the instances edge of a AgentHost.
+func (c *AgentHostClient) QueryInstances(_m *AgentHost) *AgentInstanceQuery {
+	query := (&AgentInstanceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agenthost.Table, agenthost.FieldID, id),
+			sqlgraph.To(agentinstance.Table, agentinstance.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, agenthost.InstancesTable, agenthost.InstancesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *AgentHostClient) Hooks() []Hook {
+	hooks := c.hooks.AgentHost
+	return append(hooks[:len(hooks):len(hooks)], agenthost.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *AgentHostClient) Interceptors() []Interceptor {
+	inters := c.inters.AgentHost
+	return append(inters[:len(inters):len(inters)], agenthost.Interceptors[:]...)
+}
+
+func (c *AgentHostClient) mutate(ctx context.Context, m *AgentHostMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AgentHostCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AgentHostUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AgentHostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AgentHostDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AgentHost mutation op: %q", m.Op())
+	}
+}
+
 // AgentInstanceClient is a client for the AgentInstance schema.
 type AgentInstanceClient struct {
 	config
@@ -1069,15 +1220,15 @@ func (c *AgentInstanceClient) QueryAgent(_m *AgentInstance) *AgentQuery {
 	return query
 }
 
-// QueryRuntime queries the runtime edge of a AgentInstance.
-func (c *AgentInstanceClient) QueryRuntime(_m *AgentInstance) *AgentRuntimeQuery {
-	query := (&AgentRuntimeClient{config: c.config}).Query()
+// QueryHost queries the host edge of a AgentInstance.
+func (c *AgentInstanceClient) QueryHost(_m *AgentInstance) *AgentHostQuery {
+	query := (&AgentHostClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, id),
-			sqlgraph.To(agentruntime.Table, agentruntime.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, agentinstance.RuntimeTable, agentinstance.RuntimeColumn),
+			sqlgraph.To(agenthost.Table, agenthost.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, agentinstance.HostTable, agentinstance.HostColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1459,157 +1610,6 @@ func (c *AgentMessageClient) mutate(ctx context.Context, m *AgentMessageMutation
 		return (&AgentMessageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown AgentMessage mutation op: %q", m.Op())
-	}
-}
-
-// AgentRuntimeClient is a client for the AgentRuntime schema.
-type AgentRuntimeClient struct {
-	config
-}
-
-// NewAgentRuntimeClient returns a client for the AgentRuntime from the given config.
-func NewAgentRuntimeClient(c config) *AgentRuntimeClient {
-	return &AgentRuntimeClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `agentruntime.Hooks(f(g(h())))`.
-func (c *AgentRuntimeClient) Use(hooks ...Hook) {
-	c.hooks.AgentRuntime = append(c.hooks.AgentRuntime, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `agentruntime.Intercept(f(g(h())))`.
-func (c *AgentRuntimeClient) Intercept(interceptors ...Interceptor) {
-	c.inters.AgentRuntime = append(c.inters.AgentRuntime, interceptors...)
-}
-
-// Create returns a builder for creating a AgentRuntime entity.
-func (c *AgentRuntimeClient) Create() *AgentRuntimeCreate {
-	mutation := newAgentRuntimeMutation(c.config, OpCreate)
-	return &AgentRuntimeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of AgentRuntime entities.
-func (c *AgentRuntimeClient) CreateBulk(builders ...*AgentRuntimeCreate) *AgentRuntimeCreateBulk {
-	return &AgentRuntimeCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *AgentRuntimeClient) MapCreateBulk(slice any, setFunc func(*AgentRuntimeCreate, int)) *AgentRuntimeCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &AgentRuntimeCreateBulk{err: fmt.Errorf("calling to AgentRuntimeClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*AgentRuntimeCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &AgentRuntimeCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for AgentRuntime.
-func (c *AgentRuntimeClient) Update() *AgentRuntimeUpdate {
-	mutation := newAgentRuntimeMutation(c.config, OpUpdate)
-	return &AgentRuntimeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *AgentRuntimeClient) UpdateOne(_m *AgentRuntime) *AgentRuntimeUpdateOne {
-	mutation := newAgentRuntimeMutation(c.config, OpUpdateOne, withAgentRuntime(_m))
-	return &AgentRuntimeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *AgentRuntimeClient) UpdateOneID(id int) *AgentRuntimeUpdateOne {
-	mutation := newAgentRuntimeMutation(c.config, OpUpdateOne, withAgentRuntimeID(id))
-	return &AgentRuntimeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for AgentRuntime.
-func (c *AgentRuntimeClient) Delete() *AgentRuntimeDelete {
-	mutation := newAgentRuntimeMutation(c.config, OpDelete)
-	return &AgentRuntimeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *AgentRuntimeClient) DeleteOne(_m *AgentRuntime) *AgentRuntimeDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *AgentRuntimeClient) DeleteOneID(id int) *AgentRuntimeDeleteOne {
-	builder := c.Delete().Where(agentruntime.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &AgentRuntimeDeleteOne{builder}
-}
-
-// Query returns a query builder for AgentRuntime.
-func (c *AgentRuntimeClient) Query() *AgentRuntimeQuery {
-	return &AgentRuntimeQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeAgentRuntime},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a AgentRuntime entity by its id.
-func (c *AgentRuntimeClient) Get(ctx context.Context, id int) (*AgentRuntime, error) {
-	return c.Query().Where(agentruntime.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *AgentRuntimeClient) GetX(ctx context.Context, id int) *AgentRuntime {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryInstances queries the instances edge of a AgentRuntime.
-func (c *AgentRuntimeClient) QueryInstances(_m *AgentRuntime) *AgentInstanceQuery {
-	query := (&AgentInstanceClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(agentruntime.Table, agentruntime.FieldID, id),
-			sqlgraph.To(agentinstance.Table, agentinstance.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, agentruntime.InstancesTable, agentruntime.InstancesColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *AgentRuntimeClient) Hooks() []Hook {
-	hooks := c.hooks.AgentRuntime
-	return append(hooks[:len(hooks):len(hooks)], agentruntime.Hooks[:]...)
-}
-
-// Interceptors returns the client interceptors.
-func (c *AgentRuntimeClient) Interceptors() []Interceptor {
-	inters := c.inters.AgentRuntime
-	return append(inters[:len(inters):len(inters)], agentruntime.Interceptors[:]...)
-}
-
-func (c *AgentRuntimeClient) mutate(ctx context.Context, m *AgentRuntimeMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&AgentRuntimeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&AgentRuntimeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&AgentRuntimeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&AgentRuntimeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown AgentRuntime mutation op: %q", m.Op())
 	}
 }
 
@@ -6535,19 +6535,18 @@ func (c *UserRoleClient) mutate(ctx context.Context, m *UserRoleMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		APIKey, Agent, AgentInstance, AgentMemory, AgentMessage, AgentRuntime,
-		AgentSkill, AgentThread, AgentTool, Channel, ChannelModelPrice,
-		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
-		Model, Project, Prompt, PromptVersion, ProviderQuotaStatus, Request,
-		RequestExecution, Role, Skill, System, Thread, Tool, Trace, UsageLog, User,
-		UserProject, UserRole []ent.Hook
+		APIKey, Agent, AgentHost, AgentInstance, AgentMemory, AgentMessage, AgentSkill,
+		AgentThread, AgentTool, Channel, ChannelModelPrice, ChannelModelPriceVersion,
+		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, Project, Prompt,
+		PromptVersion, ProviderQuotaStatus, Request, RequestExecution, Role, Skill,
+		System, Thread, Tool, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
-		APIKey, Agent, AgentInstance, AgentMemory, AgentMessage, AgentRuntime,
-		AgentSkill, AgentThread, AgentTool, Channel, ChannelModelPrice,
-		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
-		Model, Project, Prompt, PromptVersion, ProviderQuotaStatus, Request,
-		RequestExecution, Role, Skill, System, Thread, Tool, Trace, UsageLog, User,
-		UserProject, UserRole []ent.Interceptor
+		APIKey, Agent, AgentHost, AgentInstance, AgentMemory, AgentMessage, AgentSkill,
+		AgentThread, AgentTool, Channel, ChannelModelPrice, ChannelModelPriceVersion,
+		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, Project, Prompt,
+		PromptVersion, ProviderQuotaStatus, Request, RequestExecution, Role, Skill,
+		System, Thread, Tool, Trace, UsageLog, User, UserProject,
+		UserRole []ent.Interceptor
 	}
 )

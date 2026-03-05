@@ -1,0 +1,69 @@
+type AgentInstanceDeployment {
+    directory: String
+    dockerContainerName: String
+    axonhubBaseUrl: String
+}
+
+input AgentInstanceDeploymentInput {
+    directory: String
+    dockerContainerName: String
+    axonhubBaseUrl: String
+}
+
+input DeployAxonclawInput {
+    agentID: ID!
+    hostID: ID!
+    name: String!
+    directory: String
+    axonhubBaseUrl: String
+}
+
+type DeployAxonclawResult {
+    success: Boolean!
+    error: String
+    instance: AgentInstance
+}
+
+type ControlAxonclawInstanceResult {
+    success: Boolean!
+    error: String
+    instance: AgentInstance
+}
+
+extend type Mutation {
+    createAgentHost(input: CreateAgentHostInput!): AgentHost!
+    updateAgentHost(id: ID!, input: UpdateAgentHostInput!): AgentHost!
+    updateAgentHostStatus(id: ID!, status: AgentHostStatus!): AgentHost!
+    deleteAgentHost(id: ID!): Boolean!
+    bulkDeleteAgentHosts(ids: [ID!]!): Boolean!
+    bulkUpdateAgentHostStatus(ids: [ID!]!, status: AgentHostStatus!): Boolean!
+    testAgentHostConnection(id: ID!): AgentHostTestResult!
+    deployAxonclaw(input: DeployAxonclawInput!): DeployAxonclawResult!
+
+    stopAxonclawInstance(instanceID: ID!): ControlAxonclawInstanceResult!
+    startAxonclawInstance(instanceID: ID!): ControlAxonclawInstanceResult!
+    restartAxonclawInstance(instanceID: ID!): ControlAxonclawInstanceResult!
+    redeployAxonclawInstance(instanceID: ID!, axonhubBaseUrl: String): ControlAxonclawInstanceResult!
+}
+
+type AgentHostTestResult {
+    success: Boolean!
+    error: String
+    latency: Int
+}
+
+extend type Query {
+    agentHost(id: ID!): AgentHost
+}
+
+extend type AgentHost {
+  """
+  Host password for authentication. Sensitive: will be null if user can not access.
+  """
+  password: String @goField(forceResolver: true)
+
+    """
+  Host SSH private key for authentication. Sensitive: will be null if user can not access.
+  """
+  sshPrivateKey: String @goField(forceResolver: true)
+}

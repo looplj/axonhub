@@ -227,4 +227,4 @@ When adding a new feature page, follow these steps:
 
 5. **Add translations** in `frontend/src/locales/en/base.json` and `frontend/src/locales/zh-CN/base.json`
 
-See [agent-runtimes](../../../frontend/src/features/agent-runtimes) for a reference implementation.
+See [agent-hosts](../../../frontend/src/features/agent-hosts) for a reference implementation.

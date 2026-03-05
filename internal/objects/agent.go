@@ -22,10 +22,10 @@ type AgentInstanceDeployment struct {
 	AxonhubBaseURL      string `json:"axonhub_base_url,omitempty"`
 }
 
-// DeployAxonclawInput is the input for deploying axonclaw to a runtime.
+// DeployAxonclawInput is the input for deploying axonclaw to a host.
 type DeployAxonclawInput struct {
 	AgentID        GUID   `json:"agentID"`
-	RuntimeID      GUID   `json:"runtimeID"`
+	HostID         GUID   `json:"hostID"`
 	Name           string `json:"name"`
 	Directory      string `json:"directory,omitempty"`
 	AxonhubBaseURL string `json:"axonhubBaseUrl,omitempty"`

@@ -12,6 +12,9 @@ type APIKey func(*sql.Selector)
 // Agent is the predicate function for agent builders.
 type Agent func(*sql.Selector)
 
+// AgentHost is the predicate function for agenthost builders.
+type AgentHost func(*sql.Selector)
+
 // AgentInstance is the predicate function for agentinstance builders.
 type AgentInstance func(*sql.Selector)
 
@@ -20,9 +23,6 @@ type AgentMemory func(*sql.Selector)
 
 // AgentMessage is the predicate function for agentmessage builders.
 type AgentMessage func(*sql.Selector)
-
-// AgentRuntime is the predicate function for agentruntime builders.
-type AgentRuntime func(*sql.Selector)
 
 // AgentSkill is the predicate function for agentskill builders.
 type AgentSkill func(*sql.Selector)

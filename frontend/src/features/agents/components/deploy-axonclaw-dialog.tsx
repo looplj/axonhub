@@ -9,21 +9,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useQueryAgentRuntimes } from '@/features/agent-runtimes/data/agent-runtimes';
+import { useQueryAgentHosts } from '@/features/agent-hosts/data/agent-hosts';
 import { useDeployAxonclaw } from '../data/deploy-axonclaw';
 
 const createDeploySchema = (t: (key: string) => string) =>
   z
     .object({
-      runtimeID: z.string().min(1, t('agents.dialogs.deploy.fields.runtime.required')),
-      runtimeType: z.enum(['vm', 'docker', 'local']).optional(),
+      hostID: z.string().min(1, t('agents.dialogs.deploy.fields.host.required')),
+      hostType: z.enum(['vm', 'docker', 'local']).optional(),
       name: z.string().min(1, t('agents.dialogs.deploy.fields.name.required')),
       directory: z.string(),
       axonhubBaseUrl: z.string(),
     })
     .refine(
       (data) => {
-        if (data.runtimeType === 'vm' || data.runtimeType === 'local') {
+        if (data.hostType === 'vm' || data.hostType === 'local') {
           return data.directory.trim().length > 0;
         }
         return true;
@@ -45,7 +45,7 @@ interface DeployAxonclawDialogProps {
 export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxonclawDialogProps) {
   const { t } = useTranslation();
   const deployAxonclaw = useDeployAxonclaw();
-  const { data: runtimesData } = useQueryAgentRuntimes({
+  const { data: hostsData } = useQueryAgentHosts({
     first: 100,
   });
 
@@ -55,8 +55,8 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
     resolver: zodResolver(deploySchema),
     mode: 'onChange',
     defaultValues: {
-      runtimeID: '',
-      runtimeType: undefined,
+      hostID: '',
+      hostType: undefined,
       name: '',
       directory: '',
       axonhubBaseUrl: '',
@@ -74,8 +74,8 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
   useEffect(() => {
     if (open) {
       form.reset({
-        runtimeID: '',
-        runtimeType: undefined,
+        hostID: '',
+        hostType: undefined,
         name: '',
         directory: '',
         axonhubBaseUrl: getDefaultBaseUrl(),
@@ -83,26 +83,26 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
     }
   }, [open, form]);
 
-  const runtimes = useMemo(() => {
-    return runtimesData?.edges?.map((e) => e.node) ?? [];
-  }, [runtimesData]);
+  const hosts = useMemo(() => {
+    return hostsData?.edges?.map((e) => e.node) ?? [];
+  }, [hostsData]);
 
-  const runtimeId = form.watch('runtimeID');
-  const selectedRuntime = useMemo(() => {
-    return runtimes.find((r) => r.id === runtimeId);
-  }, [runtimeId, runtimes]);
+  const hostId = form.watch('hostID');
+  const selectedHost = useMemo(() => {
+    return hosts.find((host) => host.id === hostId);
+  }, [hostId, hosts]);
 
   useEffect(() => {
-    if (selectedRuntime) {
-      form.setValue('runtimeType', selectedRuntime.type as 'vm' | 'docker' | 'local');
+    if (selectedHost) {
+      form.setValue('hostType', selectedHost.type as 'vm' | 'docker' | 'local');
     }
-  }, [selectedRuntime, form]);
+  }, [selectedHost, form]);
 
   const onSubmit = async (values: DeployFormValues) => {
     try {
       await deployAxonclaw.mutateAsync({
         agentID: agentId,
-        runtimeID: values.runtimeID,
+        hostID: values.hostID,
         name: values.name,
         directory: values.directory || undefined,
         axonhubBaseUrl: values.axonhubBaseUrl || undefined,
@@ -137,34 +137,34 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
           <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
             <FormField
               control={form.control}
-              name='runtimeID'
+              name='hostID'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className='flex items-center gap-2'>
                     <Server className='h-4 w-4' />
-                    {t('agents.dialogs.deploy.fields.runtime.label')}
+                    {t('agents.dialogs.deploy.fields.host.label')}
                   </FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={runtimes.length === 0}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={hosts.length === 0}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue
                           placeholder={
-                            runtimes.length === 0
-                              ? t('agents.dialogs.deploy.noRuntimes')
-                              : t('agents.dialogs.deploy.fields.runtime.placeholder')
+                            hosts.length === 0
+                              ? t('agents.dialogs.deploy.noHosts')
+                              : t('agents.dialogs.deploy.fields.host.placeholder')
                           }
                         />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {runtimes.map((runtime) => (
-                        <SelectItem key={runtime.id} value={runtime.id}>
+                      {hosts.map((host) => (
+                        <SelectItem key={host.id} value={host.id}>
                           <div className='flex items-center gap-2'>
-                            <span>{runtime.name}</span>
+                            <span>{host.name}</span>
                             <span className='text-muted-foreground text-xs'>
-                              {runtime.type === 'local'
-                                ? t('agentRuntimes.types.local')
-                                : `${t('agentRuntimes.types.' + runtime.type)} - ${runtime.host}`}
+                              {host.type === 'local'
+                                ? t('agentHosts.types.local')
+                                : `${t('agentHosts.types.' + host.type)} - ${host.addr}`}
                             </span>
                           </div>
                         </SelectItem>
@@ -176,20 +176,20 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
               )}
             />
 
-            {selectedRuntime && selectedRuntime.type !== 'local' && (
+            {selectedHost && selectedHost.type !== 'local' && (
               <div className='bg-muted/50 space-y-1 rounded-md p-3 text-sm'>
                 <div className='flex justify-between'>
-                  <span className='text-muted-foreground'>Type:</span>
-                  <span className='font-medium uppercase'>{selectedRuntime.type}</span>
+                  <span className='text-muted-foreground'>{t('agents.dialogs.deploy.preview.type')}:</span>
+                  <span className='font-medium uppercase'>{selectedHost.type}</span>
                 </div>
                 <div className='flex justify-between'>
-                  <span className='text-muted-foreground'>Host:</span>
-                  <span className='font-medium'>{selectedRuntime.host}</span>
+                  <span className='text-muted-foreground'>{t('agents.dialogs.deploy.preview.host')}:</span>
+                  <span className='font-medium'>{selectedHost.addr}</span>
                 </div>
-                {selectedRuntime.host !== 'localhost' && selectedRuntime.host !== '127.0.0.1' && (
+                {selectedHost.addr !== 'localhost' && selectedHost.addr !== '127.0.0.1' && (
                   <div className='flex justify-between'>
-                    <span className='text-muted-foreground'>User:</span>
-                    <span className='font-medium'>{selectedRuntime.user}</span>
+                    <span className='text-muted-foreground'>{t('agents.dialogs.deploy.preview.user')}:</span>
+                    <span className='font-medium'>{selectedHost.user}</span>
                   </div>
                 )}
               </div>
@@ -209,7 +209,7 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
               )}
             />
 
-            {selectedRuntime && (selectedRuntime.type === 'vm' || selectedRuntime.type === 'local') && (
+            {selectedHost && (selectedHost.type === 'vm' || selectedHost.type === 'local') && (
               <FormField
                 control={form.control}
                 name='directory'
@@ -249,7 +249,7 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
               <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
                 {t('common.buttons.cancel')}
               </Button>
-              <Button type='submit' disabled={deployAxonclaw.isPending || runtimes.length === 0 || !form.formState.isValid}>
+              <Button type='submit' disabled={deployAxonclaw.isPending || hosts.length === 0 || !form.formState.isValid}>
                 {deployAxonclaw.isPending ? t('common.buttons.deploying') : t('common.buttons.deploy')}
               </Button>
             </DialogFooter>

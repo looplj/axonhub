@@ -7,7 +7,7 @@
   "sidebar.items.models": "Models",
   "sidebar.items.prompts": "Prompts",
   "sidebar.items.agents": "Agents",
-  "sidebar.items.agentRuntimes": "Agent Runtimes",
+  "sidebar.items.agentHosts": "Agent Hosts",
   "sidebar.items.dataStorages": "Data Storages",
   "sidebar.items.users": "Users",
   "sidebar.items.roles": "Roles",

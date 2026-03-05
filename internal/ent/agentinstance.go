@@ -11,8 +11,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -32,8 +32,8 @@ type AgentInstance struct {
 	ProjectID int `json:"project_id,omitempty"`
 	// AgentID holds the value of the "agent_id" field.
 	AgentID int `json:"agent_id,omitempty"`
-	// Agent Runtime ID (null means unknown/CLI started)
-	AgentRuntimeID *int `json:"agent_runtime_id,omitempty"`
+	// Agent Host ID (null means unknown/CLI started)
+	AgentHostID *int `json:"agent_host_id,omitempty"`
 	// Human readable name
 	Name string `json:"name,omitempty"`
 	// Instance description
@@ -44,7 +44,7 @@ type AgentInstance struct {
 	APIKeyID int `json:"api_key_id,omitempty"`
 	// Last heartbeat timestamp
 	LastHeartbeatAt time.Time `json:"last_heartbeat_at,omitempty"`
-	// Deployment info - runtime specific deployment details
+	// Deployment info - host specific deployment details
 	Deployment objects.AgentInstanceDeployment `json:"deployment,omitempty"`
 	// Instance status
 	Status agentinstance.Status `json:"status,omitempty"`
@@ -58,8 +58,8 @@ type AgentInstance struct {
 type AgentInstanceEdges struct {
 	// Agent holds the value of the agent edge.
 	Agent *Agent `json:"agent,omitempty"`
-	// Runtime holds the value of the runtime edge.
-	Runtime *AgentRuntime `json:"runtime,omitempty"`
+	// Host holds the value of the host edge.
+	Host *AgentHost `json:"host,omitempty"`
 	// APIKey holds the value of the api_key edge.
 	APIKey *APIKey `json:"api_key,omitempty"`
 	// Messages holds the value of the messages edge.
@@ -84,15 +84,15 @@ func (e AgentInstanceEdges) AgentOrErr() (*Agent, error) {
 	return nil, &NotLoadedError{edge: "agent"}
 }
 
-// RuntimeOrErr returns the Runtime value or an error if the edge
+// HostOrErr returns the Host value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e AgentInstanceEdges) RuntimeOrErr() (*AgentRuntime, error) {
-	if e.Runtime != nil {
-		return e.Runtime, nil
+func (e AgentInstanceEdges) HostOrErr() (*AgentHost, error) {
+	if e.Host != nil {
+		return e.Host, nil
 	} else if e.loadedTypes[1] {
-		return nil, &NotFoundError{label: agentruntime.Label}
+		return nil, &NotFoundError{label: agenthost.Label}
 	}
-	return nil, &NotLoadedError{edge: "runtime"}
+	return nil, &NotLoadedError{edge: "host"}
 }
 
 // APIKeyOrErr returns the APIKey value or an error if the edge
@@ -122,7 +122,7 @@ func (*AgentInstance) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case agentinstance.FieldDeployment:
 			values[i] = new([]byte)
-		case agentinstance.FieldID, agentinstance.FieldDeletedAt, agentinstance.FieldProjectID, agentinstance.FieldAgentID, agentinstance.FieldAgentRuntimeID, agentinstance.FieldAPIKeyID:
+		case agentinstance.FieldID, agentinstance.FieldDeletedAt, agentinstance.FieldProjectID, agentinstance.FieldAgentID, agentinstance.FieldAgentHostID, agentinstance.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
 		case agentinstance.FieldName, agentinstance.FieldDescription, agentinstance.FieldPlatform, agentinstance.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -179,12 +179,12 @@ func (_m *AgentInstance) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.AgentID = int(value.Int64)
 			}
-		case agentinstance.FieldAgentRuntimeID:
+		case agentinstance.FieldAgentHostID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field agent_runtime_id", values[i])
+				return fmt.Errorf("unexpected type %T for field agent_host_id", values[i])
 			} else if value.Valid {
-				_m.AgentRuntimeID = new(int)
-				*_m.AgentRuntimeID = int(value.Int64)
+				_m.AgentHostID = new(int)
+				*_m.AgentHostID = int(value.Int64)
 			}
 		case agentinstance.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -248,9 +248,9 @@ func (_m *AgentInstance) QueryAgent() *AgentQuery {
 	return NewAgentInstanceClient(_m.config).QueryAgent(_m)
 }
 
-// QueryRuntime queries the "runtime" edge of the AgentInstance entity.
-func (_m *AgentInstance) QueryRuntime() *AgentRuntimeQuery {
-	return NewAgentInstanceClient(_m.config).QueryRuntime(_m)
+// QueryHost queries the "host" edge of the AgentInstance entity.
+func (_m *AgentInstance) QueryHost() *AgentHostQuery {
+	return NewAgentInstanceClient(_m.config).QueryHost(_m)
 }
 
 // QueryAPIKey queries the "api_key" edge of the AgentInstance entity.
@@ -301,8 +301,8 @@ func (_m *AgentInstance) String() string {
 	builder.WriteString("agent_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AgentID))
 	builder.WriteString(", ")
-	if v := _m.AgentRuntimeID; v != nil {
-		builder.WriteString("agent_runtime_id=")
+	if v := _m.AgentHostID; v != nil {
+		builder.WriteString("agent_host_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")

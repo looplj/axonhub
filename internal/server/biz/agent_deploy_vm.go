@@ -12,11 +12,11 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 )
 
-func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 
 	if isLocalhost {
 		if err := os.MkdirAll(directory, 0o755); err != nil {
@@ -91,8 +91,8 @@ func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.Agen
 	return nil
 }
 
-func (svc *AgentDeployService) vmStop(ctx context.Context, runtime *ent.AgentRuntime, directory string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) vmStop(ctx context.Context, runtime *ent.AgentHost, directory string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 	if isLocalhost {
 		cmd := exec.CommandContext(ctx, "./stop.sh") //nolint:gosec
 
@@ -124,8 +124,8 @@ func (svc *AgentDeployService) vmStop(ctx context.Context, runtime *ent.AgentRun
 	return nil
 }
 
-func (svc *AgentDeployService) vmStart(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) vmStart(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 	if isLocalhost {
 		cmd := exec.CommandContext(ctx, "./start.sh") //nolint:gosec
 		cmd.Dir = directory
@@ -171,8 +171,8 @@ func (svc *AgentDeployService) vmStart(ctx context.Context, runtime *ent.AgentRu
 	return nil
 }
 
-func (svc *AgentDeployService) vmRestart(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) vmRestart(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 	if isLocalhost {
 		cmd := exec.CommandContext(ctx, "./restart.sh") //nolint:gosec
 		cmd.Dir = directory
@@ -218,8 +218,8 @@ func (svc *AgentDeployService) vmRestart(ctx context.Context, runtime *ent.Agent
 	return nil
 }
 
-func (svc *AgentDeployService) vmInstallLatest(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, directory, baseURL string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) vmInstallLatest(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, directory, baseURL string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 
 	if isLocalhost {
 		cmd := exec.CommandContext(ctx, "bash", "-c", "curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | bash") //nolint:gosec
@@ -265,7 +265,7 @@ func (svc *AgentDeployService) vmInstallLatest(ctx context.Context, runtime *ent
 	return nil
 }
 
-func sshDial(runtime *ent.AgentRuntime) (*ssh.Client, error) {
+func sshDial(runtime *ent.AgentHost) (*ssh.Client, error) {
 	authMethods, err := buildSSHAuthMethods(runtime)
 	if err != nil {
 		return nil, err
@@ -279,7 +279,7 @@ func sshDial(runtime *ent.AgentRuntime) (*ssh.Client, error) {
 		Timeout:         30 * time.Second,
 	}
 
-	host := runtime.Host
+	host := runtime.Addr
 	if !strings.Contains(host, ":") {
 		host = host + ":22"
 	}
@@ -292,8 +292,8 @@ func sshDial(runtime *ent.AgentRuntime) (*ssh.Client, error) {
 	return client, nil
 }
 
-func buildSSHAuthMethods(runtime *ent.AgentRuntime) ([]ssh.AuthMethod, error) {
-	if runtime.AuthMethod == agentruntime.AuthMethodSSHKey {
+func buildSSHAuthMethods(runtime *ent.AgentHost) ([]ssh.AuthMethod, error) {
+	if runtime.AuthMethod == agenthost.AuthMethodSSHKey {
 		signer, err := ssh.ParsePrivateKey([]byte(runtime.SSHPrivateKey))
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse SSH private key: %w", err)

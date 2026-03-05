@@ -12,9 +12,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -81,16 +81,16 @@ func (_c *AgentInstanceCreate) SetAgentID(v int) *AgentInstanceCreate {
 	return _c
 }
 
-// SetAgentRuntimeID sets the "agent_runtime_id" field.
-func (_c *AgentInstanceCreate) SetAgentRuntimeID(v int) *AgentInstanceCreate {
-	_c.mutation.SetAgentRuntimeID(v)
+// SetAgentHostID sets the "agent_host_id" field.
+func (_c *AgentInstanceCreate) SetAgentHostID(v int) *AgentInstanceCreate {
+	_c.mutation.SetAgentHostID(v)
 	return _c
 }
 
-// SetNillableAgentRuntimeID sets the "agent_runtime_id" field if the given value is not nil.
-func (_c *AgentInstanceCreate) SetNillableAgentRuntimeID(v *int) *AgentInstanceCreate {
+// SetNillableAgentHostID sets the "agent_host_id" field if the given value is not nil.
+func (_c *AgentInstanceCreate) SetNillableAgentHostID(v *int) *AgentInstanceCreate {
 	if v != nil {
-		_c.SetAgentRuntimeID(*v)
+		_c.SetAgentHostID(*v)
 	}
 	return _c
 }
@@ -182,23 +182,23 @@ func (_c *AgentInstanceCreate) SetAgent(v *Agent) *AgentInstanceCreate {
 	return _c.SetAgentID(v.ID)
 }
 
-// SetRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID.
-func (_c *AgentInstanceCreate) SetRuntimeID(id int) *AgentInstanceCreate {
-	_c.mutation.SetRuntimeID(id)
+// SetHostID sets the "host" edge to the AgentHost entity by ID.
+func (_c *AgentInstanceCreate) SetHostID(id int) *AgentInstanceCreate {
+	_c.mutation.SetHostID(id)
 	return _c
 }
 
-// SetNillableRuntimeID sets the "runtime" edge to the AgentRuntime entity by ID if the given value is not nil.
-func (_c *AgentInstanceCreate) SetNillableRuntimeID(id *int) *AgentInstanceCreate {
+// SetNillableHostID sets the "host" edge to the AgentHost entity by ID if the given value is not nil.
+func (_c *AgentInstanceCreate) SetNillableHostID(id *int) *AgentInstanceCreate {
 	if id != nil {
-		_c = _c.SetRuntimeID(*id)
+		_c = _c.SetHostID(*id)
 	}
 	return _c
 }
 
-// SetRuntime sets the "runtime" edge to the AgentRuntime entity.
-func (_c *AgentInstanceCreate) SetRuntime(v *AgentRuntime) *AgentInstanceCreate {
-	return _c.SetRuntimeID(v.ID)
+// SetHost sets the "host" edge to the AgentHost entity.
+func (_c *AgentInstanceCreate) SetHost(v *AgentHost) *AgentInstanceCreate {
+	return _c.SetHostID(v.ID)
 }
 
 // SetAPIKey sets the "api_key" edge to the APIKey entity.
@@ -425,21 +425,21 @@ func (_c *AgentInstanceCreate) createSpec() (*AgentInstance, *sqlgraph.CreateSpe
 		_node.AgentID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.RuntimeIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.HostIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   agentinstance.RuntimeTable,
-			Columns: []string{agentinstance.RuntimeColumn},
+			Table:   agentinstance.HostTable,
+			Columns: []string{agentinstance.HostColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(agentruntime.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(agenthost.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.AgentRuntimeID = &nodes[0]
+		_node.AgentHostID = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
@@ -557,21 +557,21 @@ func (u *AgentInstanceUpsert) AddDeletedAt(v int) *AgentInstanceUpsert {
 	return u
 }
 
-// SetAgentRuntimeID sets the "agent_runtime_id" field.
-func (u *AgentInstanceUpsert) SetAgentRuntimeID(v int) *AgentInstanceUpsert {
-	u.Set(agentinstance.FieldAgentRuntimeID, v)
+// SetAgentHostID sets the "agent_host_id" field.
+func (u *AgentInstanceUpsert) SetAgentHostID(v int) *AgentInstanceUpsert {
+	u.Set(agentinstance.FieldAgentHostID, v)
 	return u
 }
 
-// UpdateAgentRuntimeID sets the "agent_runtime_id" field to the value that was provided on create.
-func (u *AgentInstanceUpsert) UpdateAgentRuntimeID() *AgentInstanceUpsert {
-	u.SetExcluded(agentinstance.FieldAgentRuntimeID)
+// UpdateAgentHostID sets the "agent_host_id" field to the value that was provided on create.
+func (u *AgentInstanceUpsert) UpdateAgentHostID() *AgentInstanceUpsert {
+	u.SetExcluded(agentinstance.FieldAgentHostID)
 	return u
 }
 
-// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
-func (u *AgentInstanceUpsert) ClearAgentRuntimeID() *AgentInstanceUpsert {
-	u.SetNull(agentinstance.FieldAgentRuntimeID)
+// ClearAgentHostID clears the value of the "agent_host_id" field.
+func (u *AgentInstanceUpsert) ClearAgentHostID() *AgentInstanceUpsert {
+	u.SetNull(agentinstance.FieldAgentHostID)
 	return u
 }
 
@@ -742,24 +742,24 @@ func (u *AgentInstanceUpsertOne) UpdateDeletedAt() *AgentInstanceUpsertOne {
 	})
 }
 
-// SetAgentRuntimeID sets the "agent_runtime_id" field.
-func (u *AgentInstanceUpsertOne) SetAgentRuntimeID(v int) *AgentInstanceUpsertOne {
+// SetAgentHostID sets the "agent_host_id" field.
+func (u *AgentInstanceUpsertOne) SetAgentHostID(v int) *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.SetAgentRuntimeID(v)
+		s.SetAgentHostID(v)
 	})
 }
 
-// UpdateAgentRuntimeID sets the "agent_runtime_id" field to the value that was provided on create.
-func (u *AgentInstanceUpsertOne) UpdateAgentRuntimeID() *AgentInstanceUpsertOne {
+// UpdateAgentHostID sets the "agent_host_id" field to the value that was provided on create.
+func (u *AgentInstanceUpsertOne) UpdateAgentHostID() *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.UpdateAgentRuntimeID()
+		s.UpdateAgentHostID()
 	})
 }
 
-// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
-func (u *AgentInstanceUpsertOne) ClearAgentRuntimeID() *AgentInstanceUpsertOne {
+// ClearAgentHostID clears the value of the "agent_host_id" field.
+func (u *AgentInstanceUpsertOne) ClearAgentHostID() *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.ClearAgentRuntimeID()
+		s.ClearAgentHostID()
 	})
 }
 
@@ -1109,24 +1109,24 @@ func (u *AgentInstanceUpsertBulk) UpdateDeletedAt() *AgentInstanceUpsertBulk {
 	})
 }
 
-// SetAgentRuntimeID sets the "agent_runtime_id" field.
-func (u *AgentInstanceUpsertBulk) SetAgentRuntimeID(v int) *AgentInstanceUpsertBulk {
+// SetAgentHostID sets the "agent_host_id" field.
+func (u *AgentInstanceUpsertBulk) SetAgentHostID(v int) *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.SetAgentRuntimeID(v)
+		s.SetAgentHostID(v)
 	})
 }
 
-// UpdateAgentRuntimeID sets the "agent_runtime_id" field to the value that was provided on create.
-func (u *AgentInstanceUpsertBulk) UpdateAgentRuntimeID() *AgentInstanceUpsertBulk {
+// UpdateAgentHostID sets the "agent_host_id" field to the value that was provided on create.
+func (u *AgentInstanceUpsertBulk) UpdateAgentHostID() *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.UpdateAgentRuntimeID()
+		s.UpdateAgentHostID()
 	})
 }
 
-// ClearAgentRuntimeID clears the value of the "agent_runtime_id" field.
-func (u *AgentInstanceUpsertBulk) ClearAgentRuntimeID() *AgentInstanceUpsertBulk {
+// ClearAgentHostID clears the value of the "agent_host_id" field.
+func (u *AgentInstanceUpsertBulk) ClearAgentHostID() *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.ClearAgentRuntimeID()
+		s.ClearAgentHostID()
 	})
 }
 

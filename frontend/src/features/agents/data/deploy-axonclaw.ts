@@ -28,7 +28,7 @@ const DEPLOY_AXONCLAW_MUTATION = `
 
 export interface DeployAxonclawInput {
   agentID: string;
-  runtimeID: string;
+  hostID: string;
   name: string;
   directory?: string;
   axonhubBaseUrl?: string;

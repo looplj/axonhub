@@ -43,10 +43,10 @@ func (AgentInstance) Fields() []ent.Field {
 			Comment("Project ID that this agent instance belongs to"),
 		field.Int("agent_id").
 			Immutable(),
-		field.Int("agent_runtime_id").
+		field.Int("agent_host_id").
 			Nillable().
 			Optional().
-			Comment("Agent Runtime ID (null means unknown/CLI started)"),
+			Comment("Agent Host ID (null means unknown/CLI started)"),
 		field.String("name").
 			Default("").
 			Comment("Human readable name"),
@@ -72,7 +72,7 @@ func (AgentInstance) Fields() []ent.Field {
 
 		field.JSON("deployment", objects.AgentInstanceDeployment{}).
 			Optional().
-			Comment("Deployment info - runtime specific deployment details"),
+			Comment("Deployment info - host specific deployment details"),
 		field.Enum("status").
 			Values("pending", "running", "stopped", "error").
 			Default("running").
@@ -88,9 +88,9 @@ func (AgentInstance) Edges() []ent.Edge {
 			Immutable().
 			Required().
 			Unique(),
-		edge.From("runtime", AgentRuntime.Type).
+		edge.From("host", AgentHost.Type).
 			Ref("instances").
-			Field("agent_runtime_id").
+			Field("agent_host_id").
 			Unique(),
 		edge.From("api_key", APIKey.Type).
 			Ref("agent_instance").

@@ -28,8 +28,8 @@ const (
 	FieldProjectID = "project_id"
 	// FieldAgentID holds the string denoting the agent_id field in the database.
 	FieldAgentID = "agent_id"
-	// FieldAgentRuntimeID holds the string denoting the agent_runtime_id field in the database.
-	FieldAgentRuntimeID = "agent_runtime_id"
+	// FieldAgentHostID holds the string denoting the agent_host_id field in the database.
+	FieldAgentHostID = "agent_host_id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
@@ -46,8 +46,8 @@ const (
 	FieldStatus = "status"
 	// EdgeAgent holds the string denoting the agent edge name in mutations.
 	EdgeAgent = "agent"
-	// EdgeRuntime holds the string denoting the runtime edge name in mutations.
-	EdgeRuntime = "runtime"
+	// EdgeHost holds the string denoting the host edge name in mutations.
+	EdgeHost = "host"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
 	EdgeAPIKey = "api_key"
 	// EdgeMessages holds the string denoting the messages edge name in mutations.
@@ -61,13 +61,13 @@ const (
 	AgentInverseTable = "agents"
 	// AgentColumn is the table column denoting the agent relation/edge.
 	AgentColumn = "agent_id"
-	// RuntimeTable is the table that holds the runtime relation/edge.
-	RuntimeTable = "agent_instances"
-	// RuntimeInverseTable is the table name for the AgentRuntime entity.
-	// It exists in this package in order to avoid circular dependency with the "agentruntime" package.
-	RuntimeInverseTable = "agent_runtimes"
-	// RuntimeColumn is the table column denoting the runtime relation/edge.
-	RuntimeColumn = "agent_runtime_id"
+	// HostTable is the table that holds the host relation/edge.
+	HostTable = "agent_instances"
+	// HostInverseTable is the table name for the AgentHost entity.
+	// It exists in this package in order to avoid circular dependency with the "agenthost" package.
+	HostInverseTable = "agent_hosts"
+	// HostColumn is the table column denoting the host relation/edge.
+	HostColumn = "agent_host_id"
 	// APIKeyTable is the table that holds the api_key relation/edge.
 	APIKeyTable = "agent_instances"
 	// APIKeyInverseTable is the table name for the APIKey entity.
@@ -92,7 +92,7 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldProjectID,
 	FieldAgentID,
-	FieldAgentRuntimeID,
+	FieldAgentHostID,
 	FieldName,
 	FieldDescription,
 	FieldPlatform,
@@ -198,9 +198,9 @@ func ByAgentID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAgentID, opts...).ToFunc()
 }
 
-// ByAgentRuntimeID orders the results by the agent_runtime_id field.
-func ByAgentRuntimeID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAgentRuntimeID, opts...).ToFunc()
+// ByAgentHostID orders the results by the agent_host_id field.
+func ByAgentHostID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAgentHostID, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.
@@ -240,10 +240,10 @@ func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
-// ByRuntimeField orders the results by runtime field.
-func ByRuntimeField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByHostField orders the results by host field.
+func ByHostField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newRuntimeStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newHostStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -274,11 +274,11 @@ func newAgentStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2O, true, AgentTable, AgentColumn),
 	)
 }
-func newRuntimeStep() *sqlgraph.Step {
+func newHostStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(RuntimeInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, RuntimeTable, RuntimeColumn),
+		sqlgraph.To(HostInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, HostTable, HostColumn),
 	)
 }
 func newAPIKeyStep() *sqlgraph.Step {

@@ -15,8 +15,8 @@ func dockerContainerName(name string) string {
 	return fmt.Sprintf("axonclaw-%s", name)
 }
 
-func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, baseURL string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, baseURL string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 	containerName := fmt.Sprintf("axonclaw-%s", name)
 
 	imageName := "looplj/axonclaw:latest"
@@ -133,8 +133,8 @@ func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.
 	return nil
 }
 
-func (svc *AgentDeployService) dockerStop(ctx context.Context, runtime *ent.AgentRuntime, containerName string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) dockerStop(ctx context.Context, runtime *ent.AgentHost, containerName string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 	if isLocalhost {
 		cmd := exec.CommandContext(ctx, "docker", "stop", containerName)
 		_ = cmd.Run()
@@ -162,8 +162,8 @@ func (svc *AgentDeployService) dockerStop(ctx context.Context, runtime *ent.Agen
 	return nil
 }
 
-func (svc *AgentDeployService) dockerStart(ctx context.Context, runtime *ent.AgentRuntime, containerName string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) dockerStart(ctx context.Context, runtime *ent.AgentHost, containerName string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 	if isLocalhost {
 		if err := exec.CommandContext(ctx, "docker", "start", containerName).Run(); err != nil {
 			return fmt.Errorf("docker start: %w", err)
@@ -192,8 +192,8 @@ func (svc *AgentDeployService) dockerStart(ctx context.Context, runtime *ent.Age
 	return nil
 }
 
-func (svc *AgentDeployService) dockerRestart(ctx context.Context, runtime *ent.AgentRuntime, containerName string) error {
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+func (svc *AgentDeployService) dockerRestart(ctx context.Context, runtime *ent.AgentHost, containerName string) error {
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 	if isLocalhost {
 		if err := exec.CommandContext(ctx, "docker", "restart", containerName).Run(); err != nil {
 			return fmt.Errorf("docker restart: %w", err)
@@ -222,7 +222,7 @@ func (svc *AgentDeployService) dockerRestart(ctx context.Context, runtime *ent.A
 	return nil
 }
 
-func (svc *AgentDeployService) dockerRedeploy(ctx context.Context, runtime *ent.AgentRuntime, apiKey *ent.APIKey, name, containerName, baseURL string) error {
+func (svc *AgentDeployService) dockerRedeploy(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, containerName, baseURL string) error {
 	imageName := "looplj/axonclaw:latest"
 	if debugDockerImage != "" {
 		imageName = debugDockerImage
@@ -231,7 +231,7 @@ func (svc *AgentDeployService) dockerRedeploy(ctx context.Context, runtime *ent.
 	redeployCtx, redeployCancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer redeployCancel()
 
-	isLocalhost := runtime.Host == "localhost" || runtime.Host == "127.0.0.1"
+	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 	if isLocalhost {
 		_ = exec.CommandContext(redeployCtx, "docker", "stop", containerName).Run()
 		_ = exec.CommandContext(redeployCtx, "docker", "rm", containerName).Run()

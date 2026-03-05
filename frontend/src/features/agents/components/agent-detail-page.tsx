@@ -114,7 +114,7 @@ export function AgentDetailPage() {
     instanceName: null,
     currentBaseUrl: null,
   });
-  const { agentRuntimesPermissions } = usePermissions();
+  const { agentHostsPermissions } = usePermissions();
   const controlInstance = useControlAxonclawInstance(agentId);
 
   const instances = useMemo(
@@ -264,7 +264,7 @@ export function AgentDetailPage() {
           </div>
 
           <div className='flex items-center gap-2'>
-            {agentRuntimesPermissions.canWrite && (
+            {agentHostsPermissions.canWrite && (
               <Button
                 variant='default'
                 size='sm'
@@ -514,7 +514,7 @@ export function AgentDetailPage() {
                                     </p>
                                   </TooltipContent>
                                 </Tooltip>
-                                {agentRuntimesPermissions.canWrite && (
+                                {agentHostsPermissions.canWrite && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <Button

@@ -13,10 +13,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmemory"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
@@ -106,10 +106,10 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			apikey.Table:                   apikey.ValidColumn,
 			agent.Table:                    agent.ValidColumn,
+			agenthost.Table:                agenthost.ValidColumn,
 			agentinstance.Table:            agentinstance.ValidColumn,
 			agentmemory.Table:              agentmemory.ValidColumn,
 			agentmessage.Table:             agentmessage.ValidColumn,
-			agentruntime.Table:             agentruntime.ValidColumn,
 			agentskill.Table:               agentskill.ValidColumn,
 			agentthread.Table:              agentthread.ValidColumn,
 			agenttool.Table:                agenttool.ValidColumn,

@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
-	"github.com/looplj/axonhub/internal/ent/agentruntime"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
 )
 
-func TestV1_0_0_CreateLocalAgentRuntime(t *testing.T) {
+func TestV1_0_0_CreateLocalAgentHost(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
@@ -23,44 +23,44 @@ func TestV1_0_0_CreateLocalAgentRuntime(t *testing.T) {
 	err := datamigrate.NewV1_0_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
-	runtime, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	host, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Only(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, "Local", runtime.Name)
-	assert.Equal(t, agentruntime.TypeLocal, runtime.Type)
-	assert.Equal(t, agentruntime.StatusActive, runtime.Status)
+	assert.Equal(t, "Local", host.Name)
+	assert.Equal(t, agenthost.TypeLocal, host.Type)
+	assert.Equal(t, agenthost.StatusActive, host.Status)
 }
 
-func TestV1_0_0_LocalAgentRuntimeAlreadyExists(t *testing.T) {
+func TestV1_0_0_LocalAgentHostAlreadyExists(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
 	ctx = authz.WithTestBypass(ctx)
 
-	existingRuntime, err := client.AgentRuntime.Create().
+	existingHost, err := client.AgentHost.Create().
 		SetName("existing-local").
-		SetType(agentruntime.TypeLocal).
-		SetStatus(agentruntime.StatusActive).
+		SetType(agenthost.TypeLocal).
+		SetStatus(agenthost.StatusActive).
 		Save(ctx)
 	require.NoError(t, err)
 
 	err = datamigrate.NewV1_0_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
-	count, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	count, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Count(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 
-	runtime, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	host, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Only(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, existingRuntime.ID, runtime.ID)
-	assert.Equal(t, "existing-local", runtime.Name)
+	assert.Equal(t, existingHost.ID, host.ID)
+	assert.Equal(t, "existing-local", host.Name)
 }
 
 func TestV1_0_0_Idempotency(t *testing.T) {
@@ -73,28 +73,28 @@ func TestV1_0_0_Idempotency(t *testing.T) {
 	err := datamigrate.NewV1_0_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
-	runtime1, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	host1, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Only(ctx)
 	require.NoError(t, err)
 
 	err = datamigrate.NewV1_0_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
-	count, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	count, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Count(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 
-	runtime2, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	host2, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Only(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, runtime1.ID, runtime2.ID)
+	assert.Equal(t, host1.ID, host2.ID)
 }
 
-func TestV1_0_0_VerifyAgentRuntimeFields(t *testing.T) {
+func TestV1_0_0_VerifyAgentHostFields(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
@@ -104,55 +104,55 @@ func TestV1_0_0_VerifyAgentRuntimeFields(t *testing.T) {
 	err := datamigrate.NewV1_0_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
-	runtime, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	host, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Only(ctx)
 	require.NoError(t, err)
 
-	assert.NotZero(t, runtime.ID)
-	assert.NotZero(t, runtime.CreatedAt)
-	assert.NotZero(t, runtime.UpdatedAt)
-	assert.Equal(t, "Local", runtime.Name)
-	assert.Equal(t, agentruntime.TypeLocal, runtime.Type)
-	assert.Equal(t, agentruntime.StatusActive, runtime.Status)
+	assert.NotZero(t, host.ID)
+	assert.NotZero(t, host.CreatedAt)
+	assert.NotZero(t, host.UpdatedAt)
+	assert.Equal(t, "Local", host.Name)
+	assert.Equal(t, agenthost.TypeLocal, host.Type)
+	assert.Equal(t, agenthost.StatusActive, host.Status)
 }
 
-func TestV1_0_0_MultipleNonLocalAgentRuntimes(t *testing.T) {
+func TestV1_0_0_MultipleNonLocalAgentHosts(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
 
 	ctx := context.Background()
 	ctx = authz.WithTestBypass(ctx)
 
-	_, err := client.AgentRuntime.Create().
-		SetName("vm-runtime").
-		SetType(agentruntime.TypeVM).
-		SetStatus(agentruntime.StatusActive).
+	_, err := client.AgentHost.Create().
+		SetName("vm-host").
+		SetType(agenthost.TypeVM).
+		SetStatus(agenthost.StatusActive).
 		Save(ctx)
 	require.NoError(t, err)
 
-	_, err = client.AgentRuntime.Create().
-		SetName("docker-runtime").
-		SetType(agentruntime.TypeDocker).
-		SetStatus(agentruntime.StatusActive).
+	_, err = client.AgentHost.Create().
+		SetName("docker-host").
+		SetType(agenthost.TypeDocker).
+		SetStatus(agenthost.StatusActive).
 		Save(ctx)
 	require.NoError(t, err)
 
 	err = datamigrate.NewV1_0_0().Migrate(ctx, client)
 	require.NoError(t, err)
 
-	localRuntime, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	localHost, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Only(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, "Local", localRuntime.Name)
+	assert.Equal(t, "Local", localHost.Name)
 
-	totalCount, err := client.AgentRuntime.Query().Count(ctx)
+	totalCount, err := client.AgentHost.Query().Count(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 3, totalCount)
 
-	localCount, err := client.AgentRuntime.Query().
-		Where(agentruntime.TypeEQ(agentruntime.TypeLocal)).
+	localCount, err := client.AgentHost.Query().
+		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Count(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, localCount)
