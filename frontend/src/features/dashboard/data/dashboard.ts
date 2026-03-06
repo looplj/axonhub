@@ -112,6 +112,10 @@ export const tokenStatsSchema = z.object({
   totalInputTokensThisMonth: z.number(),
   totalOutputTokensThisMonth: z.number(),
   totalCachedTokensThisMonth: z.number(),
+  totalInputTokensAllTime: z.number(),
+  totalOutputTokensAllTime: z.number(),
+  totalCachedTokensAllTime: z.number(),
+  lastUpdated: z.string().nullable(),
 });
 
 export type TokenStats = z.infer<typeof tokenStatsSchema>;
@@ -260,6 +264,10 @@ const TOKEN_STATS_AGGR_QUERY = `
       totalInputTokensThisMonth
       totalOutputTokensThisMonth
       totalCachedTokensThisMonth
+      totalInputTokensAllTime
+      totalOutputTokensAllTime
+      totalCachedTokensAllTime
+      lastUpdated
     }
   }
 `;

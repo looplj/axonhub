@@ -64,6 +64,11 @@ type TokenStats {
   totalInputTokensThisMonth: Int!
   totalOutputTokensThisMonth: Int!
   totalCachedTokensThisMonth: Int!
+
+  totalInputTokensAllTime: Int!
+  totalOutputTokensAllTime: Int!
+  totalCachedTokensAllTime: Int!
+  lastUpdated: Time
 }
 
 type TopRequestsProjects {

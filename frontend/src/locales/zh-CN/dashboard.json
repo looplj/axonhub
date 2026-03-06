@@ -42,6 +42,7 @@
   "dashboard.stats.month": "月",
   "dashboard.stats.week": "周",
   "dashboard.stats.day": "日",
+  "dashboard.stats.all": "全部",
   "dashboard.stats.failedRequests": "失败请求",
   "dashboard.stats.requests": "请求",
   "dashboard.stats.inputTokens": "输入Token",
@@ -65,5 +66,6 @@
   "dashboard.cards.fastestPerformers.noData": "暂无数据",
   "dashboard.cards.fastestPerformers.description": "最快的{{type}} by tokens/second · {{count}} 次请求",
   "dashboard.cards.fastestPerformers.channelType": "通道",
-  "dashboard.cards.fastestPerformers.modelType": "模型"
+  "dashboard.cards.fastestPerformers.modelType": "模型",
+  "dashboard.stats.updated": "更新时间: {{time}}"
 }

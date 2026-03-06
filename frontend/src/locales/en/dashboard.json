@@ -42,6 +42,7 @@
   "dashboard.stats.month": "MO",
   "dashboard.stats.week": "WK",
   "dashboard.stats.day": "Day",
+  "dashboard.stats.all": "All",
   "dashboard.stats.failedRequests": "Failed requests",
   "dashboard.stats.requests": "Requests",
   "dashboard.stats.inputTokens": "Input Tokens",
@@ -65,5 +66,6 @@
   "dashboard.cards.fastestPerformers.noData": "No data available",
   "dashboard.cards.fastestPerformers.description": "Fastest {{type}} by tokens/second · {{count}} requests across top performers",
   "dashboard.cards.fastestPerformers.channelType": "channels",
-  "dashboard.cards.fastestPerformers.modelType": "models"
+  "dashboard.cards.fastestPerformers.modelType": "models",
+  "dashboard.stats.updated": "Updated: {{time}}"
 }

@@ -98,6 +98,14 @@ func Run(opts ...fx.Option) {
 				tracing.SetupLogger(log.GetGlobalLogger())
 				slog.SetDefault(log.GetGlobalLogger().AsSlog())
 			}),
+			fx.Invoke(func(usageLogSvc *biz.UsageLogService) {
+				usageLogSvc.OnUsageLogCreated = gql.InvalidateAllTimeTokenStatsCache
+			}),
+			fx.Invoke(func(cfg Config) {
+				if cfg.Dashboard.AllTimeTokenStatsSoftTTL > 0 && cfg.Dashboard.AllTimeTokenStatsHardTTL > 0 {
+					gql.SetTokenStatsCacheTTL(cfg.Dashboard.AllTimeTokenStatsSoftTTL, cfg.Dashboard.AllTimeTokenStatsHardTTL)
+				}
+			}),
 			fx.Invoke(func(lc fx.Lifecycle, worker *gc.Worker) {
 				lc.Append(fx.Hook{
 					OnStart: func(ctx context.Context) error {

@@ -302,15 +302,19 @@ type TestChannelPayload struct {
 }
 
 type TokenStats struct {
-	TotalInputTokensToday      int `json:"totalInputTokensToday"`
-	TotalOutputTokensToday     int `json:"totalOutputTokensToday"`
-	TotalCachedTokensToday     int `json:"totalCachedTokensToday"`
-	TotalInputTokensThisWeek   int `json:"totalInputTokensThisWeek"`
-	TotalOutputTokensThisWeek  int `json:"totalOutputTokensThisWeek"`
-	TotalCachedTokensThisWeek  int `json:"totalCachedTokensThisWeek"`
-	TotalInputTokensThisMonth  int `json:"totalInputTokensThisMonth"`
-	TotalOutputTokensThisMonth int `json:"totalOutputTokensThisMonth"`
-	TotalCachedTokensThisMonth int `json:"totalCachedTokensThisMonth"`
+	TotalInputTokensToday      int        `json:"totalInputTokensToday"`
+	TotalOutputTokensToday     int        `json:"totalOutputTokensToday"`
+	TotalCachedTokensToday     int        `json:"totalCachedTokensToday"`
+	TotalInputTokensThisWeek   int        `json:"totalInputTokensThisWeek"`
+	TotalOutputTokensThisWeek  int        `json:"totalOutputTokensThisWeek"`
+	TotalCachedTokensThisWeek  int        `json:"totalCachedTokensThisWeek"`
+	TotalInputTokensThisMonth  int        `json:"totalInputTokensThisMonth"`
+	TotalOutputTokensThisMonth int        `json:"totalOutputTokensThisMonth"`
+	TotalCachedTokensThisMonth int        `json:"totalCachedTokensThisMonth"`
+	TotalInputTokensAllTime    int        `json:"totalInputTokensAllTime"`
+	TotalOutputTokensAllTime   int        `json:"totalOutputTokensAllTime"`
+	TotalCachedTokensAllTime   int        `json:"totalCachedTokensAllTime"`
+	LastUpdated                *time.Time `json:"lastUpdated,omitempty"`
 }
 
 type TokenStatsByAPIKey struct {

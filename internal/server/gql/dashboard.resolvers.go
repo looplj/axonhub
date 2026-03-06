@@ -9,10 +9,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -28,6 +30,8 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 	"github.com/samber/lo"
+	"github.com/vektah/gqlparser/v2/gqlerror"
+	"golang.org/x/sync/singleflight"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -647,6 +651,126 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 	stats.TotalOutputTokensThisMonth = output
 	stats.TotalCachedTokensThisMonth = cached
 
+	// Get all-time token stats with stale-while-revalidate caching
+	allTimeCacheMu.RLock()
+	cacheAge := time.Since(allTimeCacheTime)
+	cacheExists := allTimeCache != nil
+	allTimeCacheMu.RUnlock()
+
+	// Helper function to refresh cache data
+	// Returns the stats, the cache timestamp, and any error
+	refreshCache := func(ctx context.Context) (*TokenStats, time.Time, error) {
+		// Use singleflight to prevent concurrent refresh attempts
+		result, err, _ := allTimeRefreshGroup.Do("allTimeTokenStats", func() (interface{}, error) {
+			// Query all usage_logs records without time filter
+			type allTimeTokenSums struct {
+				InputTokens  int `json:"input_tokens"`
+				OutputTokens int `json:"output_tokens"`
+				CachedTokens int `json:"cached_tokens"`
+			}
+
+			var allTimeRecords []allTimeTokenSums
+
+			err := r.client.UsageLog.Query().
+				Modify(func(s *sql.Selector) {
+					s.Select(
+						sql.As(sql.Sum(usagelog.FieldPromptTokens), "input_tokens"),
+						sql.As(sql.Sum(usagelog.FieldCompletionTokens), "output_tokens"),
+						sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+					)
+				}).
+				Scan(ctx, &allTimeRecords)
+
+			if err != nil || len(allTimeRecords) == 0 {
+				return nil, err
+			}
+
+			newStats := &TokenStats{
+				TotalInputTokensAllTime:  allTimeRecords[0].InputTokens,
+				TotalOutputTokensAllTime: allTimeRecords[0].OutputTokens,
+				TotalCachedTokensAllTime: allTimeRecords[0].CachedTokens,
+			}
+
+			cacheTime := time.Now().UTC()
+
+			allTimeCacheMu.Lock()
+			allTimeCache = newStats
+			allTimeCacheTime = cacheTime
+			allTimeCacheMu.Unlock()
+
+			return &cacheResult{
+				stats: newStats,
+				time:  cacheTime,
+			}, nil
+		})
+
+		if err != nil {
+			return nil, time.Time{}, err
+		}
+		cacheRes, ok := result.(*cacheResult)
+		if !ok {
+			return nil, time.Time{}, fmt.Errorf("unexpected type from singleflight: %T", result)
+		}
+		return cacheRes.stats, cacheRes.time, nil
+	}
+
+	// Stale-while-revalidate logic
+	if cacheExists && cacheAge < hardTTL {
+		// Cache is valid (within hard TTL)
+		// Capture all cache data under a single read lock to prevent race conditions
+		allTimeCacheMu.RLock()
+		cachedStats := allTimeCache
+		lastUpdated := allTimeCacheTime
+		allTimeCacheMu.RUnlock()
+
+		// Safe to access cachedStats here since we have a local copy
+		stats.TotalInputTokensAllTime = cachedStats.TotalInputTokensAllTime
+		stats.TotalOutputTokensAllTime = cachedStats.TotalOutputTokensAllTime
+		stats.TotalCachedTokensAllTime = cachedStats.TotalCachedTokensAllTime
+		stats.LastUpdated = &lastUpdated
+
+		// If cache is stale (exceeded soft TTL), trigger async refresh
+		if cacheAge >= softTTL {
+			go func() {
+				bgCtx := context.Background()
+				if _, _, err := refreshCache(bgCtx); err != nil {
+					log.Error(bgCtx, "async all-time token stats cache refresh failed",
+						log.Cause(err),
+						log.Duration("cache_age", cacheAge),
+						log.Duration("soft_ttl", softTTL),
+						log.Duration("hard_ttl", hardTTL),
+					)
+				}
+			}()
+		}
+	} else {
+		// Cache is invalid or expired (exceeded hard TTL) - compute synchronously
+		newStats, newCacheTime, err := refreshCache(ctx)
+		if err != nil || newStats == nil {
+			log.Error(ctx, "synchronous all-time token stats aggregation failed - cache exceeded hard TTL",
+				log.Cause(err),
+				log.Bool("cache_exists", cacheExists),
+				log.Duration("cache_age", cacheAge),
+				log.Duration("hard_ttl", hardTTL),
+			)
+			graphql.AddError(ctx, &gqlerror.Error{
+				Path:    graphql.GetPath(ctx),
+				Message: "Failed to aggregate all-time token statistics",
+				Extensions: map[string]interface{}{
+					"code": "TOKEN_STATS_ALL_TIME_AGG_FAILED",
+				},
+			})
+			stats.TotalInputTokensAllTime = 0
+			stats.TotalOutputTokensAllTime = 0
+			stats.TotalCachedTokensAllTime = 0
+		} else {
+			stats.TotalInputTokensAllTime = newStats.TotalInputTokensAllTime
+			stats.TotalOutputTokensAllTime = newStats.TotalOutputTokensAllTime
+			stats.TotalCachedTokensAllTime = newStats.TotalCachedTokensAllTime
+			stats.LastUpdated = &newCacheTime
+		}
+	}
+
 	return stats, nil
 }
 
@@ -1213,3 +1337,45 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 
 	return buildChannelPerformanceResponse(statsMap, channelNames, startDateLocal, daysCount), nil
 }
+
+var (
+	allTimeCache        *TokenStats
+	allTimeCacheTime    time.Time
+	allTimeCacheMu      sync.RWMutex
+	softTTL             = 1 * time.Hour
+	hardTTL             = 24 * time.Hour
+	allTimeRefreshGroup singleflight.Group
+)
+
+// cacheResult holds the result of a cache refresh operation.
+type cacheResult struct {
+	stats *TokenStats
+	time  time.Time
+}
+
+// SetTokenStatsCacheTTL sets the cache TTL values for all-time token stats.
+// Call this during server initialization to override defaults.
+func SetTokenStatsCacheTTL(soft, hard time.Duration) {
+	allTimeCacheMu.Lock()
+	defer allTimeCacheMu.Unlock()
+	softTTL = soft
+	hardTTL = hard
+}
+
+// InvalidateAllTimeTokenStatsCache clears the all-time token stats cache.
+// This should be called when new usage logs are created to ensure fresh data.
+func InvalidateAllTimeTokenStatsCache() {
+	allTimeCacheMu.Lock()
+	allTimeCache = nil
+	allTimeCacheTime = time.Time{}
+	allTimeCacheMu.Unlock()
+}
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+ */
