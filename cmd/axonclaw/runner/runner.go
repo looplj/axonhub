@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -12,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/axon/bus"
 	axoncontext "github.com/looplj/axonhub/axon/context"
 	"github.com/looplj/axonhub/axon/permission"
+	"github.com/looplj/axonhub/axon/task"
 	"github.com/looplj/axonhub/axon/thread"
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
@@ -20,15 +22,17 @@ import (
 const defaultMaxIterations = 30
 
 type Runner struct {
-	Client       graphql.Client
-	Agent        *agent.Agent
-	Logger       *slog.Logger
-	Workspace    string
-	Config       conf.Config
-	ThreadID     string
-	ThreadMgr    *thread.Manager
-	Boot         *bootstrap.Result
-	lastSequence int
+	Client        graphql.Client
+	Agent         *agent.Agent
+	Logger        *slog.Logger
+	Workspace     string
+	Config        conf.Config
+	ThreadID      string
+	ThreadMgr     *thread.Manager
+	Boot          *bootstrap.Result
+	lastSequence  int
+	TaskScheduler *task.Scheduler
+	processMu     sync.Mutex
 }
 
 type NewOptions struct {
@@ -41,6 +45,7 @@ type NewOptions struct {
 	ThreadMgr     *thread.Manager
 	PermEvaluator *permission.Evaluator
 	Bus           bus.EventBus
+	TaskScheduler *task.Scheduler
 }
 
 func New(opts NewOptions) *Runner {
@@ -69,14 +74,15 @@ func New(opts NewOptions) *Runner {
 	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.ThreadMgr, opts.Boot.ThreadID)
 
 	return &Runner{
-		Client:    opts.Client,
-		Agent:     a,
-		Logger:    opts.Logger,
-		Workspace: opts.Workspace,
-		Config:    opts.Config,
-		ThreadID:  opts.Boot.ThreadID,
-		ThreadMgr: opts.ThreadMgr,
-		Boot:      opts.Boot,
+		Client:        opts.Client,
+		Agent:         a,
+		Logger:        opts.Logger,
+		Workspace:     opts.Workspace,
+		Config:        opts.Config,
+		ThreadID:      opts.Boot.ThreadID,
+		ThreadMgr:     opts.ThreadMgr,
+		Boot:          opts.Boot,
+		TaskScheduler: opts.TaskScheduler,
 	}
 }
 
@@ -165,6 +171,9 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func (r *Runner) processMessage(ctx context.Context, text string) error {
+	r.processMu.Lock()
+	defer r.processMu.Unlock()
+
 	traceID := uuid.New().String()
 	// 显式设置 ThreadID 和 TraceID，确保 provider 调用时能正确传递到 HTTP Header
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
@@ -173,6 +182,9 @@ func (r *Runner) processMessage(ctx context.Context, text string) error {
 }
 
 func (r *Runner) autoUpdateConfig(ctx context.Context) {
+	r.processMu.Lock()
+	defer r.processMu.Unlock()
+
 	newBoot, err := bootstrap.Do(ctx, r.Client, bootstrap.SystemPromptData{
 		Workspace:  r.Workspace,
 		SkillsRoot: r.Boot.SkillsRoot,
@@ -209,4 +221,12 @@ func (r *Runner) autoUpdateConfig(ctx context.Context) {
 	})
 
 	r.Logger.Info("auto-update config completed", "agent_name", newBoot.AgentName, "model", newBoot.Model)
+}
+
+func (r *Runner) ProcessScheduledMessage(ctx context.Context, text string) error {
+	return r.processMessage(ctx, text)
+}
+
+func (r *Runner) SetTaskScheduler(s *task.Scheduler) {
+	r.TaskScheduler = s
 }

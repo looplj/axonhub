@@ -73,6 +73,21 @@ Example workflow:
 2. Pick the appropriate agent based on name/description
 3. Call SendMessage with target="peer", targetAgentID, and targetInstanceID
 
+## Scheduled Tasks
+
+You can schedule tasks to send messages to yourself (the agent) at specific times:
+
+1. Run ` + "`{{.AxonClawPath}} tasks`" + ` commands to manage scheduled tasks
+2. Use ` + "`{{.AxonClawPath}} tasks add`" + ` to create a new task with a trigger and action
+3. The action type ` + "`send_agent_message`" + ` sends a message to the agent when triggered
+
+Example - Schedule a daily reminder:
+` + "```bash" + `
+{{.AxonClawPath}} tasks add --id daily-reminder --name "Daily Reminder" --trigger-type cron --cron "0 9 * * *" --action '{"type":"send_agent_message","message":"Check your daily tasks!"}'
+` + "```" + `
+
+Available trigger types: cron, interval, at
+
 ## AxonClaw Command Execution
 
 When executing axonclaw commands via Bash tool, ALWAYS use the absolute path provided in the environment section ({{.AxonClawPath}}).

@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/looplj/axonhub/axon/agent"
@@ -20,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/axon/permission/grant"
 	"github.com/looplj/axonhub/axon/permission/policy"
 	"github.com/looplj/axonhub/axon/provider/anthropic"
+	"github.com/looplj/axonhub/axon/task"
 	"github.com/looplj/axonhub/axon/thread"
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/build"
@@ -130,6 +132,11 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 		ConfigDir: configDir,
 		Stdout:    os.Stdout,
 		Stderr:    os.Stderr,
+	}))
+	rootCmd.AddCommand(cmds.NewTaskCommand(cmds.TaskOptions{
+		Dir:    configDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
 	}))
 
 	return rootCmd
@@ -251,6 +258,21 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		PermEvaluator: permEvaluator,
 		Bus:           eventBus,
 	})
+
+	taskStore, err := task.NewStore(filepath.Join(wd, ".axonclaw"))
+	if err != nil {
+		return fmt.Errorf("init task store: %w", err)
+	}
+	taskHandler := runner.NewAxonClawTaskHandler(logger, wd, r)
+	taskScheduler, err := task.NewScheduler(logger, taskStore, taskHandler, task.SchedulerOptions{
+		TickInterval: time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("init task scheduler: %w", err)
+	}
+	taskScheduler.Start(ctx)
+	defer taskScheduler.Stop()
+
 	if err := r.Run(ctx); err != nil {
 		if err != context.Canceled {
 			logger.Error("runner stopped with error", "error", err)
