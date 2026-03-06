@@ -132,6 +132,7 @@ function RequestsContent() {
         channelFilter={channelFilter}
         apiKeyFilter={apiKeyFilter}
         dateRange={dateRange}
+        queryWhere={whereClause}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}

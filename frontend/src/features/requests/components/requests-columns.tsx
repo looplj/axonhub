@@ -1,15 +1,14 @@
 'use client';
 
-import { useCallback } from 'react';
+
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
 import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
-import { FileText, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
-import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -20,7 +19,13 @@ import { Request } from '../data/schema';
 import { getStatusColor } from './help';
 import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
 
-export function useRequestsColumns(): ColumnDef<Request>[] {
+import { usePaginationSearch } from '@/hooks/use-pagination-search';
+
+interface UseRequestsColumnsOptions {
+  onBodyClick?: (requestId: string, index: number) => void;
+}
+
+export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const permissions = useRequestPermissions();
@@ -34,15 +39,11 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
       accessorKey: 'id',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.id')} />,
       cell: ({ row }) => {
-        const handleClick = useCallback(() => {
-          navigateWithSearch({
-            to: '/project/requests/$requestId',
-            params: { requestId: row.original.id },
-          });
-        }, [row.original.id, navigateWithSearch]);
-
         return (
-          <button onClick={handleClick} className='text-primary cursor-pointer font-mono text-xs hover:underline'>
+          <button
+            onClick={() => options?.onBodyClick?.(row.original.id, row.index)}
+            className='text-primary cursor-pointer font-mono text-xs hover:underline'
+          >
             #{extractNumberID(row.getValue('id'))}
           </button>
         );
@@ -481,21 +482,21 @@ export function useRequestsColumns(): ColumnDef<Request>[] {
     {
       id: 'details',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.details')} />,
-      cell: ({ row }) => {
-        const handleViewDetails = () => {
-          navigateWithSearch({
-            to: '/project/requests/$requestId',
-            params: { requestId: row.original.id },
-          });
-        };
-
-        return (
-          <Button variant='outline' size='sm' onClick={handleViewDetails}>
-            <FileText className='mr-2 h-4 w-4' />
-            {t('requests.actions.viewDetails')}
-          </Button>
-        );
-      },
+      cell: ({ row }) => (
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={() =>
+            navigateWithSearch({
+              to: '/project/requests/$requestId',
+              params: { requestId: row.original.id },
+            })
+          }
+        >
+          <FileText className='mr-2 h-4 w-4' />
+          {t('requests.actions.viewDetails')}
+        </Button>
+      ),
       enableHiding: true,
     },
     {

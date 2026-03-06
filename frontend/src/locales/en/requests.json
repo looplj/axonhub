@@ -77,5 +77,11 @@
   "requests.dialogs.requestDetail.noExecutions": "No executions",
   "requests.dialogs.requestDetail.notFound": "Request not found",
   "requests.errors.loadRequestsFailed": "Failed to load requests",
-  "requests.errors.loadRequestDetailFailed": "Failed to load request details"
+  "requests.errors.loadRequestDetailFailed": "Failed to load request details",
+  "requests.drawer.previous": "Previous",
+  "requests.drawer.next": "Next",
+  "requests.drawer.viewDetail": "View Detail",
+  "requests.drawer.noRequestBody": "No request body",
+  "requests.drawer.expandAll": "Expand all",
+  "requests.drawer.collapseAll": "Collapse all"
 }
