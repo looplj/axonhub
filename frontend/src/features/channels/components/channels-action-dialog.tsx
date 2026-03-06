@@ -118,7 +118,7 @@ const FetchedModelItem = memo(({
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          className='max-w-[200px] flex-1 cursor-pointer truncate'
+          className='flex-1 cursor-pointer truncate'
           onClick={onToggle}
         >
           {model}
