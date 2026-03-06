@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/axon/permission/grant"
 	"github.com/looplj/axonhub/axon/permission/policy"
 	"github.com/looplj/axonhub/axon/provider/anthropic"
+	"github.com/looplj/axonhub/axon/summarizer"
 	"github.com/looplj/axonhub/axon/task"
 	"github.com/looplj/axonhub/axon/thread"
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
@@ -198,10 +199,38 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	}
 	threadMgr := thread.NewManager(threadStore)
 
-	eventBus := bus.New(
-		bus.WithRecover(logger),
-		bus.WithTracing(),
+	var contextMgr agent.ContextManager
+	contextCfg := agent.DefaultContextManagerConfig()
+	contextCfg.Enabled = true
+	contextCfg.Logger = logger
+	if cfg.ContextRecentMessages > 0 {
+		contextCfg.MaxRecentMessages = cfg.ContextRecentMessages
+	}
+	if cfg.ContextSoftTokenLimit > 0 {
+		contextCfg.SoftTokenLimit = cfg.ContextSoftTokenLimit
+	}
+	if cfg.ContextSummaryMaxChars > 0 {
+		contextCfg.SummaryMaxChars = cfg.ContextSummaryMaxChars
+	}
+	contextCfg.Summarizer = summarizer.NewProvider(summarizer.ProviderOptions{
+		Provider:      provider,
+		Model:         boot.Model,
+		MaxSummaryLen: contextCfg.SummaryMaxChars,
+	})
+
+	contextStore := agent.NewContextManagerFileStore(filepath.Join(axonclawDir, "messages"))
+	cm, err := agent.NewSmartContextManager(contextCfg, contextStore)
+	if err != nil {
+		return fmt.Errorf("initialize context manager: %w", err)
+	}
+	contextMgr = cm
+
+	logger.Info("context manager enabled",
+		"max_recent_messages", contextCfg.MaxRecentMessages,
+		"soft_token_limit", contextCfg.SoftTokenLimit,
 	)
+
+	eventBus := bus.New(bus.WithRecover(logger), bus.WithTracing())
 	defer eventBus.Close()
 
 	eventBus.Subscribe(agent.TopicAgentEvent, bus.TypedHandler(func(_ context.Context, _ bus.Event, ev agent.AgentEvent) error {
@@ -222,7 +251,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		return nil
 	}))
 
-	grantsStore := grant.NewMemoryStore(grant.NewFileStore(filepath.Join(wd, ".axonclaw", "permission")))
+	grantsStore := grant.NewMemoryStore(grant.NewFileStore(filepath.Join(axonclawDir, "permission")))
 	if err := grantsStore.LoadGlobal(); err != nil {
 		return fmt.Errorf("load global grants: %w", err)
 	}
@@ -248,18 +277,19 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	})
 
 	r := runner.New(runner.NewOptions{
-		Logger:        logger,
-		Client:        gqlClient,
-		Provider:      provider,
-		Config:        cfg,
-		Workspace:     wd,
-		Boot:          boot,
-		ThreadMgr:     threadMgr,
-		PermEvaluator: permEvaluator,
-		Bus:           eventBus,
+		Logger:         logger,
+		Client:         gqlClient,
+		Provider:       provider,
+		ContextManager: contextMgr,
+		Config:         cfg,
+		Workspace:      wd,
+		Boot:           boot,
+		ThreadMgr:      threadMgr,
+		PermEvaluator:  permEvaluator,
+		Bus:            eventBus,
 	})
 
-	taskStore, err := task.NewStore(filepath.Join(wd, ".axonclaw"))
+	taskStore, err := task.NewStore(filepath.Join(axonclawDir, "tasks"))
 	if err != nil {
 		return fmt.Errorf("init task store: %w", err)
 	}

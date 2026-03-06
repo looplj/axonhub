@@ -5,11 +5,26 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
 )
+
+type toolCallBuilder struct {
+	id        string
+	name      string
+	jsonParts []string
+}
+
+func (b *toolCallBuilder) buildJSON() string {
+	var sb strings.Builder
+	for _, part := range b.jsonParts {
+		sb.WriteString(part)
+	}
+	return sb.String()
+}
 
 type Middleware interface {
 	BeforeTool(ctx context.Context, req ToolRequest) error

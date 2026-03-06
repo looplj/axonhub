@@ -49,14 +49,13 @@ type Config struct {
 type Agent struct {
 	config atomic.Pointer[Config]
 
-	provider    Provider
-	bus         bus.EventBus
-	tools       *ToolRegistry
-	logger      *slog.Logger
-	middlewares []Middleware
-
-	messages []Message
-	msgMu    sync.RWMutex
+	provider        Provider
+	contextManager  ContextManager
+	bus             bus.EventBus
+	tools           *ToolRegistry
+	logger          *slog.Logger
+	middlewares     []Middleware
+	initialMessages []Message
 
 	// requestIndex groups assistant messages that came from the same LLM call.
 	// It is an agent-maintained field: every LLM turn must assign the same
@@ -97,10 +96,15 @@ func WithMiddlewares(mws ...Middleware) Option {
 	}
 }
 
+func WithContextManager(cm ContextManager) Option {
+	return func(a *Agent) {
+		a.contextManager = cm
+	}
+}
+
 func WithMessages(msgs []Message) Option {
 	return func(a *Agent) {
-		a.messages = make([]Message, len(msgs))
-		copy(a.messages, msgs)
+		a.initialMessages = cloneMessages(msgs)
 
 		// Continue request index numbering from persisted history to avoid collisions.
 		var maxRequestIndex int64
@@ -130,6 +134,12 @@ func New(config Config, provider Provider, opts ...Option) *Agent {
 
 	for _, opt := range opts {
 		opt(a)
+	}
+
+	if a.contextManager == nil {
+		a.contextManager = NewSimpleContextManager(a.initialMessages)
+	} else if len(a.initialMessages) > 0 {
+		a.contextManager.AddMessages(context.Background(), a.initialMessages...)
 	}
 
 	return a
@@ -192,9 +202,7 @@ func (a *Agent) emit(ctx context.Context, event AgentEvent) {
 // addMessage appends a message to the internal history and emits
 // an EventMessageAdded event so external consumers can persist it.
 func (a *Agent) addMessage(ctx context.Context, msgs ...Message) {
-	a.msgMu.Lock()
-	a.messages = append(a.messages, msgs...)
-	a.msgMu.Unlock()
+	a.contextManager.AddMessages(ctx, msgs...)
 
 	for _, msg := range msgs {
 		a.emit(ctx, AgentEvent{
@@ -206,18 +214,12 @@ func (a *Agent) addMessage(ctx context.Context, msgs ...Message) {
 
 // Messages returns a copy of the current message history.
 func (a *Agent) Messages() []Message {
-	a.msgMu.RLock()
-	defer a.msgMu.RUnlock()
-	out := make([]Message, len(a.messages))
-	copy(out, a.messages)
-	return out
+	return a.contextManager.Messages(context.Background())
 }
 
 // ClearMessages clears all messages from the agent's history.
 func (a *Agent) ClearMessages() {
-	a.msgMu.Lock()
-	defer a.msgMu.Unlock()
-	a.messages = nil
+	a.contextManager.ClearMessages(context.Background())
 }
 
 // Inject inserts a message into the agent's history mid-process
@@ -416,11 +418,8 @@ func (a *Agent) PublishRequest(ctx context.Context, content Content) error {
 
 // buildMessages constructs the message list for an LLM call, prepending
 // the system prompts if configured.
-func (a *Agent) buildMessages(cfg Config) []Message {
-	a.msgMu.RLock()
-	history := make([]Message, len(a.messages))
-	copy(history, a.messages)
-	a.msgMu.RUnlock()
+func (a *Agent) buildMessages(ctx context.Context, cfg Config) []Message {
+	history := a.contextManager.BuildMessages(ctx)
 
 	systemPrompts := a.buildSystemPrompts(cfg)
 	if len(systemPrompts) == 0 {
@@ -512,7 +511,7 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 				pendingSteering = nil
 			}
 
-			messages := a.buildMessages(cfg)
+			messages := a.buildMessages(ctx, cfg)
 
 			a.logger.Debug("agent: LLM call",
 				"iteration", iterations,
@@ -523,6 +522,7 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 			if err != nil {
 				return fmt.Errorf("agent: LLM call failed: %w", err)
 			}
+			a.emit(ctx, AgentEvent{Type: EventUsage, Usage: &resp.Usage})
 			requestIndex := a.nextRequestIndex()
 			a.ensureRequestIndex(resp.Messages, requestIndex)
 
@@ -650,7 +650,7 @@ func (a *Agent) executeTool(ctx context.Context, tc ToolUse) (result ToolResult)
 
 	req := ToolRequest{
 		ThreadID:   clawcontext.ThreadID(ctx),
-		Workspace:  workspaceFromContext(ctx),
+		Workspace:  axoncontext.Workspace(ctx),
 		ToolCallID: tc.ID,
 		ToolName:   tc.Name,
 		ToolInput:  tc.Input,
@@ -744,7 +744,7 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 				pendingSteering = nil
 			}
 
-			messages := a.buildMessages(cfg)
+			messages := a.buildMessages(ctx, cfg)
 
 			a.logger.Debug("agent: LLM stream call",
 				"iteration", iterations,
@@ -986,7 +986,7 @@ func (a *Agent) executeToolStream(ctx context.Context, tc ToolUse, events chan A
 	for _, mw := range a.middlewares {
 		req := ToolRequest{
 			ThreadID:   clawcontext.ThreadID(ctx),
-			Workspace:  workspaceFromContext(ctx),
+			Workspace:  axoncontext.Workspace(ctx),
 			ToolCallID: tc.ID,
 			ToolName:   tc.Name,
 			ToolInput:  tc.Input,
@@ -1019,38 +1019,11 @@ func (a *Agent) executeToolStream(ctx context.Context, tc ToolUse, events chan A
 	return result
 }
 
-type toolCallBuilder struct {
-	id        string
-	name      string
-	jsonParts []string
-}
-
-func (b *toolCallBuilder) buildJSON() string {
-	result := ""
-	for _, part := range b.jsonParts {
-		result += part
-	}
-	return result
-}
-
-type ctxKey string
-
-const workspaceCtxKey ctxKey = "workspace"
-
-func WithWorkspace(ctx context.Context, workspace string) context.Context {
-	return context.WithValue(ctx, workspaceCtxKey, workspace)
-}
-
-func workspaceFromContext(ctx context.Context) string {
-	v, _ := ctx.Value(workspaceCtxKey).(string)
-	return v
-}
-
 func (a *Agent) runAfterMiddlewares(ctx context.Context, tc ToolUse, toolErr error, mws []Middleware) {
 	for i := len(mws) - 1; i >= 0; i-- {
 		req := ToolRequest{
 			ThreadID:   axoncontext.ThreadID(ctx),
-			Workspace:  workspaceFromContext(ctx),
+			Workspace:  axoncontext.Workspace(ctx),
 			ToolCallID: tc.ID,
 			ToolName:   tc.Name,
 			ToolInput:  tc.Input,

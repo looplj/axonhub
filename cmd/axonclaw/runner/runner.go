@@ -36,16 +36,17 @@ type Runner struct {
 }
 
 type NewOptions struct {
-	Logger        *slog.Logger
-	Client        graphql.Client
-	Provider      agent.Provider
-	Config        conf.Config
-	Workspace     string
-	Boot          *bootstrap.Result
-	ThreadMgr     *thread.Manager
-	PermEvaluator *permission.Evaluator
-	Bus           bus.EventBus
-	TaskScheduler *task.Scheduler
+	Logger         *slog.Logger
+	Client         graphql.Client
+	Provider       agent.Provider
+	ContextManager agent.ContextManager
+	Config         conf.Config
+	Workspace      string
+	Boot           *bootstrap.Result
+	ThreadMgr      *thread.Manager
+	PermEvaluator  *permission.Evaluator
+	Bus            bus.EventBus
+	TaskScheduler  *task.Scheduler
 }
 
 func New(opts NewOptions) *Runner {
@@ -68,6 +69,7 @@ func New(opts NewOptions) *Runner {
 		SystemPrompts: []string{opts.Boot.SystemPrompt, localPrompt},
 	}, opts.Provider,
 		agent.WithBus(opts.Bus),
+		agent.WithContextManager(opts.ContextManager),
 		agent.WithMiddlewares(permMw),
 	)
 
@@ -88,7 +90,7 @@ func New(opts NewOptions) *Runner {
 
 func (r *Runner) Run(ctx context.Context) error {
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
-	ctx = agent.WithWorkspace(ctx, r.Workspace)
+	ctx = axoncontext.WithWorkspace(ctx, r.Workspace)
 
 	pollTicker := time.NewTicker(r.Config.PollInterval)
 	defer pollTicker.Stop()

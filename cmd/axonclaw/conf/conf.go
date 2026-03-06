@@ -23,6 +23,9 @@ type Config struct {
 	HeartbeatInterval      time.Duration `yml:"heartbeat_interval"`
 	AutoSyncConfig         bool          `yml:"auto_sync_config"`
 	AutoSyncConfigInterval time.Duration `yml:"auto_sync_config_interval"`
+	ContextRecentMessages  int           `yml:"context_recent_messages"`
+	ContextSoftTokenLimit  int           `yml:"context_soft_token_limit"`
+	ContextSummaryMaxChars int           `yml:"context_summary_max_chars"`
 	Debug                  bool          `yml:"debug"`
 }
 
@@ -31,6 +34,9 @@ func DefaultConfig() Config {
 		PollInterval:           5 * time.Second,
 		HeartbeatInterval:      1 * time.Minute,
 		AutoSyncConfigInterval: 5 * time.Minute,
+		ContextRecentMessages:  80,
+		ContextSoftTokenLimit:  120000,
+		ContextSummaryMaxChars: 16000,
 	}
 }
 
@@ -52,6 +58,9 @@ func LoadOrSaveConfig(baseURL, apiKey, name string) (Config, error) {
 			v.SetDefault("heartbeat_interval", "1m")
 			v.SetDefault("auto_sync_config", false)
 			v.SetDefault("auto_sync_config_interval", "5m")
+			v.SetDefault("context_recent_messages", 80)
+			v.SetDefault("context_soft_token_limit", 120000)
+			v.SetDefault("context_summary_max_chars", 16000)
 			v.SetDefault("debug", false)
 		},
 	})
@@ -79,6 +88,16 @@ func LoadOrSaveConfig(baseURL, apiKey, name string) (Config, error) {
 	}
 	if res.Value.AutoSyncConfigInterval > 0 {
 		cfg.AutoSyncConfigInterval = res.Value.AutoSyncConfigInterval
+	}
+
+	if res.Value.ContextRecentMessages > 0 {
+		cfg.ContextRecentMessages = res.Value.ContextRecentMessages
+	}
+	if res.Value.ContextSoftTokenLimit > 0 {
+		cfg.ContextSoftTokenLimit = res.Value.ContextSoftTokenLimit
+	}
+	if res.Value.ContextSummaryMaxChars > 0 {
+		cfg.ContextSummaryMaxChars = res.Value.ContextSummaryMaxChars
 	}
 	if res.Value.Debug {
 		cfg.Debug = res.Value.Debug
@@ -199,6 +218,10 @@ func LoadConfig() (Config, error) {
 			v.SetDefault("heartbeat_interval", "1m")
 			v.SetDefault("auto_sync_config", false)
 			v.SetDefault("auto_sync_config_interval", "5m")
+			v.SetDefault("enable_context_manager", false)
+			v.SetDefault("context_recent_messages", 80)
+			v.SetDefault("context_soft_token_limit", 120000)
+			v.SetDefault("context_summary_max_chars", 16000)
 			v.SetDefault("debug", false)
 		},
 	})

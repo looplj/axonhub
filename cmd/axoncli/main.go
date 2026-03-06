@@ -253,7 +253,7 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = axoncontext.WithThreadID(ctx, threadID)
-	ctx = agent.WithWorkspace(ctx, workspaceDir)
+	ctx = axoncontext.WithWorkspace(ctx, workspaceDir)
 	defer cancel()
 
 	m := tui.NewModel(tui.ModelOpts{
