@@ -81,7 +81,6 @@ func (Channel) Fields() []ent.Field {
 				"antigravity",
 				"nanogpt",
 			).
-			Immutable().
 			Annotations(
 				entgql.OrderField("TYPE"),
 			),

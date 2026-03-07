@@ -3,14 +3,48 @@ package gql
 import (
 	"fmt"
 	"sort"
+	"sync"
+	"time"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
+
+var (
+	allTimeCache        *TokenStats
+	allTimeCacheTime    time.Time
+	allTimeCacheMu      sync.RWMutex
+	softTTL             = 1 * time.Hour
+	hardTTL             = 24 * time.Hour
+	allTimeRefreshGroup singleflight.Group
+)
+
+// cacheResult holds the result of a cache refresh operation.
+type cacheResult struct {
+	stats *TokenStats
+	time  time.Time
+}
+
+// SetTokenStatsCacheTTL sets the cache TTL values for all-time token stats.
+func SetTokenStatsCacheTTL(soft, hard time.Duration) {
+	allTimeCacheMu.Lock()
+	defer allTimeCacheMu.Unlock()
+	softTTL = soft
+	hardTTL = hard
+}
+
+// InvalidateAllTimeTokenStatsCache clears the all-time token stats cache.
+func InvalidateAllTimeTokenStatsCache() {
+	allTimeCacheMu.Lock()
+	allTimeCache = nil
+	allTimeCacheTime = time.Time{}
+	allTimeCacheMu.Unlock()
+}
 
 type scoredItem[T any] struct {
 	stats      T

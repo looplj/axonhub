@@ -424,6 +424,42 @@ func (u *ModelUpsert) AddDeletedAt(v int) *ModelUpsert {
 	return u
 }
 
+// SetDeveloper sets the "developer" field.
+func (u *ModelUpsert) SetDeveloper(v string) *ModelUpsert {
+	u.Set(model.FieldDeveloper, v)
+	return u
+}
+
+// UpdateDeveloper sets the "developer" field to the value that was provided on create.
+func (u *ModelUpsert) UpdateDeveloper() *ModelUpsert {
+	u.SetExcluded(model.FieldDeveloper)
+	return u
+}
+
+// SetModelID sets the "model_id" field.
+func (u *ModelUpsert) SetModelID(v string) *ModelUpsert {
+	u.Set(model.FieldModelID, v)
+	return u
+}
+
+// UpdateModelID sets the "model_id" field to the value that was provided on create.
+func (u *ModelUpsert) UpdateModelID() *ModelUpsert {
+	u.SetExcluded(model.FieldModelID)
+	return u
+}
+
+// SetType sets the "type" field.
+func (u *ModelUpsert) SetType(v model.Type) *ModelUpsert {
+	u.Set(model.FieldType, v)
+	return u
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *ModelUpsert) UpdateType() *ModelUpsert {
+	u.SetExcluded(model.FieldType)
+	return u
+}
+
 // SetName sets the "name" field.
 func (u *ModelUpsert) SetName(v string) *ModelUpsert {
 	u.Set(model.FieldName, v)
@@ -528,15 +564,6 @@ func (u *ModelUpsertOne) UpdateNewValues() *ModelUpsertOne {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(model.FieldCreatedAt)
 		}
-		if _, exists := u.create.mutation.Developer(); exists {
-			s.SetIgnore(model.FieldDeveloper)
-		}
-		if _, exists := u.create.mutation.ModelID(); exists {
-			s.SetIgnore(model.FieldModelID)
-		}
-		if _, exists := u.create.mutation.GetType(); exists {
-			s.SetIgnore(model.FieldType)
-		}
 	}))
 	return u
 }
@@ -600,6 +627,48 @@ func (u *ModelUpsertOne) AddDeletedAt(v int) *ModelUpsertOne {
 func (u *ModelUpsertOne) UpdateDeletedAt() *ModelUpsertOne {
 	return u.Update(func(s *ModelUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetDeveloper sets the "developer" field.
+func (u *ModelUpsertOne) SetDeveloper(v string) *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.SetDeveloper(v)
+	})
+}
+
+// UpdateDeveloper sets the "developer" field to the value that was provided on create.
+func (u *ModelUpsertOne) UpdateDeveloper() *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.UpdateDeveloper()
+	})
+}
+
+// SetModelID sets the "model_id" field.
+func (u *ModelUpsertOne) SetModelID(v string) *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.SetModelID(v)
+	})
+}
+
+// UpdateModelID sets the "model_id" field to the value that was provided on create.
+func (u *ModelUpsertOne) UpdateModelID() *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.UpdateModelID()
+	})
+}
+
+// SetType sets the "type" field.
+func (u *ModelUpsertOne) SetType(v model.Type) *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.SetType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *ModelUpsertOne) UpdateType() *ModelUpsertOne {
+	return u.Update(func(s *ModelUpsert) {
+		s.UpdateType()
 	})
 }
 
@@ -887,15 +956,6 @@ func (u *ModelUpsertBulk) UpdateNewValues() *ModelUpsertBulk {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(model.FieldCreatedAt)
 			}
-			if _, exists := b.mutation.Developer(); exists {
-				s.SetIgnore(model.FieldDeveloper)
-			}
-			if _, exists := b.mutation.ModelID(); exists {
-				s.SetIgnore(model.FieldModelID)
-			}
-			if _, exists := b.mutation.GetType(); exists {
-				s.SetIgnore(model.FieldType)
-			}
 		}
 	}))
 	return u
@@ -960,6 +1020,48 @@ func (u *ModelUpsertBulk) AddDeletedAt(v int) *ModelUpsertBulk {
 func (u *ModelUpsertBulk) UpdateDeletedAt() *ModelUpsertBulk {
 	return u.Update(func(s *ModelUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetDeveloper sets the "developer" field.
+func (u *ModelUpsertBulk) SetDeveloper(v string) *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.SetDeveloper(v)
+	})
+}
+
+// UpdateDeveloper sets the "developer" field to the value that was provided on create.
+func (u *ModelUpsertBulk) UpdateDeveloper() *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.UpdateDeveloper()
+	})
+}
+
+// SetModelID sets the "model_id" field.
+func (u *ModelUpsertBulk) SetModelID(v string) *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.SetModelID(v)
+	})
+}
+
+// UpdateModelID sets the "model_id" field to the value that was provided on create.
+func (u *ModelUpsertBulk) UpdateModelID() *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.UpdateModelID()
+	})
+}
+
+// SetType sets the "type" field.
+func (u *ModelUpsertBulk) SetType(v model.Type) *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.SetType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *ModelUpsertBulk) UpdateType() *ModelUpsertBulk {
+	return u.Update(func(s *ModelUpsert) {
+		s.UpdateType()
 	})
 }
 

@@ -64,6 +64,20 @@ func (_u *ChannelUpdate) AddDeletedAt(v int) *ChannelUpdate {
 	return _u
 }
 
+// SetType sets the "type" field.
+func (_u *ChannelUpdate) SetType(v channel.Type) *ChannelUpdate {
+	_u.mutation.SetType(v)
+	return _u
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableType(v *channel.Type) *ChannelUpdate {
+	if v != nil {
+		_u.SetType(*v)
+	}
+	return _u
+}
+
 // SetBaseURL sets the "base_url" field.
 func (_u *ChannelUpdate) SetBaseURL(v string) *ChannelUpdate {
 	_u.mutation.SetBaseURL(v)
@@ -587,6 +601,11 @@ func (_u *ChannelUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ChannelUpdate) check() error {
+	if v, ok := _u.mutation.GetType(); ok {
+		if err := channel.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Channel.type": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := channel.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Channel.status": %w`, err)}
@@ -621,6 +640,9 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(channel.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.GetType(); ok {
+		_spec.SetField(channel.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.BaseURL(); ok {
 		_spec.SetField(channel.FieldBaseURL, field.TypeString, value)
@@ -1020,6 +1042,20 @@ func (_u *ChannelUpdateOne) SetNillableDeletedAt(v *int) *ChannelUpdateOne {
 // AddDeletedAt adds value to the "deleted_at" field.
 func (_u *ChannelUpdateOne) AddDeletedAt(v int) *ChannelUpdateOne {
 	_u.mutation.AddDeletedAt(v)
+	return _u
+}
+
+// SetType sets the "type" field.
+func (_u *ChannelUpdateOne) SetType(v channel.Type) *ChannelUpdateOne {
+	_u.mutation.SetType(v)
+	return _u
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableType(v *channel.Type) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetType(*v)
+	}
 	return _u
 }
 
@@ -1559,6 +1595,11 @@ func (_u *ChannelUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ChannelUpdateOne) check() error {
+	if v, ok := _u.mutation.GetType(); ok {
+		if err := channel.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Channel.type": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := channel.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Channel.status": %w`, err)}
@@ -1610,6 +1651,9 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(channel.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.GetType(); ok {
+		_spec.SetField(channel.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.BaseURL(); ok {
 		_spec.SetField(channel.FieldBaseURL, field.TypeString, value)

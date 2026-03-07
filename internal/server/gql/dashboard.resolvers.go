@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"sync"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -31,7 +30,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 	"github.com/samber/lo"
 	"github.com/vektah/gqlparser/v2/gqlerror"
-	"golang.org/x/sync/singleflight"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -1337,45 +1335,3 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 
 	return buildChannelPerformanceResponse(statsMap, channelNames, startDateLocal, daysCount), nil
 }
-
-var (
-	allTimeCache        *TokenStats
-	allTimeCacheTime    time.Time
-	allTimeCacheMu      sync.RWMutex
-	softTTL             = 1 * time.Hour
-	hardTTL             = 24 * time.Hour
-	allTimeRefreshGroup singleflight.Group
-)
-
-// cacheResult holds the result of a cache refresh operation.
-type cacheResult struct {
-	stats *TokenStats
-	time  time.Time
-}
-
-// SetTokenStatsCacheTTL sets the cache TTL values for all-time token stats.
-// Call this during server initialization to override defaults.
-func SetTokenStatsCacheTTL(soft, hard time.Duration) {
-	allTimeCacheMu.Lock()
-	defer allTimeCacheMu.Unlock()
-	softTTL = soft
-	hardTTL = hard
-}
-
-// InvalidateAllTimeTokenStatsCache clears the all-time token stats cache.
-// This should be called when new usage logs are created to ensure fresh data.
-func InvalidateAllTimeTokenStatsCache() {
-	allTimeCacheMu.Lock()
-	allTimeCache = nil
-	allTimeCacheTime = time.Time{}
-	allTimeCacheMu.Unlock()
-}
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
- */

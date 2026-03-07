@@ -218,6 +218,9 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 	}
 
 	mut := svc.entFromContext(ctx).Model.UpdateOneID(id).
+		SetNillableDeveloper(input.Developer).
+		SetNillableModelID(input.ModelID).
+		SetNillableType(input.Type).
 		SetNillableName(input.Name).
 		SetNillableGroup(input.Group).
 		SetNillableStatus(input.Status).

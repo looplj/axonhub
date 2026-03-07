@@ -36,9 +36,9 @@ func (Model) Indexes() []ent.Index {
 
 func (Model) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("developer").Immutable().Comment("developer of the model, eg. deeepseek"),
-		field.String("model_id").Immutable().Comment("model id, eg. deeepseek-chat"),
-		field.Enum("type").Immutable().Values("chat", "embedding", "rerank", "image_generation", "video_generation").Default("chat").Comment("model type"),
+		field.String("developer").Comment("developer of the model, eg. deeepseek"),
+		field.String("model_id").Comment("model id, eg. deeepseek-chat"),
+		field.Enum("type").Values("chat", "embedding", "rerank", "image_generation", "video_generation").Default("chat").Comment("model type"),
 		field.String("name").Comment("model name, eg. DeepSeek Chat").
 			Annotations(
 				entgql.OrderField("NAME"),
