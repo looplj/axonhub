@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,8 +15,8 @@ func TestBuildHierarchicalKeys_NoDir(t *testing.T) {
 
 	keys := buildHierarchicalKeys(req, resources)
 
-	assert.Len(t, keys, 1)
-	assert.Equal(t, BuildKey(req, resources), keys[0])
+	require.Len(t, keys, 1)
+	require.Equal(t, BuildKey(req, resources), keys[0])
 }
 
 func TestBuildHierarchicalKeys_SingleLevelDir(t *testing.T) {
@@ -28,13 +27,12 @@ func TestBuildHierarchicalKeys_SingleLevelDir(t *testing.T) {
 
 	keys := buildHierarchicalKeys(req, resources)
 
-	assert.Len(t, keys, 2)
-	assert.Equal(t, BuildKey(req, resources), keys[0])
+	require.Equal(t, BuildKey(req, resources), keys[0])
 
 	parentRes := []Resource{
 		{Type: ResourceDir, WorkspaceRel: "."},
 	}
-	assert.Equal(t, BuildKey(req, parentRes), keys[1])
+	require.Contains(t, keys, BuildKey(req, parentRes))
 }
 
 func TestBuildHierarchicalKeys_NestedDir(t *testing.T) {
@@ -45,13 +43,12 @@ func TestBuildHierarchicalKeys_NestedDir(t *testing.T) {
 
 	keys := buildHierarchicalKeys(req, resources)
 
-	assert.Len(t, keys, 4)
-	assert.Equal(t, BuildKey(req, resources), keys[0])
+	require.Equal(t, BuildKey(req, resources), keys[0])
 
 	expected := []string{"src/pkg/util", "src/pkg", "src", "."}
-	for i, exp := range expected {
+	for _, exp := range expected {
 		expRes := []Resource{{Type: ResourceDir, WorkspaceRel: exp}}
-		assert.Equal(t, BuildKey(req, expRes), keys[i], "key index %d should match dir %q", i, exp)
+		require.Contains(t, keys, BuildKey(req, expRes), "should include key for dir %q", exp)
 	}
 }
 
@@ -64,10 +61,9 @@ func TestBuildHierarchicalKeys_AbsoluteDir(t *testing.T) {
 	keys := buildHierarchicalKeys(req, resources)
 
 	expectedDirs := []string{"/tmp/a/b/c", "/tmp/a/b", "/tmp/a", "/tmp", "/"}
-	assert.Len(t, keys, len(expectedDirs))
-	for i, exp := range expectedDirs {
+	for _, exp := range expectedDirs {
 		expRes := []Resource{{Type: ResourceDir, Path: exp}}
-		assert.Equal(t, BuildKey(req, expRes), keys[i], "key index %d should match dir %q", i, exp)
+		require.Contains(t, keys, BuildKey(req, expRes), "should include key for dir %q", exp)
 	}
 }
 
@@ -79,8 +75,7 @@ func TestBuildHierarchicalKeys_WorkspaceRoot(t *testing.T) {
 
 	keys := buildHierarchicalKeys(req, resources)
 
-	assert.Len(t, keys, 1)
-	assert.Equal(t, BuildKey(req, resources), keys[0])
+	require.Equal(t, BuildKey(req, resources), keys[0])
 }
 
 func TestBuildHierarchicalKeys_AbsoluteRoot(t *testing.T) {
@@ -91,8 +86,7 @@ func TestBuildHierarchicalKeys_AbsoluteRoot(t *testing.T) {
 
 	keys := buildHierarchicalKeys(req, resources)
 
-	assert.Len(t, keys, 2)
-	assert.Equal(t, BuildKey(req, resources), keys[0])
+	require.Equal(t, BuildKey(req, resources), keys[0])
 }
 
 func TestBuildHierarchicalKeys_MixedResources(t *testing.T) {
@@ -104,7 +98,15 @@ func TestBuildHierarchicalKeys_MixedResources(t *testing.T) {
 
 	keys := buildHierarchicalKeys(req, resources)
 
-	assert.Len(t, keys, 3)
+	require.Equal(t, BuildKey(req, resources), keys[0])
+	require.Contains(t, keys, BuildKey(req, []Resource{
+		{Type: ResourceCommand, Command: "go test"},
+		{Type: ResourceDir, WorkspaceRel: "src"},
+	}))
+	require.Contains(t, keys, BuildKey(req, []Resource{
+		{Type: ResourceCommand, Command: "go test"},
+		{Type: ResourceDir, WorkspaceRel: "."},
+	}))
 }
 
 func TestBuildKey_DirResource_WorkspaceRel(t *testing.T) {
@@ -115,7 +117,7 @@ func TestBuildKey_DirResource_WorkspaceRel(t *testing.T) {
 	k1 := BuildKey(req, r1)
 	k2 := BuildKey(req, r2)
 
-	assert.NotEqual(t, k1, k2)
+	require.NotEqual(t, k1, k2)
 }
 
 func TestBuildKey_DirResource_AbsPath(t *testing.T) {
@@ -126,7 +128,7 @@ func TestBuildKey_DirResource_AbsPath(t *testing.T) {
 	k1 := BuildKey(req, r1)
 	k2 := BuildKey(req, r2)
 
-	assert.NotEqual(t, k1, k2)
+	require.NotEqual(t, k1, k2)
 }
 
 func TestBuildKey_DirResource_PathNormalization(t *testing.T) {
@@ -134,7 +136,7 @@ func TestBuildKey_DirResource_PathNormalization(t *testing.T) {
 	r1 := []Resource{{Type: ResourceDir, WorkspaceRel: "src/pkg/../pkg"}}
 	r2 := []Resource{{Type: ResourceDir, WorkspaceRel: "src/pkg"}}
 
-	assert.Equal(t, BuildKey(req, r1), BuildKey(req, r2))
+	require.Equal(t, BuildKey(req, r1), BuildKey(req, r2))
 }
 
 func TestMatch_HierarchicalDir_ParentGrantCoversChild_Thread(t *testing.T) {
@@ -158,7 +160,7 @@ func TestMatch_HierarchicalDir_ParentGrantCoversChild_Thread(t *testing.T) {
 		{Type: ResourceDir, WorkspaceRel: "src/pkg/util"},
 	}
 
-	assert.True(t, store.Match(childReq, childResources))
+	require.True(t, store.Match(childReq, childResources))
 }
 
 func TestMatch_HierarchicalDir_ParentGrantCoversChild_Workspace(t *testing.T) {
@@ -182,7 +184,7 @@ func TestMatch_HierarchicalDir_ParentGrantCoversChild_Workspace(t *testing.T) {
 		{Type: ResourceDir, WorkspaceRel: "src/pkg"},
 	}
 
-	assert.True(t, store.Match(childReq, childResources))
+	require.True(t, store.Match(childReq, childResources))
 }
 
 func TestMatch_HierarchicalDir_ParentGrantCoversChild_Global(t *testing.T) {
@@ -204,7 +206,7 @@ func TestMatch_HierarchicalDir_ParentGrantCoversChild_Global(t *testing.T) {
 		{Type: ResourceDir, Path: "/tmp/data/sub/deep"},
 	}
 
-	assert.True(t, store.Match(childReq, childResources))
+	require.True(t, store.Match(childReq, childResources))
 }
 
 func TestMatch_HierarchicalDir_ChildDoesNotCoverParent(t *testing.T) {
@@ -228,7 +230,7 @@ func TestMatch_HierarchicalDir_ChildDoesNotCoverParent(t *testing.T) {
 		{Type: ResourceDir, WorkspaceRel: "src"},
 	}
 
-	assert.False(t, store.Match(parentReq, parentResources))
+	require.False(t, store.Match(parentReq, parentResources))
 }
 
 func TestMatch_HierarchicalDir_SiblingNotCovered(t *testing.T) {
@@ -252,7 +254,7 @@ func TestMatch_HierarchicalDir_SiblingNotCovered(t *testing.T) {
 		{Type: ResourceDir, WorkspaceRel: "src/cmd"},
 	}
 
-	assert.False(t, store.Match(siblingReq, siblingRes))
+	require.False(t, store.Match(siblingReq, siblingRes))
 }
 
 func TestMatch_HierarchicalDir_DifferentToolNotCovered(t *testing.T) {
@@ -276,7 +278,7 @@ func TestMatch_HierarchicalDir_DifferentToolNotCovered(t *testing.T) {
 		{Type: ResourceDir, WorkspaceRel: "src/pkg"},
 	}
 
-	assert.False(t, store.Match(childReq, childRes))
+	require.False(t, store.Match(childReq, childRes))
 }
 
 func TestMatch_HierarchicalDir_WorkspaceRootCoversAll(t *testing.T) {
@@ -300,7 +302,7 @@ func TestMatch_HierarchicalDir_WorkspaceRootCoversAll(t *testing.T) {
 		{Type: ResourceDir, WorkspaceRel: "a/b/c/d"},
 	}
 
-	assert.True(t, store.Match(deepReq, deepRes))
+	require.True(t, store.Match(deepReq, deepRes))
 }
 
 func TestMatch_HierarchicalDir_ExactDirMatchPreferred(t *testing.T) {
@@ -321,7 +323,7 @@ func TestMatch_HierarchicalDir_ExactDirMatchPreferred(t *testing.T) {
 		ToolName:   "Read",
 	}
 
-	assert.True(t, store.Match(matchReq, exactRes))
+	require.True(t, store.Match(matchReq, exactRes))
 }
 
 func TestMatch_HierarchicalDir_PersistenceRoundTrip(t *testing.T) {
@@ -353,7 +355,7 @@ func TestMatch_HierarchicalDir_PersistenceRoundTrip(t *testing.T) {
 	childRes := []Resource{
 		{Type: ResourceDir, WorkspaceRel: "src/pkg/util"},
 	}
-	assert.True(t, store2.Match(childReq, childRes))
+	require.True(t, store2.Match(childReq, childRes))
 }
 
 func TestMatch_HierarchicalDir_AbsolutePathWalk(t *testing.T) {
@@ -376,12 +378,12 @@ func TestMatch_HierarchicalDir_AbsolutePathWalk(t *testing.T) {
 	childRes := []Resource{
 		{Type: ResourceDir, Path: "/home/user/projects/myapp"},
 	}
-	assert.True(t, store.Match(childReq, childRes))
+	require.True(t, store.Match(childReq, childRes))
 
 	uncoveredRes := []Resource{
 		{Type: ResourceDir, Path: "/home/other/projects"},
 	}
-	assert.False(t, store.Match(childReq, uncoveredRes))
+	require.False(t, store.Match(childReq, uncoveredRes))
 }
 
 func TestMatch_HierarchicalDir_OnceScope_NoHierarchy(t *testing.T) {
@@ -395,8 +397,8 @@ func TestMatch_HierarchicalDir_OnceScope_NoHierarchy(t *testing.T) {
 	}
 	store.Add(req, ScopeOnce, res)
 
-	assert.True(t, store.Match(req, res))
-	assert.False(t, store.Match(req, res))
+	require.True(t, store.Match(req, res))
+	require.False(t, store.Match(req, res))
 }
 
 func TestMatch_HierarchicalDir_CommandResourceNoHierarchy(t *testing.T) {
@@ -411,12 +413,60 @@ func TestMatch_HierarchicalDir_CommandResourceNoHierarchy(t *testing.T) {
 	}
 	store.Add(req, ScopeThread, res)
 
-	assert.True(t, store.Match(req, res))
+	require.True(t, store.Match(req, res))
 
 	differentCmd := []Resource{
 		{Type: ResourceCommand, Command: "npm run build"},
 	}
-	assert.True(t, store.Match(req, differentCmd))
+	require.False(t, store.Match(req, differentCmd))
+}
+
+func TestMatch_HierarchicalDir_ReadDirGrantCoversFileReadsInDir(t *testing.T) {
+	store := NewMemoryStore(NewFileStoreWithFS("/tmp", afero.NewMemMapFs()))
+	req := Request{
+		ToolCallID: "call-1",
+		Workspace:  "/workspace",
+		ToolName:   "Read",
+	}
+	// Grant on directory-only resource (typical when reading a directory path).
+	store.Add(req, ScopeWorkspace, []Resource{
+		{Type: ResourceDir, WorkspaceRel: "cmd/axonclaw"},
+	})
+
+	matchReq := Request{
+		ToolCallID: "call-2",
+		Workspace:  "/workspace",
+		ToolName:   "Read",
+	}
+	// File read extracts both path and dir resources.
+	matchResources := []Resource{
+		{Type: ResourcePath, WorkspaceRel: "cmd/axonclaw/main.go"},
+		{Type: ResourceDir, WorkspaceRel: "cmd/axonclaw"},
+	}
+	require.True(t, store.Match(matchReq, matchResources))
+}
+
+func TestMatch_HierarchicalDir_WriteDirGrantCoversFileWritesInDir(t *testing.T) {
+	store := NewMemoryStore(NewFileStoreWithFS("/tmp", afero.NewMemMapFs()))
+	req := Request{
+		ToolCallID: "call-1",
+		Workspace:  "/workspace",
+		ToolName:   "Write",
+	}
+	store.Add(req, ScopeWorkspace, []Resource{
+		{Type: ResourceDir, WorkspaceRel: "cmd/axonclaw"},
+	})
+
+	matchReq := Request{
+		ToolCallID: "call-2",
+		Workspace:  "/workspace",
+		ToolName:   "Write",
+	}
+	matchResources := []Resource{
+		{Type: ResourcePath, WorkspaceRel: "cmd/axonclaw/main.go"},
+		{Type: ResourceDir, WorkspaceRel: "cmd/axonclaw"},
+	}
+	require.True(t, store.Match(matchReq, matchResources))
 }
 
 func TestMatch_HierarchicalDir_DomainResourceNoHierarchy(t *testing.T) {
@@ -431,12 +481,12 @@ func TestMatch_HierarchicalDir_DomainResourceNoHierarchy(t *testing.T) {
 	}
 	store.Add(req, ScopeThread, res)
 
-	assert.True(t, store.Match(req, res))
+	require.True(t, store.Match(req, res))
 
 	otherDomain := []Resource{
 		{Type: ResourceDomain, Domain: "other.com"},
 	}
-	assert.False(t, store.Match(req, otherDomain))
+	require.False(t, store.Match(req, otherDomain))
 }
 
 func TestMatch_HierarchicalDir_SkillResourceNoHierarchy(t *testing.T) {
@@ -451,10 +501,10 @@ func TestMatch_HierarchicalDir_SkillResourceNoHierarchy(t *testing.T) {
 	}
 	store.Add(req, ScopeThread, res)
 
-	assert.True(t, store.Match(req, res))
+	require.True(t, store.Match(req, res))
 
 	otherSkill := []Resource{
 		{Type: ResourceSkill, Skill: "review"},
 	}
-	assert.False(t, store.Match(req, otherSkill))
+	require.False(t, store.Match(req, otherSkill))
 }

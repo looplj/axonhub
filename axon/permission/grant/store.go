@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -219,38 +220,47 @@ func BuildKey(req Request, resources []Resource) string {
 
 // buildParts returns the string components used to derive a grant key.
 func buildParts(req Request, resources []Resource) []string {
-	var parts []string
-	parts = append(parts, strings.ToLower(req.ToolName))
+	tool := strings.ToLower(req.ToolName)
+
+	var tokens []string
 
 	for _, r := range resources {
 		switch r.Type {
 		case ResourcePath:
 			if r.WorkspaceRel != "" {
-				parts = append(parts, "path_dir:"+filepath.Dir(filepath.Clean(r.WorkspaceRel)))
+				tokens = append(tokens, "dir:"+filepath.Dir(filepath.Clean(r.WorkspaceRel)))
 			} else {
-				parts = append(parts, "path_dir_abs:"+filepath.Dir(filepath.Clean(r.Path)))
+				tokens = append(tokens, "dir_abs:"+filepath.Dir(filepath.Clean(r.Path)))
 			}
 		case ResourceDir:
 			if r.WorkspaceRel != "" {
-				parts = append(parts, "dir:"+filepath.Clean(r.WorkspaceRel))
+				tokens = append(tokens, "dir:"+filepath.Clean(r.WorkspaceRel))
 			} else {
-				parts = append(parts, "dir_abs:"+filepath.Clean(r.Path))
+				tokens = append(tokens, "dir_abs:"+filepath.Clean(r.Path))
 			}
 		case ResourceDomain:
 			if r.Domain != "" {
-				parts = append(parts, "domain:"+strings.ToLower(r.Domain))
+				tokens = append(tokens, "domain:"+strings.ToLower(r.Domain))
 			}
 		case ResourceCommand:
 			if r.Command != "" {
-				parts = append(parts, "cmd:"+commandSummary(r.Command))
+				for _, t := range commandGrantTokens(r.Command) {
+					tokens = append(tokens, "cmd:"+t)
+				}
 			}
 		case ResourceSkill:
 			if r.Skill != "" {
-				parts = append(parts, "skill:"+strings.ToLower(r.Skill))
+				tokens = append(tokens, "skill:"+strings.ToLower(r.Skill))
 			}
 		}
 	}
 
+	sort.Strings(tokens)
+	tokens = compactSorted(tokens)
+
+	parts := make([]string, 0, 1+len(tokens))
+	parts = append(parts, tool)
+	parts = append(parts, tokens...)
 	return parts
 }
 
@@ -259,54 +269,183 @@ func hashParts(parts []string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// buildHierarchicalKeys returns grant keys from the most specific (child) to
-// the least specific (ancestor). This allows a grant on a parent directory to
-// cover all its descendants.
+func compactSorted(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+
+	out := in[:0]
+
+	prev := ""
+	for _, s := range in {
+		if s == "" || s == prev {
+			prev = s
+			continue
+		}
+
+		out = append(out, s)
+		prev = s
+	}
+
+	return out
+}
+
+// buildHierarchicalKeys returns grant keys that should be considered matches
+// for the given request/resources.
+//
+// It includes:
+//   - directory ancestor keys (a grant on a parent dir covers children)
+//   - resource-subset keys (a grant created for a subset of resources can match
+//     a request that includes additional resources)
 func buildHierarchicalKeys(req Request, resources []Resource) []string {
 	baseParts := buildParts(req, resources)
-	keys := []string{hashParts(baseParts)}
-
-	// Find the first dir part for hierarchical expansion.
-	dirIdx := -1
-	for i, p := range baseParts {
-		if i == 0 {
-			continue // skip tool name
-		}
-		if strings.HasPrefix(p, "dir:") || strings.HasPrefix(p, "dir_abs:") {
-			dirIdx = i
-			break
-		}
+	if len(baseParts) == 0 {
+		return nil
 	}
-	if dirIdx < 0 {
+
+	keys := []string{hashParts(baseParts)}
+	seen := map[string]struct{}{keys[0]: {}}
+
+	appendKey := func(parts []string) {
+		k := hashParts(parts)
+		if _, ok := seen[k]; ok {
+			return
+		}
+
+		seen[k] = struct{}{}
+		keys = append(keys, k)
+	}
+
+	tool := baseParts[0]
+	baseTokens := append([]string(nil), baseParts[1:]...)
+
+	if len(baseTokens) == 0 {
 		return keys
 	}
 
-	part := baseParts[dirIdx]
-	var prefix, dirPath string
-	if strings.HasPrefix(part, "dir_abs:") {
-		prefix = "dir_abs:"
-		dirPath = strings.TrimPrefix(part, "dir_abs:")
-	} else {
-		prefix = "dir:"
-		dirPath = strings.TrimPrefix(part, "dir:")
+	appendWithDirHierarchy := func(tokens []string) {
+		// Keys are based on sorted/compacted tokens so subset generation is stable.
+		cp := append([]string(nil), tokens...)
+		sort.Strings(cp)
+
+		cp = compactSorted(cp)
+		if len(cp) == 0 {
+			return
+		}
+
+		parts := make([]string, 0, 1+len(cp))
+		parts = append(parts, tool)
+		parts = append(parts, cp...)
+		appendKey(parts)
+
+		// Group directory-like tokens by their path so replacements stay aligned.
+		type dirMember struct {
+			idx    int
+			prefix string
+			path   string
+		}
+
+		groups := make(map[string][]dirMember)
+
+		for i, t := range cp {
+			switch {
+			case strings.HasPrefix(t, "dir_abs:"):
+				p := strings.TrimPrefix(t, "dir_abs:")
+				groups[p] = append(groups[p], dirMember{idx: i, prefix: "dir_abs:", path: p})
+			case strings.HasPrefix(t, "dir:"):
+				p := strings.TrimPrefix(t, "dir:")
+				groups[p] = append(groups[p], dirMember{idx: i, prefix: "dir:", path: p})
+			}
+		}
+
+		if len(groups) == 0 {
+			return
+		}
+
+		paths := make([]string, 0, len(groups))
+		for p := range groups {
+			paths = append(paths, p)
+		}
+
+		ancestorOptions := make([][]string, 0, len(paths))
+		for _, p := range paths {
+			var opts []string
+
+			cur := p
+			for {
+				opts = append(opts, cur)
+
+				parent := filepath.Dir(cur)
+				if parent == cur {
+					break
+				}
+
+				cur = parent
+				if cur == "." || cur == "/" {
+					opts = append(opts, cur)
+					break
+				}
+			}
+
+			ancestorOptions = append(ancestorOptions, opts)
+		}
+
+		var walk func(int, []string)
+
+		walk = func(i int, curTokens []string) {
+			if i == len(paths) {
+				parts := make([]string, 0, 1+len(curTokens))
+				parts = append(parts, tool)
+				parts = append(parts, curTokens...)
+				appendKey(parts)
+
+				return
+			}
+
+			path := paths[i]
+			members := groups[path]
+
+			for _, anc := range ancestorOptions[i] {
+				next := append([]string(nil), curTokens...)
+				for _, m := range members {
+					next[m.idx] = m.prefix + anc
+				}
+
+				walk(i+1, next)
+			}
+		}
+
+		walk(0, tokens)
 	}
 
-	cur := dirPath
-	for {
-		parent := filepath.Dir(cur)
-		if parent == cur {
-			break
-		}
-		cur = parent
+	const subsetAllThreshold = 10
 
-		modified := make([]string, len(baseParts))
-		copy(modified, baseParts)
-		modified[dirIdx] = prefix + cur
-		keys = append(keys, hashParts(modified))
+	emitSubset := func(sub []string) {
+		appendWithDirHierarchy(sub)
+	}
 
-		if cur == "." || cur == "/" {
-			break
+	// Generate keys for non-empty subsets so a grant created with a subset of
+	// selected resources can match a request that includes additional resources.
+	if len(baseTokens) > subsetAllThreshold {
+		emitSubset(baseTokens)
+
+		for _, t := range baseTokens {
+			emitSubset([]string{t})
 		}
+
+		return keys
+	}
+
+	n := len(baseTokens)
+	for mask := 1; mask < (1 << n); mask++ {
+		sub := make([]string, 0, n)
+		for i := range n {
+			if mask&(1<<i) != 0 {
+				sub = append(sub, baseTokens[i])
+			}
+		}
+
+		emitSubset(sub)
 	}
 
 	return keys
@@ -322,4 +461,53 @@ func commandSummary(cmd string) string {
 		return ""
 	}
 	return fields[0]
+}
+
+func commandSubcommand(cmd string) string {
+	cmd = strings.TrimSpace(cmd)
+	if cmd == "" {
+		return ""
+	}
+
+	fields := strings.Fields(cmd)
+	if len(fields) < 2 {
+		return ""
+	}
+	// Find the first non-flag token after the program name.
+	for i := 1; i < len(fields); i++ {
+		f := strings.TrimSpace(fields[i])
+		if f == "" {
+			continue
+		}
+
+		if strings.HasPrefix(f, "-") {
+			continue
+		}
+
+		return f
+	}
+
+	return ""
+}
+
+// commandGrantTokens returns the command tokens used for grant keying.
+//
+// It emits a program token and, when present, a program+subcommand token:
+//   - "go"
+//   - "go test"
+//
+// This enables hierarchical matching via subset matching: a stored "go" grant
+// covers "go test" requests, while a stored "go test" grant does not cover "go".
+func commandGrantTokens(cmd string) []string {
+	prog := commandSummary(cmd)
+	if prog == "" {
+		return nil
+	}
+
+	out := []string{prog}
+	if sub := commandSubcommand(cmd); sub != "" {
+		out = append(out, prog+" "+sub)
+	}
+
+	return out
 }

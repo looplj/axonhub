@@ -31,21 +31,35 @@ const (
 	ResourceDir     ResourceType = "dir"
 )
 
+// Resource is the shared resource representation across the permission stack:
+// - Extractor produces []Resource from a tool call input
+// - Policy Engine matches rules against []Resource
+// - Permission Evaluator logs/audits and sends Resources to approval UIs
+//
+// Keep this type stable: other packages re-export it to avoid duplicating
+// slightly-different structs that can drift and break inheritance semantics.
 type Resource struct {
-	Type ResourceType
+	Type ResourceType `json:"type"`
 
-	Path             string
-	WorkspaceRel     string
-	OutsideWorkspace bool
+	// Path/Dir
+	// - Path: absolute, cleaned (filepath.Clean)
+	// - WorkspaceRel: relative path when the resource is inside workspace, "." for workspace root
+	// - OutsideWorkspace: true if Path is outside workspace root
+	Path             string `json:"path,omitempty"`
+	WorkspaceRel     string `json:"workspace_rel,omitempty"`
+	OutsideWorkspace bool   `json:"outside_workspace,omitempty"`
 
-	Command string
-	Cwd     string
+	// Command
+	Command string `json:"command,omitempty"`
+	Cwd     string `json:"cwd,omitempty"`
 
-	URL    string
-	Domain string
-	Scheme string
+	// Network
+	URL    string `json:"url,omitempty"`    // redacted
+	Domain string `json:"domain,omitempty"` // host
+	Scheme string `json:"scheme,omitempty"`
 
-	Skill string
+	// Skill
+	Skill string `json:"skill,omitempty"`
 }
 
 type Decision struct {

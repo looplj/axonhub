@@ -7,23 +7,22 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewFileStore(t *testing.T) {
 	fs := NewFileStore("/tmp")
 
-	assert.Equal(t, "/tmp", fs.BaseDir)
-	assert.NotNil(t, fs.fsys)
+	require.Equal(t, "/tmp", fs.BaseDir)
+	require.NotNil(t, fs.fsys)
 }
 
 func TestNewFileStoreWithFS(t *testing.T) {
 	memFs := afero.NewMemMapFs()
 	fs := NewFileStoreWithFS("/base", memFs)
 
-	assert.Equal(t, "/base", fs.BaseDir)
-	assert.NotNil(t, fs.fsys)
+	require.Equal(t, "/base", fs.BaseDir)
+	require.NotNil(t, fs.fsys)
 }
 
 func TestFileStore_LoadWorkspace_NotExist(t *testing.T) {
@@ -32,7 +31,7 @@ func TestFileStore_LoadWorkspace_NotExist(t *testing.T) {
 	keys, err := fs.LoadWorkspace("/workspace/test")
 
 	require.NoError(t, err)
-	assert.Empty(t, keys)
+	require.Empty(t, keys)
 }
 
 func TestFileStore_SaveAndLoadWorkspace(t *testing.T) {
@@ -50,10 +49,10 @@ func TestFileStore_SaveAndLoadWorkspace(t *testing.T) {
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
 
-	assert.Len(t, loaded, 3)
-	assert.Contains(t, loaded, "key1")
-	assert.Contains(t, loaded, "key2")
-	assert.Contains(t, loaded, "key3")
+	require.Len(t, loaded, 3)
+	require.Contains(t, loaded, "key1")
+	require.Contains(t, loaded, "key2")
+	require.Contains(t, loaded, "key3")
 }
 
 func TestFileStore_SaveWorkspace_EmptyKeys(t *testing.T) {
@@ -67,7 +66,7 @@ func TestFileStore_SaveWorkspace_EmptyKeys(t *testing.T) {
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
 
-	assert.Empty(t, loaded)
+	require.Empty(t, loaded)
 }
 
 func TestFileStore_SaveWorkspace_NilKeys(t *testing.T) {
@@ -79,7 +78,7 @@ func TestFileStore_SaveWorkspace_NilKeys(t *testing.T) {
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
 
-	assert.Empty(t, loaded)
+	require.Empty(t, loaded)
 }
 
 func TestFileStore_LoadGlobal_NotExist(t *testing.T) {
@@ -88,7 +87,7 @@ func TestFileStore_LoadGlobal_NotExist(t *testing.T) {
 	keys, err := fs.LoadGlobal()
 
 	require.NoError(t, err)
-	assert.Empty(t, keys)
+	require.Empty(t, keys)
 }
 
 func TestFileStore_SaveAndLoadGlobal(t *testing.T) {
@@ -105,9 +104,9 @@ func TestFileStore_SaveAndLoadGlobal(t *testing.T) {
 	loaded, err := fs.LoadGlobal()
 	require.NoError(t, err)
 
-	assert.Len(t, loaded, 2)
-	assert.Contains(t, loaded, "global-key1")
-	assert.Contains(t, loaded, "global-key2")
+	require.Len(t, loaded, 2)
+	require.Contains(t, loaded, "global-key1")
+	require.Contains(t, loaded, "global-key2")
 }
 
 func TestFileStore_SaveGlobal_EmptyKeys(t *testing.T) {
@@ -121,7 +120,7 @@ func TestFileStore_SaveGlobal_EmptyKeys(t *testing.T) {
 	loaded, err := fs.LoadGlobal()
 	require.NoError(t, err)
 
-	assert.Empty(t, loaded)
+	require.Empty(t, loaded)
 }
 
 func TestFileStore_SaveGlobal_NilKeys(t *testing.T) {
@@ -133,7 +132,7 @@ func TestFileStore_SaveGlobal_NilKeys(t *testing.T) {
 	loaded, err := fs.LoadGlobal()
 	require.NoError(t, err)
 
-	assert.Empty(t, loaded)
+	require.Empty(t, loaded)
 }
 
 func TestFileStore_WorkspacePath(t *testing.T) {
@@ -141,8 +140,8 @@ func TestFileStore_WorkspacePath(t *testing.T) {
 
 	path := fs.workspacePath("/workspace/test")
 
-	assert.Contains(t, path, "/base/workspaces/")
-	assert.Contains(t, path, ".json")
+	require.Contains(t, path, "/base/workspaces/")
+	require.Contains(t, path, ".json")
 }
 
 func TestFileStore_WorkspacePath_Consistent(t *testing.T) {
@@ -151,7 +150,7 @@ func TestFileStore_WorkspacePath_Consistent(t *testing.T) {
 	path1 := fs.workspacePath("/workspace/test")
 	path2 := fs.workspacePath("/workspace/test")
 
-	assert.Equal(t, path1, path2)
+	require.Equal(t, path1, path2)
 }
 
 func TestFileStore_WorkspacePath_Different(t *testing.T) {
@@ -160,7 +159,7 @@ func TestFileStore_WorkspacePath_Different(t *testing.T) {
 	path1 := fs.workspacePath("/workspace/test1")
 	path2 := fs.workspacePath("/workspace/test2")
 
-	assert.NotEqual(t, path1, path2)
+	require.NotEqual(t, path1, path2)
 }
 
 func TestFileStore_WorkspacePath_PathCleaning(t *testing.T) {
@@ -169,7 +168,7 @@ func TestFileStore_WorkspacePath_PathCleaning(t *testing.T) {
 	path1 := fs.workspacePath("/workspace/test/../test")
 	path2 := fs.workspacePath("/workspace/test")
 
-	assert.Equal(t, path1, path2)
+	require.Equal(t, path1, path2)
 }
 
 func TestFileStore_GlobalPath(t *testing.T) {
@@ -177,7 +176,7 @@ func TestFileStore_GlobalPath(t *testing.T) {
 
 	path := fs.globalPath()
 
-	assert.Equal(t, "/base/global.json", path)
+	require.Equal(t, "/base/global.json", path)
 }
 
 func TestWorkspaceHash(t *testing.T) {
@@ -195,7 +194,7 @@ func TestWorkspaceHash(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hash := workspaceHash(tt.ws)
 
-			assert.Len(t, hash, 32)
+			require.Len(t, hash, 32)
 		})
 	}
 }
@@ -206,14 +205,14 @@ func TestWorkspaceHash_Consistent(t *testing.T) {
 	hash1 := workspaceHash(ws)
 	hash2 := workspaceHash(ws)
 
-	assert.Equal(t, hash1, hash2)
+	require.Equal(t, hash1, hash2)
 }
 
 func TestWorkspaceHash_Different(t *testing.T) {
 	hash1 := workspaceHash("/workspace/test1")
 	hash2 := workspaceHash("/workspace/test2")
 
-	assert.NotEqual(t, hash1, hash2)
+	require.NotEqual(t, hash1, hash2)
 }
 
 func TestFileStore_FileFormat(t *testing.T) {
@@ -235,11 +234,11 @@ func TestFileStore_FileFormat(t *testing.T) {
 	err = json.Unmarshal(data, &f)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, f.Version)
-	assert.NotZero(t, f.UpdatedAt)
-	assert.Len(t, f.Keys, 2)
-	assert.Contains(t, f.Keys, "key1")
-	assert.Contains(t, f.Keys, "key2")
+	require.Equal(t, 1, f.Version)
+	require.NotZero(t, f.UpdatedAt)
+	require.Len(t, f.Keys, 2)
+	require.Contains(t, f.Keys, "key1")
+	require.Contains(t, f.Keys, "key2")
 }
 
 func TestFileStore_Overwrite(t *testing.T) {
@@ -263,12 +262,12 @@ func TestFileStore_Overwrite(t *testing.T) {
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
 
-	assert.Len(t, loaded, 3)
-	assert.Contains(t, loaded, "key3")
-	assert.Contains(t, loaded, "key4")
-	assert.Contains(t, loaded, "key5")
-	assert.NotContains(t, loaded, "key1")
-	assert.NotContains(t, loaded, "key2")
+	require.Len(t, loaded, 3)
+	require.Contains(t, loaded, "key3")
+	require.Contains(t, loaded, "key4")
+	require.Contains(t, loaded, "key5")
+	require.NotContains(t, loaded, "key1")
+	require.NotContains(t, loaded, "key2")
 }
 
 func TestFileStore_MultipleWorkspaces(t *testing.T) {
@@ -289,15 +288,15 @@ func TestFileStore_MultipleWorkspaces(t *testing.T) {
 
 	loaded1, err := fs.LoadWorkspace("/workspace/test1")
 	require.NoError(t, err)
-	assert.Contains(t, loaded1, "ws1-key")
+	require.Contains(t, loaded1, "ws1-key")
 
 	loaded2, err := fs.LoadWorkspace("/workspace/test2")
 	require.NoError(t, err)
-	assert.Contains(t, loaded2, "ws2-key")
+	require.Contains(t, loaded2, "ws2-key")
 
 	loaded3, err := fs.LoadWorkspace("/workspace/test3")
 	require.NoError(t, err)
-	assert.Contains(t, loaded3, "ws3-key")
+	require.Contains(t, loaded3, "ws3-key")
 }
 
 func TestFileStore_GlobalAndWorkspaceIndependent(t *testing.T) {
@@ -314,13 +313,13 @@ func TestFileStore_GlobalAndWorkspaceIndependent(t *testing.T) {
 
 	loadedWs, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
-	assert.Contains(t, loadedWs, "ws-key")
-	assert.NotContains(t, loadedWs, "global-key")
+	require.Contains(t, loadedWs, "ws-key")
+	require.NotContains(t, loadedWs, "global-key")
 
 	loadedGlobal, err := fs.LoadGlobal()
 	require.NoError(t, err)
-	assert.Contains(t, loadedGlobal, "global-key")
-	assert.NotContains(t, loadedGlobal, "ws-key")
+	require.Contains(t, loadedGlobal, "global-key")
+	require.NotContains(t, loadedGlobal, "ws-key")
 }
 
 func TestFileStore_InvalidJSON(t *testing.T) {
@@ -334,7 +333,7 @@ func TestFileStore_InvalidJSON(t *testing.T) {
 	_, err = fs.LoadWorkspace("/workspace/test")
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "parse")
+	require.Contains(t, err.Error(), "parse")
 }
 
 func TestFileStore_TmpFileRemoved(t *testing.T) {
@@ -348,7 +347,7 @@ func TestFileStore_TmpFileRemoved(t *testing.T) {
 	tmpPath := path + ".tmp"
 
 	_, err = fs.fsys.Stat(tmpPath)
-	assert.True(t, os.IsNotExist(err))
+	require.True(t, os.IsNotExist(err))
 
 	_, err = fs.fsys.Stat(path)
 	require.NoError(t, err)
@@ -368,19 +367,19 @@ func TestFileStore_LargeKeys(t *testing.T) {
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
 
-	assert.Len(t, loaded, 1000)
+	require.Len(t, loaded, 1000)
 }
 
 func TestFileStore_SpecialCharactersInKeys(t *testing.T) {
 	fs := NewFileStoreWithFS("/base", afero.NewMemMapFs())
 
 	keys := map[string]struct{}{
-		"key-with-dash":      {},
+		"key-with-dash":       {},
 		"key_with_underscore": {},
-		"key.with.dot":       {},
-		"key/with/slash":     {},
-		"key with space":     {},
-		"key:with:colon":     {},
+		"key.with.dot":        {},
+		"key/with/slash":      {},
+		"key with space":      {},
+		"key:with:colon":      {},
 	}
 
 	err := fs.SaveWorkspace("/workspace/test", keys)
@@ -389,9 +388,9 @@ func TestFileStore_SpecialCharactersInKeys(t *testing.T) {
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
 
-	assert.Len(t, loaded, 6)
+	require.Len(t, loaded, 6)
 	for k := range keys {
-		assert.Contains(t, loaded, k)
+		require.Contains(t, loaded, k)
 	}
 }
 
@@ -399,10 +398,10 @@ func TestFileStore_UnicodeKeys(t *testing.T) {
 	fs := NewFileStoreWithFS("/base", afero.NewMemMapFs())
 
 	keys := map[string]struct{}{
-		"键1":   {},
-		"キー2":  {},
+		"键1":    {},
+		"キー2":   {},
 		"ключ3": {},
-		"🔑":    {},
+		"🔑":     {},
 	}
 
 	err := fs.SaveWorkspace("/workspace/test", keys)
@@ -411,9 +410,9 @@ func TestFileStore_UnicodeKeys(t *testing.T) {
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
 
-	assert.Len(t, loaded, 4)
+	require.Len(t, loaded, 4)
 	for k := range keys {
-		assert.Contains(t, loaded, k)
+		require.Contains(t, loaded, k)
 	}
 }
 
@@ -426,7 +425,7 @@ func TestFileStore_BaseDirWithTrailingSlash(t *testing.T) {
 
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
-	assert.Contains(t, loaded, "key1")
+	require.Contains(t, loaded, "key1")
 }
 
 func TestFileStore_RelativeBaseDir(t *testing.T) {
@@ -438,7 +437,7 @@ func TestFileStore_RelativeBaseDir(t *testing.T) {
 
 	loaded, err := fs.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
-	assert.Contains(t, loaded, "key1")
+	require.Contains(t, loaded, "key1")
 }
 
 func TestFileStore_IntegrationWithMemoryStore(t *testing.T) {
@@ -463,7 +462,7 @@ func TestFileStore_IntegrationWithMemoryStore(t *testing.T) {
 	err = store2.LoadWorkspace("/workspace/test")
 	require.NoError(t, err)
 
-	assert.True(t, store2.Match(req, resources))
+	require.True(t, store2.Match(req, resources))
 }
 
 func TestFileStore_IntegrationWithGlobal(t *testing.T) {
@@ -487,7 +486,7 @@ func TestFileStore_IntegrationWithGlobal(t *testing.T) {
 	err = store2.LoadGlobal()
 	require.NoError(t, err)
 
-	assert.True(t, store2.Match(req, resources))
+	require.True(t, store2.Match(req, resources))
 }
 
 func TestFileStore_FilePermissions(t *testing.T) {
@@ -503,7 +502,7 @@ func TestFileStore_FilePermissions(t *testing.T) {
 	info, err := os.Stat(path)
 	require.NoError(t, err)
 
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 }
 
 func TestFileStore_DirectoryPermissions(t *testing.T) {
@@ -519,5 +518,5 @@ func TestFileStore_DirectoryPermissions(t *testing.T) {
 	info, err := os.Stat(dirPath)
 	require.NoError(t, err)
 
-	assert.True(t, info.IsDir())
+	require.True(t, info.IsDir())
 }

@@ -2,10 +2,14 @@ package extractor
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/axon/permission/policy"
 )
 
 func TestExtract_Read_ProducesPathAndDirResources(t *testing.T) {
@@ -16,11 +20,11 @@ func TestExtract_Read_ProducesPathAndDirResources(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/main.go", resources[0].Path)
 	assert.Equal(t, "src/main.go", resources[0].WorkspaceRel)
 	assert.False(t, resources[0].OutsideWorkspace)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
 	assert.Equal(t, "src", resources[1].WorkspaceRel)
 	assert.False(t, resources[1].OutsideWorkspace)
@@ -34,9 +38,9 @@ func TestExtract_Write_ProducesPathAndDirResources(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/main.go", resources[0].Path)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
 	assert.Equal(t, "src", resources[1].WorkspaceRel)
 }
@@ -49,9 +53,9 @@ func TestExtract_Edit_ProducesPathAndDirResources(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/main.go", resources[0].Path)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
 }
 
@@ -63,11 +67,11 @@ func TestExtract_Read_FileAtWorkspaceRoot(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/README.md", resources[0].Path)
 	assert.Equal(t, "README.md", resources[0].WorkspaceRel)
 	assert.False(t, resources[0].OutsideWorkspace)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace", resources[1].Path)
 	assert.Equal(t, ".", resources[1].WorkspaceRel)
 	assert.False(t, resources[1].OutsideWorkspace)
@@ -81,10 +85,10 @@ func TestExtract_Read_OutsideWorkspace(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/etc/config.json", resources[0].Path)
 	assert.True(t, resources[0].OutsideWorkspace)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/etc", resources[1].Path)
 	assert.True(t, resources[1].OutsideWorkspace)
 	assert.Empty(t, resources[1].WorkspaceRel)
@@ -92,15 +96,31 @@ func TestExtract_Read_OutsideWorkspace(t *testing.T) {
 
 func TestExtract_Read_OutsideWorkspace_Dir(t *testing.T) {
 	ext := DefaultExtractor{}
-	input := json.RawMessage(`{"path":"/etc/passwd"}`)
+	input := json.RawMessage(`{"path":"/etc/"}`)
 
 	resources, err := ext.Extract("/workspace", "Read", input)
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
+	assert.Equal(t, "/etc", resources[0].Path)
+	assert.True(t, resources[0].OutsideWorkspace)
+}
+
+func TestExtract_Read_OutsideWorkspace_ExtensionlessFile(t *testing.T) {
+	ext := DefaultExtractor{}
+	input := json.RawMessage(`{"path":"/etc/passwd"}`)
+
+	resources, err := ext.Extract("/workspace", "Read", input)
+
+	require.NoError(t, err)
+	require.Len(t, resources, 2)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/etc/passwd", resources[0].Path)
 	assert.True(t, resources[0].OutsideWorkspace)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
+	assert.Equal(t, "/etc", resources[1].Path)
+	assert.True(t, resources[1].OutsideWorkspace)
 }
 
 func TestExtract_Read_NestedPath(t *testing.T) {
@@ -111,10 +131,10 @@ func TestExtract_Read_NestedPath(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/pkg/util/helper.go", resources[0].Path)
 	assert.Equal(t, "src/pkg/util/helper.go", resources[0].WorkspaceRel)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src/pkg/util", resources[1].Path)
 	assert.Equal(t, "src/pkg/util", resources[1].WorkspaceRel)
 }
@@ -157,7 +177,7 @@ func TestExtract_Glob_ProducesDirResource(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
 	assert.Equal(t, "/workspace/src", resources[0].Path)
 	assert.Equal(t, "src", resources[0].WorkspaceRel)
 	assert.False(t, resources[0].OutsideWorkspace)
@@ -171,7 +191,7 @@ func TestExtract_Glob_EmptyPathDefaultsToWorkspace(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
 	assert.Equal(t, "/workspace", resources[0].Path)
 	assert.Equal(t, ".", resources[0].WorkspaceRel)
 }
@@ -195,7 +215,7 @@ func TestExtract_Glob_OutsideWorkspace(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
 	assert.True(t, resources[0].OutsideWorkspace)
 }
 
@@ -217,7 +237,7 @@ func TestExtract_Grep_ProducesDirResource(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
 	assert.Equal(t, "/workspace/src", resources[0].Path)
 	assert.Equal(t, "src", resources[0].WorkspaceRel)
 }
@@ -262,10 +282,10 @@ func TestExtract_Bash_ProducesDirResourceForCwd(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourceCommand, resources[0].Type)
+	assert.Equal(t, policy.ResourceCommand, resources[0].Type)
 	assert.Equal(t, "ls -la", resources[0].Command)
 	assert.Equal(t, "/workspace/src", resources[0].Cwd)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
 	assert.Equal(t, "src", resources[1].WorkspaceRel)
 }
@@ -278,7 +298,7 @@ func TestExtract_Bash_EmptyCwdDefaultsToWorkspace(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace", resources[1].Path)
 }
 
@@ -290,7 +310,7 @@ func TestExtract_Bash_CwdOutsideWorkspace(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.True(t, resources[1].OutsideWorkspace)
 }
 
@@ -332,10 +352,10 @@ func TestExtract_Read_RelativePath(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/main.go", resources[0].Path)
 	assert.Equal(t, "src/main.go", resources[0].WorkspaceRel)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
 	assert.Equal(t, "src", resources[1].WorkspaceRel)
 }
@@ -348,9 +368,9 @@ func TestExtract_Read_PathNormalization(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/main.go", resources[0].Path)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
 }
 
@@ -362,11 +382,11 @@ func TestExtract_WebFetch(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourceURL, resources[0].Type)
+	assert.Equal(t, policy.ResourceURL, resources[0].Type)
 	assert.Equal(t, "https://example.com/page", resources[0].URL)
 	assert.Equal(t, "example.com", resources[0].Domain)
 	assert.Equal(t, "https", resources[0].Scheme)
-	assert.Equal(t, ResourceDomain, resources[1].Type)
+	assert.Equal(t, policy.ResourceDomain, resources[1].Type)
 	assert.Equal(t, "example.com", resources[1].Domain)
 }
 
@@ -442,7 +462,7 @@ func TestExtract_Read_PathEndingWithSlash_IsDir(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
 	assert.Equal(t, "/workspace/src", resources[0].Path)
 	assert.Equal(t, "src", resources[0].WorkspaceRel)
 }
@@ -455,7 +475,7 @@ func TestExtract_Write_PathEndingWithSlash_IsDir(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
 	assert.Equal(t, "/workspace/src", resources[0].Path)
 }
 
@@ -467,21 +487,24 @@ func TestExtract_Edit_PathEndingWithSlash_IsDir(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
 	assert.Equal(t, "/workspace/src", resources[0].Path)
 }
 
-func TestExtract_Read_PathWithoutExtension_IsDir(t *testing.T) {
+func TestExtract_Read_PathWithoutExtension_Unknown_IsFile(t *testing.T) {
 	ext := DefaultExtractor{}
 	input := json.RawMessage(`{"path":"/workspace/src/mydir"}`)
 
 	resources, err := ext.Extract("/workspace", "Read", input)
 
 	require.NoError(t, err)
-	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	require.Len(t, resources, 2)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/mydir", resources[0].Path)
 	assert.Equal(t, "src/mydir", resources[0].WorkspaceRel)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
+	assert.Equal(t, "/workspace/src", resources[1].Path)
+	assert.Equal(t, "src", resources[1].WorkspaceRel)
 }
 
 func TestExtract_Read_PathWithExtension_IsFile(t *testing.T) {
@@ -492,22 +515,24 @@ func TestExtract_Read_PathWithExtension_IsFile(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/main.go", resources[0].Path)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
 }
 
-func TestExtract_Read_RelativePathWithoutExtension_IsDir(t *testing.T) {
+func TestExtract_Read_RelativePathWithoutExtension_Unknown_IsFile(t *testing.T) {
 	ext := DefaultExtractor{}
 	input := json.RawMessage(`{"path":"src/mydir"}`)
 
 	resources, err := ext.Extract("/workspace", "Read", input)
 
 	require.NoError(t, err)
-	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceDir, resources[0].Type)
+	require.Len(t, resources, 2)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/mydir", resources[0].Path)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
+	assert.Equal(t, "/workspace/src", resources[1].Path)
 }
 
 func TestExtract_Read_RelativePathWithExtension_IsFile(t *testing.T) {
@@ -518,8 +543,24 @@ func TestExtract_Read_RelativePathWithExtension_IsFile(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 2)
-	assert.Equal(t, ResourcePath, resources[0].Type)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
 	assert.Equal(t, "/workspace/src/main.go", resources[0].Path)
-	assert.Equal(t, ResourceDir, resources[1].Type)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
+}
+
+func TestExtract_Read_PathWithoutExtension_ExistingDir_IsDir(t *testing.T) {
+	ext := DefaultExtractor{}
+	workspace := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(workspace, "src", "mydir"), 0o755))
+
+	input := json.RawMessage(`{"path":"src/mydir"}`)
+
+	resources, err := ext.Extract(workspace, "Read", input)
+
+	require.NoError(t, err)
+	require.Len(t, resources, 1)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
+	assert.Equal(t, filepath.Join(workspace, "src", "mydir"), resources[0].Path)
+	assert.Equal(t, filepath.ToSlash("src/mydir"), filepath.ToSlash(resources[0].WorkspaceRel))
 }

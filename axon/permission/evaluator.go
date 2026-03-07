@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/looplj/axonhub/axon/permission/approval"
 	"github.com/looplj/axonhub/axon/permission/extractor"
 	"github.com/looplj/axonhub/axon/permission/grant"
@@ -76,11 +77,35 @@ func (e *Evaluator) Evaluate(ctx context.Context, req ToolRequest) error {
 		return e.handleDecision(ctx, req, decision)
 	}
 
-	resources := fromExtractorResources(extracted)
+	// Extractor returns the shared policy.Resource type used throughout the
+	// permission stack. Keep resources as-is to avoid drift between layers.
+	resources := extracted
 
 	if dec, ok := HardDeny(req.ToolName, resources, req.Workspace); ok {
 		e.auditDecision(req, dec)
 		return fmt.Errorf("%w: %s: %s", ErrToolCallBlocked, dec.RuleID, dec.Reason)
+	}
+
+	pd := e.policy.Evaluate(req.ToolName, resources)
+	if pd.Effect == policy.EffectDeny {
+		decision := ToolDecision{
+			Effect:    EffectDeny,
+			RuleID:    pd.RuleID,
+			Reason:    pd.Reason,
+			RiskLevel: RiskLevel(pd.RiskLevel),
+			Resources: resources,
+		}
+		decision.Display = DecisionDisplay{
+			Summary:   fmt.Sprintf("%s (%s)", req.ToolName, decision.Effect),
+			Resources: resources,
+			Details: []string{
+				"rule: " + decision.RuleID,
+				"reason: " + decision.Reason,
+				"risk: " + string(decision.RiskLevel),
+			},
+		}
+
+		return e.handleDecision(ctx, req, decision)
 	}
 
 	if e.grants.Match(toGrantRequest(req), toGrantResources(resources)) {
@@ -95,8 +120,6 @@ func (e *Evaluator) Evaluate(ctx context.Context, req ToolRequest) error {
 		return nil
 	}
 
-	pres := toPolicyResources(resources)
-	pd := e.policy.Evaluate(req.ToolName, pres)
 	decision := ToolDecision{
 		Effect:    Effect(pd.Effect),
 		RuleID:    pd.RuleID,
@@ -149,12 +172,14 @@ func (e *Evaluator) handleDecision(ctx context.Context, req ToolRequest, decisio
 				resourcesToGrant = parseSelectedResources(resp.Resources)
 			}
 			e.grants.Add(toGrantRequest(req), resp.Scope, toGrantResources(resourcesToGrant))
-		switch resp.Scope {
-		case grant.ScopeWorkspace:
-			_ = e.grants.SaveWorkspace(req.Workspace)
-		case grant.ScopeGlobal:
-			_ = e.grants.SaveGlobal()
-		}
+
+			//nolint:exhaustive // ScopeThread is not supported.
+			switch resp.Scope {
+			case grant.ScopeWorkspace:
+				_ = e.grants.SaveWorkspace(req.Workspace)
+			case grant.ScopeGlobal:
+				_ = e.grants.SaveGlobal()
+			}
 			decision.RuleID = "approval.granted"
 			decision.Reason = "approved by user"
 			decision.Effect = EffectAllow
@@ -210,72 +235,6 @@ func mustJSON(v any) []byte {
 	return b
 }
 
-func fromExtractorResources(in []extractor.Resource) []Resource {
-	out := make([]Resource, 0, len(in))
-	for _, r := range in {
-		pr := Resource{
-			Path:             r.Path,
-			WorkspaceRel:     r.WorkspaceRel,
-			OutsideWorkspace: r.OutsideWorkspace,
-			Command:          r.Command,
-			Cwd:              r.Cwd,
-			URL:              r.URL,
-			Domain:           r.Domain,
-			Scheme:           r.Scheme,
-			Skill:            r.Skill,
-		}
-		switch r.Type {
-		case extractor.ResourcePath:
-			pr.Type = ResourcePath
-		case extractor.ResourceCommand:
-			pr.Type = ResourceCommand
-		case extractor.ResourceURL:
-			pr.Type = ResourceURL
-		case extractor.ResourceDomain:
-			pr.Type = ResourceDomain
-		case extractor.ResourceSkill:
-			pr.Type = ResourceSkill
-		case extractor.ResourceDir:
-			pr.Type = ResourceDir
-		}
-		out = append(out, pr)
-	}
-	return out
-}
-
-func toPolicyResources(in []Resource) []policy.Resource {
-	out := make([]policy.Resource, 0, len(in))
-	for _, r := range in {
-		pr := policy.Resource{
-			Path:             r.Path,
-			WorkspaceRel:     r.WorkspaceRel,
-			OutsideWorkspace: r.OutsideWorkspace,
-			Command:          r.Command,
-			Cwd:              r.Cwd,
-			URL:              r.URL,
-			Domain:           r.Domain,
-			Scheme:           r.Scheme,
-			Skill:            r.Skill,
-		}
-		switch r.Type {
-		case ResourcePath:
-			pr.Type = policy.ResourcePath
-		case ResourceCommand:
-			pr.Type = policy.ResourceCommand
-		case ResourceURL:
-			pr.Type = policy.ResourceURL
-		case ResourceDomain:
-			pr.Type = policy.ResourceDomain
-		case ResourceSkill:
-			pr.Type = policy.ResourceSkill
-		case ResourceDir:
-			pr.Type = policy.ResourceDir
-		}
-		out = append(out, pr)
-	}
-	return out
-}
-
 func toGrantRequest(req ToolRequest) grant.Request {
 	return grant.Request{
 		ToolCallID: req.ToolCallID,
@@ -285,7 +244,7 @@ func toGrantRequest(req ToolRequest) grant.Request {
 	}
 }
 
-func toGrantResources(in []Resource) []grant.Resource {
+func toGrantResources(in []policy.Resource) []grant.Resource {
 	out := make([]grant.Resource, 0, len(in))
 	for _, r := range in {
 		gr := grant.Resource{
@@ -297,15 +256,15 @@ func toGrantResources(in []Resource) []grant.Resource {
 			Skill:            r.Skill,
 		}
 		switch r.Type {
-		case ResourcePath:
+		case policy.ResourcePath:
 			gr.Type = grant.ResourcePath
-		case ResourceDir:
+		case policy.ResourceDir:
 			gr.Type = grant.ResourceDir
-		case ResourceDomain:
+		case policy.ResourceDomain:
 			gr.Type = grant.ResourceDomain
-		case ResourceCommand:
+		case policy.ResourceCommand:
 			gr.Type = grant.ResourceCommand
-		case ResourceSkill:
+		case policy.ResourceSkill:
 			gr.Type = grant.ResourceSkill
 		default:
 			continue
@@ -315,10 +274,10 @@ func toGrantResources(in []Resource) []grant.Resource {
 	return out
 }
 
-func parseSelectedResources(raw []json.RawMessage) []Resource {
-	out := make([]Resource, 0, len(raw))
+func parseSelectedResources(raw []json.RawMessage) []policy.Resource {
+	out := make([]policy.Resource, 0, len(raw))
 	for _, r := range raw {
-		var res Resource
+		var res policy.Resource
 		if err := json.Unmarshal(r, &res); err == nil {
 			out = append(out, res)
 		}

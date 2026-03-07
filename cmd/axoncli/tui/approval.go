@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/looplj/axonhub/axon/permission"
+	"github.com/looplj/axonhub/axon/permission/policy"
 )
 
 var (
@@ -61,7 +61,7 @@ func (m Model) renderApprovalModal() string {
 }
 
 func formatApprovalResources(raw json.RawMessage) string {
-	var resources []permission.Resource
+	var resources []policy.Resource
 	if err := json.Unmarshal(raw, &resources); err != nil {
 		return approvalDimStyle.Render("  (unparseable resources)")
 	}
@@ -72,7 +72,7 @@ func formatApprovalResources(raw json.RawMessage) string {
 	var lines []string
 	for _, r := range resources {
 		switch r.Type {
-		case permission.ResourcePath:
+		case policy.ResourcePath:
 			p := r.Path
 			if r.WorkspaceRel != "" {
 				p = r.WorkspaceRel
@@ -82,17 +82,17 @@ func formatApprovalResources(raw json.RawMessage) string {
 				extra = " (outside workspace)"
 			}
 			lines = append(lines, fmt.Sprintf("  - path: %s%s", p, extra))
-		case permission.ResourceURL:
+		case policy.ResourceURL:
 			lines = append(lines, fmt.Sprintf("  - url: %s", r.URL))
-		case permission.ResourceDomain:
+		case policy.ResourceDomain:
 			lines = append(lines, fmt.Sprintf("  - domain: %s", r.Domain))
-		case permission.ResourceCommand:
+		case policy.ResourceCommand:
 			cmd := truncateStr(r.Command, 120)
 			lines = append(lines, fmt.Sprintf("  - command: %s", cmd))
 			if r.Cwd != "" {
 				lines = append(lines, fmt.Sprintf("    cwd: %s", r.Cwd))
 			}
-		case permission.ResourceDir:
+		case policy.ResourceDir:
 			p := r.Path
 			if r.WorkspaceRel != "" {
 				p = r.WorkspaceRel

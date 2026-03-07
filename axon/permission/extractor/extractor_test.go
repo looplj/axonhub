@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/axon/permission/policy"
 )
 
 func TestExtract_Skill_Basic(t *testing.T) {
@@ -16,7 +18,7 @@ func TestExtract_Skill_Basic(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceSkill, resources[0].Type)
+	assert.Equal(t, policy.ResourceSkill, resources[0].Type)
 	assert.Equal(t, "code-review", resources[0].Skill)
 }
 
@@ -28,7 +30,7 @@ func TestExtract_Skill_WithNamespace(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
-	assert.Equal(t, ResourceSkill, resources[0].Type)
+	assert.Equal(t, policy.ResourceSkill, resources[0].Type)
 	assert.Equal(t, "walkthrough", resources[0].Skill)
 }
 

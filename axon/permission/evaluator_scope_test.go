@@ -9,7 +9,6 @@ import (
 	"github.com/looplj/axonhub/axon/permission/approval"
 	"github.com/looplj/axonhub/axon/permission/grant"
 	"github.com/looplj/axonhub/axon/permission/policy"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,6 +38,7 @@ func (m *mockApprover) Active() (approval.Request, bool) {
 }
 
 type mockStore struct {
+	match         bool
 	added         bool
 	lastScope     grant.Scope
 	lastResources []grant.Resource
@@ -47,7 +47,7 @@ type mockStore struct {
 }
 
 func (m *mockStore) Match(req grant.Request, resources []grant.Resource) bool {
-	return false
+	return m.match
 }
 
 func (m *mockStore) Add(req grant.Request, scope grant.Scope, resources []grant.Resource) {
@@ -111,10 +111,10 @@ func TestEvaluator_HandleDecision_GlobalScope_SavesGlobal(t *testing.T) {
 	err = eval.Evaluate(context.Background(), req)
 	require.NoError(t, err)
 
-	assert.True(t, store.added, "Add should be called")
-	assert.Equal(t, grant.ScopeGlobal, store.lastScope, "scope should be global")
-	assert.True(t, store.savedGlobal, "SaveGlobal should be called for global scope")
-	assert.Empty(t, store.savedWs, "SaveWorkspace should not be called for global scope")
+	require.True(t, store.added, "Add should be called")
+	require.Equal(t, grant.ScopeGlobal, store.lastScope, "scope should be global")
+	require.True(t, store.savedGlobal, "SaveGlobal should be called for global scope")
+	require.Empty(t, store.savedWs, "SaveWorkspace should not be called for global scope")
 }
 
 func TestEvaluator_HandleDecision_WorkspaceScope_SavesWorkspace(t *testing.T) {
@@ -146,10 +146,10 @@ func TestEvaluator_HandleDecision_WorkspaceScope_SavesWorkspace(t *testing.T) {
 	err = eval.Evaluate(context.Background(), req)
 	require.NoError(t, err)
 
-	assert.True(t, store.added, "Add should be called")
-	assert.Equal(t, grant.ScopeWorkspace, store.lastScope, "scope should be workspace")
-	assert.Equal(t, "/workspace", store.savedWs, "SaveWorkspace should be called with workspace path")
-	assert.False(t, store.savedGlobal, "SaveGlobal should not be called for workspace scope")
+	require.True(t, store.added, "Add should be called")
+	require.Equal(t, grant.ScopeWorkspace, store.lastScope, "scope should be workspace")
+	require.Equal(t, "/workspace", store.savedWs, "SaveWorkspace should be called with workspace path")
+	require.False(t, store.savedGlobal, "SaveGlobal should not be called for workspace scope")
 }
 
 func TestEvaluator_HandleDecision_OnceScope_NoSave(t *testing.T) {
@@ -181,10 +181,10 @@ func TestEvaluator_HandleDecision_OnceScope_NoSave(t *testing.T) {
 	err = eval.Evaluate(context.Background(), req)
 	require.NoError(t, err)
 
-	assert.True(t, store.added, "Add should be called")
-	assert.Equal(t, grant.ScopeOnce, store.lastScope, "scope should be once")
-	assert.False(t, store.savedGlobal, "SaveGlobal should not be called for once scope")
-	assert.Empty(t, store.savedWs, "SaveWorkspace should not be called for once scope")
+	require.True(t, store.added, "Add should be called")
+	require.Equal(t, grant.ScopeOnce, store.lastScope, "scope should be once")
+	require.False(t, store.savedGlobal, "SaveGlobal should not be called for once scope")
+	require.Empty(t, store.savedWs, "SaveWorkspace should not be called for once scope")
 }
 
 func TestEvaluator_HandleDecision_ThreadScope_NoSave(t *testing.T) {
@@ -216,10 +216,10 @@ func TestEvaluator_HandleDecision_ThreadScope_NoSave(t *testing.T) {
 	err = eval.Evaluate(context.Background(), req)
 	require.NoError(t, err)
 
-	assert.True(t, store.added, "Add should be called")
-	assert.Equal(t, grant.ScopeThread, store.lastScope, "scope should be thread")
-	assert.False(t, store.savedGlobal, "SaveGlobal should not be called for thread scope")
-	assert.Empty(t, store.savedWs, "SaveWorkspace should not be called for thread scope")
+	require.True(t, store.added, "Add should be called")
+	require.Equal(t, grant.ScopeThread, store.lastScope, "scope should be thread")
+	require.False(t, store.savedGlobal, "SaveGlobal should not be called for thread scope")
+	require.Empty(t, store.savedWs, "SaveWorkspace should not be called for thread scope")
 }
 
 func TestEvaluator_HandleDecision_Denied_NoSave(t *testing.T) {
@@ -250,16 +250,16 @@ func TestEvaluator_HandleDecision_Denied_NoSave(t *testing.T) {
 	err = eval.Evaluate(context.Background(), req)
 	require.Error(t, err)
 
-	assert.False(t, store.added, "Add should not be called for denied approval")
-	assert.False(t, store.savedGlobal, "SaveGlobal should not be called for denied approval")
-	assert.Empty(t, store.savedWs, "SaveWorkspace should not be called for denied approval")
+	require.False(t, store.added, "Add should not be called for denied approval")
+	require.False(t, store.savedGlobal, "SaveGlobal should not be called for denied approval")
+	require.Empty(t, store.savedWs, "SaveWorkspace should not be called for denied approval")
 }
 
 func TestEvaluator_HandleDecision_GlobalScope_WithSelectedResources(t *testing.T) {
 	store := &mockStore{}
-	resources := []Resource{
-		{Type: ResourcePath, Path: "/workspace/file1.txt", WorkspaceRel: "file1.txt"},
-		{Type: ResourcePath, Path: "/workspace/file2.txt", WorkspaceRel: "file2.txt"},
+	resources := []policy.Resource{
+		{Type: policy.ResourcePath, Path: "/workspace/file1.txt", WorkspaceRel: "file1.txt"},
+		{Type: policy.ResourcePath, Path: "/workspace/file2.txt", WorkspaceRel: "file2.txt"},
 	}
 	resourcesJSON, err := json.Marshal(resources[0])
 	require.NoError(t, err)
@@ -292,7 +292,55 @@ func TestEvaluator_HandleDecision_GlobalScope_WithSelectedResources(t *testing.T
 	err = eval.Evaluate(context.Background(), req)
 	require.NoError(t, err)
 
-	assert.True(t, store.added, "Add should be called")
-	assert.True(t, store.savedGlobal, "SaveGlobal should be called for global scope")
-	assert.Len(t, store.lastResources, 1, "should save only selected resource")
+	require.True(t, store.added, "Add should be called")
+	require.True(t, store.savedGlobal, "SaveGlobal should be called for global scope")
+	require.Len(t, store.lastResources, 1, "should save only selected resource")
+}
+
+func TestEvaluator_DenyRuleTakesPrecedenceOverGrantMatch(t *testing.T) {
+	store := &mockStore{match: true}
+	approver := &mockApprover{
+		response: approval.Response{
+			Granted: true,
+			Scope:   grant.ScopeGlobal,
+		},
+	}
+
+	eng, err := policy.New(policy.Document{
+		Version: 1,
+		Rules: []policy.Rule{
+			{
+				ID:     "deny.read.axonclaw",
+				Effect: policy.EffectDeny,
+				When: policy.When{
+					ToolIn: []string{"Read"},
+					Resource: policy.ResourceWhen{
+						DirMatches: []string{"cmd/axonclaw", "cmd/axonclaw/**"},
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	eval := NewEvaluator(EvaluatorOptions{
+		Policy:   eng,
+		Approver: approver,
+		Grants:   store,
+	})
+
+	req := ToolRequest{
+		ToolCallID: "test-id",
+		ThreadID:   "thread-1",
+		Workspace:  "/workspace",
+		ToolName:   "Read",
+		ToolInput:  json.RawMessage(`{"path":"/workspace/cmd/axonclaw/main.go"}`),
+		StartedAt:  mustParseTime("2024-01-01T00:00:00Z"),
+	}
+
+	err = eval.Evaluate(context.Background(), req)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrToolCallDenied)
+	require.False(t, store.added, "deny should not add grant entries")
+	require.False(t, store.savedGlobal, "deny should not save global grants")
 }

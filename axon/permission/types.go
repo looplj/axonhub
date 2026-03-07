@@ -3,6 +3,8 @@ package permission
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/looplj/axonhub/axon/permission/policy"
 )
 
 type Effect string
@@ -31,42 +33,10 @@ type ToolRequest struct {
 	StartedAt  time.Time
 }
 
-type ResourceType string
-
-const (
-	ResourcePath    ResourceType = "path"
-	ResourceCommand ResourceType = "command"
-	ResourceURL     ResourceType = "url"
-	ResourceDomain  ResourceType = "domain"
-	ResourceSkill   ResourceType = "skill"
-	ResourceDir     ResourceType = "dir"
-)
-
-type Resource struct {
-	Type ResourceType `json:"type"`
-
-	// Path
-	Path             string `json:"path,omitempty"` // absolute, cleaned
-	WorkspaceRel     string `json:"workspace_rel,omitempty"`
-	OutsideWorkspace bool   `json:"outside_workspace,omitempty"`
-
-	// Command
-	Command string `json:"command,omitempty"`
-	Cwd     string `json:"cwd,omitempty"`
-
-	// Network
-	URL    string `json:"url,omitempty"`    // redacted
-	Domain string `json:"domain,omitempty"` // host
-	Scheme string `json:"scheme,omitempty"`
-
-	// Skill
-	Skill string `json:"skill,omitempty"`
-}
-
 type DecisionDisplay struct {
-	Summary   string     `json:"summary"`
-	Details   []string   `json:"details,omitempty"`
-	Resources []Resource `json:"resources,omitempty"`
+	Summary   string            `json:"summary"`
+	Details   []string          `json:"details,omitempty"`
+	Resources []policy.Resource `json:"resources,omitempty"`
 }
 
 type ToolDecision struct {
@@ -76,5 +46,5 @@ type ToolDecision struct {
 	RiskLevel RiskLevel       `json:"risk_level,omitempty"`
 	Display   DecisionDisplay `json:"display,omitempty"`
 
-	Resources []Resource `json:"resources,omitempty"`
+	Resources []policy.Resource `json:"resources,omitempty"`
 }

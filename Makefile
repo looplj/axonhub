@@ -3,7 +3,7 @@
 	e2e-test e2e-backend-start e2e-backend-stop e2e-backend-status e2e-backend-restart e2e-backend-clean \
 	migration-test migration-test-all migration-test-all-dbs \
 	sync-faq sync-models filter-logs \
-	lint lint-privacy
+	lint lint-all lint-privacy
 
 # Generate GraphQL and Ent code
 generate:
@@ -158,11 +158,27 @@ filter-logs:
 
 # --- Linting ---
 
-# Run all lint checks
-lint: lint-privacy
+GO_LINT_CMD = golangci-lint run --timeout 10m --max-same-issues 50 ./...
+
+GO_MODULES := . axon llm cmd/axoncli cmd/axonclaw
+
+lint-all:
+	@echo "Running golangci-lint across all Go modules..."
+	@for module in $(GO_MODULES); do \
+		echo ""; \
+		echo "=== Linting $$module module ==="; \
+		if [ -f "$$module/go.mod" ]; then \
+			cd $$module && $(GO_LINT_CMD) && cd - > /dev/null; \
+		else \
+			$(GO_LINT_CMD); \
+		fi; \
+	done
+	@echo ""
 	@echo "All lint checks passed!"
 
-# Check for illegal privacy.DecisionContext(...Allow) usage
+lint: lint-all lint-privacy
+	@echo "All lint checks passed!"
+
 lint-privacy:
 	@echo "Checking for illegal privacy.DecisionContext(...Allow) usage..."
 	@./scripts/lint/check-privacy-allow.sh

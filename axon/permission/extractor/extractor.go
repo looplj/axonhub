@@ -4,54 +4,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/looplj/axonhub/axon/permission/policy"
 )
 
 // validSkillName matches the Agent Skills specification:
 // lowercase alphanumeric + hyphens, no leading/trailing/consecutive hyphens, max 64 chars.
 var validSkillName = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
-type ResourceType string
-
-const (
-	ResourcePath    ResourceType = "path"
-	ResourceCommand ResourceType = "command"
-	ResourceURL     ResourceType = "url"
-	ResourceDomain  ResourceType = "domain"
-	ResourceSkill   ResourceType = "skill"
-	ResourceDir     ResourceType = "dir"
-)
-
-type Resource struct {
-	Type ResourceType
-
-	// Path
-	Path             string
-	WorkspaceRel     string
-	OutsideWorkspace bool
-
-	// Command
-	Command string
-	Cwd     string
-
-	// Network
-	URL    string
-	Domain string
-	Scheme string
-
-	// Skill
-	Skill string
-}
-
 type Extractor interface {
-	Extract(workspace, toolName string, input json.RawMessage) ([]Resource, error)
+	Extract(workspace, toolName string, input json.RawMessage) ([]policy.Resource, error)
 }
 
 type DefaultExtractor struct{}
 
-func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMessage) ([]Resource, error) {
+func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMessage) ([]policy.Resource, error) {
 	switch toolName {
 	case "Read", "Write", "Edit":
 		var v struct {
@@ -62,9 +33,16 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 		}
 		abs := cleanPath(workspace, v.Path)
 		if isDirPath(v.Path) {
-			return []Resource{dirResource(workspace, abs)}, nil
+			return []policy.Resource{dirResource(workspace, abs)}, nil
 		}
-		return []Resource{
+		// If the path exists and is a directory, treat it as a directory even
+		// without a trailing slash. This avoids misclassifying extension-less
+		// files (e.g. /etc/passwd, Makefile) as directories.
+		if fi, err := os.Stat(abs); err == nil && fi.IsDir() {
+			return []policy.Resource{dirResource(workspace, abs)}, nil
+		}
+
+		return []policy.Resource{
 			pathResource(workspace, abs),
 			dirResource(workspace, filepath.Dir(abs)),
 		}, nil
@@ -79,7 +57,8 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 		if strings.TrimSpace(p) == "" {
 			p = workspace
 		}
-		return []Resource{dirResource(workspace, p)}, nil
+
+		return []policy.Resource{dirResource(workspace, p)}, nil
 	case "Grep":
 		var v struct {
 			Path string `json:"path,omitempty"`
@@ -91,7 +70,8 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 		if strings.TrimSpace(p) == "" {
 			p = workspace
 		}
-		return []Resource{dirResource(workspace, p)}, nil
+
+		return []policy.Resource{dirResource(workspace, p)}, nil
 	case "Bash":
 		var v struct {
 			Command string `json:"command"`
@@ -104,9 +84,10 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 		if cwd == "" {
 			cwd = workspace
 		}
-		return []Resource{
+
+		return []policy.Resource{
 			{
-				Type:    ResourceCommand,
+				Type:    policy.ResourceCommand,
 				Command: strings.TrimSpace(v.Command),
 				Cwd:     cleanPath(workspace, cwd),
 			},
@@ -121,18 +102,20 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 		}
 		raw := strings.TrimSpace(v.Query)
 		u, err := url.Parse(raw)
+		//nolint:nilerr // We want to ignore the error here.
 		if err != nil {
-			return []Resource{{Type: ResourceURL, URL: redactURL(raw)}}, nil
+			return []policy.Resource{{Type: policy.ResourceURL, URL: redactURL(raw)}}, nil
 		}
-		return []Resource{
+
+		return []policy.Resource{
 			{
-				Type:   ResourceURL,
+				Type:   policy.ResourceURL,
 				URL:    redactURL(u.String()),
 				Domain: strings.ToLower(u.Hostname()),
 				Scheme: strings.ToLower(u.Scheme),
 			},
 			{
-				Type:   ResourceDomain,
+				Type:   policy.ResourceDomain,
 				Domain: strings.ToLower(u.Hostname()),
 			},
 		}, nil
@@ -144,17 +127,18 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 		if err := json.Unmarshal(input, &v); err != nil {
 			return nil, fmt.Errorf("extract %s: invalid json: %w", toolName, err)
 		}
-		var out []Resource
+
+		var out []policy.Resource
 		for _, d := range v.AllowedDomains {
 			d = strings.ToLower(strings.TrimSpace(d))
 			if d != "" {
-				out = append(out, Resource{Type: ResourceDomain, Domain: d})
+				out = append(out, policy.Resource{Type: policy.ResourceDomain, Domain: d})
 			}
 		}
 		for _, d := range v.BlockedDomains {
 			d = strings.ToLower(strings.TrimSpace(d))
 			if d != "" {
-				out = append(out, Resource{Type: ResourceDomain, Domain: d})
+				out = append(out, policy.Resource{Type: policy.ResourceDomain, Domain: d})
 			}
 		}
 		return out, nil
@@ -180,7 +164,8 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 		if len(name) > 64 || !validSkillName.MatchString(name) || strings.Contains(name, "--") {
 			return nil, fmt.Errorf("extract %s: invalid skill name %q: must be 1-64 lowercase alphanumeric chars and hyphens, no leading/trailing/consecutive hyphens", toolName, name)
 		}
-		return []Resource{{Type: ResourceSkill, Skill: name}}, nil
+
+		return []policy.Resource{{Type: policy.ResourceSkill, Skill: name}}, nil
 	default:
 		return nil, nil
 	}
@@ -198,13 +183,18 @@ func cleanPath(workspace, p string) string {
 
 func isDirPath(p string) bool {
 	p = strings.TrimSpace(p)
-	if strings.HasSuffix(p, "/") {
+	if p == "." || p == ".." {
 		return true
 	}
-	return filepath.Ext(p) == ""
+
+	if strings.HasSuffix(p, "/") || strings.HasSuffix(p, `\`) {
+		return true
+	}
+
+	return false
 }
 
-func pathResource(workspace, p string) Resource {
+func pathResource(workspace, p string) policy.Resource {
 	abs := cleanPath(workspace, p)
 	ws := filepath.Clean(workspace)
 	outside := abs != ws && !strings.HasPrefix(abs, ws+string(filepath.Separator))
@@ -214,15 +204,16 @@ func pathResource(workspace, p string) Resource {
 			rel = r
 		}
 	}
-	return Resource{
-		Type:             ResourcePath,
+
+	return policy.Resource{
+		Type:             policy.ResourcePath,
 		Path:             abs,
 		WorkspaceRel:     rel,
 		OutsideWorkspace: outside,
 	}
 }
 
-func dirResource(workspace, dir string) Resource {
+func dirResource(workspace, dir string) policy.Resource {
 	abs := cleanPath(workspace, dir)
 	ws := filepath.Clean(workspace)
 	outside := abs != ws && !strings.HasPrefix(abs, ws+string(filepath.Separator))
@@ -232,8 +223,9 @@ func dirResource(workspace, dir string) Resource {
 			rel = r
 		}
 	}
-	return Resource{
-		Type:             ResourceDir,
+
+	return policy.Resource{
+		Type:             policy.ResourceDir,
 		Path:             abs,
 		WorkspaceRel:     rel,
 		OutsideWorkspace: outside,

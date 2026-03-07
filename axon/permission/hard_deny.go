@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/looplj/axonhub/axon/permission/policy"
 )
 
 var hardDenyCommandPatterns = []*regexp.Regexp{
@@ -18,10 +20,10 @@ var hardDenyCommandPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`/dev/tcp/`),
 }
 
-func HardDeny(toolName string, resources []Resource, workspace string) (ToolDecision, bool) {
+func HardDeny(toolName string, resources []policy.Resource, workspace string) (ToolDecision, bool) {
 	if toolName == "Bash" {
 		for _, r := range resources {
-			if r.Type != ResourceCommand {
+			if r.Type != policy.ResourceCommand {
 				continue
 			}
 			for _, p := range hardDenyCommandPatterns {
@@ -43,7 +45,7 @@ func HardDeny(toolName string, resources []Resource, workspace string) (ToolDeci
 
 	// Deny clearly sensitive paths regardless of policy (defense-in-depth).
 	for _, r := range resources {
-		if r.Type != ResourcePath {
+		if r.Type != policy.ResourcePath {
 			continue
 		}
 		if isSensitivePath(r.Path) {
@@ -62,7 +64,7 @@ func HardDeny(toolName string, resources []Resource, workspace string) (ToolDeci
 
 	// Deny non-http(s) URL schemes in WebFetch by default.
 	for _, r := range resources {
-		if r.Type != ResourceURL {
+		if r.Type != policy.ResourceURL {
 			continue
 		}
 		if r.Scheme != "" && r.Scheme != "http" && r.Scheme != "https" {

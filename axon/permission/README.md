@@ -25,7 +25,7 @@ The evaluation pipeline processes each tool call through four stages in order:
 
 1. **Extractor** — Parses tool input and extracts resources (paths, directories, commands, URLs, domains, skills)
 2. **HardDeny** — Rejects dangerous operations unconditionally (sensitive paths, destructive commands, non-HTTP schemes)
-3. **Grant Store** — Checks if a previous approval already covers this operation (with hierarchical directory matching)
+3. **Grant Store** — Checks if a previous approval already covers this operation (resource-subset matching + hierarchical directory matching)
 4. **Policy Engine** — Evaluates configurable YAML rules to produce a decision
 
 If the policy engine returns `require_approval`, the **Approval Service** is invoked to request human authorization.
@@ -235,6 +235,7 @@ Multiple files are merged; later files override `defaults.mode`, and rules/allow
 ### Grant Store (`grant/`)
 
 The grant store remembers previously approved operations so the user is not prompted repeatedly. It supports **hierarchical directory matching**: granting access to a parent directory automatically covers all descendant directories.
+It also supports **resource-subset matching**: if the stored grant was recorded for a subset of resources, it can still match future requests that include additional resources.
 
 #### Scopes
 
@@ -250,15 +251,24 @@ The grant store remembers previously approved operations so the user is not prom
 The grant key is a SHA-256 hash derived from:
 
 - **Tool name** (lowercased)
-- **Path resources**: parent directory (`filepath.Dir`) of workspace-relative or absolute path
-- **Dir resources**: the directory path itself (cleaned)
+- **Directory tokens** (order-insensitive, de-duplicated):
+  - `ResourcePath` contributes the **parent directory** as `dir:<workspace-rel-dir>` or `dir_abs:<abs-dir>`
+  - `ResourceDir` contributes the **directory itself** as `dir:<workspace-rel-dir>` or `dir_abs:<abs-dir>`
 - **Domain resources**: lowercased domain
-- **Command resources**: first word of the command (program name)
+- **Command resources**: program + optional subcommand token(s)
+  - always includes the program name (first word), e.g. `cmd:go`
+  - if a subcommand exists (first non-flag argument), also includes `cmd:"go test"`
 - **Skill resources**: lowercased skill name
+
+Because tokens are sorted and de-duplicated, the same logical resource set produces the same key regardless of extraction order.
 
 #### Hierarchical Directory Matching
 
-When checking whether a grant covers a request, the store walks from the most specific (child) directory up to the least specific (ancestor). This means:
+When checking whether a grant covers a request, the store derives a set of candidate keys for the request by:
+1. Generating keys for **all non-empty subsets** of the request’s resource tokens (so a previously recorded subset-grant can match), then
+2. For any `dir:*` / `dir_abs:*` token, generating keys for all **ancestor directories** up to the root (so parent grants can cover descendants).
+
+This means:
 
 - Granting `Read` on directory `src` covers `Read` on `src/pkg`, `src/pkg/util`, etc.
 - Granting `Read` on workspace root (`.`) covers all directories in the workspace.
@@ -275,7 +285,7 @@ Example walk for a request targeting `src/pkg/util`:
 4. (Would check):   (Read, dir:.)               → (not reached)
 ```
 
-Non-directory resources (domains, commands, skills) use exact key matching only — no hierarchical walk.
+Non-directory resources (domains, commands, skills) do not have a hierarchy, but they still participate in subset matching (e.g. a stored grant for `domain:example.com` can match a request that also includes additional tokens for the same tool).
 
 #### File Storage
 
