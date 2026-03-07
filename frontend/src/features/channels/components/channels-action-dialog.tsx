@@ -195,6 +195,9 @@ function getNextDuplicateName(name: string, existingNames: Set<string>) {
   }
 }
 
+// OAuth provider keys that require special auth flow
+const oauthProviderKeys = ['codex', 'claudecode', 'antigravity', 'github_copilot'];
+
 export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation();
   const isEdit = !!currentRow;
@@ -571,8 +574,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isClaudeCodeType = (selectedType || derivedChannelType) === 'claudecode';
   const isCopilotType = (selectedType || derivedChannelType) === 'github_copilot';
 
-  // OAuth provider keys that require special auth flow
-  const oauthProviderKeys = useMemo(() => ['codex', 'claudecode', 'antigravity', 'github_copilot'], []);
+
 
   // OAuth providers cannot have their provider/API format changed during edit
   const isOAuthChannel = isEdit && currentRow && oauthProviderKeys.includes(currentRow.type);
