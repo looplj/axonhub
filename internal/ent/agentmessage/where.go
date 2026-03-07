@@ -65,11 +65,6 @@ func UpdatedAt(v time.Time) predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
-func DeletedAt(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldEQ(FieldDeletedAt, v))
-}
-
 // ProjectID applies equality check predicate on the "project_id" field. It's identical to ProjectIDEQ.
 func ProjectID(v int) predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldEQ(FieldProjectID, v))
@@ -103,6 +98,16 @@ func Sequence(v int64) predicate.AgentMessage {
 // ExpiresAt applies equality check predicate on the "expires_at" field. It's identical to ExpiresAtEQ.
 func ExpiresAt(v time.Time) predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldEQ(FieldExpiresAt, v))
+}
+
+// ExternalMessageID applies equality check predicate on the "external_message_id" field. It's identical to ExternalMessageIDEQ.
+func ExternalMessageID(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldExternalMessageID, v))
+}
+
+// ReplyToMessageID applies equality check predicate on the "reply_to_message_id" field. It's identical to ReplyToMessageIDEQ.
+func ReplyToMessageID(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldReplyToMessageID, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -183,46 +188,6 @@ func UpdatedAtLT(v time.Time) predicate.AgentMessage {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
-func DeletedAtEQ(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
-func DeletedAtNEQ(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldNEQ(FieldDeletedAt, v))
-}
-
-// DeletedAtIn applies the In predicate on the "deleted_at" field.
-func DeletedAtIn(vs ...int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
-func DeletedAtNotIn(vs ...int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldNotIn(FieldDeletedAt, vs...))
-}
-
-// DeletedAtGT applies the GT predicate on the "deleted_at" field.
-func DeletedAtGT(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldGT(FieldDeletedAt, v))
-}
-
-// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
-func DeletedAtGTE(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldGTE(FieldDeletedAt, v))
-}
-
-// DeletedAtLT applies the LT predicate on the "deleted_at" field.
-func DeletedAtLT(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldLT(FieldDeletedAt, v))
-}
-
-// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
-func DeletedAtLTE(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldLTE(FieldDeletedAt, v))
 }
 
 // ProjectIDEQ applies the EQ predicate on the "project_id" field.
@@ -363,26 +328,6 @@ func SenderIDIn(vs ...int) predicate.AgentMessage {
 // SenderIDNotIn applies the NotIn predicate on the "sender_id" field.
 func SenderIDNotIn(vs ...int) predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldNotIn(FieldSenderID, vs...))
-}
-
-// SenderIDGT applies the GT predicate on the "sender_id" field.
-func SenderIDGT(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldGT(FieldSenderID, v))
-}
-
-// SenderIDGTE applies the GTE predicate on the "sender_id" field.
-func SenderIDGTE(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldGTE(FieldSenderID, v))
-}
-
-// SenderIDLT applies the LT predicate on the "sender_id" field.
-func SenderIDLT(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldLT(FieldSenderID, v))
-}
-
-// SenderIDLTE applies the LTE predicate on the "sender_id" field.
-func SenderIDLTE(v int) predicate.AgentMessage {
-	return predicate.AgentMessage(sql.FieldLTE(FieldSenderID, v))
 }
 
 // SenderIDIsNil applies the IsNil predicate on the "sender_id" field.
@@ -590,6 +535,131 @@ func ExpiresAtNotNil() predicate.AgentMessage {
 	return predicate.AgentMessage(sql.FieldNotNull(FieldExpiresAt))
 }
 
+// ExternalMessageIDEQ applies the EQ predicate on the "external_message_id" field.
+func ExternalMessageIDEQ(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDNEQ applies the NEQ predicate on the "external_message_id" field.
+func ExternalMessageIDNEQ(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNEQ(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDIn applies the In predicate on the "external_message_id" field.
+func ExternalMessageIDIn(vs ...string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldIn(FieldExternalMessageID, vs...))
+}
+
+// ExternalMessageIDNotIn applies the NotIn predicate on the "external_message_id" field.
+func ExternalMessageIDNotIn(vs ...string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNotIn(FieldExternalMessageID, vs...))
+}
+
+// ExternalMessageIDGT applies the GT predicate on the "external_message_id" field.
+func ExternalMessageIDGT(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldGT(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDGTE applies the GTE predicate on the "external_message_id" field.
+func ExternalMessageIDGTE(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldGTE(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDLT applies the LT predicate on the "external_message_id" field.
+func ExternalMessageIDLT(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldLT(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDLTE applies the LTE predicate on the "external_message_id" field.
+func ExternalMessageIDLTE(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldLTE(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDContains applies the Contains predicate on the "external_message_id" field.
+func ExternalMessageIDContains(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldContains(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDHasPrefix applies the HasPrefix predicate on the "external_message_id" field.
+func ExternalMessageIDHasPrefix(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldHasPrefix(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDHasSuffix applies the HasSuffix predicate on the "external_message_id" field.
+func ExternalMessageIDHasSuffix(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldHasSuffix(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDIsNil applies the IsNil predicate on the "external_message_id" field.
+func ExternalMessageIDIsNil() predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldIsNull(FieldExternalMessageID))
+}
+
+// ExternalMessageIDNotNil applies the NotNil predicate on the "external_message_id" field.
+func ExternalMessageIDNotNil() predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNotNull(FieldExternalMessageID))
+}
+
+// ExternalMessageIDEqualFold applies the EqualFold predicate on the "external_message_id" field.
+func ExternalMessageIDEqualFold(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEqualFold(FieldExternalMessageID, v))
+}
+
+// ExternalMessageIDContainsFold applies the ContainsFold predicate on the "external_message_id" field.
+func ExternalMessageIDContainsFold(v string) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldContainsFold(FieldExternalMessageID, v))
+}
+
+// ReplyToMessageIDEQ applies the EQ predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDEQ(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldEQ(FieldReplyToMessageID, v))
+}
+
+// ReplyToMessageIDNEQ applies the NEQ predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDNEQ(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNEQ(FieldReplyToMessageID, v))
+}
+
+// ReplyToMessageIDIn applies the In predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDIn(vs ...int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldIn(FieldReplyToMessageID, vs...))
+}
+
+// ReplyToMessageIDNotIn applies the NotIn predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDNotIn(vs ...int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNotIn(FieldReplyToMessageID, vs...))
+}
+
+// ReplyToMessageIDGT applies the GT predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDGT(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldGT(FieldReplyToMessageID, v))
+}
+
+// ReplyToMessageIDGTE applies the GTE predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDGTE(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldGTE(FieldReplyToMessageID, v))
+}
+
+// ReplyToMessageIDLT applies the LT predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDLT(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldLT(FieldReplyToMessageID, v))
+}
+
+// ReplyToMessageIDLTE applies the LTE predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDLTE(v int) predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldLTE(FieldReplyToMessageID, v))
+}
+
+// ReplyToMessageIDIsNil applies the IsNil predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDIsNil() predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldIsNull(FieldReplyToMessageID))
+}
+
+// ReplyToMessageIDNotNil applies the NotNil predicate on the "reply_to_message_id" field.
+func ReplyToMessageIDNotNil() predicate.AgentMessage {
+	return predicate.AgentMessage(sql.FieldNotNull(FieldReplyToMessageID))
+}
+
 // HasAgent applies the HasEdge predicate on the "agent" edge.
 func HasAgent() predicate.AgentMessage {
 	return predicate.AgentMessage(func(s *sql.Selector) {
@@ -628,6 +698,29 @@ func HasAgentInstance() predicate.AgentMessage {
 func HasAgentInstanceWith(preds ...predicate.AgentInstance) predicate.AgentMessage {
 	return predicate.AgentMessage(func(s *sql.Selector) {
 		step := newAgentInstanceStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasMessageChannel applies the HasEdge predicate on the "message_channel" edge.
+func HasMessageChannel() predicate.AgentMessage {
+	return predicate.AgentMessage(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, MessageChannelTable, MessageChannelColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMessageChannelWith applies the HasEdge predicate on the "message_channel" edge with a given conditions (other predicates).
+func HasMessageChannelWith(preds ...predicate.MessageChannel) predicate.AgentMessage {
+	return predicate.AgentMessage(func(s *sql.Selector) {
+		step := newMessageChannelStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -203,6 +204,21 @@ func (_u *AgentInstanceUpdate) AddMessages(v ...*AgentMessage) *AgentInstanceUpd
 	return _u.AddMessageIDs(ids...)
 }
 
+// AddMessageChannelBindingIDs adds the "message_channel_bindings" edge to the MessageChannelAgentInstance entity by IDs.
+func (_u *AgentInstanceUpdate) AddMessageChannelBindingIDs(ids ...int) *AgentInstanceUpdate {
+	_u.mutation.AddMessageChannelBindingIDs(ids...)
+	return _u
+}
+
+// AddMessageChannelBindings adds the "message_channel_bindings" edges to the MessageChannelAgentInstance entity.
+func (_u *AgentInstanceUpdate) AddMessageChannelBindings(v ...*MessageChannelAgentInstance) *AgentInstanceUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMessageChannelBindingIDs(ids...)
+}
+
 // Mutation returns the AgentInstanceMutation object of the builder.
 func (_u *AgentInstanceUpdate) Mutation() *AgentInstanceMutation {
 	return _u.mutation
@@ -233,6 +249,27 @@ func (_u *AgentInstanceUpdate) RemoveMessages(v ...*AgentMessage) *AgentInstance
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveMessageIDs(ids...)
+}
+
+// ClearMessageChannelBindings clears all "message_channel_bindings" edges to the MessageChannelAgentInstance entity.
+func (_u *AgentInstanceUpdate) ClearMessageChannelBindings() *AgentInstanceUpdate {
+	_u.mutation.ClearMessageChannelBindings()
+	return _u
+}
+
+// RemoveMessageChannelBindingIDs removes the "message_channel_bindings" edge to MessageChannelAgentInstance entities by IDs.
+func (_u *AgentInstanceUpdate) RemoveMessageChannelBindingIDs(ids ...int) *AgentInstanceUpdate {
+	_u.mutation.RemoveMessageChannelBindingIDs(ids...)
+	return _u
+}
+
+// RemoveMessageChannelBindings removes "message_channel_bindings" edges to MessageChannelAgentInstance entities.
+func (_u *AgentInstanceUpdate) RemoveMessageChannelBindings(v ...*MessageChannelAgentInstance) *AgentInstanceUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMessageChannelBindingIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -408,6 +445,51 @@ func (_u *AgentInstanceUpdate) sqlSave(ctx context.Context) (_node int, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.MessageChannelBindingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessageChannelBindingsTable,
+			Columns: []string{agentinstance.MessageChannelBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannelagentinstance.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMessageChannelBindingsIDs(); len(nodes) > 0 && !_u.mutation.MessageChannelBindingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessageChannelBindingsTable,
+			Columns: []string{agentinstance.MessageChannelBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannelagentinstance.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MessageChannelBindingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessageChannelBindingsTable,
+			Columns: []string{agentinstance.MessageChannelBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannelagentinstance.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -608,6 +690,21 @@ func (_u *AgentInstanceUpdateOne) AddMessages(v ...*AgentMessage) *AgentInstance
 	return _u.AddMessageIDs(ids...)
 }
 
+// AddMessageChannelBindingIDs adds the "message_channel_bindings" edge to the MessageChannelAgentInstance entity by IDs.
+func (_u *AgentInstanceUpdateOne) AddMessageChannelBindingIDs(ids ...int) *AgentInstanceUpdateOne {
+	_u.mutation.AddMessageChannelBindingIDs(ids...)
+	return _u
+}
+
+// AddMessageChannelBindings adds the "message_channel_bindings" edges to the MessageChannelAgentInstance entity.
+func (_u *AgentInstanceUpdateOne) AddMessageChannelBindings(v ...*MessageChannelAgentInstance) *AgentInstanceUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMessageChannelBindingIDs(ids...)
+}
+
 // Mutation returns the AgentInstanceMutation object of the builder.
 func (_u *AgentInstanceUpdateOne) Mutation() *AgentInstanceMutation {
 	return _u.mutation
@@ -638,6 +735,27 @@ func (_u *AgentInstanceUpdateOne) RemoveMessages(v ...*AgentMessage) *AgentInsta
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveMessageIDs(ids...)
+}
+
+// ClearMessageChannelBindings clears all "message_channel_bindings" edges to the MessageChannelAgentInstance entity.
+func (_u *AgentInstanceUpdateOne) ClearMessageChannelBindings() *AgentInstanceUpdateOne {
+	_u.mutation.ClearMessageChannelBindings()
+	return _u
+}
+
+// RemoveMessageChannelBindingIDs removes the "message_channel_bindings" edge to MessageChannelAgentInstance entities by IDs.
+func (_u *AgentInstanceUpdateOne) RemoveMessageChannelBindingIDs(ids ...int) *AgentInstanceUpdateOne {
+	_u.mutation.RemoveMessageChannelBindingIDs(ids...)
+	return _u
+}
+
+// RemoveMessageChannelBindings removes "message_channel_bindings" edges to MessageChannelAgentInstance entities.
+func (_u *AgentInstanceUpdateOne) RemoveMessageChannelBindings(v ...*MessageChannelAgentInstance) *AgentInstanceUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMessageChannelBindingIDs(ids...)
 }
 
 // Where appends a list predicates to the AgentInstanceUpdate builder.
@@ -843,6 +961,51 @@ func (_u *AgentInstanceUpdateOne) sqlSave(ctx context.Context) (_node *AgentInst
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.MessageChannelBindingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessageChannelBindingsTable,
+			Columns: []string{agentinstance.MessageChannelBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannelagentinstance.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMessageChannelBindingsIDs(); len(nodes) > 0 && !_u.mutation.MessageChannelBindingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessageChannelBindingsTable,
+			Columns: []string{agentinstance.MessageChannelBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannelagentinstance.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MessageChannelBindingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessageChannelBindingsTable,
+			Columns: []string{agentinstance.MessageChannelBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannelagentinstance.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

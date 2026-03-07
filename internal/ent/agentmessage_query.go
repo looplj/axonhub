@@ -15,20 +15,22 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 )
 
 // AgentMessageQuery is the builder for querying AgentMessage entities.
 type AgentMessageQuery struct {
 	config
-	ctx               *QueryContext
-	order             []agentmessage.OrderOption
-	inters            []Interceptor
-	predicates        []predicate.AgentMessage
-	withAgent         *AgentQuery
-	withAgentInstance *AgentInstanceQuery
-	loadTotal         []func(context.Context, []*AgentMessage) error
-	modifiers         []func(*sql.Selector)
+	ctx                *QueryContext
+	order              []agentmessage.OrderOption
+	inters             []Interceptor
+	predicates         []predicate.AgentMessage
+	withAgent          *AgentQuery
+	withAgentInstance  *AgentInstanceQuery
+	withMessageChannel *MessageChannelQuery
+	loadTotal          []func(context.Context, []*AgentMessage) error
+	modifiers          []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -102,6 +104,28 @@ func (_q *AgentMessageQuery) QueryAgentInstance() *AgentInstanceQuery {
 			sqlgraph.From(agentmessage.Table, agentmessage.FieldID, selector),
 			sqlgraph.To(agentinstance.Table, agentinstance.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, agentmessage.AgentInstanceTable, agentmessage.AgentInstanceColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMessageChannel chains the current query on the "message_channel" edge.
+func (_q *AgentMessageQuery) QueryMessageChannel() *MessageChannelQuery {
+	query := (&MessageChannelClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agentmessage.Table, agentmessage.FieldID, selector),
+			sqlgraph.To(messagechannel.Table, messagechannel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, agentmessage.MessageChannelTable, agentmessage.MessageChannelColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -296,13 +320,14 @@ func (_q *AgentMessageQuery) Clone() *AgentMessageQuery {
 		return nil
 	}
 	return &AgentMessageQuery{
-		config:            _q.config,
-		ctx:               _q.ctx.Clone(),
-		order:             append([]agentmessage.OrderOption{}, _q.order...),
-		inters:            append([]Interceptor{}, _q.inters...),
-		predicates:        append([]predicate.AgentMessage{}, _q.predicates...),
-		withAgent:         _q.withAgent.Clone(),
-		withAgentInstance: _q.withAgentInstance.Clone(),
+		config:             _q.config,
+		ctx:                _q.ctx.Clone(),
+		order:              append([]agentmessage.OrderOption{}, _q.order...),
+		inters:             append([]Interceptor{}, _q.inters...),
+		predicates:         append([]predicate.AgentMessage{}, _q.predicates...),
+		withAgent:          _q.withAgent.Clone(),
+		withAgentInstance:  _q.withAgentInstance.Clone(),
+		withMessageChannel: _q.withMessageChannel.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -329,6 +354,17 @@ func (_q *AgentMessageQuery) WithAgentInstance(opts ...func(*AgentInstanceQuery)
 		opt(query)
 	}
 	_q.withAgentInstance = query
+	return _q
+}
+
+// WithMessageChannel tells the query-builder to eager-load the nodes that are connected to
+// the "message_channel" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *AgentMessageQuery) WithMessageChannel(opts ...func(*MessageChannelQuery)) *AgentMessageQuery {
+	query := (&MessageChannelClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withMessageChannel = query
 	return _q
 }
 
@@ -416,9 +452,10 @@ func (_q *AgentMessageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	var (
 		nodes       = []*AgentMessage{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withAgent != nil,
 			_q.withAgentInstance != nil,
+			_q.withMessageChannel != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -451,6 +488,12 @@ func (_q *AgentMessageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	if query := _q.withAgentInstance; query != nil {
 		if err := _q.loadAgentInstance(ctx, query, nodes, nil,
 			func(n *AgentMessage, e *AgentInstance) { n.Edges.AgentInstance = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withMessageChannel; query != nil {
+		if err := _q.loadMessageChannel(ctx, query, nodes, nil,
+			func(n *AgentMessage, e *MessageChannel) { n.Edges.MessageChannel = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -520,6 +563,38 @@ func (_q *AgentMessageQuery) loadAgentInstance(ctx context.Context, query *Agent
 	}
 	return nil
 }
+func (_q *AgentMessageQuery) loadMessageChannel(ctx context.Context, query *MessageChannelQuery, nodes []*AgentMessage, init func(*AgentMessage), assign func(*AgentMessage, *MessageChannel)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*AgentMessage)
+	for i := range nodes {
+		if nodes[i].SenderID == nil {
+			continue
+		}
+		fk := *nodes[i].SenderID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(messagechannel.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "sender_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 
 func (_q *AgentMessageQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
@@ -554,6 +629,9 @@ func (_q *AgentMessageQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if _q.withAgentInstance != nil {
 			_spec.Node.AddColumnOnce(agentmessage.FieldAgentInstanceID)
+		}
+		if _q.withMessageChannel != nil {
+			_spec.Node.AddColumnOnce(agentmessage.FieldSenderID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

@@ -16,6 +16,8 @@ schema:
   - prompt.graphql
   - price.graphql
   - cost.graphql
+  - messages.graphql
+
 
 omit_gqlgen_version_in_file_notice: true
 
@@ -493,6 +495,30 @@ models:
   TierCostInput:
     model:
       - github.com/looplj/axonhub/internal/objects.TierCost
+  MessageChannelSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.MessageChannelSettings
+  MessageChannelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.MessageChannelSettings
+  FeishuSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.FeishuSettings
+  FeishuSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.FeishuSettings
+  MessageChannelAgentInstanceBinding:
+    model:
+      - github.com/looplj/axonhub/internal/objects.MessageChannelAgentInstanceBinding
+  MessageChannelAgentInstanceBindingInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.MessageChannelAgentInstanceBinding
+  MessageChatType:
+    model:
+      - github.com/looplj/axonhub/internal/objects.MessageChatType
+  MessageChatTypeInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.MessageChatType
   CostItemInput:
     model:
       - github.com/looplj/axonhub/internal/objects.CostItem

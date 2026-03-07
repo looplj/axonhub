@@ -11,6 +11,7 @@ import (
 
 	"entgo.io/contrib/entgql"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/samber/lo"
@@ -154,6 +155,35 @@ func (r *agentMessageResolver) AgentInstanceID(ctx context.Context, obj *ent.Age
 		Type: ent.TypeAgentInstance,
 		ID:   obj.AgentInstanceID,
 	}, nil
+}
+
+// SenderID is the resolver for the senderID field.
+func (r *agentMessageResolver) SenderID(ctx context.Context, obj *ent.AgentMessage) (*objects.GUID, error) {
+	if obj.SenderID == nil {
+		return nil, nil
+	}
+
+	switch obj.SenderType {
+	case agentmessage.SenderTypeUser:
+		return &objects.GUID{
+			Type: ent.TypeUser,
+			ID:   *obj.SenderID,
+		}, nil
+	case agentmessage.SenderTypeSystem:
+		return nil, nil
+	case agentmessage.SenderTypeAgent:
+		return &objects.GUID{
+			Type: ent.TypeAgentInstance,
+			ID:   *obj.SenderID,
+		}, nil
+	case agentmessage.SenderTypeMessageChannel:
+		return &objects.GUID{
+			Type: ent.TypeMessageChannel,
+			ID:   *obj.SenderID,
+		}, nil
+	default:
+		return nil, fmt.Errorf("invalid sender type: %s", obj.SenderType)
+	}
 }
 
 // ID is the resolver for the id field.
@@ -379,6 +409,54 @@ func (r *channelProbeResolver) ChannelID(ctx context.Context, obj *ent.ChannelPr
 func (r *dataStorageResolver) ID(ctx context.Context, obj *ent.DataStorage) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeDataStorage,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *messageChannelResolver) ID(ctx context.Context, obj *ent.MessageChannel) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeMessageChannel,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ProjectID is the resolver for the projectID field.
+func (r *messageChannelResolver) ProjectID(ctx context.Context, obj *ent.MessageChannel) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeProject,
+		ID:   obj.ProjectID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *messageChannelAgentInstanceResolver) ID(ctx context.Context, obj *ent.MessageChannelAgentInstance) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeMessageChannelAgentInstance,
+		ID:   obj.ID,
+	}, nil
+}
+
+// MessageChannelID is the resolver for the messageChannelID field.
+func (r *messageChannelAgentInstanceResolver) MessageChannelID(ctx context.Context, obj *ent.MessageChannelAgentInstance) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeMessageChannel,
+		ID:   obj.MessageChannelID,
+	}, nil
+}
+
+// AgentInstanceID is the resolver for the agentInstanceID field.
+func (r *messageChannelAgentInstanceResolver) AgentInstanceID(ctx context.Context, obj *ent.MessageChannelAgentInstance) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeAgentInstance,
+		ID:   obj.AgentInstanceID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
+func (r *messageChannelBindingRequestResolver) ID(ctx context.Context, obj *ent.MessageChannelBindingRequest) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypeMessageChannelBindingRequest,
 		ID:   obj.ID,
 	}, nil
 }
@@ -716,6 +794,35 @@ func (r *queryResolver) DataStorages(ctx context.Context, after *entgql.Cursor[i
 		ent.WithDataStorageOrder(orderBy),
 		ent.WithDataStorageFilter(where.Filter),
 	)
+}
+
+// MessageChannels is the resolver for the messageChannels field.
+func (r *queryResolver) MessageChannels(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.MessageChannelOrder, where *ent.MessageChannelWhereInput) (*ent.MessageChannelConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultMessageChannelOrder.Field
+	}
+
+	return r.client.MessageChannel.Query().Paginate(ctx, after, first, before, last,
+		ent.WithMessageChannelOrder(orderBy),
+		ent.WithMessageChannelFilter(where.Filter),
+	)
+}
+
+// MessageChannelAgentInstances is the resolver for the messageChannelAgentInstances field.
+func (r *queryResolver) MessageChannelAgentInstances(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.MessageChannelAgentInstanceOrder, where *ent.MessageChannelAgentInstanceWhereInput) (*ent.MessageChannelAgentInstanceConnection, error) {
+	return r.client.MessageChannelAgentInstance.Query().Paginate(ctx, after, first, before, last,
+		ent.WithMessageChannelAgentInstanceOrder(orderBy),
+		ent.WithMessageChannelAgentInstanceFilter(where.Filter),
+	)
+}
+
+// MessageChannelBindingRequests is the resolver for the messageChannelBindingRequests field.
+func (r *queryResolver) MessageChannelBindingRequests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.MessageChannelBindingRequestOrder, where *ent.MessageChannelBindingRequestWhereInput) (*ent.MessageChannelBindingRequestConnection, error) {
+	panic(fmt.Errorf("not implemented: MessageChannelBindingRequests - messageChannelBindingRequests"))
 }
 
 // Models is the resolver for the models field.
@@ -1394,6 +1501,19 @@ func (r *Resolver) ChannelProbe() ChannelProbeResolver { return &channelProbeRes
 // DataStorage returns DataStorageResolver implementation.
 func (r *Resolver) DataStorage() DataStorageResolver { return &dataStorageResolver{r} }
 
+// MessageChannel returns MessageChannelResolver implementation.
+func (r *Resolver) MessageChannel() MessageChannelResolver { return &messageChannelResolver{r} }
+
+// MessageChannelAgentInstance returns MessageChannelAgentInstanceResolver implementation.
+func (r *Resolver) MessageChannelAgentInstance() MessageChannelAgentInstanceResolver {
+	return &messageChannelAgentInstanceResolver{r}
+}
+
+// MessageChannelBindingRequest returns MessageChannelBindingRequestResolver implementation.
+func (r *Resolver) MessageChannelBindingRequest() MessageChannelBindingRequestResolver {
+	return &messageChannelBindingRequestResolver{r}
+}
+
 // Model returns ModelResolver implementation.
 func (r *Resolver) Model() ModelResolver { return &modelResolver{r} }
 
@@ -1465,6 +1585,9 @@ type channelModelPriceVersionResolver struct{ *Resolver }
 type channelOverrideTemplateResolver struct{ *Resolver }
 type channelProbeResolver struct{ *Resolver }
 type dataStorageResolver struct{ *Resolver }
+type messageChannelResolver struct{ *Resolver }
+type messageChannelAgentInstanceResolver struct{ *Resolver }
+type messageChannelBindingRequestResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type promptResolver struct{ *Resolver }

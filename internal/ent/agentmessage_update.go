@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -34,27 +35,6 @@ func (_u *AgentMessageUpdate) Where(ps ...predicate.AgentMessage) *AgentMessageU
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *AgentMessageUpdate) SetUpdatedAt(v time.Time) *AgentMessageUpdate {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *AgentMessageUpdate) SetDeletedAt(v int) *AgentMessageUpdate {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *AgentMessageUpdate) SetNillableDeletedAt(v *int) *AgentMessageUpdate {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *AgentMessageUpdate) AddDeletedAt(v int) *AgentMessageUpdate {
-	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -88,7 +68,6 @@ func (_u *AgentMessageUpdate) SetNillableSenderType(v *agentmessage.SenderType) 
 
 // SetSenderID sets the "sender_id" field.
 func (_u *AgentMessageUpdate) SetSenderID(v int) *AgentMessageUpdate {
-	_u.mutation.ResetSenderID()
 	_u.mutation.SetSenderID(v)
 	return _u
 }
@@ -98,12 +77,6 @@ func (_u *AgentMessageUpdate) SetNillableSenderID(v *int) *AgentMessageUpdate {
 	if v != nil {
 		_u.SetSenderID(*v)
 	}
-	return _u
-}
-
-// AddSenderID adds value to the "sender_id" field.
-func (_u *AgentMessageUpdate) AddSenderID(v int) *AgentMessageUpdate {
-	_u.mutation.AddSenderID(v)
 	return _u
 }
 
@@ -208,9 +181,81 @@ func (_u *AgentMessageUpdate) ClearExpiresAt() *AgentMessageUpdate {
 	return _u
 }
 
+// SetExternalMessageID sets the "external_message_id" field.
+func (_u *AgentMessageUpdate) SetExternalMessageID(v string) *AgentMessageUpdate {
+	_u.mutation.SetExternalMessageID(v)
+	return _u
+}
+
+// SetNillableExternalMessageID sets the "external_message_id" field if the given value is not nil.
+func (_u *AgentMessageUpdate) SetNillableExternalMessageID(v *string) *AgentMessageUpdate {
+	if v != nil {
+		_u.SetExternalMessageID(*v)
+	}
+	return _u
+}
+
+// ClearExternalMessageID clears the value of the "external_message_id" field.
+func (_u *AgentMessageUpdate) ClearExternalMessageID() *AgentMessageUpdate {
+	_u.mutation.ClearExternalMessageID()
+	return _u
+}
+
+// SetReplyToMessageID sets the "reply_to_message_id" field.
+func (_u *AgentMessageUpdate) SetReplyToMessageID(v int) *AgentMessageUpdate {
+	_u.mutation.ResetReplyToMessageID()
+	_u.mutation.SetReplyToMessageID(v)
+	return _u
+}
+
+// SetNillableReplyToMessageID sets the "reply_to_message_id" field if the given value is not nil.
+func (_u *AgentMessageUpdate) SetNillableReplyToMessageID(v *int) *AgentMessageUpdate {
+	if v != nil {
+		_u.SetReplyToMessageID(*v)
+	}
+	return _u
+}
+
+// AddReplyToMessageID adds value to the "reply_to_message_id" field.
+func (_u *AgentMessageUpdate) AddReplyToMessageID(v int) *AgentMessageUpdate {
+	_u.mutation.AddReplyToMessageID(v)
+	return _u
+}
+
+// ClearReplyToMessageID clears the value of the "reply_to_message_id" field.
+func (_u *AgentMessageUpdate) ClearReplyToMessageID() *AgentMessageUpdate {
+	_u.mutation.ClearReplyToMessageID()
+	return _u
+}
+
+// SetMessageChannelID sets the "message_channel" edge to the MessageChannel entity by ID.
+func (_u *AgentMessageUpdate) SetMessageChannelID(id int) *AgentMessageUpdate {
+	_u.mutation.SetMessageChannelID(id)
+	return _u
+}
+
+// SetNillableMessageChannelID sets the "message_channel" edge to the MessageChannel entity by ID if the given value is not nil.
+func (_u *AgentMessageUpdate) SetNillableMessageChannelID(id *int) *AgentMessageUpdate {
+	if id != nil {
+		_u = _u.SetMessageChannelID(*id)
+	}
+	return _u
+}
+
+// SetMessageChannel sets the "message_channel" edge to the MessageChannel entity.
+func (_u *AgentMessageUpdate) SetMessageChannel(v *MessageChannel) *AgentMessageUpdate {
+	return _u.SetMessageChannelID(v.ID)
+}
+
 // Mutation returns the AgentMessageMutation object of the builder.
 func (_u *AgentMessageUpdate) Mutation() *AgentMessageMutation {
 	return _u.mutation
+}
+
+// ClearMessageChannel clears the "message_channel" edge to the MessageChannel entity.
+func (_u *AgentMessageUpdate) ClearMessageChannel() *AgentMessageUpdate {
+	_u.mutation.ClearMessageChannel()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -307,26 +352,11 @@ func (_u *AgentMessageUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(agentmessage.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(agentmessage.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(agentmessage.FieldDeletedAt, field.TypeInt, value)
-	}
 	if value, ok := _u.mutation.Direction(); ok {
 		_spec.SetField(agentmessage.FieldDirection, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.SenderType(); ok {
 		_spec.SetField(agentmessage.FieldSenderType, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.SenderID(); ok {
-		_spec.SetField(agentmessage.FieldSenderID, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedSenderID(); ok {
-		_spec.AddField(agentmessage.FieldSenderID, field.TypeInt, value)
-	}
-	if _u.mutation.SenderIDCleared() {
-		_spec.ClearField(agentmessage.FieldSenderID, field.TypeInt)
 	}
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(agentmessage.FieldType, field.TypeEnum, value)
@@ -357,6 +387,50 @@ func (_u *AgentMessageUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if _u.mutation.ExpiresAtCleared() {
 		_spec.ClearField(agentmessage.FieldExpiresAt, field.TypeTime)
 	}
+	if value, ok := _u.mutation.ExternalMessageID(); ok {
+		_spec.SetField(agentmessage.FieldExternalMessageID, field.TypeString, value)
+	}
+	if _u.mutation.ExternalMessageIDCleared() {
+		_spec.ClearField(agentmessage.FieldExternalMessageID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ReplyToMessageID(); ok {
+		_spec.SetField(agentmessage.FieldReplyToMessageID, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedReplyToMessageID(); ok {
+		_spec.AddField(agentmessage.FieldReplyToMessageID, field.TypeInt, value)
+	}
+	if _u.mutation.ReplyToMessageIDCleared() {
+		_spec.ClearField(agentmessage.FieldReplyToMessageID, field.TypeInt)
+	}
+	if _u.mutation.MessageChannelCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentmessage.MessageChannelTable,
+			Columns: []string{agentmessage.MessageChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MessageChannelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentmessage.MessageChannelTable,
+			Columns: []string{agentmessage.MessageChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -382,27 +456,6 @@ type AgentMessageUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *AgentMessageUpdateOne) SetUpdatedAt(v time.Time) *AgentMessageUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
-	return _u
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_u *AgentMessageUpdateOne) SetDeletedAt(v int) *AgentMessageUpdateOne {
-	_u.mutation.ResetDeletedAt()
-	_u.mutation.SetDeletedAt(v)
-	return _u
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_u *AgentMessageUpdateOne) SetNillableDeletedAt(v *int) *AgentMessageUpdateOne {
-	if v != nil {
-		_u.SetDeletedAt(*v)
-	}
-	return _u
-}
-
-// AddDeletedAt adds value to the "deleted_at" field.
-func (_u *AgentMessageUpdateOne) AddDeletedAt(v int) *AgentMessageUpdateOne {
-	_u.mutation.AddDeletedAt(v)
 	return _u
 }
 
@@ -436,7 +489,6 @@ func (_u *AgentMessageUpdateOne) SetNillableSenderType(v *agentmessage.SenderTyp
 
 // SetSenderID sets the "sender_id" field.
 func (_u *AgentMessageUpdateOne) SetSenderID(v int) *AgentMessageUpdateOne {
-	_u.mutation.ResetSenderID()
 	_u.mutation.SetSenderID(v)
 	return _u
 }
@@ -446,12 +498,6 @@ func (_u *AgentMessageUpdateOne) SetNillableSenderID(v *int) *AgentMessageUpdate
 	if v != nil {
 		_u.SetSenderID(*v)
 	}
-	return _u
-}
-
-// AddSenderID adds value to the "sender_id" field.
-func (_u *AgentMessageUpdateOne) AddSenderID(v int) *AgentMessageUpdateOne {
-	_u.mutation.AddSenderID(v)
 	return _u
 }
 
@@ -556,9 +602,81 @@ func (_u *AgentMessageUpdateOne) ClearExpiresAt() *AgentMessageUpdateOne {
 	return _u
 }
 
+// SetExternalMessageID sets the "external_message_id" field.
+func (_u *AgentMessageUpdateOne) SetExternalMessageID(v string) *AgentMessageUpdateOne {
+	_u.mutation.SetExternalMessageID(v)
+	return _u
+}
+
+// SetNillableExternalMessageID sets the "external_message_id" field if the given value is not nil.
+func (_u *AgentMessageUpdateOne) SetNillableExternalMessageID(v *string) *AgentMessageUpdateOne {
+	if v != nil {
+		_u.SetExternalMessageID(*v)
+	}
+	return _u
+}
+
+// ClearExternalMessageID clears the value of the "external_message_id" field.
+func (_u *AgentMessageUpdateOne) ClearExternalMessageID() *AgentMessageUpdateOne {
+	_u.mutation.ClearExternalMessageID()
+	return _u
+}
+
+// SetReplyToMessageID sets the "reply_to_message_id" field.
+func (_u *AgentMessageUpdateOne) SetReplyToMessageID(v int) *AgentMessageUpdateOne {
+	_u.mutation.ResetReplyToMessageID()
+	_u.mutation.SetReplyToMessageID(v)
+	return _u
+}
+
+// SetNillableReplyToMessageID sets the "reply_to_message_id" field if the given value is not nil.
+func (_u *AgentMessageUpdateOne) SetNillableReplyToMessageID(v *int) *AgentMessageUpdateOne {
+	if v != nil {
+		_u.SetReplyToMessageID(*v)
+	}
+	return _u
+}
+
+// AddReplyToMessageID adds value to the "reply_to_message_id" field.
+func (_u *AgentMessageUpdateOne) AddReplyToMessageID(v int) *AgentMessageUpdateOne {
+	_u.mutation.AddReplyToMessageID(v)
+	return _u
+}
+
+// ClearReplyToMessageID clears the value of the "reply_to_message_id" field.
+func (_u *AgentMessageUpdateOne) ClearReplyToMessageID() *AgentMessageUpdateOne {
+	_u.mutation.ClearReplyToMessageID()
+	return _u
+}
+
+// SetMessageChannelID sets the "message_channel" edge to the MessageChannel entity by ID.
+func (_u *AgentMessageUpdateOne) SetMessageChannelID(id int) *AgentMessageUpdateOne {
+	_u.mutation.SetMessageChannelID(id)
+	return _u
+}
+
+// SetNillableMessageChannelID sets the "message_channel" edge to the MessageChannel entity by ID if the given value is not nil.
+func (_u *AgentMessageUpdateOne) SetNillableMessageChannelID(id *int) *AgentMessageUpdateOne {
+	if id != nil {
+		_u = _u.SetMessageChannelID(*id)
+	}
+	return _u
+}
+
+// SetMessageChannel sets the "message_channel" edge to the MessageChannel entity.
+func (_u *AgentMessageUpdateOne) SetMessageChannel(v *MessageChannel) *AgentMessageUpdateOne {
+	return _u.SetMessageChannelID(v.ID)
+}
+
 // Mutation returns the AgentMessageMutation object of the builder.
 func (_u *AgentMessageUpdateOne) Mutation() *AgentMessageMutation {
 	return _u.mutation
+}
+
+// ClearMessageChannel clears the "message_channel" edge to the MessageChannel entity.
+func (_u *AgentMessageUpdateOne) ClearMessageChannel() *AgentMessageUpdateOne {
+	_u.mutation.ClearMessageChannel()
+	return _u
 }
 
 // Where appends a list predicates to the AgentMessageUpdate builder.
@@ -685,26 +803,11 @@ func (_u *AgentMessageUpdateOne) sqlSave(ctx context.Context) (_node *AgentMessa
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(agentmessage.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DeletedAt(); ok {
-		_spec.SetField(agentmessage.FieldDeletedAt, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedDeletedAt(); ok {
-		_spec.AddField(agentmessage.FieldDeletedAt, field.TypeInt, value)
-	}
 	if value, ok := _u.mutation.Direction(); ok {
 		_spec.SetField(agentmessage.FieldDirection, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.SenderType(); ok {
 		_spec.SetField(agentmessage.FieldSenderType, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.SenderID(); ok {
-		_spec.SetField(agentmessage.FieldSenderID, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedSenderID(); ok {
-		_spec.AddField(agentmessage.FieldSenderID, field.TypeInt, value)
-	}
-	if _u.mutation.SenderIDCleared() {
-		_spec.ClearField(agentmessage.FieldSenderID, field.TypeInt)
 	}
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(agentmessage.FieldType, field.TypeEnum, value)
@@ -734,6 +837,50 @@ func (_u *AgentMessageUpdateOne) sqlSave(ctx context.Context) (_node *AgentMessa
 	}
 	if _u.mutation.ExpiresAtCleared() {
 		_spec.ClearField(agentmessage.FieldExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ExternalMessageID(); ok {
+		_spec.SetField(agentmessage.FieldExternalMessageID, field.TypeString, value)
+	}
+	if _u.mutation.ExternalMessageIDCleared() {
+		_spec.ClearField(agentmessage.FieldExternalMessageID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ReplyToMessageID(); ok {
+		_spec.SetField(agentmessage.FieldReplyToMessageID, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedReplyToMessageID(); ok {
+		_spec.AddField(agentmessage.FieldReplyToMessageID, field.TypeInt, value)
+	}
+	if _u.mutation.ReplyToMessageIDCleared() {
+		_spec.ClearField(agentmessage.FieldReplyToMessageID, field.TypeInt)
+	}
+	if _u.mutation.MessageChannelCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentmessage.MessageChannelTable,
+			Columns: []string{agentmessage.MessageChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MessageChannelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentmessage.MessageChannelTable,
+			Columns: []string{agentmessage.MessageChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &AgentMessage{config: _u.config}

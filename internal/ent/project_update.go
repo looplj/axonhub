@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -321,6 +322,21 @@ func (_u *ProjectUpdate) AddAgentSkillBindings(v ...*AgentSkill) *ProjectUpdate 
 		ids[i] = v[i].ID
 	}
 	return _u.AddAgentSkillBindingIDs(ids...)
+}
+
+// AddMessageChannelIDs adds the "message_channels" edge to the MessageChannel entity by IDs.
+func (_u *ProjectUpdate) AddMessageChannelIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.AddMessageChannelIDs(ids...)
+	return _u
+}
+
+// AddMessageChannels adds the "message_channels" edges to the MessageChannel entity.
+func (_u *ProjectUpdate) AddMessageChannels(v ...*MessageChannel) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMessageChannelIDs(ids...)
 }
 
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
@@ -635,6 +651,27 @@ func (_u *ProjectUpdate) RemoveAgentSkillBindings(v ...*AgentSkill) *ProjectUpda
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAgentSkillBindingIDs(ids...)
+}
+
+// ClearMessageChannels clears all "message_channels" edges to the MessageChannel entity.
+func (_u *ProjectUpdate) ClearMessageChannels() *ProjectUpdate {
+	_u.mutation.ClearMessageChannels()
+	return _u
+}
+
+// RemoveMessageChannelIDs removes the "message_channels" edge to MessageChannel entities by IDs.
+func (_u *ProjectUpdate) RemoveMessageChannelIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.RemoveMessageChannelIDs(ids...)
+	return _u
+}
+
+// RemoveMessageChannels removes "message_channels" edges to MessageChannel entities.
+func (_u *ProjectUpdate) RemoveMessageChannels(v ...*MessageChannel) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMessageChannelIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -1388,6 +1425,51 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.MessageChannelsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.MessageChannelsTable,
+			Columns: []string{project.MessageChannelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMessageChannelsIDs(); len(nodes) > 0 && !_u.mutation.MessageChannelsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.MessageChannelsTable,
+			Columns: []string{project.MessageChannelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MessageChannelsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.MessageChannelsTable,
+			Columns: []string{project.MessageChannelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ProjectUsersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1734,6 +1816,21 @@ func (_u *ProjectUpdateOne) AddAgentSkillBindings(v ...*AgentSkill) *ProjectUpda
 	return _u.AddAgentSkillBindingIDs(ids...)
 }
 
+// AddMessageChannelIDs adds the "message_channels" edge to the MessageChannel entity by IDs.
+func (_u *ProjectUpdateOne) AddMessageChannelIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.AddMessageChannelIDs(ids...)
+	return _u
+}
+
+// AddMessageChannels adds the "message_channels" edges to the MessageChannel entity.
+func (_u *ProjectUpdateOne) AddMessageChannels(v ...*MessageChannel) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMessageChannelIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_u *ProjectUpdateOne) AddProjectUserIDs(ids ...int) *ProjectUpdateOne {
 	_u.mutation.AddProjectUserIDs(ids...)
@@ -2046,6 +2143,27 @@ func (_u *ProjectUpdateOne) RemoveAgentSkillBindings(v ...*AgentSkill) *ProjectU
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveAgentSkillBindingIDs(ids...)
+}
+
+// ClearMessageChannels clears all "message_channels" edges to the MessageChannel entity.
+func (_u *ProjectUpdateOne) ClearMessageChannels() *ProjectUpdateOne {
+	_u.mutation.ClearMessageChannels()
+	return _u
+}
+
+// RemoveMessageChannelIDs removes the "message_channels" edge to MessageChannel entities by IDs.
+func (_u *ProjectUpdateOne) RemoveMessageChannelIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.RemoveMessageChannelIDs(ids...)
+	return _u
+}
+
+// RemoveMessageChannels removes "message_channels" edges to MessageChannel entities.
+func (_u *ProjectUpdateOne) RemoveMessageChannels(v ...*MessageChannel) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMessageChannelIDs(ids...)
 }
 
 // ClearProjectUsers clears all "project_users" edges to the UserProject entity.
@@ -2822,6 +2940,51 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.MessageChannelsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.MessageChannelsTable,
+			Columns: []string{project.MessageChannelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMessageChannelsIDs(); len(nodes) > 0 && !_u.mutation.MessageChannelsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.MessageChannelsTable,
+			Columns: []string{project.MessageChannelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MessageChannelsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.MessageChannelsTable,
+			Columns: []string{project.MessageChannelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

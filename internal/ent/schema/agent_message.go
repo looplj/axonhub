@@ -8,7 +8,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 
-	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
@@ -21,19 +20,20 @@ type AgentMessage struct {
 func (AgentMessage) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		TimeMixin{},
-		schematype.SoftDeleteMixin{},
 	}
 }
 
 func (AgentMessage) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("agent_id", "sequence", "deleted_at").
+		index.Fields("agent_id", "sequence").
 			StorageKey("agent_messages_by_agent_id_sequence").
 			Unique(),
-		index.Fields("agent_id", "agent_instance_id", "status", "deleted_at", "created_at").
+		index.Fields("agent_id", "agent_instance_id", "status", "created_at").
 			StorageKey("agent_messages_by_agent_id_status_created_at"),
-		index.Fields("agent_id", "correlation_id", "deleted_at").
+		index.Fields("agent_id", "correlation_id").
 			StorageKey("agent_messages_by_agent_id_correlation_id"),
+		index.Fields("sender_id", "sender_type").
+			StorageKey("agent_messages_by_sender_id_sender_type"),
 	}
 }
 
@@ -50,12 +50,12 @@ func (AgentMessage) Fields() []ent.Field {
 			Values("to_agent", "to_user").
 			Comment("Message direction"),
 		field.Enum("sender_type").
-			Values("user", "agent", "system").
+			Values("user", "agent", "system", "message_channel").
 			Comment("Message sender type"),
 		field.Int("sender_id").
 			Optional().
 			Nillable().
-			Comment("Sender ID, user_id or agent_instance_id"),
+			Comment("Sender ID, user_id or agent_instance_id or message_channel_id"),
 		field.Enum("type").
 			Values("chat", "approval_request", "approval_result", "system_event").
 			Default("chat").
@@ -74,6 +74,14 @@ func (AgentMessage) Fields() []ent.Field {
 		field.Time("expires_at").
 			Optional().
 			Nillable(),
+		field.String("external_message_id").
+			Optional().
+			Nillable().
+			Comment("External platform message ID (e.g., feishu message_id) for inbound message tracking"),
+		field.Int("reply_to_message_id").
+			Optional().
+			Nillable().
+			Comment("The agent message id that this message replies to"),
 	}
 }
 
@@ -91,6 +99,10 @@ func (AgentMessage) Edges() []ent.Edge {
 			Immutable().
 			Required().
 			Unique(),
+		edge.From("message_channel", MessageChannel.Type).
+			Ref("messages").
+			Field("sender_id").
+			Unique(),
 	}
 }
 
@@ -98,7 +110,6 @@ func (AgentMessage) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		entgql.QueryField(),
 		entgql.RelayConnection(),
-		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
 	}
 }
 

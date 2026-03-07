@@ -241,19 +241,20 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "direction", Type: field.TypeEnum, Enums: []string{"to_agent", "to_user"}},
-		{Name: "sender_type", Type: field.TypeEnum, Enums: []string{"user", "agent", "system"}},
-		{Name: "sender_id", Type: field.TypeInt, Nullable: true},
+		{Name: "sender_type", Type: field.TypeEnum, Enums: []string{"user", "agent", "system", "message_channel"}},
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"chat", "approval_request", "approval_result", "system_event"}, Default: "chat"},
 		{Name: "correlation_id", Type: field.TypeString, Default: ""},
 		{Name: "content", Type: field.TypeJSON},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "acked", "expired"}, Default: "pending"},
 		{Name: "sequence", Type: field.TypeInt64},
 		{Name: "expires_at", Type: field.TypeTime, Nullable: true},
+		{Name: "external_message_id", Type: field.TypeString, Nullable: true},
+		{Name: "reply_to_message_id", Type: field.TypeInt, Nullable: true},
 		{Name: "agent_id", Type: field.TypeInt},
 		{Name: "agent_instance_id", Type: field.TypeInt},
+		{Name: "sender_id", Type: field.TypeInt, Nullable: true},
 	}
 	// AgentMessagesTable holds the schema information for the "agent_messages" table.
 	AgentMessagesTable = &schema.Table{
@@ -273,22 +274,33 @@ var (
 				RefColumns: []*schema.Column{AgentInstancesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
+			{
+				Symbol:     "agent_messages_message_channels_messages",
+				Columns:    []*schema.Column{AgentMessagesColumns[16]},
+				RefColumns: []*schema.Column{MessageChannelsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
 		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "agent_messages_by_agent_id_sequence",
 				Unique:  true,
-				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[12], AgentMessagesColumns[3]},
+				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[10]},
 			},
 			{
 				Name:    "agent_messages_by_agent_id_status_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[15], AgentMessagesColumns[11], AgentMessagesColumns[3], AgentMessagesColumns[1]},
+				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[15], AgentMessagesColumns[9], AgentMessagesColumns[1]},
 			},
 			{
 				Name:    "agent_messages_by_agent_id_correlation_id",
 				Unique:  false,
-				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[9], AgentMessagesColumns[3]},
+				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[7]},
+			},
+			{
+				Name:    "agent_messages_by_sender_id_sender_type",
+				Unique:  false,
+				Columns: []*schema.Column{AgentMessagesColumns[16], AgentMessagesColumns[5]},
 			},
 		},
 	}
@@ -615,6 +627,117 @@ var (
 				Name:    "data_sources_by_name",
 				Unique:  true,
 				Columns: []*schema.Column{DataStoragesColumns[4]},
+			},
+		},
+	}
+	// MessageChannelsColumns holds the columns for the "message_channels" table.
+	MessageChannelsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"feishu"}, Default: "feishu"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "enabled"},
+		{Name: "settings", Type: field.TypeJSON, Nullable: true},
+		{Name: "project_id", Type: field.TypeInt},
+	}
+	// MessageChannelsTable holds the schema information for the "message_channels" table.
+	MessageChannelsTable = &schema.Table{
+		Name:       "message_channels",
+		Columns:    MessageChannelsColumns,
+		PrimaryKey: []*schema.Column{MessageChannelsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "message_channels_projects_message_channels",
+				Columns:    []*schema.Column{MessageChannelsColumns[9]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "message_channels_by_project_name",
+				Unique:  true,
+				Columns: []*schema.Column{MessageChannelsColumns[9], MessageChannelsColumns[4], MessageChannelsColumns[3]},
+			},
+		},
+	}
+	// MessageChannelAgentInstancesColumns holds the columns for the "message_channel_agent_instances" table.
+	MessageChannelAgentInstancesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "config", Type: field.TypeJSON},
+		{Name: "agent_instance_id", Type: field.TypeInt},
+		{Name: "message_channel_id", Type: field.TypeInt},
+	}
+	// MessageChannelAgentInstancesTable holds the schema information for the "message_channel_agent_instances" table.
+	MessageChannelAgentInstancesTable = &schema.Table{
+		Name:       "message_channel_agent_instances",
+		Columns:    MessageChannelAgentInstancesColumns,
+		PrimaryKey: []*schema.Column{MessageChannelAgentInstancesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "message_channel_agent_instances_agent_instances_message_channel_bindings",
+				Columns:    []*schema.Column{MessageChannelAgentInstancesColumns[5]},
+				RefColumns: []*schema.Column{AgentInstancesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "message_channel_agent_instances_message_channels_agent_instance_bindings",
+				Columns:    []*schema.Column{MessageChannelAgentInstancesColumns[6]},
+				RefColumns: []*schema.Column{MessageChannelsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "message_channel_agent_instances_by_channel_agent",
+				Unique:  true,
+				Columns: []*schema.Column{MessageChannelAgentInstancesColumns[6], MessageChannelAgentInstancesColumns[5]},
+			},
+			{
+				Name:    "message_channel_agent_instances_by_agent_instance",
+				Unique:  false,
+				Columns: []*schema.Column{MessageChannelAgentInstancesColumns[5]},
+			},
+		},
+	}
+	// MessageChannelBindingRequestsColumns holds the columns for the "message_channel_binding_requests" table.
+	MessageChannelBindingRequestsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "message_channel_id", Type: field.TypeInt},
+		{Name: "agent_instance_id", Type: field.TypeInt},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"pair"}, Default: "pair"},
+		{Name: "pair_code", Type: field.TypeString},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "approved"}, Default: "pending"},
+		{Name: "expires_at", Type: field.TypeTime},
+	}
+	// MessageChannelBindingRequestsTable holds the schema information for the "message_channel_binding_requests" table.
+	MessageChannelBindingRequestsTable = &schema.Table{
+		Name:       "message_channel_binding_requests",
+		Columns:    MessageChannelBindingRequestsColumns,
+		PrimaryKey: []*schema.Column{MessageChannelBindingRequestsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "message_channel_binding_requests_by_channel",
+				Unique:  false,
+				Columns: []*schema.Column{MessageChannelBindingRequestsColumns[3]},
+			},
+			{
+				Name:    "message_channel_binding_requests_by_agent_instance",
+				Unique:  false,
+				Columns: []*schema.Column{MessageChannelBindingRequestsColumns[4]},
+			},
+			{
+				Name:    "message_channel_binding_requests_by_pair_code",
+				Unique:  true,
+				Columns: []*schema.Column{MessageChannelBindingRequestsColumns[6]},
 			},
 		},
 	}
@@ -1420,6 +1543,9 @@ var (
 		ChannelOverrideTemplatesTable,
 		ChannelProbesTable,
 		DataStoragesTable,
+		MessageChannelsTable,
+		MessageChannelAgentInstancesTable,
+		MessageChannelBindingRequestsTable,
 		ModelsTable,
 		ProjectsTable,
 		PromptsTable,
@@ -1453,6 +1579,7 @@ func init() {
 	AgentMemoriesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentMessagesTable.ForeignKeys[1].RefTable = AgentInstancesTable
+	AgentMessagesTable.ForeignKeys[2].RefTable = MessageChannelsTable
 	AgentSkillsTable.ForeignKeys[0].RefTable = AgentsTable
 	AgentSkillsTable.ForeignKeys[1].RefTable = ProjectsTable
 	AgentSkillsTable.ForeignKeys[2].RefTable = SkillsTable
@@ -1465,6 +1592,9 @@ func init() {
 	ChannelModelPriceVersionsTable.ForeignKeys[0].RefTable = ChannelModelPricesTable
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable
+	MessageChannelsTable.ForeignKeys[0].RefTable = ProjectsTable
+	MessageChannelAgentInstancesTable.ForeignKeys[0].RefTable = AgentInstancesTable
+	MessageChannelAgentInstancesTable.ForeignKeys[1].RefTable = MessageChannelsTable
 	PromptsTable.ForeignKeys[0].RefTable = PromptVersionsTable
 	PromptsTable.ForeignKeys[1].RefTable = PromptVersionsTable
 	PromptVersionsTable.ForeignKeys[0].RefTable = ProjectsTable

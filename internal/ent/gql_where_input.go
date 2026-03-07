@@ -22,6 +22,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -1825,6 +1828,10 @@ type AgentInstanceWhereInput struct {
 	// "messages" edge predicates.
 	HasMessages     *bool                     `json:"hasMessages,omitempty"`
 	HasMessagesWith []*AgentMessageWhereInput `json:"hasMessagesWith,omitempty"`
+
+	// "message_channel_bindings" edge predicates.
+	HasMessageChannelBindings     *bool                                    `json:"hasMessageChannelBindings,omitempty"`
+	HasMessageChannelBindingsWith []*MessageChannelAgentInstanceWhereInput `json:"hasMessageChannelBindingsWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -2261,6 +2268,24 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, agentinstance.HasMessagesWith(with...))
+	}
+	if i.HasMessageChannelBindings != nil {
+		p := agentinstance.HasMessageChannelBindings()
+		if !*i.HasMessageChannelBindings {
+			p = agentinstance.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasMessageChannelBindingsWith) > 0 {
+		with := make([]predicate.MessageChannelAgentInstance, 0, len(i.HasMessageChannelBindingsWith))
+		for _, w := range i.HasMessageChannelBindingsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasMessageChannelBindingsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, agentinstance.HasMessageChannelBindingsWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -2784,10 +2809,6 @@ type AgentMessageWhereInput struct {
 	SenderIDNEQ    *int  `json:"senderIDNEQ,omitempty"`
 	SenderIDIn     []int `json:"senderIDIn,omitempty"`
 	SenderIDNotIn  []int `json:"senderIDNotIn,omitempty"`
-	SenderIDGT     *int  `json:"senderIDGT,omitempty"`
-	SenderIDGTE    *int  `json:"senderIDGTE,omitempty"`
-	SenderIDLT     *int  `json:"senderIDLT,omitempty"`
-	SenderIDLTE    *int  `json:"senderIDLTE,omitempty"`
 	SenderIDIsNil  bool  `json:"senderIDIsNil,omitempty"`
 	SenderIDNotNil bool  `json:"senderIDNotNil,omitempty"`
 
@@ -2840,6 +2861,35 @@ type AgentMessageWhereInput struct {
 	ExpiresAtIsNil  bool        `json:"expiresAtIsNil,omitempty"`
 	ExpiresAtNotNil bool        `json:"expiresAtNotNil,omitempty"`
 
+	// "external_message_id" field predicates.
+	ExternalMessageID             *string  `json:"externalMessageID,omitempty"`
+	ExternalMessageIDNEQ          *string  `json:"externalMessageIDNEQ,omitempty"`
+	ExternalMessageIDIn           []string `json:"externalMessageIDIn,omitempty"`
+	ExternalMessageIDNotIn        []string `json:"externalMessageIDNotIn,omitempty"`
+	ExternalMessageIDGT           *string  `json:"externalMessageIDGT,omitempty"`
+	ExternalMessageIDGTE          *string  `json:"externalMessageIDGTE,omitempty"`
+	ExternalMessageIDLT           *string  `json:"externalMessageIDLT,omitempty"`
+	ExternalMessageIDLTE          *string  `json:"externalMessageIDLTE,omitempty"`
+	ExternalMessageIDContains     *string  `json:"externalMessageIDContains,omitempty"`
+	ExternalMessageIDHasPrefix    *string  `json:"externalMessageIDHasPrefix,omitempty"`
+	ExternalMessageIDHasSuffix    *string  `json:"externalMessageIDHasSuffix,omitempty"`
+	ExternalMessageIDIsNil        bool     `json:"externalMessageIDIsNil,omitempty"`
+	ExternalMessageIDNotNil       bool     `json:"externalMessageIDNotNil,omitempty"`
+	ExternalMessageIDEqualFold    *string  `json:"externalMessageIDEqualFold,omitempty"`
+	ExternalMessageIDContainsFold *string  `json:"externalMessageIDContainsFold,omitempty"`
+
+	// "reply_to_message_id" field predicates.
+	ReplyToMessageID       *int  `json:"replyToMessageID,omitempty"`
+	ReplyToMessageIDNEQ    *int  `json:"replyToMessageIDNEQ,omitempty"`
+	ReplyToMessageIDIn     []int `json:"replyToMessageIDIn,omitempty"`
+	ReplyToMessageIDNotIn  []int `json:"replyToMessageIDNotIn,omitempty"`
+	ReplyToMessageIDGT     *int  `json:"replyToMessageIDGT,omitempty"`
+	ReplyToMessageIDGTE    *int  `json:"replyToMessageIDGTE,omitempty"`
+	ReplyToMessageIDLT     *int  `json:"replyToMessageIDLT,omitempty"`
+	ReplyToMessageIDLTE    *int  `json:"replyToMessageIDLTE,omitempty"`
+	ReplyToMessageIDIsNil  bool  `json:"replyToMessageIDIsNil,omitempty"`
+	ReplyToMessageIDNotNil bool  `json:"replyToMessageIDNotNil,omitempty"`
+
 	// "agent" edge predicates.
 	HasAgent     *bool              `json:"hasAgent,omitempty"`
 	HasAgentWith []*AgentWhereInput `json:"hasAgentWith,omitempty"`
@@ -2847,6 +2897,10 @@ type AgentMessageWhereInput struct {
 	// "agent_instance" edge predicates.
 	HasAgentInstance     *bool                      `json:"hasAgentInstance,omitempty"`
 	HasAgentInstanceWith []*AgentInstanceWhereInput `json:"hasAgentInstanceWith,omitempty"`
+
+	// "message_channel" edge predicates.
+	HasMessageChannel     *bool                       `json:"hasMessageChannel,omitempty"`
+	HasMessageChannelWith []*MessageChannelWhereInput `json:"hasMessageChannelWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -3076,18 +3130,6 @@ func (i *AgentMessageWhereInput) P() (predicate.AgentMessage, error) {
 	if len(i.SenderIDNotIn) > 0 {
 		predicates = append(predicates, agentmessage.SenderIDNotIn(i.SenderIDNotIn...))
 	}
-	if i.SenderIDGT != nil {
-		predicates = append(predicates, agentmessage.SenderIDGT(*i.SenderIDGT))
-	}
-	if i.SenderIDGTE != nil {
-		predicates = append(predicates, agentmessage.SenderIDGTE(*i.SenderIDGTE))
-	}
-	if i.SenderIDLT != nil {
-		predicates = append(predicates, agentmessage.SenderIDLT(*i.SenderIDLT))
-	}
-	if i.SenderIDLTE != nil {
-		predicates = append(predicates, agentmessage.SenderIDLTE(*i.SenderIDLTE))
-	}
 	if i.SenderIDIsNil {
 		predicates = append(predicates, agentmessage.SenderIDIsNil())
 	}
@@ -3211,6 +3253,81 @@ func (i *AgentMessageWhereInput) P() (predicate.AgentMessage, error) {
 	if i.ExpiresAtNotNil {
 		predicates = append(predicates, agentmessage.ExpiresAtNotNil())
 	}
+	if i.ExternalMessageID != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDEQ(*i.ExternalMessageID))
+	}
+	if i.ExternalMessageIDNEQ != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDNEQ(*i.ExternalMessageIDNEQ))
+	}
+	if len(i.ExternalMessageIDIn) > 0 {
+		predicates = append(predicates, agentmessage.ExternalMessageIDIn(i.ExternalMessageIDIn...))
+	}
+	if len(i.ExternalMessageIDNotIn) > 0 {
+		predicates = append(predicates, agentmessage.ExternalMessageIDNotIn(i.ExternalMessageIDNotIn...))
+	}
+	if i.ExternalMessageIDGT != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDGT(*i.ExternalMessageIDGT))
+	}
+	if i.ExternalMessageIDGTE != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDGTE(*i.ExternalMessageIDGTE))
+	}
+	if i.ExternalMessageIDLT != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDLT(*i.ExternalMessageIDLT))
+	}
+	if i.ExternalMessageIDLTE != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDLTE(*i.ExternalMessageIDLTE))
+	}
+	if i.ExternalMessageIDContains != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDContains(*i.ExternalMessageIDContains))
+	}
+	if i.ExternalMessageIDHasPrefix != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDHasPrefix(*i.ExternalMessageIDHasPrefix))
+	}
+	if i.ExternalMessageIDHasSuffix != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDHasSuffix(*i.ExternalMessageIDHasSuffix))
+	}
+	if i.ExternalMessageIDIsNil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDIsNil())
+	}
+	if i.ExternalMessageIDNotNil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDNotNil())
+	}
+	if i.ExternalMessageIDEqualFold != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDEqualFold(*i.ExternalMessageIDEqualFold))
+	}
+	if i.ExternalMessageIDContainsFold != nil {
+		predicates = append(predicates, agentmessage.ExternalMessageIDContainsFold(*i.ExternalMessageIDContainsFold))
+	}
+	if i.ReplyToMessageID != nil {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDEQ(*i.ReplyToMessageID))
+	}
+	if i.ReplyToMessageIDNEQ != nil {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDNEQ(*i.ReplyToMessageIDNEQ))
+	}
+	if len(i.ReplyToMessageIDIn) > 0 {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDIn(i.ReplyToMessageIDIn...))
+	}
+	if len(i.ReplyToMessageIDNotIn) > 0 {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDNotIn(i.ReplyToMessageIDNotIn...))
+	}
+	if i.ReplyToMessageIDGT != nil {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDGT(*i.ReplyToMessageIDGT))
+	}
+	if i.ReplyToMessageIDGTE != nil {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDGTE(*i.ReplyToMessageIDGTE))
+	}
+	if i.ReplyToMessageIDLT != nil {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDLT(*i.ReplyToMessageIDLT))
+	}
+	if i.ReplyToMessageIDLTE != nil {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDLTE(*i.ReplyToMessageIDLTE))
+	}
+	if i.ReplyToMessageIDIsNil {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDIsNil())
+	}
+	if i.ReplyToMessageIDNotNil {
+		predicates = append(predicates, agentmessage.ReplyToMessageIDNotNil())
+	}
 
 	if i.HasAgent != nil {
 		p := agentmessage.HasAgent()
@@ -3247,6 +3364,24 @@ func (i *AgentMessageWhereInput) P() (predicate.AgentMessage, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, agentmessage.HasAgentInstanceWith(with...))
+	}
+	if i.HasMessageChannel != nil {
+		p := agentmessage.HasMessageChannel()
+		if !*i.HasMessageChannel {
+			p = agentmessage.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasMessageChannelWith) > 0 {
+		with := make([]predicate.MessageChannel, 0, len(i.HasMessageChannelWith))
+		for _, w := range i.HasMessageChannelWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasMessageChannelWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, agentmessage.HasMessageChannelWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -7062,6 +7197,1092 @@ func (i *DataStorageWhereInput) P() (predicate.DataStorage, error) {
 	}
 }
 
+// MessageChannelWhereInput represents a where input for filtering MessageChannel queries.
+type MessageChannelWhereInput struct {
+	Predicates []predicate.MessageChannel  `json:"-"`
+	Not        *MessageChannelWhereInput   `json:"not,omitempty"`
+	Or         []*MessageChannelWhereInput `json:"or,omitempty"`
+	And        []*MessageChannelWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
+
+	// "name" field predicates.
+	Name             *string  `json:"name,omitempty"`
+	NameNEQ          *string  `json:"nameNEQ,omitempty"`
+	NameIn           []string `json:"nameIn,omitempty"`
+	NameNotIn        []string `json:"nameNotIn,omitempty"`
+	NameGT           *string  `json:"nameGT,omitempty"`
+	NameGTE          *string  `json:"nameGTE,omitempty"`
+	NameLT           *string  `json:"nameLT,omitempty"`
+	NameLTE          *string  `json:"nameLTE,omitempty"`
+	NameContains     *string  `json:"nameContains,omitempty"`
+	NameHasPrefix    *string  `json:"nameHasPrefix,omitempty"`
+	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
+	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
+	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "description" field predicates.
+	Description             *string  `json:"description,omitempty"`
+	DescriptionNEQ          *string  `json:"descriptionNEQ,omitempty"`
+	DescriptionIn           []string `json:"descriptionIn,omitempty"`
+	DescriptionNotIn        []string `json:"descriptionNotIn,omitempty"`
+	DescriptionGT           *string  `json:"descriptionGT,omitempty"`
+	DescriptionGTE          *string  `json:"descriptionGTE,omitempty"`
+	DescriptionLT           *string  `json:"descriptionLT,omitempty"`
+	DescriptionLTE          *string  `json:"descriptionLTE,omitempty"`
+	DescriptionContains     *string  `json:"descriptionContains,omitempty"`
+	DescriptionHasPrefix    *string  `json:"descriptionHasPrefix,omitempty"`
+	DescriptionHasSuffix    *string  `json:"descriptionHasSuffix,omitempty"`
+	DescriptionEqualFold    *string  `json:"descriptionEqualFold,omitempty"`
+	DescriptionContainsFold *string  `json:"descriptionContainsFold,omitempty"`
+
+	// "type" field predicates.
+	Type      *messagechannel.Type  `json:"type,omitempty"`
+	TypeNEQ   *messagechannel.Type  `json:"typeNEQ,omitempty"`
+	TypeIn    []messagechannel.Type `json:"typeIn,omitempty"`
+	TypeNotIn []messagechannel.Type `json:"typeNotIn,omitempty"`
+
+	// "status" field predicates.
+	Status      *messagechannel.Status  `json:"status,omitempty"`
+	StatusNEQ   *messagechannel.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []messagechannel.Status `json:"statusIn,omitempty"`
+	StatusNotIn []messagechannel.Status `json:"statusNotIn,omitempty"`
+
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
+
+	// "agent_instance_bindings" edge predicates.
+	HasAgentInstanceBindings     *bool                                    `json:"hasAgentInstanceBindings,omitempty"`
+	HasAgentInstanceBindingsWith []*MessageChannelAgentInstanceWhereInput `json:"hasAgentInstanceBindingsWith,omitempty"`
+
+	// "messages" edge predicates.
+	HasMessages     *bool                     `json:"hasMessages,omitempty"`
+	HasMessagesWith []*AgentMessageWhereInput `json:"hasMessagesWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *MessageChannelWhereInput) AddPredicates(predicates ...predicate.MessageChannel) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the MessageChannelWhereInput filter on the MessageChannelQuery builder.
+func (i *MessageChannelWhereInput) Filter(q *MessageChannelQuery) (*MessageChannelQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyMessageChannelWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyMessageChannelWhereInput is returned in case the MessageChannelWhereInput is empty.
+var ErrEmptyMessageChannelWhereInput = errors.New("ent: empty predicate MessageChannelWhereInput")
+
+// P returns a predicate for filtering messagechannels.
+// An error is returned if the input is empty or invalid.
+func (i *MessageChannelWhereInput) P() (predicate.MessageChannel, error) {
+	var predicates []predicate.MessageChannel
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, messagechannel.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.MessageChannel, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, messagechannel.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.MessageChannel, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, messagechannel.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, messagechannel.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, messagechannel.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, messagechannel.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, messagechannel.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, messagechannel.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, messagechannel.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, messagechannel.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, messagechannel.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, messagechannel.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, messagechannel.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, messagechannel.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, messagechannel.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, messagechannel.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, messagechannel.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, messagechannel.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, messagechannel.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, messagechannel.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, messagechannel.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, messagechannel.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, messagechannel.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, messagechannel.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, messagechannel.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, messagechannel.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, messagechannel.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, messagechannel.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, messagechannel.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, messagechannel.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, messagechannel.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
+	if i.Name != nil {
+		predicates = append(predicates, messagechannel.NameEQ(*i.Name))
+	}
+	if i.NameNEQ != nil {
+		predicates = append(predicates, messagechannel.NameNEQ(*i.NameNEQ))
+	}
+	if len(i.NameIn) > 0 {
+		predicates = append(predicates, messagechannel.NameIn(i.NameIn...))
+	}
+	if len(i.NameNotIn) > 0 {
+		predicates = append(predicates, messagechannel.NameNotIn(i.NameNotIn...))
+	}
+	if i.NameGT != nil {
+		predicates = append(predicates, messagechannel.NameGT(*i.NameGT))
+	}
+	if i.NameGTE != nil {
+		predicates = append(predicates, messagechannel.NameGTE(*i.NameGTE))
+	}
+	if i.NameLT != nil {
+		predicates = append(predicates, messagechannel.NameLT(*i.NameLT))
+	}
+	if i.NameLTE != nil {
+		predicates = append(predicates, messagechannel.NameLTE(*i.NameLTE))
+	}
+	if i.NameContains != nil {
+		predicates = append(predicates, messagechannel.NameContains(*i.NameContains))
+	}
+	if i.NameHasPrefix != nil {
+		predicates = append(predicates, messagechannel.NameHasPrefix(*i.NameHasPrefix))
+	}
+	if i.NameHasSuffix != nil {
+		predicates = append(predicates, messagechannel.NameHasSuffix(*i.NameHasSuffix))
+	}
+	if i.NameEqualFold != nil {
+		predicates = append(predicates, messagechannel.NameEqualFold(*i.NameEqualFold))
+	}
+	if i.NameContainsFold != nil {
+		predicates = append(predicates, messagechannel.NameContainsFold(*i.NameContainsFold))
+	}
+	if i.Description != nil {
+		predicates = append(predicates, messagechannel.DescriptionEQ(*i.Description))
+	}
+	if i.DescriptionNEQ != nil {
+		predicates = append(predicates, messagechannel.DescriptionNEQ(*i.DescriptionNEQ))
+	}
+	if len(i.DescriptionIn) > 0 {
+		predicates = append(predicates, messagechannel.DescriptionIn(i.DescriptionIn...))
+	}
+	if len(i.DescriptionNotIn) > 0 {
+		predicates = append(predicates, messagechannel.DescriptionNotIn(i.DescriptionNotIn...))
+	}
+	if i.DescriptionGT != nil {
+		predicates = append(predicates, messagechannel.DescriptionGT(*i.DescriptionGT))
+	}
+	if i.DescriptionGTE != nil {
+		predicates = append(predicates, messagechannel.DescriptionGTE(*i.DescriptionGTE))
+	}
+	if i.DescriptionLT != nil {
+		predicates = append(predicates, messagechannel.DescriptionLT(*i.DescriptionLT))
+	}
+	if i.DescriptionLTE != nil {
+		predicates = append(predicates, messagechannel.DescriptionLTE(*i.DescriptionLTE))
+	}
+	if i.DescriptionContains != nil {
+		predicates = append(predicates, messagechannel.DescriptionContains(*i.DescriptionContains))
+	}
+	if i.DescriptionHasPrefix != nil {
+		predicates = append(predicates, messagechannel.DescriptionHasPrefix(*i.DescriptionHasPrefix))
+	}
+	if i.DescriptionHasSuffix != nil {
+		predicates = append(predicates, messagechannel.DescriptionHasSuffix(*i.DescriptionHasSuffix))
+	}
+	if i.DescriptionEqualFold != nil {
+		predicates = append(predicates, messagechannel.DescriptionEqualFold(*i.DescriptionEqualFold))
+	}
+	if i.DescriptionContainsFold != nil {
+		predicates = append(predicates, messagechannel.DescriptionContainsFold(*i.DescriptionContainsFold))
+	}
+	if i.Type != nil {
+		predicates = append(predicates, messagechannel.TypeEQ(*i.Type))
+	}
+	if i.TypeNEQ != nil {
+		predicates = append(predicates, messagechannel.TypeNEQ(*i.TypeNEQ))
+	}
+	if len(i.TypeIn) > 0 {
+		predicates = append(predicates, messagechannel.TypeIn(i.TypeIn...))
+	}
+	if len(i.TypeNotIn) > 0 {
+		predicates = append(predicates, messagechannel.TypeNotIn(i.TypeNotIn...))
+	}
+	if i.Status != nil {
+		predicates = append(predicates, messagechannel.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, messagechannel.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, messagechannel.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, messagechannel.StatusNotIn(i.StatusNotIn...))
+	}
+
+	if i.HasProject != nil {
+		p := messagechannel.HasProject()
+		if !*i.HasProject {
+			p = messagechannel.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, messagechannel.HasProjectWith(with...))
+	}
+	if i.HasAgentInstanceBindings != nil {
+		p := messagechannel.HasAgentInstanceBindings()
+		if !*i.HasAgentInstanceBindings {
+			p = messagechannel.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasAgentInstanceBindingsWith) > 0 {
+		with := make([]predicate.MessageChannelAgentInstance, 0, len(i.HasAgentInstanceBindingsWith))
+		for _, w := range i.HasAgentInstanceBindingsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasAgentInstanceBindingsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, messagechannel.HasAgentInstanceBindingsWith(with...))
+	}
+	if i.HasMessages != nil {
+		p := messagechannel.HasMessages()
+		if !*i.HasMessages {
+			p = messagechannel.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasMessagesWith) > 0 {
+		with := make([]predicate.AgentMessage, 0, len(i.HasMessagesWith))
+		for _, w := range i.HasMessagesWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasMessagesWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, messagechannel.HasMessagesWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyMessageChannelWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return messagechannel.And(predicates...), nil
+	}
+}
+
+// MessageChannelAgentInstanceWhereInput represents a where input for filtering MessageChannelAgentInstance queries.
+type MessageChannelAgentInstanceWhereInput struct {
+	Predicates []predicate.MessageChannelAgentInstance  `json:"-"`
+	Not        *MessageChannelAgentInstanceWhereInput   `json:"not,omitempty"`
+	Or         []*MessageChannelAgentInstanceWhereInput `json:"or,omitempty"`
+	And        []*MessageChannelAgentInstanceWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "message_channel_id" field predicates.
+	MessageChannelID      *int  `json:"messageChannelID,omitempty"`
+	MessageChannelIDNEQ   *int  `json:"messageChannelIDNEQ,omitempty"`
+	MessageChannelIDIn    []int `json:"messageChannelIDIn,omitempty"`
+	MessageChannelIDNotIn []int `json:"messageChannelIDNotIn,omitempty"`
+
+	// "agent_instance_id" field predicates.
+	AgentInstanceID      *int  `json:"agentInstanceID,omitempty"`
+	AgentInstanceIDNEQ   *int  `json:"agentInstanceIDNEQ,omitempty"`
+	AgentInstanceIDIn    []int `json:"agentInstanceIDIn,omitempty"`
+	AgentInstanceIDNotIn []int `json:"agentInstanceIDNotIn,omitempty"`
+
+	// "enabled" field predicates.
+	Enabled    *bool `json:"enabled,omitempty"`
+	EnabledNEQ *bool `json:"enabledNEQ,omitempty"`
+
+	// "message_channel" edge predicates.
+	HasMessageChannel     *bool                       `json:"hasMessageChannel,omitempty"`
+	HasMessageChannelWith []*MessageChannelWhereInput `json:"hasMessageChannelWith,omitempty"`
+
+	// "agent_instance" edge predicates.
+	HasAgentInstance     *bool                      `json:"hasAgentInstance,omitempty"`
+	HasAgentInstanceWith []*AgentInstanceWhereInput `json:"hasAgentInstanceWith,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *MessageChannelAgentInstanceWhereInput) AddPredicates(predicates ...predicate.MessageChannelAgentInstance) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the MessageChannelAgentInstanceWhereInput filter on the MessageChannelAgentInstanceQuery builder.
+func (i *MessageChannelAgentInstanceWhereInput) Filter(q *MessageChannelAgentInstanceQuery) (*MessageChannelAgentInstanceQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyMessageChannelAgentInstanceWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyMessageChannelAgentInstanceWhereInput is returned in case the MessageChannelAgentInstanceWhereInput is empty.
+var ErrEmptyMessageChannelAgentInstanceWhereInput = errors.New("ent: empty predicate MessageChannelAgentInstanceWhereInput")
+
+// P returns a predicate for filtering messagechannelagentinstances.
+// An error is returned if the input is empty or invalid.
+func (i *MessageChannelAgentInstanceWhereInput) P() (predicate.MessageChannelAgentInstance, error) {
+	var predicates []predicate.MessageChannelAgentInstance
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, messagechannelagentinstance.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.MessageChannelAgentInstance, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, messagechannelagentinstance.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.MessageChannelAgentInstance, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, messagechannelagentinstance.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, messagechannelagentinstance.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, messagechannelagentinstance.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, messagechannelagentinstance.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, messagechannelagentinstance.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, messagechannelagentinstance.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, messagechannelagentinstance.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, messagechannelagentinstance.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, messagechannelagentinstance.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, messagechannelagentinstance.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, messagechannelagentinstance.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, messagechannelagentinstance.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, messagechannelagentinstance.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, messagechannelagentinstance.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, messagechannelagentinstance.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, messagechannelagentinstance.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, messagechannelagentinstance.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, messagechannelagentinstance.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, messagechannelagentinstance.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.MessageChannelID != nil {
+		predicates = append(predicates, messagechannelagentinstance.MessageChannelIDEQ(*i.MessageChannelID))
+	}
+	if i.MessageChannelIDNEQ != nil {
+		predicates = append(predicates, messagechannelagentinstance.MessageChannelIDNEQ(*i.MessageChannelIDNEQ))
+	}
+	if len(i.MessageChannelIDIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.MessageChannelIDIn(i.MessageChannelIDIn...))
+	}
+	if len(i.MessageChannelIDNotIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.MessageChannelIDNotIn(i.MessageChannelIDNotIn...))
+	}
+	if i.AgentInstanceID != nil {
+		predicates = append(predicates, messagechannelagentinstance.AgentInstanceIDEQ(*i.AgentInstanceID))
+	}
+	if i.AgentInstanceIDNEQ != nil {
+		predicates = append(predicates, messagechannelagentinstance.AgentInstanceIDNEQ(*i.AgentInstanceIDNEQ))
+	}
+	if len(i.AgentInstanceIDIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.AgentInstanceIDIn(i.AgentInstanceIDIn...))
+	}
+	if len(i.AgentInstanceIDNotIn) > 0 {
+		predicates = append(predicates, messagechannelagentinstance.AgentInstanceIDNotIn(i.AgentInstanceIDNotIn...))
+	}
+	if i.Enabled != nil {
+		predicates = append(predicates, messagechannelagentinstance.EnabledEQ(*i.Enabled))
+	}
+	if i.EnabledNEQ != nil {
+		predicates = append(predicates, messagechannelagentinstance.EnabledNEQ(*i.EnabledNEQ))
+	}
+
+	if i.HasMessageChannel != nil {
+		p := messagechannelagentinstance.HasMessageChannel()
+		if !*i.HasMessageChannel {
+			p = messagechannelagentinstance.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasMessageChannelWith) > 0 {
+		with := make([]predicate.MessageChannel, 0, len(i.HasMessageChannelWith))
+		for _, w := range i.HasMessageChannelWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasMessageChannelWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, messagechannelagentinstance.HasMessageChannelWith(with...))
+	}
+	if i.HasAgentInstance != nil {
+		p := messagechannelagentinstance.HasAgentInstance()
+		if !*i.HasAgentInstance {
+			p = messagechannelagentinstance.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasAgentInstanceWith) > 0 {
+		with := make([]predicate.AgentInstance, 0, len(i.HasAgentInstanceWith))
+		for _, w := range i.HasAgentInstanceWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasAgentInstanceWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, messagechannelagentinstance.HasAgentInstanceWith(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyMessageChannelAgentInstanceWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return messagechannelagentinstance.And(predicates...), nil
+	}
+}
+
+// MessageChannelBindingRequestWhereInput represents a where input for filtering MessageChannelBindingRequest queries.
+type MessageChannelBindingRequestWhereInput struct {
+	Predicates []predicate.MessageChannelBindingRequest  `json:"-"`
+	Not        *MessageChannelBindingRequestWhereInput   `json:"not,omitempty"`
+	Or         []*MessageChannelBindingRequestWhereInput `json:"or,omitempty"`
+	And        []*MessageChannelBindingRequestWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+
+	// "updated_at" field predicates.
+	UpdatedAt      *time.Time  `json:"updatedAt,omitempty"`
+	UpdatedAtNEQ   *time.Time  `json:"updatedAtNEQ,omitempty"`
+	UpdatedAtIn    []time.Time `json:"updatedAtIn,omitempty"`
+	UpdatedAtNotIn []time.Time `json:"updatedAtNotIn,omitempty"`
+	UpdatedAtGT    *time.Time  `json:"updatedAtGT,omitempty"`
+	UpdatedAtGTE   *time.Time  `json:"updatedAtGTE,omitempty"`
+	UpdatedAtLT    *time.Time  `json:"updatedAtLT,omitempty"`
+	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
+
+	// "message_channel_id" field predicates.
+	MessageChannelID      *int  `json:"messageChannelID,omitempty"`
+	MessageChannelIDNEQ   *int  `json:"messageChannelIDNEQ,omitempty"`
+	MessageChannelIDIn    []int `json:"messageChannelIDIn,omitempty"`
+	MessageChannelIDNotIn []int `json:"messageChannelIDNotIn,omitempty"`
+	MessageChannelIDGT    *int  `json:"messageChannelIDGT,omitempty"`
+	MessageChannelIDGTE   *int  `json:"messageChannelIDGTE,omitempty"`
+	MessageChannelIDLT    *int  `json:"messageChannelIDLT,omitempty"`
+	MessageChannelIDLTE   *int  `json:"messageChannelIDLTE,omitempty"`
+
+	// "agent_instance_id" field predicates.
+	AgentInstanceID      *int  `json:"agentInstanceID,omitempty"`
+	AgentInstanceIDNEQ   *int  `json:"agentInstanceIDNEQ,omitempty"`
+	AgentInstanceIDIn    []int `json:"agentInstanceIDIn,omitempty"`
+	AgentInstanceIDNotIn []int `json:"agentInstanceIDNotIn,omitempty"`
+	AgentInstanceIDGT    *int  `json:"agentInstanceIDGT,omitempty"`
+	AgentInstanceIDGTE   *int  `json:"agentInstanceIDGTE,omitempty"`
+	AgentInstanceIDLT    *int  `json:"agentInstanceIDLT,omitempty"`
+	AgentInstanceIDLTE   *int  `json:"agentInstanceIDLTE,omitempty"`
+
+	// "type" field predicates.
+	Type      *messagechannelbindingrequest.Type  `json:"type,omitempty"`
+	TypeNEQ   *messagechannelbindingrequest.Type  `json:"typeNEQ,omitempty"`
+	TypeIn    []messagechannelbindingrequest.Type `json:"typeIn,omitempty"`
+	TypeNotIn []messagechannelbindingrequest.Type `json:"typeNotIn,omitempty"`
+
+	// "pair_code" field predicates.
+	PairCode             *string  `json:"pairCode,omitempty"`
+	PairCodeNEQ          *string  `json:"pairCodeNEQ,omitempty"`
+	PairCodeIn           []string `json:"pairCodeIn,omitempty"`
+	PairCodeNotIn        []string `json:"pairCodeNotIn,omitempty"`
+	PairCodeGT           *string  `json:"pairCodeGT,omitempty"`
+	PairCodeGTE          *string  `json:"pairCodeGTE,omitempty"`
+	PairCodeLT           *string  `json:"pairCodeLT,omitempty"`
+	PairCodeLTE          *string  `json:"pairCodeLTE,omitempty"`
+	PairCodeContains     *string  `json:"pairCodeContains,omitempty"`
+	PairCodeHasPrefix    *string  `json:"pairCodeHasPrefix,omitempty"`
+	PairCodeHasSuffix    *string  `json:"pairCodeHasSuffix,omitempty"`
+	PairCodeEqualFold    *string  `json:"pairCodeEqualFold,omitempty"`
+	PairCodeContainsFold *string  `json:"pairCodeContainsFold,omitempty"`
+
+	// "status" field predicates.
+	Status      *messagechannelbindingrequest.Status  `json:"status,omitempty"`
+	StatusNEQ   *messagechannelbindingrequest.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []messagechannelbindingrequest.Status `json:"statusIn,omitempty"`
+	StatusNotIn []messagechannelbindingrequest.Status `json:"statusNotIn,omitempty"`
+
+	// "expires_at" field predicates.
+	ExpiresAt      *time.Time  `json:"expiresAt,omitempty"`
+	ExpiresAtNEQ   *time.Time  `json:"expiresAtNEQ,omitempty"`
+	ExpiresAtIn    []time.Time `json:"expiresAtIn,omitempty"`
+	ExpiresAtNotIn []time.Time `json:"expiresAtNotIn,omitempty"`
+	ExpiresAtGT    *time.Time  `json:"expiresAtGT,omitempty"`
+	ExpiresAtGTE   *time.Time  `json:"expiresAtGTE,omitempty"`
+	ExpiresAtLT    *time.Time  `json:"expiresAtLT,omitempty"`
+	ExpiresAtLTE   *time.Time  `json:"expiresAtLTE,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *MessageChannelBindingRequestWhereInput) AddPredicates(predicates ...predicate.MessageChannelBindingRequest) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the MessageChannelBindingRequestWhereInput filter on the MessageChannelBindingRequestQuery builder.
+func (i *MessageChannelBindingRequestWhereInput) Filter(q *MessageChannelBindingRequestQuery) (*MessageChannelBindingRequestQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyMessageChannelBindingRequestWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyMessageChannelBindingRequestWhereInput is returned in case the MessageChannelBindingRequestWhereInput is empty.
+var ErrEmptyMessageChannelBindingRequestWhereInput = errors.New("ent: empty predicate MessageChannelBindingRequestWhereInput")
+
+// P returns a predicate for filtering messagechannelbindingrequests.
+// An error is returned if the input is empty or invalid.
+func (i *MessageChannelBindingRequestWhereInput) P() (predicate.MessageChannelBindingRequest, error) {
+	var predicates []predicate.MessageChannelBindingRequest
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, messagechannelbindingrequest.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.MessageChannelBindingRequest, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, messagechannelbindingrequest.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.MessageChannelBindingRequest, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, messagechannelbindingrequest.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, messagechannelbindingrequest.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.IDLTE(*i.IDLTE))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, messagechannelbindingrequest.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+	if i.UpdatedAt != nil {
+		predicates = append(predicates, messagechannelbindingrequest.UpdatedAtEQ(*i.UpdatedAt))
+	}
+	if i.UpdatedAtNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.UpdatedAtNEQ(*i.UpdatedAtNEQ))
+	}
+	if len(i.UpdatedAtIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.UpdatedAtIn(i.UpdatedAtIn...))
+	}
+	if len(i.UpdatedAtNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.UpdatedAtNotIn(i.UpdatedAtNotIn...))
+	}
+	if i.UpdatedAtGT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.UpdatedAtGT(*i.UpdatedAtGT))
+	}
+	if i.UpdatedAtGTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.UpdatedAtGTE(*i.UpdatedAtGTE))
+	}
+	if i.UpdatedAtLT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.UpdatedAtLT(*i.UpdatedAtLT))
+	}
+	if i.UpdatedAtLTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.UpdatedAtLTE(*i.UpdatedAtLTE))
+	}
+	if i.MessageChannelID != nil {
+		predicates = append(predicates, messagechannelbindingrequest.MessageChannelIDEQ(*i.MessageChannelID))
+	}
+	if i.MessageChannelIDNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.MessageChannelIDNEQ(*i.MessageChannelIDNEQ))
+	}
+	if len(i.MessageChannelIDIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.MessageChannelIDIn(i.MessageChannelIDIn...))
+	}
+	if len(i.MessageChannelIDNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.MessageChannelIDNotIn(i.MessageChannelIDNotIn...))
+	}
+	if i.MessageChannelIDGT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.MessageChannelIDGT(*i.MessageChannelIDGT))
+	}
+	if i.MessageChannelIDGTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.MessageChannelIDGTE(*i.MessageChannelIDGTE))
+	}
+	if i.MessageChannelIDLT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.MessageChannelIDLT(*i.MessageChannelIDLT))
+	}
+	if i.MessageChannelIDLTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.MessageChannelIDLTE(*i.MessageChannelIDLTE))
+	}
+	if i.AgentInstanceID != nil {
+		predicates = append(predicates, messagechannelbindingrequest.AgentInstanceIDEQ(*i.AgentInstanceID))
+	}
+	if i.AgentInstanceIDNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.AgentInstanceIDNEQ(*i.AgentInstanceIDNEQ))
+	}
+	if len(i.AgentInstanceIDIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.AgentInstanceIDIn(i.AgentInstanceIDIn...))
+	}
+	if len(i.AgentInstanceIDNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.AgentInstanceIDNotIn(i.AgentInstanceIDNotIn...))
+	}
+	if i.AgentInstanceIDGT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.AgentInstanceIDGT(*i.AgentInstanceIDGT))
+	}
+	if i.AgentInstanceIDGTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.AgentInstanceIDGTE(*i.AgentInstanceIDGTE))
+	}
+	if i.AgentInstanceIDLT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.AgentInstanceIDLT(*i.AgentInstanceIDLT))
+	}
+	if i.AgentInstanceIDLTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.AgentInstanceIDLTE(*i.AgentInstanceIDLTE))
+	}
+	if i.Type != nil {
+		predicates = append(predicates, messagechannelbindingrequest.TypeEQ(*i.Type))
+	}
+	if i.TypeNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.TypeNEQ(*i.TypeNEQ))
+	}
+	if len(i.TypeIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.TypeIn(i.TypeIn...))
+	}
+	if len(i.TypeNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.TypeNotIn(i.TypeNotIn...))
+	}
+	if i.PairCode != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeEQ(*i.PairCode))
+	}
+	if i.PairCodeNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeNEQ(*i.PairCodeNEQ))
+	}
+	if len(i.PairCodeIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeIn(i.PairCodeIn...))
+	}
+	if len(i.PairCodeNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeNotIn(i.PairCodeNotIn...))
+	}
+	if i.PairCodeGT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeGT(*i.PairCodeGT))
+	}
+	if i.PairCodeGTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeGTE(*i.PairCodeGTE))
+	}
+	if i.PairCodeLT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeLT(*i.PairCodeLT))
+	}
+	if i.PairCodeLTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeLTE(*i.PairCodeLTE))
+	}
+	if i.PairCodeContains != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeContains(*i.PairCodeContains))
+	}
+	if i.PairCodeHasPrefix != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeHasPrefix(*i.PairCodeHasPrefix))
+	}
+	if i.PairCodeHasSuffix != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeHasSuffix(*i.PairCodeHasSuffix))
+	}
+	if i.PairCodeEqualFold != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeEqualFold(*i.PairCodeEqualFold))
+	}
+	if i.PairCodeContainsFold != nil {
+		predicates = append(predicates, messagechannelbindingrequest.PairCodeContainsFold(*i.PairCodeContainsFold))
+	}
+	if i.Status != nil {
+		predicates = append(predicates, messagechannelbindingrequest.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.ExpiresAt != nil {
+		predicates = append(predicates, messagechannelbindingrequest.ExpiresAtEQ(*i.ExpiresAt))
+	}
+	if i.ExpiresAtNEQ != nil {
+		predicates = append(predicates, messagechannelbindingrequest.ExpiresAtNEQ(*i.ExpiresAtNEQ))
+	}
+	if len(i.ExpiresAtIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.ExpiresAtIn(i.ExpiresAtIn...))
+	}
+	if len(i.ExpiresAtNotIn) > 0 {
+		predicates = append(predicates, messagechannelbindingrequest.ExpiresAtNotIn(i.ExpiresAtNotIn...))
+	}
+	if i.ExpiresAtGT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.ExpiresAtGT(*i.ExpiresAtGT))
+	}
+	if i.ExpiresAtGTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.ExpiresAtGTE(*i.ExpiresAtGTE))
+	}
+	if i.ExpiresAtLT != nil {
+		predicates = append(predicates, messagechannelbindingrequest.ExpiresAtLT(*i.ExpiresAtLT))
+	}
+	if i.ExpiresAtLTE != nil {
+		predicates = append(predicates, messagechannelbindingrequest.ExpiresAtLTE(*i.ExpiresAtLTE))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyMessageChannelBindingRequestWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return messagechannelbindingrequest.And(predicates...), nil
+	}
+}
+
 // ModelWhereInput represents a where input for filtering Model queries.
 type ModelWhereInput struct {
 	Predicates []predicate.Model  `json:"-"`
@@ -7751,6 +8972,10 @@ type ProjectWhereInput struct {
 	HasAgentSkillBindings     *bool                   `json:"hasAgentSkillBindings,omitempty"`
 	HasAgentSkillBindingsWith []*AgentSkillWhereInput `json:"hasAgentSkillBindingsWith,omitempty"`
 
+	// "message_channels" edge predicates.
+	HasMessageChannels     *bool                       `json:"hasMessageChannels,omitempty"`
+	HasMessageChannelsWith []*MessageChannelWhereInput `json:"hasMessageChannelsWith,omitempty"`
+
 	// "project_users" edge predicates.
 	HasProjectUsers     *bool                    `json:"hasProjectUsers,omitempty"`
 	HasProjectUsersWith []*UserProjectWhereInput `json:"hasProjectUsersWith,omitempty"`
@@ -8241,6 +9466,24 @@ func (i *ProjectWhereInput) P() (predicate.Project, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, project.HasAgentSkillBindingsWith(with...))
+	}
+	if i.HasMessageChannels != nil {
+		p := project.HasMessageChannels()
+		if !*i.HasMessageChannels {
+			p = project.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasMessageChannelsWith) > 0 {
+		with := make([]predicate.MessageChannel, 0, len(i.HasMessageChannelsWith))
+		for _, w := range i.HasMessageChannelsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasMessageChannelsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, project.HasMessageChannelsWith(with...))
 	}
 	if i.HasProjectUsers != nil {
 		p := project.HasProjectUsers()

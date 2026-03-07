@@ -52,6 +52,8 @@ const (
 	EdgeAPIKey = "api_key"
 	// EdgeMessages holds the string denoting the messages edge name in mutations.
 	EdgeMessages = "messages"
+	// EdgeMessageChannelBindings holds the string denoting the message_channel_bindings edge name in mutations.
+	EdgeMessageChannelBindings = "message_channel_bindings"
 	// Table holds the table name of the agentinstance in the database.
 	Table = "agent_instances"
 	// AgentTable is the table that holds the agent relation/edge.
@@ -82,6 +84,13 @@ const (
 	MessagesInverseTable = "agent_messages"
 	// MessagesColumn is the table column denoting the messages relation/edge.
 	MessagesColumn = "agent_instance_id"
+	// MessageChannelBindingsTable is the table that holds the message_channel_bindings relation/edge.
+	MessageChannelBindingsTable = "message_channel_agent_instances"
+	// MessageChannelBindingsInverseTable is the table name for the MessageChannelAgentInstance entity.
+	// It exists in this package in order to avoid circular dependency with the "messagechannelagentinstance" package.
+	MessageChannelBindingsInverseTable = "message_channel_agent_instances"
+	// MessageChannelBindingsColumn is the table column denoting the message_channel_bindings relation/edge.
+	MessageChannelBindingsColumn = "agent_instance_id"
 )
 
 // Columns holds all SQL columns for agentinstance fields.
@@ -267,6 +276,20 @@ func ByMessages(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newMessagesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByMessageChannelBindingsCount orders the results by message_channel_bindings count.
+func ByMessageChannelBindingsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMessageChannelBindingsStep(), opts...)
+	}
+}
+
+// ByMessageChannelBindings orders the results by message_channel_bindings terms.
+func ByMessageChannelBindings(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMessageChannelBindingsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newAgentStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -293,6 +316,13 @@ func newMessagesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(MessagesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, MessagesTable, MessagesColumn),
+	)
+}
+func newMessageChannelBindingsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MessageChannelBindingsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, MessageChannelBindingsTable, MessageChannelBindingsColumn),
 	)
 }
 

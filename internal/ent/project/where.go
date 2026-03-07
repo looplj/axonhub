@@ -672,6 +672,29 @@ func HasAgentSkillBindingsWith(preds ...predicate.AgentSkill) predicate.Project 
 	})
 }
 
+// HasMessageChannels applies the HasEdge predicate on the "message_channels" edge.
+func HasMessageChannels() predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, MessageChannelsTable, MessageChannelsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMessageChannelsWith applies the HasEdge predicate on the "message_channels" edge with a given conditions (other predicates).
+func HasMessageChannelsWith(preds ...predicate.MessageChannel) predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := newMessageChannelsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasProjectUsers applies the HasEdge predicate on the "project_users" edge.
 func HasProjectUsers() predicate.Project {
 	return predicate.Project(func(s *sql.Selector) {

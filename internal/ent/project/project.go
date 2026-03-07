@@ -58,6 +58,8 @@ const (
 	EdgeAgentToolBindings = "agent_tool_bindings"
 	// EdgeAgentSkillBindings holds the string denoting the agent_skill_bindings edge name in mutations.
 	EdgeAgentSkillBindings = "agent_skill_bindings"
+	// EdgeMessageChannels holds the string denoting the message_channels edge name in mutations.
+	EdgeMessageChannels = "message_channels"
 	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
 	EdgeProjectUsers = "project_users"
 	// Table holds the table name of the project in the database.
@@ -156,6 +158,13 @@ const (
 	AgentSkillBindingsInverseTable = "agent_skills"
 	// AgentSkillBindingsColumn is the table column denoting the agent_skill_bindings relation/edge.
 	AgentSkillBindingsColumn = "project_id"
+	// MessageChannelsTable is the table that holds the message_channels relation/edge.
+	MessageChannelsTable = "message_channels"
+	// MessageChannelsInverseTable is the table name for the MessageChannel entity.
+	// It exists in this package in order to avoid circular dependency with the "messagechannel" package.
+	MessageChannelsInverseTable = "message_channels"
+	// MessageChannelsColumn is the table column denoting the message_channels relation/edge.
+	MessageChannelsColumn = "project_id"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -476,6 +485,20 @@ func ByAgentSkillBindings(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOptio
 	}
 }
 
+// ByMessageChannelsCount orders the results by message_channels count.
+func ByMessageChannelsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMessageChannelsStep(), opts...)
+	}
+}
+
+// ByMessageChannels orders the results by message_channels terms.
+func ByMessageChannels(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMessageChannelsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByProjectUsersCount orders the results by project_users count.
 func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -585,6 +608,13 @@ func newAgentSkillBindingsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AgentSkillBindingsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, AgentSkillBindingsTable, AgentSkillBindingsColumn),
+	)
+}
+func newMessageChannelsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MessageChannelsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, MessageChannelsTable, MessageChannelsColumn),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {

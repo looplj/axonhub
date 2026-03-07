@@ -1,0 +1,62 @@
+type FeishuSettings {
+  appId: String
+  appSecret: String
+  encryptKey: String
+  verificationToken: String
+  allowFrom: [String!]
+  excludeKeywords: [String!]
+}
+
+input FeishuSettingsInput {
+  appId: String
+  appSecret: String
+  encryptKey: String
+  verificationToken: String
+  allowFrom: [String!]
+  excludeKeywords: [String!]
+}
+
+type MessageChannelSettings {
+  feishu: FeishuSettings
+}
+
+input MessageChannelSettingsInput {
+  feishu: FeishuSettingsInput
+}
+
+type MessageChannelAgentInstanceBinding {
+  chatType: MessageChatType!
+  chatID: String!
+  allowFrom: [String!]
+  excludeKeywords: [String!]
+}
+
+input MessageChannelAgentInstanceBindingInput {
+  chatType: MessageChatType!
+  chatID: String!
+  allowFrom: [String!]
+  excludeKeywords: [String!]
+}
+
+enum MessageChatType {
+  dm
+  group
+}
+
+input BatchMessageChannelAgentInstanceBindingInput {
+  agentInstanceID: ID!
+  enabled: Boolean!
+  config: MessageChannelAgentInstanceBindingInput
+}
+
+
+extend type Mutation {
+  createMessageChannel(input: CreateMessageChannelInput!): MessageChannel!
+  updateMessageChannel(id: ID!, input: UpdateMessageChannelInput!): MessageChannel!
+  deleteMessageChannel(id: ID!): Boolean!
+  batchSaveMessageChannelBindings(
+    messageChannelID: ID!
+    bindings: [BatchMessageChannelAgentInstanceBindingInput!]!
+  ): MessageChannel!
+  createBindingRequest(input: CreateMessageChannelBindingRequestInput!): String!
+}

@@ -43,17 +43,19 @@ type AgentInstance struct {
 }
 
 type AgentMessage struct {
-	ID            objects.GUID           `json:"id"`
-	AgentID       objects.GUID           `json:"agentID"`
-	Direction     AgentMessageDirection  `json:"direction"`
-	SenderType    AgentMessageSenderType `json:"senderType"`
-	Text          string                 `json:"text"`
-	Content       objects.JSONRawMessage `json:"content"`
-	Type          AgentMessageType       `json:"type"`
-	CorrelationID string                 `json:"correlationID"`
-	Sequence      int                    `json:"sequence"`
-	Status        AgentMessageStatus     `json:"status"`
-	CreatedAt     time.Time              `json:"createdAt"`
+	ID                objects.GUID           `json:"id"`
+	AgentID           objects.GUID           `json:"agentID"`
+	Direction         AgentMessageDirection  `json:"direction"`
+	SenderType        AgentMessageSenderType `json:"senderType"`
+	Text              string                 `json:"text"`
+	Content           objects.JSONRawMessage `json:"content"`
+	Type              AgentMessageType       `json:"type"`
+	CorrelationID     string                 `json:"correlationID"`
+	ExternalMessageID *string                `json:"externalMessageID,omitempty"`
+	ReplyToMessageID  *objects.GUID          `json:"replyToMessageID,omitempty"`
+	Sequence          int                    `json:"sequence"`
+	Status            AgentMessageStatus     `json:"status"`
+	CreatedAt         time.Time              `json:"createdAt"`
 }
 
 type AgentSkillDefinition struct {
@@ -104,10 +106,11 @@ type RegisterAgentInstanceInput struct {
 }
 
 type ReplyMessageInput struct {
-	Text          string                 `json:"text"`
-	Content       objects.JSONRawMessage `json:"content,omitempty"`
-	Type          *AgentMessageType      `json:"type,omitempty"`
-	CorrelationID *string                `json:"correlationID,omitempty"`
+	Text             string                 `json:"text"`
+	Content          objects.JSONRawMessage `json:"content,omitempty"`
+	Type             *AgentMessageType      `json:"type,omitempty"`
+	CorrelationID    *string                `json:"correlationID,omitempty"`
+	ReplyToMessageID *objects.GUID          `json:"replyToMessageID,omitempty"`
 }
 
 type SendAgentMessageInput struct {

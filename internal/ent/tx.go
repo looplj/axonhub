@@ -42,6 +42,12 @@ type Tx struct {
 	ChannelProbe *ChannelProbeClient
 	// DataStorage is the client for interacting with the DataStorage builders.
 	DataStorage *DataStorageClient
+	// MessageChannel is the client for interacting with the MessageChannel builders.
+	MessageChannel *MessageChannelClient
+	// MessageChannelAgentInstance is the client for interacting with the MessageChannelAgentInstance builders.
+	MessageChannelAgentInstance *MessageChannelAgentInstanceClient
+	// MessageChannelBindingRequest is the client for interacting with the MessageChannelBindingRequest builders.
+	MessageChannelBindingRequest *MessageChannelBindingRequestClient
 	// Model is the client for interacting with the Model builders.
 	Model *ModelClient
 	// Project is the client for interacting with the Project builders.
@@ -222,6 +228,9 @@ func (tx *Tx) init() {
 	tx.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(tx.config)
 	tx.ChannelProbe = NewChannelProbeClient(tx.config)
 	tx.DataStorage = NewDataStorageClient(tx.config)
+	tx.MessageChannel = NewMessageChannelClient(tx.config)
+	tx.MessageChannelAgentInstance = NewMessageChannelAgentInstanceClient(tx.config)
+	tx.MessageChannelBindingRequest = NewMessageChannelBindingRequestClient(tx.config)
 	tx.Model = NewModelClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.Prompt = NewPromptClient(tx.config)

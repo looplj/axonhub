@@ -189,6 +189,42 @@ func (f DataStorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DataStorageMutation", m)
 }
 
+// The MessageChannelFunc type is an adapter to allow the use of ordinary
+// function as MessageChannel mutator.
+type MessageChannelFunc func(context.Context, *ent.MessageChannelMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MessageChannelFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MessageChannelMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MessageChannelMutation", m)
+}
+
+// The MessageChannelAgentInstanceFunc type is an adapter to allow the use of ordinary
+// function as MessageChannelAgentInstance mutator.
+type MessageChannelAgentInstanceFunc func(context.Context, *ent.MessageChannelAgentInstanceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MessageChannelAgentInstanceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MessageChannelAgentInstanceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MessageChannelAgentInstanceMutation", m)
+}
+
+// The MessageChannelBindingRequestFunc type is an adapter to allow the use of ordinary
+// function as MessageChannelBindingRequest mutator.
+type MessageChannelBindingRequestFunc func(context.Context, *ent.MessageChannelBindingRequestMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MessageChannelBindingRequestFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MessageChannelBindingRequestMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MessageChannelBindingRequestMutation", m)
+}
+
 // The ModelFunc type is an adapter to allow the use of ordinary
 // function as Model mutator.
 type ModelFunc func(context.Context, *ent.ModelMutation) (ent.Value, error)

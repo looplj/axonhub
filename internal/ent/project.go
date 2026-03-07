@@ -65,13 +65,15 @@ type ProjectEdges struct {
 	AgentToolBindings []*AgentTool `json:"agent_tool_bindings,omitempty"`
 	// AgentSkillBindings holds the value of the agent_skill_bindings edge.
 	AgentSkillBindings []*AgentSkill `json:"agent_skill_bindings,omitempty"`
+	// MessageChannels holds the value of the message_channels edge.
+	MessageChannels []*MessageChannel `json:"message_channels,omitempty"`
 	// ProjectUsers holds the value of the project_users edge.
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [15]bool
+	loadedTypes [16]bool
 	// totalCount holds the count of the edges above.
-	totalCount [15]map[string]int
+	totalCount [16]map[string]int
 
 	namedUsers              map[string][]*User
 	namedRoles              map[string][]*Role
@@ -87,6 +89,7 @@ type ProjectEdges struct {
 	namedSkills             map[string][]*Skill
 	namedAgentToolBindings  map[string][]*AgentTool
 	namedAgentSkillBindings map[string][]*AgentSkill
+	namedMessageChannels    map[string][]*MessageChannel
 	namedProjectUsers       map[string][]*UserProject
 }
 
@@ -216,10 +219,19 @@ func (e ProjectEdges) AgentSkillBindingsOrErr() ([]*AgentSkill, error) {
 	return nil, &NotLoadedError{edge: "agent_skill_bindings"}
 }
 
+// MessageChannelsOrErr returns the MessageChannels value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) MessageChannelsOrErr() ([]*MessageChannel, error) {
+	if e.loadedTypes[14] {
+		return e.MessageChannels, nil
+	}
+	return nil, &NotLoadedError{edge: "message_channels"}
+}
+
 // ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) ProjectUsersOrErr() ([]*UserProject, error) {
-	if e.loadedTypes[14] {
+	if e.loadedTypes[15] {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
@@ -374,6 +386,11 @@ func (_m *Project) QueryAgentToolBindings() *AgentToolQuery {
 // QueryAgentSkillBindings queries the "agent_skill_bindings" edge of the Project entity.
 func (_m *Project) QueryAgentSkillBindings() *AgentSkillQuery {
 	return NewProjectClient(_m.config).QueryAgentSkillBindings(_m)
+}
+
+// QueryMessageChannels queries the "message_channels" edge of the Project entity.
+func (_m *Project) QueryMessageChannels() *MessageChannelQuery {
+	return NewProjectClient(_m.config).QueryMessageChannels(_m)
 }
 
 // QueryProjectUsers queries the "project_users" edge of the Project entity.
@@ -758,6 +775,30 @@ func (_m *Project) appendNamedAgentSkillBindings(name string, edges ...*AgentSki
 		_m.Edges.namedAgentSkillBindings[name] = []*AgentSkill{}
 	} else {
 		_m.Edges.namedAgentSkillBindings[name] = append(_m.Edges.namedAgentSkillBindings[name], edges...)
+	}
+}
+
+// NamedMessageChannels returns the MessageChannels named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedMessageChannels(name string) ([]*MessageChannel, error) {
+	if _m.Edges.namedMessageChannels == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedMessageChannels[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedMessageChannels(name string, edges ...*MessageChannel) {
+	if _m.Edges.namedMessageChannels == nil {
+		_m.Edges.namedMessageChannels = make(map[string][]*MessageChannel)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedMessageChannels[name] = []*MessageChannel{}
+	} else {
+		_m.Edges.namedMessageChannels[name] = append(_m.Edges.namedMessageChannels[name], edges...)
 	}
 }
 

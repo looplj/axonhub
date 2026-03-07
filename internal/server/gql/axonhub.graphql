@@ -524,7 +524,6 @@ extend type Channel {
   disabledAPIKeys: [DisabledAPIKey!] @goField(forceResolver: true)
 }
 
-
 type Segment {
   id: ID!
   parentId: ID

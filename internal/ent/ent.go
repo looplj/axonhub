@@ -27,6 +27,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -104,38 +107,41 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			apikey.Table:                   apikey.ValidColumn,
-			agent.Table:                    agent.ValidColumn,
-			agenthost.Table:                agenthost.ValidColumn,
-			agentinstance.Table:            agentinstance.ValidColumn,
-			agentmemory.Table:              agentmemory.ValidColumn,
-			agentmessage.Table:             agentmessage.ValidColumn,
-			agentskill.Table:               agentskill.ValidColumn,
-			agentthread.Table:              agentthread.ValidColumn,
-			agenttool.Table:                agenttool.ValidColumn,
-			channel.Table:                  channel.ValidColumn,
-			channelmodelprice.Table:        channelmodelprice.ValidColumn,
-			channelmodelpriceversion.Table: channelmodelpriceversion.ValidColumn,
-			channeloverridetemplate.Table:  channeloverridetemplate.ValidColumn,
-			channelprobe.Table:             channelprobe.ValidColumn,
-			datastorage.Table:              datastorage.ValidColumn,
-			model.Table:                    model.ValidColumn,
-			project.Table:                  project.ValidColumn,
-			prompt.Table:                   prompt.ValidColumn,
-			promptversion.Table:            promptversion.ValidColumn,
-			providerquotastatus.Table:      providerquotastatus.ValidColumn,
-			request.Table:                  request.ValidColumn,
-			requestexecution.Table:         requestexecution.ValidColumn,
-			role.Table:                     role.ValidColumn,
-			skill.Table:                    skill.ValidColumn,
-			system.Table:                   system.ValidColumn,
-			thread.Table:                   thread.ValidColumn,
-			tool.Table:                     tool.ValidColumn,
-			trace.Table:                    trace.ValidColumn,
-			usagelog.Table:                 usagelog.ValidColumn,
-			user.Table:                     user.ValidColumn,
-			userproject.Table:              userproject.ValidColumn,
-			userrole.Table:                 userrole.ValidColumn,
+			apikey.Table:                       apikey.ValidColumn,
+			agent.Table:                        agent.ValidColumn,
+			agenthost.Table:                    agenthost.ValidColumn,
+			agentinstance.Table:                agentinstance.ValidColumn,
+			agentmemory.Table:                  agentmemory.ValidColumn,
+			agentmessage.Table:                 agentmessage.ValidColumn,
+			agentskill.Table:                   agentskill.ValidColumn,
+			agentthread.Table:                  agentthread.ValidColumn,
+			agenttool.Table:                    agenttool.ValidColumn,
+			channel.Table:                      channel.ValidColumn,
+			channelmodelprice.Table:            channelmodelprice.ValidColumn,
+			channelmodelpriceversion.Table:     channelmodelpriceversion.ValidColumn,
+			channeloverridetemplate.Table:      channeloverridetemplate.ValidColumn,
+			channelprobe.Table:                 channelprobe.ValidColumn,
+			datastorage.Table:                  datastorage.ValidColumn,
+			messagechannel.Table:               messagechannel.ValidColumn,
+			messagechannelagentinstance.Table:  messagechannelagentinstance.ValidColumn,
+			messagechannelbindingrequest.Table: messagechannelbindingrequest.ValidColumn,
+			model.Table:                        model.ValidColumn,
+			project.Table:                      project.ValidColumn,
+			prompt.Table:                       prompt.ValidColumn,
+			promptversion.Table:                promptversion.ValidColumn,
+			providerquotastatus.Table:          providerquotastatus.ValidColumn,
+			request.Table:                      request.ValidColumn,
+			requestexecution.Table:             requestexecution.ValidColumn,
+			role.Table:                         role.ValidColumn,
+			skill.Table:                        skill.ValidColumn,
+			system.Table:                       system.ValidColumn,
+			thread.Table:                       thread.ValidColumn,
+			tool.Table:                         tool.ValidColumn,
+			trace.Table:                        trace.ValidColumn,
+			usagelog.Table:                     usagelog.ValidColumn,
+			user.Table:                         user.ValidColumn,
+			userproject.Table:                  userproject.ValidColumn,
+			userrole.Table:                     userrole.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

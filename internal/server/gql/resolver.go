@@ -43,6 +43,7 @@ type Resolver struct {
 	agentDeployService             *biz.AgentDeployService
 	agentBootstrapService          *biz.AgentBootstrapService
 	providerQuotaService           *biz.ProviderQuotaService
+	messageChannelService          *biz.MessageChannelService
 	httpClient                     *httpclient.HttpClient
 	modelFetcher                   *biz.ModelFetcher
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
@@ -73,6 +74,7 @@ func NewSchema(
 	agentDeployService *biz.AgentDeployService,
 	agentBootstrapService *biz.AgentBootstrapService,
 	providerQuotaService *biz.ProviderQuotaService,
+	messageChannelService *biz.MessageChannelService,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -101,6 +103,7 @@ func NewSchema(
 			agentDeployService:             agentDeployService,
 			agentBootstrapService:          agentBootstrapService,
 			providerQuotaService:           providerQuotaService,
+			messageChannelService:          messageChannelService,
 			httpClient:                     httpClient,
 			modelFetcher:                   modelFetcher,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),

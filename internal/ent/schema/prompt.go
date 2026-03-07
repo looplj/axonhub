@@ -41,8 +41,10 @@ func (Prompt) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("project_id").
 			Immutable().
-			Comment("Project ID that this prompt belongs to").Annotations(
-			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput)),
+			Comment("Project ID that this prompt belongs to").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 		field.Enum("type").
 			Values("agent", "system").
 			Optional().

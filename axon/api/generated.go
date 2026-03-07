@@ -236,12 +236,13 @@ func (v *PullAgentMessagesInput) GetCorrelationID() *string { return v.Correlati
 
 // PullAgentMessagesPullAgentMessagesAgentMessage includes the requested fields of the GraphQL type AgentMessage.
 type PullAgentMessagesPullAgentMessagesAgentMessage struct {
-	Id            string           `json:"id"`
-	Text          string           `json:"text"`
-	Type          AgentMessageType `json:"type"`
-	CorrelationID string           `json:"correlationID"`
-	Content       json.RawMessage  `json:"content"`
-	Sequence      int              `json:"sequence"`
+	Id                string           `json:"id"`
+	Text              string           `json:"text"`
+	Type              AgentMessageType `json:"type"`
+	CorrelationID     string           `json:"correlationID"`
+	Content           json.RawMessage  `json:"content"`
+	ExternalMessageID *string          `json:"externalMessageID"`
+	Sequence          int              `json:"sequence"`
 }
 
 // GetId returns PullAgentMessagesPullAgentMessagesAgentMessage.Id, and is useful for accessing the field via an interface.
@@ -261,6 +262,11 @@ func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetCorrelationID() stri
 // GetContent returns PullAgentMessagesPullAgentMessagesAgentMessage.Content, and is useful for accessing the field via an interface.
 func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetContent() json.RawMessage {
 	return v.Content
+}
+
+// GetExternalMessageID returns PullAgentMessagesPullAgentMessagesAgentMessage.ExternalMessageID, and is useful for accessing the field via an interface.
+func (v *PullAgentMessagesPullAgentMessagesAgentMessage) GetExternalMessageID() *string {
+	return v.ExternalMessageID
 }
 
 // GetSequence returns PullAgentMessagesPullAgentMessagesAgentMessage.Sequence, and is useful for accessing the field via an interface.
@@ -314,10 +320,11 @@ func (v *RegisterAgentInstanceResponse) GetRegisterAgentInstance() *RegisterAgen
 }
 
 type ReplyMessageInput struct {
-	Text          string            `json:"text"`
-	Content       *json.RawMessage  `json:"content"`
-	Type          *AgentMessageType `json:"type"`
-	CorrelationID *string           `json:"correlationID"`
+	Text             string            `json:"text"`
+	Content          *json.RawMessage  `json:"content"`
+	Type             *AgentMessageType `json:"type"`
+	CorrelationID    *string           `json:"correlationID"`
+	ReplyToMessageID *string           `json:"replyToMessageID"`
 }
 
 // GetText returns ReplyMessageInput.Text, and is useful for accessing the field via an interface.
@@ -331,6 +338,9 @@ func (v *ReplyMessageInput) GetType() *AgentMessageType { return v.Type }
 
 // GetCorrelationID returns ReplyMessageInput.CorrelationID, and is useful for accessing the field via an interface.
 func (v *ReplyMessageInput) GetCorrelationID() *string { return v.CorrelationID }
+
+// GetReplyToMessageID returns ReplyMessageInput.ReplyToMessageID, and is useful for accessing the field via an interface.
+func (v *ReplyMessageInput) GetReplyToMessageID() *string { return v.ReplyToMessageID }
 
 // ReplyMessageReplyMessageAgentMessage includes the requested fields of the GraphQL type AgentMessage.
 type ReplyMessageReplyMessageAgentMessage struct {
@@ -594,6 +604,7 @@ query PullAgentMessages ($input: PullAgentMessagesInput!) {
 		type
 		correlationID
 		content
+		externalMessageID
 		sequence
 	}
 }

@@ -107,6 +107,12 @@ type BackupPayload struct {
 	Message *string `json:"message,omitempty"`
 }
 
+type BatchMessageChannelAgentInstanceBindingInput struct {
+	AgentInstanceID objects.GUID                                `json:"agentInstanceID"`
+	Enabled         bool                                        `json:"enabled"`
+	Config          *objects.MessageChannelAgentInstanceBinding `json:"config,omitempty"`
+}
+
 type BrandSettings struct {
 	BrandName *string `json:"brandName,omitempty"`
 	BrandLogo *string `json:"brandLogo,omitempty"`

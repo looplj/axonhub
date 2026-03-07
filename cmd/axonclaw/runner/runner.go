@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -206,7 +207,7 @@ func (r *Runner) pollMessages(ctx context.Context, out chan<- string) {
 				}
 
 				select {
-				case out <- msg.Text:
+				case out <- r.formatMessageForLLM(msg):
 					ackedIDs = append(ackedIDs, msg.Id)
 				case <-ctx.Done():
 					return
@@ -222,6 +223,30 @@ func (r *Runner) pollMessages(ctx context.Context, out chan<- string) {
 			}
 		}
 	}
+}
+
+func (r *Runner) formatMessageForLLM(msg *api.PullAgentMessagesPullAgentMessagesAgentMessage) string {
+	if msg.ExternalMessageID != nil && *msg.ExternalMessageID != "" {
+		payload := map[string]any{
+			"content":    msg.Text,
+			"message_id": msg.Id,
+			"reply_instruction": map[string]any{
+				"tool":                "SendMessage",
+				"target":              "user",
+				"reply_to_message_id": msg.Id,
+			},
+		}
+
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			r.Logger.Warn("failed to marshal message payload for LLM", "error", err, "message_id", msg.Id)
+			return msg.Text
+		}
+
+		return string(raw)
+	}
+
+	return msg.Text
 }
 
 func (r *Runner) processMessage(ctx context.Context, text string) error {

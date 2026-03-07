@@ -27,6 +27,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -74,6 +76,7 @@ type Dependencies struct {
 	AgentDeployService             *biz.AgentDeployService
 	AgentBootstrapService          *biz.AgentBootstrapService
 	ProviderQuotaService           *biz.ProviderQuotaService
+	MessageChannelService          *biz.MessageChannelService
 }
 
 type GraphqlHandler struct {
@@ -107,6 +110,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.AgentDeployService,
 			deps.AgentBootstrapService,
 			deps.ProviderQuotaService,
+			deps.MessageChannelService,
 		),
 	)
 
@@ -145,34 +149,36 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 }
 
 var guidTypeToNodeType = map[string]string{
-	ent.TypeUser:                    user.Table,
-	ent.TypeAPIKey:                  apikey.Table,
-	ent.TypeModel:                   model.Table,
-	ent.TypeChannel:                 channel.Table,
-	ent.TypeChannelProbe:            channelprobe.Table,
-	ent.TypeChannelOverrideTemplate: channeloverridetemplate.Table,
-	ent.TypeRequest:                 request.Table,
-	ent.TypeRequestExecution:        requestexecution.Table,
-	ent.TypeRole:                    role.Table,
-	ent.TypeSystem:                  system.Table,
-	ent.TypeUsageLog:                usagelog.Table,
-	ent.TypeProject:                 project.Table,
-	ent.TypeUserProject:             userproject.Table,
-	ent.TypeUserRole:                userrole.Table,
-	ent.TypeThread:                  thread.Table,
-	ent.TypeTrace:                   trace.Table,
-	ent.TypeDataStorage:             datastorage.Table,
-	ent.TypePrompt:                  prompt.Table,
-	ent.TypePromptVersion:           promptversion.Table,
-	ent.TypeAgent:                   agent.Table,
-	ent.TypeTool:                    tool.Table,
-	ent.TypeSkill:                   skill.Table,
-	ent.TypeAgentTool:               agenttool.Table,
-	ent.TypeAgentSkill:              agentskill.Table,
-	ent.TypeAgentInstance:           agentinstance.Table,
-	ent.TypeAgentMessage:            agentmessage.Table,
-	ent.TypeAgentMemory:             agentmemory.Table,
-	ent.TypeAgentHost:               agenthost.Table,
+	ent.TypeUser:                         user.Table,
+	ent.TypeAPIKey:                       apikey.Table,
+	ent.TypeModel:                        model.Table,
+	ent.TypeChannel:                      channel.Table,
+	ent.TypeChannelProbe:                 channelprobe.Table,
+	ent.TypeChannelOverrideTemplate:      channeloverridetemplate.Table,
+	ent.TypeRequest:                      request.Table,
+	ent.TypeRequestExecution:             requestexecution.Table,
+	ent.TypeRole:                         role.Table,
+	ent.TypeSystem:                       system.Table,
+	ent.TypeUsageLog:                     usagelog.Table,
+	ent.TypeProject:                      project.Table,
+	ent.TypeUserProject:                  userproject.Table,
+	ent.TypeUserRole:                     userrole.Table,
+	ent.TypeThread:                       thread.Table,
+	ent.TypeTrace:                        trace.Table,
+	ent.TypeDataStorage:                  datastorage.Table,
+	ent.TypePrompt:                       prompt.Table,
+	ent.TypePromptVersion:                promptversion.Table,
+	ent.TypeAgent:                        agent.Table,
+	ent.TypeTool:                         tool.Table,
+	ent.TypeSkill:                        skill.Table,
+	ent.TypeAgentTool:                    agenttool.Table,
+	ent.TypeAgentSkill:                   agentskill.Table,
+	ent.TypeAgentInstance:                agentinstance.Table,
+	ent.TypeAgentMessage:                 agentmessage.Table,
+	ent.TypeAgentMemory:                  agentmemory.Table,
+	ent.TypeAgentHost:                    agenthost.Table,
+	ent.TypeMessageChannelBindingRequest: messagechannelbindingrequest.Table,
+	ent.TypeMessageChannel:               messagechannel.Table,
 }
 
 func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (*ent.Channel, error) {

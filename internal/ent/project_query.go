@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentskill"
 	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -53,6 +54,7 @@ type ProjectQuery struct {
 	withSkills                  *SkillQuery
 	withAgentToolBindings       *AgentToolQuery
 	withAgentSkillBindings      *AgentSkillQuery
+	withMessageChannels         *MessageChannelQuery
 	withProjectUsers            *UserProjectQuery
 	loadTotal                   []func(context.Context, []*Project) error
 	modifiers                   []func(*sql.Selector)
@@ -70,6 +72,7 @@ type ProjectQuery struct {
 	withNamedSkills             map[string]*SkillQuery
 	withNamedAgentToolBindings  map[string]*AgentToolQuery
 	withNamedAgentSkillBindings map[string]*AgentSkillQuery
+	withNamedMessageChannels    map[string]*MessageChannelQuery
 	withNamedProjectUsers       map[string]*UserProjectQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -415,6 +418,28 @@ func (_q *ProjectQuery) QueryAgentSkillBindings() *AgentSkillQuery {
 	return query
 }
 
+// QueryMessageChannels chains the current query on the "message_channels" edge.
+func (_q *ProjectQuery) QueryMessageChannels() *MessageChannelQuery {
+	query := (&MessageChannelClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(messagechannel.Table, messagechannel.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.MessageChannelsTable, project.MessageChannelsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
 // QueryProjectUsers chains the current query on the "project_users" edge.
 func (_q *ProjectQuery) QueryProjectUsers() *UserProjectQuery {
 	query := (&UserProjectClient{config: _q.config}).Query()
@@ -643,6 +668,7 @@ func (_q *ProjectQuery) Clone() *ProjectQuery {
 		withSkills:             _q.withSkills.Clone(),
 		withAgentToolBindings:  _q.withAgentToolBindings.Clone(),
 		withAgentSkillBindings: _q.withAgentSkillBindings.Clone(),
+		withMessageChannels:    _q.withMessageChannels.Clone(),
 		withProjectUsers:       _q.withProjectUsers.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
@@ -805,6 +831,17 @@ func (_q *ProjectQuery) WithAgentSkillBindings(opts ...func(*AgentSkillQuery)) *
 	return _q
 }
 
+// WithMessageChannels tells the query-builder to eager-load the nodes that are connected to
+// the "message_channels" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithMessageChannels(opts ...func(*MessageChannelQuery)) *ProjectQuery {
+	query := (&MessageChannelClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withMessageChannels = query
+	return _q
+}
+
 // WithProjectUsers tells the query-builder to eager-load the nodes that are connected to
 // the "project_users" edge. The optional arguments are used to configure the query builder of the edge.
 func (_q *ProjectQuery) WithProjectUsers(opts ...func(*UserProjectQuery)) *ProjectQuery {
@@ -900,7 +937,7 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	var (
 		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [15]bool{
+		loadedTypes = [16]bool{
 			_q.withUsers != nil,
 			_q.withRoles != nil,
 			_q.withAPIKeys != nil,
@@ -915,6 +952,7 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 			_q.withSkills != nil,
 			_q.withAgentToolBindings != nil,
 			_q.withAgentSkillBindings != nil,
+			_q.withMessageChannels != nil,
 			_q.withProjectUsers != nil,
 		}
 	)
@@ -1037,6 +1075,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 			return nil, err
 		}
 	}
+	if query := _q.withMessageChannels; query != nil {
+		if err := _q.loadMessageChannels(ctx, query, nodes,
+			func(n *Project) { n.Edges.MessageChannels = []*MessageChannel{} },
+			func(n *Project, e *MessageChannel) { n.Edges.MessageChannels = append(n.Edges.MessageChannels, e) }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withProjectUsers; query != nil {
 		if err := _q.loadProjectUsers(ctx, query, nodes,
 			func(n *Project) { n.Edges.ProjectUsers = []*UserProject{} },
@@ -1139,6 +1184,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		if err := _q.loadAgentSkillBindings(ctx, query, nodes,
 			func(n *Project) { n.appendNamedAgentSkillBindings(name) },
 			func(n *Project, e *AgentSkill) { n.appendNamedAgentSkillBindings(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedMessageChannels {
+		if err := _q.loadMessageChannels(ctx, query, nodes,
+			func(n *Project) { n.appendNamedMessageChannels(name) },
+			func(n *Project, e *MessageChannel) { n.appendNamedMessageChannels(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -1648,6 +1700,36 @@ func (_q *ProjectQuery) loadAgentSkillBindings(ctx context.Context, query *Agent
 	}
 	return nil
 }
+func (_q *ProjectQuery) loadMessageChannels(ctx context.Context, query *MessageChannelQuery, nodes []*Project, init func(*Project), assign func(*Project, *MessageChannel)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(messagechannel.FieldProjectID)
+	}
+	query.Where(predicate.MessageChannel(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.MessageChannelsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
 func (_q *ProjectQuery) loadProjectUsers(ctx context.Context, query *UserProjectQuery, nodes []*Project, init func(*Project), assign func(*Project, *UserProject)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int]*Project)
@@ -1965,6 +2047,20 @@ func (_q *ProjectQuery) WithNamedAgentSkillBindings(name string, opts ...func(*A
 		_q.withNamedAgentSkillBindings = make(map[string]*AgentSkillQuery)
 	}
 	_q.withNamedAgentSkillBindings[name] = query
+	return _q
+}
+
+// WithNamedMessageChannels tells the query-builder to eager-load the nodes that are connected to the "message_channels"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedMessageChannels(name string, opts ...func(*MessageChannelQuery)) *ProjectQuery {
+	query := (&MessageChannelClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedMessageChannels == nil {
+		_q.withNamedMessageChannels = make(map[string]*MessageChannelQuery)
+	}
+	_q.withNamedMessageChannels[name] = query
 	return _q
 }
 

@@ -75,17 +75,19 @@ type ComplexityRoot struct {
 	}
 
 	AgentMessage struct {
-		AgentID       func(childComplexity int) int
-		Content       func(childComplexity int) int
-		CorrelationID func(childComplexity int) int
-		CreatedAt     func(childComplexity int) int
-		Direction     func(childComplexity int) int
-		ID            func(childComplexity int) int
-		SenderType    func(childComplexity int) int
-		Sequence      func(childComplexity int) int
-		Status        func(childComplexity int) int
-		Text          func(childComplexity int) int
-		Type          func(childComplexity int) int
+		AgentID           func(childComplexity int) int
+		Content           func(childComplexity int) int
+		CorrelationID     func(childComplexity int) int
+		CreatedAt         func(childComplexity int) int
+		Direction         func(childComplexity int) int
+		ExternalMessageID func(childComplexity int) int
+		ID                func(childComplexity int) int
+		ReplyToMessageID  func(childComplexity int) int
+		SenderType        func(childComplexity int) int
+		Sequence          func(childComplexity int) int
+		Status            func(childComplexity int) int
+		Text              func(childComplexity int) int
+		Type              func(childComplexity int) int
 	}
 
 	AgentSkillDefinition struct {
@@ -298,12 +300,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentMessage.Direction(childComplexity), true
+	case "AgentMessage.externalMessageID":
+		if e.complexity.AgentMessage.ExternalMessageID == nil {
+			break
+		}
+
+		return e.complexity.AgentMessage.ExternalMessageID(childComplexity), true
 	case "AgentMessage.id":
 		if e.complexity.AgentMessage.ID == nil {
 			break
 		}
 
 		return e.complexity.AgentMessage.ID(childComplexity), true
+	case "AgentMessage.replyToMessageID":
+		if e.complexity.AgentMessage.ReplyToMessageID == nil {
+			break
+		}
+
+		return e.complexity.AgentMessage.ReplyToMessageID(childComplexity), true
 	case "AgentMessage.senderType":
 		if e.complexity.AgentMessage.SenderType == nil {
 			break
@@ -1548,6 +1562,64 @@ func (ec *executionContext) fieldContext_AgentMessage_correlationID(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _AgentMessage_externalMessageID(ctx context.Context, field graphql.CollectedField, obj *AgentMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentMessage_externalMessageID,
+		func(ctx context.Context) (any, error) {
+			return obj.ExternalMessageID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentMessage_externalMessageID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentMessage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentMessage_replyToMessageID(ctx context.Context, field graphql.CollectedField, obj *AgentMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentMessage_replyToMessageID,
+		func(ctx context.Context) (any, error) {
+			return obj.ReplyToMessageID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentMessage_replyToMessageID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentMessage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AgentMessage_sequence(ctx context.Context, field graphql.CollectedField, obj *AgentMessage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2027,6 +2099,10 @@ func (ec *executionContext) fieldContext_Mutation_sendAgentMessage(ctx context.C
 				return ec.fieldContext_AgentMessage_type(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentMessage_correlationID(ctx, field)
+			case "externalMessageID":
+				return ec.fieldContext_AgentMessage_externalMessageID(ctx, field)
+			case "replyToMessageID":
+				return ec.fieldContext_AgentMessage_replyToMessageID(ctx, field)
 			case "sequence":
 				return ec.fieldContext_AgentMessage_sequence(ctx, field)
 			case "status":
@@ -2092,6 +2168,10 @@ func (ec *executionContext) fieldContext_Mutation_replyMessage(ctx context.Conte
 				return ec.fieldContext_AgentMessage_type(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentMessage_correlationID(ctx, field)
+			case "externalMessageID":
+				return ec.fieldContext_AgentMessage_externalMessageID(ctx, field)
+			case "replyToMessageID":
+				return ec.fieldContext_AgentMessage_replyToMessageID(ctx, field)
 			case "sequence":
 				return ec.fieldContext_AgentMessage_sequence(ctx, field)
 			case "status":
@@ -2435,6 +2515,10 @@ func (ec *executionContext) fieldContext_Query_pullAgentMessages(ctx context.Con
 				return ec.fieldContext_AgentMessage_type(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentMessage_correlationID(ctx, field)
+			case "externalMessageID":
+				return ec.fieldContext_AgentMessage_externalMessageID(ctx, field)
+			case "replyToMessageID":
+				return ec.fieldContext_AgentMessage_replyToMessageID(ctx, field)
 			case "sequence":
 				return ec.fieldContext_AgentMessage_sequence(ctx, field)
 			case "status":
@@ -2500,6 +2584,10 @@ func (ec *executionContext) fieldContext_Query_pullAgentMessagesToUser(ctx conte
 				return ec.fieldContext_AgentMessage_type(ctx, field)
 			case "correlationID":
 				return ec.fieldContext_AgentMessage_correlationID(ctx, field)
+			case "externalMessageID":
+				return ec.fieldContext_AgentMessage_externalMessageID(ctx, field)
+			case "replyToMessageID":
+				return ec.fieldContext_AgentMessage_replyToMessageID(ctx, field)
 			case "sequence":
 				return ec.fieldContext_AgentMessage_sequence(ctx, field)
 			case "status":
@@ -4246,7 +4334,7 @@ func (ec *executionContext) unmarshalInputReplyMessageInput(ctx context.Context,
 		asMap["correlationID"] = ""
 	}
 
-	fieldsInOrder := [...]string{"text", "content", "type", "correlationID"}
+	fieldsInOrder := [...]string{"text", "content", "type", "correlationID", "replyToMessageID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -4281,6 +4369,13 @@ func (ec *executionContext) unmarshalInputReplyMessageInput(ctx context.Context,
 				return it, err
 			}
 			it.CorrelationID = data
+		case "replyToMessageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("replyToMessageID"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReplyToMessageID = data
 		}
 	}
 
@@ -4572,6 +4667,10 @@ func (ec *executionContext) _AgentMessage(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "externalMessageID":
+			out.Values[i] = ec._AgentMessage_externalMessageID(ctx, field, obj)
+		case "replyToMessageID":
+			out.Values[i] = ec._AgentMessage_replyToMessageID(ctx, field, obj)
 		case "sequence":
 			out.Values[i] = ec._AgentMessage_sequence(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

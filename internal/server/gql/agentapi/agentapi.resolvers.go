@@ -93,6 +93,17 @@ func (r *mutationResolver) ReplyMessage(ctx context.Context, input ReplyMessageI
 		return nil, err
 	}
 
+	var replyToMessageID *int
+
+	if input.ReplyToMessageID != nil {
+		id, err := requireGUIDType(*input.ReplyToMessageID, ent.TypeAgentMessage)
+		if err != nil {
+			return nil, err
+		}
+
+		replyToMessageID = &id
+	}
+
 	view, err := r.agentBootstrapService.PushAgentMessage(ctx, inst, biz.PushAgentMessageInput{
 		Text: input.Text,
 		Content: func() *objects.JSONRawMessage {
@@ -110,7 +121,8 @@ func (r *mutationResolver) ReplyMessage(ctx context.Context, input ReplyMessageI
 
 			return &t
 		}(),
-		CorrelationID: input.CorrelationID,
+		CorrelationID:    input.CorrelationID,
+		ReplyToMessageID: replyToMessageID,
 	})
 	if err != nil {
 		return nil, err

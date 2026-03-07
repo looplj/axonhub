@@ -125,6 +125,11 @@ export const routeConfigs: RouteGroup[] = [
         path: '/project/playground',
         // Playground is accessible to all users
       },
+      {
+        path: '/project/message-channels',
+        requiredScopes: ['read_agents'],
+        mode: 'hidden',
+      },
     ],
   },
   {

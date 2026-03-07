@@ -23,8 +23,6 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
-	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
-	FieldDeletedAt = "deleted_at"
 	// FieldProjectID holds the string denoting the project_id field in the database.
 	FieldProjectID = "project_id"
 	// FieldAgentID holds the string denoting the agent_id field in the database.
@@ -49,10 +47,16 @@ const (
 	FieldSequence = "sequence"
 	// FieldExpiresAt holds the string denoting the expires_at field in the database.
 	FieldExpiresAt = "expires_at"
+	// FieldExternalMessageID holds the string denoting the external_message_id field in the database.
+	FieldExternalMessageID = "external_message_id"
+	// FieldReplyToMessageID holds the string denoting the reply_to_message_id field in the database.
+	FieldReplyToMessageID = "reply_to_message_id"
 	// EdgeAgent holds the string denoting the agent edge name in mutations.
 	EdgeAgent = "agent"
 	// EdgeAgentInstance holds the string denoting the agent_instance edge name in mutations.
 	EdgeAgentInstance = "agent_instance"
+	// EdgeMessageChannel holds the string denoting the message_channel edge name in mutations.
+	EdgeMessageChannel = "message_channel"
 	// Table holds the table name of the agentmessage in the database.
 	Table = "agent_messages"
 	// AgentTable is the table that holds the agent relation/edge.
@@ -69,6 +73,13 @@ const (
 	AgentInstanceInverseTable = "agent_instances"
 	// AgentInstanceColumn is the table column denoting the agent_instance relation/edge.
 	AgentInstanceColumn = "agent_instance_id"
+	// MessageChannelTable is the table that holds the message_channel relation/edge.
+	MessageChannelTable = "agent_messages"
+	// MessageChannelInverseTable is the table name for the MessageChannel entity.
+	// It exists in this package in order to avoid circular dependency with the "messagechannel" package.
+	MessageChannelInverseTable = "message_channels"
+	// MessageChannelColumn is the table column denoting the message_channel relation/edge.
+	MessageChannelColumn = "sender_id"
 )
 
 // Columns holds all SQL columns for agentmessage fields.
@@ -76,7 +87,6 @@ var Columns = []string{
 	FieldID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
-	FieldDeletedAt,
 	FieldProjectID,
 	FieldAgentID,
 	FieldAgentInstanceID,
@@ -89,6 +99,8 @@ var Columns = []string{
 	FieldStatus,
 	FieldSequence,
 	FieldExpiresAt,
+	FieldExternalMessageID,
+	FieldReplyToMessageID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -107,17 +119,14 @@ func ValidColumn(column string) bool {
 //
 //	import _ "github.com/looplj/axonhub/internal/ent/runtime"
 var (
-	Hooks        [2]ent.Hook
-	Interceptors [1]ent.Interceptor
-	Policy       ent.Policy
+	Hooks  [1]ent.Hook
+	Policy ent.Policy
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
-	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
-	DefaultDeletedAt int
 	// DefaultCorrelationID holds the default value on creation for the "correlation_id" field.
 	DefaultCorrelationID string
 	// DefaultContent holds the default value on creation for the "content" field.
@@ -152,9 +161,10 @@ type SenderType string
 
 // SenderType values.
 const (
-	SenderTypeUser   SenderType = "user"
-	SenderTypeAgent  SenderType = "agent"
-	SenderTypeSystem SenderType = "system"
+	SenderTypeUser           SenderType = "user"
+	SenderTypeAgent          SenderType = "agent"
+	SenderTypeSystem         SenderType = "system"
+	SenderTypeMessageChannel SenderType = "message_channel"
 )
 
 func (st SenderType) String() string {
@@ -164,7 +174,7 @@ func (st SenderType) String() string {
 // SenderTypeValidator is a validator for the "sender_type" field enum values. It is called by the builders before save.
 func SenderTypeValidator(st SenderType) error {
 	switch st {
-	case SenderTypeUser, SenderTypeAgent, SenderTypeSystem:
+	case SenderTypeUser, SenderTypeAgent, SenderTypeSystem, SenderTypeMessageChannel:
 		return nil
 	default:
 		return fmt.Errorf("agentmessage: invalid enum value for sender_type field: %q", st)
@@ -244,11 +254,6 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
-// ByDeletedAt orders the results by the deleted_at field.
-func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
-}
-
 // ByProjectID orders the results by the project_id field.
 func ByProjectID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProjectID, opts...).ToFunc()
@@ -304,6 +309,16 @@ func ByExpiresAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldExpiresAt, opts...).ToFunc()
 }
 
+// ByExternalMessageID orders the results by the external_message_id field.
+func ByExternalMessageID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldExternalMessageID, opts...).ToFunc()
+}
+
+// ByReplyToMessageID orders the results by the reply_to_message_id field.
+func ByReplyToMessageID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReplyToMessageID, opts...).ToFunc()
+}
+
 // ByAgentField orders the results by agent field.
 func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -315,6 +330,13 @@ func ByAgentField(field string, opts ...sql.OrderTermOption) OrderOption {
 func ByAgentInstanceField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newAgentInstanceStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByMessageChannelField orders the results by message_channel field.
+func ByMessageChannelField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMessageChannelStep(), sql.OrderByField(field, opts...))
 	}
 }
 func newAgentStep() *sqlgraph.Step {
@@ -329,6 +351,13 @@ func newAgentInstanceStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(AgentInstanceInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, AgentInstanceTable, AgentInstanceColumn),
+	)
+}
+func newMessageChannelStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MessageChannelInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, MessageChannelTable, MessageChannelColumn),
 	)
 }
 

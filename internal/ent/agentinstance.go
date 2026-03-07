@@ -64,13 +64,16 @@ type AgentInstanceEdges struct {
 	APIKey *APIKey `json:"api_key,omitempty"`
 	// Messages holds the value of the messages edge.
 	Messages []*AgentMessage `json:"messages,omitempty"`
+	// MessageChannelBindings holds the value of the message_channel_bindings edge.
+	MessageChannelBindings []*MessageChannelAgentInstance `json:"message_channel_bindings,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [5]bool
 	// totalCount holds the count of the edges above.
-	totalCount [4]map[string]int
+	totalCount [5]map[string]int
 
-	namedMessages map[string][]*AgentMessage
+	namedMessages               map[string][]*AgentMessage
+	namedMessageChannelBindings map[string][]*MessageChannelAgentInstance
 }
 
 // AgentOrErr returns the Agent value or an error if the edge
@@ -113,6 +116,15 @@ func (e AgentInstanceEdges) MessagesOrErr() ([]*AgentMessage, error) {
 		return e.Messages, nil
 	}
 	return nil, &NotLoadedError{edge: "messages"}
+}
+
+// MessageChannelBindingsOrErr returns the MessageChannelBindings value or an error if the edge
+// was not loaded in eager-loading.
+func (e AgentInstanceEdges) MessageChannelBindingsOrErr() ([]*MessageChannelAgentInstance, error) {
+	if e.loadedTypes[4] {
+		return e.MessageChannelBindings, nil
+	}
+	return nil, &NotLoadedError{edge: "message_channel_bindings"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -263,6 +275,11 @@ func (_m *AgentInstance) QueryMessages() *AgentMessageQuery {
 	return NewAgentInstanceClient(_m.config).QueryMessages(_m)
 }
 
+// QueryMessageChannelBindings queries the "message_channel_bindings" edge of the AgentInstance entity.
+func (_m *AgentInstance) QueryMessageChannelBindings() *MessageChannelAgentInstanceQuery {
+	return NewAgentInstanceClient(_m.config).QueryMessageChannelBindings(_m)
+}
+
 // Update returns a builder for updating this AgentInstance.
 // Note that you need to call AgentInstance.Unwrap() before calling this method if this AgentInstance
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -351,6 +368,30 @@ func (_m *AgentInstance) appendNamedMessages(name string, edges ...*AgentMessage
 		_m.Edges.namedMessages[name] = []*AgentMessage{}
 	} else {
 		_m.Edges.namedMessages[name] = append(_m.Edges.namedMessages[name], edges...)
+	}
+}
+
+// NamedMessageChannelBindings returns the MessageChannelBindings named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *AgentInstance) NamedMessageChannelBindings(name string) ([]*MessageChannelAgentInstance, error) {
+	if _m.Edges.namedMessageChannelBindings == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedMessageChannelBindings[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *AgentInstance) appendNamedMessageChannelBindings(name string, edges ...*MessageChannelAgentInstance) {
+	if _m.Edges.namedMessageChannelBindings == nil {
+		_m.Edges.namedMessageChannelBindings = make(map[string][]*MessageChannelAgentInstance)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedMessageChannelBindings[name] = []*MessageChannelAgentInstance{}
+	} else {
+		_m.Edges.namedMessageChannelBindings[name] = append(_m.Edges.namedMessageChannelBindings[name], edges...)
 	}
 }
 

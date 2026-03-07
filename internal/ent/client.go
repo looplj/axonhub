@@ -30,6 +30,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -84,6 +87,12 @@ type Client struct {
 	ChannelProbe *ChannelProbeClient
 	// DataStorage is the client for interacting with the DataStorage builders.
 	DataStorage *DataStorageClient
+	// MessageChannel is the client for interacting with the MessageChannel builders.
+	MessageChannel *MessageChannelClient
+	// MessageChannelAgentInstance is the client for interacting with the MessageChannelAgentInstance builders.
+	MessageChannelAgentInstance *MessageChannelAgentInstanceClient
+	// MessageChannelBindingRequest is the client for interacting with the MessageChannelBindingRequest builders.
+	MessageChannelBindingRequest *MessageChannelBindingRequestClient
 	// Model is the client for interacting with the Model builders.
 	Model *ModelClient
 	// Project is the client for interacting with the Project builders.
@@ -146,6 +155,9 @@ func (c *Client) init() {
 	c.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(c.config)
 	c.ChannelProbe = NewChannelProbeClient(c.config)
 	c.DataStorage = NewDataStorageClient(c.config)
+	c.MessageChannel = NewMessageChannelClient(c.config)
+	c.MessageChannelAgentInstance = NewMessageChannelAgentInstanceClient(c.config)
+	c.MessageChannelBindingRequest = NewMessageChannelBindingRequestClient(c.config)
 	c.Model = NewModelClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.Prompt = NewPromptClient(c.config)
@@ -253,40 +265,43 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:                      ctx,
-		config:                   cfg,
-		APIKey:                   NewAPIKeyClient(cfg),
-		Agent:                    NewAgentClient(cfg),
-		AgentHost:                NewAgentHostClient(cfg),
-		AgentInstance:            NewAgentInstanceClient(cfg),
-		AgentMemory:              NewAgentMemoryClient(cfg),
-		AgentMessage:             NewAgentMessageClient(cfg),
-		AgentSkill:               NewAgentSkillClient(cfg),
-		AgentThread:              NewAgentThreadClient(cfg),
-		AgentTool:                NewAgentToolClient(cfg),
-		Channel:                  NewChannelClient(cfg),
-		ChannelModelPrice:        NewChannelModelPriceClient(cfg),
-		ChannelModelPriceVersion: NewChannelModelPriceVersionClient(cfg),
-		ChannelOverrideTemplate:  NewChannelOverrideTemplateClient(cfg),
-		ChannelProbe:             NewChannelProbeClient(cfg),
-		DataStorage:              NewDataStorageClient(cfg),
-		Model:                    NewModelClient(cfg),
-		Project:                  NewProjectClient(cfg),
-		Prompt:                   NewPromptClient(cfg),
-		PromptVersion:            NewPromptVersionClient(cfg),
-		ProviderQuotaStatus:      NewProviderQuotaStatusClient(cfg),
-		Request:                  NewRequestClient(cfg),
-		RequestExecution:         NewRequestExecutionClient(cfg),
-		Role:                     NewRoleClient(cfg),
-		Skill:                    NewSkillClient(cfg),
-		System:                   NewSystemClient(cfg),
-		Thread:                   NewThreadClient(cfg),
-		Tool:                     NewToolClient(cfg),
-		Trace:                    NewTraceClient(cfg),
-		UsageLog:                 NewUsageLogClient(cfg),
-		User:                     NewUserClient(cfg),
-		UserProject:              NewUserProjectClient(cfg),
-		UserRole:                 NewUserRoleClient(cfg),
+		ctx:                          ctx,
+		config:                       cfg,
+		APIKey:                       NewAPIKeyClient(cfg),
+		Agent:                        NewAgentClient(cfg),
+		AgentHost:                    NewAgentHostClient(cfg),
+		AgentInstance:                NewAgentInstanceClient(cfg),
+		AgentMemory:                  NewAgentMemoryClient(cfg),
+		AgentMessage:                 NewAgentMessageClient(cfg),
+		AgentSkill:                   NewAgentSkillClient(cfg),
+		AgentThread:                  NewAgentThreadClient(cfg),
+		AgentTool:                    NewAgentToolClient(cfg),
+		Channel:                      NewChannelClient(cfg),
+		ChannelModelPrice:            NewChannelModelPriceClient(cfg),
+		ChannelModelPriceVersion:     NewChannelModelPriceVersionClient(cfg),
+		ChannelOverrideTemplate:      NewChannelOverrideTemplateClient(cfg),
+		ChannelProbe:                 NewChannelProbeClient(cfg),
+		DataStorage:                  NewDataStorageClient(cfg),
+		MessageChannel:               NewMessageChannelClient(cfg),
+		MessageChannelAgentInstance:  NewMessageChannelAgentInstanceClient(cfg),
+		MessageChannelBindingRequest: NewMessageChannelBindingRequestClient(cfg),
+		Model:                        NewModelClient(cfg),
+		Project:                      NewProjectClient(cfg),
+		Prompt:                       NewPromptClient(cfg),
+		PromptVersion:                NewPromptVersionClient(cfg),
+		ProviderQuotaStatus:          NewProviderQuotaStatusClient(cfg),
+		Request:                      NewRequestClient(cfg),
+		RequestExecution:             NewRequestExecutionClient(cfg),
+		Role:                         NewRoleClient(cfg),
+		Skill:                        NewSkillClient(cfg),
+		System:                       NewSystemClient(cfg),
+		Thread:                       NewThreadClient(cfg),
+		Tool:                         NewToolClient(cfg),
+		Trace:                        NewTraceClient(cfg),
+		UsageLog:                     NewUsageLogClient(cfg),
+		User:                         NewUserClient(cfg),
+		UserProject:                  NewUserProjectClient(cfg),
+		UserRole:                     NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -304,40 +319,43 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:                      ctx,
-		config:                   cfg,
-		APIKey:                   NewAPIKeyClient(cfg),
-		Agent:                    NewAgentClient(cfg),
-		AgentHost:                NewAgentHostClient(cfg),
-		AgentInstance:            NewAgentInstanceClient(cfg),
-		AgentMemory:              NewAgentMemoryClient(cfg),
-		AgentMessage:             NewAgentMessageClient(cfg),
-		AgentSkill:               NewAgentSkillClient(cfg),
-		AgentThread:              NewAgentThreadClient(cfg),
-		AgentTool:                NewAgentToolClient(cfg),
-		Channel:                  NewChannelClient(cfg),
-		ChannelModelPrice:        NewChannelModelPriceClient(cfg),
-		ChannelModelPriceVersion: NewChannelModelPriceVersionClient(cfg),
-		ChannelOverrideTemplate:  NewChannelOverrideTemplateClient(cfg),
-		ChannelProbe:             NewChannelProbeClient(cfg),
-		DataStorage:              NewDataStorageClient(cfg),
-		Model:                    NewModelClient(cfg),
-		Project:                  NewProjectClient(cfg),
-		Prompt:                   NewPromptClient(cfg),
-		PromptVersion:            NewPromptVersionClient(cfg),
-		ProviderQuotaStatus:      NewProviderQuotaStatusClient(cfg),
-		Request:                  NewRequestClient(cfg),
-		RequestExecution:         NewRequestExecutionClient(cfg),
-		Role:                     NewRoleClient(cfg),
-		Skill:                    NewSkillClient(cfg),
-		System:                   NewSystemClient(cfg),
-		Thread:                   NewThreadClient(cfg),
-		Tool:                     NewToolClient(cfg),
-		Trace:                    NewTraceClient(cfg),
-		UsageLog:                 NewUsageLogClient(cfg),
-		User:                     NewUserClient(cfg),
-		UserProject:              NewUserProjectClient(cfg),
-		UserRole:                 NewUserRoleClient(cfg),
+		ctx:                          ctx,
+		config:                       cfg,
+		APIKey:                       NewAPIKeyClient(cfg),
+		Agent:                        NewAgentClient(cfg),
+		AgentHost:                    NewAgentHostClient(cfg),
+		AgentInstance:                NewAgentInstanceClient(cfg),
+		AgentMemory:                  NewAgentMemoryClient(cfg),
+		AgentMessage:                 NewAgentMessageClient(cfg),
+		AgentSkill:                   NewAgentSkillClient(cfg),
+		AgentThread:                  NewAgentThreadClient(cfg),
+		AgentTool:                    NewAgentToolClient(cfg),
+		Channel:                      NewChannelClient(cfg),
+		ChannelModelPrice:            NewChannelModelPriceClient(cfg),
+		ChannelModelPriceVersion:     NewChannelModelPriceVersionClient(cfg),
+		ChannelOverrideTemplate:      NewChannelOverrideTemplateClient(cfg),
+		ChannelProbe:                 NewChannelProbeClient(cfg),
+		DataStorage:                  NewDataStorageClient(cfg),
+		MessageChannel:               NewMessageChannelClient(cfg),
+		MessageChannelAgentInstance:  NewMessageChannelAgentInstanceClient(cfg),
+		MessageChannelBindingRequest: NewMessageChannelBindingRequestClient(cfg),
+		Model:                        NewModelClient(cfg),
+		Project:                      NewProjectClient(cfg),
+		Prompt:                       NewPromptClient(cfg),
+		PromptVersion:                NewPromptVersionClient(cfg),
+		ProviderQuotaStatus:          NewProviderQuotaStatusClient(cfg),
+		Request:                      NewRequestClient(cfg),
+		RequestExecution:             NewRequestExecutionClient(cfg),
+		Role:                         NewRoleClient(cfg),
+		Skill:                        NewSkillClient(cfg),
+		System:                       NewSystemClient(cfg),
+		Thread:                       NewThreadClient(cfg),
+		Tool:                         NewToolClient(cfg),
+		Trace:                        NewTraceClient(cfg),
+		UsageLog:                     NewUsageLogClient(cfg),
+		User:                         NewUserClient(cfg),
+		UserProject:                  NewUserProjectClient(cfg),
+		UserRole:                     NewUserRoleClient(cfg),
 	}, nil
 }
 
@@ -370,7 +388,8 @@ func (c *Client) Use(hooks ...Hook) {
 		c.APIKey, c.Agent, c.AgentHost, c.AgentInstance, c.AgentMemory, c.AgentMessage,
 		c.AgentSkill, c.AgentThread, c.AgentTool, c.Channel, c.ChannelModelPrice,
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
-		c.DataStorage, c.Model, c.Project, c.Prompt, c.PromptVersion,
+		c.DataStorage, c.MessageChannel, c.MessageChannelAgentInstance,
+		c.MessageChannelBindingRequest, c.Model, c.Project, c.Prompt, c.PromptVersion,
 		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.Skill,
 		c.System, c.Thread, c.Tool, c.Trace, c.UsageLog, c.User, c.UserProject,
 		c.UserRole,
@@ -386,7 +405,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.APIKey, c.Agent, c.AgentHost, c.AgentInstance, c.AgentMemory, c.AgentMessage,
 		c.AgentSkill, c.AgentThread, c.AgentTool, c.Channel, c.ChannelModelPrice,
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
-		c.DataStorage, c.Model, c.Project, c.Prompt, c.PromptVersion,
+		c.DataStorage, c.MessageChannel, c.MessageChannelAgentInstance,
+		c.MessageChannelBindingRequest, c.Model, c.Project, c.Prompt, c.PromptVersion,
 		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.Skill,
 		c.System, c.Thread, c.Tool, c.Trace, c.UsageLog, c.User, c.UserProject,
 		c.UserRole,
@@ -428,6 +448,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ChannelProbe.mutate(ctx, m)
 	case *DataStorageMutation:
 		return c.DataStorage.mutate(ctx, m)
+	case *MessageChannelMutation:
+		return c.MessageChannel.mutate(ctx, m)
+	case *MessageChannelAgentInstanceMutation:
+		return c.MessageChannelAgentInstance.mutate(ctx, m)
+	case *MessageChannelBindingRequestMutation:
+		return c.MessageChannelBindingRequest.mutate(ctx, m)
 	case *ModelMutation:
 		return c.Model.mutate(ctx, m)
 	case *ProjectMutation:
@@ -1268,6 +1294,22 @@ func (c *AgentInstanceClient) QueryMessages(_m *AgentInstance) *AgentMessageQuer
 	return query
 }
 
+// QueryMessageChannelBindings queries the message_channel_bindings edge of a AgentInstance.
+func (c *AgentInstanceClient) QueryMessageChannelBindings(_m *AgentInstance) *MessageChannelAgentInstanceQuery {
+	query := (&MessageChannelAgentInstanceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agentinstance.Table, agentinstance.FieldID, id),
+			sqlgraph.To(messagechannelagentinstance.Table, messagechannelagentinstance.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, agentinstance.MessageChannelBindingsTable, agentinstance.MessageChannelBindingsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *AgentInstanceClient) Hooks() []Hook {
 	hooks := c.hooks.AgentInstance
@@ -1586,6 +1628,22 @@ func (c *AgentMessageClient) QueryAgentInstance(_m *AgentMessage) *AgentInstance
 	return query
 }
 
+// QueryMessageChannel queries the message_channel edge of a AgentMessage.
+func (c *AgentMessageClient) QueryMessageChannel(_m *AgentMessage) *MessageChannelQuery {
+	query := (&MessageChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(agentmessage.Table, agentmessage.FieldID, id),
+			sqlgraph.To(messagechannel.Table, messagechannel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, agentmessage.MessageChannelTable, agentmessage.MessageChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *AgentMessageClient) Hooks() []Hook {
 	hooks := c.hooks.AgentMessage
@@ -1594,8 +1652,7 @@ func (c *AgentMessageClient) Hooks() []Hook {
 
 // Interceptors returns the client interceptors.
 func (c *AgentMessageClient) Interceptors() []Interceptor {
-	inters := c.inters.AgentMessage
-	return append(inters[:len(inters):len(inters)], agentmessage.Interceptors[:]...)
+	return c.inters.AgentMessage
 }
 
 func (c *AgentMessageClient) mutate(ctx context.Context, m *AgentMessageMutation) (Value, error) {
@@ -3158,6 +3215,489 @@ func (c *DataStorageClient) mutate(ctx context.Context, m *DataStorageMutation) 
 	}
 }
 
+// MessageChannelClient is a client for the MessageChannel schema.
+type MessageChannelClient struct {
+	config
+}
+
+// NewMessageChannelClient returns a client for the MessageChannel from the given config.
+func NewMessageChannelClient(c config) *MessageChannelClient {
+	return &MessageChannelClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `messagechannel.Hooks(f(g(h())))`.
+func (c *MessageChannelClient) Use(hooks ...Hook) {
+	c.hooks.MessageChannel = append(c.hooks.MessageChannel, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `messagechannel.Intercept(f(g(h())))`.
+func (c *MessageChannelClient) Intercept(interceptors ...Interceptor) {
+	c.inters.MessageChannel = append(c.inters.MessageChannel, interceptors...)
+}
+
+// Create returns a builder for creating a MessageChannel entity.
+func (c *MessageChannelClient) Create() *MessageChannelCreate {
+	mutation := newMessageChannelMutation(c.config, OpCreate)
+	return &MessageChannelCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of MessageChannel entities.
+func (c *MessageChannelClient) CreateBulk(builders ...*MessageChannelCreate) *MessageChannelCreateBulk {
+	return &MessageChannelCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MessageChannelClient) MapCreateBulk(slice any, setFunc func(*MessageChannelCreate, int)) *MessageChannelCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MessageChannelCreateBulk{err: fmt.Errorf("calling to MessageChannelClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MessageChannelCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MessageChannelCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for MessageChannel.
+func (c *MessageChannelClient) Update() *MessageChannelUpdate {
+	mutation := newMessageChannelMutation(c.config, OpUpdate)
+	return &MessageChannelUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MessageChannelClient) UpdateOne(_m *MessageChannel) *MessageChannelUpdateOne {
+	mutation := newMessageChannelMutation(c.config, OpUpdateOne, withMessageChannel(_m))
+	return &MessageChannelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MessageChannelClient) UpdateOneID(id int) *MessageChannelUpdateOne {
+	mutation := newMessageChannelMutation(c.config, OpUpdateOne, withMessageChannelID(id))
+	return &MessageChannelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for MessageChannel.
+func (c *MessageChannelClient) Delete() *MessageChannelDelete {
+	mutation := newMessageChannelMutation(c.config, OpDelete)
+	return &MessageChannelDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MessageChannelClient) DeleteOne(_m *MessageChannel) *MessageChannelDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MessageChannelClient) DeleteOneID(id int) *MessageChannelDeleteOne {
+	builder := c.Delete().Where(messagechannel.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MessageChannelDeleteOne{builder}
+}
+
+// Query returns a query builder for MessageChannel.
+func (c *MessageChannelClient) Query() *MessageChannelQuery {
+	return &MessageChannelQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMessageChannel},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a MessageChannel entity by its id.
+func (c *MessageChannelClient) Get(ctx context.Context, id int) (*MessageChannel, error) {
+	return c.Query().Where(messagechannel.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MessageChannelClient) GetX(ctx context.Context, id int) *MessageChannel {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProject queries the project edge of a MessageChannel.
+func (c *MessageChannelClient) QueryProject(_m *MessageChannel) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(messagechannel.Table, messagechannel.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, messagechannel.ProjectTable, messagechannel.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAgentInstanceBindings queries the agent_instance_bindings edge of a MessageChannel.
+func (c *MessageChannelClient) QueryAgentInstanceBindings(_m *MessageChannel) *MessageChannelAgentInstanceQuery {
+	query := (&MessageChannelAgentInstanceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(messagechannel.Table, messagechannel.FieldID, id),
+			sqlgraph.To(messagechannelagentinstance.Table, messagechannelagentinstance.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, messagechannel.AgentInstanceBindingsTable, messagechannel.AgentInstanceBindingsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMessages queries the messages edge of a MessageChannel.
+func (c *MessageChannelClient) QueryMessages(_m *MessageChannel) *AgentMessageQuery {
+	query := (&AgentMessageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(messagechannel.Table, messagechannel.FieldID, id),
+			sqlgraph.To(agentmessage.Table, agentmessage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, messagechannel.MessagesTable, messagechannel.MessagesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MessageChannelClient) Hooks() []Hook {
+	hooks := c.hooks.MessageChannel
+	return append(hooks[:len(hooks):len(hooks)], messagechannel.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *MessageChannelClient) Interceptors() []Interceptor {
+	inters := c.inters.MessageChannel
+	return append(inters[:len(inters):len(inters)], messagechannel.Interceptors[:]...)
+}
+
+func (c *MessageChannelClient) mutate(ctx context.Context, m *MessageChannelMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MessageChannelCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MessageChannelUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MessageChannelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MessageChannelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown MessageChannel mutation op: %q", m.Op())
+	}
+}
+
+// MessageChannelAgentInstanceClient is a client for the MessageChannelAgentInstance schema.
+type MessageChannelAgentInstanceClient struct {
+	config
+}
+
+// NewMessageChannelAgentInstanceClient returns a client for the MessageChannelAgentInstance from the given config.
+func NewMessageChannelAgentInstanceClient(c config) *MessageChannelAgentInstanceClient {
+	return &MessageChannelAgentInstanceClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `messagechannelagentinstance.Hooks(f(g(h())))`.
+func (c *MessageChannelAgentInstanceClient) Use(hooks ...Hook) {
+	c.hooks.MessageChannelAgentInstance = append(c.hooks.MessageChannelAgentInstance, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `messagechannelagentinstance.Intercept(f(g(h())))`.
+func (c *MessageChannelAgentInstanceClient) Intercept(interceptors ...Interceptor) {
+	c.inters.MessageChannelAgentInstance = append(c.inters.MessageChannelAgentInstance, interceptors...)
+}
+
+// Create returns a builder for creating a MessageChannelAgentInstance entity.
+func (c *MessageChannelAgentInstanceClient) Create() *MessageChannelAgentInstanceCreate {
+	mutation := newMessageChannelAgentInstanceMutation(c.config, OpCreate)
+	return &MessageChannelAgentInstanceCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of MessageChannelAgentInstance entities.
+func (c *MessageChannelAgentInstanceClient) CreateBulk(builders ...*MessageChannelAgentInstanceCreate) *MessageChannelAgentInstanceCreateBulk {
+	return &MessageChannelAgentInstanceCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MessageChannelAgentInstanceClient) MapCreateBulk(slice any, setFunc func(*MessageChannelAgentInstanceCreate, int)) *MessageChannelAgentInstanceCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MessageChannelAgentInstanceCreateBulk{err: fmt.Errorf("calling to MessageChannelAgentInstanceClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MessageChannelAgentInstanceCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MessageChannelAgentInstanceCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for MessageChannelAgentInstance.
+func (c *MessageChannelAgentInstanceClient) Update() *MessageChannelAgentInstanceUpdate {
+	mutation := newMessageChannelAgentInstanceMutation(c.config, OpUpdate)
+	return &MessageChannelAgentInstanceUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MessageChannelAgentInstanceClient) UpdateOne(_m *MessageChannelAgentInstance) *MessageChannelAgentInstanceUpdateOne {
+	mutation := newMessageChannelAgentInstanceMutation(c.config, OpUpdateOne, withMessageChannelAgentInstance(_m))
+	return &MessageChannelAgentInstanceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MessageChannelAgentInstanceClient) UpdateOneID(id int) *MessageChannelAgentInstanceUpdateOne {
+	mutation := newMessageChannelAgentInstanceMutation(c.config, OpUpdateOne, withMessageChannelAgentInstanceID(id))
+	return &MessageChannelAgentInstanceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for MessageChannelAgentInstance.
+func (c *MessageChannelAgentInstanceClient) Delete() *MessageChannelAgentInstanceDelete {
+	mutation := newMessageChannelAgentInstanceMutation(c.config, OpDelete)
+	return &MessageChannelAgentInstanceDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MessageChannelAgentInstanceClient) DeleteOne(_m *MessageChannelAgentInstance) *MessageChannelAgentInstanceDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MessageChannelAgentInstanceClient) DeleteOneID(id int) *MessageChannelAgentInstanceDeleteOne {
+	builder := c.Delete().Where(messagechannelagentinstance.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MessageChannelAgentInstanceDeleteOne{builder}
+}
+
+// Query returns a query builder for MessageChannelAgentInstance.
+func (c *MessageChannelAgentInstanceClient) Query() *MessageChannelAgentInstanceQuery {
+	return &MessageChannelAgentInstanceQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMessageChannelAgentInstance},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a MessageChannelAgentInstance entity by its id.
+func (c *MessageChannelAgentInstanceClient) Get(ctx context.Context, id int) (*MessageChannelAgentInstance, error) {
+	return c.Query().Where(messagechannelagentinstance.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MessageChannelAgentInstanceClient) GetX(ctx context.Context, id int) *MessageChannelAgentInstance {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryMessageChannel queries the message_channel edge of a MessageChannelAgentInstance.
+func (c *MessageChannelAgentInstanceClient) QueryMessageChannel(_m *MessageChannelAgentInstance) *MessageChannelQuery {
+	query := (&MessageChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(messagechannelagentinstance.Table, messagechannelagentinstance.FieldID, id),
+			sqlgraph.To(messagechannel.Table, messagechannel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, messagechannelagentinstance.MessageChannelTable, messagechannelagentinstance.MessageChannelColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryAgentInstance queries the agent_instance edge of a MessageChannelAgentInstance.
+func (c *MessageChannelAgentInstanceClient) QueryAgentInstance(_m *MessageChannelAgentInstance) *AgentInstanceQuery {
+	query := (&AgentInstanceClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(messagechannelagentinstance.Table, messagechannelagentinstance.FieldID, id),
+			sqlgraph.To(agentinstance.Table, agentinstance.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, messagechannelagentinstance.AgentInstanceTable, messagechannelagentinstance.AgentInstanceColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *MessageChannelAgentInstanceClient) Hooks() []Hook {
+	hooks := c.hooks.MessageChannelAgentInstance
+	return append(hooks[:len(hooks):len(hooks)], messagechannelagentinstance.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *MessageChannelAgentInstanceClient) Interceptors() []Interceptor {
+	return c.inters.MessageChannelAgentInstance
+}
+
+func (c *MessageChannelAgentInstanceClient) mutate(ctx context.Context, m *MessageChannelAgentInstanceMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MessageChannelAgentInstanceCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MessageChannelAgentInstanceUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MessageChannelAgentInstanceUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MessageChannelAgentInstanceDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown MessageChannelAgentInstance mutation op: %q", m.Op())
+	}
+}
+
+// MessageChannelBindingRequestClient is a client for the MessageChannelBindingRequest schema.
+type MessageChannelBindingRequestClient struct {
+	config
+}
+
+// NewMessageChannelBindingRequestClient returns a client for the MessageChannelBindingRequest from the given config.
+func NewMessageChannelBindingRequestClient(c config) *MessageChannelBindingRequestClient {
+	return &MessageChannelBindingRequestClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `messagechannelbindingrequest.Hooks(f(g(h())))`.
+func (c *MessageChannelBindingRequestClient) Use(hooks ...Hook) {
+	c.hooks.MessageChannelBindingRequest = append(c.hooks.MessageChannelBindingRequest, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `messagechannelbindingrequest.Intercept(f(g(h())))`.
+func (c *MessageChannelBindingRequestClient) Intercept(interceptors ...Interceptor) {
+	c.inters.MessageChannelBindingRequest = append(c.inters.MessageChannelBindingRequest, interceptors...)
+}
+
+// Create returns a builder for creating a MessageChannelBindingRequest entity.
+func (c *MessageChannelBindingRequestClient) Create() *MessageChannelBindingRequestCreate {
+	mutation := newMessageChannelBindingRequestMutation(c.config, OpCreate)
+	return &MessageChannelBindingRequestCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of MessageChannelBindingRequest entities.
+func (c *MessageChannelBindingRequestClient) CreateBulk(builders ...*MessageChannelBindingRequestCreate) *MessageChannelBindingRequestCreateBulk {
+	return &MessageChannelBindingRequestCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *MessageChannelBindingRequestClient) MapCreateBulk(slice any, setFunc func(*MessageChannelBindingRequestCreate, int)) *MessageChannelBindingRequestCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &MessageChannelBindingRequestCreateBulk{err: fmt.Errorf("calling to MessageChannelBindingRequestClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*MessageChannelBindingRequestCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &MessageChannelBindingRequestCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for MessageChannelBindingRequest.
+func (c *MessageChannelBindingRequestClient) Update() *MessageChannelBindingRequestUpdate {
+	mutation := newMessageChannelBindingRequestMutation(c.config, OpUpdate)
+	return &MessageChannelBindingRequestUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *MessageChannelBindingRequestClient) UpdateOne(_m *MessageChannelBindingRequest) *MessageChannelBindingRequestUpdateOne {
+	mutation := newMessageChannelBindingRequestMutation(c.config, OpUpdateOne, withMessageChannelBindingRequest(_m))
+	return &MessageChannelBindingRequestUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *MessageChannelBindingRequestClient) UpdateOneID(id int) *MessageChannelBindingRequestUpdateOne {
+	mutation := newMessageChannelBindingRequestMutation(c.config, OpUpdateOne, withMessageChannelBindingRequestID(id))
+	return &MessageChannelBindingRequestUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for MessageChannelBindingRequest.
+func (c *MessageChannelBindingRequestClient) Delete() *MessageChannelBindingRequestDelete {
+	mutation := newMessageChannelBindingRequestMutation(c.config, OpDelete)
+	return &MessageChannelBindingRequestDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *MessageChannelBindingRequestClient) DeleteOne(_m *MessageChannelBindingRequest) *MessageChannelBindingRequestDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *MessageChannelBindingRequestClient) DeleteOneID(id int) *MessageChannelBindingRequestDeleteOne {
+	builder := c.Delete().Where(messagechannelbindingrequest.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &MessageChannelBindingRequestDeleteOne{builder}
+}
+
+// Query returns a query builder for MessageChannelBindingRequest.
+func (c *MessageChannelBindingRequestClient) Query() *MessageChannelBindingRequestQuery {
+	return &MessageChannelBindingRequestQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeMessageChannelBindingRequest},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a MessageChannelBindingRequest entity by its id.
+func (c *MessageChannelBindingRequestClient) Get(ctx context.Context, id int) (*MessageChannelBindingRequest, error) {
+	return c.Query().Where(messagechannelbindingrequest.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *MessageChannelBindingRequestClient) GetX(ctx context.Context, id int) *MessageChannelBindingRequest {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *MessageChannelBindingRequestClient) Hooks() []Hook {
+	hooks := c.hooks.MessageChannelBindingRequest
+	return append(hooks[:len(hooks):len(hooks)], messagechannelbindingrequest.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *MessageChannelBindingRequestClient) Interceptors() []Interceptor {
+	return c.inters.MessageChannelBindingRequest
+}
+
+func (c *MessageChannelBindingRequestClient) mutate(ctx context.Context, m *MessageChannelBindingRequestMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&MessageChannelBindingRequestCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&MessageChannelBindingRequestUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&MessageChannelBindingRequestUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&MessageChannelBindingRequestDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown MessageChannelBindingRequest mutation op: %q", m.Op())
+	}
+}
+
 // ModelClient is a client for the Model schema.
 type ModelClient struct {
 	config
@@ -3618,6 +4158,22 @@ func (c *ProjectClient) QueryAgentSkillBindings(_m *Project) *AgentSkillQuery {
 			sqlgraph.From(project.Table, project.FieldID, id),
 			sqlgraph.To(agentskill.Table, agentskill.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, project.AgentSkillBindingsTable, project.AgentSkillBindingsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMessageChannels queries the message_channels edge of a Project.
+func (c *ProjectClient) QueryMessageChannels(_m *Project) *MessageChannelQuery {
+	query := (&MessageChannelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(messagechannel.Table, messagechannel.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.MessageChannelsTable, project.MessageChannelsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -6537,16 +7093,19 @@ type (
 	hooks struct {
 		APIKey, Agent, AgentHost, AgentInstance, AgentMemory, AgentMessage, AgentSkill,
 		AgentThread, AgentTool, Channel, ChannelModelPrice, ChannelModelPriceVersion,
-		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, Project, Prompt,
-		PromptVersion, ProviderQuotaStatus, Request, RequestExecution, Role, Skill,
-		System, Thread, Tool, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
+		ChannelOverrideTemplate, ChannelProbe, DataStorage, MessageChannel,
+		MessageChannelAgentInstance, MessageChannelBindingRequest, Model, Project,
+		Prompt, PromptVersion, ProviderQuotaStatus, Request, RequestExecution, Role,
+		Skill, System, Thread, Tool, Trace, UsageLog, User, UserProject,
+		UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, Agent, AgentHost, AgentInstance, AgentMemory, AgentMessage, AgentSkill,
 		AgentThread, AgentTool, Channel, ChannelModelPrice, ChannelModelPriceVersion,
-		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, Project, Prompt,
-		PromptVersion, ProviderQuotaStatus, Request, RequestExecution, Role, Skill,
-		System, Thread, Tool, Trace, UsageLog, User, UserProject,
+		ChannelOverrideTemplate, ChannelProbe, DataStorage, MessageChannel,
+		MessageChannelAgentInstance, MessageChannelBindingRequest, Model, Project,
+		Prompt, PromptVersion, ProviderQuotaStatus, Request, RequestExecution, Role,
+		Skill, System, Thread, Tool, Trace, UsageLog, User, UserProject,
 		UserRole []ent.Interceptor
 	}
 )

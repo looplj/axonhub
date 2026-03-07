@@ -75,19 +75,21 @@ type AgentBootstrap struct {
 }
 
 type AgentMessageView struct {
-	ID              int
-	AgentID         int
-	AgentInstanceID int
-	Direction       agentmessage.Direction
-	SenderType      agentmessage.SenderType
-	SenderID        *int
-	Type            agentmessage.Type
-	CorrelationID   string
-	Content         objects.JSONRawMessage
-	Text            string
-	Sequence        int64
-	Status          agentmessage.Status
-	CreatedAt       time.Time
+	ID                int
+	AgentID           int
+	AgentInstanceID   int
+	Direction         agentmessage.Direction
+	SenderType        agentmessage.SenderType
+	SenderID          *int
+	Type              agentmessage.Type
+	CorrelationID     string
+	Content           objects.JSONRawMessage
+	Text              string
+	Sequence          int64
+	Status            agentmessage.Status
+	CreatedAt         time.Time
+	ExternalMessageID *string
+	ReplyToMessageID  *int
 }
 
 type RegisterAgentInstanceInput struct {
@@ -123,10 +125,11 @@ type SendAgentMessageInput struct {
 }
 
 type PushAgentMessageInput struct {
-	Text          string
-	Content       *objects.JSONRawMessage
-	Type          *agentmessage.Type
-	CorrelationID *string
+	Text             string
+	Content          *objects.JSONRawMessage
+	Type             *agentmessage.Type
+	CorrelationID    *string
+	ReplyToMessageID *int
 }
 
 type PullAgentMessagesInput struct {
@@ -389,19 +392,21 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 		}
 
 		return &AgentMessageView{
-			ID:              msg.ID,
-			AgentID:         a.ID,
-			AgentInstanceID: inst.ID,
-			Direction:       msg.Direction,
-			SenderType:      msg.SenderType,
-			SenderID:        new(userID),
-			Type:            msg.Type,
-			CorrelationID:   msg.CorrelationID,
-			Content:         msg.Content,
-			Text:            input.Text,
-			Sequence:        msg.Sequence,
-			Status:          msg.Status,
-			CreatedAt:       msg.CreatedAt,
+			ID:                msg.ID,
+			AgentID:           a.ID,
+			AgentInstanceID:   inst.ID,
+			Direction:         msg.Direction,
+			SenderType:        msg.SenderType,
+			SenderID:          new(userID),
+			Type:              msg.Type,
+			CorrelationID:     msg.CorrelationID,
+			Content:           msg.Content,
+			Text:              input.Text,
+			Sequence:          msg.Sequence,
+			Status:            msg.Status,
+			CreatedAt:         msg.CreatedAt,
+			ExternalMessageID: msg.ExternalMessageID,
+			ReplyToMessageID:  msg.ReplyToMessageID,
 		}, nil
 	})
 }
@@ -438,7 +443,6 @@ func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Conte
 				agentmessage.AgentIDEQ(a.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
-				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
 			Limit(limit).
@@ -462,19 +466,21 @@ func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Conte
 			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:              m.ID,
-				AgentID:         a.ID,
-				AgentInstanceID: m.AgentInstanceID,
-				Direction:       m.Direction,
-				SenderType:      m.SenderType,
-				SenderID:        m.SenderID,
-				Type:            m.Type,
-				CorrelationID:   m.CorrelationID,
-				Content:         m.Content,
-				Text:            text,
-				Sequence:        m.Sequence,
-				Status:          m.Status,
-				CreatedAt:       m.CreatedAt,
+				ID:                m.ID,
+				AgentID:           a.ID,
+				AgentInstanceID:   m.AgentInstanceID,
+				Direction:         m.Direction,
+				SenderType:        m.SenderType,
+				SenderID:          m.SenderID,
+				Type:              m.Type,
+				CorrelationID:     m.CorrelationID,
+				Content:           m.Content,
+				Text:              text,
+				Sequence:          m.Sequence,
+				Status:            m.Status,
+				CreatedAt:         m.CreatedAt,
+				ExternalMessageID: m.ExternalMessageID,
+				ReplyToMessageID:  m.ReplyToMessageID,
 			})
 		}
 
@@ -516,7 +522,6 @@ func (s *AgentBootstrapService) PullAgentApprovalRequestsAsAdmin(ctx context.Con
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
 				agentmessage.TypeEQ(agentmessage.TypeApprovalRequest),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
-				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
 			Limit(limit).
@@ -583,7 +588,6 @@ func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, ag
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
-				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
 			Limit(limit).
@@ -607,19 +611,21 @@ func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, ag
 			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:              m.ID,
-				AgentID:         a.ID,
-				AgentInstanceID: m.AgentInstanceID,
-				Direction:       m.Direction,
-				SenderType:      m.SenderType,
-				SenderID:        m.SenderID,
-				Type:            m.Type,
-				CorrelationID:   m.CorrelationID,
-				Content:         m.Content,
-				Text:            text,
-				Sequence:        m.Sequence,
-				Status:          m.Status,
-				CreatedAt:       m.CreatedAt,
+				ID:                m.ID,
+				AgentID:           a.ID,
+				AgentInstanceID:   m.AgentInstanceID,
+				Direction:         m.Direction,
+				SenderType:        m.SenderType,
+				SenderID:          m.SenderID,
+				Type:              m.Type,
+				CorrelationID:     m.CorrelationID,
+				Content:           m.Content,
+				Text:              text,
+				Sequence:          m.Sequence,
+				Status:            m.Status,
+				CreatedAt:         m.CreatedAt,
+				ExternalMessageID: m.ExternalMessageID,
+				ReplyToMessageID:  m.ReplyToMessageID,
 			})
 		}
 
@@ -755,7 +761,6 @@ func (s *AgentBootstrapService) ResolveApprovalAsUser(ctx context.Context, userI
 				agentmessage.TypeEQ(agentmessage.TypeApprovalRequest),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 				agentmessage.CorrelationIDEQ(input.RequestID),
-				agentmessage.DeletedAtEQ(0),
 			).
 			SetStatus(agentmessage.StatusAcked).
 			Save(bypassCtx)
@@ -1168,17 +1173,19 @@ func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendP
 		}
 
 		return &AgentMessageView{
-			ID:            msg.ID,
-			AgentID:       targetAgent.ID,
-			Direction:     msg.Direction,
-			SenderType:    msg.SenderType,
-			Type:          msg.Type,
-			CorrelationID: msg.CorrelationID,
-			Content:       msg.Content,
-			Text:          viewText,
-			Sequence:      msg.Sequence,
-			Status:        msg.Status,
-			CreatedAt:     msg.CreatedAt,
+			ID:                msg.ID,
+			AgentID:           targetAgent.ID,
+			Direction:         msg.Direction,
+			SenderType:        msg.SenderType,
+			Type:              msg.Type,
+			CorrelationID:     msg.CorrelationID,
+			Content:           msg.Content,
+			Text:              viewText,
+			Sequence:          msg.Sequence,
+			Status:            msg.Status,
+			CreatedAt:         msg.CreatedAt,
+			ExternalMessageID: msg.ExternalMessageID,
+			ReplyToMessageID:  msg.ReplyToMessageID,
 		}, nil
 	})
 }
@@ -1194,7 +1201,7 @@ func (s *AgentBootstrapService) PushAgentMessage(ctx context.Context, inst *ent.
 		corr = *input.CorrelationID
 	}
 
-	return s.createMessage(ctx, inst, input.Text, input.Content, agentmessage.DirectionToUser, agentmessage.SenderTypeAgent, msgType, corr)
+	return s.createMessage(ctx, inst, input.Text, input.Content, agentmessage.DirectionToUser, agentmessage.SenderTypeAgent, msgType, corr, input.ReplyToMessageID)
 }
 
 func (s *AgentBootstrapService) createMessage(
@@ -1206,6 +1213,7 @@ func (s *AgentBootstrapService) createMessage(
 	senderType agentmessage.SenderType,
 	msgType agentmessage.Type,
 	correlationID string,
+	replyToMessageID *int,
 ) (*AgentMessageView, error) {
 	return authz.RunWithSystemBypass(ctx, "agent-runtime-create-message", func(bypassCtx context.Context) (*AgentMessageView, error) {
 		client := s.entFromContext(bypassCtx)
@@ -1254,6 +1262,7 @@ func (s *AgentBootstrapService) createMessage(
 				SetContent(raw).
 				SetStatus(agentmessage.StatusPending).
 				SetSequence(nextSeq).
+				SetNillableReplyToMessageID(replyToMessageID).
 				Save(bypassCtx)
 			if err == nil {
 				msg = created
@@ -1276,18 +1285,20 @@ func (s *AgentBootstrapService) createMessage(
 		}
 
 		return &AgentMessageView{
-			ID:            msg.ID,
-			AgentID:       a.ID,
-			Direction:     msg.Direction,
-			SenderType:    msg.SenderType,
-			SenderID:      senderID,
-			Type:          msg.Type,
-			CorrelationID: msg.CorrelationID,
-			Content:       msg.Content,
-			Text:          viewText,
-			Sequence:      msg.Sequence,
-			Status:        msg.Status,
-			CreatedAt:     msg.CreatedAt,
+			ID:                msg.ID,
+			AgentID:           a.ID,
+			Direction:         msg.Direction,
+			SenderType:        msg.SenderType,
+			SenderID:          senderID,
+			Type:              msg.Type,
+			CorrelationID:     msg.CorrelationID,
+			Content:           msg.Content,
+			Text:              viewText,
+			Sequence:          msg.Sequence,
+			Status:            msg.Status,
+			CreatedAt:         msg.CreatedAt,
+			ExternalMessageID: msg.ExternalMessageID,
+			ReplyToMessageID:  msg.ReplyToMessageID,
 		}, nil
 	})
 }
@@ -1339,7 +1350,6 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent
 				agentmessage.AgentIDEQ(a.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToAgent),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
-				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
 			Limit(limit).
@@ -1366,18 +1376,20 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent
 			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:            m.ID,
-				AgentID:       a.ID,
-				Direction:     m.Direction,
-				SenderType:    m.SenderType,
-				SenderID:      m.SenderID,
-				Type:          m.Type,
-				CorrelationID: m.CorrelationID,
-				Content:       m.Content,
-				Text:          text,
-				Sequence:      m.Sequence,
-				Status:        m.Status,
-				CreatedAt:     m.CreatedAt,
+				ID:                m.ID,
+				AgentID:           a.ID,
+				Direction:         m.Direction,
+				SenderType:        m.SenderType,
+				SenderID:          m.SenderID,
+				Type:              m.Type,
+				CorrelationID:     m.CorrelationID,
+				Content:           m.Content,
+				Text:              text,
+				Sequence:          m.Sequence,
+				Status:            m.Status,
+				CreatedAt:         m.CreatedAt,
+				ExternalMessageID: m.ExternalMessageID,
+				ReplyToMessageID:  m.ReplyToMessageID,
 			})
 		}
 
@@ -1413,7 +1425,6 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, ins
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
 				agentmessage.TypeEQ(agentmessage.TypeChat),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
-				agentmessage.DeletedAtEQ(0),
 			).
 			Order(agentmessage.BySequence()).
 			Limit(limit)
@@ -1432,18 +1443,19 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, ins
 			text := extractTextFromMessageContent(m.Content)
 
 			out = append(out, &AgentMessageView{
-				ID:            m.ID,
-				AgentID:       a.ID,
-				Direction:     m.Direction,
-				SenderType:    m.SenderType,
-				SenderID:      m.SenderID,
-				Type:          m.Type,
-				CorrelationID: m.CorrelationID,
-				Content:       m.Content,
-				Text:          text,
-				Sequence:      m.Sequence,
-				Status:        m.Status,
-				CreatedAt:     m.CreatedAt,
+				ID:                m.ID,
+				AgentID:           a.ID,
+				Direction:         m.Direction,
+				SenderType:        m.SenderType,
+				SenderID:          m.SenderID,
+				Type:              m.Type,
+				CorrelationID:     m.CorrelationID,
+				Content:           m.Content,
+				Text:              text,
+				Sequence:          m.Sequence,
+				Status:            m.Status,
+				CreatedAt:         m.CreatedAt,
+				ExternalMessageID: m.ExternalMessageID,
 			})
 		}
 
@@ -1465,7 +1477,6 @@ func (s *AgentBootstrapService) AckAgentMessages(ctx context.Context, inst *ent.
 				agentmessage.AgentIDEQ(inst.AgentID),
 				agentmessage.ProjectIDEQ(inst.ProjectID),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
-				agentmessage.DeletedAtEQ(0),
 			).
 			SetStatus(agentmessage.StatusAcked).
 			Save(bypassCtx)
@@ -1529,7 +1540,6 @@ func (s *AgentBootstrapService) AckAgentMessagesAsUser(ctx context.Context, user
 				agentmessage.AgentIDEQ(a.ID),
 				agentmessage.ProjectIDEQ(projectID),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
-				agentmessage.DeletedAtEQ(0),
 			)
 
 		if input.AgentInstanceID != nil {

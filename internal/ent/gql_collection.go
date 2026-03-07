@@ -25,6 +25,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -1399,6 +1402,95 @@ func (_q *AgentInstanceQuery) collectField(ctx context.Context, oneNode bool, op
 			_q.WithNamedMessages(alias, func(wq *AgentMessageQuery) {
 				*wq = *query
 			})
+
+		case "messageChannelBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&MessageChannelAgentInstanceClient{config: _q.config}).Query()
+			)
+			args := newMessageChannelAgentInstancePaginateArgs(fieldArgs(ctx, new(MessageChannelAgentInstanceWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newMessageChannelAgentInstancePager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*AgentInstance) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"agent_instance_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(agentinstance.MessageChannelBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(agentinstance.MessageChannelBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*AgentInstance) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.MessageChannelBindings)
+							if nodes[i].Edges.totalCount[4] == nil {
+								nodes[i].Edges.totalCount[4] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[4][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, messagechannelagentinstanceImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(agentinstance.MessageChannelBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedMessageChannelBindings(alias, func(wq *MessageChannelAgentInstanceQuery) {
+				*wq = *query
+			})
 		case "createdAt":
 			if _, ok := fieldSeen[agentinstance.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, agentinstance.FieldCreatedAt)
@@ -1707,6 +1799,21 @@ func (_q *AgentMessageQuery) collectField(ctx context.Context, oneNode bool, opC
 				selectedFields = append(selectedFields, agentmessage.FieldAgentInstanceID)
 				fieldSeen[agentmessage.FieldAgentInstanceID] = struct{}{}
 			}
+
+		case "messageChannel":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&MessageChannelClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, messagechannelImplementors)...); err != nil {
+				return err
+			}
+			_q.withMessageChannel = query
+			if _, ok := fieldSeen[agentmessage.FieldSenderID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldSenderID)
+				fieldSeen[agentmessage.FieldSenderID] = struct{}{}
+			}
 		case "createdAt":
 			if _, ok := fieldSeen[agentmessage.FieldCreatedAt]; !ok {
 				selectedFields = append(selectedFields, agentmessage.FieldCreatedAt)
@@ -1776,6 +1883,16 @@ func (_q *AgentMessageQuery) collectField(ctx context.Context, oneNode bool, opC
 			if _, ok := fieldSeen[agentmessage.FieldExpiresAt]; !ok {
 				selectedFields = append(selectedFields, agentmessage.FieldExpiresAt)
 				fieldSeen[agentmessage.FieldExpiresAt] = struct{}{}
+			}
+		case "externalMessageID":
+			if _, ok := fieldSeen[agentmessage.FieldExternalMessageID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldExternalMessageID)
+				fieldSeen[agentmessage.FieldExternalMessageID] = struct{}{}
+			}
+		case "replyToMessageID":
+			if _, ok := fieldSeen[agentmessage.FieldReplyToMessageID]; !ok {
+				selectedFields = append(selectedFields, agentmessage.FieldReplyToMessageID)
+				fieldSeen[agentmessage.FieldReplyToMessageID] = struct{}{}
 			}
 		case "id":
 		case "__typename":
@@ -3635,6 +3752,591 @@ func newDataStoragePaginateArgs(rv map[string]any) *datastoragePaginateArgs {
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *MessageChannelQuery) CollectFields(ctx context.Context, satisfies ...string) (*MessageChannelQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *MessageChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(messagechannel.Columns))
+		selectedFields = []string{messagechannel.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "project":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ProjectClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, projectImplementors)...); err != nil {
+				return err
+			}
+			_q.withProject = query
+			if _, ok := fieldSeen[messagechannel.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldProjectID)
+				fieldSeen[messagechannel.FieldProjectID] = struct{}{}
+			}
+
+		case "agentInstanceBindings":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&MessageChannelAgentInstanceClient{config: _q.config}).Query()
+			)
+			args := newMessageChannelAgentInstancePaginateArgs(fieldArgs(ctx, new(MessageChannelAgentInstanceWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newMessageChannelAgentInstancePager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*MessageChannel) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"message_channel_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(messagechannel.AgentInstanceBindingsColumn), ids...))
+						})
+						if err := query.GroupBy(messagechannel.AgentInstanceBindingsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[1] == nil {
+								nodes[i].Edges.totalCount[1] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[1][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*MessageChannel) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.AgentInstanceBindings)
+							if nodes[i].Edges.totalCount[1] == nil {
+								nodes[i].Edges.totalCount[1] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[1][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, messagechannelagentinstanceImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(messagechannel.AgentInstanceBindingsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedAgentInstanceBindings(alias, func(wq *MessageChannelAgentInstanceQuery) {
+				*wq = *query
+			})
+
+		case "messages":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentMessageClient{config: _q.config}).Query()
+			)
+			args := newAgentMessagePaginateArgs(fieldArgs(ctx, new(AgentMessageWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newAgentMessagePager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*MessageChannel) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"sender_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(messagechannel.MessagesColumn), ids...))
+						})
+						if err := query.GroupBy(messagechannel.MessagesColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*MessageChannel) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.Messages)
+							if nodes[i].Edges.totalCount[2] == nil {
+								nodes[i].Edges.totalCount[2] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[2][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, agentmessageImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(messagechannel.MessagesColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedMessages(alias, func(wq *AgentMessageQuery) {
+				*wq = *query
+			})
+		case "createdAt":
+			if _, ok := fieldSeen[messagechannel.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldCreatedAt)
+				fieldSeen[messagechannel.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[messagechannel.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldUpdatedAt)
+				fieldSeen[messagechannel.FieldUpdatedAt] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[messagechannel.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldProjectID)
+				fieldSeen[messagechannel.FieldProjectID] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[messagechannel.FieldName]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldName)
+				fieldSeen[messagechannel.FieldName] = struct{}{}
+			}
+		case "description":
+			if _, ok := fieldSeen[messagechannel.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldDescription)
+				fieldSeen[messagechannel.FieldDescription] = struct{}{}
+			}
+		case "type":
+			if _, ok := fieldSeen[messagechannel.FieldType]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldType)
+				fieldSeen[messagechannel.FieldType] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[messagechannel.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldStatus)
+				fieldSeen[messagechannel.FieldStatus] = struct{}{}
+			}
+		case "settings":
+			if _, ok := fieldSeen[messagechannel.FieldSettings]; !ok {
+				selectedFields = append(selectedFields, messagechannel.FieldSettings)
+				fieldSeen[messagechannel.FieldSettings] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type messagechannelPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []MessageChannelPaginateOption
+}
+
+func newMessageChannelPaginateArgs(rv map[string]any) *messagechannelPaginateArgs {
+	args := &messagechannelPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &MessageChannelOrder{Field: &MessageChannelOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithMessageChannelOrder(order))
+			}
+		case *MessageChannelOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithMessageChannelOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*MessageChannelWhereInput); ok {
+		args.opts = append(args.opts, WithMessageChannelFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *MessageChannelAgentInstanceQuery) CollectFields(ctx context.Context, satisfies ...string) (*MessageChannelAgentInstanceQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *MessageChannelAgentInstanceQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(messagechannelagentinstance.Columns))
+		selectedFields = []string{messagechannelagentinstance.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "messageChannel":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&MessageChannelClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, messagechannelImplementors)...); err != nil {
+				return err
+			}
+			_q.withMessageChannel = query
+			if _, ok := fieldSeen[messagechannelagentinstance.FieldMessageChannelID]; !ok {
+				selectedFields = append(selectedFields, messagechannelagentinstance.FieldMessageChannelID)
+				fieldSeen[messagechannelagentinstance.FieldMessageChannelID] = struct{}{}
+			}
+
+		case "agentInstance":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AgentInstanceClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, agentinstanceImplementors)...); err != nil {
+				return err
+			}
+			_q.withAgentInstance = query
+			if _, ok := fieldSeen[messagechannelagentinstance.FieldAgentInstanceID]; !ok {
+				selectedFields = append(selectedFields, messagechannelagentinstance.FieldAgentInstanceID)
+				fieldSeen[messagechannelagentinstance.FieldAgentInstanceID] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[messagechannelagentinstance.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, messagechannelagentinstance.FieldCreatedAt)
+				fieldSeen[messagechannelagentinstance.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[messagechannelagentinstance.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, messagechannelagentinstance.FieldUpdatedAt)
+				fieldSeen[messagechannelagentinstance.FieldUpdatedAt] = struct{}{}
+			}
+		case "messageChannelID":
+			if _, ok := fieldSeen[messagechannelagentinstance.FieldMessageChannelID]; !ok {
+				selectedFields = append(selectedFields, messagechannelagentinstance.FieldMessageChannelID)
+				fieldSeen[messagechannelagentinstance.FieldMessageChannelID] = struct{}{}
+			}
+		case "agentInstanceID":
+			if _, ok := fieldSeen[messagechannelagentinstance.FieldAgentInstanceID]; !ok {
+				selectedFields = append(selectedFields, messagechannelagentinstance.FieldAgentInstanceID)
+				fieldSeen[messagechannelagentinstance.FieldAgentInstanceID] = struct{}{}
+			}
+		case "enabled":
+			if _, ok := fieldSeen[messagechannelagentinstance.FieldEnabled]; !ok {
+				selectedFields = append(selectedFields, messagechannelagentinstance.FieldEnabled)
+				fieldSeen[messagechannelagentinstance.FieldEnabled] = struct{}{}
+			}
+		case "config":
+			if _, ok := fieldSeen[messagechannelagentinstance.FieldConfig]; !ok {
+				selectedFields = append(selectedFields, messagechannelagentinstance.FieldConfig)
+				fieldSeen[messagechannelagentinstance.FieldConfig] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type messagechannelagentinstancePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []MessageChannelAgentInstancePaginateOption
+}
+
+func newMessageChannelAgentInstancePaginateArgs(rv map[string]any) *messagechannelagentinstancePaginateArgs {
+	args := &messagechannelagentinstancePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &MessageChannelAgentInstanceOrder{Field: &MessageChannelAgentInstanceOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithMessageChannelAgentInstanceOrder(order))
+			}
+		case *MessageChannelAgentInstanceOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithMessageChannelAgentInstanceOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*MessageChannelAgentInstanceWhereInput); ok {
+		args.opts = append(args.opts, WithMessageChannelAgentInstanceFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *MessageChannelBindingRequestQuery) CollectFields(ctx context.Context, satisfies ...string) (*MessageChannelBindingRequestQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *MessageChannelBindingRequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(messagechannelbindingrequest.Columns))
+		selectedFields = []string{messagechannelbindingrequest.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "createdAt":
+			if _, ok := fieldSeen[messagechannelbindingrequest.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, messagechannelbindingrequest.FieldCreatedAt)
+				fieldSeen[messagechannelbindingrequest.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[messagechannelbindingrequest.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, messagechannelbindingrequest.FieldUpdatedAt)
+				fieldSeen[messagechannelbindingrequest.FieldUpdatedAt] = struct{}{}
+			}
+		case "messageChannelID":
+			if _, ok := fieldSeen[messagechannelbindingrequest.FieldMessageChannelID]; !ok {
+				selectedFields = append(selectedFields, messagechannelbindingrequest.FieldMessageChannelID)
+				fieldSeen[messagechannelbindingrequest.FieldMessageChannelID] = struct{}{}
+			}
+		case "agentInstanceID":
+			if _, ok := fieldSeen[messagechannelbindingrequest.FieldAgentInstanceID]; !ok {
+				selectedFields = append(selectedFields, messagechannelbindingrequest.FieldAgentInstanceID)
+				fieldSeen[messagechannelbindingrequest.FieldAgentInstanceID] = struct{}{}
+			}
+		case "type":
+			if _, ok := fieldSeen[messagechannelbindingrequest.FieldType]; !ok {
+				selectedFields = append(selectedFields, messagechannelbindingrequest.FieldType)
+				fieldSeen[messagechannelbindingrequest.FieldType] = struct{}{}
+			}
+		case "pairCode":
+			if _, ok := fieldSeen[messagechannelbindingrequest.FieldPairCode]; !ok {
+				selectedFields = append(selectedFields, messagechannelbindingrequest.FieldPairCode)
+				fieldSeen[messagechannelbindingrequest.FieldPairCode] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[messagechannelbindingrequest.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, messagechannelbindingrequest.FieldStatus)
+				fieldSeen[messagechannelbindingrequest.FieldStatus] = struct{}{}
+			}
+		case "expiresAt":
+			if _, ok := fieldSeen[messagechannelbindingrequest.FieldExpiresAt]; !ok {
+				selectedFields = append(selectedFields, messagechannelbindingrequest.FieldExpiresAt)
+				fieldSeen[messagechannelbindingrequest.FieldExpiresAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type messagechannelbindingrequestPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []MessageChannelBindingRequestPaginateOption
+}
+
+func newMessageChannelBindingRequestPaginateArgs(rv map[string]any) *messagechannelbindingrequestPaginateArgs {
+	args := &messagechannelbindingrequestPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &MessageChannelBindingRequestOrder{Field: &MessageChannelBindingRequestOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithMessageChannelBindingRequestOrder(order))
+			}
+		case *MessageChannelBindingRequestOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithMessageChannelBindingRequestOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*MessageChannelBindingRequestWhereInput); ok {
+		args.opts = append(args.opts, WithMessageChannelBindingRequestFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (_q *ModelQuery) CollectFields(ctx context.Context, satisfies ...string) (*ModelQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
@@ -5054,6 +5756,95 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				*wq = *query
 			})
 
+		case "messageChannels":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&MessageChannelClient{config: _q.config}).Query()
+			)
+			args := newMessageChannelPaginateArgs(fieldArgs(ctx, new(MessageChannelWhereInput), path...))
+			if err := validateFirstLast(args.first, args.last); err != nil {
+				return fmt.Errorf("validate first and last in path %q: %w", path, err)
+			}
+			pager, err := newMessageChannelPager(args.opts, args.last != nil)
+			if err != nil {
+				return fmt.Errorf("create new pager in path %q: %w", path, err)
+			}
+			if query, err = pager.applyFilter(query); err != nil {
+				return err
+			}
+			ignoredEdges := !hasCollectedField(ctx, append(path, edgesField)...)
+			if hasCollectedField(ctx, append(path, totalCountField)...) || hasCollectedField(ctx, append(path, pageInfoField)...) {
+				hasPagination := args.after != nil || args.first != nil || args.before != nil || args.last != nil
+				if hasPagination || ignoredEdges {
+					query := query.Clone()
+					_q.loadTotal = append(_q.loadTotal, func(ctx context.Context, nodes []*Project) error {
+						ids := make([]driver.Value, len(nodes))
+						for i := range nodes {
+							ids[i] = nodes[i].ID
+						}
+						var v []struct {
+							NodeID int `sql:"project_id"`
+							Count  int `sql:"count"`
+						}
+						query.Where(func(s *sql.Selector) {
+							s.Where(sql.InValues(s.C(project.MessageChannelsColumn), ids...))
+						})
+						if err := query.GroupBy(project.MessageChannelsColumn).Aggregate(Count()).Scan(ctx, &v); err != nil {
+							return err
+						}
+						m := make(map[int]int, len(v))
+						for i := range v {
+							m[v[i].NodeID] = v[i].Count
+						}
+						for i := range nodes {
+							n := m[nodes[i].ID]
+							if nodes[i].Edges.totalCount[14] == nil {
+								nodes[i].Edges.totalCount[14] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[14][alias] = n
+						}
+						return nil
+					})
+				} else {
+					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
+						for i := range nodes {
+							n := len(nodes[i].Edges.MessageChannels)
+							if nodes[i].Edges.totalCount[14] == nil {
+								nodes[i].Edges.totalCount[14] = make(map[string]int)
+							}
+							nodes[i].Edges.totalCount[14][alias] = n
+						}
+						return nil
+					})
+				}
+			}
+			if ignoredEdges || (args.first != nil && *args.first == 0) || (args.last != nil && *args.last == 0) {
+				continue
+			}
+			if query, err = pager.applyCursors(query, args.after, args.before); err != nil {
+				return err
+			}
+			path = append(path, edgesField, nodeField)
+			if field := collectedField(ctx, path...); field != nil {
+				if err := query.collectField(ctx, false, opCtx, *field, path, mayAddCondition(satisfies, messagechannelImplementors)...); err != nil {
+					return err
+				}
+			}
+			if limit := paginateLimit(args.first, args.last); limit > 0 {
+				if oneNode {
+					pager.applyOrder(query.Limit(limit))
+				} else {
+					modify := entgql.LimitPerRow(project.MessageChannelsColumn, limit, pager.orderExpr(query))
+					query.modifiers = append(query.modifiers, modify)
+				}
+			} else {
+				query = pager.applyOrder(query)
+			}
+			_q.WithNamedMessageChannels(alias, func(wq *MessageChannelQuery) {
+				*wq = *query
+			})
+
 		case "projectUsers":
 			var (
 				alias = field.Alias
@@ -5097,10 +5888,10 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 						}
 						for i := range nodes {
 							n := m[nodes[i].ID]
-							if nodes[i].Edges.totalCount[14] == nil {
-								nodes[i].Edges.totalCount[14] = make(map[string]int)
+							if nodes[i].Edges.totalCount[15] == nil {
+								nodes[i].Edges.totalCount[15] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[14][alias] = n
+							nodes[i].Edges.totalCount[15][alias] = n
 						}
 						return nil
 					})
@@ -5108,10 +5899,10 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 					_q.loadTotal = append(_q.loadTotal, func(_ context.Context, nodes []*Project) error {
 						for i := range nodes {
 							n := len(nodes[i].Edges.ProjectUsers)
-							if nodes[i].Edges.totalCount[14] == nil {
-								nodes[i].Edges.totalCount[14] = make(map[string]int)
+							if nodes[i].Edges.totalCount[15] == nil {
+								nodes[i].Edges.totalCount[15] = make(map[string]int)
 							}
-							nodes[i].Edges.totalCount[14][alias] = n
+							nodes[i].Edges.totalCount[15][alias] = n
 						}
 						return nil
 					})

@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -219,6 +220,21 @@ func (_c *AgentInstanceCreate) AddMessages(v ...*AgentMessage) *AgentInstanceCre
 		ids[i] = v[i].ID
 	}
 	return _c.AddMessageIDs(ids...)
+}
+
+// AddMessageChannelBindingIDs adds the "message_channel_bindings" edge to the MessageChannelAgentInstance entity by IDs.
+func (_c *AgentInstanceCreate) AddMessageChannelBindingIDs(ids ...int) *AgentInstanceCreate {
+	_c.mutation.AddMessageChannelBindingIDs(ids...)
+	return _c
+}
+
+// AddMessageChannelBindings adds the "message_channel_bindings" edges to the MessageChannelAgentInstance entity.
+func (_c *AgentInstanceCreate) AddMessageChannelBindings(v ...*MessageChannelAgentInstance) *AgentInstanceCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMessageChannelBindingIDs(ids...)
 }
 
 // Mutation returns the AgentInstanceMutation object of the builder.
@@ -468,6 +484,22 @@ func (_c *AgentInstanceCreate) createSpec() (*AgentInstance, *sqlgraph.CreateSpe
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(agentmessage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.MessageChannelBindingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   agentinstance.MessageChannelBindingsTable,
+			Columns: []string{agentinstance.MessageChannelBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannelagentinstance.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

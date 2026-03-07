@@ -29,6 +29,7 @@ query PullAgentMessages($input: PullAgentMessagesInput!) {
     type
     correlationID
     content
+    externalMessageID
     sequence
   }
 }

@@ -79,3 +79,4 @@ All detailed rules are in `.agent/rules/`:
 | [e2e.md](.agent/rules/e2e.md) | `frontend/tests/**/*.ts` | E2E testing rules |
 | [docs.md](.agent/rules/docs.md) | `docs/**/*.md` | Documentation rules |
 | [workflows/add-channel.md](.agent/rules/workflows/add-channel.md) | Manual | Workflow for adding a new channel |
+| [workflows/add-page.md](.agent/rules/workflows/add-page.md) | Manual | Workflow for adding a new page with routing, permissions, and sidebar |

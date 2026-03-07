@@ -30,6 +30,18 @@ var Module = fx.Module("biz",
 	fx.Provide(NewAgentDeployService),
 	fx.Provide(NewQuotaService),
 	fx.Provide(NewProviderQuotaService),
+	fx.Provide(NewMessageChannelService),
+	fx.Provide(NewMessageGateway),
+	fx.Invoke(func(lc fx.Lifecycle, svc *MessageGateway) {
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return svc.Start(ctx)
+			},
+			OnStop: func(ctx context.Context) error {
+				return svc.Stop(ctx)
+			},
+		})
+	}),
 	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {

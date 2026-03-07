@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -25,8 +26,6 @@ type AgentMessage struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
-	// DeletedAt holds the value of the "deleted_at" field.
-	DeletedAt int `json:"deleted_at,omitempty"`
 	// ProjectID holds the value of the "project_id" field.
 	ProjectID int `json:"project_id,omitempty"`
 	// AgentID holds the value of the "agent_id" field.
@@ -37,7 +36,7 @@ type AgentMessage struct {
 	Direction agentmessage.Direction `json:"direction,omitempty"`
 	// Message sender type
 	SenderType agentmessage.SenderType `json:"sender_type,omitempty"`
-	// Sender ID, user_id or agent_instance_id
+	// Sender ID, user_id or agent_instance_id or message_channel_id
 	SenderID *int `json:"sender_id,omitempty"`
 	// Message type for operator/runtime routing
 	Type agentmessage.Type `json:"type,omitempty"`
@@ -51,6 +50,10 @@ type AgentMessage struct {
 	Sequence int64 `json:"sequence,omitempty"`
 	// ExpiresAt holds the value of the "expires_at" field.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	// External platform message ID (e.g., feishu message_id) for inbound message tracking
+	ExternalMessageID *string `json:"external_message_id,omitempty"`
+	// The agent message id that this message replies to
+	ReplyToMessageID *int `json:"reply_to_message_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AgentMessageQuery when eager-loading is set.
 	Edges        AgentMessageEdges `json:"edges"`
@@ -63,11 +66,13 @@ type AgentMessageEdges struct {
 	Agent *Agent `json:"agent,omitempty"`
 	// AgentInstance holds the value of the agent_instance edge.
 	AgentInstance *AgentInstance `json:"agent_instance,omitempty"`
+	// MessageChannel holds the value of the message_channel edge.
+	MessageChannel *MessageChannel `json:"message_channel,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 	// totalCount holds the count of the edges above.
-	totalCount [2]map[string]int
+	totalCount [3]map[string]int
 }
 
 // AgentOrErr returns the Agent value or an error if the edge
@@ -92,6 +97,17 @@ func (e AgentMessageEdges) AgentInstanceOrErr() (*AgentInstance, error) {
 	return nil, &NotLoadedError{edge: "agent_instance"}
 }
 
+// MessageChannelOrErr returns the MessageChannel value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e AgentMessageEdges) MessageChannelOrErr() (*MessageChannel, error) {
+	if e.MessageChannel != nil {
+		return e.MessageChannel, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: messagechannel.Label}
+	}
+	return nil, &NotLoadedError{edge: "message_channel"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*AgentMessage) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -99,9 +115,9 @@ func (*AgentMessage) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case agentmessage.FieldContent:
 			values[i] = new([]byte)
-		case agentmessage.FieldID, agentmessage.FieldDeletedAt, agentmessage.FieldProjectID, agentmessage.FieldAgentID, agentmessage.FieldAgentInstanceID, agentmessage.FieldSenderID, agentmessage.FieldSequence:
+		case agentmessage.FieldID, agentmessage.FieldProjectID, agentmessage.FieldAgentID, agentmessage.FieldAgentInstanceID, agentmessage.FieldSenderID, agentmessage.FieldSequence, agentmessage.FieldReplyToMessageID:
 			values[i] = new(sql.NullInt64)
-		case agentmessage.FieldDirection, agentmessage.FieldSenderType, agentmessage.FieldType, agentmessage.FieldCorrelationID, agentmessage.FieldStatus:
+		case agentmessage.FieldDirection, agentmessage.FieldSenderType, agentmessage.FieldType, agentmessage.FieldCorrelationID, agentmessage.FieldStatus, agentmessage.FieldExternalMessageID:
 			values[i] = new(sql.NullString)
 		case agentmessage.FieldCreatedAt, agentmessage.FieldUpdatedAt, agentmessage.FieldExpiresAt:
 			values[i] = new(sql.NullTime)
@@ -137,12 +153,6 @@ func (_m *AgentMessage) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
-			}
-		case agentmessage.FieldDeletedAt:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
-			} else if value.Valid {
-				_m.DeletedAt = int(value.Int64)
 			}
 		case agentmessage.FieldProjectID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -220,6 +230,20 @@ func (_m *AgentMessage) assignValues(columns []string, values []any) error {
 				_m.ExpiresAt = new(time.Time)
 				*_m.ExpiresAt = value.Time
 			}
+		case agentmessage.FieldExternalMessageID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field external_message_id", values[i])
+			} else if value.Valid {
+				_m.ExternalMessageID = new(string)
+				*_m.ExternalMessageID = value.String
+			}
+		case agentmessage.FieldReplyToMessageID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field reply_to_message_id", values[i])
+			} else if value.Valid {
+				_m.ReplyToMessageID = new(int)
+				*_m.ReplyToMessageID = int(value.Int64)
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -241,6 +265,11 @@ func (_m *AgentMessage) QueryAgent() *AgentQuery {
 // QueryAgentInstance queries the "agent_instance" edge of the AgentMessage entity.
 func (_m *AgentMessage) QueryAgentInstance() *AgentInstanceQuery {
 	return NewAgentMessageClient(_m.config).QueryAgentInstance(_m)
+}
+
+// QueryMessageChannel queries the "message_channel" edge of the AgentMessage entity.
+func (_m *AgentMessage) QueryMessageChannel() *MessageChannelQuery {
+	return NewAgentMessageClient(_m.config).QueryMessageChannel(_m)
 }
 
 // Update returns a builder for updating this AgentMessage.
@@ -271,9 +300,6 @@ func (_m *AgentMessage) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("deleted_at=")
-	builder.WriteString(fmt.Sprintf("%v", _m.DeletedAt))
 	builder.WriteString(", ")
 	builder.WriteString("project_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
@@ -313,6 +339,16 @@ func (_m *AgentMessage) String() string {
 	if v := _m.ExpiresAt; v != nil {
 		builder.WriteString("expires_at=")
 		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.ExternalMessageID; v != nil {
+		builder.WriteString("external_message_id=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ReplyToMessageID; v != nil {
+		builder.WriteString("reply_to_message_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteByte(')')
 	return builder.String()

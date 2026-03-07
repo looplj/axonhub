@@ -101,6 +101,7 @@ input ReplyMessageInput {
   content: JSONRawMessageInput
   type: AgentMessageType = chat
   correlationID: String = ""
+  replyToMessageID: ID
 }
 
 type AgentMessage {
@@ -112,6 +113,8 @@ type AgentMessage {
   content: JSONRawMessage!
   type: AgentMessageType!
   correlationID: String!
+  externalMessageID: String
+  replyToMessageID: ID
   sequence: Int!
   status: AgentMessageStatus!
   createdAt: Time!

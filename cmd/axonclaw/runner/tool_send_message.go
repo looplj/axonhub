@@ -26,6 +26,7 @@ type sendMessageInput struct {
 	TargetAgentID    string  `json:"target_agent_id,omitempty"`
 	TargetInstanceID *string `json:"target_agent_instance_id,omitempty"`
 	Message          string  `json:"message"`
+	ReplyToMessageID *string `json:"reply_to_message_id,omitempty"`
 }
 
 var sendMessageParameters = jsonschema.Schema{
@@ -49,6 +50,10 @@ var sendMessageParameters = jsonschema.Schema{
 			Type:        "string",
 			Description: "The message content to send",
 		},
+		"reply_to_message_id": {
+			Type:        "string",
+			Description: "The agent message ID (gid://axonhub/AgentMessage/<id>) to reply to. If provided, the platform reply will be attached to the external message referenced by that inbound message.",
+		},
 	},
 	Required: []string{"target", "message"},
 }
@@ -64,7 +69,7 @@ func (t *SendMessageTool) Definition() agent.ToolDefinition {
 func (t *SendMessageTool) Execute(ctx context.Context, input sendMessageInput) agent.ToolResult {
 	switch input.Target {
 	case "user":
-		return t.sendToUser(ctx, input.Message)
+		return t.sendToUser(ctx, input.Message, input.ReplyToMessageID)
 	case "peer":
 		return t.sendToPeer(ctx, input)
 	default:
@@ -72,9 +77,10 @@ func (t *SendMessageTool) Execute(ctx context.Context, input sendMessageInput) a
 	}
 }
 
-func (t *SendMessageTool) sendToUser(ctx context.Context, message string) agent.ToolResult {
+func (t *SendMessageTool) sendToUser(ctx context.Context, message string, replyToMessageID *string) agent.ToolResult {
 	_, err := api.ReplyMessage(ctx, t.client, &api.ReplyMessageInput{
-		Text: message,
+		Text:             message,
+		ReplyToMessageID: replyToMessageID,
 	})
 	if err != nil {
 		return tools.ErrorResult(err)

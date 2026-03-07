@@ -29,6 +29,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -129,6 +132,21 @@ var datastorageImplementors = []string{"DataStorage", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*DataStorage) IsNode() {}
+
+var messagechannelImplementors = []string{"MessageChannel", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*MessageChannel) IsNode() {}
+
+var messagechannelagentinstanceImplementors = []string{"MessageChannelAgentInstance", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*MessageChannelAgentInstance) IsNode() {}
+
+var messagechannelbindingrequestImplementors = []string{"MessageChannelBindingRequest", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*MessageChannelBindingRequest) IsNode() {}
 
 var modelImplementors = []string{"Model", "Node"}
 
@@ -404,6 +422,33 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(datastorage.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, datastorageImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case messagechannel.Table:
+		query := c.MessageChannel.Query().
+			Where(messagechannel.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, messagechannelImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case messagechannelagentinstance.Table:
+		query := c.MessageChannelAgentInstance.Query().
+			Where(messagechannelagentinstance.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, messagechannelagentinstanceImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case messagechannelbindingrequest.Table:
+		query := c.MessageChannelBindingRequest.Query().
+			Where(messagechannelbindingrequest.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, messagechannelbindingrequestImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -862,6 +907,54 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.DataStorage.Query().
 			Where(datastorage.IDIn(ids...))
 		query, err := query.CollectFields(ctx, datastorageImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case messagechannel.Table:
+		query := c.MessageChannel.Query().
+			Where(messagechannel.IDIn(ids...))
+		query, err := query.CollectFields(ctx, messagechannelImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case messagechannelagentinstance.Table:
+		query := c.MessageChannelAgentInstance.Query().
+			Where(messagechannelagentinstance.IDIn(ids...))
+		query, err := query.CollectFields(ctx, messagechannelagentinstanceImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case messagechannelbindingrequest.Table:
+		query := c.MessageChannelBindingRequest.Query().
+			Where(messagechannelbindingrequest.IDIn(ids...))
+		query, err := query.CollectFields(ctx, messagechannelbindingrequestImplementors...)
 		if err != nil {
 			return nil, err
 		}

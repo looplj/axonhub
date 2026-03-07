@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -49,20 +50,6 @@ func (_c *AgentMessageCreate) SetUpdatedAt(v time.Time) *AgentMessageCreate {
 func (_c *AgentMessageCreate) SetNillableUpdatedAt(v *time.Time) *AgentMessageCreate {
 	if v != nil {
 		_c.SetUpdatedAt(*v)
-	}
-	return _c
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (_c *AgentMessageCreate) SetDeletedAt(v int) *AgentMessageCreate {
-	_c.mutation.SetDeletedAt(v)
-	return _c
-}
-
-// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
-func (_c *AgentMessageCreate) SetNillableDeletedAt(v *int) *AgentMessageCreate {
-	if v != nil {
-		_c.SetDeletedAt(*v)
 	}
 	return _c
 }
@@ -179,6 +166,34 @@ func (_c *AgentMessageCreate) SetNillableExpiresAt(v *time.Time) *AgentMessageCr
 	return _c
 }
 
+// SetExternalMessageID sets the "external_message_id" field.
+func (_c *AgentMessageCreate) SetExternalMessageID(v string) *AgentMessageCreate {
+	_c.mutation.SetExternalMessageID(v)
+	return _c
+}
+
+// SetNillableExternalMessageID sets the "external_message_id" field if the given value is not nil.
+func (_c *AgentMessageCreate) SetNillableExternalMessageID(v *string) *AgentMessageCreate {
+	if v != nil {
+		_c.SetExternalMessageID(*v)
+	}
+	return _c
+}
+
+// SetReplyToMessageID sets the "reply_to_message_id" field.
+func (_c *AgentMessageCreate) SetReplyToMessageID(v int) *AgentMessageCreate {
+	_c.mutation.SetReplyToMessageID(v)
+	return _c
+}
+
+// SetNillableReplyToMessageID sets the "reply_to_message_id" field if the given value is not nil.
+func (_c *AgentMessageCreate) SetNillableReplyToMessageID(v *int) *AgentMessageCreate {
+	if v != nil {
+		_c.SetReplyToMessageID(*v)
+	}
+	return _c
+}
+
 // SetAgent sets the "agent" edge to the Agent entity.
 func (_c *AgentMessageCreate) SetAgent(v *Agent) *AgentMessageCreate {
 	return _c.SetAgentID(v.ID)
@@ -187,6 +202,25 @@ func (_c *AgentMessageCreate) SetAgent(v *Agent) *AgentMessageCreate {
 // SetAgentInstance sets the "agent_instance" edge to the AgentInstance entity.
 func (_c *AgentMessageCreate) SetAgentInstance(v *AgentInstance) *AgentMessageCreate {
 	return _c.SetAgentInstanceID(v.ID)
+}
+
+// SetMessageChannelID sets the "message_channel" edge to the MessageChannel entity by ID.
+func (_c *AgentMessageCreate) SetMessageChannelID(id int) *AgentMessageCreate {
+	_c.mutation.SetMessageChannelID(id)
+	return _c
+}
+
+// SetNillableMessageChannelID sets the "message_channel" edge to the MessageChannel entity by ID if the given value is not nil.
+func (_c *AgentMessageCreate) SetNillableMessageChannelID(id *int) *AgentMessageCreate {
+	if id != nil {
+		_c = _c.SetMessageChannelID(*id)
+	}
+	return _c
+}
+
+// SetMessageChannel sets the "message_channel" edge to the MessageChannel entity.
+func (_c *AgentMessageCreate) SetMessageChannel(v *MessageChannel) *AgentMessageCreate {
+	return _c.SetMessageChannelID(v.ID)
 }
 
 // Mutation returns the AgentMessageMutation object of the builder.
@@ -240,10 +274,6 @@ func (_c *AgentMessageCreate) defaults() error {
 		v := agentmessage.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		v := agentmessage.DefaultDeletedAt
-		_c.mutation.SetDeletedAt(v)
-	}
 	if _, ok := _c.mutation.GetType(); !ok {
 		v := agentmessage.DefaultType
 		_c.mutation.SetType(v)
@@ -270,9 +300,6 @@ func (_c *AgentMessageCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "AgentMessage.updated_at"`)}
-	}
-	if _, ok := _c.mutation.DeletedAt(); !ok {
-		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "AgentMessage.deleted_at"`)}
 	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "AgentMessage.project_id"`)}
@@ -365,10 +392,6 @@ func (_c *AgentMessageCreate) createSpec() (*AgentMessage, *sqlgraph.CreateSpec)
 		_spec.SetField(agentmessage.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if value, ok := _c.mutation.DeletedAt(); ok {
-		_spec.SetField(agentmessage.FieldDeletedAt, field.TypeInt, value)
-		_node.DeletedAt = value
-	}
 	if value, ok := _c.mutation.ProjectID(); ok {
 		_spec.SetField(agentmessage.FieldProjectID, field.TypeInt, value)
 		_node.ProjectID = value
@@ -380,10 +403,6 @@ func (_c *AgentMessageCreate) createSpec() (*AgentMessage, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.SenderType(); ok {
 		_spec.SetField(agentmessage.FieldSenderType, field.TypeEnum, value)
 		_node.SenderType = value
-	}
-	if value, ok := _c.mutation.SenderID(); ok {
-		_spec.SetField(agentmessage.FieldSenderID, field.TypeInt, value)
-		_node.SenderID = &value
 	}
 	if value, ok := _c.mutation.GetType(); ok {
 		_spec.SetField(agentmessage.FieldType, field.TypeEnum, value)
@@ -408,6 +427,14 @@ func (_c *AgentMessageCreate) createSpec() (*AgentMessage, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.ExpiresAt(); ok {
 		_spec.SetField(agentmessage.FieldExpiresAt, field.TypeTime, value)
 		_node.ExpiresAt = &value
+	}
+	if value, ok := _c.mutation.ExternalMessageID(); ok {
+		_spec.SetField(agentmessage.FieldExternalMessageID, field.TypeString, value)
+		_node.ExternalMessageID = &value
+	}
+	if value, ok := _c.mutation.ReplyToMessageID(); ok {
+		_spec.SetField(agentmessage.FieldReplyToMessageID, field.TypeInt, value)
+		_node.ReplyToMessageID = &value
 	}
 	if nodes := _c.mutation.AgentIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -441,6 +468,23 @@ func (_c *AgentMessageCreate) createSpec() (*AgentMessage, *sqlgraph.CreateSpec)
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.AgentInstanceID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.MessageChannelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   agentmessage.MessageChannelTable,
+			Columns: []string{agentmessage.MessageChannelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.SenderID = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -507,24 +551,6 @@ func (u *AgentMessageUpsert) UpdateUpdatedAt() *AgentMessageUpsert {
 	return u
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *AgentMessageUpsert) SetDeletedAt(v int) *AgentMessageUpsert {
-	u.Set(agentmessage.FieldDeletedAt, v)
-	return u
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *AgentMessageUpsert) UpdateDeletedAt() *AgentMessageUpsert {
-	u.SetExcluded(agentmessage.FieldDeletedAt)
-	return u
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *AgentMessageUpsert) AddDeletedAt(v int) *AgentMessageUpsert {
-	u.Add(agentmessage.FieldDeletedAt, v)
-	return u
-}
-
 // SetDirection sets the "direction" field.
 func (u *AgentMessageUpsert) SetDirection(v agentmessage.Direction) *AgentMessageUpsert {
 	u.Set(agentmessage.FieldDirection, v)
@@ -558,12 +584,6 @@ func (u *AgentMessageUpsert) SetSenderID(v int) *AgentMessageUpsert {
 // UpdateSenderID sets the "sender_id" field to the value that was provided on create.
 func (u *AgentMessageUpsert) UpdateSenderID() *AgentMessageUpsert {
 	u.SetExcluded(agentmessage.FieldSenderID)
-	return u
-}
-
-// AddSenderID adds v to the "sender_id" field.
-func (u *AgentMessageUpsert) AddSenderID(v int) *AgentMessageUpsert {
-	u.Add(agentmessage.FieldSenderID, v)
 	return u
 }
 
@@ -657,6 +677,48 @@ func (u *AgentMessageUpsert) ClearExpiresAt() *AgentMessageUpsert {
 	return u
 }
 
+// SetExternalMessageID sets the "external_message_id" field.
+func (u *AgentMessageUpsert) SetExternalMessageID(v string) *AgentMessageUpsert {
+	u.Set(agentmessage.FieldExternalMessageID, v)
+	return u
+}
+
+// UpdateExternalMessageID sets the "external_message_id" field to the value that was provided on create.
+func (u *AgentMessageUpsert) UpdateExternalMessageID() *AgentMessageUpsert {
+	u.SetExcluded(agentmessage.FieldExternalMessageID)
+	return u
+}
+
+// ClearExternalMessageID clears the value of the "external_message_id" field.
+func (u *AgentMessageUpsert) ClearExternalMessageID() *AgentMessageUpsert {
+	u.SetNull(agentmessage.FieldExternalMessageID)
+	return u
+}
+
+// SetReplyToMessageID sets the "reply_to_message_id" field.
+func (u *AgentMessageUpsert) SetReplyToMessageID(v int) *AgentMessageUpsert {
+	u.Set(agentmessage.FieldReplyToMessageID, v)
+	return u
+}
+
+// UpdateReplyToMessageID sets the "reply_to_message_id" field to the value that was provided on create.
+func (u *AgentMessageUpsert) UpdateReplyToMessageID() *AgentMessageUpsert {
+	u.SetExcluded(agentmessage.FieldReplyToMessageID)
+	return u
+}
+
+// AddReplyToMessageID adds v to the "reply_to_message_id" field.
+func (u *AgentMessageUpsert) AddReplyToMessageID(v int) *AgentMessageUpsert {
+	u.Add(agentmessage.FieldReplyToMessageID, v)
+	return u
+}
+
+// ClearReplyToMessageID clears the value of the "reply_to_message_id" field.
+func (u *AgentMessageUpsert) ClearReplyToMessageID() *AgentMessageUpsert {
+	u.SetNull(agentmessage.FieldReplyToMessageID)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -725,27 +787,6 @@ func (u *AgentMessageUpsertOne) UpdateUpdatedAt() *AgentMessageUpsertOne {
 	})
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *AgentMessageUpsertOne) SetDeletedAt(v int) *AgentMessageUpsertOne {
-	return u.Update(func(s *AgentMessageUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *AgentMessageUpsertOne) AddDeletedAt(v int) *AgentMessageUpsertOne {
-	return u.Update(func(s *AgentMessageUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *AgentMessageUpsertOne) UpdateDeletedAt() *AgentMessageUpsertOne {
-	return u.Update(func(s *AgentMessageUpsert) {
-		s.UpdateDeletedAt()
-	})
-}
-
 // SetDirection sets the "direction" field.
 func (u *AgentMessageUpsertOne) SetDirection(v agentmessage.Direction) *AgentMessageUpsertOne {
 	return u.Update(func(s *AgentMessageUpsert) {
@@ -778,13 +819,6 @@ func (u *AgentMessageUpsertOne) UpdateSenderType() *AgentMessageUpsertOne {
 func (u *AgentMessageUpsertOne) SetSenderID(v int) *AgentMessageUpsertOne {
 	return u.Update(func(s *AgentMessageUpsert) {
 		s.SetSenderID(v)
-	})
-}
-
-// AddSenderID adds v to the "sender_id" field.
-func (u *AgentMessageUpsertOne) AddSenderID(v int) *AgentMessageUpsertOne {
-	return u.Update(func(s *AgentMessageUpsert) {
-		s.AddSenderID(v)
 	})
 }
 
@@ -897,6 +931,55 @@ func (u *AgentMessageUpsertOne) UpdateExpiresAt() *AgentMessageUpsertOne {
 func (u *AgentMessageUpsertOne) ClearExpiresAt() *AgentMessageUpsertOne {
 	return u.Update(func(s *AgentMessageUpsert) {
 		s.ClearExpiresAt()
+	})
+}
+
+// SetExternalMessageID sets the "external_message_id" field.
+func (u *AgentMessageUpsertOne) SetExternalMessageID(v string) *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.SetExternalMessageID(v)
+	})
+}
+
+// UpdateExternalMessageID sets the "external_message_id" field to the value that was provided on create.
+func (u *AgentMessageUpsertOne) UpdateExternalMessageID() *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.UpdateExternalMessageID()
+	})
+}
+
+// ClearExternalMessageID clears the value of the "external_message_id" field.
+func (u *AgentMessageUpsertOne) ClearExternalMessageID() *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.ClearExternalMessageID()
+	})
+}
+
+// SetReplyToMessageID sets the "reply_to_message_id" field.
+func (u *AgentMessageUpsertOne) SetReplyToMessageID(v int) *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.SetReplyToMessageID(v)
+	})
+}
+
+// AddReplyToMessageID adds v to the "reply_to_message_id" field.
+func (u *AgentMessageUpsertOne) AddReplyToMessageID(v int) *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.AddReplyToMessageID(v)
+	})
+}
+
+// UpdateReplyToMessageID sets the "reply_to_message_id" field to the value that was provided on create.
+func (u *AgentMessageUpsertOne) UpdateReplyToMessageID() *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.UpdateReplyToMessageID()
+	})
+}
+
+// ClearReplyToMessageID clears the value of the "reply_to_message_id" field.
+func (u *AgentMessageUpsertOne) ClearReplyToMessageID() *AgentMessageUpsertOne {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.ClearReplyToMessageID()
 	})
 }
 
@@ -1134,27 +1217,6 @@ func (u *AgentMessageUpsertBulk) UpdateUpdatedAt() *AgentMessageUpsertBulk {
 	})
 }
 
-// SetDeletedAt sets the "deleted_at" field.
-func (u *AgentMessageUpsertBulk) SetDeletedAt(v int) *AgentMessageUpsertBulk {
-	return u.Update(func(s *AgentMessageUpsert) {
-		s.SetDeletedAt(v)
-	})
-}
-
-// AddDeletedAt adds v to the "deleted_at" field.
-func (u *AgentMessageUpsertBulk) AddDeletedAt(v int) *AgentMessageUpsertBulk {
-	return u.Update(func(s *AgentMessageUpsert) {
-		s.AddDeletedAt(v)
-	})
-}
-
-// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
-func (u *AgentMessageUpsertBulk) UpdateDeletedAt() *AgentMessageUpsertBulk {
-	return u.Update(func(s *AgentMessageUpsert) {
-		s.UpdateDeletedAt()
-	})
-}
-
 // SetDirection sets the "direction" field.
 func (u *AgentMessageUpsertBulk) SetDirection(v agentmessage.Direction) *AgentMessageUpsertBulk {
 	return u.Update(func(s *AgentMessageUpsert) {
@@ -1187,13 +1249,6 @@ func (u *AgentMessageUpsertBulk) UpdateSenderType() *AgentMessageUpsertBulk {
 func (u *AgentMessageUpsertBulk) SetSenderID(v int) *AgentMessageUpsertBulk {
 	return u.Update(func(s *AgentMessageUpsert) {
 		s.SetSenderID(v)
-	})
-}
-
-// AddSenderID adds v to the "sender_id" field.
-func (u *AgentMessageUpsertBulk) AddSenderID(v int) *AgentMessageUpsertBulk {
-	return u.Update(func(s *AgentMessageUpsert) {
-		s.AddSenderID(v)
 	})
 }
 
@@ -1306,6 +1361,55 @@ func (u *AgentMessageUpsertBulk) UpdateExpiresAt() *AgentMessageUpsertBulk {
 func (u *AgentMessageUpsertBulk) ClearExpiresAt() *AgentMessageUpsertBulk {
 	return u.Update(func(s *AgentMessageUpsert) {
 		s.ClearExpiresAt()
+	})
+}
+
+// SetExternalMessageID sets the "external_message_id" field.
+func (u *AgentMessageUpsertBulk) SetExternalMessageID(v string) *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.SetExternalMessageID(v)
+	})
+}
+
+// UpdateExternalMessageID sets the "external_message_id" field to the value that was provided on create.
+func (u *AgentMessageUpsertBulk) UpdateExternalMessageID() *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.UpdateExternalMessageID()
+	})
+}
+
+// ClearExternalMessageID clears the value of the "external_message_id" field.
+func (u *AgentMessageUpsertBulk) ClearExternalMessageID() *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.ClearExternalMessageID()
+	})
+}
+
+// SetReplyToMessageID sets the "reply_to_message_id" field.
+func (u *AgentMessageUpsertBulk) SetReplyToMessageID(v int) *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.SetReplyToMessageID(v)
+	})
+}
+
+// AddReplyToMessageID adds v to the "reply_to_message_id" field.
+func (u *AgentMessageUpsertBulk) AddReplyToMessageID(v int) *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.AddReplyToMessageID(v)
+	})
+}
+
+// UpdateReplyToMessageID sets the "reply_to_message_id" field to the value that was provided on create.
+func (u *AgentMessageUpsertBulk) UpdateReplyToMessageID() *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.UpdateReplyToMessageID()
+	})
+}
+
+// ClearReplyToMessageID clears the value of the "reply_to_message_id" field.
+func (u *AgentMessageUpsertBulk) ClearReplyToMessageID() *AgentMessageUpsertBulk {
+	return u.Update(func(s *AgentMessageUpsert) {
+		s.ClearReplyToMessageID()
 	})
 }
 

@@ -156,19 +156,19 @@ func buildLocalSystemPrompt(env PromptEnv) string {
 	return result.String()
 }
 
-func buildServerSystemPrompt(prpmpt string, env PromptEnv) string {
-	if prpmpt == "" {
+func buildServerSystemPrompt(prompt string, env PromptEnv) string {
+	if prompt == "" {
 		return ""
 	}
 
-	tmpl, err := template.New("server").Parse(prpmpt)
+	tmpl, err := template.New("server").Parse(prompt)
 	if err != nil {
-		return prpmpt
+		return prompt
 	}
 
 	var result strings.Builder
 	if err := tmpl.Execute(&result, env); err != nil {
-		return prpmpt
+		return prompt
 	}
 
 	return result.String()

@@ -697,6 +697,29 @@ func HasMessagesWith(preds ...predicate.AgentMessage) predicate.AgentInstance {
 	})
 }
 
+// HasMessageChannelBindings applies the HasEdge predicate on the "message_channel_bindings" edge.
+func HasMessageChannelBindings() predicate.AgentInstance {
+	return predicate.AgentInstance(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, MessageChannelBindingsTable, MessageChannelBindingsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMessageChannelBindingsWith applies the HasEdge predicate on the "message_channel_bindings" edge with a given conditions (other predicates).
+func HasMessageChannelBindingsWith(preds ...predicate.MessageChannelAgentInstance) predicate.AgentInstance {
+	return predicate.AgentInstance(func(s *sql.Selector) {
+		step := newMessageChannelBindingsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.AgentInstance) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.AndPredicates(predicates...))

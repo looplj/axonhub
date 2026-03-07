@@ -26,6 +26,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -56,38 +59,41 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAPIKey                   = "APIKey"
-	TypeAgent                    = "Agent"
-	TypeAgentHost                = "AgentHost"
-	TypeAgentInstance            = "AgentInstance"
-	TypeAgentMemory              = "AgentMemory"
-	TypeAgentMessage             = "AgentMessage"
-	TypeAgentSkill               = "AgentSkill"
-	TypeAgentThread              = "AgentThread"
-	TypeAgentTool                = "AgentTool"
-	TypeChannel                  = "Channel"
-	TypeChannelModelPrice        = "ChannelModelPrice"
-	TypeChannelModelPriceVersion = "ChannelModelPriceVersion"
-	TypeChannelOverrideTemplate  = "ChannelOverrideTemplate"
-	TypeChannelProbe             = "ChannelProbe"
-	TypeDataStorage              = "DataStorage"
-	TypeModel                    = "Model"
-	TypeProject                  = "Project"
-	TypePrompt                   = "Prompt"
-	TypePromptVersion            = "PromptVersion"
-	TypeProviderQuotaStatus      = "ProviderQuotaStatus"
-	TypeRequest                  = "Request"
-	TypeRequestExecution         = "RequestExecution"
-	TypeRole                     = "Role"
-	TypeSkill                    = "Skill"
-	TypeSystem                   = "System"
-	TypeThread                   = "Thread"
-	TypeTool                     = "Tool"
-	TypeTrace                    = "Trace"
-	TypeUsageLog                 = "UsageLog"
-	TypeUser                     = "User"
-	TypeUserProject              = "UserProject"
-	TypeUserRole                 = "UserRole"
+	TypeAPIKey                       = "APIKey"
+	TypeAgent                        = "Agent"
+	TypeAgentHost                    = "AgentHost"
+	TypeAgentInstance                = "AgentInstance"
+	TypeAgentMemory                  = "AgentMemory"
+	TypeAgentMessage                 = "AgentMessage"
+	TypeAgentSkill                   = "AgentSkill"
+	TypeAgentThread                  = "AgentThread"
+	TypeAgentTool                    = "AgentTool"
+	TypeChannel                      = "Channel"
+	TypeChannelModelPrice            = "ChannelModelPrice"
+	TypeChannelModelPriceVersion     = "ChannelModelPriceVersion"
+	TypeChannelOverrideTemplate      = "ChannelOverrideTemplate"
+	TypeChannelProbe                 = "ChannelProbe"
+	TypeDataStorage                  = "DataStorage"
+	TypeMessageChannel               = "MessageChannel"
+	TypeMessageChannelAgentInstance  = "MessageChannelAgentInstance"
+	TypeMessageChannelBindingRequest = "MessageChannelBindingRequest"
+	TypeModel                        = "Model"
+	TypeProject                      = "Project"
+	TypePrompt                       = "Prompt"
+	TypePromptVersion                = "PromptVersion"
+	TypeProviderQuotaStatus          = "ProviderQuotaStatus"
+	TypeRequest                      = "Request"
+	TypeRequestExecution             = "RequestExecution"
+	TypeRole                         = "Role"
+	TypeSkill                        = "Skill"
+	TypeSystem                       = "System"
+	TypeThread                       = "Thread"
+	TypeTool                         = "Tool"
+	TypeTrace                        = "Trace"
+	TypeUsageLog                     = "UsageLog"
+	TypeUser                         = "User"
+	TypeUserProject                  = "UserProject"
+	TypeUserRole                     = "UserRole"
 )
 
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
@@ -3964,34 +3970,37 @@ func (m *AgentHostMutation) ResetEdge(name string) error {
 // AgentInstanceMutation represents an operation that mutates the AgentInstance nodes in the graph.
 type AgentInstanceMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *int
-	created_at        *time.Time
-	updated_at        *time.Time
-	deleted_at        *int
-	adddeleted_at     *int
-	project_id        *int
-	addproject_id     *int
-	name              *string
-	description       *string
-	platform          *string
-	last_heartbeat_at *time.Time
-	deployment        *objects.AgentInstanceDeployment
-	status            *agentinstance.Status
-	clearedFields     map[string]struct{}
-	agent             *int
-	clearedagent      bool
-	host              *int
-	clearedhost       bool
-	api_key           *int
-	clearedapi_key    bool
-	messages          map[int]struct{}
-	removedmessages   map[int]struct{}
-	clearedmessages   bool
-	done              bool
-	oldValue          func(context.Context) (*AgentInstance, error)
-	predicates        []predicate.AgentInstance
+	op                              Op
+	typ                             string
+	id                              *int
+	created_at                      *time.Time
+	updated_at                      *time.Time
+	deleted_at                      *int
+	adddeleted_at                   *int
+	project_id                      *int
+	addproject_id                   *int
+	name                            *string
+	description                     *string
+	platform                        *string
+	last_heartbeat_at               *time.Time
+	deployment                      *objects.AgentInstanceDeployment
+	status                          *agentinstance.Status
+	clearedFields                   map[string]struct{}
+	agent                           *int
+	clearedagent                    bool
+	host                            *int
+	clearedhost                     bool
+	api_key                         *int
+	clearedapi_key                  bool
+	messages                        map[int]struct{}
+	removedmessages                 map[int]struct{}
+	clearedmessages                 bool
+	message_channel_bindings        map[int]struct{}
+	removedmessage_channel_bindings map[int]struct{}
+	clearedmessage_channel_bindings bool
+	done                            bool
+	oldValue                        func(context.Context) (*AgentInstance, error)
+	predicates                      []predicate.AgentInstance
 }
 
 var _ ent.Mutation = (*AgentInstanceMutation)(nil)
@@ -4774,6 +4783,60 @@ func (m *AgentInstanceMutation) ResetMessages() {
 	m.removedmessages = nil
 }
 
+// AddMessageChannelBindingIDs adds the "message_channel_bindings" edge to the MessageChannelAgentInstance entity by ids.
+func (m *AgentInstanceMutation) AddMessageChannelBindingIDs(ids ...int) {
+	if m.message_channel_bindings == nil {
+		m.message_channel_bindings = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.message_channel_bindings[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMessageChannelBindings clears the "message_channel_bindings" edge to the MessageChannelAgentInstance entity.
+func (m *AgentInstanceMutation) ClearMessageChannelBindings() {
+	m.clearedmessage_channel_bindings = true
+}
+
+// MessageChannelBindingsCleared reports if the "message_channel_bindings" edge to the MessageChannelAgentInstance entity was cleared.
+func (m *AgentInstanceMutation) MessageChannelBindingsCleared() bool {
+	return m.clearedmessage_channel_bindings
+}
+
+// RemoveMessageChannelBindingIDs removes the "message_channel_bindings" edge to the MessageChannelAgentInstance entity by IDs.
+func (m *AgentInstanceMutation) RemoveMessageChannelBindingIDs(ids ...int) {
+	if m.removedmessage_channel_bindings == nil {
+		m.removedmessage_channel_bindings = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.message_channel_bindings, ids[i])
+		m.removedmessage_channel_bindings[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMessageChannelBindings returns the removed IDs of the "message_channel_bindings" edge to the MessageChannelAgentInstance entity.
+func (m *AgentInstanceMutation) RemovedMessageChannelBindingsIDs() (ids []int) {
+	for id := range m.removedmessage_channel_bindings {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MessageChannelBindingsIDs returns the "message_channel_bindings" edge IDs in the mutation.
+func (m *AgentInstanceMutation) MessageChannelBindingsIDs() (ids []int) {
+	for id := range m.message_channel_bindings {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMessageChannelBindings resets all changes to the "message_channel_bindings" edge.
+func (m *AgentInstanceMutation) ResetMessageChannelBindings() {
+	m.message_channel_bindings = nil
+	m.clearedmessage_channel_bindings = false
+	m.removedmessage_channel_bindings = nil
+}
+
 // Where appends a list predicates to the AgentInstanceMutation builder.
 func (m *AgentInstanceMutation) Where(ps ...predicate.AgentInstance) {
 	m.predicates = append(m.predicates, ps...)
@@ -5153,7 +5216,7 @@ func (m *AgentInstanceMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AgentInstanceMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.agent != nil {
 		edges = append(edges, agentinstance.EdgeAgent)
 	}
@@ -5165,6 +5228,9 @@ func (m *AgentInstanceMutation) AddedEdges() []string {
 	}
 	if m.messages != nil {
 		edges = append(edges, agentinstance.EdgeMessages)
+	}
+	if m.message_channel_bindings != nil {
+		edges = append(edges, agentinstance.EdgeMessageChannelBindings)
 	}
 	return edges
 }
@@ -5191,15 +5257,24 @@ func (m *AgentInstanceMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case agentinstance.EdgeMessageChannelBindings:
+		ids := make([]ent.Value, 0, len(m.message_channel_bindings))
+		for id := range m.message_channel_bindings {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AgentInstanceMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.removedmessages != nil {
 		edges = append(edges, agentinstance.EdgeMessages)
+	}
+	if m.removedmessage_channel_bindings != nil {
+		edges = append(edges, agentinstance.EdgeMessageChannelBindings)
 	}
 	return edges
 }
@@ -5214,13 +5289,19 @@ func (m *AgentInstanceMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case agentinstance.EdgeMessageChannelBindings:
+		ids := make([]ent.Value, 0, len(m.removedmessage_channel_bindings))
+		for id := range m.removedmessage_channel_bindings {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AgentInstanceMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.clearedagent {
 		edges = append(edges, agentinstance.EdgeAgent)
 	}
@@ -5232,6 +5313,9 @@ func (m *AgentInstanceMutation) ClearedEdges() []string {
 	}
 	if m.clearedmessages {
 		edges = append(edges, agentinstance.EdgeMessages)
+	}
+	if m.clearedmessage_channel_bindings {
+		edges = append(edges, agentinstance.EdgeMessageChannelBindings)
 	}
 	return edges
 }
@@ -5248,6 +5332,8 @@ func (m *AgentInstanceMutation) EdgeCleared(name string) bool {
 		return m.clearedapi_key
 	case agentinstance.EdgeMessages:
 		return m.clearedmessages
+	case agentinstance.EdgeMessageChannelBindings:
+		return m.clearedmessage_channel_bindings
 	}
 	return false
 }
@@ -5284,6 +5370,9 @@ func (m *AgentInstanceMutation) ResetEdge(name string) error {
 		return nil
 	case agentinstance.EdgeMessages:
 		m.ResetMessages()
+		return nil
+	case agentinstance.EdgeMessageChannelBindings:
+		m.ResetMessageChannelBindings()
 		return nil
 	}
 	return fmt.Errorf("unknown AgentInstance edge %s", name)
@@ -6141,35 +6230,36 @@ func (m *AgentMemoryMutation) ResetEdge(name string) error {
 // AgentMessageMutation represents an operation that mutates the AgentMessage nodes in the graph.
 type AgentMessageMutation struct {
 	config
-	op                    Op
-	typ                   string
-	id                    *int
-	created_at            *time.Time
-	updated_at            *time.Time
-	deleted_at            *int
-	adddeleted_at         *int
-	project_id            *int
-	addproject_id         *int
-	direction             *agentmessage.Direction
-	sender_type           *agentmessage.SenderType
-	sender_id             *int
-	addsender_id          *int
-	_type                 *agentmessage.Type
-	correlation_id        *string
-	content               *objects.JSONRawMessage
-	appendcontent         objects.JSONRawMessage
-	status                *agentmessage.Status
-	sequence              *int64
-	addsequence           *int64
-	expires_at            *time.Time
-	clearedFields         map[string]struct{}
-	agent                 *int
-	clearedagent          bool
-	agent_instance        *int
-	clearedagent_instance bool
-	done                  bool
-	oldValue              func(context.Context) (*AgentMessage, error)
-	predicates            []predicate.AgentMessage
+	op                     Op
+	typ                    string
+	id                     *int
+	created_at             *time.Time
+	updated_at             *time.Time
+	project_id             *int
+	addproject_id          *int
+	direction              *agentmessage.Direction
+	sender_type            *agentmessage.SenderType
+	_type                  *agentmessage.Type
+	correlation_id         *string
+	content                *objects.JSONRawMessage
+	appendcontent          objects.JSONRawMessage
+	status                 *agentmessage.Status
+	sequence               *int64
+	addsequence            *int64
+	expires_at             *time.Time
+	external_message_id    *string
+	reply_to_message_id    *int
+	addreply_to_message_id *int
+	clearedFields          map[string]struct{}
+	agent                  *int
+	clearedagent           bool
+	agent_instance         *int
+	clearedagent_instance  bool
+	message_channel        *int
+	clearedmessage_channel bool
+	done                   bool
+	oldValue               func(context.Context) (*AgentMessage, error)
+	predicates             []predicate.AgentMessage
 }
 
 var _ ent.Mutation = (*AgentMessageMutation)(nil)
@@ -6340,62 +6430,6 @@ func (m *AgentMessageMutation) OldUpdatedAt(ctx context.Context) (v time.Time, e
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *AgentMessageMutation) ResetUpdatedAt() {
 	m.updated_at = nil
-}
-
-// SetDeletedAt sets the "deleted_at" field.
-func (m *AgentMessageMutation) SetDeletedAt(i int) {
-	m.deleted_at = &i
-	m.adddeleted_at = nil
-}
-
-// DeletedAt returns the value of the "deleted_at" field in the mutation.
-func (m *AgentMessageMutation) DeletedAt() (r int, exists bool) {
-	v := m.deleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDeletedAt returns the old "deleted_at" field's value of the AgentMessage entity.
-// If the AgentMessage object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AgentMessageMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
-	}
-	return oldValue.DeletedAt, nil
-}
-
-// AddDeletedAt adds i to the "deleted_at" field.
-func (m *AgentMessageMutation) AddDeletedAt(i int) {
-	if m.adddeleted_at != nil {
-		*m.adddeleted_at += i
-	} else {
-		m.adddeleted_at = &i
-	}
-}
-
-// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
-func (m *AgentMessageMutation) AddedDeletedAt() (r int, exists bool) {
-	v := m.adddeleted_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetDeletedAt resets all changes to the "deleted_at" field.
-func (m *AgentMessageMutation) ResetDeletedAt() {
-	m.deleted_at = nil
-	m.adddeleted_at = nil
 }
 
 // SetProjectID sets the "project_id" field.
@@ -6600,13 +6634,12 @@ func (m *AgentMessageMutation) ResetSenderType() {
 
 // SetSenderID sets the "sender_id" field.
 func (m *AgentMessageMutation) SetSenderID(i int) {
-	m.sender_id = &i
-	m.addsender_id = nil
+	m.message_channel = &i
 }
 
 // SenderID returns the value of the "sender_id" field in the mutation.
 func (m *AgentMessageMutation) SenderID() (r int, exists bool) {
-	v := m.sender_id
+	v := m.message_channel
 	if v == nil {
 		return
 	}
@@ -6630,28 +6663,9 @@ func (m *AgentMessageMutation) OldSenderID(ctx context.Context) (v *int, err err
 	return oldValue.SenderID, nil
 }
 
-// AddSenderID adds i to the "sender_id" field.
-func (m *AgentMessageMutation) AddSenderID(i int) {
-	if m.addsender_id != nil {
-		*m.addsender_id += i
-	} else {
-		m.addsender_id = &i
-	}
-}
-
-// AddedSenderID returns the value that was added to the "sender_id" field in this mutation.
-func (m *AgentMessageMutation) AddedSenderID() (r int, exists bool) {
-	v := m.addsender_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
 // ClearSenderID clears the value of the "sender_id" field.
 func (m *AgentMessageMutation) ClearSenderID() {
-	m.sender_id = nil
-	m.addsender_id = nil
+	m.message_channel = nil
 	m.clearedFields[agentmessage.FieldSenderID] = struct{}{}
 }
 
@@ -6663,8 +6677,7 @@ func (m *AgentMessageMutation) SenderIDCleared() bool {
 
 // ResetSenderID resets all changes to the "sender_id" field.
 func (m *AgentMessageMutation) ResetSenderID() {
-	m.sender_id = nil
-	m.addsender_id = nil
+	m.message_channel = nil
 	delete(m.clearedFields, agentmessage.FieldSenderID)
 }
 
@@ -6932,6 +6945,125 @@ func (m *AgentMessageMutation) ResetExpiresAt() {
 	delete(m.clearedFields, agentmessage.FieldExpiresAt)
 }
 
+// SetExternalMessageID sets the "external_message_id" field.
+func (m *AgentMessageMutation) SetExternalMessageID(s string) {
+	m.external_message_id = &s
+}
+
+// ExternalMessageID returns the value of the "external_message_id" field in the mutation.
+func (m *AgentMessageMutation) ExternalMessageID() (r string, exists bool) {
+	v := m.external_message_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExternalMessageID returns the old "external_message_id" field's value of the AgentMessage entity.
+// If the AgentMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AgentMessageMutation) OldExternalMessageID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExternalMessageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExternalMessageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExternalMessageID: %w", err)
+	}
+	return oldValue.ExternalMessageID, nil
+}
+
+// ClearExternalMessageID clears the value of the "external_message_id" field.
+func (m *AgentMessageMutation) ClearExternalMessageID() {
+	m.external_message_id = nil
+	m.clearedFields[agentmessage.FieldExternalMessageID] = struct{}{}
+}
+
+// ExternalMessageIDCleared returns if the "external_message_id" field was cleared in this mutation.
+func (m *AgentMessageMutation) ExternalMessageIDCleared() bool {
+	_, ok := m.clearedFields[agentmessage.FieldExternalMessageID]
+	return ok
+}
+
+// ResetExternalMessageID resets all changes to the "external_message_id" field.
+func (m *AgentMessageMutation) ResetExternalMessageID() {
+	m.external_message_id = nil
+	delete(m.clearedFields, agentmessage.FieldExternalMessageID)
+}
+
+// SetReplyToMessageID sets the "reply_to_message_id" field.
+func (m *AgentMessageMutation) SetReplyToMessageID(i int) {
+	m.reply_to_message_id = &i
+	m.addreply_to_message_id = nil
+}
+
+// ReplyToMessageID returns the value of the "reply_to_message_id" field in the mutation.
+func (m *AgentMessageMutation) ReplyToMessageID() (r int, exists bool) {
+	v := m.reply_to_message_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReplyToMessageID returns the old "reply_to_message_id" field's value of the AgentMessage entity.
+// If the AgentMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AgentMessageMutation) OldReplyToMessageID(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReplyToMessageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReplyToMessageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReplyToMessageID: %w", err)
+	}
+	return oldValue.ReplyToMessageID, nil
+}
+
+// AddReplyToMessageID adds i to the "reply_to_message_id" field.
+func (m *AgentMessageMutation) AddReplyToMessageID(i int) {
+	if m.addreply_to_message_id != nil {
+		*m.addreply_to_message_id += i
+	} else {
+		m.addreply_to_message_id = &i
+	}
+}
+
+// AddedReplyToMessageID returns the value that was added to the "reply_to_message_id" field in this mutation.
+func (m *AgentMessageMutation) AddedReplyToMessageID() (r int, exists bool) {
+	v := m.addreply_to_message_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearReplyToMessageID clears the value of the "reply_to_message_id" field.
+func (m *AgentMessageMutation) ClearReplyToMessageID() {
+	m.reply_to_message_id = nil
+	m.addreply_to_message_id = nil
+	m.clearedFields[agentmessage.FieldReplyToMessageID] = struct{}{}
+}
+
+// ReplyToMessageIDCleared returns if the "reply_to_message_id" field was cleared in this mutation.
+func (m *AgentMessageMutation) ReplyToMessageIDCleared() bool {
+	_, ok := m.clearedFields[agentmessage.FieldReplyToMessageID]
+	return ok
+}
+
+// ResetReplyToMessageID resets all changes to the "reply_to_message_id" field.
+func (m *AgentMessageMutation) ResetReplyToMessageID() {
+	m.reply_to_message_id = nil
+	m.addreply_to_message_id = nil
+	delete(m.clearedFields, agentmessage.FieldReplyToMessageID)
+}
+
 // ClearAgent clears the "agent" edge to the Agent entity.
 func (m *AgentMessageMutation) ClearAgent() {
 	m.clearedagent = true
@@ -6986,6 +7118,46 @@ func (m *AgentMessageMutation) ResetAgentInstance() {
 	m.clearedagent_instance = false
 }
 
+// SetMessageChannelID sets the "message_channel" edge to the MessageChannel entity by id.
+func (m *AgentMessageMutation) SetMessageChannelID(id int) {
+	m.message_channel = &id
+}
+
+// ClearMessageChannel clears the "message_channel" edge to the MessageChannel entity.
+func (m *AgentMessageMutation) ClearMessageChannel() {
+	m.clearedmessage_channel = true
+	m.clearedFields[agentmessage.FieldSenderID] = struct{}{}
+}
+
+// MessageChannelCleared reports if the "message_channel" edge to the MessageChannel entity was cleared.
+func (m *AgentMessageMutation) MessageChannelCleared() bool {
+	return m.SenderIDCleared() || m.clearedmessage_channel
+}
+
+// MessageChannelID returns the "message_channel" edge ID in the mutation.
+func (m *AgentMessageMutation) MessageChannelID() (id int, exists bool) {
+	if m.message_channel != nil {
+		return *m.message_channel, true
+	}
+	return
+}
+
+// MessageChannelIDs returns the "message_channel" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// MessageChannelID instead. It exists only for internal usage by the builders.
+func (m *AgentMessageMutation) MessageChannelIDs() (ids []int) {
+	if id := m.message_channel; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetMessageChannel resets all changes to the "message_channel" edge.
+func (m *AgentMessageMutation) ResetMessageChannel() {
+	m.message_channel = nil
+	m.clearedmessage_channel = false
+}
+
 // Where appends a list predicates to the AgentMessageMutation builder.
 func (m *AgentMessageMutation) Where(ps ...predicate.AgentMessage) {
 	m.predicates = append(m.predicates, ps...)
@@ -7020,15 +7192,12 @@ func (m *AgentMessageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AgentMessageMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, agentmessage.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, agentmessage.FieldUpdatedAt)
-	}
-	if m.deleted_at != nil {
-		fields = append(fields, agentmessage.FieldDeletedAt)
 	}
 	if m.project_id != nil {
 		fields = append(fields, agentmessage.FieldProjectID)
@@ -7045,7 +7214,7 @@ func (m *AgentMessageMutation) Fields() []string {
 	if m.sender_type != nil {
 		fields = append(fields, agentmessage.FieldSenderType)
 	}
-	if m.sender_id != nil {
+	if m.message_channel != nil {
 		fields = append(fields, agentmessage.FieldSenderID)
 	}
 	if m._type != nil {
@@ -7066,6 +7235,12 @@ func (m *AgentMessageMutation) Fields() []string {
 	if m.expires_at != nil {
 		fields = append(fields, agentmessage.FieldExpiresAt)
 	}
+	if m.external_message_id != nil {
+		fields = append(fields, agentmessage.FieldExternalMessageID)
+	}
+	if m.reply_to_message_id != nil {
+		fields = append(fields, agentmessage.FieldReplyToMessageID)
+	}
 	return fields
 }
 
@@ -7078,8 +7253,6 @@ func (m *AgentMessageMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case agentmessage.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case agentmessage.FieldDeletedAt:
-		return m.DeletedAt()
 	case agentmessage.FieldProjectID:
 		return m.ProjectID()
 	case agentmessage.FieldAgentID:
@@ -7104,6 +7277,10 @@ func (m *AgentMessageMutation) Field(name string) (ent.Value, bool) {
 		return m.Sequence()
 	case agentmessage.FieldExpiresAt:
 		return m.ExpiresAt()
+	case agentmessage.FieldExternalMessageID:
+		return m.ExternalMessageID()
+	case agentmessage.FieldReplyToMessageID:
+		return m.ReplyToMessageID()
 	}
 	return nil, false
 }
@@ -7117,8 +7294,6 @@ func (m *AgentMessageMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldCreatedAt(ctx)
 	case agentmessage.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case agentmessage.FieldDeletedAt:
-		return m.OldDeletedAt(ctx)
 	case agentmessage.FieldProjectID:
 		return m.OldProjectID(ctx)
 	case agentmessage.FieldAgentID:
@@ -7143,6 +7318,10 @@ func (m *AgentMessageMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldSequence(ctx)
 	case agentmessage.FieldExpiresAt:
 		return m.OldExpiresAt(ctx)
+	case agentmessage.FieldExternalMessageID:
+		return m.OldExternalMessageID(ctx)
+	case agentmessage.FieldReplyToMessageID:
+		return m.OldReplyToMessageID(ctx)
 	}
 	return nil, fmt.Errorf("unknown AgentMessage field %s", name)
 }
@@ -7165,13 +7344,6 @@ func (m *AgentMessageMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
-		return nil
-	case agentmessage.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDeletedAt(v)
 		return nil
 	case agentmessage.FieldProjectID:
 		v, ok := value.(int)
@@ -7257,6 +7429,20 @@ func (m *AgentMessageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetExpiresAt(v)
 		return nil
+	case agentmessage.FieldExternalMessageID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExternalMessageID(v)
+		return nil
+	case agentmessage.FieldReplyToMessageID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReplyToMessageID(v)
+		return nil
 	}
 	return fmt.Errorf("unknown AgentMessage field %s", name)
 }
@@ -7265,17 +7451,14 @@ func (m *AgentMessageMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *AgentMessageMutation) AddedFields() []string {
 	var fields []string
-	if m.adddeleted_at != nil {
-		fields = append(fields, agentmessage.FieldDeletedAt)
-	}
 	if m.addproject_id != nil {
 		fields = append(fields, agentmessage.FieldProjectID)
 	}
-	if m.addsender_id != nil {
-		fields = append(fields, agentmessage.FieldSenderID)
-	}
 	if m.addsequence != nil {
 		fields = append(fields, agentmessage.FieldSequence)
+	}
+	if m.addreply_to_message_id != nil {
+		fields = append(fields, agentmessage.FieldReplyToMessageID)
 	}
 	return fields
 }
@@ -7285,14 +7468,12 @@ func (m *AgentMessageMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *AgentMessageMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case agentmessage.FieldDeletedAt:
-		return m.AddedDeletedAt()
 	case agentmessage.FieldProjectID:
 		return m.AddedProjectID()
-	case agentmessage.FieldSenderID:
-		return m.AddedSenderID()
 	case agentmessage.FieldSequence:
 		return m.AddedSequence()
+	case agentmessage.FieldReplyToMessageID:
+		return m.AddedReplyToMessageID()
 	}
 	return nil, false
 }
@@ -7302,13 +7483,6 @@ func (m *AgentMessageMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *AgentMessageMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case agentmessage.FieldDeletedAt:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddDeletedAt(v)
-		return nil
 	case agentmessage.FieldProjectID:
 		v, ok := value.(int)
 		if !ok {
@@ -7316,19 +7490,19 @@ func (m *AgentMessageMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddProjectID(v)
 		return nil
-	case agentmessage.FieldSenderID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddSenderID(v)
-		return nil
 	case agentmessage.FieldSequence:
 		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddSequence(v)
+		return nil
+	case agentmessage.FieldReplyToMessageID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddReplyToMessageID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown AgentMessage numeric field %s", name)
@@ -7343,6 +7517,12 @@ func (m *AgentMessageMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(agentmessage.FieldExpiresAt) {
 		fields = append(fields, agentmessage.FieldExpiresAt)
+	}
+	if m.FieldCleared(agentmessage.FieldExternalMessageID) {
+		fields = append(fields, agentmessage.FieldExternalMessageID)
+	}
+	if m.FieldCleared(agentmessage.FieldReplyToMessageID) {
+		fields = append(fields, agentmessage.FieldReplyToMessageID)
 	}
 	return fields
 }
@@ -7364,6 +7544,12 @@ func (m *AgentMessageMutation) ClearField(name string) error {
 	case agentmessage.FieldExpiresAt:
 		m.ClearExpiresAt()
 		return nil
+	case agentmessage.FieldExternalMessageID:
+		m.ClearExternalMessageID()
+		return nil
+	case agentmessage.FieldReplyToMessageID:
+		m.ClearReplyToMessageID()
+		return nil
 	}
 	return fmt.Errorf("unknown AgentMessage nullable field %s", name)
 }
@@ -7377,9 +7563,6 @@ func (m *AgentMessageMutation) ResetField(name string) error {
 		return nil
 	case agentmessage.FieldUpdatedAt:
 		m.ResetUpdatedAt()
-		return nil
-	case agentmessage.FieldDeletedAt:
-		m.ResetDeletedAt()
 		return nil
 	case agentmessage.FieldProjectID:
 		m.ResetProjectID()
@@ -7417,18 +7600,27 @@ func (m *AgentMessageMutation) ResetField(name string) error {
 	case agentmessage.FieldExpiresAt:
 		m.ResetExpiresAt()
 		return nil
+	case agentmessage.FieldExternalMessageID:
+		m.ResetExternalMessageID()
+		return nil
+	case agentmessage.FieldReplyToMessageID:
+		m.ResetReplyToMessageID()
+		return nil
 	}
 	return fmt.Errorf("unknown AgentMessage field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *AgentMessageMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.agent != nil {
 		edges = append(edges, agentmessage.EdgeAgent)
 	}
 	if m.agent_instance != nil {
 		edges = append(edges, agentmessage.EdgeAgentInstance)
+	}
+	if m.message_channel != nil {
+		edges = append(edges, agentmessage.EdgeMessageChannel)
 	}
 	return edges
 }
@@ -7445,13 +7637,17 @@ func (m *AgentMessageMutation) AddedIDs(name string) []ent.Value {
 		if id := m.agent_instance; id != nil {
 			return []ent.Value{*id}
 		}
+	case agentmessage.EdgeMessageChannel:
+		if id := m.message_channel; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *AgentMessageMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	return edges
 }
 
@@ -7463,12 +7659,15 @@ func (m *AgentMessageMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *AgentMessageMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedagent {
 		edges = append(edges, agentmessage.EdgeAgent)
 	}
 	if m.clearedagent_instance {
 		edges = append(edges, agentmessage.EdgeAgentInstance)
+	}
+	if m.clearedmessage_channel {
+		edges = append(edges, agentmessage.EdgeMessageChannel)
 	}
 	return edges
 }
@@ -7481,6 +7680,8 @@ func (m *AgentMessageMutation) EdgeCleared(name string) bool {
 		return m.clearedagent
 	case agentmessage.EdgeAgentInstance:
 		return m.clearedagent_instance
+	case agentmessage.EdgeMessageChannel:
+		return m.clearedmessage_channel
 	}
 	return false
 }
@@ -7495,6 +7696,9 @@ func (m *AgentMessageMutation) ClearEdge(name string) error {
 	case agentmessage.EdgeAgentInstance:
 		m.ClearAgentInstance()
 		return nil
+	case agentmessage.EdgeMessageChannel:
+		m.ClearMessageChannel()
+		return nil
 	}
 	return fmt.Errorf("unknown AgentMessage unique edge %s", name)
 }
@@ -7508,6 +7712,9 @@ func (m *AgentMessageMutation) ResetEdge(name string) error {
 		return nil
 	case agentmessage.EdgeAgentInstance:
 		m.ResetAgentInstance()
+		return nil
+	case agentmessage.EdgeMessageChannel:
+		m.ResetMessageChannel()
 		return nil
 	}
 	return fmt.Errorf("unknown AgentMessage edge %s", name)
@@ -16810,6 +17017,2516 @@ func (m *DataStorageMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown DataStorage edge %s", name)
 }
 
+// MessageChannelMutation represents an operation that mutates the MessageChannel nodes in the graph.
+type MessageChannelMutation struct {
+	config
+	op                             Op
+	typ                            string
+	id                             *int
+	created_at                     *time.Time
+	updated_at                     *time.Time
+	deleted_at                     *int
+	adddeleted_at                  *int
+	name                           *string
+	description                    *string
+	_type                          *messagechannel.Type
+	status                         *messagechannel.Status
+	settings                       *objects.MessageChannelSettings
+	clearedFields                  map[string]struct{}
+	project                        *int
+	clearedproject                 bool
+	agent_instance_bindings        map[int]struct{}
+	removedagent_instance_bindings map[int]struct{}
+	clearedagent_instance_bindings bool
+	messages                       map[int]struct{}
+	removedmessages                map[int]struct{}
+	clearedmessages                bool
+	done                           bool
+	oldValue                       func(context.Context) (*MessageChannel, error)
+	predicates                     []predicate.MessageChannel
+}
+
+var _ ent.Mutation = (*MessageChannelMutation)(nil)
+
+// messagechannelOption allows management of the mutation configuration using functional options.
+type messagechannelOption func(*MessageChannelMutation)
+
+// newMessageChannelMutation creates new mutation for the MessageChannel entity.
+func newMessageChannelMutation(c config, op Op, opts ...messagechannelOption) *MessageChannelMutation {
+	m := &MessageChannelMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMessageChannel,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMessageChannelID sets the ID field of the mutation.
+func withMessageChannelID(id int) messagechannelOption {
+	return func(m *MessageChannelMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *MessageChannel
+		)
+		m.oldValue = func(ctx context.Context) (*MessageChannel, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().MessageChannel.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMessageChannel sets the old MessageChannel of the mutation.
+func withMessageChannel(node *MessageChannel) messagechannelOption {
+	return func(m *MessageChannelMutation) {
+		m.oldValue = func(context.Context) (*MessageChannel, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MessageChannelMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MessageChannelMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MessageChannelMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MessageChannelMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().MessageChannel.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *MessageChannelMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *MessageChannelMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *MessageChannelMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *MessageChannelMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *MessageChannelMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *MessageChannelMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *MessageChannelMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *MessageChannelMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *MessageChannelMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *MessageChannelMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *MessageChannelMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *MessageChannelMutation) SetProjectID(i int) {
+	m.project = &i
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *MessageChannelMutation) ProjectID() (r int, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *MessageChannelMutation) ResetProjectID() {
+	m.project = nil
+}
+
+// SetName sets the "name" field.
+func (m *MessageChannelMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *MessageChannelMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *MessageChannelMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *MessageChannelMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *MessageChannelMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *MessageChannelMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetType sets the "type" field.
+func (m *MessageChannelMutation) SetType(value messagechannel.Type) {
+	m._type = &value
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *MessageChannelMutation) GetType() (r messagechannel.Type, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldType(ctx context.Context) (v messagechannel.Type, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *MessageChannelMutation) ResetType() {
+	m._type = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *MessageChannelMutation) SetStatus(value messagechannel.Status) {
+	m.status = &value
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *MessageChannelMutation) Status() (r messagechannel.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldStatus(ctx context.Context) (v messagechannel.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *MessageChannelMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetSettings sets the "settings" field.
+func (m *MessageChannelMutation) SetSettings(ocs objects.MessageChannelSettings) {
+	m.settings = &ocs
+}
+
+// Settings returns the value of the "settings" field in the mutation.
+func (m *MessageChannelMutation) Settings() (r objects.MessageChannelSettings, exists bool) {
+	v := m.settings
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSettings returns the old "settings" field's value of the MessageChannel entity.
+// If the MessageChannel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelMutation) OldSettings(ctx context.Context) (v objects.MessageChannelSettings, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSettings is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSettings requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSettings: %w", err)
+	}
+	return oldValue.Settings, nil
+}
+
+// ClearSettings clears the value of the "settings" field.
+func (m *MessageChannelMutation) ClearSettings() {
+	m.settings = nil
+	m.clearedFields[messagechannel.FieldSettings] = struct{}{}
+}
+
+// SettingsCleared returns if the "settings" field was cleared in this mutation.
+func (m *MessageChannelMutation) SettingsCleared() bool {
+	_, ok := m.clearedFields[messagechannel.FieldSettings]
+	return ok
+}
+
+// ResetSettings resets all changes to the "settings" field.
+func (m *MessageChannelMutation) ResetSettings() {
+	m.settings = nil
+	delete(m.clearedFields, messagechannel.FieldSettings)
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (m *MessageChannelMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[messagechannel.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *MessageChannelMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *MessageChannelMutation) ProjectIDs() (ids []int) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *MessageChannelMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
+// AddAgentInstanceBindingIDs adds the "agent_instance_bindings" edge to the MessageChannelAgentInstance entity by ids.
+func (m *MessageChannelMutation) AddAgentInstanceBindingIDs(ids ...int) {
+	if m.agent_instance_bindings == nil {
+		m.agent_instance_bindings = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.agent_instance_bindings[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAgentInstanceBindings clears the "agent_instance_bindings" edge to the MessageChannelAgentInstance entity.
+func (m *MessageChannelMutation) ClearAgentInstanceBindings() {
+	m.clearedagent_instance_bindings = true
+}
+
+// AgentInstanceBindingsCleared reports if the "agent_instance_bindings" edge to the MessageChannelAgentInstance entity was cleared.
+func (m *MessageChannelMutation) AgentInstanceBindingsCleared() bool {
+	return m.clearedagent_instance_bindings
+}
+
+// RemoveAgentInstanceBindingIDs removes the "agent_instance_bindings" edge to the MessageChannelAgentInstance entity by IDs.
+func (m *MessageChannelMutation) RemoveAgentInstanceBindingIDs(ids ...int) {
+	if m.removedagent_instance_bindings == nil {
+		m.removedagent_instance_bindings = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.agent_instance_bindings, ids[i])
+		m.removedagent_instance_bindings[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAgentInstanceBindings returns the removed IDs of the "agent_instance_bindings" edge to the MessageChannelAgentInstance entity.
+func (m *MessageChannelMutation) RemovedAgentInstanceBindingsIDs() (ids []int) {
+	for id := range m.removedagent_instance_bindings {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// AgentInstanceBindingsIDs returns the "agent_instance_bindings" edge IDs in the mutation.
+func (m *MessageChannelMutation) AgentInstanceBindingsIDs() (ids []int) {
+	for id := range m.agent_instance_bindings {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAgentInstanceBindings resets all changes to the "agent_instance_bindings" edge.
+func (m *MessageChannelMutation) ResetAgentInstanceBindings() {
+	m.agent_instance_bindings = nil
+	m.clearedagent_instance_bindings = false
+	m.removedagent_instance_bindings = nil
+}
+
+// AddMessageIDs adds the "messages" edge to the AgentMessage entity by ids.
+func (m *MessageChannelMutation) AddMessageIDs(ids ...int) {
+	if m.messages == nil {
+		m.messages = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.messages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMessages clears the "messages" edge to the AgentMessage entity.
+func (m *MessageChannelMutation) ClearMessages() {
+	m.clearedmessages = true
+}
+
+// MessagesCleared reports if the "messages" edge to the AgentMessage entity was cleared.
+func (m *MessageChannelMutation) MessagesCleared() bool {
+	return m.clearedmessages
+}
+
+// RemoveMessageIDs removes the "messages" edge to the AgentMessage entity by IDs.
+func (m *MessageChannelMutation) RemoveMessageIDs(ids ...int) {
+	if m.removedmessages == nil {
+		m.removedmessages = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.messages, ids[i])
+		m.removedmessages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMessages returns the removed IDs of the "messages" edge to the AgentMessage entity.
+func (m *MessageChannelMutation) RemovedMessagesIDs() (ids []int) {
+	for id := range m.removedmessages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MessagesIDs returns the "messages" edge IDs in the mutation.
+func (m *MessageChannelMutation) MessagesIDs() (ids []int) {
+	for id := range m.messages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMessages resets all changes to the "messages" edge.
+func (m *MessageChannelMutation) ResetMessages() {
+	m.messages = nil
+	m.clearedmessages = false
+	m.removedmessages = nil
+}
+
+// Where appends a list predicates to the MessageChannelMutation builder.
+func (m *MessageChannelMutation) Where(ps ...predicate.MessageChannel) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the MessageChannelMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MessageChannelMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.MessageChannel, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *MessageChannelMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MessageChannelMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (MessageChannel).
+func (m *MessageChannelMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MessageChannelMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.created_at != nil {
+		fields = append(fields, messagechannel.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, messagechannel.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, messagechannel.FieldDeletedAt)
+	}
+	if m.project != nil {
+		fields = append(fields, messagechannel.FieldProjectID)
+	}
+	if m.name != nil {
+		fields = append(fields, messagechannel.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, messagechannel.FieldDescription)
+	}
+	if m._type != nil {
+		fields = append(fields, messagechannel.FieldType)
+	}
+	if m.status != nil {
+		fields = append(fields, messagechannel.FieldStatus)
+	}
+	if m.settings != nil {
+		fields = append(fields, messagechannel.FieldSettings)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MessageChannelMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case messagechannel.FieldCreatedAt:
+		return m.CreatedAt()
+	case messagechannel.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case messagechannel.FieldDeletedAt:
+		return m.DeletedAt()
+	case messagechannel.FieldProjectID:
+		return m.ProjectID()
+	case messagechannel.FieldName:
+		return m.Name()
+	case messagechannel.FieldDescription:
+		return m.Description()
+	case messagechannel.FieldType:
+		return m.GetType()
+	case messagechannel.FieldStatus:
+		return m.Status()
+	case messagechannel.FieldSettings:
+		return m.Settings()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MessageChannelMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case messagechannel.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case messagechannel.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case messagechannel.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case messagechannel.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case messagechannel.FieldName:
+		return m.OldName(ctx)
+	case messagechannel.FieldDescription:
+		return m.OldDescription(ctx)
+	case messagechannel.FieldType:
+		return m.OldType(ctx)
+	case messagechannel.FieldStatus:
+		return m.OldStatus(ctx)
+	case messagechannel.FieldSettings:
+		return m.OldSettings(ctx)
+	}
+	return nil, fmt.Errorf("unknown MessageChannel field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MessageChannelMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case messagechannel.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case messagechannel.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case messagechannel.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case messagechannel.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case messagechannel.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case messagechannel.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case messagechannel.FieldType:
+		v, ok := value.(messagechannel.Type)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
+		return nil
+	case messagechannel.FieldStatus:
+		v, ok := value.(messagechannel.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case messagechannel.FieldSettings:
+		v, ok := value.(objects.MessageChannelSettings)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSettings(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannel field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MessageChannelMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, messagechannel.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MessageChannelMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case messagechannel.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MessageChannelMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case messagechannel.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannel numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MessageChannelMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(messagechannel.FieldSettings) {
+		fields = append(fields, messagechannel.FieldSettings)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MessageChannelMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MessageChannelMutation) ClearField(name string) error {
+	switch name {
+	case messagechannel.FieldSettings:
+		m.ClearSettings()
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannel nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MessageChannelMutation) ResetField(name string) error {
+	switch name {
+	case messagechannel.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case messagechannel.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case messagechannel.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case messagechannel.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case messagechannel.FieldName:
+		m.ResetName()
+		return nil
+	case messagechannel.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case messagechannel.FieldType:
+		m.ResetType()
+		return nil
+	case messagechannel.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case messagechannel.FieldSettings:
+		m.ResetSettings()
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannel field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MessageChannelMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.project != nil {
+		edges = append(edges, messagechannel.EdgeProject)
+	}
+	if m.agent_instance_bindings != nil {
+		edges = append(edges, messagechannel.EdgeAgentInstanceBindings)
+	}
+	if m.messages != nil {
+		edges = append(edges, messagechannel.EdgeMessages)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MessageChannelMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case messagechannel.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
+	case messagechannel.EdgeAgentInstanceBindings:
+		ids := make([]ent.Value, 0, len(m.agent_instance_bindings))
+		for id := range m.agent_instance_bindings {
+			ids = append(ids, id)
+		}
+		return ids
+	case messagechannel.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.messages))
+		for id := range m.messages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MessageChannelMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.removedagent_instance_bindings != nil {
+		edges = append(edges, messagechannel.EdgeAgentInstanceBindings)
+	}
+	if m.removedmessages != nil {
+		edges = append(edges, messagechannel.EdgeMessages)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MessageChannelMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case messagechannel.EdgeAgentInstanceBindings:
+		ids := make([]ent.Value, 0, len(m.removedagent_instance_bindings))
+		for id := range m.removedagent_instance_bindings {
+			ids = append(ids, id)
+		}
+		return ids
+	case messagechannel.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.removedmessages))
+		for id := range m.removedmessages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MessageChannelMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedproject {
+		edges = append(edges, messagechannel.EdgeProject)
+	}
+	if m.clearedagent_instance_bindings {
+		edges = append(edges, messagechannel.EdgeAgentInstanceBindings)
+	}
+	if m.clearedmessages {
+		edges = append(edges, messagechannel.EdgeMessages)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MessageChannelMutation) EdgeCleared(name string) bool {
+	switch name {
+	case messagechannel.EdgeProject:
+		return m.clearedproject
+	case messagechannel.EdgeAgentInstanceBindings:
+		return m.clearedagent_instance_bindings
+	case messagechannel.EdgeMessages:
+		return m.clearedmessages
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MessageChannelMutation) ClearEdge(name string) error {
+	switch name {
+	case messagechannel.EdgeProject:
+		m.ClearProject()
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannel unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MessageChannelMutation) ResetEdge(name string) error {
+	switch name {
+	case messagechannel.EdgeProject:
+		m.ResetProject()
+		return nil
+	case messagechannel.EdgeAgentInstanceBindings:
+		m.ResetAgentInstanceBindings()
+		return nil
+	case messagechannel.EdgeMessages:
+		m.ResetMessages()
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannel edge %s", name)
+}
+
+// MessageChannelAgentInstanceMutation represents an operation that mutates the MessageChannelAgentInstance nodes in the graph.
+type MessageChannelAgentInstanceMutation struct {
+	config
+	op                     Op
+	typ                    string
+	id                     *int
+	created_at             *time.Time
+	updated_at             *time.Time
+	enabled                *bool
+	_config                *objects.MessageChannelAgentInstanceBinding
+	clearedFields          map[string]struct{}
+	message_channel        *int
+	clearedmessage_channel bool
+	agent_instance         *int
+	clearedagent_instance  bool
+	done                   bool
+	oldValue               func(context.Context) (*MessageChannelAgentInstance, error)
+	predicates             []predicate.MessageChannelAgentInstance
+}
+
+var _ ent.Mutation = (*MessageChannelAgentInstanceMutation)(nil)
+
+// messagechannelagentinstanceOption allows management of the mutation configuration using functional options.
+type messagechannelagentinstanceOption func(*MessageChannelAgentInstanceMutation)
+
+// newMessageChannelAgentInstanceMutation creates new mutation for the MessageChannelAgentInstance entity.
+func newMessageChannelAgentInstanceMutation(c config, op Op, opts ...messagechannelagentinstanceOption) *MessageChannelAgentInstanceMutation {
+	m := &MessageChannelAgentInstanceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMessageChannelAgentInstance,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMessageChannelAgentInstanceID sets the ID field of the mutation.
+func withMessageChannelAgentInstanceID(id int) messagechannelagentinstanceOption {
+	return func(m *MessageChannelAgentInstanceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *MessageChannelAgentInstance
+		)
+		m.oldValue = func(ctx context.Context) (*MessageChannelAgentInstance, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().MessageChannelAgentInstance.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMessageChannelAgentInstance sets the old MessageChannelAgentInstance of the mutation.
+func withMessageChannelAgentInstance(node *MessageChannelAgentInstance) messagechannelagentinstanceOption {
+	return func(m *MessageChannelAgentInstanceMutation) {
+		m.oldValue = func(context.Context) (*MessageChannelAgentInstance, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MessageChannelAgentInstanceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MessageChannelAgentInstanceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MessageChannelAgentInstanceMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MessageChannelAgentInstanceMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().MessageChannelAgentInstance.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *MessageChannelAgentInstanceMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *MessageChannelAgentInstanceMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the MessageChannelAgentInstance entity.
+// If the MessageChannelAgentInstance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelAgentInstanceMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *MessageChannelAgentInstanceMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *MessageChannelAgentInstanceMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *MessageChannelAgentInstanceMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the MessageChannelAgentInstance entity.
+// If the MessageChannelAgentInstance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelAgentInstanceMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *MessageChannelAgentInstanceMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetMessageChannelID sets the "message_channel_id" field.
+func (m *MessageChannelAgentInstanceMutation) SetMessageChannelID(i int) {
+	m.message_channel = &i
+}
+
+// MessageChannelID returns the value of the "message_channel_id" field in the mutation.
+func (m *MessageChannelAgentInstanceMutation) MessageChannelID() (r int, exists bool) {
+	v := m.message_channel
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessageChannelID returns the old "message_channel_id" field's value of the MessageChannelAgentInstance entity.
+// If the MessageChannelAgentInstance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelAgentInstanceMutation) OldMessageChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessageChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessageChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessageChannelID: %w", err)
+	}
+	return oldValue.MessageChannelID, nil
+}
+
+// ResetMessageChannelID resets all changes to the "message_channel_id" field.
+func (m *MessageChannelAgentInstanceMutation) ResetMessageChannelID() {
+	m.message_channel = nil
+}
+
+// SetAgentInstanceID sets the "agent_instance_id" field.
+func (m *MessageChannelAgentInstanceMutation) SetAgentInstanceID(i int) {
+	m.agent_instance = &i
+}
+
+// AgentInstanceID returns the value of the "agent_instance_id" field in the mutation.
+func (m *MessageChannelAgentInstanceMutation) AgentInstanceID() (r int, exists bool) {
+	v := m.agent_instance
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAgentInstanceID returns the old "agent_instance_id" field's value of the MessageChannelAgentInstance entity.
+// If the MessageChannelAgentInstance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelAgentInstanceMutation) OldAgentInstanceID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAgentInstanceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAgentInstanceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAgentInstanceID: %w", err)
+	}
+	return oldValue.AgentInstanceID, nil
+}
+
+// ResetAgentInstanceID resets all changes to the "agent_instance_id" field.
+func (m *MessageChannelAgentInstanceMutation) ResetAgentInstanceID() {
+	m.agent_instance = nil
+}
+
+// SetEnabled sets the "enabled" field.
+func (m *MessageChannelAgentInstanceMutation) SetEnabled(b bool) {
+	m.enabled = &b
+}
+
+// Enabled returns the value of the "enabled" field in the mutation.
+func (m *MessageChannelAgentInstanceMutation) Enabled() (r bool, exists bool) {
+	v := m.enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnabled returns the old "enabled" field's value of the MessageChannelAgentInstance entity.
+// If the MessageChannelAgentInstance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelAgentInstanceMutation) OldEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnabled: %w", err)
+	}
+	return oldValue.Enabled, nil
+}
+
+// ResetEnabled resets all changes to the "enabled" field.
+func (m *MessageChannelAgentInstanceMutation) ResetEnabled() {
+	m.enabled = nil
+}
+
+// SetConfig sets the "config" field.
+func (m *MessageChannelAgentInstanceMutation) SetConfig(ocaib objects.MessageChannelAgentInstanceBinding) {
+	m._config = &ocaib
+}
+
+// Config returns the value of the "config" field in the mutation.
+func (m *MessageChannelAgentInstanceMutation) Config() (r objects.MessageChannelAgentInstanceBinding, exists bool) {
+	v := m._config
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfig returns the old "config" field's value of the MessageChannelAgentInstance entity.
+// If the MessageChannelAgentInstance object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelAgentInstanceMutation) OldConfig(ctx context.Context) (v objects.MessageChannelAgentInstanceBinding, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfig is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfig requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfig: %w", err)
+	}
+	return oldValue.Config, nil
+}
+
+// ResetConfig resets all changes to the "config" field.
+func (m *MessageChannelAgentInstanceMutation) ResetConfig() {
+	m._config = nil
+}
+
+// ClearMessageChannel clears the "message_channel" edge to the MessageChannel entity.
+func (m *MessageChannelAgentInstanceMutation) ClearMessageChannel() {
+	m.clearedmessage_channel = true
+	m.clearedFields[messagechannelagentinstance.FieldMessageChannelID] = struct{}{}
+}
+
+// MessageChannelCleared reports if the "message_channel" edge to the MessageChannel entity was cleared.
+func (m *MessageChannelAgentInstanceMutation) MessageChannelCleared() bool {
+	return m.clearedmessage_channel
+}
+
+// MessageChannelIDs returns the "message_channel" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// MessageChannelID instead. It exists only for internal usage by the builders.
+func (m *MessageChannelAgentInstanceMutation) MessageChannelIDs() (ids []int) {
+	if id := m.message_channel; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetMessageChannel resets all changes to the "message_channel" edge.
+func (m *MessageChannelAgentInstanceMutation) ResetMessageChannel() {
+	m.message_channel = nil
+	m.clearedmessage_channel = false
+}
+
+// ClearAgentInstance clears the "agent_instance" edge to the AgentInstance entity.
+func (m *MessageChannelAgentInstanceMutation) ClearAgentInstance() {
+	m.clearedagent_instance = true
+	m.clearedFields[messagechannelagentinstance.FieldAgentInstanceID] = struct{}{}
+}
+
+// AgentInstanceCleared reports if the "agent_instance" edge to the AgentInstance entity was cleared.
+func (m *MessageChannelAgentInstanceMutation) AgentInstanceCleared() bool {
+	return m.clearedagent_instance
+}
+
+// AgentInstanceIDs returns the "agent_instance" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// AgentInstanceID instead. It exists only for internal usage by the builders.
+func (m *MessageChannelAgentInstanceMutation) AgentInstanceIDs() (ids []int) {
+	if id := m.agent_instance; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetAgentInstance resets all changes to the "agent_instance" edge.
+func (m *MessageChannelAgentInstanceMutation) ResetAgentInstance() {
+	m.agent_instance = nil
+	m.clearedagent_instance = false
+}
+
+// Where appends a list predicates to the MessageChannelAgentInstanceMutation builder.
+func (m *MessageChannelAgentInstanceMutation) Where(ps ...predicate.MessageChannelAgentInstance) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the MessageChannelAgentInstanceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MessageChannelAgentInstanceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.MessageChannelAgentInstance, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *MessageChannelAgentInstanceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MessageChannelAgentInstanceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (MessageChannelAgentInstance).
+func (m *MessageChannelAgentInstanceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MessageChannelAgentInstanceMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.created_at != nil {
+		fields = append(fields, messagechannelagentinstance.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, messagechannelagentinstance.FieldUpdatedAt)
+	}
+	if m.message_channel != nil {
+		fields = append(fields, messagechannelagentinstance.FieldMessageChannelID)
+	}
+	if m.agent_instance != nil {
+		fields = append(fields, messagechannelagentinstance.FieldAgentInstanceID)
+	}
+	if m.enabled != nil {
+		fields = append(fields, messagechannelagentinstance.FieldEnabled)
+	}
+	if m._config != nil {
+		fields = append(fields, messagechannelagentinstance.FieldConfig)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MessageChannelAgentInstanceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case messagechannelagentinstance.FieldCreatedAt:
+		return m.CreatedAt()
+	case messagechannelagentinstance.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case messagechannelagentinstance.FieldMessageChannelID:
+		return m.MessageChannelID()
+	case messagechannelagentinstance.FieldAgentInstanceID:
+		return m.AgentInstanceID()
+	case messagechannelagentinstance.FieldEnabled:
+		return m.Enabled()
+	case messagechannelagentinstance.FieldConfig:
+		return m.Config()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MessageChannelAgentInstanceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case messagechannelagentinstance.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case messagechannelagentinstance.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case messagechannelagentinstance.FieldMessageChannelID:
+		return m.OldMessageChannelID(ctx)
+	case messagechannelagentinstance.FieldAgentInstanceID:
+		return m.OldAgentInstanceID(ctx)
+	case messagechannelagentinstance.FieldEnabled:
+		return m.OldEnabled(ctx)
+	case messagechannelagentinstance.FieldConfig:
+		return m.OldConfig(ctx)
+	}
+	return nil, fmt.Errorf("unknown MessageChannelAgentInstance field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MessageChannelAgentInstanceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case messagechannelagentinstance.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case messagechannelagentinstance.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case messagechannelagentinstance.FieldMessageChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessageChannelID(v)
+		return nil
+	case messagechannelagentinstance.FieldAgentInstanceID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAgentInstanceID(v)
+		return nil
+	case messagechannelagentinstance.FieldEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnabled(v)
+		return nil
+	case messagechannelagentinstance.FieldConfig:
+		v, ok := value.(objects.MessageChannelAgentInstanceBinding)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfig(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannelAgentInstance field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MessageChannelAgentInstanceMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MessageChannelAgentInstanceMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MessageChannelAgentInstanceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown MessageChannelAgentInstance numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MessageChannelAgentInstanceMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MessageChannelAgentInstanceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MessageChannelAgentInstanceMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown MessageChannelAgentInstance nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MessageChannelAgentInstanceMutation) ResetField(name string) error {
+	switch name {
+	case messagechannelagentinstance.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case messagechannelagentinstance.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case messagechannelagentinstance.FieldMessageChannelID:
+		m.ResetMessageChannelID()
+		return nil
+	case messagechannelagentinstance.FieldAgentInstanceID:
+		m.ResetAgentInstanceID()
+		return nil
+	case messagechannelagentinstance.FieldEnabled:
+		m.ResetEnabled()
+		return nil
+	case messagechannelagentinstance.FieldConfig:
+		m.ResetConfig()
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannelAgentInstance field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MessageChannelAgentInstanceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.message_channel != nil {
+		edges = append(edges, messagechannelagentinstance.EdgeMessageChannel)
+	}
+	if m.agent_instance != nil {
+		edges = append(edges, messagechannelagentinstance.EdgeAgentInstance)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MessageChannelAgentInstanceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case messagechannelagentinstance.EdgeMessageChannel:
+		if id := m.message_channel; id != nil {
+			return []ent.Value{*id}
+		}
+	case messagechannelagentinstance.EdgeAgentInstance:
+		if id := m.agent_instance; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MessageChannelAgentInstanceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MessageChannelAgentInstanceMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MessageChannelAgentInstanceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedmessage_channel {
+		edges = append(edges, messagechannelagentinstance.EdgeMessageChannel)
+	}
+	if m.clearedagent_instance {
+		edges = append(edges, messagechannelagentinstance.EdgeAgentInstance)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MessageChannelAgentInstanceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case messagechannelagentinstance.EdgeMessageChannel:
+		return m.clearedmessage_channel
+	case messagechannelagentinstance.EdgeAgentInstance:
+		return m.clearedagent_instance
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MessageChannelAgentInstanceMutation) ClearEdge(name string) error {
+	switch name {
+	case messagechannelagentinstance.EdgeMessageChannel:
+		m.ClearMessageChannel()
+		return nil
+	case messagechannelagentinstance.EdgeAgentInstance:
+		m.ClearAgentInstance()
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannelAgentInstance unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MessageChannelAgentInstanceMutation) ResetEdge(name string) error {
+	switch name {
+	case messagechannelagentinstance.EdgeMessageChannel:
+		m.ResetMessageChannel()
+		return nil
+	case messagechannelagentinstance.EdgeAgentInstance:
+		m.ResetAgentInstance()
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannelAgentInstance edge %s", name)
+}
+
+// MessageChannelBindingRequestMutation represents an operation that mutates the MessageChannelBindingRequest nodes in the graph.
+type MessageChannelBindingRequestMutation struct {
+	config
+	op                    Op
+	typ                   string
+	id                    *int
+	created_at            *time.Time
+	updated_at            *time.Time
+	message_channel_id    *int
+	addmessage_channel_id *int
+	agent_instance_id     *int
+	addagent_instance_id  *int
+	_type                 *messagechannelbindingrequest.Type
+	pair_code             *string
+	status                *messagechannelbindingrequest.Status
+	expires_at            *time.Time
+	clearedFields         map[string]struct{}
+	done                  bool
+	oldValue              func(context.Context) (*MessageChannelBindingRequest, error)
+	predicates            []predicate.MessageChannelBindingRequest
+}
+
+var _ ent.Mutation = (*MessageChannelBindingRequestMutation)(nil)
+
+// messagechannelbindingrequestOption allows management of the mutation configuration using functional options.
+type messagechannelbindingrequestOption func(*MessageChannelBindingRequestMutation)
+
+// newMessageChannelBindingRequestMutation creates new mutation for the MessageChannelBindingRequest entity.
+func newMessageChannelBindingRequestMutation(c config, op Op, opts ...messagechannelbindingrequestOption) *MessageChannelBindingRequestMutation {
+	m := &MessageChannelBindingRequestMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeMessageChannelBindingRequest,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withMessageChannelBindingRequestID sets the ID field of the mutation.
+func withMessageChannelBindingRequestID(id int) messagechannelbindingrequestOption {
+	return func(m *MessageChannelBindingRequestMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *MessageChannelBindingRequest
+		)
+		m.oldValue = func(ctx context.Context) (*MessageChannelBindingRequest, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().MessageChannelBindingRequest.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withMessageChannelBindingRequest sets the old MessageChannelBindingRequest of the mutation.
+func withMessageChannelBindingRequest(node *MessageChannelBindingRequest) messagechannelbindingrequestOption {
+	return func(m *MessageChannelBindingRequestMutation) {
+		m.oldValue = func(context.Context) (*MessageChannelBindingRequest, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m MessageChannelBindingRequestMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m MessageChannelBindingRequestMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *MessageChannelBindingRequestMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *MessageChannelBindingRequestMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().MessageChannelBindingRequest.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *MessageChannelBindingRequestMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *MessageChannelBindingRequestMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the MessageChannelBindingRequest entity.
+// If the MessageChannelBindingRequest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelBindingRequestMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *MessageChannelBindingRequestMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *MessageChannelBindingRequestMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *MessageChannelBindingRequestMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the MessageChannelBindingRequest entity.
+// If the MessageChannelBindingRequest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelBindingRequestMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *MessageChannelBindingRequestMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetMessageChannelID sets the "message_channel_id" field.
+func (m *MessageChannelBindingRequestMutation) SetMessageChannelID(i int) {
+	m.message_channel_id = &i
+	m.addmessage_channel_id = nil
+}
+
+// MessageChannelID returns the value of the "message_channel_id" field in the mutation.
+func (m *MessageChannelBindingRequestMutation) MessageChannelID() (r int, exists bool) {
+	v := m.message_channel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessageChannelID returns the old "message_channel_id" field's value of the MessageChannelBindingRequest entity.
+// If the MessageChannelBindingRequest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelBindingRequestMutation) OldMessageChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessageChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessageChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessageChannelID: %w", err)
+	}
+	return oldValue.MessageChannelID, nil
+}
+
+// AddMessageChannelID adds i to the "message_channel_id" field.
+func (m *MessageChannelBindingRequestMutation) AddMessageChannelID(i int) {
+	if m.addmessage_channel_id != nil {
+		*m.addmessage_channel_id += i
+	} else {
+		m.addmessage_channel_id = &i
+	}
+}
+
+// AddedMessageChannelID returns the value that was added to the "message_channel_id" field in this mutation.
+func (m *MessageChannelBindingRequestMutation) AddedMessageChannelID() (r int, exists bool) {
+	v := m.addmessage_channel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetMessageChannelID resets all changes to the "message_channel_id" field.
+func (m *MessageChannelBindingRequestMutation) ResetMessageChannelID() {
+	m.message_channel_id = nil
+	m.addmessage_channel_id = nil
+}
+
+// SetAgentInstanceID sets the "agent_instance_id" field.
+func (m *MessageChannelBindingRequestMutation) SetAgentInstanceID(i int) {
+	m.agent_instance_id = &i
+	m.addagent_instance_id = nil
+}
+
+// AgentInstanceID returns the value of the "agent_instance_id" field in the mutation.
+func (m *MessageChannelBindingRequestMutation) AgentInstanceID() (r int, exists bool) {
+	v := m.agent_instance_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAgentInstanceID returns the old "agent_instance_id" field's value of the MessageChannelBindingRequest entity.
+// If the MessageChannelBindingRequest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelBindingRequestMutation) OldAgentInstanceID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAgentInstanceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAgentInstanceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAgentInstanceID: %w", err)
+	}
+	return oldValue.AgentInstanceID, nil
+}
+
+// AddAgentInstanceID adds i to the "agent_instance_id" field.
+func (m *MessageChannelBindingRequestMutation) AddAgentInstanceID(i int) {
+	if m.addagent_instance_id != nil {
+		*m.addagent_instance_id += i
+	} else {
+		m.addagent_instance_id = &i
+	}
+}
+
+// AddedAgentInstanceID returns the value that was added to the "agent_instance_id" field in this mutation.
+func (m *MessageChannelBindingRequestMutation) AddedAgentInstanceID() (r int, exists bool) {
+	v := m.addagent_instance_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAgentInstanceID resets all changes to the "agent_instance_id" field.
+func (m *MessageChannelBindingRequestMutation) ResetAgentInstanceID() {
+	m.agent_instance_id = nil
+	m.addagent_instance_id = nil
+}
+
+// SetType sets the "type" field.
+func (m *MessageChannelBindingRequestMutation) SetType(value messagechannelbindingrequest.Type) {
+	m._type = &value
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *MessageChannelBindingRequestMutation) GetType() (r messagechannelbindingrequest.Type, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the MessageChannelBindingRequest entity.
+// If the MessageChannelBindingRequest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelBindingRequestMutation) OldType(ctx context.Context) (v messagechannelbindingrequest.Type, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *MessageChannelBindingRequestMutation) ResetType() {
+	m._type = nil
+}
+
+// SetPairCode sets the "pair_code" field.
+func (m *MessageChannelBindingRequestMutation) SetPairCode(s string) {
+	m.pair_code = &s
+}
+
+// PairCode returns the value of the "pair_code" field in the mutation.
+func (m *MessageChannelBindingRequestMutation) PairCode() (r string, exists bool) {
+	v := m.pair_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPairCode returns the old "pair_code" field's value of the MessageChannelBindingRequest entity.
+// If the MessageChannelBindingRequest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelBindingRequestMutation) OldPairCode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPairCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPairCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPairCode: %w", err)
+	}
+	return oldValue.PairCode, nil
+}
+
+// ResetPairCode resets all changes to the "pair_code" field.
+func (m *MessageChannelBindingRequestMutation) ResetPairCode() {
+	m.pair_code = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *MessageChannelBindingRequestMutation) SetStatus(value messagechannelbindingrequest.Status) {
+	m.status = &value
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *MessageChannelBindingRequestMutation) Status() (r messagechannelbindingrequest.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the MessageChannelBindingRequest entity.
+// If the MessageChannelBindingRequest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelBindingRequestMutation) OldStatus(ctx context.Context) (v messagechannelbindingrequest.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *MessageChannelBindingRequestMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (m *MessageChannelBindingRequestMutation) SetExpiresAt(t time.Time) {
+	m.expires_at = &t
+}
+
+// ExpiresAt returns the value of the "expires_at" field in the mutation.
+func (m *MessageChannelBindingRequestMutation) ExpiresAt() (r time.Time, exists bool) {
+	v := m.expires_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExpiresAt returns the old "expires_at" field's value of the MessageChannelBindingRequest entity.
+// If the MessageChannelBindingRequest object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MessageChannelBindingRequestMutation) OldExpiresAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExpiresAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExpiresAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExpiresAt: %w", err)
+	}
+	return oldValue.ExpiresAt, nil
+}
+
+// ResetExpiresAt resets all changes to the "expires_at" field.
+func (m *MessageChannelBindingRequestMutation) ResetExpiresAt() {
+	m.expires_at = nil
+}
+
+// Where appends a list predicates to the MessageChannelBindingRequestMutation builder.
+func (m *MessageChannelBindingRequestMutation) Where(ps ...predicate.MessageChannelBindingRequest) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the MessageChannelBindingRequestMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MessageChannelBindingRequestMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.MessageChannelBindingRequest, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *MessageChannelBindingRequestMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MessageChannelBindingRequestMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (MessageChannelBindingRequest).
+func (m *MessageChannelBindingRequestMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *MessageChannelBindingRequestMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.created_at != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldUpdatedAt)
+	}
+	if m.message_channel_id != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldMessageChannelID)
+	}
+	if m.agent_instance_id != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldAgentInstanceID)
+	}
+	if m._type != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldType)
+	}
+	if m.pair_code != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldPairCode)
+	}
+	if m.status != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldStatus)
+	}
+	if m.expires_at != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldExpiresAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *MessageChannelBindingRequestMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case messagechannelbindingrequest.FieldCreatedAt:
+		return m.CreatedAt()
+	case messagechannelbindingrequest.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case messagechannelbindingrequest.FieldMessageChannelID:
+		return m.MessageChannelID()
+	case messagechannelbindingrequest.FieldAgentInstanceID:
+		return m.AgentInstanceID()
+	case messagechannelbindingrequest.FieldType:
+		return m.GetType()
+	case messagechannelbindingrequest.FieldPairCode:
+		return m.PairCode()
+	case messagechannelbindingrequest.FieldStatus:
+		return m.Status()
+	case messagechannelbindingrequest.FieldExpiresAt:
+		return m.ExpiresAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *MessageChannelBindingRequestMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case messagechannelbindingrequest.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case messagechannelbindingrequest.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case messagechannelbindingrequest.FieldMessageChannelID:
+		return m.OldMessageChannelID(ctx)
+	case messagechannelbindingrequest.FieldAgentInstanceID:
+		return m.OldAgentInstanceID(ctx)
+	case messagechannelbindingrequest.FieldType:
+		return m.OldType(ctx)
+	case messagechannelbindingrequest.FieldPairCode:
+		return m.OldPairCode(ctx)
+	case messagechannelbindingrequest.FieldStatus:
+		return m.OldStatus(ctx)
+	case messagechannelbindingrequest.FieldExpiresAt:
+		return m.OldExpiresAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown MessageChannelBindingRequest field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MessageChannelBindingRequestMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case messagechannelbindingrequest.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case messagechannelbindingrequest.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case messagechannelbindingrequest.FieldMessageChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessageChannelID(v)
+		return nil
+	case messagechannelbindingrequest.FieldAgentInstanceID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAgentInstanceID(v)
+		return nil
+	case messagechannelbindingrequest.FieldType:
+		v, ok := value.(messagechannelbindingrequest.Type)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
+		return nil
+	case messagechannelbindingrequest.FieldPairCode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPairCode(v)
+		return nil
+	case messagechannelbindingrequest.FieldStatus:
+		v, ok := value.(messagechannelbindingrequest.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case messagechannelbindingrequest.FieldExpiresAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExpiresAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannelBindingRequest field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *MessageChannelBindingRequestMutation) AddedFields() []string {
+	var fields []string
+	if m.addmessage_channel_id != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldMessageChannelID)
+	}
+	if m.addagent_instance_id != nil {
+		fields = append(fields, messagechannelbindingrequest.FieldAgentInstanceID)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *MessageChannelBindingRequestMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case messagechannelbindingrequest.FieldMessageChannelID:
+		return m.AddedMessageChannelID()
+	case messagechannelbindingrequest.FieldAgentInstanceID:
+		return m.AddedAgentInstanceID()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *MessageChannelBindingRequestMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case messagechannelbindingrequest.FieldMessageChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMessageChannelID(v)
+		return nil
+	case messagechannelbindingrequest.FieldAgentInstanceID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAgentInstanceID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannelBindingRequest numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *MessageChannelBindingRequestMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *MessageChannelBindingRequestMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *MessageChannelBindingRequestMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown MessageChannelBindingRequest nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *MessageChannelBindingRequestMutation) ResetField(name string) error {
+	switch name {
+	case messagechannelbindingrequest.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case messagechannelbindingrequest.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case messagechannelbindingrequest.FieldMessageChannelID:
+		m.ResetMessageChannelID()
+		return nil
+	case messagechannelbindingrequest.FieldAgentInstanceID:
+		m.ResetAgentInstanceID()
+		return nil
+	case messagechannelbindingrequest.FieldType:
+		m.ResetType()
+		return nil
+	case messagechannelbindingrequest.FieldPairCode:
+		m.ResetPairCode()
+		return nil
+	case messagechannelbindingrequest.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case messagechannelbindingrequest.FieldExpiresAt:
+		m.ResetExpiresAt()
+		return nil
+	}
+	return fmt.Errorf("unknown MessageChannelBindingRequest field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *MessageChannelBindingRequestMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *MessageChannelBindingRequestMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *MessageChannelBindingRequestMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *MessageChannelBindingRequestMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *MessageChannelBindingRequestMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *MessageChannelBindingRequestMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *MessageChannelBindingRequestMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown MessageChannelBindingRequest unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *MessageChannelBindingRequestMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown MessageChannelBindingRequest edge %s", name)
+}
+
 // ModelMutation represents an operation that mutates the Model nodes in the graph.
 type ModelMutation struct {
 	config
@@ -17898,6 +20615,9 @@ type ProjectMutation struct {
 	agent_skill_bindings        map[int]struct{}
 	removedagent_skill_bindings map[int]struct{}
 	clearedagent_skill_bindings bool
+	message_channels            map[int]struct{}
+	removedmessage_channels     map[int]struct{}
+	clearedmessage_channels     bool
 	project_users               map[int]struct{}
 	removedproject_users        map[int]struct{}
 	clearedproject_users        bool
@@ -18996,6 +21716,60 @@ func (m *ProjectMutation) ResetAgentSkillBindings() {
 	m.removedagent_skill_bindings = nil
 }
 
+// AddMessageChannelIDs adds the "message_channels" edge to the MessageChannel entity by ids.
+func (m *ProjectMutation) AddMessageChannelIDs(ids ...int) {
+	if m.message_channels == nil {
+		m.message_channels = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.message_channels[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMessageChannels clears the "message_channels" edge to the MessageChannel entity.
+func (m *ProjectMutation) ClearMessageChannels() {
+	m.clearedmessage_channels = true
+}
+
+// MessageChannelsCleared reports if the "message_channels" edge to the MessageChannel entity was cleared.
+func (m *ProjectMutation) MessageChannelsCleared() bool {
+	return m.clearedmessage_channels
+}
+
+// RemoveMessageChannelIDs removes the "message_channels" edge to the MessageChannel entity by IDs.
+func (m *ProjectMutation) RemoveMessageChannelIDs(ids ...int) {
+	if m.removedmessage_channels == nil {
+		m.removedmessage_channels = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.message_channels, ids[i])
+		m.removedmessage_channels[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMessageChannels returns the removed IDs of the "message_channels" edge to the MessageChannel entity.
+func (m *ProjectMutation) RemovedMessageChannelsIDs() (ids []int) {
+	for id := range m.removedmessage_channels {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MessageChannelsIDs returns the "message_channels" edge IDs in the mutation.
+func (m *ProjectMutation) MessageChannelsIDs() (ids []int) {
+	for id := range m.message_channels {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMessageChannels resets all changes to the "message_channels" edge.
+func (m *ProjectMutation) ResetMessageChannels() {
+	m.message_channels = nil
+	m.clearedmessage_channels = false
+	m.removedmessage_channels = nil
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by ids.
 func (m *ProjectMutation) AddProjectUserIDs(ids ...int) {
 	if m.project_users == nil {
@@ -19283,7 +22057,7 @@ func (m *ProjectMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ProjectMutation) AddedEdges() []string {
-	edges := make([]string, 0, 15)
+	edges := make([]string, 0, 16)
 	if m.users != nil {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -19325,6 +22099,9 @@ func (m *ProjectMutation) AddedEdges() []string {
 	}
 	if m.agent_skill_bindings != nil {
 		edges = append(edges, project.EdgeAgentSkillBindings)
+	}
+	if m.message_channels != nil {
+		edges = append(edges, project.EdgeMessageChannels)
 	}
 	if m.project_users != nil {
 		edges = append(edges, project.EdgeProjectUsers)
@@ -19420,6 +22197,12 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeMessageChannels:
+		ids := make([]ent.Value, 0, len(m.message_channels))
+		for id := range m.message_channels {
+			ids = append(ids, id)
+		}
+		return ids
 	case project.EdgeProjectUsers:
 		ids := make([]ent.Value, 0, len(m.project_users))
 		for id := range m.project_users {
@@ -19432,7 +22215,7 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ProjectMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 15)
+	edges := make([]string, 0, 16)
 	if m.removedusers != nil {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -19474,6 +22257,9 @@ func (m *ProjectMutation) RemovedEdges() []string {
 	}
 	if m.removedagent_skill_bindings != nil {
 		edges = append(edges, project.EdgeAgentSkillBindings)
+	}
+	if m.removedmessage_channels != nil {
+		edges = append(edges, project.EdgeMessageChannels)
 	}
 	if m.removedproject_users != nil {
 		edges = append(edges, project.EdgeProjectUsers)
@@ -19569,6 +22355,12 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeMessageChannels:
+		ids := make([]ent.Value, 0, len(m.removedmessage_channels))
+		for id := range m.removedmessage_channels {
+			ids = append(ids, id)
+		}
+		return ids
 	case project.EdgeProjectUsers:
 		ids := make([]ent.Value, 0, len(m.removedproject_users))
 		for id := range m.removedproject_users {
@@ -19581,7 +22373,7 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ProjectMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 15)
+	edges := make([]string, 0, 16)
 	if m.clearedusers {
 		edges = append(edges, project.EdgeUsers)
 	}
@@ -19624,6 +22416,9 @@ func (m *ProjectMutation) ClearedEdges() []string {
 	if m.clearedagent_skill_bindings {
 		edges = append(edges, project.EdgeAgentSkillBindings)
 	}
+	if m.clearedmessage_channels {
+		edges = append(edges, project.EdgeMessageChannels)
+	}
 	if m.clearedproject_users {
 		edges = append(edges, project.EdgeProjectUsers)
 	}
@@ -19662,6 +22457,8 @@ func (m *ProjectMutation) EdgeCleared(name string) bool {
 		return m.clearedagent_tool_bindings
 	case project.EdgeAgentSkillBindings:
 		return m.clearedagent_skill_bindings
+	case project.EdgeMessageChannels:
+		return m.clearedmessage_channels
 	case project.EdgeProjectUsers:
 		return m.clearedproject_users
 	}
@@ -19721,6 +22518,9 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 		return nil
 	case project.EdgeAgentSkillBindings:
 		m.ResetAgentSkillBindings()
+		return nil
+	case project.EdgeMessageChannels:
+		m.ResetMessageChannels()
 		return nil
 	case project.EdgeProjectUsers:
 		m.ResetProjectUsers()
