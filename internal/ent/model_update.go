@@ -57,6 +57,48 @@ func (_u *ModelUpdate) AddDeletedAt(v int) *ModelUpdate {
 	return _u
 }
 
+// SetDeveloper sets the "developer" field.
+func (_u *ModelUpdate) SetDeveloper(v string) *ModelUpdate {
+	_u.mutation.SetDeveloper(v)
+	return _u
+}
+
+// SetNillableDeveloper sets the "developer" field if the given value is not nil.
+func (_u *ModelUpdate) SetNillableDeveloper(v *string) *ModelUpdate {
+	if v != nil {
+		_u.SetDeveloper(*v)
+	}
+	return _u
+}
+
+// SetModelID sets the "model_id" field.
+func (_u *ModelUpdate) SetModelID(v string) *ModelUpdate {
+	_u.mutation.SetModelID(v)
+	return _u
+}
+
+// SetNillableModelID sets the "model_id" field if the given value is not nil.
+func (_u *ModelUpdate) SetNillableModelID(v *string) *ModelUpdate {
+	if v != nil {
+		_u.SetModelID(*v)
+	}
+	return _u
+}
+
+// SetType sets the "type" field.
+func (_u *ModelUpdate) SetType(v model.Type) *ModelUpdate {
+	_u.mutation.SetType(v)
+	return _u
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_u *ModelUpdate) SetNillableType(v *model.Type) *ModelUpdate {
+	if v != nil {
+		_u.SetType(*v)
+	}
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *ModelUpdate) SetName(v string) *ModelUpdate {
 	_u.mutation.SetName(v)
@@ -194,6 +236,11 @@ func (_u *ModelUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ModelUpdate) check() error {
+	if v, ok := _u.mutation.GetType(); ok {
+		if err := model.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Model.type": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := model.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Model.status": %w`, err)}
@@ -228,6 +275,15 @@ func (_u *ModelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(model.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Developer(); ok {
+		_spec.SetField(model.FieldDeveloper, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ModelID(); ok {
+		_spec.SetField(model.FieldModelID, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.GetType(); ok {
+		_spec.SetField(model.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(model.FieldName, field.TypeString, value)
@@ -299,6 +355,48 @@ func (_u *ModelUpdateOne) SetNillableDeletedAt(v *int) *ModelUpdateOne {
 // AddDeletedAt adds value to the "deleted_at" field.
 func (_u *ModelUpdateOne) AddDeletedAt(v int) *ModelUpdateOne {
 	_u.mutation.AddDeletedAt(v)
+	return _u
+}
+
+// SetDeveloper sets the "developer" field.
+func (_u *ModelUpdateOne) SetDeveloper(v string) *ModelUpdateOne {
+	_u.mutation.SetDeveloper(v)
+	return _u
+}
+
+// SetNillableDeveloper sets the "developer" field if the given value is not nil.
+func (_u *ModelUpdateOne) SetNillableDeveloper(v *string) *ModelUpdateOne {
+	if v != nil {
+		_u.SetDeveloper(*v)
+	}
+	return _u
+}
+
+// SetModelID sets the "model_id" field.
+func (_u *ModelUpdateOne) SetModelID(v string) *ModelUpdateOne {
+	_u.mutation.SetModelID(v)
+	return _u
+}
+
+// SetNillableModelID sets the "model_id" field if the given value is not nil.
+func (_u *ModelUpdateOne) SetNillableModelID(v *string) *ModelUpdateOne {
+	if v != nil {
+		_u.SetModelID(*v)
+	}
+	return _u
+}
+
+// SetType sets the "type" field.
+func (_u *ModelUpdateOne) SetType(v model.Type) *ModelUpdateOne {
+	_u.mutation.SetType(v)
+	return _u
+}
+
+// SetNillableType sets the "type" field if the given value is not nil.
+func (_u *ModelUpdateOne) SetNillableType(v *model.Type) *ModelUpdateOne {
+	if v != nil {
+		_u.SetType(*v)
+	}
 	return _u
 }
 
@@ -452,6 +550,11 @@ func (_u *ModelUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ModelUpdateOne) check() error {
+	if v, ok := _u.mutation.GetType(); ok {
+		if err := model.TypeValidator(v); err != nil {
+			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Model.type": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := model.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Model.status": %w`, err)}
@@ -503,6 +606,15 @@ func (_u *ModelUpdateOne) sqlSave(ctx context.Context) (_node *Model, err error)
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(model.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Developer(); ok {
+		_spec.SetField(model.FieldDeveloper, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ModelID(); ok {
+		_spec.SetField(model.FieldModelID, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.GetType(); ok {
+		_spec.SetField(model.FieldType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(model.FieldName, field.TypeString, value)

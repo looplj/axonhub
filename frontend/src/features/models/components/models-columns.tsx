@@ -333,7 +333,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
           header: t('common.columns.actions'),
           cell: DataTableRowActions,
           meta: {
-            className: 'w-[56px] min-w-[56px] pr-3 pl-0',
+            className: 'w-[88px] min-w-[88px] pr-3 pl-0',
           },
           enableSorting: false,
           enableHiding: false,

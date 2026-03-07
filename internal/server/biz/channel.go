@@ -483,6 +483,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	mut := svc.entFromContext(ctx).Channel.UpdateOneID(id).
+		SetNillableType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).
 		SetNillableDefaultTestModel(input.DefaultTestModel).

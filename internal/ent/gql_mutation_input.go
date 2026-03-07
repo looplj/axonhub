@@ -144,6 +144,7 @@ func (c *ChannelCreate) SetInput(i CreateChannelInput) *ChannelCreate {
 
 // UpdateChannelInput represents a mutation input for updating channels.
 type UpdateChannelInput struct {
+	Type                      *channel.Type
 	ClearBaseURL              bool
 	BaseURL                   *string
 	Name                      *string
@@ -174,6 +175,9 @@ type UpdateChannelInput struct {
 
 // Mutate applies the UpdateChannelInput on the ChannelMutation builder.
 func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
 	if i.ClearBaseURL {
 		m.ClearBaseURL()
 	}
@@ -456,6 +460,9 @@ func (c *ModelCreate) SetInput(i CreateModelInput) *ModelCreate {
 
 // UpdateModelInput represents a mutation input for updating models.
 type UpdateModelInput struct {
+	Developer   *string
+	ModelID     *string
+	Type        *model.Type
 	Name        *string
 	Icon        *string
 	Group       *string
@@ -468,6 +475,15 @@ type UpdateModelInput struct {
 
 // Mutate applies the UpdateModelInput on the ModelMutation builder.
 func (i *UpdateModelInput) Mutate(m *ModelMutation) {
+	if v := i.Developer; v != nil {
+		m.SetDeveloper(*v)
+	}
+	if v := i.ModelID; v != nil {
+		m.SetModelID(*v)
+	}
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
 	if v := i.Name; v != nil {
 		m.SetName(*v)
 	}

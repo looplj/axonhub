@@ -141,6 +141,9 @@ export const createModelInputSchema = z.object({
 export type CreateModelInput = z.infer<typeof createModelInputSchema>;
 
 export const updateModelInputSchema = z.object({
+  developer: z.string().min(1, 'Developer is required').optional(),
+  modelID: z.string().min(1, 'Model ID is required').optional(),
+  type: modelTypeSchema.optional(),
   name: z.string().min(1, 'Name is required').optional(),
   icon: z.string().min(1, 'Icon is required').optional(),
   group: z.string().min(1, 'Group is required').optional(),
