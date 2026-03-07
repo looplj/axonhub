@@ -79,6 +79,7 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 
 	// Use proxy-configured HTTP client if available
 	var client *http.Client
+
 	if ch.Settings != nil && ch.Settings.Proxy != nil {
 		// Create HTTP client with proxy support
 		wrappedClient := httpclient.NewHttpClientWithProxy(ch.Settings.Proxy)

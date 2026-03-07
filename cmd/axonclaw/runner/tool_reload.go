@@ -86,19 +86,13 @@ func (t *ReloadTool) Execute(ctx context.Context, input reloadInput) agent.ToolR
 	t.boot.Timezone = newBoot.Timezone
 	t.boot.OS = newBoot.OS
 
-	localPrompt := buildLocalSystemPrompt(PromptEnv{
-		Date:         t.boot.Date,
-		Timezone:     t.boot.Timezone,
-		OS:           t.boot.OS,
-		Workspace:    t.workspace,
-		ThreadID:     t.threadID,
-		AxonClawPath: t.boot.AxonClawPath,
-		SkillsRoot:   t.boot.SkillsRoot,
-		ConfigDir:    t.boot.ConfigDir,
-	})
+	env := buildPromptEnv(newBoot, t.workspace)
+	serverPrompt := buildServerSystemPrompt(newBoot.SystemPrompt, env)
+	serverPrompt = appendSkillsToPrompt(serverPrompt, newBoot.Skills)
+	localPrompt := buildLocalSystemPrompt(env)
 
 	t.agent.UpdateConfig(func(cfg agent.Config) agent.Config {
-		cfg.SystemPrompts = []string{newBoot.SystemPrompt, localPrompt}
+		cfg.SystemPrompts = []string{serverPrompt, localPrompt}
 		return cfg
 	})
 

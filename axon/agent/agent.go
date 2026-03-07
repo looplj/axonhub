@@ -36,8 +36,6 @@ type Config struct {
 	Model string
 	// MaxIterations limits tool-call loops (0 means unlimited).
 	MaxIterations int
-	// SystemPrompt is the base system prompt (deprecated, use SystemPrompts).
-	SystemPrompt string
 	// SystemPrompts is an array of system prompts that will be joined together.
 	SystemPrompts []string
 }
@@ -433,14 +431,9 @@ func (a *Agent) buildMessages(ctx context.Context, cfg Config) []Message {
 }
 
 // buildSystemPrompts builds the system prompts from Config.
-// It supports both SystemPrompt (deprecated) and SystemPrompts.
 // Returns a slice of non-empty system prompt strings.
 func (a *Agent) buildSystemPrompts(cfg Config) []string {
 	var prompts []string
-
-	if cfg.SystemPrompt != "" {
-		prompts = append(prompts, cfg.SystemPrompt)
-	}
 
 	for _, p := range cfg.SystemPrompts {
 		if p != "" {

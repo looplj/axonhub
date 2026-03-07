@@ -34,6 +34,7 @@ type cacheResult struct {
 func SetTokenStatsCacheTTL(soft, hard time.Duration) {
 	allTimeCacheMu.Lock()
 	defer allTimeCacheMu.Unlock()
+
 	softTTL = soft
 	hardTTL = hard
 }

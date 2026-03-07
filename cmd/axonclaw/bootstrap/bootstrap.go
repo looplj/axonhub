@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -35,16 +34,9 @@ type Result struct {
 }
 
 type SystemPromptData struct {
-	Date         string
-	Timezone     string
-	OS           string
-	Workspace    string
-	AgentID      string
-	AgentName    string
-	AxonClawPath string
-	ThreadID     string
-	SkillsRoot   string
-	ConfigDir    string
+	Workspace  string
+	SkillsRoot string
+	ConfigDir  string
 }
 
 func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Result, error) {
@@ -68,70 +60,23 @@ func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Res
 
 	threadID := fmt.Sprintf("th-%s", uuid.New().String())
 
-	data.Date = now.Format("2006-01-02")
-	data.Timezone = timezone
-	data.OS = runtime.GOOS
-	data.AgentID = bootstrap.AgentID
-	data.AgentName = bootstrap.AgentName
-	data.AxonClawPath = getAxonClawPath()
-	data.ThreadID = threadID
-
-	systemPrompt, err := buildSystemPrompt(bootstrap.SystemPrompt, data)
-	if err != nil {
-		return nil, fmt.Errorf("build system prompt: %w", err)
-	}
-
-	systemPrompt = appendSkillsToPrompt(systemPrompt, bootstrap.Skills)
-
 	return &Result{
 		AgentID:         bootstrap.AgentID,
 		AgentName:       bootstrap.AgentName,
 		Model:           model,
 		ReasoningEffort: bootstrap.ReasoningEffort,
-		SystemPrompt:    systemPrompt,
+		SystemPrompt:    bootstrap.SystemPrompt,
 		ThreadID:        threadID,
 		Tools:           bootstrap.Tools,
 		Skills:          bootstrap.Skills,
 		BuiltinTools:    bootstrap.BuiltinTools,
-		AxonClawPath:    data.AxonClawPath,
+		AxonClawPath:    getAxonClawPath(),
 		SkillsRoot:      data.SkillsRoot,
 		ConfigDir:       data.ConfigDir,
-		Date:            data.Date,
-		Timezone:        data.Timezone,
-		OS:              data.OS,
+		Date:            now.Format("2006-01-02"),
+		Timezone:        timezone,
+		OS:              runtime.GOOS,
 	}, nil
-}
-
-func buildSystemPrompt(tmplStr string, data SystemPromptData) (string, error) {
-	tmpl, err := template.New("system").Parse(tmplStr)
-	if err != nil {
-		return "", fmt.Errorf("parse system prompt template: %w", err)
-	}
-
-	var result strings.Builder
-	if err := tmpl.Execute(&result, data); err != nil {
-		return "", fmt.Errorf("execute system prompt template: %w", err)
-	}
-
-	return result.String(), nil
-}
-
-func appendSkillsToPrompt(basePrompt string, skills []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition) string {
-	var sb strings.Builder
-	sb.WriteString(basePrompt)
-
-	for _, sk := range skills {
-		if sk.Name == "" || sk.Content == nil || strings.TrimSpace(*sk.Content) == "" {
-			continue
-		}
-		sb.WriteString("\n\n---\n\n")
-		sb.WriteString("## Skill: ")
-		sb.WriteString(sk.Name)
-		sb.WriteString("\n\n")
-		sb.WriteString(*sk.Content)
-	}
-
-	return sb.String()
 }
 
 func getAxonClawPath() string {

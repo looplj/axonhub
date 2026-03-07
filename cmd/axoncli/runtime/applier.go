@@ -33,8 +33,8 @@ func (a *Applier) Apply(_ context.Context, oldV, newV cliconf.Config, changes ax
 	if shouldUpdateAgent(changes) {
 		a.agent.UpdateConfig(func(cfg agent.Config) agent.Config {
 			cfg.Model = newV.Model
-			if cfg.SystemPrompt == "" {
-				cfg.SystemPrompt = a.systemPrompt
+			if len(cfg.SystemPrompts) == 0 {
+				cfg.SystemPrompts = []string{a.systemPrompt}
 			}
 			if cfg.MaxIterations == 0 {
 				cfg.MaxIterations = a.defaultMaxIter

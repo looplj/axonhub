@@ -56,21 +56,15 @@ type NewOptions struct {
 func New(opts NewOptions) *Runner {
 	permMw := NewPermissionMiddleware(opts.PermEvaluator)
 
-	localPrompt := buildLocalSystemPrompt(PromptEnv{
-		Date:         opts.Boot.Date,
-		Timezone:     opts.Boot.Timezone,
-		OS:           opts.Boot.OS,
-		Workspace:    opts.Workspace,
-		ThreadID:     opts.Boot.ThreadID,
-		AxonClawPath: opts.Boot.AxonClawPath,
-		SkillsRoot:   opts.Boot.SkillsRoot,
-		ConfigDir:    opts.Boot.ConfigDir,
-	})
+	env := buildPromptEnv(opts.Boot, opts.Workspace)
+	serverPrompt := buildServerSystemPrompt(opts.Boot.SystemPrompt, env)
+	serverPrompt = appendSkillsToPrompt(serverPrompt, opts.Boot.Skills)
+	localPrompt := buildLocalSystemPrompt(env)
 
 	a := agent.New(agent.Config{
 		Model:         opts.Boot.Model,
 		MaxIterations: defaultMaxIterations,
-		SystemPrompts: []string{opts.Boot.SystemPrompt, localPrompt},
+		SystemPrompts: []string{serverPrompt, localPrompt},
 	}, opts.Provider,
 		agent.WithBus(opts.Bus),
 		agent.WithContextManager(opts.ContextManager),
@@ -89,6 +83,21 @@ func New(opts NewOptions) *Runner {
 		ThreadMgr:     opts.ThreadMgr,
 		Boot:          opts.Boot,
 		TaskScheduler: opts.TaskScheduler,
+	}
+}
+
+func buildPromptEnv(boot *bootstrap.Result, workspace string) PromptEnv {
+	return PromptEnv{
+		Date:         boot.Date,
+		Timezone:     boot.Timezone,
+		OS:           boot.OS,
+		Workspace:    workspace,
+		ThreadID:     boot.ThreadID,
+		AxonClawPath: boot.AxonClawPath,
+		SkillsRoot:   boot.SkillsRoot,
+		ConfigDir:    boot.ConfigDir,
+		AgentID:      boot.AgentID,
+		AgentName:    boot.AgentName,
 	}
 }
 
@@ -249,21 +258,19 @@ func (r *Runner) autoUpdateConfig(ctx context.Context) {
 	r.Boot.Tools = newBoot.Tools
 	r.Boot.Skills = newBoot.Skills
 	r.Boot.BuiltinTools = newBoot.BuiltinTools
+	r.Boot.AxonClawPath = newBoot.AxonClawPath
+	r.Boot.Date = newBoot.Date
+	r.Boot.Timezone = newBoot.Timezone
+	r.Boot.OS = newBoot.OS
 
-	localPrompt := buildLocalSystemPrompt(PromptEnv{
-		Date:         newBoot.Date,
-		Timezone:     newBoot.Timezone,
-		OS:           newBoot.OS,
-		Workspace:    r.Workspace,
-		ThreadID:     r.ThreadID,
-		AxonClawPath: newBoot.AxonClawPath,
-		SkillsRoot:   r.Boot.SkillsRoot,
-		ConfigDir:    r.Boot.ConfigDir,
-	})
+	env := buildPromptEnv(newBoot, r.Workspace)
+	serverPrompt := buildServerSystemPrompt(newBoot.SystemPrompt, env)
+	serverPrompt = appendSkillsToPrompt(serverPrompt, newBoot.Skills)
+	localPrompt := buildLocalSystemPrompt(env)
 
 	r.Agent.UpdateConfig(func(cfg agent.Config) agent.Config {
 		cfg.Model = newBoot.Model
-		cfg.SystemPrompts = []string{newBoot.SystemPrompt, localPrompt}
+		cfg.SystemPrompts = []string{serverPrompt, localPrompt}
 		return cfg
 	})
 

@@ -3,6 +3,8 @@ package runner
 import (
 	"strings"
 	"text/template"
+
+	"github.com/looplj/axonhub/axon/api"
 )
 
 const systemPrompt = `
@@ -42,6 +44,16 @@ Example workflow:
 4. End with: "I have used the SendMessage tool to reply to the user."
 
 Do NOT just output text - always use SendMessage to respond.
+
+## Handling New Topics
+
+When you detect the user is asking a **NEW question** (different from the current task):
+
+1. **Acknowledge first** — Use SendMessage to briefly confirm receipt, letting the user know you're working on it
+2. **Shift focus** — Redirect attention to the new topic and reduce weight on previous context
+   - Avoid confusion with old context
+   - Maintain clear conversation flow
+   - Keep responses relevant to the current question
 
 ## Stopping & Pausing
 
@@ -124,6 +136,8 @@ type PromptEnv struct {
 	AxonClawPath string
 	SkillsRoot   string
 	ConfigDir    string
+	AgentID      string
+	AgentName    string
 }
 
 func buildLocalSystemPrompt(env PromptEnv) string {
@@ -140,4 +154,45 @@ func buildLocalSystemPrompt(env PromptEnv) string {
 	}
 
 	return result.String()
+}
+
+func buildServerSystemPrompt(prpmpt string, env PromptEnv) string {
+	if prpmpt == "" {
+		return ""
+	}
+
+	tmpl, err := template.New("server").Parse(prpmpt)
+	if err != nil {
+		return prpmpt
+	}
+
+	var result strings.Builder
+	if err := tmpl.Execute(&result, env); err != nil {
+		return prpmpt
+	}
+
+	return result.String()
+}
+
+func appendSkillsToPrompt(basePrompt string, skills []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition) string {
+	if len(skills) == 0 {
+		return basePrompt
+	}
+
+	var sb strings.Builder
+	sb.WriteString(basePrompt)
+
+	for _, sk := range skills {
+		if sk.Name == "" || sk.Content == nil || strings.TrimSpace(*sk.Content) == "" {
+			continue
+		}
+
+		sb.WriteString("\n\n---\n\n")
+		sb.WriteString("## Skill: ")
+		sb.WriteString(sk.Name)
+		sb.WriteString("\n\n")
+		sb.WriteString(*sk.Content)
+	}
+
+	return sb.String()
 }

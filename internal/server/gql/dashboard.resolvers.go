@@ -14,6 +14,9 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/samber/lo"
+	"github.com/vektah/gqlparser/v2/gqlerror"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -28,8 +31,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
-	"github.com/samber/lo"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -651,15 +652,17 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 
 	// Get all-time token stats with stale-while-revalidate caching
 	allTimeCacheMu.RLock()
+
 	cacheAge := time.Since(allTimeCacheTime)
 	cacheExists := allTimeCache != nil
+
 	allTimeCacheMu.RUnlock()
 
 	// Helper function to refresh cache data
 	// Returns the stats, the cache timestamp, and any error
 	refreshCache := func(ctx context.Context) (*TokenStats, time.Time, error) {
 		// Use singleflight to prevent concurrent refresh attempts
-		result, err, _ := allTimeRefreshGroup.Do("allTimeTokenStats", func() (interface{}, error) {
+		result, err, _ := allTimeRefreshGroup.Do("allTimeTokenStats", func() (any, error) {
 			// Query all usage_logs records without time filter
 			type allTimeTokenSums struct {
 				InputTokens  int `json:"input_tokens"`
@@ -701,14 +704,15 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 				time:  cacheTime,
 			}, nil
 		})
-
 		if err != nil {
 			return nil, time.Time{}, err
 		}
+
 		cacheRes, ok := result.(*cacheResult)
 		if !ok {
 			return nil, time.Time{}, fmt.Errorf("unexpected type from singleflight: %T", result)
 		}
+
 		return cacheRes.stats, cacheRes.time, nil
 	}
 
@@ -717,8 +721,10 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 		// Cache is valid (within hard TTL)
 		// Capture all cache data under a single read lock to prevent race conditions
 		allTimeCacheMu.RLock()
+
 		cachedStats := allTimeCache
 		lastUpdated := allTimeCacheTime
+
 		allTimeCacheMu.RUnlock()
 
 		// Safe to access cachedStats here since we have a local copy
@@ -754,10 +760,11 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 			graphql.AddError(ctx, &gqlerror.Error{
 				Path:    graphql.GetPath(ctx),
 				Message: "Failed to aggregate all-time token statistics",
-				Extensions: map[string]interface{}{
+				Extensions: map[string]any{
 					"code": "TOKEN_STATS_ALL_TIME_AGG_FAILED",
 				},
 			})
+
 			stats.TotalInputTokensAllTime = 0
 			stats.TotalOutputTokensAllTime = 0
 			stats.TotalCachedTokensAllTime = 0

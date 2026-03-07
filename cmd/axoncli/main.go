@@ -211,7 +211,7 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 	a := agent.New(agent.Config{
 		Model:         cfg.Model,
 		MaxIterations: defaultMaxIter,
-		SystemPrompt:  systemPrompt,
+		SystemPrompts: []string{systemPrompt},
 	}, provider, agent.WithBus(eventBus), agent.WithLogger(logger), agent.WithMiddlewares(permMiddleware))
 
 	a.RegisterTool(tools.NewAgentTool(tools.NewReadTool(workspaceDir, false)))

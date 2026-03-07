@@ -83,23 +83,23 @@ func startServer() {
 					go func() {
 						err := server.Run()
 						if err != nil {
-							log.Error(context.Background(), "server run error:", log.Cause(err))
+							log.Error(ctx, "server run error:", log.Cause(err))
 							os.Exit(1)
 						}
 					}()
-					go antigravity.InitVersion(context.Background()) //nolint:gosec // intentional detached context
+					go antigravity.InitVersion(context.WithoutCancel(ctx))
 
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {
 					err := server.Shutdown(ctx)
 					if err != nil {
-						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
+						log.Error(ctx, "server shutdown error:", log.Cause(err))
 					}
 
 					err = ent.Close()
 					if err != nil {
-						log.Error(context.Background(), "ent close error:", log.Cause(err))
+						log.Error(ctx, "ent close error:", log.Cause(err))
 					}
 
 					return nil
