@@ -87,7 +87,7 @@ func startServer() {
 							os.Exit(1)
 						}
 					}()
-					go antigravity.InitVersion(context.Background())
+					go antigravity.InitVersion(context.Background()) //nolint:gosec // intentional detached context
 
 					return nil
 				},
