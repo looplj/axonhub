@@ -209,13 +209,10 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	if cfg.ContextSoftTokenLimit > 0 {
 		contextCfg.SoftTokenLimit = cfg.ContextSoftTokenLimit
 	}
-	if cfg.ContextSummaryMaxChars > 0 {
-		contextCfg.SummaryMaxChars = cfg.ContextSummaryMaxChars
-	}
+
 	contextCfg.Summarizer = summarizer.NewProvider(summarizer.ProviderOptions{
-		Provider:      provider,
-		Model:         boot.Model,
-		MaxSummaryLen: contextCfg.SummaryMaxChars,
+		Provider: provider,
+		Model:    boot.Model,
 	})
 
 	contextStore := agent.NewContextManagerFileStore(filepath.Join(axonclawDir, "messages"))

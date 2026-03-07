@@ -9,12 +9,16 @@ import (
 	"time"
 )
 
+const (
+	defaultContextMaxRecentMessages = 120
+	defaultContextSoftTokenLimit    = 160_000
+)
+
 // ContextManagerConfig controls context compaction behavior.
 type ContextManagerConfig struct {
 	Enabled           bool
-	MaxRecentMessages int
+	MaxRecentMessages int // MaxRecentMessages is the maximum number of recent rounds to keep.
 	SoftTokenLimit    int
-	SummaryMaxChars   int
 	Summarizer        Summarizer
 	Logger            *slog.Logger
 }
@@ -24,9 +28,14 @@ func DefaultContextManagerConfig() ContextManagerConfig {
 		Enabled:           true,
 		MaxRecentMessages: defaultContextMaxRecentMessages,
 		SoftTokenLimit:    defaultContextSoftTokenLimit,
-		SummaryMaxChars:   defaultContextSummaryMaxChars,
 	}
 }
+
+// compactionCooldown prevents back-to-back summarization calls.
+// After a successful compaction, the next BuildMessages call skips
+// compaction to avoid an infinite summarize loop when retained
+// messages still exceed the soft token limit.
+const compactionCooldown = 30 * time.Second
 
 // SmartContextManager is a decorator strategy that adds compaction
 // and persisted summary state.
@@ -37,8 +46,9 @@ type SmartContextManager struct {
 	store  ContextManagerStore
 	logger *slog.Logger
 
-	mu    sync.RWMutex
-	state ContextManagerState
+	mu              sync.RWMutex
+	state           ContextManagerState
+	lastCompactedAt time.Time
 }
 
 func NewSmartContextManager(config ContextManagerConfig, store ContextManagerStore) (*SmartContextManager, error) {
@@ -102,9 +112,9 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	keep := m.config.MaxRecentMessages
-	if keep <= 0 {
-		keep = defaultContextMaxRecentMessages
+	keepRounds := m.config.MaxRecentMessages
+	if keepRounds <= 0 {
+		keepRounds = defaultContextMaxRecentMessages
 	}
 
 	totalTokens := 0
@@ -113,31 +123,35 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
 		totalTokens = EstimateMessagesTokens(working)
 		tokenLimitExceeded = totalTokens > m.config.SoftTokenLimit
 	}
-	messageOverflow := len(working) > keep
-	shouldCompact := messageOverflow || (tokenLimitExceeded && len(working) > keep/2)
+
+	totalRounds := countUniqueRounds(working)
+	roundOverflow := totalRounds > keepRounds
+	inCooldown := !m.lastCompactedAt.IsZero() && time.Since(m.lastCompactedAt) < compactionCooldown
+
+	shouldCompact := (roundOverflow || (tokenLimitExceeded && totalRounds > keepRounds/2)) && !inCooldown
 	if m.logger.Enabled(ctx, slog.LevelDebug) {
 		m.logger.Debug("context manager: build messages",
 			"messages", len(working),
+			"rounds", totalRounds,
 			"tokens", totalTokens,
-			"max_recent_messages", keep,
+			"max_recent_rounds", keepRounds,
 			"soft_token_limit", m.config.SoftTokenLimit,
-			"message_overflow", messageOverflow,
+			"round_overflow", roundOverflow,
 			"token_limit_exceeded", tokenLimitExceeded,
+			"in_cooldown", inCooldown,
 			"should_compact", shouldCompact,
 		)
 	}
 
 	if shouldCompact {
-		if keep > len(working) {
-			keep = len(working)
-		}
-
-		cut := len(working) - keep
+		cut := findCutIndexForRounds(working, keepRounds)
 		cut = adjustCompactionCut(working, cut)
-		overflow := working[:cut]
+
+		overflow := cloneMessages(working[:cut])
 		if len(overflow) > 0 {
 			m.logger.Debug("context manager: summarize start",
 				"overflow_messages", len(overflow),
+				"overflow_rounds", countUniqueRounds(overflow),
 				"overflow_tokens", EstimateMessagesTokens(overflow),
 			)
 			summary, err := m.config.Summarizer.Summarize(ctx, overflow)
@@ -154,10 +168,13 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
 				m.state.Summary = ""
 				m.state.CompactionCount++
 				m.state.UpdatedAt = now
+				m.lastCompactedAt = now
 
 				m.logger.Debug("context manager: summarize complete",
 					"overflow_messages", len(overflow),
+					"overflow_rounds", countUniqueRounds(overflow),
 					"retained_messages", len(retained),
+					"retained_rounds", countUniqueRounds(retained),
 					"summary_chars", len(summary),
 					"compaction_count", m.state.CompactionCount,
 				)
@@ -193,6 +210,15 @@ func (m *SmartContextManager) saveLocked(ctx context.Context, messages []Message
 	if m.store == nil {
 		return
 	}
+	// Derive max RoundIndex from current messages so it survives restarts.
+	var maxRI int64
+	for i := range messages {
+		if ri := int64(messages[i].RoundIndex); ri > maxRI {
+			maxRI = ri
+		}
+	}
+
+	m.state.RoundIndex = maxRI
 	if err := m.store.Save(ctx, m.state, messages, archivedMessages); err != nil {
 		m.logger.Debug("context manager: save failed", "error", err)
 	}
@@ -203,12 +229,12 @@ func adjustCompactionCut(messages []Message, cut int) int {
 		return cut
 	}
 
-	overflowReqIndexes := map[int]struct{}{}
+	overflowRoundIndexes := map[int]struct{}{}
 	overflowToolUseIDs := map[string]struct{}{}
 	for i := 0; i < cut; i++ {
 		msg := messages[i]
-		if msg.RequestIndex != 0 {
-			overflowReqIndexes[msg.RequestIndex] = struct{}{}
+		if msg.RoundIndex != 0 {
+			overflowRoundIndexes[msg.RoundIndex] = struct{}{}
 		}
 		if msg.ToolUse != nil && msg.ToolUse.ID != "" {
 			overflowToolUseIDs[msg.ToolUse.ID] = struct{}{}
@@ -218,8 +244,8 @@ func adjustCompactionCut(messages []Message, cut int) int {
 	for cut < len(messages) {
 		msg := messages[cut]
 
-		if msg.RequestIndex != 0 {
-			if _, ok := overflowReqIndexes[msg.RequestIndex]; ok {
+		if msg.RoundIndex != 0 {
+			if _, ok := overflowRoundIndexes[msg.RoundIndex]; ok {
 				if msg.ToolUse != nil && msg.ToolUse.ID != "" {
 					overflowToolUseIDs[msg.ToolUse.ID] = struct{}{}
 				}
@@ -247,9 +273,6 @@ func mergeDefaultContextManagerConfig(cfg ContextManagerConfig) ContextManagerCo
 	}
 	if cfg.SoftTokenLimit <= 0 {
 		cfg.SoftTokenLimit = defaultContextSoftTokenLimit
-	}
-	if cfg.SummaryMaxChars <= 0 {
-		cfg.SummaryMaxChars = defaultContextSummaryMaxChars
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()

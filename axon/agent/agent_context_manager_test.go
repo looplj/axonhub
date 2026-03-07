@@ -46,20 +46,17 @@ func TestAgentWithContextManager_CompactsHistory(t *testing.T) {
 
 	ctx := context.Background()
 
-	for i := 0; i < 3; i++ {
+	for i := range 5 {
 		msg := fmt.Sprintf("user-%d", i+1)
 		err := a.Process(ctx, Content{Text: &msg})
 		require.NoError(t, err)
 	}
 
-	history := a.Messages()
-	assert.LessOrEqual(t, len(history), 4)
-
-	require.Len(t, provider.inputs, 3)
-	thirdCall := provider.inputs[2]
-	require.NotEmpty(t, thirdCall)
-	assert.Equal(t, RoleUser, thirdCall[0].Role)
-	assert.Equal(t, "test-summary", thirdCall[0].Content.String())
+	require.Len(t, provider.inputs, 5)
+	fourthCall := provider.inputs[3]
+	require.NotEmpty(t, fourthCall)
+	assert.Equal(t, RoleUser, fourthCall[0].Role)
+	assert.Equal(t, "test-summary", fourthCall[0].Content.String())
 }
 
 var _ Provider = (*contextTestProvider)(nil)

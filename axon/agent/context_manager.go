@@ -5,12 +5,6 @@ import (
 	"time"
 )
 
-const (
-	defaultContextMaxRecentMessages = 120
-	defaultContextSoftTokenLimit    = 120000
-	defaultContextSummaryMaxChars   = 16000
-)
-
 // ContextManager manages message history and optional context preparation policies.
 // Implementations can be composed via decorators.
 type ContextManager interface {
@@ -38,6 +32,7 @@ type ContextManager interface {
 type ContextManagerState struct {
 	Summary         string    `json:"summary,omitempty"`
 	CompactionCount int64     `json:"compaction_count"`
+	RoundIndex      int64     `json:"round_index"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
@@ -49,6 +44,7 @@ func copyContextState(state ContextManagerState) ContextManagerState {
 	out := ContextManagerState{
 		Summary:         state.Summary,
 		CompactionCount: state.CompactionCount,
+		RoundIndex:      state.RoundIndex,
 		UpdatedAt:       state.UpdatedAt,
 	}
 	return out

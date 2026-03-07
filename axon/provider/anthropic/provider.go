@@ -11,9 +11,6 @@ const (
 	defaultThreadHeader = "AH-Thread-Id"
 	defaultTraceHeader  = "AH-Trace-Id"
 )
-
-var requestIndexCounter int64
-
 type Provider struct {
 	client          anthropic.Client
 	threadHeader    string

@@ -57,12 +57,11 @@ type Agent struct {
 	middlewares     []Middleware
 	initialMessages []Message
 
-	// requestIndex groups assistant messages that came from the same LLM call.
-	// It is an agent-maintained field: every LLM turn must assign the same
-	// RequestIndex to all assistant messages produced by that turn (text/thinking
-	// blocks and tool_use blocks), so downstream adapters can safely aggregate
-	// them into one "assistant message" at the provider API level.
-	requestIndex atomic.Int64
+	// roundIndex groups messages that belong to the same LLM call round.
+	// Every LLM round assigns the same RoundIndex to all produced messages
+	// (assistant text/thinking, tool_use, and tool result), so downstream
+	// adapters can safely aggregate and compaction can keep them together.
+	roundIndex atomic.Int64
 
 	steeringQueue []Message
 	followUpQueue []Message
@@ -105,17 +104,6 @@ func WithContextManager(cm ContextManager) Option {
 func WithMessages(msgs []Message) Option {
 	return func(a *Agent) {
 		a.initialMessages = cloneMessages(msgs)
-
-		// Continue request index numbering from persisted history to avoid collisions.
-		var maxRequestIndex int64
-		for i := range msgs {
-			if int64(msgs[i].RequestIndex) > maxRequestIndex {
-				maxRequestIndex = int64(msgs[i].RequestIndex)
-			}
-		}
-		if maxRequestIndex > 0 {
-			a.requestIndex.Store(maxRequestIndex)
-		}
 	}
 }
 
@@ -140,6 +128,11 @@ func New(config Config, provider Provider, opts ...Option) *Agent {
 		a.contextManager = NewSimpleContextManager(a.initialMessages)
 	} else if len(a.initialMessages) > 0 {
 		a.contextManager.AddMessages(context.Background(), a.initialMessages...)
+	}
+
+	// Restore round index counter from persisted state.
+	if ri := a.contextManager.Snapshot().RoundIndex; ri > 0 {
+		a.roundIndex.Store(ri)
 	}
 
 	return a
@@ -344,14 +337,15 @@ func (a *Agent) Process(ctx context.Context, content Content) error {
 
 	cfg := a.Config()
 
-	userMsg := Message{Role: RoleUser, Content: &content}
+	roundIndex := a.nextRoundIndex()
+	userMsg := Message{Role: RoleUser, Content: &content, RoundIndex: roundIndex}
 	a.addMessage(ctx, userMsg)
 	a.emit(ctx, AgentEvent{
 		Type:    EventMessageStart,
 		Message: &userMsg,
 	})
 
-	err := a.runLoop(ctx, cfg)
+	err := a.runLoop(ctx, cfg, roundIndex)
 	if err != nil {
 		a.emit(ctx, AgentEvent{Type: EventError, Error: err})
 		return err
@@ -382,14 +376,15 @@ func (a *Agent) ProcessStream(ctx context.Context, content Content) <-chan Agent
 
 		cfg := a.Config()
 
-		userMsg := Message{Role: RoleUser, Content: &content}
+		roundIndex := a.nextRoundIndex()
+		userMsg := Message{Role: RoleUser, Content: &content, RoundIndex: roundIndex}
 		a.addMessage(ctx, userMsg)
 		emit(AgentEvent{
 			Type:    EventMessageStart,
 			Message: &userMsg,
 		})
 
-		err := a.runLoopStream(ctx, cfg, events)
+		err := a.runLoopStream(ctx, cfg, events, roundIndex)
 		if err != nil {
 			emit(AgentEvent{Type: EventError, Error: err})
 		}
@@ -456,18 +451,14 @@ func (a *Agent) buildSystemPrompts(cfg Config) []string {
 	return prompts
 }
 
-func (a *Agent) nextRequestIndex() int {
-	// Start from 1 (0 means "unset" and may be treated specially).
-	return int(a.requestIndex.Add(1))
+func (a *Agent) nextRoundIndex() int {
+	return int(a.roundIndex.Add(1))
 }
 
-func (a *Agent) ensureRequestIndex(msgs []Message, requestIndex int) {
+func (a *Agent) ensureRoundIndex(msgs []Message, roundIndex int) {
 	for i := range msgs {
-		if msgs[i].Role != RoleAssistant {
-			continue
-		}
-		if msgs[i].RequestIndex == 0 {
-			msgs[i].RequestIndex = requestIndex
+		if msgs[i].RoundIndex == 0 {
+			msgs[i].RoundIndex = roundIndex
 		}
 	}
 }
@@ -481,7 +472,7 @@ func (a *Agent) ensureRequestIndex(msgs []Message, requestIndex int) {
 //     skipped and steering messages are injected before the next LLM call.
 //   - Follow-up: checked when the agent would otherwise stop (no more tool
 //     calls); follow-up messages are injected and the loop continues.
-func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
+func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) error {
 	toolDefs := a.tools.Definitions()
 
 	a.emit(ctx, AgentEvent{Type: EventTraceStart})
@@ -491,6 +482,9 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 	pendingSteering := a.dequeueSteering()
 
 	iterations := 0
+	// Use the round index from the user message for the first LLM call,
+	// so user + assistant messages share the same round.
+	nextRound := initialRoundIndex
 
 	// Outer loop: continues when follow-up messages arrive after the agent
 	// would otherwise stop.
@@ -523,8 +517,10 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 				return fmt.Errorf("agent: LLM call failed: %w", err)
 			}
 			a.emit(ctx, AgentEvent{Type: EventUsage, Usage: &resp.Usage})
-			requestIndex := a.nextRequestIndex()
-			a.ensureRequestIndex(resp.Messages, requestIndex)
+
+			roundIndex := nextRound
+			nextRound = a.nextRoundIndex()
+			a.ensureRoundIndex(resp.Messages, roundIndex)
 
 			// Separate tool-use messages from non-tool messages.
 			var toolMsgs []Message
@@ -554,20 +550,20 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config) error {
 				}
 
 				toolMsg := Message{
-					Role:      RoleTool,
-					Content:   &toolContent,
-					ToolUseID: &msg.ToolUse.ID,
-					IsError:   &isError,
+					Role:       RoleTool,
+					Content:    &toolContent,
+					ToolUseID:  &msg.ToolUse.ID,
+					IsError:    &isError,
+					RoundIndex: roundIndex,
 				}
 				a.addMessage(ctx, msg, toolMsg)
 
 				// Check for steering after each tool execution.
 				if steering := a.dequeueSteering(); len(steering) > 0 {
-					// Skip remaining tool calls.
 					for _, skipped := range toolMsgs[i+1:] {
-						skippedIndex := requestIndex
-						if skipped.RequestIndex != 0 {
-							skippedIndex = skipped.RequestIndex
+						skippedIndex := roundIndex
+						if skipped.RoundIndex != 0 {
+							skippedIndex = skipped.RoundIndex
 						}
 						a.skipToolCall(ctx, *skipped.ToolUse, skippedIndex)
 					}
@@ -688,7 +684,7 @@ func (a *Agent) executeTool(ctx context.Context, tc ToolUse) (result ToolResult)
 
 // skipToolCall emits a skipped-tool message pair (tool_use + tool result)
 // so the conversation history stays consistent for the LLM.
-func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse, requestIndex int) {
+func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse, roundIndex int) {
 	a.emit(ctx, AgentEvent{
 		Type:     EventToolSkipped,
 		ToolName: tc.Name,
@@ -697,22 +693,25 @@ func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse, requestIndex int) 
 	errMsg := "Skipped due to steering message."
 	isError := true
 	toolMsg := Message{
-		Role:      RoleTool,
-		Content:   &Content{Text: &errMsg},
-		ToolUseID: &tc.ID,
-		IsError:   &isError,
+		Role:       RoleTool,
+		Content:    &Content{Text: &errMsg},
+		ToolUseID:  &tc.ID,
+		IsError:    &isError,
+		RoundIndex: roundIndex,
 	}
 	// Add original tool-use message + skipped result so history is valid.
 	a.addMessage(ctx, Message{
-		Role:         RoleAssistant,
-		ToolUse:      &tc,
-		RequestIndex: requestIndex,
+		Role:       RoleAssistant,
+		ToolUse:    &tc,
+		RoundIndex: roundIndex,
 	}, toolMsg)
 }
 
 // runLoopStream is the streaming version of runLoop.
 // It processes streaming events from the LLM and emits them to the events channel.
-func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan AgentEvent) error {
+//
+//nolint:maintidx // Checked.
+func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan AgentEvent, initialRoundIndex int) error {
 	toolDefs := a.tools.Definitions()
 
 	emit := func(ev AgentEvent) {
@@ -728,6 +727,7 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 
 	pendingSteering := a.dequeueSteering()
 	iterations := 0
+	nextRound := initialRoundIndex
 
 	for {
 		hasMoreToolCalls := true
@@ -756,7 +756,8 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 				return fmt.Errorf("agent: LLM stream call failed: %w", err)
 			}
 
-			requestIndex := a.nextRequestIndex()
+			roundIndex := nextRound
+			nextRound = a.nextRoundIndex()
 
 			var textBuilder strings.Builder
 			var thinkingBuilder strings.Builder
@@ -871,8 +872,8 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 				assistantMsg = Message{
 					Role:    RoleAssistant,
 					Content: &Content{Parts: contentParts},
-					// Group content + tool-use blocks from this LLM call.
-					RequestIndex: requestIndex,
+					// Group content + tool-use blocks from this LLM call round.
+					RoundIndex: roundIndex,
 				}
 				a.addMessage(ctx, assistantMsg)
 				emit(AgentEvent{Type: EventMessageAdded, Message: &assistantMsg})
@@ -895,16 +896,17 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 				}
 
 				toolMsg := Message{
-					Role:      RoleTool,
-					Content:   &toolContent,
-					ToolUseID: &tc.ID,
-					IsError:   &isError,
+					Role:       RoleTool,
+					Content:    &toolContent,
+					ToolUseID:  &tc.ID,
+					IsError:    &isError,
+					RoundIndex: roundIndex,
 				}
-				a.addMessage(ctx, Message{Role: RoleAssistant, ToolUse: &tc, RequestIndex: requestIndex}, toolMsg)
+				a.addMessage(ctx, Message{Role: RoleAssistant, ToolUse: &tc, RoundIndex: roundIndex}, toolMsg)
 
 				if steering := a.dequeueSteering(); len(steering) > 0 {
 					for _, skipped := range toolCalls[i+1:] {
-						a.skipToolCall(ctx, skipped, requestIndex)
+						a.skipToolCall(ctx, skipped, roundIndex)
 					}
 					pendingSteering = steering
 					steered = true

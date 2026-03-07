@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Khan/genqlient/graphql"
@@ -11,10 +12,12 @@ import (
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/api"
 	"github.com/looplj/axonhub/axon/bus"
-	axoncontext "github.com/looplj/axonhub/axon/context"
 	"github.com/looplj/axonhub/axon/permission"
 	"github.com/looplj/axonhub/axon/task"
 	"github.com/looplj/axonhub/axon/thread"
+
+	axoncontext "github.com/looplj/axonhub/axon/context"
+
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
@@ -33,6 +36,7 @@ type Runner struct {
 	lastSequence  int
 	TaskScheduler *task.Scheduler
 	processMu     sync.Mutex
+	processing    atomic.Bool
 }
 
 type NewOptions struct {
@@ -92,8 +96,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
 	ctx = axoncontext.WithWorkspace(ctx, r.Workspace)
 
-	pollTicker := time.NewTicker(r.Config.PollInterval)
-	defer pollTicker.Stop()
+	msgCh := make(chan string, 64)
+
+	// Separate goroutine for polling messages so that new messages can still
+	// be received while the agent is processing (enabling steering).
+	go r.pollMessages(ctx, msgCh)
+
 	hbTicker := time.NewTicker(r.Config.HeartbeatInterval)
 	defer hbTicker.Stop()
 
@@ -122,7 +130,42 @@ func (r *Runner) Run(ctx context.Context) error {
 				continue
 			}
 
-		case <-pollTicker.C:
+		case text := <-msgCh:
+			if r.processing.Load() {
+				// Agent is busy — deliver as a steering message so the
+				// current tool-call loop can be interrupted.
+				r.Logger.Info("agent busy, delivering as steering", "text_len", len(text))
+				t := text
+				r.Agent.Steer(agent.Message{
+					Role:    agent.RoleUser,
+					Content: &agent.Content{Text: &t},
+				})
+			} else {
+				// Agent is idle — start a new processing run in background
+				// so the main loop remains responsive.
+				t := text
+
+				go func() {
+					if err := r.processMessage(ctx, t); err != nil {
+						r.Logger.Warn("agent process failed", "error", err)
+					}
+				}()
+			}
+		}
+	}
+}
+
+// pollMessages continuously pulls chat messages from the server and sends
+// their text to out. It runs until ctx is canceled.
+func (r *Runner) pollMessages(ctx context.Context, out chan<- string) {
+	ticker := time.NewTicker(r.Config.PollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
 			limit := 50
 			afterSeq := r.lastSequence
 			typeIn := []api.AgentMessageType{api.AgentMessageTypeChat}
@@ -153,12 +196,12 @@ func (r *Runner) Run(ctx context.Context) error {
 					continue
 				}
 
-				if err := r.processMessage(ctx, msg.Text); err != nil {
-					r.Logger.Warn("agent process failed", "error", err, "message_id", msg.Id, "sequence", msg.Sequence)
-					continue
+				select {
+				case out <- msg.Text:
+					ackedIDs = append(ackedIDs, msg.Id)
+				case <-ctx.Done():
+					return
 				}
-
-				ackedIDs = append(ackedIDs, msg.Id)
 			}
 
 			if len(ackedIDs) > 0 {
@@ -176,8 +219,10 @@ func (r *Runner) processMessage(ctx context.Context, text string) error {
 	r.processMu.Lock()
 	defer r.processMu.Unlock()
 
+	r.processing.Store(true)
+	defer r.processing.Store(false)
+
 	traceID := uuid.New().String()
-	// 显式设置 ThreadID 和 TraceID，确保 provider 调用时能正确传递到 HTTP Header
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
 	ctx = axoncontext.WithTraceID(ctx, traceID)
 	return r.Agent.Process(ctx, agent.Content{Text: &text})

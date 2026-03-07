@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -54,6 +55,17 @@ func TestContextManagerFileStore_SaveLoadAndArchive(t *testing.T) {
 	entries, err := os.ReadDir(filepath.Join(dir, "archives"))
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
+	require.Contains(t, entries[0].Name(), "archive-")
+	require.True(t, strings.HasSuffix(entries[0].Name(), ".md"))
+
+	archiveData, err := os.ReadFile(filepath.Join(dir, "archives", entries[0].Name()))
+	require.NoError(t, err)
+
+	content := string(archiveData)
+	require.Contains(t, content, "# Context Archive")
+	require.Contains(t, content, "Message count**: 2")
+	require.Contains(t, content, "u1")
+	require.Contains(t, content, "a1")
 }
 
 func TestContextManagerFileStore_LoadMissingReturnsEmpty(t *testing.T) {

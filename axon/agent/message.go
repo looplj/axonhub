@@ -29,9 +29,9 @@ type Message struct {
 	// One tool use per message, it is helpful to handle parallel tool use.
 	ToolUse *ToolUse `json:"tool_use,omitempty"`
 
-	// RequestIndex groups messages from the same API response.
-	// Messages with the same RequestIndex should be aggregated into a single API request message.
-	RequestIndex int `json:"request_index,omitempty"`
+	// RoundIndex groups messages from the same LLM call round.
+	// Messages with the same RoundIndex should be aggregated into a single API message.
+	RoundIndex int `json:"round_index"`
 }
 
 // ToolUse represents an AI tool invocation.

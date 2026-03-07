@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -100,8 +101,10 @@ func (s *ContextManagerFileStore) Save(_ context.Context, state ContextManagerSt
 	now := time.Now().UTC()
 
 	if len(archivedMessages) > 0 {
-		archiveFile := fmt.Sprintf("compaction-%d.json", now.UnixNano())
-		if err := s.writeJSONAtomic(filepath.Join(s.archivesDir(), archiveFile), cloneMessages(archivedMessages)); err != nil {
+		archiveFile := fmt.Sprintf("archive-%s.md", now.Format("20060102150405"))
+
+		archiveData := renderArchiveMarkdown(now, cloneMessages(archivedMessages))
+		if err := s.writeFileAtomic(filepath.Join(s.archivesDir(), archiveFile), archiveData); err != nil {
 			return fmt.Errorf("write context manager archive: %w", err)
 		}
 
@@ -167,11 +170,7 @@ func (s *ContextManagerFileStore) readIndex() (contextManagerIndexFile, error) {
 	return index, nil
 }
 
-func (s *ContextManagerFileStore) writeJSONAtomic(path string, v any) error {
-	data, err := json.Marshal(v)
-	if err != nil {
-		return fmt.Errorf("marshal json: %w", err)
-	}
+func (s *ContextManagerFileStore) writeFileAtomic(path string, data []byte) error {
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return fmt.Errorf("write temp file: %w", err)
@@ -180,4 +179,72 @@ func (s *ContextManagerFileStore) writeJSONAtomic(path string, v any) error {
 		return fmt.Errorf("rename temp file: %w", err)
 	}
 	return nil
+}
+
+func (s *ContextManagerFileStore) writeJSONAtomic(path string, v any) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Errorf("marshal json: %w", err)
+	}
+
+	return s.writeFileAtomic(path, data)
+}
+
+func renderArchiveMarkdown(createdAt time.Time, messages []Message) []byte {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# Context Archive\n\n")
+	fmt.Fprintf(&b, "- **Created at**: %s\n", createdAt.Format(time.RFC3339))
+	fmt.Fprintf(&b, "- **Message count**: %d\n\n", len(messages))
+	fmt.Fprintf(&b, "---\n\n")
+
+	for i, msg := range messages {
+		fmt.Fprintf(&b, "## %d. %s\n\n", i+1, msg.Role)
+
+		if msg.RoundIndex != 0 {
+			fmt.Fprintf(&b, "- Round index: %d\n", msg.RoundIndex)
+		}
+
+		if msg.ToolUse != nil {
+			fmt.Fprintf(&b, "- Tool use: `%s` (id: `%s`)\n", msg.ToolUse.Name, msg.ToolUse.ID)
+		}
+
+		if msg.ToolUseID != nil {
+			fmt.Fprintf(&b, "- Tool call id: `%s`\n", *msg.ToolUseID)
+		}
+
+		if msg.IsError != nil && *msg.IsError {
+			fmt.Fprintf(&b, "- **Is error**: true\n")
+		}
+
+		b.WriteString("\n")
+
+		if msg.ToolUse != nil {
+			fmt.Fprintf(&b, "```json\n%s\n```\n", msg.ToolUse.Input)
+		} else if msg.Content != nil {
+			renderContentMarkdown(&b, msg.Content)
+		}
+
+		b.WriteString("\n")
+	}
+
+	return []byte(b.String())
+}
+
+func renderContentMarkdown(b *strings.Builder, c *Content) {
+	if c.Text != nil {
+		fmt.Fprintf(b, "```\n%s\n```\n", *c.Text)
+		return
+	}
+
+	for _, part := range c.Parts {
+		//nolint:exhaustive // Checked.
+		switch part.Type {
+		case ContentPartText:
+			fmt.Fprintf(b, "```\n%s\n```\n", part.Text)
+		case ContentPartThinking:
+			fmt.Fprintf(b, "**Thinking:**\n```\n%s\n```\n", part.Thinking)
+		default:
+			// Ignore other types
+		}
+	}
 }

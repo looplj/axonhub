@@ -111,10 +111,15 @@ func (a *remoteApprover) Request(ctx context.Context, req Request) (Response, er
 	ticker := time.NewTicker(a.pollInterval)
 	defer ticker.Stop()
 
+	deadline := time.NewTimer(time.Until(exp))
+	defer deadline.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return Response{}, ctx.Err()
+		case <-deadline.C:
+			return Response{}, fmt.Errorf("approval timed out for tool %q (request %s)", req.ToolName, req.ID)
 		case <-ticker.C:
 			limit := 10
 			typeIn := []api.AgentMessageType{api.AgentMessageTypeApprovalResult}

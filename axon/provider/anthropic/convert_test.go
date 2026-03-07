@@ -147,8 +147,8 @@ func TestConvertMessages(t *testing.T) {
 		t1 := "A1"
 		t2 := "A2"
 		messages := []agent.Message{
-			{Role: agent.RoleAssistant, Content: &agent.Content{Text: &t1}, RequestIndex: 7},
-			{Role: agent.RoleAssistant, Content: &agent.Content{Text: &t2}, RequestIndex: 7},
+			{Role: agent.RoleAssistant, Content: &agent.Content{Text: &t1}, RoundIndex: 7},
+			{Role: agent.RoleAssistant, Content: &agent.Content{Text: &t2}, RoundIndex: 7},
 		}
 
 		system, params := convertMessages(messages)

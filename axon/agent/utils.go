@@ -1,89 +1,84 @@
 package agent
 
-import (
-	"fmt"
-	"strings"
-)
-
 func cloneMessages(in []Message) []Message {
+	if in == nil {
+		return nil
+	}
 	out := make([]Message, len(in))
-	copy(out, in)
+	for i, msg := range in {
+		out[i] = cloneMessage(msg)
+	}
 	return out
 }
 
-func summarizeMessages(messages []Message) string {
-	const (
-		maxLines = 80
-		maxChars = 6000
-	)
-
-	if len(messages) == 0 {
-		return ""
+func cloneMessage(in Message) Message {
+	out := Message{
+		Role:       in.Role,
+		RoundIndex: in.RoundIndex,
 	}
 
-	var sb strings.Builder
-	written := 0
+	if in.Content != nil {
+		c := &Content{}
+
+		if in.Content.Text != nil {
+			s := *in.Content.Text
+			c.Text = &s
+		}
+
+		if len(in.Content.Parts) > 0 {
+			c.Parts = make([]ContentPart, len(in.Content.Parts))
+			copy(c.Parts, in.Content.Parts)
+		}
+
+		out.Content = c
+	}
+
+	if in.ToolUseID != nil {
+		s := *in.ToolUseID
+		out.ToolUseID = &s
+	}
+
+	if in.IsError != nil {
+		b := *in.IsError
+		out.IsError = &b
+	}
+
+	if in.ToolUse != nil {
+		tu := *in.ToolUse
+		out.ToolUse = &tu
+	}
+
+	return out
+}
+
+func countUniqueRounds(messages []Message) int {
+	seen := make(map[int]struct{})
 
 	for _, msg := range messages {
-		if written >= maxLines || sb.Len() >= maxChars {
-			break
+		if msg.RoundIndex != 0 {
+			seen[msg.RoundIndex] = struct{}{}
 		}
-
-		text := extractMessageText(msg)
-		if text == "" {
-			continue
-		}
-
-		line := fmt.Sprintf("[%s] %s", msg.Role, text)
-		line = truncateString(line, 240)
-		if sb.Len() > 0 {
-			sb.WriteString("\n")
-		}
-		sb.WriteString(line)
-		written++
 	}
 
-	return strings.TrimSpace(sb.String())
+	return len(seen)
 }
 
-func extractMessageText(msg Message) string {
-	if msg.ToolUse != nil {
-		return fmt.Sprintf("tool_call: %s %s", msg.ToolUse.Name, truncateString(msg.ToolUse.Input, 180))
-	}
-	if msg.Content == nil {
-		return ""
-	}
-	return strings.TrimSpace(msg.Content.String())
-}
-
-func mergeSummary(existing, next string, maxChars int) string {
-	existing = strings.TrimSpace(existing)
-	next = strings.TrimSpace(next)
-
-	if next == "" {
-		return existing
+func findCutIndexForRounds(messages []Message, keepRounds int) int {
+	if keepRounds <= 0 || len(messages) == 0 {
+		return 0
 	}
 
-	var merged string
-	if existing == "" {
-		merged = next
-	} else {
-		merged = existing + "\n" + next
+	roundSet := make(map[int]struct{})
+
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].RoundIndex != 0 {
+			roundSet[messages[i].RoundIndex] = struct{}{}
+		}
+
+		if len(roundSet) > keepRounds {
+			return i + 1
+		}
 	}
 
-	if maxChars <= 0 || len(merged) <= maxChars {
-		return merged
-	}
-
-	return merged[len(merged)-maxChars:]
-}
-
-func truncateString(s string, n int) string {
-	if n <= 0 || len(s) <= n {
-		return s
-	}
-	if n <= 3 {
-		return s[:n]
-	}
-	return s[:n-3] + "..."
+	return 0
 }

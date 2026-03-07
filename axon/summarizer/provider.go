@@ -8,20 +8,18 @@ import (
 	"github.com/looplj/axonhub/axon/agent"
 )
 
-const defaultSystemPrompt = "You are a conversation summarizer. Produce a concise factual summary that preserves key decisions, constraints, unresolved items, and important context for continuing the conversation."
+const defaultSystemPrompt = "You are a conversation summarizer. Your task is to produce a concise factual summary that preserves key decisions, constraints, unresolved items, and important context.\n\nOutput requirements:\n- Output ONLY the summary in markdown format\n- Do NOT include any preamble, explanations, or meta-commentary\n- Do NOT wrap the output in code blocks\n- Start directly with the summary content"
 
 type ProviderOptions struct {
-	Provider      agent.Provider
-	Model         string
-	SystemPrompt  string
-	MaxSummaryLen int
+	Provider     agent.Provider
+	Model        string
+	SystemPrompt string
 }
 
 type ProviderSummarizer struct {
-	provider      agent.Provider
-	model         string
-	systemPrompt  string
-	maxSummaryLen int
+	provider     agent.Provider
+	model        string
+	systemPrompt string
 }
 
 func NewProvider(opts ProviderOptions) *ProviderSummarizer {
@@ -31,10 +29,9 @@ func NewProvider(opts ProviderOptions) *ProviderSummarizer {
 	}
 
 	return &ProviderSummarizer{
-		provider:      opts.Provider,
-		model:         opts.Model,
-		systemPrompt:  prompt,
-		maxSummaryLen: opts.MaxSummaryLen,
+		provider:     opts.Provider,
+		model:        opts.Model,
+		systemPrompt: prompt,
 	}
 }
 
@@ -46,7 +43,7 @@ func (s *ProviderSummarizer) Summarize(ctx context.Context, messages []agent.Mes
 		return "", fmt.Errorf("summarizer model is empty")
 	}
 
-	prompt := buildSummarizationPrompt(messages, s.maxSummaryLen)
+	prompt := buildSummarizationPrompt(messages)
 	req := []agent.Message{
 		{
 			Role:    agent.RoleSystem,
@@ -70,17 +67,9 @@ func (s *ProviderSummarizer) Summarize(ctx context.Context, messages []agent.Mes
 	return summary, nil
 }
 
-func buildSummarizationPrompt(messages []agent.Message, maxLen int) string {
+func buildSummarizationPrompt(messages []agent.Message) string {
 	var b strings.Builder
-	b.WriteString("Summarize the conversation transcript below.\n")
-	b.WriteString("Requirements:\n")
-	b.WriteString("- Keep critical facts, user intent, constraints, decisions, and unresolved questions.\n")
-	b.WriteString("- Exclude filler.\n")
-	b.WriteString("- Keep it neutral and factual.\n")
-	if maxLen > 0 {
-		fmt.Fprintf(&b, "- Keep the summary under %d characters.\n", maxLen)
-	}
-	b.WriteString("\nTranscript:\n")
+	b.WriteString("ranscript:\n")
 
 	for i, msg := range messages {
 		fmt.Fprintf(&b, "%d. role=%s", i+1, msg.Role)
@@ -103,10 +92,7 @@ func buildSummarizationPrompt(messages []agent.Message, maxLen int) string {
 
 func firstText(messages []agent.Message) string {
 	for _, msg := range messages {
-		if msg.Content == nil {
-			continue
-		}
-		if text := strings.TrimSpace(msg.Content.String()); text != "" {
+		if text := strings.TrimSpace(messageText(msg)); text != "" {
 			return text
 		}
 	}
@@ -117,7 +103,24 @@ func messageText(msg agent.Message) string {
 	if msg.Content == nil {
 		return ""
 	}
-	return msg.Content.String()
+
+	if msg.Content.Text != nil {
+		return *msg.Content.Text
+	}
+
+	var b strings.Builder
+
+	for _, part := range msg.Content.Parts {
+		//nolint:exhaustive // Checked.
+		switch part.Type {
+		case agent.ContentPartText:
+			b.WriteString(part.Text)
+		case agent.ContentPartThinking:
+			fmt.Fprintf(&b, "**Thinking:**\n%s\n", part.Thinking)
+		}
+	}
+
+	return b.String()
 }
 
 var _ agent.Summarizer = (*ProviderSummarizer)(nil)
