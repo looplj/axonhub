@@ -11,6 +11,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
@@ -76,6 +77,17 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		return QuotaData{}, fmt.Errorf("failed to extract account ID from access_token (invalid JWT format or missing claim)")
 	}
 
+	// Use proxy-configured HTTP client if available
+	var client *http.Client
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		// Create HTTP client with proxy support
+		wrappedClient := httpclient.NewHttpClientWithProxy(ch.Settings.Proxy)
+		client = wrappedClient.GetNativeClient()
+	} else {
+		// Use default HTTP client
+		client = c.httpClient
+	}
+
 	// Build request
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://chatgpt.com/backend-api/wham/usage", nil)
 	if err != nil {
@@ -88,7 +100,7 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 	req.Header.Set("Chatgpt-Account-Id", accountID)
 
 	// Execute request
-	resp, err := c.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
 	}
