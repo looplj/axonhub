@@ -40,7 +40,6 @@ func main() {
 		}
 	}
 
-	antigravity.InitVersion()
 	startServer()
 }
 
@@ -87,6 +86,7 @@ func startServer() {
 							os.Exit(1)
 						}
 					}()
+					go antigravity.InitVersion(context.Background())
 
 					return nil
 				},
