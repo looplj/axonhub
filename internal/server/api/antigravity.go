@@ -276,7 +276,7 @@ func (h *AntigravityHandlers) resolveProjectID(ctx context.Context, accessToken 
 			Headers: http.Header{
 				"Authorization":     []string{fmt.Sprintf("Bearer %s", accessToken)},
 				"Content-Type":      []string{"application/json"},
-				"User-Agent":        []string{antigravity.UserAgent},
+				"User-Agent":        []string{antigravity.GetUserAgent()},
 				"X-Goog-Api-Client": []string{"google-cloud-sdk vscode_cloudshelleditor/0.1"},
 				"Client-Metadata":   []string{antigravity.ClientMetadata},
 			},
@@ -365,7 +365,7 @@ func (h *AntigravityHandlers) onboardUser(ctx context.Context, accessToken, tier
 			Headers: http.Header{
 				"Authorization":     []string{fmt.Sprintf("Bearer %s", accessToken)},
 				"Content-Type":      []string{"application/json"},
-				"User-Agent":        []string{antigravity.UserAgent},
+				"User-Agent":        []string{antigravity.GetUserAgent()},
 				"X-Goog-Api-Client": []string{"google-cloud-sdk vscode_cloudshelleditor/0.1"},
 				"Client-Metadata":   []string{antigravity.ClientMetadata},
 			},

@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
+	"github.com/looplj/axonhub/llm/transformer/antigravity"
 )
 
 func main() {
@@ -86,6 +87,7 @@ func startServer() {
 							os.Exit(1)
 						}
 					}()
+					go antigravity.InitVersion(context.Background()) //nolint:gosec // intentional detached context
 
 					return nil
 				},
