@@ -197,7 +197,7 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	// 5. Build new Headers
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
-	headers.Set("User-Agent", UserAgent)
+	headers.Set("User-Agent", GetUserAgent())
 	headers.Set("X-Goog-Api-Client", ApiClient)
 	headers.Set("Client-Metadata", ClientMetadata)
 	headers.Set("X-Opencode-Tools-Debug", "1")
