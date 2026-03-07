@@ -69,8 +69,13 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 		}).
 		Build()
 
-	// Execute HTTP request
-	httpClient := httpclient.NewHttpClient()
+	// Use proxy-configured HTTP client if available
+	var httpClient *httpclient.HttpClient
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		httpClient = httpclient.NewHttpClientWithProxy(ch.Settings.Proxy)
+	} else {
+		httpClient = httpclient.NewHttpClient()
+	}
 
 	httpResponse, err := httpClient.Do(ctx, httpRequest)
 	if err != nil {
