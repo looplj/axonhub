@@ -77,5 +77,11 @@
   "requests.dialogs.requestDetail.noExecutions": "暂无执行记录",
   "requests.dialogs.requestDetail.notFound": "请求不存在",
   "requests.errors.loadRequestsFailed": "加载请求失败",
-  "requests.errors.loadRequestDetailFailed": "加载请求详情失败"
+  "requests.errors.loadRequestDetailFailed": "加载请求详情失败",
+  "requests.drawer.previous": "上一条",
+  "requests.drawer.next": "下一条",
+  "requests.drawer.viewDetail": "查看详情",
+  "requests.drawer.noRequestBody": "无请求体",
+  "requests.drawer.expandAll": "展开全部",
+  "requests.drawer.collapseAll": "折叠全部"
 }

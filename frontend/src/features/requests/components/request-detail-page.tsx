@@ -467,7 +467,14 @@ export default function RequestDetailPage() {
                         </div>
                       </div>
                       <div className='bg-muted/20 h-[300px] w-full overflow-auto rounded-lg border p-4'>
-                        <JsonViewer data={request.requestHeaders} rootName='' defaultExpanded={true} className='text-sm' />
+                        <JsonViewer
+                          data={request.requestHeaders}
+                          rootName=''
+                          defaultExpanded={true}
+                          expandDepth='all'
+                          hideArrayIndices={true}
+                          className='text-sm'
+                        />
                       </div>
                     </div>
                   )}
@@ -499,7 +506,14 @@ export default function RequestDetailPage() {
                       </div>
                     </div>
                     <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                      <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} className='text-sm' />
+                      <JsonViewer
+                        data={request.requestBody}
+                        rootName=''
+                        defaultExpanded={true}
+                        expandDepth='all'
+                        hideArrayIndices={true}
+                        className='text-sm'
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -560,7 +574,14 @@ export default function RequestDetailPage() {
                     </div>
                     {request.responseBody ? (
                       <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                        <JsonViewer data={request.responseBody} rootName='' defaultExpanded={true} className='text-sm' />
+                        <JsonViewer
+                          data={request.responseBody}
+                          rootName=''
+                          defaultExpanded={true}
+                          expandDepth='all'
+                          hideArrayIndices={true}
+                          className='text-sm'
+                        />
                       </div>
                     ) : (
                       <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
@@ -705,7 +726,13 @@ export default function RequestDetailPage() {
                                     </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
-                                    <JsonViewer data={execution.requestHeaders} rootName='' defaultExpanded={false} className='text-xs' />
+                                    <JsonViewer
+                                      data={execution.requestHeaders}
+                                      rootName=''
+                                      defaultExpanded={false}
+                                      hideArrayIndices={true}
+                                      className='text-xs'
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -739,7 +766,13 @@ export default function RequestDetailPage() {
                                     </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
-                                    <JsonViewer data={execution.requestBody} rootName='' defaultExpanded={false} className='text-xs' />
+                                    <JsonViewer
+                                      data={execution.requestBody}
+                                      rootName=''
+                                      defaultExpanded={false}
+                                      hideArrayIndices={true}
+                                      className='text-xs'
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -784,7 +817,13 @@ export default function RequestDetailPage() {
                                     </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
-                                    <JsonViewer data={execution.responseBody} rootName='' defaultExpanded={false} className='text-xs' />
+                                    <JsonViewer
+                                      data={execution.responseBody}
+                                      rootName=''
+                                      defaultExpanded={false}
+                                      hideArrayIndices={true}
+                                      className='text-xs'
+                                    />
                                   </div>
                                 </div>
                               )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -22,9 +22,9 @@ import type { DateTimeRangeValue } from '@/utils/date-range';
 import { Request, RequestConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 import { useRequestsColumns } from './requests-columns';
+import { RequestBodyDrawer } from './request-body-drawer';
 
 const MotionTableRow = motion.create(TableRow);
-const MotionExpandedRow = motion.create(TableRow);
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -44,6 +44,7 @@ interface RequestsTableProps {
   channelFilter: string[];
   apiKeyFilter: string[];
   dateRange?: DateTimeRangeValue;
+  queryWhere?: Record<string, any>;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
@@ -69,6 +70,7 @@ export function RequestsTable({
   channelFilter,
   apiKeyFilter,
   dateRange,
+  queryWhere,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
@@ -83,7 +85,18 @@ export function RequestsTable({
   onAutoRefreshChange,
 }: RequestsTableProps) {
   const { t } = useTranslation();
-  const requestsColumns = useRequestsColumns();
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerInitialRequestId, setDrawerInitialRequestId] = useState<string | null>(null);
+  const [drawerInitialIndex, setDrawerInitialIndex] = useState(0);
+
+  const handleBodyClick = useCallback((requestId: string, index: number) => {
+    setDrawerInitialRequestId(requestId);
+    setDrawerInitialIndex(index);
+    setDrawerOpen(true);
+  }, []);
+
+  const requestsColumns = useRequestsColumns({ onBodyClick: handleBodyClick });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -263,6 +276,16 @@ export function RequestsTable({
           onPageSizeChange={onPageSizeChange}
         />
       </div>
+
+      <RequestBodyDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        initialRequestId={drawerInitialRequestId}
+        initialIndex={drawerInitialIndex}
+        initialRequests={data}
+        pageInfo={pageInfo}
+        queryWhere={queryWhere}
+      />
     </div>
   );
 }
