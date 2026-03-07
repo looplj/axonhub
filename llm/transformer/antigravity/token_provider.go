@@ -13,7 +13,7 @@ import (
 func NewTokenProvider(params oauth.TokenProviderParams) *oauth.TokenProvider {
 	params.OAuthUrls = DefaultTokenURLs
 	if params.UserAgent == "" {
-		params.UserAgent = UserAgent
+		params.UserAgent = GetUserAgent()
 	}
 
 	params.ExchangeStrategy = &AntigravityExchangeStrategy{

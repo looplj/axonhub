@@ -24,8 +24,6 @@ const (
 	// EndpointProd is the production endpoint.
 	EndpointProd = "https://cloudcode-pa.googleapis.com"
 
-	// UserAgent used for requests.
-	UserAgent = "antigravity/1.15.8 windows/amd64"
 
 	// ApiClient used for X-Goog-Api-Client header.
 	ApiClient = "google-cloud-sdk vscode_cloudshelleditor/0.1"

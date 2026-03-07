@@ -73,7 +73,7 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 
 		// Check Headers
 		assert.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
-		assert.Equal(t, UserAgent, httpReq.Headers.Get("User-Agent"))
+		assert.Equal(t, GetUserAgent(), httpReq.Headers.Get("User-Agent"))
 		assert.Equal(t, ApiClient, httpReq.Headers.Get("X-Goog-Api-Client"))
 		assert.Equal(t, ClientMetadata, httpReq.Headers.Get("Client-Metadata"))
 		// Since we mocked the token response, we expect the mock access token in Auth config
@@ -439,7 +439,7 @@ func TestOAuthOnlyHeaders(t *testing.T) {
 
 	// Verify other required headers are present
 	assert.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
-	assert.Equal(t, UserAgent, httpReq.Headers.Get("User-Agent"))
+	assert.Equal(t, GetUserAgent(), httpReq.Headers.Get("User-Agent"))
 	assert.Equal(t, ApiClient, httpReq.Headers.Get("X-Goog-Api-Client"))
 	assert.Equal(t, ClientMetadata, httpReq.Headers.Get("Client-Metadata"))
 }
