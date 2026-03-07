@@ -113,8 +113,6 @@ services:
   #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:-axonhub_password}
   #   volumes:
   #     - mysql_data:/var/lib/mysql
-  #   ports:
-  #     - "3306:3306"
   #   networks:
   #     - axonhub-network
   #   restart: unless-stopped
