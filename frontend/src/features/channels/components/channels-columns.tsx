@@ -252,6 +252,15 @@ const ExpandCell = ({ row }: { row: any }) => (
 
 // ExpandCell.displayName = 'ExpandCell'; // Removed since it's not memoized now, but can keep if desired
 
+function getChannelWebsiteURL(baseURL: string): string | null {
+  try {
+    const url = new URL(baseURL);
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 // Memoized cell components to avoid recreating on every render
 const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
@@ -259,13 +268,28 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const hasError = !!channel.errorMessage;
   const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
   const hasDisabledKeys = disabledKeysCount > 0;
+  const websiteURL = getChannelWebsiteURL(channel.baseURL);
+
+  const nameElement = websiteURL ? (
+    <a
+      href={websiteURL}
+      target='_blank'
+      rel='noopener noreferrer'
+      className={cn('truncate font-medium hover:underline', hasError ? 'text-destructive' : '')}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {row.getValue('name')}
+    </a>
+  ) : (
+    <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+  );
 
   const content = (
     <div className='flex justify-center'>
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
         {!hasError && hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
-        <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+        {nameElement}
       </div>
     </div>
   );

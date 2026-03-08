@@ -195,8 +195,24 @@ function getNextDuplicateName(name: string, existingNames: Set<string>) {
   }
 }
 
-// OAuth provider keys that require special auth flow
-const oauthProviderKeys = ['codex', 'claudecode', 'antigravity', 'github_copilot'];
+// Providers that are always OAuth (no third-party API key mode)
+const alwaysOAuthProviderKeys = ['antigravity', 'github_copilot'];
+
+function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string } }): boolean {
+  try {
+    const apiKey = channel.credentials?.apiKey || '';
+    const json = JSON.parse(apiKey);
+    return !!(json.access_token && json.refresh_token);
+  } catch {
+    return false;
+  }
+}
+
+function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string }; baseURL: string }): boolean {
+  const apiKey = channel.credentials?.apiKey || '';
+  const defaultURL = getDefaultBaseURL('claudecode');
+  return apiKey.includes('sk-ant-oat') || apiKey.includes('sk-ant-api03') || channel.baseURL === defaultURL;
+}
 
 export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation();
@@ -343,26 +359,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     // Detect authMode for codex and claudecode
     if (initialRow.type === 'codex') {
-      try {
-        const apiKey = initialRow.credentials?.apiKey || '';
-        const json = JSON.parse(apiKey);
-        if (json.access_token && json.refresh_token) {
-          setAuthMode('official');
-        } else {
-          setAuthMode('third-party');
-        }
-      } catch {
-        setAuthMode('third-party');
-      }
+      setAuthMode(isOfficialCodexChannel(initialRow) ? 'official' : 'third-party');
     } else if (initialRow.type === 'claudecode') {
-      const apiKey = initialRow.credentials?.apiKey || '';
-      const defaultURL = getDefaultBaseURL('claudecode');
-      // For Claude Code, it's official if it's an official token (sk-ant-oat or sk-ant-api03) or uses the default base URL
-      if (apiKey.includes('sk-ant-oat') || apiKey.includes('sk-ant-api03') || initialRow.baseURL === defaultURL) {
-        setAuthMode('official');
-      } else {
-        setAuthMode('third-party');
-      }
+      setAuthMode(isOfficialClaudeCodeChannel(initialRow) ? 'official' : 'third-party');
     }
   }, [initialRow]);
 
@@ -576,15 +575,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
 
 
-  // OAuth providers cannot have their provider/API format changed during edit
-  const isOAuthChannel = isEdit && currentRow && oauthProviderKeys.includes(currentRow.type);
+  // OAuth providers cannot have their provider/API format changed during edit.
+  // Derived from currentRow credentials so it stays stable across re-renders
+  // and is not affected by mutable authMode state.
+  const isOAuthChannel = useMemo(() => {
+    if (!isEdit || !currentRow) return false;
+    if (alwaysOAuthProviderKeys.includes(currentRow.type)) return true;
+    if (currentRow.type === 'codex') return isOfficialCodexChannel(currentRow);
+    if (currentRow.type === 'claudecode') return isOfficialClaudeCodeChannel(currentRow);
+    return false;
+  }, [isEdit, currentRow]);
 
   useEffect(() => {
-    // Only force stream: 'require' for new Codex channels, not when editing existing ones
-    if (isCodexType && !isEdit) {
+    // Codex always requires stream
+    if (isCodexType) {
       form.setValue('policies.stream', 'require');
     }
-  }, [isCodexType, isEdit, form]);
+  }, [isCodexType, form]);
 
   const wrapUnsupported = useCallback(
     (enabled: boolean, children: React.ReactNode, wrapperClassName: string) => {
@@ -616,9 +623,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const handleProviderChange = useCallback(
     (provider: string) => {
       if (isOAuthChannel) return;
-      if (isEdit && oauthProviderKeys.includes(provider)) return;
+      if (isEdit && alwaysOAuthProviderKeys.includes(provider)) return;
       setSelectedProvider(provider);
-      setAuthMode('official');
+      setAuthMode(isEdit && ['codex', 'claudecode'].includes(provider) ? 'third-party' : 'official');
 
       if (provider !== 'gemini') {
         setUseGeminiVertex(false);
@@ -630,8 +637,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (provider === 'codex') {
         setSelectedApiFormat(OPENAI_RESPONSES);
         form.setValue('type', 'codex');
+        form.setValue('policies.stream', 'require');
         if (!isEdit) {
-          form.setValue('policies.stream', 'require');
           setFetchedModels([]);
           setUseFetchedModels(false);
         }
@@ -683,7 +690,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [form, useGeminiVertex, useAnthropicAws, isDuplicate, isEdit, selectedApiFormat]
+    [form, useGeminiVertex, useAnthropicAws, isDuplicate, isEdit, selectedApiFormat, isOAuthChannel]
   );
 
   const handleApiFormatChange = useCallback(
@@ -723,7 +730,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [selectedProvider, form, useGeminiVertex, useAnthropicAws, isDuplicate, isEdit]
+    [selectedProvider, form, useGeminiVertex, useAnthropicAws, isDuplicate, isEdit, isOAuthChannel]
   );
 
   const handleGeminiVertexChange = useCallback(
@@ -746,7 +753,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [selectedApiFormat, form, isDuplicate, isEdit]
+    [selectedApiFormat, form, isDuplicate, isEdit, isOAuthChannel]
   );
 
   const handleAnthropicAwsChange = useCallback(
@@ -769,7 +776,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [selectedApiFormat, form, isDuplicate, isEdit]
+    [selectedApiFormat, form, isDuplicate, isEdit, isOAuthChannel]
   );
 
   useEffect(() => {
@@ -1365,7 +1372,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {availableProviders.map((provider) => {
                               const Icon = provider.icon;
                               const isSelected = provider.key === selectedProvider;
-                              const isProviderDisabled = isOAuthChannel || (isEdit && !isOAuthChannel && oauthProviderKeys.includes(provider.key));
+                              const isProviderDisabled = isOAuthChannel || (isEdit && !isOAuthChannel && alwaysOAuthProviderKeys.includes(provider.key));
                               return (
                                 <div
                                   key={provider.key}
