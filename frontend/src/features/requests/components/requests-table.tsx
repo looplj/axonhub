@@ -52,6 +52,7 @@ interface RequestsTableProps {
   onSourceFilterChange: (filters: string[]) => void;
   onChannelFilterChange: (filters: string[]) => void;
   onApiKeyFilterChange: (filters: string[]) => void;
+  onModelIDFilterChange: (filter: string) => void;
   onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
   onRefresh: () => void;
   showRefresh: boolean;
@@ -78,6 +79,7 @@ export function RequestsTable({
   onSourceFilterChange,
   onChannelFilterChange,
   onApiKeyFilterChange,
+  onModelIDFilterChange,
   onDateRangeChange,
   onRefresh,
   showRefresh,
@@ -129,6 +131,7 @@ export function RequestsTable({
     const sourceFilterValue = newFilters.find((filter: any) => filter.id === 'source')?.value;
     const channelFilterValue = newFilters.find((filter: any) => filter.id === 'channel')?.value;
     const apiKeyFilterValue = newFilters.find((filter: any) => filter.id === 'apiKey')?.value;
+    const modelIDFilterValue = newFilters.find((filter: any) => filter.id === 'modelID')?.value;
 
     const statusFilterArray = Array.isArray(statusFilterValue) ? statusFilterValue : [];
     onStatusFilterChange(statusFilterArray);
@@ -141,6 +144,8 @@ export function RequestsTable({
 
     const apiKeyFilterArray = Array.isArray(apiKeyFilterValue) ? apiKeyFilterValue : [];
     onApiKeyFilterChange(apiKeyFilterArray);
+
+    onModelIDFilterChange(typeof modelIDFilterValue === 'string' ? modelIDFilterValue : '');
   };
 
   // Initialize filters in column filters if they exist

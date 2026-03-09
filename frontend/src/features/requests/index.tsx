@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { buildDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
+import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
 import { Header } from '@/components/layout/header';
@@ -18,6 +19,8 @@ function RequestsContent() {
   const [sourceFilter, setSourceFilter] = useState<string[]>([]);
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [apiKeyFilter, setApiKeyFilter] = useState<string[]>([]);
+  const [modelIDFilter, setModelIDFilter] = useState<string>('');
+  const debouncedModelIDFilter = useDebounce(modelIDFilter, 300);
   const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
   const [autoRefresh, setAutoRefresh] = useState(false);
 
@@ -37,6 +40,9 @@ function RequestsContent() {
     }
     if (apiKeyFilter.length > 0) {
       where.apiKeyIDIn = apiKeyFilter;
+    }
+    if (debouncedModelIDFilter) {
+      where.modelIDContainsFold = debouncedModelIDFilter;
     }
     return Object.keys(where).length > 0 ? where : undefined;
   })();
@@ -111,6 +117,14 @@ function RequestsContent() {
     [resetCursor]
   );
 
+  const handleModelIDFilterChange = useCallback(
+    (filter: string) => {
+      setModelIDFilter(filter);
+      resetCursor();
+    },
+    [resetCursor]
+  );
+
   const handleDateRangeChange = useCallback(
     (range: DateTimeRangeValue | undefined) => {
       setDateRange(range);
@@ -140,6 +154,7 @@ function RequestsContent() {
         onSourceFilterChange={handleSourceFilterChange}
         onChannelFilterChange={handleChannelFilterChange}
         onApiKeyFilterChange={handleApiKeyFilterChange}
+        onModelIDFilterChange={handleModelIDFilterChange}
         onDateRangeChange={handleDateRangeChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
