@@ -9,8 +9,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/samber/lo"
 )
@@ -141,6 +143,25 @@ func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error
 	}
 
 	r.providerQuotaService.ManualCheck(ctx)
+
+	return true, nil
+}
+
+// TriggerGarbageCollection is the resolver for the triggerGarbageCollection field.
+func (r *mutationResolver) TriggerGarbageCollection(ctx context.Context) (bool, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteSettings) {
+		return false, fmt.Errorf("permission denied: requires write:settings scope")
+	}
+
+	if r.gcWorker == nil {
+		return false, fmt.Errorf("GC worker is not available")
+	}
+
+	go func() {
+		// Use a detached context with system bypass for background execution
+		bgCtx := authz.WithSystemBypass(context.Background(), "manual-gc-cleanup")
+		_ = r.gcWorker.RunCleanupNow(bgCtx)
+	}()
 
 	return true, nil
 }

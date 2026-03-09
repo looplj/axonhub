@@ -767,6 +767,7 @@ type ComplexityRoot struct {
 		SyncChannelModels                    func(childComplexity int, channelID objects.GUID, pattern *string) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
 		TriggerAutoBackup                    func(childComplexity int) int
+		TriggerGarbageCollection             func(childComplexity int) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
 		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
 		UpdateAPIKeyStatus                   func(childComplexity int, id objects.GUID, status apikey.Status) int
@@ -1682,6 +1683,7 @@ type MutationResolver interface {
 	UpdateSystemGeneralSettings(ctx context.Context, input biz.SystemGeneralSettings) (bool, error)
 	UpdateVideoStorageSettings(ctx context.Context, input biz.VideoStorageSettings) (bool, error)
 	CheckProviderQuotas(ctx context.Context) (bool, error)
+	TriggerGarbageCollection(ctx context.Context) (bool, error)
 	CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error)
 	BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error)
 	UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput) (*ent.Model, error)
@@ -4718,6 +4720,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.TriggerAutoBackup(childComplexity), true
+	case "Mutation.triggerGarbageCollection":
+		if e.complexity.Mutation.TriggerGarbageCollection == nil {
+			break
+		}
+
+		return e.complexity.Mutation.TriggerGarbageCollection(childComplexity), true
 	case "Mutation.updateAPIKey":
 		if e.complexity.Mutation.UpdateAPIKey == nil {
 			break
@@ -26223,6 +26231,35 @@ func (ec *executionContext) _Mutation_checkProviderQuotas(ctx context.Context, f
 }
 
 func (ec *executionContext) fieldContext_Mutation_checkProviderQuotas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_triggerGarbageCollection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_triggerGarbageCollection,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Mutation().TriggerGarbageCollection(ctx)
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_triggerGarbageCollection(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -73883,6 +73920,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "checkProviderQuotas":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_checkProviderQuotas(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "triggerGarbageCollection":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_triggerGarbageCollection(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

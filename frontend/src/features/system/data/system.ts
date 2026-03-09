@@ -138,6 +138,12 @@ const COMPLETE_AUTO_DISABLE_CHANNEL_ONBOARDING_MUTATION = `
   }
 `;
 
+const TRIGGER_GARBAGE_COLLECTION_MUTATION = `
+  mutation triggerGarbageCollection {
+    triggerGarbageCollection
+  }
+`;
+
 // Types
 export interface BrandSettings {
   brandName?: string;
@@ -353,6 +359,21 @@ export function useUpdateStoragePolicy() {
     },
     onError: () => {
       toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+export function useTriggerGarbageCollection() {
+  return useMutation({
+    mutationFn: async () => {
+      const data = await graphqlRequest<{ triggerGarbageCollection: boolean }>(TRIGGER_GARBAGE_COLLECTION_MUTATION);
+      return data.triggerGarbageCollection;
+    },
+    onSuccess: () => {
+      toast.success(i18n.t('system.storage.policy.runCleanupSuccess'));
+    },
+    onError: () => {
+      toast.error(i18n.t('system.storage.policy.runCleanupError'));
     },
   });
 }

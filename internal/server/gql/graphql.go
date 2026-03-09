@@ -35,6 +35,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
 )
 
 type Dependencies struct {
@@ -59,6 +60,7 @@ type Dependencies struct {
 	ChannelProbeService            *biz.ChannelProbeService
 	PromptService                  *biz.PromptService
 	ProviderQuotaService           *biz.ProviderQuotaService
+	GCWorker                       *gc.Worker
 }
 
 type GraphqlHandler struct {
@@ -88,6 +90,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.ChannelProbeService,
 			deps.PromptService,
 			deps.ProviderQuotaService,
+			deps.GCWorker,
 		),
 	)
 

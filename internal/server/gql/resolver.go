@@ -8,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -42,6 +43,7 @@ type Resolver struct {
 	httpClient                     *httpclient.HttpClient
 	modelFetcher                   *biz.ModelFetcher
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
+	gcWorker                       *gc.Worker
 }
 
 // NewSchema creates a graphql executable schema.
@@ -65,6 +67,7 @@ func NewSchema(
 	channelProbeService *biz.ChannelProbeService,
 	promptService *biz.PromptService,
 	providerQuotaService *biz.ProviderQuotaService,
+	gcWorker *gc.Worker,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -92,6 +95,7 @@ func NewSchema(
 			httpClient:                     httpClient,
 			modelFetcher:                   modelFetcher,
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),
+			gcWorker:                       gcWorker,
 		},
 	})
 }
