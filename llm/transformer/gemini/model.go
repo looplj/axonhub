@@ -199,7 +199,12 @@ type GenerationConfig struct {
 	ResponseMIMEType string `json:"responseMimeType,omitempty"`
 
 	// ResponseSchema is the output schema of the generated candidate text.
+	// Uses the Gemini SDK's structured Schema type (OpenAPI 3.0 subset).
 	ResponseSchema json.RawMessage `json:"responseSchema,omitempty"`
+
+	// ResponseJsonSchema accepts a raw JSON Schema directly.
+	// When set, ResponseSchema must be omitted, but ResponseMIMEType is required.
+	ResponseJsonSchema json.RawMessage `json:"responseJsonSchema,omitempty"`
 
 	// CandidateCount is the number of generated responses to return.
 	CandidateCount int64 `json:"candidateCount,omitempty"`

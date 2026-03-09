@@ -95,8 +95,13 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 			chatReq.Modalities = convertGeminiModalitiesToLLM(gc.ResponseModalities)
 		}
 
-		// Convert ResponseSchema to ResponseFormat json_schema
-		if len(gc.ResponseSchema) > 0 {
+		// Convert ResponseSchema/ResponseJsonSchema to ResponseFormat json_schema
+		if len(gc.ResponseJsonSchema) > 0 {
+			chatReq.ResponseFormat = &llm.ResponseFormat{
+				Type:       "json_schema",
+				JSONSchema: gc.ResponseJsonSchema,
+			}
+		} else if len(gc.ResponseSchema) > 0 {
 			chatReq.ResponseFormat = &llm.ResponseFormat{
 				Type:       "json_schema",
 				JSONSchema: gc.ResponseSchema,

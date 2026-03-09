@@ -177,7 +177,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	// Convert ResponseFormat to ResponseSchema and ResponseMIMEType
 	if chatReq.ResponseFormat != nil {
 		if chatReq.ResponseFormat.Type == "json_schema" && len(chatReq.ResponseFormat.JSONSchema) > 0 {
-			gc.ResponseSchema = chatReq.ResponseFormat.JSONSchema
+			gc.ResponseJsonSchema = extractJSONSchema(chatReq.ResponseFormat.JSONSchema)
 			gc.ResponseMIMEType = "application/json"
 			hasGenerationConfig = true
 		} else if chatReq.ResponseFormat.Type == "json_object" {
@@ -692,4 +692,17 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 	choice.FinishReason = convertGeminiFinishReasonToLLM(candidate.FinishReason, hasToolCall)
 
 	return choice, nextToolCallIndex
+}
+
+// extractJSONSchema extracts the inner "schema" field from an OpenAI json_schema object.
+// OpenAI format: {"name": "...", "schema": {...}, "strict": ...}
+// Gemini expects the schema content directly without the wrapper.
+func extractJSONSchema(raw json.RawMessage) json.RawMessage {
+	var wrapper struct {
+		Schema json.RawMessage `json:"schema,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.Schema) > 0 {
+		return wrapper.Schema
+	}
+	return raw
 }

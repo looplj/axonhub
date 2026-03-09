@@ -248,15 +248,28 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 
 func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.GenerateContentRequest, llmReq *llm.Request) error {
 	// A. Schema Sanitization
-	if req.GenerationConfig != nil && len(req.GenerationConfig.ResponseSchema) > 0 {
-		var schema map[string]any
-		if err := json.Unmarshal(req.GenerationConfig.ResponseSchema, &schema); err == nil {
-			sanitized := SanitizeJSONSchema(schema)
-			// CRITICAL: Uppercase all type values for Antigravity API
-			sanitized = UppercaseSchemaTypes(sanitized)
-			req.GenerationConfig.ResponseSchema = xjson.MustMarshal(sanitized)
-		} else {
-			slog.DebugContext(ctx, "failed to unmarshal response schema", slog.Any("error", err))
+	// Priority: ResponseJsonSchema first (set by Gemini transformer), then ResponseSchema
+	if req.GenerationConfig != nil {
+		var schemaData json.RawMessage
+		if len(req.GenerationConfig.ResponseJsonSchema) > 0 {
+			schemaData = req.GenerationConfig.ResponseJsonSchema
+		} else if len(req.GenerationConfig.ResponseSchema) > 0 {
+			schemaData = req.GenerationConfig.ResponseSchema
+		}
+
+		if len(schemaData) > 0 {
+			var schema map[string]any
+			if err := json.Unmarshal(schemaData, &schema); err == nil {
+				sanitized := SanitizeJSONSchema(schema)
+				// CRITICAL: Uppercase all type values for Antigravity API
+				sanitized = UppercaseSchemaTypes(sanitized)
+				// Set to ResponseSchema field (what Antigravity expects)
+				req.GenerationConfig.ResponseSchema = xjson.MustMarshal(sanitized)
+				// Clear ResponseJsonSchema to avoid sending both
+				req.GenerationConfig.ResponseJsonSchema = nil
+			} else {
+				slog.DebugContext(ctx, "failed to unmarshal response schema", slog.Any("error", err))
+			}
 		}
 	}
 
