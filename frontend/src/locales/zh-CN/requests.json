@@ -52,6 +52,7 @@
   "requests.actions.copyCurl": "cURL",
   "requests.actions.curlCopied": "cURL 命令已复制",
   "requests.filters.filterId": "按ID筛选...",
+"requests.filters.filterModelId": "按模型ID筛选...",
   "requests.filters.status": "状态",
   "requests.filters.source": "来源",
   "requests.filters.channel": "渠道",

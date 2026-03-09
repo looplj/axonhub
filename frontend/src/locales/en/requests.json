@@ -52,6 +52,7 @@
   "requests.actions.copyCurl": "cURL",
   "requests.actions.curlCopied": "cURL command copied",
   "requests.filters.filterId": "Filter by ID...",
+"requests.filters.filterModelId": "Filter by Model ID...",
   "requests.filters.status": "Status",
   "requests.filters.source": "Source",
   "requests.filters.channel": "Channel",

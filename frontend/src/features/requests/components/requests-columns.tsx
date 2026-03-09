@@ -53,7 +53,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     },
 
     {
-      id: 'modelId',
+      id: 'modelID',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.modelId')} />,
       enableSorting: false,
       cell: ({ row }) => {
