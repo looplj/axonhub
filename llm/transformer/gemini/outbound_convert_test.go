@@ -490,7 +490,7 @@ func TestConvertLLMToGeminiRequest_ResponseFormat(t *testing.T) {
 		validate func(t *testing.T, result *GenerateContentRequest)
 	}{
 		{
-			name: "json_schema converts to ResponseSchema and ResponseMIMEType",
+			name: "json_schema converts to ResponseJsonSchema and ResponseMIMEType",
 			input: &llm.Request{
 				Messages: []llm.Message{
 					{
@@ -508,10 +508,39 @@ func TestConvertLLMToGeminiRequest_ResponseFormat(t *testing.T) {
 			validate: func(t *testing.T, result *GenerateContentRequest) {
 				t.Helper()
 				require.NotNil(t, result.GenerationConfig)
-				require.NotNil(t, result.GenerationConfig.ResponseSchema)
+				require.NotNil(t, result.GenerationConfig.ResponseJsonSchema)
+				require.Nil(t, result.GenerationConfig.ResponseSchema)
 				require.Equal(t, "application/json", result.GenerationConfig.ResponseMIMEType)
-				require.Contains(t, string(result.GenerationConfig.ResponseSchema), "name")
-				require.Contains(t, string(result.GenerationConfig.ResponseSchema), "age")
+				require.Contains(t, string(result.GenerationConfig.ResponseJsonSchema), "name")
+				require.Contains(t, string(result.GenerationConfig.ResponseJsonSchema), "age")
+			},
+		},
+		{
+			name: "json_schema with OpenAI wrapper extracts inner schema for Gemini",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Generate JSON"),
+						},
+					},
+				},
+				ResponseFormat: &llm.ResponseFormat{
+					Type:       "json_schema",
+					JSONSchema: json.RawMessage(`{"name":"ping_response","schema":{"additionalProperties":false,"properties":{"pong":{"type":"boolean"}},"required":["pong"],"type":"object"}}`),
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ResponseJsonSchema)
+				require.Nil(t, result.GenerationConfig.ResponseSchema)
+				require.Equal(t, "application/json", result.GenerationConfig.ResponseMIMEType)
+				// Should contain the inner schema fields, not the wrapper "name"/"schema" keys
+				require.Contains(t, string(result.GenerationConfig.ResponseJsonSchema), `"pong"`)
+				require.Contains(t, string(result.GenerationConfig.ResponseJsonSchema), `"boolean"`)
+				require.NotContains(t, string(result.GenerationConfig.ResponseJsonSchema), `"ping_response"`)
 			},
 		},
 		{
