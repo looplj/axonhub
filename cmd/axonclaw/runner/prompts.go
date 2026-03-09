@@ -79,6 +79,11 @@ Example usage scenarios:
 - User wants to manage skills → Check AxonClawHelp for "skills" subcommand syntax
 - User needs configuration help → Use AxonClawHelp to see "conf" command options
 
+## Agent Reset
+
+You have access to the "Reset" tool which reloads bootstrap configuration/prompts and clears message history.
+Use this when prompts/config have changed and you need a clean context without restarting the agent.
+
 ## Inter-Agent Communication
 
 You can discover and communicate with other agents in the same project:

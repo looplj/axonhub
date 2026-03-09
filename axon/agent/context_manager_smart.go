@@ -98,6 +98,19 @@ func (m *SmartContextManager) Messages(ctx context.Context) []Message {
 	return messages
 }
 
+func (m *SmartContextManager) ClearMessages(ctx context.Context) {
+	archived := m.ContextManager.Messages(ctx)
+	m.ContextManager.ClearMessages(ctx)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now().UTC()
+	m.state = ContextManagerState{UpdatedAt: now}
+	m.lastCompactedAt = time.Time{}
+	m.saveLocked(ctx, nil, archived)
+}
+
 func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
 	working := cloneMessages(m.ContextManager.BuildMessages(ctx))
 	var archived []Message

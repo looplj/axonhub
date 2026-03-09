@@ -33,13 +33,13 @@ type Result struct {
 	OS              string
 }
 
-type SystemPromptData struct {
+type Params struct {
 	Workspace  string
 	SkillsRoot string
 	ConfigDir  string
 }
 
-func Do(ctx context.Context, client graphql.Client, data SystemPromptData) (*Result, error) {
+func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error) {
 	resp, err := api.AgentBootstrap(ctx, client)
 	if err != nil {
 		return nil, fmt.Errorf("agent bootstrap failed: %w", err)

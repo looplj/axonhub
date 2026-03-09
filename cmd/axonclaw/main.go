@@ -23,7 +23,6 @@ import (
 	"github.com/looplj/axonhub/axon/provider/anthropic"
 	"github.com/looplj/axonhub/axon/summarizer"
 	"github.com/looplj/axonhub/axon/task"
-	"github.com/looplj/axonhub/axon/thread"
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/build"
 	"github.com/looplj/axonhub/cmd/axonclaw/cmds"
@@ -35,9 +34,8 @@ import (
 )
 
 const (
-	logsDirName    = "logs"
-	threadsDirName = "threads"
-	configDirName  = ".axonclaw"
+	logsDirName   = "logs"
+	configDirName = ".axonclaw"
 )
 
 type loggerCloser func()
@@ -135,7 +133,7 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 		Stderr:    os.Stderr,
 	}))
 	rootCmd.AddCommand(cmds.NewTaskCommand(cmds.TaskOptions{
-		Dir:    configDir,
+		Dir:    filepath.Join(configDir, "tasks"),
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
@@ -152,7 +150,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 
 	gqlClient := api.NewClient(cfg.BaseURL, cfg.APIKey)
 
-	boot, err := bootstrap.Do(ctx, gqlClient, bootstrap.SystemPromptData{
+	boot, err := bootstrap.Do(ctx, gqlClient, bootstrap.Params{
 		Workspace:  wd,
 		SkillsRoot: filepath.Join(wd, configDirName, "skills"),
 		ConfigDir:  filepath.Join(wd, configDirName),
@@ -188,16 +186,6 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	}
 
 	axonclawDir := filepath.Join(wd, ".axonclaw")
-	threadsDir := filepath.Join(axonclawDir, threadsDirName)
-	if err := os.MkdirAll(threadsDir, 0o755); err != nil {
-		return fmt.Errorf("create threads directory: %w", err)
-	}
-
-	threadStore, err := thread.NewJSONLStore(threadsDir)
-	if err != nil {
-		return fmt.Errorf("initialize thread store: %w", err)
-	}
-	threadMgr := thread.NewManager(threadStore)
 
 	var contextMgr agent.ContextManager
 	contextCfg := agent.DefaultContextManagerConfig()
@@ -233,9 +221,6 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	eventBus.Subscribe(agent.TopicAgentEvent, bus.TypedHandler(func(_ context.Context, _ bus.Event, ev agent.AgentEvent) error {
 		switch ev.Type {
 		case agent.EventMessageAdded:
-			if ev.Message != nil {
-				threadMgr.AddMessage(boot.ThreadID, *ev.Message)
-			}
 		case agent.EventToolStart:
 			logger.Debug("tool started", "tool", ev.ToolName)
 		case agent.EventToolEnd:
@@ -281,7 +266,6 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		Config:         cfg,
 		Workspace:      wd,
 		Boot:           boot,
-		ThreadMgr:      threadMgr,
 		PermEvaluator:  permEvaluator,
 		Bus:            eventBus,
 	})

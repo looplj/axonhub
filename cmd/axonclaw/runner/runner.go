@@ -15,7 +15,6 @@ import (
 	"github.com/looplj/axonhub/axon/bus"
 	"github.com/looplj/axonhub/axon/permission"
 	"github.com/looplj/axonhub/axon/task"
-	"github.com/looplj/axonhub/axon/thread"
 
 	axoncontext "github.com/looplj/axonhub/axon/context"
 
@@ -32,7 +31,6 @@ type Runner struct {
 	Workspace     string
 	Config        conf.Config
 	ThreadID      string
-	ThreadMgr     *thread.Manager
 	Boot          *bootstrap.Result
 	lastSequence  int
 	TaskScheduler *task.Scheduler
@@ -48,7 +46,6 @@ type NewOptions struct {
 	Config         conf.Config
 	Workspace      string
 	Boot           *bootstrap.Result
-	ThreadMgr      *thread.Manager
 	PermEvaluator  *permission.Evaluator
 	Bus            bus.EventBus
 	TaskScheduler  *task.Scheduler
@@ -72,7 +69,7 @@ func New(opts NewOptions) *Runner {
 		agent.WithMiddlewares(permMw),
 	)
 
-	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.ThreadMgr, opts.Boot.ThreadID)
+	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client)
 
 	return &Runner{
 		Client:        opts.Client,
@@ -81,7 +78,6 @@ func New(opts NewOptions) *Runner {
 		Workspace:     opts.Workspace,
 		Config:        opts.Config,
 		ThreadID:      opts.Boot.ThreadID,
-		ThreadMgr:     opts.ThreadMgr,
 		Boot:          opts.Boot,
 		TaskScheduler: opts.TaskScheduler,
 	}
@@ -266,7 +262,7 @@ func (r *Runner) autoUpdateConfig(ctx context.Context) {
 	r.processMu.Lock()
 	defer r.processMu.Unlock()
 
-	newBoot, err := bootstrap.Do(ctx, r.Client, bootstrap.SystemPromptData{
+	newBoot, err := bootstrap.Do(ctx, r.Client, bootstrap.Params{
 		Workspace:  r.Workspace,
 		SkillsRoot: r.Boot.SkillsRoot,
 		ConfigDir:  r.Boot.ConfigDir,

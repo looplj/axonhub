@@ -436,7 +436,6 @@ export function useCreateBindingRequest() {
       return { pairCode: data.createBindingRequest };
     },
     onSuccess: () => {
-      toast.success(t('messageChannels.messages.bindingRequestCreated'));
     },
     onError: (error: Error) => {
       toast.error(t('messageChannels.messages.bindingRequestError', { error: error.message }));
