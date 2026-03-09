@@ -1,8 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,6 +27,7 @@ import {
   useUpdateStoragePolicy,
   useDefaultDataStorageID,
   useUpdateDefaultDataStorage,
+  useTriggerGarbageCollection,
   CleanupOption,
 } from '../data/system';
 import { VideoStorageSettings } from './video-storage-settings';
@@ -30,6 +42,7 @@ export function StorageSettings() {
   });
   const updateStoragePolicy = useUpdateStoragePolicy();
   const updateDefaultDataStorage = useUpdateDefaultDataStorage();
+  const triggerGarbageCollection = useTriggerGarbageCollection();
   const { isLoading, setIsLoading } = useSystemContext();
 
   const [storagePolicyState, setStoragePolicyState] = useState({
@@ -170,9 +183,41 @@ export function StorageSettings() {
 
       {/* Storage Policy */}
       <Card>
-        <CardHeader>
-          <CardTitle>{t('system.storage.policy.title')}</CardTitle>
-          <CardDescription>{t('system.storage.policy.description')}</CardDescription>
+        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+          <div className='space-y-1.5'>
+            <CardTitle>{t('system.storage.policy.title')}</CardTitle>
+            <CardDescription>{t('system.storage.policy.description')}</CardDescription>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant='outline'
+                size='sm'
+                disabled={triggerGarbageCollection.isPending || isLoading}
+              >
+                {triggerGarbageCollection.isPending ? (
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                ) : (
+                  <Play className='mr-2 h-4 w-4' />
+                )}
+                {t('system.storage.policy.runCleanupNow')}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('system.storage.policy.runCleanupConfirmTitle')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('system.storage.policy.runCleanupConfirmDescription')}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('system.storage.policy.runCleanupCancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={() => triggerGarbageCollection.mutate()}>
+                  {t('system.storage.policy.runCleanupConfirm')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardHeader>
         <CardContent className='space-y-6'>
           <div className='flex items-center justify-between' id='storage-enabled-switch'>
