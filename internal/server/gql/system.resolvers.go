@@ -154,8 +154,15 @@ func (r *mutationResolver) TriggerGarbageCollection(ctx context.Context) (bool, 
 	}
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				// Log the panic or handle it - assuming there's a logging mechanism or just preventing crash
+				fmt.Printf("Recovered from panic in GC goroutine: %v\n", rec)
+			}
+		}()
+
 		// Use a detached context with system bypass for background execution
-		bgCtx := authz.WithSystemBypass(context.Background(), "manual-gc-cleanup")
+		bgCtx := authz.WithSystemBypass(context.WithoutCancel(ctx), "manual-gc-cleanup")
 		_ = r.gcWorker.RunCleanupNow(bgCtx)
 	}()
 
