@@ -158,6 +158,31 @@ func (r *mutationResolver) AckAgentMessages(ctx context.Context, input AckAgentM
 	return true, nil
 }
 
+func (r *mutationResolver) DeployAxonClaw(ctx context.Context, input DeployAxonClawInput) (*DeployAxonClawResult, error) {
+	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := r.agentDeployService.DeployAxonClawByAgent(ctx, inst, biz.DeployAxonClawByAgentInput{
+		Name:      input.Name,
+		Directory: input.Directory,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &DeployAxonClawResult{
+		Success: result.Success,
+		Error:   &result.Error,
+		Instance: &AgentInstance{
+			ID:              objects.GUID{Type: ent.TypeAgentInstance, ID: result.Instance.ID},
+			AgentID:         objects.GUID{Type: ent.TypeAgent, ID: result.Instance.AgentID},
+			LastHeartbeatAt: result.Instance.LastHeartbeatAt,
+		},
+	}, nil
+}
+
 // AgentBootstrap is the resolver for the agentBootstrap field.
 func (r *queryResolver) AgentBootstrap(ctx context.Context) (*AgentBootstrap, error) {
 	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)

@@ -216,7 +216,7 @@ export function AgentChatPage() {
   const renderMessage = (m: AgentChatMessage) => {
     const ts = m.createdAt ? format(new Date(m.createdAt), 'HH:mm:ss', { locale }) : '';
     const msgType: AgentMessageType = m.type || 'chat';
-    const isUser = m.senderType === 'user';
+    const isToUser = m.direction === 'to_user';
 
     if (msgType === 'approval_result') {
       return null;
@@ -251,7 +251,7 @@ export function AgentChatPage() {
       const resultGranted = approvalResult ? Boolean(approvalResult.content?.granted) : undefined;
 
       return (
-        <div key={messageKey(m)} className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}>
+        <div key={messageKey(m)} className={cn('flex w-full', isToUser ? 'justify-start' : 'justify-end')}>
           <div className="max-w-[85%] rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 px-4 py-3 text-sm">
             <div className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400 mb-2">
               <ShieldCheck className="h-4 w-4" />
@@ -441,15 +441,15 @@ export function AgentChatPage() {
     }
 
     return (
-      <div key={messageKey(m)} className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}>
+      <div key={messageKey(m)} className={cn('flex w-full', isToUser ? 'justify-start' : 'justify-end')}>
         <div
           className={cn(
             'max-w-[80%] rounded-lg border px-3 py-2 text-sm',
-            isUser ? 'bg-primary text-primary-foreground border-primary/20' : 'bg-muted'
+            isToUser ? 'bg-muted' : 'bg-primary text-primary-foreground border-primary/20'
           )}
         >
           <div className='whitespace-pre-wrap break-words'>{m.text}</div>
-          <div className={cn('mt-1 text-[11px] opacity-80', isUser ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+          <div className={cn('mt-1 text-[11px] opacity-80', isToUser ? 'text-muted-foreground' : 'text-primary-foreground/80')}>
             seq {m.sequence} • {ts}
           </div>
         </div>

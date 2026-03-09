@@ -108,8 +108,15 @@ type ComplexityRoot struct {
 		Parameters  func(childComplexity int) int
 	}
 
+	DeployAxonClawResult struct {
+		Error    func(childComplexity int) int
+		Instance func(childComplexity int) int
+		Success  func(childComplexity int) int
+	}
+
 	Mutation struct {
 		AckAgentMessages       func(childComplexity int, input AckAgentMessagesInput) int
+		DeployAxonClaw         func(childComplexity int, input DeployAxonClawInput) int
 		HeartbeatAgentInstance func(childComplexity int, input HeartbeatAgentInstanceInput) int
 		RegisterAgentInstance  func(childComplexity int, input RegisterAgentInstanceInput) int
 		ReplyMessage           func(childComplexity int, input ReplyMessageInput) int
@@ -138,6 +145,7 @@ type MutationResolver interface {
 	SendAgentMessage(ctx context.Context, input SendAgentMessageInput) (*AgentMessage, error)
 	ReplyMessage(ctx context.Context, input ReplyMessageInput) (*AgentMessage, error)
 	AckAgentMessages(ctx context.Context, input AckAgentMessagesInput) (bool, error)
+	DeployAxonClaw(ctx context.Context, input DeployAxonClawInput) (*DeployAxonClawResult, error)
 }
 type QueryResolver interface {
 	AgentBootstrap(ctx context.Context) (*AgentBootstrap, error)
@@ -406,6 +414,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AgentToolDefinition.Parameters(childComplexity), true
 
+	case "DeployAxonClawResult.error":
+		if e.complexity.DeployAxonClawResult.Error == nil {
+			break
+		}
+
+		return e.complexity.DeployAxonClawResult.Error(childComplexity), true
+	case "DeployAxonClawResult.instance":
+		if e.complexity.DeployAxonClawResult.Instance == nil {
+			break
+		}
+
+		return e.complexity.DeployAxonClawResult.Instance(childComplexity), true
+	case "DeployAxonClawResult.success":
+		if e.complexity.DeployAxonClawResult.Success == nil {
+			break
+		}
+
+		return e.complexity.DeployAxonClawResult.Success(childComplexity), true
+
 	case "Mutation.ackAgentMessages":
 		if e.complexity.Mutation.AckAgentMessages == nil {
 			break
@@ -417,6 +444,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.AckAgentMessages(childComplexity, args["input"].(AckAgentMessagesInput)), true
+	case "Mutation.deployAxonClaw":
+		if e.complexity.Mutation.DeployAxonClaw == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deployAxonClaw_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeployAxonClaw(childComplexity, args["input"].(DeployAxonClawInput)), true
 	case "Mutation.heartbeatAgentInstance":
 		if e.complexity.Mutation.HeartbeatAgentInstance == nil {
 			break
@@ -537,6 +575,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAckAgentMessagesInput,
+		ec.unmarshalInputDeployAxonClawInput,
 		ec.unmarshalInputHeartbeatAgentInstanceInput,
 		ec.unmarshalInputPullAgentMessagesInput,
 		ec.unmarshalInputRegisterAgentInstanceInput,
@@ -662,6 +701,17 @@ func (ec *executionContext) field_Mutation_ackAgentMessages_args(ctx context.Con
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAckAgentMessagesInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAckAgentMessagesInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deployAxonClaw_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNDeployAxonClawInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐDeployAxonClawInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1968,6 +2018,101 @@ func (ec *executionContext) fieldContext_AgentToolDefinition_config(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _DeployAxonClawResult_success(ctx context.Context, field graphql.CollectedField, obj *DeployAxonClawResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeployAxonClawResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeployAxonClawResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeployAxonClawResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeployAxonClawResult_error(ctx context.Context, field graphql.CollectedField, obj *DeployAxonClawResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeployAxonClawResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeployAxonClawResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeployAxonClawResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeployAxonClawResult_instance(ctx context.Context, field graphql.CollectedField, obj *DeployAxonClawResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeployAxonClawResult_instance,
+		func(ctx context.Context) (any, error) {
+			return obj.Instance, nil
+		},
+		nil,
+		ec.marshalOAgentInstance2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentInstance,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeployAxonClawResult_instance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeployAxonClawResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AgentInstance_id(ctx, field)
+			case "agentID":
+				return ec.fieldContext_AgentInstance_agentID(ctx, field)
+			case "lastHeartbeatAt":
+				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentInstance", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_registerAgentInstance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2231,6 +2376,55 @@ func (ec *executionContext) fieldContext_Mutation_ackAgentMessages(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_ackAgentMessages_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deployAxonClaw(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deployAxonClaw,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeployAxonClaw(ctx, fc.Args["input"].(DeployAxonClawInput))
+		},
+		nil,
+		ec.marshalNDeployAxonClawResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐDeployAxonClawResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deployAxonClaw(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_DeployAxonClawResult_success(ctx, field)
+			case "error":
+				return ec.fieldContext_DeployAxonClawResult_error(ctx, field)
+			case "instance":
+				return ec.fieldContext_DeployAxonClawResult_instance(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DeployAxonClawResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deployAxonClaw_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4193,6 +4387,40 @@ func (ec *executionContext) unmarshalInputAckAgentMessagesInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputDeployAxonClawInput(ctx context.Context, obj any) (DeployAxonClawInput, error) {
+	var it DeployAxonClawInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "directory"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "directory":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Directory = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputHeartbeatAgentInstanceInput(ctx context.Context, obj any) (HeartbeatAgentInstanceInput, error) {
 	var it HeartbeatAgentInstanceInput
 	asMap := map[string]any{}
@@ -4844,6 +5072,49 @@ func (ec *executionContext) _AgentToolDefinition(ctx context.Context, sel ast.Se
 	return out
 }
 
+var deployAxonClawResultImplementors = []string{"DeployAxonClawResult"}
+
+func (ec *executionContext) _DeployAxonClawResult(ctx context.Context, sel ast.SelectionSet, obj *DeployAxonClawResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deployAxonClawResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeployAxonClawResult")
+		case "success":
+			out.Values[i] = ec._DeployAxonClawResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._DeployAxonClawResult_error(ctx, field, obj)
+		case "instance":
+			out.Values[i] = ec._DeployAxonClawResult_instance(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -4894,6 +5165,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "ackAgentMessages":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_ackAgentMessages(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deployAxonClaw":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deployAxonClaw(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -5782,6 +6060,25 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNDeployAxonClawInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐDeployAxonClawInput(ctx context.Context, v any) (DeployAxonClawInput, error) {
+	res, err := ec.unmarshalInputDeployAxonClawInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDeployAxonClawResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐDeployAxonClawResult(ctx context.Context, sel ast.SelectionSet, v DeployAxonClawResult) graphql.Marshaler {
+	return ec._DeployAxonClawResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDeployAxonClawResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐDeployAxonClawResult(ctx context.Context, sel ast.SelectionSet, v *DeployAxonClawResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DeployAxonClawResult(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNHeartbeatAgentInstanceInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐHeartbeatAgentInstanceInput(ctx context.Context, v any) (HeartbeatAgentInstanceInput, error) {
 	res, err := ec.unmarshalInputHeartbeatAgentInstanceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -6232,6 +6529,13 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalOAgentInstance2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentInstance(ctx context.Context, sel ast.SelectionSet, v *AgentInstance) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AgentInstance(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOAgentMessageType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentMessageTypeᚄ(ctx context.Context, v any) ([]AgentMessageType, error) {

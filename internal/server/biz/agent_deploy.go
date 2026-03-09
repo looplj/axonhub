@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/samber/lo"
 )
 
 var (
@@ -483,4 +484,156 @@ func (svc *AgentDeployService) redeployAxonclaw(ctx context.Context, runtime *en
 
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+type DeployAxonClawByAgentInput struct {
+	Name      string
+	Directory *string
+}
+
+func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, currentInst *ent.AgentInstance, input DeployAxonClawByAgentInput) (*DeployAxonclawResult, error) {
+	if currentInst.AgentHostID == nil {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   "current instance is not bound to a host",
+		}, nil
+	}
+
+	host, err := svc.db.AgentHost.Query().Where(agenthost.IDEQ(*currentInst.AgentHostID)).Only(ctx)
+	if err != nil {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   fmt.Sprintf("failed to load host: %v", err),
+		}, nil
+	}
+
+	if host.Status != agenthost.StatusActive {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   "host is not active",
+		}, nil
+	}
+
+	if input.Name == "" {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   "name is required",
+		}, nil
+	}
+
+	directory := input.Directory
+	if host.Type == agenthost.TypeVM || host.Type == agenthost.TypeLocal {
+		if directory == nil || *directory == "" {
+			return &DeployAxonclawResult{
+				Success: false,
+				Error:   fmt.Sprintf("directory is required for %s host", host.Type),
+			}, nil
+		}
+	}
+
+	baseURL := ""
+	if currentInst.Deployment.AxonhubBaseURL != "" {
+		baseURL = currentInst.Deployment.AxonhubBaseURL
+	}
+
+	entity, err := svc.db.Agent.Query().
+		Where(agent.IDEQ(currentInst.AgentID)).
+		Only(ctx)
+	if err != nil {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   fmt.Sprintf("failed to load agent: %v", err),
+		}, nil
+	}
+
+	var (
+		instance *ent.AgentInstance
+		apiKey   *ent.APIKey
+	)
+
+	err = svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		client := svc.entFromContext(txCtx)
+
+		apiKeyName := fmt.Sprintf("agent-instance:%d:%s", currentInst.AgentID, input.Name)
+
+		generatedKey, err := GenerateAPIKey()
+		if err != nil {
+			return fmt.Errorf("failed to generate api key: %w", err)
+		}
+
+		apiKey, err = authz.RunWithSystemBypass(txCtx, "agent-deploy-axonclaw-api-key", func(bypassCtx context.Context) (*ent.APIKey, error) {
+			return client.APIKey.Create().
+				SetName(apiKeyName).
+				SetKey(generatedKey).
+				SetUserID(entity.CreatedByUserID).
+				SetProjectID(entity.ProjectID).
+				SetType(apikey.TypeAgent).
+				SetScopes([]string{
+					string(scopes.ScopeReadAgents),
+					string(scopes.ScopeWriteAgents),
+					string(scopes.ScopeReadRequests),
+					string(scopes.ScopeWriteRequests),
+				}).
+				Save(bypassCtx)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create api key: %w", err)
+		}
+
+		deployment := objects.AgentInstanceDeployment{
+			AxonhubBaseURL: baseURL,
+		}
+
+		switch host.Type {
+		case agenthost.TypeVM:
+			deployment.Directory = *directory
+		case agenthost.TypeDocker:
+			deployment.DockerContainerName = dockerContainerName(input.Name)
+		case agenthost.TypeLocal:
+			deployment.Directory = *directory
+		}
+
+		instance, err = client.AgentInstance.Create().
+			SetProjectID(entity.ProjectID).
+			SetAgentID(currentInst.AgentID).
+			SetHostID(*currentInst.AgentHostID).
+			SetName(input.Name).
+			SetStatus(agentinstance.StatusPending).
+			SetDeployment(deployment).
+			SetLastHeartbeatAt(time.Now()).
+			SetAPIKeyID(apiKey.ID).
+			Save(txCtx)
+		if err != nil {
+			return fmt.Errorf("failed to create instance: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   err.Error(),
+		}, nil
+	}
+
+	deployInput := DeployAxonclawInput{
+		AgentID:        currentInst.AgentID,
+		HostID:         *currentInst.AgentHostID,
+		Name:           input.Name,
+		Directory:      lo.FromPtr(directory),
+		AxonhubBaseURL: baseURL,
+	}
+
+	err = svc.executeDeployment(ctx, host, instance, apiKey, deployInput)
+	if err != nil {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   err.Error(),
+		}, nil
+	}
+
+	return &DeployAxonclawResult{
+		Success:  true,
+		Instance: instance,
+	}, nil
 }

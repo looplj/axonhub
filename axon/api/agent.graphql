@@ -59,3 +59,15 @@ mutation SendAgentMessage($input: SendAgentMessageInput!) {
     id
   }
 }
+
+mutation DeployAxonClaw($input: DeployAxonClawInput!) {
+  deployAxonClaw(input: $input) {
+    success
+    error
+    instance {
+      id
+      agentID
+      lastHeartbeatAt
+    }
+  }
+}

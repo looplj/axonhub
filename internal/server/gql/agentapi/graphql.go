@@ -27,10 +27,11 @@ type Dependencies struct {
 
 	Ent              *ent.Client
 	AgentHostService *biz.AgentBootstrapService
+	AgentDeploySvc   *biz.AgentDeployService
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(NewSchema(deps.AgentHostService))
+	gqlSrv := handler.New(NewSchema(deps.AgentHostService, deps.AgentDeploySvc))
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})

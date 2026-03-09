@@ -76,6 +76,17 @@ type AgentToolDefinition struct {
 	Config      objects.JSONRawMessage `json:"config,omitempty"`
 }
 
+type DeployAxonClawInput struct {
+	Name      string  `json:"name"`
+	Directory *string `json:"directory,omitempty"`
+}
+
+type DeployAxonClawResult struct {
+	Success  bool           `json:"success"`
+	Error    *string        `json:"error,omitempty"`
+	Instance *AgentInstance `json:"instance,omitempty"`
+}
+
 type HeartbeatAgentInstanceInput struct {
 	Dummy *bool `json:"dummy,omitempty"`
 }

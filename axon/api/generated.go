@@ -5,6 +5,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/Khan/genqlient/graphql"
 )
@@ -164,6 +165,67 @@ var AllAgentMessageType = []AgentMessageType{
 	AgentMessageTypeApprovalRequest,
 	AgentMessageTypeApprovalResult,
 	AgentMessageTypeSystemEvent,
+}
+
+// DeployAxonClawDeployAxonClawDeployAxonClawResult includes the requested fields of the GraphQL type DeployAxonClawResult.
+type DeployAxonClawDeployAxonClawDeployAxonClawResult struct {
+	Success  bool                                                                   `json:"success"`
+	Error    *string                                                                `json:"error"`
+	Instance *DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance `json:"instance"`
+}
+
+// GetSuccess returns DeployAxonClawDeployAxonClawDeployAxonClawResult.Success, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawDeployAxonClawDeployAxonClawResult) GetSuccess() bool { return v.Success }
+
+// GetError returns DeployAxonClawDeployAxonClawDeployAxonClawResult.Error, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawDeployAxonClawDeployAxonClawResult) GetError() *string { return v.Error }
+
+// GetInstance returns DeployAxonClawDeployAxonClawDeployAxonClawResult.Instance, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawDeployAxonClawDeployAxonClawResult) GetInstance() *DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance {
+	return v.Instance
+}
+
+// DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance includes the requested fields of the GraphQL type AgentInstance.
+type DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance struct {
+	Id              string    `json:"id"`
+	AgentID         string    `json:"agentID"`
+	LastHeartbeatAt time.Time `json:"lastHeartbeatAt"`
+}
+
+// GetId returns DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance.Id, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance) GetId() string {
+	return v.Id
+}
+
+// GetAgentID returns DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance.AgentID, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance) GetAgentID() string {
+	return v.AgentID
+}
+
+// GetLastHeartbeatAt returns DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance.LastHeartbeatAt, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance) GetLastHeartbeatAt() time.Time {
+	return v.LastHeartbeatAt
+}
+
+type DeployAxonClawInput struct {
+	Name      string  `json:"name"`
+	Directory *string `json:"directory"`
+}
+
+// GetName returns DeployAxonClawInput.Name, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawInput) GetName() string { return v.Name }
+
+// GetDirectory returns DeployAxonClawInput.Directory, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawInput) GetDirectory() *string { return v.Directory }
+
+// DeployAxonClawResponse is returned by DeployAxonClaw on success.
+type DeployAxonClawResponse struct {
+	DeployAxonClaw *DeployAxonClawDeployAxonClawDeployAxonClawResult `json:"deployAxonClaw"`
+}
+
+// GetDeployAxonClaw returns DeployAxonClawResponse.DeployAxonClaw, and is useful for accessing the field via an interface.
+func (v *DeployAxonClawResponse) GetDeployAxonClaw() *DeployAxonClawDeployAxonClawDeployAxonClawResult {
+	return v.DeployAxonClaw
 }
 
 type HeartbeatAgentInstanceInput struct {
@@ -405,6 +467,14 @@ type __AckAgentMessagesInput struct {
 // GetInput returns __AckAgentMessagesInput.Input, and is useful for accessing the field via an interface.
 func (v *__AckAgentMessagesInput) GetInput() *AckAgentMessagesInput { return v.Input }
 
+// __DeployAxonClawInput is used internally by genqlient
+type __DeployAxonClawInput struct {
+	Input *DeployAxonClawInput `json:"input,omitempty"`
+}
+
+// GetInput returns __DeployAxonClawInput.Input, and is useful for accessing the field via an interface.
+func (v *__DeployAxonClawInput) GetInput() *DeployAxonClawInput { return v.Input }
+
 // __HeartbeatAgentInstanceInput is used internally by genqlient
 type __HeartbeatAgentInstanceInput struct {
 	Input *HeartbeatAgentInstanceInput `json:"input,omitempty"`
@@ -518,6 +588,46 @@ func AgentBootstrap(
 	}
 
 	data_ = &AgentBootstrapResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by DeployAxonClaw.
+const DeployAxonClaw_Operation = `
+mutation DeployAxonClaw ($input: DeployAxonClawInput!) {
+	deployAxonClaw(input: $input) {
+		success
+		error
+		instance {
+			id
+			agentID
+			lastHeartbeatAt
+		}
+	}
+}
+`
+
+func DeployAxonClaw(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input *DeployAxonClawInput,
+) (data_ *DeployAxonClawResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "DeployAxonClaw",
+		Query:  DeployAxonClaw_Operation,
+		Variables: &__DeployAxonClawInput{
+			Input: input,
+		},
+	}
+
+	data_ = &DeployAxonClawResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

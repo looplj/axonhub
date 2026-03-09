@@ -83,11 +83,22 @@ var DefaultPolicy = policy.Document{
 				ToolIn: []string{"SendMessage"},
 			},
 		},
+		{
+			ID:     "allow_axonclaw_deploy",
+			Effect: policy.EffectAllow,
+			Reason: "allow axonclaw deploy command",
+			When: policy.When{
+				ToolIn: []string{"Bash"},
+				Resource: policy.ResourceWhen{
+					CommandMatches: []string{"^axonclaw\\s+deploy\\s+.*"},
+				},
+			},
+		},
 	},
 }
 
-func LoadOrCreatePolicy(workspace string) (policy.Document, error) {
-	defaultPath := filepath.Join(workspace, ".axonclaw", PolicyFileName)
+func LoadOrCreatePolicy(dir string) (policy.Document, error) {
+	defaultPath := filepath.Join(dir, PolicyFileName)
 	if _, err := os.Stat(defaultPath); err == nil {
 		return policy.LoadFiles(defaultPath)
 	}

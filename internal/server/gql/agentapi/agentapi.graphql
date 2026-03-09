@@ -131,6 +131,17 @@ input AckAgentMessagesInput {
   messageIDs: [ID!]!
 }
 
+input DeployAxonClawInput {
+  name: String!
+  directory: String
+}
+
+type DeployAxonClawResult {
+  success: Boolean!
+  error: String
+  instance: AgentInstance
+}
+
 type Query {
   agentBootstrap: AgentBootstrap!
   peerAgents: [PeerAgent!]!
@@ -143,12 +154,10 @@ type Mutation {
 
   heartbeatAgentInstance(input: HeartbeatAgentInstanceInput!): Boolean!
 
-  # Send a message from this agent to another agent (Direction: to_agent, SenderType: agent)
   sendAgentMessage(input: SendAgentMessageInput!): AgentMessage!
   
-  # Reply to the user (Direction: to_user, SenderType: agent)
   replyMessage(input: ReplyMessageInput!): AgentMessage!
-  # Acknowledge messages have been received/processed by an agent instance.
-  # Updates message status from 'pending' to 'acked'.
   ackAgentMessages(input: AckAgentMessagesInput!): Boolean!
+
+  deployAxonClaw(input: DeployAxonClawInput!): DeployAxonClawResult!
 }

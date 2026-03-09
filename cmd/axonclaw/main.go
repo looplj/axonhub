@@ -137,6 +137,11 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
+	rootCmd.AddCommand(cmds.NewDeployCommand(cmds.DeployOptions{
+		Dir:    configDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}))
 
 	return rootCmd
 }
@@ -241,7 +246,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		return fmt.Errorf("load workspace grants: %w", err)
 	}
 
-	pdoc, err := conf.LoadOrCreatePolicy(wd)
+	pdoc, err := conf.LoadOrCreatePolicy(axonclawDir)
 	if err != nil {
 		return fmt.Errorf("load policy: %w", err)
 	}
