@@ -153,10 +153,6 @@ func (r *mutationResolver) TriggerGarbageCollection(ctx context.Context) (bool, 
 		return false, fmt.Errorf("permission denied: requires write:settings scope")
 	}
 
-	if r.gcWorker == nil {
-		return false, fmt.Errorf("GC worker is not available")
-	}
-
 	go func() {
 		// Use a detached context with system bypass for background execution
 		bgCtx := authz.WithSystemBypass(context.Background(), "manual-gc-cleanup")
