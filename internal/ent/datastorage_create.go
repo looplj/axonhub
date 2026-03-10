@@ -217,12 +217,6 @@ func (_c *DataStorageCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *DataStorageCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "DataStorage.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "DataStorage.updated_at"`)}
-	}
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "DataStorage.deleted_at"`)}
 	}

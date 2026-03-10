@@ -453,12 +453,6 @@ func (_c *RequestCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *RequestCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Request.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Request.updated_at"`)}
-	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Request.project_id"`)}
 	}
