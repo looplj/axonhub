@@ -46,6 +46,8 @@ func NewEntClient(cfg Config) *ent.Client {
 		if err != nil {
 			panic(err)
 		}
+		// fix database is locked
+		sqlDB.SetMaxOpenConns(1)
 
 		dbDialect = dialect.SQLite
 	case "mysql", "tidb":
