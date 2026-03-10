@@ -27,7 +27,7 @@ import {
   useUpdateStoragePolicy,
   useDefaultDataStorageID,
   useUpdateDefaultDataStorage,
-  useTriggerGarbageCollection,
+  useTriggerGcCleanup,
   CleanupOption,
 } from '../data/system';
 import { VideoStorageSettings } from './video-storage-settings';
@@ -42,7 +42,7 @@ export function StorageSettings() {
   });
   const updateStoragePolicy = useUpdateStoragePolicy();
   const updateDefaultDataStorage = useUpdateDefaultDataStorage();
-  const triggerGarbageCollection = useTriggerGarbageCollection();
+  const triggerGcCleanup = useTriggerGcCleanup();
   const { isLoading, setIsLoading } = useSystemContext();
 
   const [storagePolicyState, setStoragePolicyState] = useState({
@@ -193,9 +193,9 @@ export function StorageSettings() {
               <Button
                 variant='outline'
                 size='sm'
-                disabled={triggerGarbageCollection.isPending || isLoading}
+                disabled={triggerGcCleanup.isPending || isLoading}
               >
-                {triggerGarbageCollection.isPending ? (
+                {triggerGcCleanup.isPending ? (
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                 ) : (
                   <Play className='mr-2 h-4 w-4' />
@@ -212,7 +212,7 @@ export function StorageSettings() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>{t('system.storage.policy.runCleanupCancel')}</AlertDialogCancel>
-                <AlertDialogAction onClick={() => triggerGarbageCollection.mutate()}>
+                <AlertDialogAction onClick={() => triggerGcCleanup.mutate()}>
                   {t('system.storage.policy.runCleanupConfirm')}
                 </AlertDialogAction>
               </AlertDialogFooter>
