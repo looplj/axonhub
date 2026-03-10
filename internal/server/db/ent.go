@@ -46,6 +46,10 @@ func NewEntClient(cfg Config) *ent.Client {
 		if err != nil {
 			panic(err)
 		}
+		// 将 SQLite 的最大打开连接数限制为 1，以防止在高并发写入时出现 "database is locked" 错误。
+		// 这有效地序列化了所有数据库访问。
+		sqlDB.SetMaxOpenConns(1)
+		sqlDB.SetMaxIdleConns(1)
 
 		dbDialect = dialect.SQLite
 	case "mysql", "tidb":
