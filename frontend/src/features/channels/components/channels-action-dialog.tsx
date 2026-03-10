@@ -586,13 +586,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     return false;
   }, [isEdit, currentRow]);
 
-  useEffect(() => {
-    // Codex always requires stream
-    if (isCodexType) {
-      form.setValue('policies.stream', 'require');
-    }
-  }, [isCodexType, form]);
-
   const wrapUnsupported = useCallback(
     (enabled: boolean, children: React.ReactNode, wrapperClassName: string) => {
       if (!enabled) return children;
@@ -637,7 +630,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (provider === 'codex') {
         setSelectedApiFormat(OPENAI_RESPONSES);
         form.setValue('type', 'codex');
-        form.setValue('policies.stream', 'require');
         if (!isEdit) {
           setFetchedModels([]);
           setUseFetchedModels(false);
@@ -1869,23 +1861,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               {t('channels.dialogs.fields.streamPolicy.label')}
                             </FormLabel>
                             <div className='space-y-1 md:col-span-6'>
-                              {wrapUnsupported(
-                                isCodexType,
-                                <SelectDropdown
-                                  defaultValue={(field.value as string) || 'unlimited'}
-                                  onValueChange={(value) => field.onChange(value)}
-                                  placeholder={t('channels.dialogs.fields.streamPolicy.placeholder')}
-                                  data-testid='channel-stream-policy-select'
-                                  isControlled={true}
-                                  disabled={isCodexType}
-                                  items={[
-                                    { value: 'unlimited', label: t('channels.dialogs.fields.streamPolicy.options.unlimited') },
-                                    { value: 'require', label: t('channels.dialogs.fields.streamPolicy.options.require') },
-                                    { value: 'forbid', label: t('channels.dialogs.fields.streamPolicy.options.forbid') },
-                                  ]}
-                                />,
-                                'w-full'
-                              )}
+                              <SelectDropdown
+                                defaultValue={(field.value as string) || 'unlimited'}
+                                onValueChange={(value) => field.onChange(value)}
+                                placeholder={t('channels.dialogs.fields.streamPolicy.placeholder')}
+                                data-testid='channel-stream-policy-select'
+                                isControlled={true}
+                                items={[
+                                  { value: 'unlimited', label: t('channels.dialogs.fields.streamPolicy.options.unlimited') },
+                                  { value: 'require', label: t('channels.dialogs.fields.streamPolicy.options.require') },
+                                  { value: 'forbid', label: t('channels.dialogs.fields.streamPolicy.options.forbid') },
+                                ]}
+                              />
                               <FormMessage />
                             </div>
                           </FormItem>
