@@ -11,6 +11,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/samber/lo"
@@ -108,12 +109,16 @@ func (r *mutationResolver) TriggerAutoBackup(ctx context.Context) (*TriggerBacku
 		return nil, ErrNotOwner
 	}
 
-	if err := r.backupService.RunBackupNow(ctx); err != nil {
-		return &TriggerBackupPayload{
-			Success: false,
-			Message: lo.ToPtr(err.Error()),
-		}, nil
-	}
+	go func() {
+		// Use a detached context so the 30s HTTP request timeout
+		// doesn't cancel the long-running WebDAV upload.
+		// RunBackupNow internally injects a fresh ent client (svc.db),
+		// so it does NOT depend on the HTTP request's transactional context.
+		bgCtx := context.WithoutCancel(ctx)
+		if err := r.backupService.RunBackupNow(bgCtx); err != nil {
+			log.Error(bgCtx, "Manual trigger autobackup failed", log.Cause(err))
+		}
+	}()
 
 	return &TriggerBackupPayload{
 		Success: true,

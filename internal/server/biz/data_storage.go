@@ -177,7 +177,7 @@ func (s *DataStorageService) buildFileSystem(ctx context.Context, ds *ent.DataSt
 			return nil, fmt.Errorf("webdav settings not configured")
 		}
 
-		fs, err := s.createWebDAVFs(ctx, ds.Settings.WebDAV)
+		fs, err := s.createWebDAVFs(ctx, ds, ds.Settings.WebDAV)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create webdav filesystem: %w", err)
 		}
@@ -415,23 +415,33 @@ func (s *DataStorageService) createGcsFs(ctx context.Context, gcsConfig *objects
 }
 
 // createWebDAVFs creates a WebDAV filesystem using the afero-webdav adapter.
-func (s *DataStorageService) createWebDAVFs(_ context.Context, cfg *objects.WebDAV) (afero.Fs, error) {
-	var fs afero.Fs
-
+func (s *DataStorageService) createWebDAVFs(_ context.Context, ds *ent.DataStorage, cfg *objects.WebDAV) (afero.Fs, error) {
+	client := gowebdav.NewClient(cfg.URL, cfg.Username, cfg.Password)
+	client.SetTimeout(time.Minute * 10)
 	if cfg.InsecureSkipTLS {
-		client := gowebdav.NewClient(cfg.URL, cfg.Username, cfg.Password)
 		//nolint:gosec // InsecureSkipVerify is configurable by the user.
 		client.SetTransport(&http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		})
-
-		fs = webdavfs.NewFsFromClient(client)
-	} else {
-		fs = webdavfs.NewFs(cfg.URL, cfg.Username, cfg.Password)
 	}
 
-	if cfg.Path != "" && cfg.Path != "/" {
-		return afero.NewBasePathFs(fs, cfg.Path), nil
+	fs := webdavfs.NewFsFromClient(client)
+
+	path := ""
+	if cfg.Path != "" {
+		path = cfg.Path
+	} else if ds.Settings.Directory != nil {
+		path = *ds.Settings.Directory
+	}
+
+	// Normalize WebDAV path for Synology/NAS compatibility:
+	// BasePathFs and the underlying webdav client may concatenate paths such that it results in "/path/to/file",
+	// which some WEBDAV servers reject with 405. By trimming the leading slash from the base path,
+	// we ensure the final path sent is relative/normalized according to server expectations.
+	path = strings.TrimPrefix(path, "/")
+
+	if path != "" {
+		return afero.NewBasePathFs(fs, path), nil
 	}
 
 	return fs, nil
@@ -480,12 +490,20 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 
 		if ds.Type == datastorage.TypeFs {
 			key = filepath.FromSlash(key)
-
 			err = fs.MkdirAll(filepath.Dir(key), 0o777)
 			if err != nil {
 				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
 			}
-		} else {
+		} else if ds.Type == datastorage.TypeWebdav {
+			// For WebDAV, remove leading slash to avoid 405 error on some servers (e.g., Synology)
+			key = strings.TrimPrefix(key, "/")
+			err = s.mkdirAll(fs, filepath.Dir(key))
+			if err != nil {
+				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+			}
+		}
+
+		if ds.Type != datastorage.TypeFs {
 			// For S3 with PathStyle enabled, remove leading slash from key
 			// to avoid InvalidArgument error from S3 compatible storage services
 			if isS3PathStyle(ds) {
@@ -527,6 +545,12 @@ func (s *DataStorageService) SaveDataFromReader(ctx context.Context, ds *ent.Dat
 		if ds.Type == datastorage.TypeFs {
 			key = filepath.FromSlash(key)
 			if err := fs.MkdirAll(filepath.Dir(key), 0o777); err != nil {
+				return "", 0, fmt.Errorf("failed to create directory: %w, key: %s", err, key)
+			}
+		} else if ds.Type == datastorage.TypeWebdav {
+			// For WebDAV, remove leading slash to avoid 405 error on some servers (e.g., Synology)
+			key = strings.TrimPrefix(key, "/")
+			if err := s.mkdirAll(fs, filepath.Dir(key)); err != nil {
 				return "", 0, fmt.Errorf("failed to create directory: %w, key: %s", err, key)
 			}
 		} else if isS3PathStyle(ds) {
@@ -753,4 +777,38 @@ func isWebDAVProvided(webdav *objects.WebDAV) bool {
 	}
 
 	return webdav.URL != "" || webdav.Username != "" || webdav.Password != "" || webdav.Path != ""
+}
+
+func (s *DataStorageService) mkdirAll(fs afero.Fs, dir string) error {
+	if dir == "." || dir == "/" || dir == "" {
+		return nil
+	}
+
+	// Normalize path separators to / for consistent splitting
+	dir = filepath.ToSlash(dir)
+	dir = strings.Trim(dir, "/")
+	parts := strings.Split(dir, "/")
+
+	var current string
+	for _, part := range parts {
+		if current == "" {
+			current = part
+		} else {
+			current = current + "/" + part
+		}
+
+		err := fs.Mkdir(current, 0o777)
+		if err != nil {
+			// Ignore "already exists" errors. WebDAV servers might return 405 or 409
+			// if the directory already exists. We check existence only as a fallback.
+			//nolint:staticcheck // bypass SA4006 false positive on older staticcheck versions
+			isDir, errDir := afero.DirExists(fs, current)
+			if errDir == nil && isDir {
+				continue
+			}
+			// If Mkdir failed and we can't confirm it exists, we might still want to continue
+			// as some WebDAV implementations are quirky.
+		}
+	}
+	return nil
 }
