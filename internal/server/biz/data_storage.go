@@ -497,6 +497,7 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 		} else if ds.Type == datastorage.TypeWebdav {
 			// For WebDAV, remove leading slash to avoid 405 error on some servers (e.g., Synology)
 			key = strings.TrimPrefix(key, "/")
+
 			err = s.mkdirAll(fs, filepath.Dir(key))
 			if err != nil {
 				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
@@ -810,5 +811,6 @@ func (s *DataStorageService) mkdirAll(fs afero.Fs, dir string) error {
 			// as some WebDAV implementations are quirky.
 		}
 	}
+
 	return nil
 }
