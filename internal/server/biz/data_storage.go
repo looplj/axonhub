@@ -799,7 +799,7 @@ func (s *DataStorageService) mkdirAll(fs afero.Fs, dir string) error {
 		if err != nil {
 			// Ignore "already exists" errors. WebDAV servers might return 405 or 409
 			// if the directory already exists. We check existence only as a fallback.
-			if ok, _ := afero.DirExists(fs, current); ok {
+			if exists, _ := afero.DirExists(fs, current); exists {
 				continue
 			}
 			// If Mkdir failed and we can't confirm it exists, we might still want to continue
