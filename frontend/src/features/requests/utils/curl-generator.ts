@@ -54,7 +54,17 @@ export function generateCurlCommand(options: CurlGeneratorOptions): string {
   let url: string;
   if (baseUrl) {
     const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
-    url = `${cleanBaseUrl}${apiPath}`;
+    // Avoid path duplication: if baseUrl ends with a prefix of apiPath, strip the overlap.
+    // e.g. baseUrl="https://api.openai.com/v1" + apiPath="/v1/chat/completions"
+    //   -> "https://api.openai.com/v1/chat/completions" (not .../v1/v1/chat/completions)
+    let combinedPath = apiPath;
+    for (let i = 1; i <= apiPath.length; i++) {
+      const prefix = apiPath.substring(0, i);
+      if (cleanBaseUrl.endsWith(prefix)) {
+        combinedPath = apiPath.substring(i);
+      }
+    }
+    url = `${cleanBaseUrl}${combinedPath}`;
   } else {
     url = `${typeof window !== 'undefined' ? window.location.origin : ''}${apiPath}`;
   }
