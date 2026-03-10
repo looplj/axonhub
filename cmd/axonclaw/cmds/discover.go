@@ -3,20 +3,13 @@ package cmds
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/looplj/axonhub/axon/api"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 	"github.com/spf13/cobra"
 )
 
-type DiscoverOptions struct {
-	ConfigDir string
-	Stdout    *os.File
-	Stderr    *os.File
-}
-
-func NewDiscoverCommand(opts DiscoverOptions) *cobra.Command {
+func NewDiscoverCommand(opts StdioOptions) *cobra.Command {
 	stdout := opts.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
@@ -24,12 +17,6 @@ func NewDiscoverCommand(opts DiscoverOptions) *cobra.Command {
 	stderr := opts.Stderr
 	if stderr == nil {
 		stderr = os.Stderr
-	}
-
-	var configDir string
-	defaultConfigDir := opts.ConfigDir
-	if defaultConfigDir == "" {
-		defaultConfigDir = ".axonclaw"
 	}
 
 	cmd := &cobra.Command{
@@ -45,8 +32,7 @@ Use this information to communicate with other agents via the SendMessage tool.`
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgPath := filepath.Join(configDir, conf.FileName)
-			cfg, err := conf.Load(cfgPath)
+			cfg, err := conf.LoadConfig()
 			if err != nil {
 				return fmt.Errorf("load config: %w", err)
 			}
@@ -81,7 +67,6 @@ Use this information to communicate with other agents via the SendMessage tool.`
 	}
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
-	cmd.PersistentFlags().StringVar(&configDir, "dir", defaultConfigDir, "Config directory")
 
 	return cmd
 }

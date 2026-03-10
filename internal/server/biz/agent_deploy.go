@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -19,13 +20,34 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
-	"github.com/samber/lo"
 )
 
 var (
 	debugLocalPath   = os.Getenv("AXONHUB_DEBUG_AXONCLAW_PATH")
 	debugDockerImage = os.Getenv("AXONHUB_DEBUG_AXONCLAW_IMAGE")
 )
+
+func overrideEnv(base []string, key, value string) []string {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return base
+	}
+
+	prefix := key + "="
+
+	out := make([]string, 0, len(base)+1)
+	for _, item := range base {
+		if strings.HasPrefix(item, prefix) {
+			continue
+		}
+
+		out = append(out, item)
+	}
+
+	out = append(out, prefix+value)
+
+	return out
+}
 
 type AgentDeployServiceParams struct {
 	fx.In
@@ -527,6 +549,29 @@ func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, curren
 			return &DeployAxonclawResult{
 				Success: false,
 				Error:   fmt.Sprintf("directory is required for %s host", host.Type),
+			}, nil
+		}
+	}
+
+	if host.Type == agenthost.TypeVM || host.Type == agenthost.TypeLocal {
+		if strings.TrimSpace(currentInst.Deployment.Directory) != "" &&
+			directory != nil &&
+			strings.TrimSpace(*directory) == strings.TrimSpace(currentInst.Deployment.Directory) {
+			return &DeployAxonclawResult{
+				Success: false,
+				Error:   "directory must be different from current instance directory",
+			}, nil
+		}
+	}
+
+	if host.Type == agenthost.TypeDocker {
+		currentContainer := strings.TrimSpace(currentInst.Deployment.DockerContainerName)
+
+		targetContainer := dockerContainerName(input.Name)
+		if currentContainer != "" && currentContainer == targetContainer {
+			return &DeployAxonclawResult{
+				Success: false,
+				Error:   "target docker container matches current instance container",
 			}, nil
 		}
 	}

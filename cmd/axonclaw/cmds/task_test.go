@@ -9,7 +9,7 @@ import (
 )
 
 func TestTaskEnableResetsNextRunAt(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), ".axonclaw")
+	dir := filepath.Join(t.TempDir(), "tasks")
 	store, err := task.NewStore(dir)
 	if err != nil {
 		t.Fatalf("new store: %v", err)
@@ -26,10 +26,8 @@ func TestTaskEnableResetsNextRunAt(t *testing.T) {
 		t.Fatalf("save task: %v", err)
 	}
 
-	cmd := NewTaskCommand(TaskOptions{Dir: dir})
-	cmd.SetArgs([]string{"enable", "t1"})
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute: %v", err)
+	if err := store.SetEnabled("t1", true); err != nil {
+		t.Fatalf("enable: %v", err)
 	}
 
 	tasks, err := store.Load()

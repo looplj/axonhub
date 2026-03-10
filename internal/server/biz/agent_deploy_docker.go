@@ -4,6 +4,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -31,16 +32,24 @@ func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.
 		_ = exec.CommandContext(deployCtx, "docker", "stop", containerName).Run()
 		_ = exec.CommandContext(deployCtx, "docker", "rm", containerName).Run()
 
+		dockerEnv := append([]string{}, os.Environ()...)
+		dockerEnv = overrideEnv(dockerEnv, "AXONCLAW_NAME", name)
+		dockerEnv = overrideEnv(dockerEnv, "AXONCLAW_BASE_URL", baseURL)
+		dockerEnv = overrideEnv(dockerEnv, "AXONCLAW_API_KEY", apiKey.Key)
+
 		runArgs := []string{
 			"run", "-d",
 			"--name", containerName,
 			"--restart", "unless-stopped",
-			"-e", "AXONCLAW_NAME=" + name,
-			"-e", "AXONCLAW_BASE_URL=" + baseURL,
-			"-e", "AXONCLAW_API_KEY=" + apiKey.Key,
+			"-e", "AXONCLAW_NAME",
+			"-e", "AXONCLAW_BASE_URL",
+			"-e", "AXONCLAW_API_KEY",
 			imageName,
 		}
-		if output, err := exec.CommandContext(deployCtx, "docker", runArgs...).CombinedOutput(); err != nil {
+		cmd := exec.CommandContext(deployCtx, "docker", runArgs...)
+
+		cmd.Env = dockerEnv
+		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to start Docker container: %w, output: %s", err, string(output))
 		}
 
@@ -96,7 +105,14 @@ func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.
 	}
 	defer session3.Close()
 
-	runCmd := fmt.Sprintf("docker run -d --name %s --restart unless-stopped -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s", containerName, name, baseURL, apiKey.Key, imageName)
+	runCmd := fmt.Sprintf(
+		"docker run -d --name %s --restart unless-stopped -e AXONCLAW_NAME=%s -e AXONCLAW_BASE_URL=%s -e AXONCLAW_API_KEY=%s %s",
+		shellQuote(containerName),
+		shellQuote(name),
+		shellQuote(baseURL),
+		shellQuote(apiKey.Key),
+		shellQuote(imageName),
+	)
 	if output, err := session3.CombinedOutput(runCmd); err != nil {
 		return fmt.Errorf("failed to start Docker container: %w, output: %s", err, string(output))
 	}
@@ -236,16 +252,24 @@ func (svc *AgentDeployService) dockerRedeploy(ctx context.Context, runtime *ent.
 		_ = exec.CommandContext(redeployCtx, "docker", "stop", containerName).Run()
 		_ = exec.CommandContext(redeployCtx, "docker", "rm", containerName).Run()
 
+		dockerEnv := append([]string{}, os.Environ()...)
+		dockerEnv = overrideEnv(dockerEnv, "AXONCLAW_NAME", name)
+		dockerEnv = overrideEnv(dockerEnv, "AXONCLAW_BASE_URL", baseURL)
+		dockerEnv = overrideEnv(dockerEnv, "AXONCLAW_API_KEY", apiKey.Key)
+
 		runArgs := []string{
 			"run", "-d",
 			"--name", containerName,
 			"--restart", "unless-stopped",
-			"-e", "AXONCLAW_NAME=" + name,
-			"-e", "AXONCLAW_BASE_URL=" + baseURL,
-			"-e", "AXONCLAW_API_KEY=" + apiKey.Key,
+			"-e", "AXONCLAW_NAME",
+			"-e", "AXONCLAW_BASE_URL",
+			"-e", "AXONCLAW_API_KEY",
 			imageName,
 		}
-		if output, err := exec.CommandContext(redeployCtx, "docker", runArgs...).CombinedOutput(); err != nil {
+		cmd := exec.CommandContext(redeployCtx, "docker", runArgs...)
+
+		cmd.Env = dockerEnv
+		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("docker run: %w, output: %s", err, string(output))
 		}
 

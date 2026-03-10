@@ -33,20 +33,15 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-const (
-	logsDirName   = "logs"
-	configDirName = ".axonclaw"
-)
+const logsDirName = "logs"
 
 type loggerCloser func()
 
 func main() {
 	workspaceDir := mustGetwd()
-	configDir := filepath.Join(workspaceDir, configDirName)
 
 	rootCmd := newRootCommand(newRootCommandOptions{
 		WorkspaceDir: workspaceDir,
-		ConfigDir:    configDir,
 		RunAgent:     runAgent,
 	})
 
@@ -57,7 +52,6 @@ func main() {
 
 type newRootCommandOptions struct {
 	WorkspaceDir string
-	ConfigDir    string
 	RunAgent     func(cfg conf.Config, wd string, debug bool) error
 }
 
@@ -106,39 +100,33 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 	rootCmd.SetHelpCommand(cmds.NewHelpCommand(rootCmd))
 
 	workspaceDir := opts.WorkspaceDir
-	configDir := opts.ConfigDir
 
 	rootCmd.AddCommand(skillscmd.NewRootCommand(skillscmd.RootOptions{
 		Use:                  "skills",
 		Stdout:               os.Stdout,
 		Stderr:               os.Stderr,
-		WorkspaceDir:         filepath.Join(workspaceDir, configDirName, "skills"),
+		WorkspaceDir:         filepath.Join(workspaceDir, conf.DefaultDir, "skills"),
 		Commands:             []string{"search", "list", "add", "remove"},
 		EnableAgentDiscovery: false,
 		EnableAgentFlags:     false,
 	}))
-	rootCmd.AddCommand(cmds.NewConfCommand(cmds.ConfOptions{
-		Dir:    configDir,
+	rootCmd.AddCommand(cmds.NewConfCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
-	rootCmd.AddCommand(cmds.NewMemoryCommand(cmds.MemoryOptions{
-		Dir:    configDir,
+	rootCmd.AddCommand(cmds.NewMemoryCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
-	rootCmd.AddCommand(cmds.NewDiscoverCommand(cmds.DiscoverOptions{
-		ConfigDir: configDir,
-		Stdout:    os.Stdout,
-		Stderr:    os.Stderr,
-	}))
-	rootCmd.AddCommand(cmds.NewTaskCommand(cmds.TaskOptions{
-		Dir:    filepath.Join(configDir, "tasks"),
+	rootCmd.AddCommand(cmds.NewDiscoverCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
-	rootCmd.AddCommand(cmds.NewDeployCommand(cmds.DeployOptions{
-		Dir:    configDir,
+	rootCmd.AddCommand(cmds.NewTaskCommand(cmds.StdioOptions{
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}))
+	rootCmd.AddCommand(cmds.NewDeployCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
@@ -157,8 +145,8 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 
 	boot, err := bootstrap.Do(ctx, gqlClient, bootstrap.Params{
 		Workspace:  wd,
-		SkillsRoot: filepath.Join(wd, configDirName, "skills"),
-		ConfigDir:  filepath.Join(wd, configDirName),
+		SkillsRoot: filepath.Join(wd, conf.DefaultDir, "skills"),
+		ConfigDir:  filepath.Join(wd, conf.DefaultDir),
 	})
 	if err != nil {
 		return fmt.Errorf("bootstrap: %w", err)
@@ -190,7 +178,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		return fmt.Errorf("register instance: %w", err)
 	}
 
-	axonclawDir := filepath.Join(wd, ".axonclaw")
+	axonclawDir := filepath.Join(wd, conf.DefaultDir)
 
 	var contextMgr agent.ContextManager
 	contextCfg := agent.DefaultContextManagerConfig()
@@ -246,7 +234,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		return fmt.Errorf("load workspace grants: %w", err)
 	}
 
-	pdoc, err := conf.LoadOrCreatePolicy(axonclawDir)
+	pdoc, err := conf.LoadOrCreatePolicy()
 	if err != nil {
 		return fmt.Errorf("load policy: %w", err)
 	}
@@ -312,7 +300,7 @@ func fatalf(format string, args ...any) {
 }
 
 func mustInitLogger(wd string, debug bool) (*slog.Logger, loggerCloser) {
-	logsDir := filepath.Join(wd, ".axonclaw", logsDirName)
+	logsDir := filepath.Join(wd, conf.DefaultDir, logsDirName)
 	if err := os.MkdirAll(logsDir, 0o755); err != nil {
 		fatalf("cannot create logs directory: %v", err)
 	}

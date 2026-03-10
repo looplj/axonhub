@@ -61,17 +61,12 @@ func (t *ResetTool) Execute(ctx context.Context, _ map[string]any) agent.ToolRes
 		return agent.ToolResult{Error: fmt.Errorf("reset bootstrap failed: %w", err)}
 	}
 
-	t.boot.AgentID = newBoot.AgentID
-	t.boot.AgentName = newBoot.AgentName
-	t.boot.Model = newBoot.Model
-	t.boot.SystemPrompt = newBoot.SystemPrompt
-	t.boot.Tools = newBoot.Tools
-	t.boot.Skills = newBoot.Skills
-	t.boot.BuiltinTools = newBoot.BuiltinTools
-	t.boot.AxonClawPath = newBoot.AxonClawPath
-	t.boot.Date = newBoot.Date
-	t.boot.Timezone = newBoot.Timezone
-	t.boot.OS = newBoot.OS
+	// Preserve fields that should not change across a reset.
+	threadID := t.boot.ThreadID
+	// Update the boot struct with new values from bootstrap.
+	*t.boot = *newBoot
+	// Restore the preserved fields.
+	t.boot.ThreadID = threadID
 
 	env := buildPromptEnv(newBoot, t.workspace)
 	serverPrompt := buildServerSystemPrompt(newBoot.SystemPrompt, env)
@@ -79,6 +74,7 @@ func (t *ResetTool) Execute(ctx context.Context, _ map[string]any) agent.ToolRes
 	localPrompt := buildLocalSystemPrompt(env)
 
 	t.agent.UpdateConfig(func(cfg agent.Config) agent.Config {
+		cfg.Model = newBoot.Model
 		cfg.SystemPrompts = []string{serverPrompt, localPrompt}
 		return cfg
 	})

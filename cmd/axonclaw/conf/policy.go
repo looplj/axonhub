@@ -97,8 +97,8 @@ var DefaultPolicy = policy.Document{
 	},
 }
 
-func LoadOrCreatePolicy(dir string) (policy.Document, error) {
-	defaultPath := filepath.Join(dir, PolicyFileName)
+func LoadOrCreatePolicy() (policy.Document, error) {
+	defaultPath := filepath.Join(DefaultDir, PolicyFileName)
 	if _, err := os.Stat(defaultPath); err == nil {
 		return policy.LoadFiles(defaultPath)
 	}
@@ -127,6 +127,6 @@ func createDefaultPolicyFile(path string) error {
 	return nil
 }
 
-func GetPolicyFilePath(configDir string) string {
-	return filepath.Join(configDir, PolicyFileName)
+func GetPolicyFilePath() string {
+	return filepath.Join(DefaultDir, PolicyFileName)
 }

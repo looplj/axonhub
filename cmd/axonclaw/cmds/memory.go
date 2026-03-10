@@ -8,15 +8,11 @@ import (
 
 	"github.com/looplj/axonhub/axon/memory"
 	"github.com/spf13/cobra"
+
+	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
-type MemoryOptions struct {
-	Dir    string
-	Stdout *os.File
-	Stderr *os.File
-}
-
-func NewMemoryCommand(opts MemoryOptions) *cobra.Command {
+func NewMemoryCommand(opts StdioOptions) *cobra.Command {
 	stdout := opts.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
@@ -26,8 +22,7 @@ func NewMemoryCommand(opts MemoryOptions) *cobra.Command {
 		stderr = os.Stderr
 	}
 
-	var dir string
-	defaultDir := filepath.Join(opts.Dir, "memories")
+	memDir := filepath.Join(conf.DefaultDir, "memories")
 	var store memory.Store
 
 	root := &cobra.Command{
@@ -39,18 +34,14 @@ Each entry is stored under a logical path (like a file path), and can be listed,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if dir == "" {
-				dir = defaultDir
-			}
 			if store == nil {
-				store = memory.NewFileStore(dir)
+				store = memory.NewFileStore(memDir)
 			}
 			return nil
 		},
 	}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
-	root.PersistentFlags().StringVar(&dir, "dir", defaultDir, "Memory store directory")
 
 	storeGetter := func() memory.Store { return store }
 	root.AddCommand(newMemoryAddCmd(stdout, storeGetter))

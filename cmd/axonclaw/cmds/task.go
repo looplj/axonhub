@@ -5,20 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/axon/task"
 	"github.com/spf13/cobra"
+
+	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
-type TaskOptions struct {
-	Dir    string
-	Stdout *os.File
-	Stderr *os.File
-}
-
-func NewTaskCommand(opts TaskOptions) *cobra.Command {
+func NewTaskCommand(opts StdioOptions) *cobra.Command {
 	stdout := opts.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
@@ -28,13 +25,9 @@ func NewTaskCommand(opts TaskOptions) *cobra.Command {
 		stderr = os.Stderr
 	}
 
-	var dir string
-	defaultDir := opts.Dir
-	if defaultDir == "" {
-		defaultDir = ".axonclaw"
-	}
-
+	taskDir := filepath.Join(conf.DefaultDir, "tasks")
 	var store *task.Store
+
 	root := &cobra.Command{
 		Use:   "tasks",
 		Short: "Manage local scheduled tasks",
@@ -97,7 +90,7 @@ Examples:
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			s, err := task.NewStore(dir)
+			s, err := task.NewStore(taskDir)
 			if err != nil {
 				return err
 			}
@@ -107,7 +100,6 @@ Examples:
 	}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
-	root.PersistentFlags().StringVar(&dir, "dir", defaultDir, "Task store directory")
 
 	storeGetter := func() *task.Store { return store }
 	root.AddCommand(newTaskListCmd(stdout, storeGetter))

@@ -29,13 +29,25 @@ func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.Agen
 			}
 
 			//nolint:gosec
-			unzipCmd := fmt.Sprintf("unzip -o %s -d %s && chmod +x %s/start.sh %s/stop.sh", debugLocalPath, directory, directory, directory)
+			unzipCmd := fmt.Sprintf(
+				"unzip -o %s -d %s && chmod +x %s/start.sh %s/stop.sh",
+				shellQuote(debugLocalPath),
+				shellQuote(directory),
+				shellQuote(directory),
+				shellQuote(directory),
+			)
 			if err := exec.CommandContext(ctx, "sh", "-c", unzipCmd).Run(); err != nil {
 				return fmt.Errorf("failed to unzip debug package: %w", err)
 			}
 
 			//nolint:gosec
-			startCmd := fmt.Sprintf("cd %s && AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s ./start.sh", directory, name, baseURL, apiKey.Key)
+			startCmd := fmt.Sprintf(
+				"cd %s && AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s ./start.sh",
+				shellQuote(directory),
+				shellQuote(name),
+				shellQuote(baseURL),
+				shellQuote(apiKey.Key),
+			)
 			if err := exec.CommandContext(ctx, "sh", "-c", startCmd).Run(); err != nil {
 				return fmt.Errorf("failed to start debug axonclaw: %w", err)
 			}
@@ -44,7 +56,13 @@ func (svc *AgentDeployService) deployToVM(ctx context.Context, runtime *ent.Agen
 		}
 
 		//nolint:gosec
-		deployCmd := fmt.Sprintf("cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s bash", directory, name, baseURL, apiKey.Key)
+		deployCmd := fmt.Sprintf(
+			"cd %s && curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | AXONCLAW_NAME=%s AXONCLAW_BASE_URL=%s AXONCLAW_API_KEY=%s bash",
+			shellQuote(directory),
+			shellQuote(name),
+			shellQuote(baseURL),
+			shellQuote(apiKey.Key),
+		)
 		if err := exec.CommandContext(ctx, "bash", "-c", deployCmd).Run(); err != nil {
 			return fmt.Errorf("failed to deploy axonclaw: %w", err)
 		}

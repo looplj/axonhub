@@ -12,13 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type DeployOptions struct {
-	Dir    string
-	Stdout *os.File
-	Stderr *os.File
-}
-
-func NewDeployCommand(opts DeployOptions) *cobra.Command {
+func NewDeployCommand(opts StdioOptions) *cobra.Command {
 	stdout := opts.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
@@ -26,12 +20,6 @@ func NewDeployCommand(opts DeployOptions) *cobra.Command {
 	stderr := opts.Stderr
 	if stderr == nil {
 		stderr = os.Stderr
-	}
-
-	var dir string
-	defaultDir := opts.Dir
-	if defaultDir == "" {
-		defaultDir = ".axonclaw"
 	}
 
 	var (
@@ -111,7 +99,6 @@ Examples:
 
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
-	cmd.PersistentFlags().StringVar(&dir, "dir", defaultDir, "Config directory")
 	cmd.Flags().StringVar(&name, "name", "", "Name for the new instance (required)")
 	cmd.Flags().StringVar(&directory, "directory", "", "Working directory (required for VM/Local hosts)")
 

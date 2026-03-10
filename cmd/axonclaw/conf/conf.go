@@ -8,12 +8,16 @@ import (
 	"strings"
 	"time"
 
-	axonconf "github.com/looplj/axonhub/axon/conf"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
+
+	axonconf "github.com/looplj/axonhub/axon/conf"
 )
 
-const FileName = "config.yml"
+const (
+	FileName   = "config.yml"
+	DefaultDir = ".axonclaw"
+)
 
 type Config struct {
 	BaseURL                string        `yml:"base_url"`
@@ -45,7 +49,7 @@ func LoadOrSaveConfig(baseURL, apiKey, name string) (Config, error) {
 	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
 		ConfigName:     "config",
 		ConfigType:     "yml",
-		SearchPaths:    []string{".axonclaw"},
+		SearchPaths:    []string{DefaultDir},
 		AllowMissing:   true,
 		EnvPrefix:      "AXONCLAW",
 		EnvKeyReplacer: strings.NewReplacer(".", "_"),
@@ -143,8 +147,7 @@ func newMissingConfigError(baseURL, apiKey string) error {
 		missing = append(missing, "api_key")
 	}
 
-	configDir := ".axonclaw"
-	path := filepath.Join(configDir, FileName)
+	path := filepath.Join(DefaultDir, FileName)
 	example := strings.TrimSpace(`
 base_url: https://your-axonhub-server.com
 api_key: your-agent-api-key
@@ -162,11 +165,11 @@ api_key: your-agent-api-key
 }
 
 func SaveConfig(cfg Config) error {
-	configDir := ".axonclaw"
-	if err := os.MkdirAll(configDir, 0o755); err != nil {
+	if err := os.MkdirAll(DefaultDir, 0o755); err != nil {
 		return fmt.Errorf("create config directory: %w", err)
 	}
-	path := filepath.Join(configDir, FileName)
+
+	path := filepath.Join(DefaultDir, FileName)
 	var existing Config
 	if data, err := os.ReadFile(path); err == nil {
 		yaml.Unmarshal(data, &existing)
@@ -189,23 +192,15 @@ func SaveConfig(cfg Config) error {
 	return os.WriteFile(path, data, 0o600)
 }
 
-func Load(path string) (Config, error) {
-	cfg := DefaultConfig()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return cfg, err
-	}
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return cfg, fmt.Errorf("unmarshal config: %w", err)
-	}
-	return cfg, nil
+func DefaultPath() string {
+	return filepath.Join(DefaultDir, FileName)
 }
 
 func LoadConfig() (Config, error) {
 	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
 		ConfigName:     "config",
 		ConfigType:     "yml",
-		SearchPaths:    []string{".axonclaw"},
+		SearchPaths:    []string{DefaultDir},
 		AllowMissing:   true,
 		EnvPrefix:      "AXONCLAW",
 		EnvKeyReplacer: strings.NewReplacer(".", "_"),
@@ -232,18 +227,10 @@ func LoadConfig() (Config, error) {
 	return res.Value, nil
 }
 
-func ReadYAMLFile(path string) (map[string]any, error) {
-	return axonconf.ReadYAMLFile(path)
+func GetYAMLString(key string) (string, bool, error) {
+	return axonconf.GetYAMLString(DefaultPath(), key)
 }
 
-func WriteYAMLFile(path string, data map[string]any) error {
-	return axonconf.WriteYAMLFile(path, data)
-}
-
-func SetYAMLKey(path string, key string, value string) error {
-	return axonconf.SetYAMLKey(path, key, value)
-}
-
-func GetYAMLString(path string, key string) (string, bool, error) {
-	return axonconf.GetYAMLString(path, key)
+func SetYAMLKey(key string, value string) error {
+	return axonconf.SetYAMLKey(DefaultPath(), key, value)
 }

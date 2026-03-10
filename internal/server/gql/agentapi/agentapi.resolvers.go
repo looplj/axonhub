@@ -8,6 +8,7 @@ package agentapi
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
@@ -172,14 +173,24 @@ func (r *mutationResolver) DeployAxonClaw(ctx context.Context, input DeployAxonC
 		return nil, err
 	}
 
-	return &DeployAxonClawResult{
-		Success: result.Success,
-		Error:   &result.Error,
-		Instance: &AgentInstance{
+	var outInst *AgentInstance
+	if result.Instance != nil {
+		outInst = &AgentInstance{
 			ID:              objects.GUID{Type: ent.TypeAgentInstance, ID: result.Instance.ID},
 			AgentID:         objects.GUID{Type: ent.TypeAgent, ID: result.Instance.AgentID},
 			LastHeartbeatAt: result.Instance.LastHeartbeatAt,
-		},
+		}
+	}
+
+	var outErr *string
+	if strings.TrimSpace(result.Error) != "" {
+		outErr = &result.Error
+	}
+
+	return &DeployAxonClawResult{
+		Success:  result.Success,
+		Error:    outErr,
+		Instance: outInst,
 	}, nil
 }
 

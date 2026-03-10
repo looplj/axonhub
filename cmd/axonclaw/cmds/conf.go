@@ -3,21 +3,15 @@ package cmds
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
+
+	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
-type ConfOptions struct {
-	Dir    string
-	Stdout *os.File
-	Stderr *os.File
-}
-
-func NewConfCommand(opts ConfOptions) *cobra.Command {
+func NewConfCommand(opts StdioOptions) *cobra.Command {
 	stdout := opts.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
@@ -25,12 +19,6 @@ func NewConfCommand(opts ConfOptions) *cobra.Command {
 	stderr := opts.Stderr
 	if stderr == nil {
 		stderr = os.Stderr
-	}
-
-	var dir string
-	defaultDir := opts.Dir
-	if defaultDir == "" {
-		defaultDir = ".axonclaw"
 	}
 
 	root := &cobra.Command{
@@ -49,12 +37,11 @@ Notes:
 	}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
-	root.PersistentFlags().StringVar(&dir, "dir", defaultDir, "Config directory (default: .axonclaw)")
 
-	root.AddCommand(newConfPathCmd(stdout, &dir))
-	root.AddCommand(newConfGetCmd(stdout, &dir))
-	root.AddCommand(newConfListCmd(stdout, &dir))
-	root.AddCommand(newConfSetCmd(stdout, stderr, &dir))
+	root.AddCommand(newConfPathCmd(stdout))
+	root.AddCommand(newConfGetCmd(stdout))
+	root.AddCommand(newConfListCmd(stdout))
+	root.AddCommand(newConfSetCmd(stdout, stderr))
 
 	return root
 }
@@ -65,23 +52,24 @@ func isValidConfKey(k string) bool {
 	return lo.Contains(confKeys, k)
 }
 
-func newConfPathCmd(out *os.File, dir *string) *cobra.Command {
+func newConfPathCmd(out *os.File) *cobra.Command {
 	return &cobra.Command{
 		Use:   "path",
 		Short: "Show which config file will be used",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := filepath.Join(*dir, conf.FileName)
-			if _, err := os.Stat(path); err != nil {
-				return fmt.Errorf("config file not found: %s", path)
+			p := conf.DefaultPath()
+			if _, err := os.Stat(p); err != nil {
+				return fmt.Errorf("config file not found: %s", p)
 			}
-			fmt.Fprintln(out, path)
+
+			fmt.Fprintln(out, p)
 			return nil
 		},
 	}
 }
 
-func newConfGetCmd(out *os.File, dir *string) *cobra.Command {
+func newConfGetCmd(out *os.File) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a config value",
@@ -96,8 +84,7 @@ axonclaw conf get api_key
 				return fmt.Errorf("unknown key %q (allowed: %s)", key, strings.Join(confKeys, ", "))
 			}
 
-			path := filepath.Join(*dir, conf.FileName)
-			val, _, err := conf.GetYAMLString(path, key)
+			val, _, err := conf.GetYAMLString(key)
 			if err != nil {
 				return err
 			}
@@ -110,7 +97,7 @@ axonclaw conf get api_key
 	}
 }
 
-func newConfListCmd(out *os.File, dir *string) *cobra.Command {
+func newConfListCmd(out *os.File) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List config keys (supports environment variables)",
@@ -148,10 +135,8 @@ func newConfListCmd(out *os.File, dir *string) *cobra.Command {
 	}
 }
 
-func newConfSetCmd(out *os.File, errOut *os.File, dir *string) *cobra.Command {
-	var file string
-
-	cmd := &cobra.Command{
+func newConfSetCmd(out *os.File, errOut *os.File) *cobra.Command {
+	return &cobra.Command{
 		Use:   "set <key> <value>",
 		Short: "Set a config value",
 		Args:  cobra.MinimumNArgs(2),
@@ -166,23 +151,16 @@ axonclaw conf set api_key sk-***
 				return fmt.Errorf("unknown key %q (allowed: %s)", key, strings.Join(confKeys, ", "))
 			}
 
-			var val string
-			val = strings.Join(args[1:], " ")
-			val = strings.TrimSpace(val)
-
+			val := strings.TrimSpace(strings.Join(args[1:], " "))
 			if val == "" {
 				return fmt.Errorf("value is required")
 			}
 
-			path := strings.TrimSpace(file)
-			if path == "" {
-				path = filepath.Join(*dir, conf.FileName)
-			}
-
-			if err := conf.SetYAMLKey(path, key, val); err != nil {
+			if err := conf.SetYAMLKey(key, val); err != nil {
 				return err
 			}
-			fmt.Fprintf(errOut, "config\t%s\n", path)
+
+			fmt.Fprintf(errOut, "config\t%s\n", conf.DefaultPath())
 
 			display := val
 			if key == "api_key" {
@@ -193,9 +171,6 @@ axonclaw conf set api_key sk-***
 			return nil
 		},
 	}
-
-	cmd.Flags().StringVar(&file, "file", "", "Explicit config file path to update")
-	return cmd
 }
 
 func maskSecret(s string) string {
