@@ -138,9 +138,9 @@ const COMPLETE_AUTO_DISABLE_CHANNEL_ONBOARDING_MUTATION = `
   }
 `;
 
-const TRIGGER_GARBAGE_COLLECTION_MUTATION = `
-  mutation triggerGarbageCollection {
-    triggerGarbageCollection
+const TRIGGER_GC_CLEANUP_MUTATION = `
+  mutation triggerGcCleanup {
+    triggerGcCleanup
   }
 `;
 
@@ -363,11 +363,11 @@ export function useUpdateStoragePolicy() {
   });
 }
 
-export function useTriggerGarbageCollection() {
+export function useTriggerGcCleanup() {
   return useMutation({
     mutationFn: async () => {
-      const data = await graphqlRequest<{ triggerGarbageCollection: boolean }>(TRIGGER_GARBAGE_COLLECTION_MUTATION);
-      return data.triggerGarbageCollection;
+      const data = await graphqlRequest<{ triggerGcCleanup: boolean }>(TRIGGER_GC_CLEANUP_MUTATION);
+      return data.triggerGcCleanup;
     },
     onSuccess: () => {
       toast.success(i18n.t('system.storage.policy.runCleanupSuccess'));
