@@ -501,7 +501,9 @@ func (s *DataStorageService) SaveData(ctx context.Context, ds *ent.DataStorage, 
 			if err != nil {
 				return "", fmt.Errorf("failed to create directory: %w, key: %s", err, key)
 			}
-		} else {
+		}
+
+		if ds.Type != datastorage.TypeFs {
 			// For S3 with PathStyle enabled, remove leading slash from key
 			// to avoid InvalidArgument error from S3 compatible storage services
 			if isS3PathStyle(ds) {
@@ -799,7 +801,9 @@ func (s *DataStorageService) mkdirAll(fs afero.Fs, dir string) error {
 		if err != nil {
 			// Ignore "already exists" errors. WebDAV servers might return 405 or 409
 			// if the directory already exists. We check existence only as a fallback.
-			if exists, _ := afero.DirExists(fs, current); exists {
+			//nolint:staticcheck // bypass SA4006 false positive on older staticcheck versions
+			isDir, errDir := afero.DirExists(fs, current)
+			if errDir == nil && isDir {
 				continue
 			}
 			// If Mkdir failed and we can't confirm it exists, we might still want to continue
