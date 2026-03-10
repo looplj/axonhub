@@ -29,7 +29,7 @@
   "system.storage.policy.runCleanupSuccess": "后台清理任务已启动",
   "system.storage.policy.runCleanupError": "启动后台清理任务失败",
   "system.storage.policy.runCleanupConfirmTitle": "确认执行状态清理",
-  "system.storage.policy.runCleanupConfirmDescription": "确定要立即执行后台清理流程吗？这将根据当前的存储策略永久删除匹配的数据，并对数据库进行碎片清理与压缩。",
+  "system.storage.policy.runCleanupConfirmDescription": "确定要立即执行清理流程吗？这将永久删除符合策略的数据（若周期设为 0 天则清空该类全部记录），并对数据库执行压缩优化。",
   "system.storage.policy.runCleanupCancel": "取消",
   "system.storage.policy.runCleanupConfirm": "确定",
   "system.videoStorage.title": "视频存储",
