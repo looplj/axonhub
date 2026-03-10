@@ -13,7 +13,7 @@ import (
 )
 
 func dockerContainerName(name string) string {
-	return fmt.Sprintf("axonclaw-%s", name)
+	return fmt.Sprintf("axonclaw_%s", name)
 }
 
 func (svc *AgentDeployService) deployToDocker(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, baseURL string) error {

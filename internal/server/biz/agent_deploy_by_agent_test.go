@@ -22,9 +22,11 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
-func TestAgentDeployService_DeployAxonClawByAgent_RejectsSameDirectory(t *testing.T) {
+func makeTestBaseEnv(t *testing.T) (context.Context, *ent.Client, *ent.User, *ent.Project, *ent.Agent) {
+	t.Helper()
+
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	defer client.Close()
+	t.Cleanup(func() { client.Close() })
 
 	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
 
@@ -66,6 +68,14 @@ func TestAgentDeployService_DeployAxonClawByAgent_RejectsSameDirectory(t *testin
 		SetStatus(agent.StatusEnabled).
 		Save(ctx)
 	require.NoError(t, err)
+
+	return ctx, client, u, p, a
+}
+
+// TestAgentDeployService_DeployAxonClawByAgent_RejectsLocalHostWithoutDirectory checks that
+// deploying to a local host that has no directory configured fails validation.
+func TestAgentDeployService_DeployAxonClawByAgent_RejectsLocalHostWithoutDirectory(t *testing.T) {
+	ctx, client, u, p, a := makeTestBaseEnv(t)
 
 	h, err := client.AgentHost.Create().
 		SetName("Local").
@@ -86,19 +96,14 @@ func TestAgentDeployService_DeployAxonClawByAgent_RejectsSameDirectory(t *testin
 		Save(ctx)
 	require.NoError(t, err)
 
-	currentDir := "/tmp/axonclaw/current"
-
 	currentInst, err := client.AgentInstance.Create().
 		SetProjectID(p.ID).
 		SetAgentID(a.ID).
 		SetHostID(h.ID).
 		SetAPIKeyID(currentAPIKey.ID).
 		SetName("current").
+		SetAxonhubBaseURL("http://localhost:8090").
 		SetStatus(agentinstance.StatusRunning).
-		SetDeployment(objects.AgentInstanceDeployment{
-			Directory:      currentDir,
-			AxonhubBaseURL: "http://localhost:8090",
-		}).
 		SetLastHeartbeatAt(time.Now()).
 		Save(ctx)
 	require.NoError(t, err)
@@ -106,59 +111,18 @@ func TestAgentDeployService_DeployAxonClawByAgent_RejectsSameDirectory(t *testin
 	svc := NewAgentDeployService(AgentDeployServiceParams{Ent: client})
 
 	result, err := svc.DeployAxonClawByAgent(ctx, currentInst, DeployAxonClawByAgentInput{
-		Name:      "worker-1",
-		Directory: &currentDir,
+		Name: "worker-1",
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, result.Success)
-	require.Contains(t, result.Error, "directory must be different")
+	require.Contains(t, result.Error, "host directory is required")
 }
 
-func TestAgentDeployService_DeployAxonClawByAgent_RejectsSameDockerContainer(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
-	defer client.Close()
-
-	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
-
-	hashedPassword, err := HashPassword("test-password")
-	require.NoError(t, err)
-
-	u, err := client.User.Create().
-		SetEmail(fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())).
-		SetPassword(hashedPassword).
-		SetFirstName("Test").
-		SetLastName("User").
-		SetStatus(user.StatusActivated).
-		Save(ctx)
-	require.NoError(t, err)
-
-	p, err := client.Project.Create().
-		SetName(uuid.NewString()).
-		SetDescription("test project").
-		SetStatus(project.StatusActive).
-		Save(ctx)
-	require.NoError(t, err)
-
-	sysPrompt, err := client.Prompt.Create().
-		SetProjectID(p.ID).
-		SetType(prompt.TypeAgent).
-		SetName("agent prompt").
-		SetRole("system").
-		SetContent("test").
-		SetStatus(prompt.StatusEnabled).
-		SetSettings(objects.PromptSettings{Action: objects.PromptAction{Type: objects.PromptActionTypeNoop}}).
-		Save(ctx)
-	require.NoError(t, err)
-
-	a, err := client.Agent.Create().
-		SetProjectID(p.ID).
-		SetCreatedByUserID(u.ID).
-		SetPromptID(sysPrompt.ID).
-		SetName("agent").
-		SetStatus(agent.StatusEnabled).
-		Save(ctx)
-	require.NoError(t, err)
+// TestAgentDeployService_DeployAxonClawByAgent_RejectsDuplicateInstanceName checks that
+// deploying with a name that already exists for the same agent fails.
+func TestAgentDeployService_DeployAxonClawByAgent_RejectsDuplicateInstanceName(t *testing.T) {
+	ctx, client, u, p, a := makeTestBaseEnv(t)
 
 	h, err := client.AgentHost.Create().
 		SetName("Docker").
@@ -187,11 +151,8 @@ func TestAgentDeployService_DeployAxonClawByAgent_RejectsSameDockerContainer(t *
 		SetHostID(h.ID).
 		SetAPIKeyID(currentAPIKey.ID).
 		SetName(currentName).
+		SetAxonhubBaseURL("http://localhost:8090").
 		SetStatus(agentinstance.StatusRunning).
-		SetDeployment(objects.AgentInstanceDeployment{
-			DockerContainerName: dockerContainerName(currentName),
-			AxonhubBaseURL:      "http://localhost:8090",
-		}).
 		SetLastHeartbeatAt(time.Now()).
 		Save(ctx)
 	require.NoError(t, err)
@@ -204,5 +165,4 @@ func TestAgentDeployService_DeployAxonClawByAgent_RejectsSameDockerContainer(t *
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, result.Success)
-	require.Contains(t, result.Error, "target docker container")
 }

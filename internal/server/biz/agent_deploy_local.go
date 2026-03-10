@@ -168,9 +168,9 @@ func (svc *AgentDeployService) localInstallLatest(ctx context.Context, apiKey *e
 			return nil
 		}
 
-		unzipCmd := fmt.Sprintf("unzip -o %s -d %s && chmod +x %s/start.sh %s/stop.sh", debugLocalPath, directory, directory, directory)
+		unzipCmd := fmt.Sprintf("unzip -o %s -d %s && chmod +x %s/start.sh %s/stop.sh", shellQuote(debugLocalPath), shellQuote(directory), shellQuote(directory), shellQuote(directory))
 		if err := exec.CommandContext(ctx, "sh", "-c", unzipCmd).Run(); err != nil {
-			return fmt.Errorf("failed to unzip debug package: %w", err)
+			return fmt.Errorf("failed to unzip debug package: %w at %s", err, debugLocalPath)
 		}
 
 		return nil

@@ -121,6 +121,7 @@ test-results
 .claude
 .qoder
 .codebuddy
+.factory
 dumps
 .builds
 .pnpm-store

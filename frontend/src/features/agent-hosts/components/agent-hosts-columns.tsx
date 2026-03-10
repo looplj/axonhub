@@ -76,15 +76,8 @@ const ActionCell = memo(({ row }: { row: Row<AgentHost> }) => {
     setOpen('edit');
   }, [agentHost, setCurrentRow, setOpen]);
 
-  if (isLocal) {
-    return null;
-  }
-
   return (
-    <div className="flex items-center justify-center gap-1">
-      <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={handleEdit}>
-        <IconEdit className="h-3 w-3" />
-      </Button>
+    <div className="flex items-center justify-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="outline" className="h-8 w-8 p-0" data-testid="row-actions">
@@ -92,16 +85,25 @@ const ActionCell = memo(({ row }: { row: Row<AgentHost> }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[160px]">
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(agentHost);
-              setOpen('delete');
-            }}
-            className="text-red-500!"
-          >
-            <IconTrash size={16} className="mr-2" />
-            {t('common.buttons.delete')}
+          <DropdownMenuItem onClick={handleEdit}>
+            <IconEdit size={16} className="mr-2" />
+            {t('common.buttons.edit')}
           </DropdownMenuItem>
+          {!isLocal && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setCurrentRow(agentHost);
+                  setOpen('delete');
+                }}
+                className="text-red-500!"
+              >
+                <IconTrash size={16} className="mr-2" />
+                {t('common.buttons.delete')}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -206,7 +208,32 @@ const UserCell = memo(({ row }: { row: Row<AgentHost> }) => {
 
 UserCell.displayName = 'UserCell';
 
-// Created At Cell Component
+const DirectoryCell = memo(({ row }: { row: Row<AgentHost> }) => {
+  const agentHost = row.original;
+  const directory = agentHost.directory;
+
+  if (agentHost.type === 'docker' || !directory) {
+    return (
+      <div className="flex justify-center">
+        <span className="text-muted-foreground text-xs">-</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-center">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <code className="bg-muted max-w-48 truncate rounded px-2 py-0.5 font-mono text-xs">{directory}</code>
+        </TooltipTrigger>
+        <TooltipContent>{directory}</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+});
+
+DirectoryCell.displayName = 'DirectoryCell';
+
 const CreatedAtCell = memo(({ row }: { row: Row<AgentHost> }) => {
   const raw = row.getValue('createdAt') as unknown;
   const date = raw instanceof Date ? raw : new Date(raw as string);
@@ -326,6 +353,17 @@ export const createColumns = (
         <DataTableColumnHeader column={column} title={t('agentHosts.columns.user')} className="justify-center" />
       ),
       cell: UserCell,
+      meta: {
+        className: 'text-center',
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: 'directory',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('agentHosts.columns.directory')} className="justify-center" />
+      ),
+      cell: DirectoryCell,
       meta: {
         className: 'text-center',
       },

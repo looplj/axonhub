@@ -40,8 +40,8 @@ const (
 	FieldAPIKeyID = "api_key_id"
 	// FieldLastHeartbeatAt holds the string denoting the last_heartbeat_at field in the database.
 	FieldLastHeartbeatAt = "last_heartbeat_at"
-	// FieldDeployment holds the string denoting the deployment field in the database.
-	FieldDeployment = "deployment"
+	// FieldAxonhubBaseURL holds the string denoting the axonhub_base_url field in the database.
+	FieldAxonhubBaseURL = "axonhub_base_url"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// EdgeAgent holds the string denoting the agent edge name in mutations.
@@ -107,7 +107,7 @@ var Columns = []string{
 	FieldPlatform,
 	FieldAPIKeyID,
 	FieldLastHeartbeatAt,
-	FieldDeployment,
+	FieldAxonhubBaseURL,
 	FieldStatus,
 }
 
@@ -144,6 +144,8 @@ var (
 	DefaultDescription string
 	// DefaultPlatform holds the default value on creation for the "platform" field.
 	DefaultPlatform string
+	// DefaultAxonhubBaseURL holds the default value on creation for the "axonhub_base_url" field.
+	DefaultAxonhubBaseURL string
 )
 
 // Status defines the type for the "status" enum field.
@@ -235,6 +237,11 @@ func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
 // ByLastHeartbeatAt orders the results by the last_heartbeat_at field.
 func ByLastHeartbeatAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastHeartbeatAt, opts...).ToFunc()
+}
+
+// ByAxonhubBaseURL orders the results by the axonhub_base_url field.
+func ByAxonhubBaseURL(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAxonhubBaseURL, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

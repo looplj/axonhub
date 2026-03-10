@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Rocket, Server, FolderOpen, Globe } from 'lucide-react';
+import { Rocket, Server, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,26 +13,12 @@ import { useQueryAgentHosts } from '@/features/agent-hosts/data/agent-hosts';
 import { useDeployAxonclaw } from '../data/deploy-axonclaw';
 
 const createDeploySchema = (t: (key: string) => string) =>
-  z
-    .object({
-      hostID: z.string().min(1, t('agents.dialogs.deploy.fields.host.required')),
-      hostType: z.enum(['vm', 'docker', 'local']).optional(),
-      name: z.string().min(1, t('agents.dialogs.deploy.fields.name.required')),
-      directory: z.string(),
-      axonhubBaseUrl: z.string(),
-    })
-    .refine(
-      (data) => {
-        if (data.hostType === 'vm' || data.hostType === 'local') {
-          return data.directory.trim().length > 0;
-        }
-        return true;
-      },
-      {
-        message: t('agents.dialogs.deploy.fields.directory.required'),
-        path: ['directory'],
-      }
-    );
+  z.object({
+    hostID: z.string().min(1, t('agents.dialogs.deploy.fields.host.required')),
+    hostType: z.enum(['vm', 'docker', 'local']).optional(),
+    name: z.string().min(1, t('agents.dialogs.deploy.fields.name.required')),
+    axonhubBaseUrl: z.string(),
+  });
 
 type DeployFormValues = z.infer<ReturnType<typeof createDeploySchema>>;
 
@@ -58,7 +44,6 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
       hostID: '',
       hostType: undefined,
       name: '',
-      directory: '',
       axonhubBaseUrl: '',
     },
   });
@@ -77,7 +62,6 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
         hostID: '',
         hostType: undefined,
         name: '',
-        directory: '',
         axonhubBaseUrl: getDefaultBaseUrl(),
       });
     }
@@ -104,7 +88,6 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
         agentID: agentId,
         hostID: values.hostID,
         name: values.name,
-        directory: values.directory || undefined,
         axonhubBaseUrl: values.axonhubBaseUrl || undefined,
       });
       onOpenChange(false);
@@ -208,25 +191,6 @@ export function DeployAxonclawDialog({ agentId, open, onOpenChange }: DeployAxon
                 </FormItem>
               )}
             />
-
-            {selectedHost && (selectedHost.type === 'vm' || selectedHost.type === 'local') && (
-              <FormField
-                control={form.control}
-                name='directory'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className='flex items-center gap-2'>
-                      <FolderOpen className='h-4 w-4' />
-                      {t('agents.dialogs.deploy.fields.directory.label')}
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder={t('agents.dialogs.deploy.fields.directory.placeholder')} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <FormField
               control={form.control}

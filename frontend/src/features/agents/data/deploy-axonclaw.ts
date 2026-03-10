@@ -13,14 +13,10 @@ const DEPLOY_AXONCLAW_MUTATION = `
         name
         platform
         description
+        
         lastHeartbeatAt
         createdAt
         updatedAt
-        deployment {
-          directory
-          dockerContainerName
-          axonhubBaseUrl
-        }
       }
     }
   }
@@ -30,7 +26,6 @@ export interface DeployAxonclawInput {
   agentID: string;
   hostID: string;
   name: string;
-  directory?: string;
   axonhubBaseUrl?: string;
 }
 

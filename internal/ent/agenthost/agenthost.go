@@ -40,6 +40,8 @@ const (
 	FieldPassword = "password"
 	// FieldSSHPrivateKey holds the string denoting the ssh_private_key field in the database.
 	FieldSSHPrivateKey = "ssh_private_key"
+	// FieldDirectory holds the string denoting the directory field in the database.
+	FieldDirectory = "directory"
 	// EdgeInstances holds the string denoting the instances edge name in mutations.
 	EdgeInstances = "instances"
 	// Table holds the table name of the agenthost in the database.
@@ -67,6 +69,7 @@ var Columns = []string{
 	FieldAuthMethod,
 	FieldPassword,
 	FieldSSHPrivateKey,
+	FieldDirectory,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -104,6 +107,8 @@ var (
 	DefaultPassword string
 	// DefaultSSHPrivateKey holds the default value on creation for the "ssh_private_key" field.
 	DefaultSSHPrivateKey string
+	// DefaultDirectory holds the default value on creation for the "directory" field.
+	DefaultDirectory string
 )
 
 // Type defines the type for the "type" enum field.
@@ -246,6 +251,11 @@ func ByPassword(opts ...sql.OrderTermOption) OrderOption {
 // BySSHPrivateKey orders the results by the ssh_private_key field.
 func BySSHPrivateKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSSHPrivateKey, opts...).ToFunc()
+}
+
+// ByDirectory orders the results by the directory field.
+func ByDirectory(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDirectory, opts...).ToFunc()
 }
 
 // ByInstancesCount orders the results by instances count.

@@ -121,6 +121,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			agenthost.FieldAuthMethod:    {Type: field.TypeEnum, Column: agenthost.FieldAuthMethod},
 			agenthost.FieldPassword:      {Type: field.TypeString, Column: agenthost.FieldPassword},
 			agenthost.FieldSSHPrivateKey: {Type: field.TypeString, Column: agenthost.FieldSSHPrivateKey},
+			agenthost.FieldDirectory:     {Type: field.TypeString, Column: agenthost.FieldDirectory},
 		},
 	}
 	graph.Nodes[3] = &sqlgraph.Node{
@@ -145,7 +146,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			agentinstance.FieldPlatform:        {Type: field.TypeString, Column: agentinstance.FieldPlatform},
 			agentinstance.FieldAPIKeyID:        {Type: field.TypeInt, Column: agentinstance.FieldAPIKeyID},
 			agentinstance.FieldLastHeartbeatAt: {Type: field.TypeTime, Column: agentinstance.FieldLastHeartbeatAt},
-			agentinstance.FieldDeployment:      {Type: field.TypeJSON, Column: agentinstance.FieldDeployment},
+			agentinstance.FieldAxonhubBaseURL:  {Type: field.TypeString, Column: agentinstance.FieldAxonhubBaseURL},
 			agentinstance.FieldStatus:          {Type: field.TypeEnum, Column: agentinstance.FieldStatus},
 		},
 	}
@@ -2770,6 +2771,11 @@ func (f *AgentHostFilter) WhereSSHPrivateKey(p entql.StringP) {
 	f.Where(p.Field(agenthost.FieldSSHPrivateKey))
 }
 
+// WhereDirectory applies the entql string predicate on the directory field.
+func (f *AgentHostFilter) WhereDirectory(p entql.StringP) {
+	f.Where(p.Field(agenthost.FieldDirectory))
+}
+
 // WhereHasInstances applies a predicate to check if query has an edge instances.
 func (f *AgentHostFilter) WhereHasInstances() {
 	f.Where(entql.HasEdge("instances"))
@@ -2879,9 +2885,9 @@ func (f *AgentInstanceFilter) WhereLastHeartbeatAt(p entql.TimeP) {
 	f.Where(p.Field(agentinstance.FieldLastHeartbeatAt))
 }
 
-// WhereDeployment applies the entql json.RawMessage predicate on the deployment field.
-func (f *AgentInstanceFilter) WhereDeployment(p entql.BytesP) {
-	f.Where(p.Field(agentinstance.FieldDeployment))
+// WhereAxonhubBaseURL applies the entql string predicate on the axonhub_base_url field.
+func (f *AgentInstanceFilter) WhereAxonhubBaseURL(p entql.StringP) {
+	f.Where(p.Field(agentinstance.FieldAxonhubBaseURL))
 }
 
 // WhereStatus applies the entql string predicate on the status field.

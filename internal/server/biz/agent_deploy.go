@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -18,7 +17,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/apikey"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -73,8 +71,13 @@ type DeployAxonclawInput struct {
 	AgentID        int
 	HostID         int
 	Name           string
-	Directory      string
 	AxonhubBaseURL string
+}
+
+// instanceDirectory returns the computed working directory for a vm/local instance.
+// Format: {host_directory}/{agent_name}/{instance_name}.
+func instanceDirectory(hostDir, agentName, instanceName string) string {
+	return fmt.Sprintf("%s/%s/%s", hostDir, agentName, instanceName)
 }
 
 type DeployAxonclawResult struct {
@@ -97,7 +100,7 @@ func (svc *AgentDeployService) DeployAxonclaw(ctx context.Context, input DeployA
 		}, nil
 	}
 
-	if err := validateDeployInput(input, host.Type); err != nil {
+	if err := validateDeployInput(input, host); err != nil {
 		return &DeployAxonclawResult{
 			Success: false,
 			Error:   err.Error(),
@@ -148,26 +151,13 @@ func (svc *AgentDeployService) DeployAxonclaw(ctx context.Context, input DeployA
 			return fmt.Errorf("failed to create api key: %w", err)
 		}
 
-		deployment := objects.AgentInstanceDeployment{
-			AxonhubBaseURL: input.AxonhubBaseURL,
-		}
-
-		switch host.Type {
-		case agenthost.TypeVM:
-			deployment.Directory = input.Directory
-		case agenthost.TypeDocker:
-			deployment.DockerContainerName = dockerContainerName(input.Name)
-		case agenthost.TypeLocal:
-			deployment.Directory = input.Directory
-		}
-
 		instance, err = client.AgentInstance.Create().
 			SetProjectID(entity.ProjectID).
 			SetAgentID(input.AgentID).
 			SetHostID(input.HostID).
 			SetName(input.Name).
 			SetStatus(agentinstance.StatusPending).
-			SetDeployment(deployment).
+			SetAxonhubBaseURL(input.AxonhubBaseURL).
 			SetLastHeartbeatAt(time.Now()).
 			SetAPIKeyID(apiKey.ID).
 			Save(txCtx)
@@ -184,7 +174,7 @@ func (svc *AgentDeployService) DeployAxonclaw(ctx context.Context, input DeployA
 		}, nil
 	}
 
-	err = svc.executeDeployment(ctx, host, instance, apiKey, input)
+	err = svc.executeDeployment(ctx, host, instance, apiKey, entity.Name)
 	if err != nil {
 		return &DeployAxonclawResult{
 			Success: false,
@@ -198,18 +188,19 @@ func (svc *AgentDeployService) DeployAxonclaw(ctx context.Context, input DeployA
 	}, nil
 }
 
-func (svc *AgentDeployService) executeDeployment(ctx context.Context, host *ent.AgentHost, instance *ent.AgentInstance, apiKey *ent.APIKey, input DeployAxonclawInput) error {
+func (svc *AgentDeployService) executeDeployment(ctx context.Context, host *ent.AgentHost, instance *ent.AgentInstance, apiKey *ent.APIKey, agentName string) error {
 	var err error
 
-	baseURL := input.AxonhubBaseURL
+	baseURL := instance.AxonhubBaseURL
+	dir := instanceDirectory(host.Directory, agentName, instance.Name)
 
 	switch host.Type {
 	case agenthost.TypeVM:
-		err = svc.deployToVM(ctx, host, apiKey, input.Name, input.Directory, baseURL)
+		err = svc.deployToVM(ctx, host, apiKey, instance.Name, dir, baseURL)
 	case agenthost.TypeDocker:
-		err = svc.deployToDocker(ctx, host, apiKey, input.Name, baseURL)
+		err = svc.deployToDocker(ctx, host, apiKey, instance.Name, baseURL)
 	case agenthost.TypeLocal:
-		err = svc.deployToLocal(ctx, host, apiKey, input.Name, input.Directory, baseURL)
+		err = svc.deployToLocal(ctx, host, apiKey, instance.Name, dir, baseURL)
 	}
 
 	if err != nil {
@@ -227,7 +218,7 @@ func (svc *AgentDeployService) executeDeployment(ctx context.Context, host *ent.
 	return nil
 }
 
-func validateDeployInput(input DeployAxonclawInput, runtimeType agenthost.Type) error {
+func validateDeployInput(input DeployAxonclawInput, host *ent.AgentHost) error {
 	if input.AgentID <= 0 {
 		return fmt.Errorf("agent ID is required")
 	}
@@ -240,12 +231,8 @@ func validateDeployInput(input DeployAxonclawInput, runtimeType agenthost.Type) 
 		return fmt.Errorf("name is required")
 	}
 
-	if runtimeType == agenthost.TypeVM && input.Directory == "" {
-		return fmt.Errorf("directory is required for VM runtime")
-	}
-
-	if runtimeType == agenthost.TypeLocal && input.Directory == "" {
-		return fmt.Errorf("directory is required for local runtime")
+	if (host.Type == agenthost.TypeVM || host.Type == agenthost.TypeLocal) && strings.TrimSpace(host.Directory) == "" {
+		return fmt.Errorf("host directory is required for %s host type", host.Type)
 	}
 
 	return nil
@@ -289,6 +276,7 @@ func (svc *AgentDeployService) controlAxonclawInstance(ctx context.Context, inst
 	instance, err := client.AgentInstance.Query().
 		Where(agentinstance.IDEQ(instanceID)).
 		WithHost().
+		WithAgent().
 		Only(ctx)
 	if err != nil {
 		return &ControlAxonclawInstanceResult{
@@ -305,8 +293,18 @@ func (svc *AgentDeployService) controlAxonclawInstance(ctx context.Context, inst
 		}, nil
 	}
 
+	if instance.Edges.Agent == nil {
+		return &ControlAxonclawInstanceResult{
+			Success:  false,
+			Error:    "instance agent not found",
+			Instance: instance,
+		}, nil
+	}
+
 	host := instance.Edges.Host
-	deployment := instance.Deployment
+	agentName := instance.Edges.Agent.Name
+	dir := instanceDirectory(host.Directory, agentName, instance.Name)
+	baseURL := instance.AxonhubBaseURL
 
 	var apiKey *ent.APIKey
 	if action != axonclawControlStop {
@@ -326,42 +324,40 @@ func (svc *AgentDeployService) controlAxonclawInstance(ctx context.Context, inst
 
 	switch action {
 	case axonclawControlStop:
-		actionErr = svc.stopAxonclaw(ctx, host, instance.Name, deployment)
+		actionErr = svc.stopAxonclaw(ctx, host, instance.Name, dir)
 		if actionErr == nil {
 			_, _ = client.AgentInstance.UpdateOneID(instance.ID).SetStatus(agentinstance.StatusStopped).Save(ctx)
 		}
 	case axonclawControlStart:
 		_, _ = client.AgentInstance.UpdateOneID(instance.ID).SetStatus(agentinstance.StatusPending).Save(ctx)
 
-		actionErr = svc.startAxonclaw(ctx, host, apiKey, instance.Name, deployment)
+		actionErr = svc.startAxonclaw(ctx, host, apiKey, instance.Name, dir, baseURL)
 		if actionErr == nil {
 			_, _ = client.AgentInstance.UpdateOneID(instance.ID).SetStatus(agentinstance.StatusRunning).Save(ctx)
 		}
 	case axonclawControlRestart:
 		_, _ = client.AgentInstance.UpdateOneID(instance.ID).SetStatus(agentinstance.StatusPending).Save(ctx)
 
-		actionErr = svc.restartAxonclaw(ctx, host, apiKey, instance.Name, deployment)
+		actionErr = svc.restartAxonclaw(ctx, host, apiKey, instance.Name, dir, baseURL)
 		if actionErr == nil {
 			_, _ = client.AgentInstance.UpdateOneID(instance.ID).SetStatus(agentinstance.StatusRunning).Save(ctx)
 		}
 	case axonclawControlRedeploy:
 		_, _ = client.AgentInstance.UpdateOneID(instance.ID).SetStatus(agentinstance.StatusPending).Save(ctx)
 
-		redeployDeployment := deployment
+		redeployBaseURL := baseURL
 		if axonhubBaseUrl != nil && *axonhubBaseUrl != "" {
-			redeployDeployment.AxonhubBaseURL = *axonhubBaseUrl
+			redeployBaseURL = *axonhubBaseUrl
 		}
 
-		actionErr = svc.redeployAxonclaw(ctx, host, apiKey, instance.Name, redeployDeployment)
+		actionErr = svc.redeployAxonclaw(ctx, host, apiKey, instance.Name, dir, redeployBaseURL)
 		if actionErr == nil {
+			update := client.AgentInstance.UpdateOneID(instance.ID).SetStatus(agentinstance.StatusRunning)
 			if axonhubBaseUrl != nil && *axonhubBaseUrl != "" {
-				_, _ = client.AgentInstance.UpdateOneID(instance.ID).
-					SetDeployment(redeployDeployment).
-					SetStatus(agentinstance.StatusRunning).
-					Save(ctx)
-			} else {
-				_, _ = client.AgentInstance.UpdateOneID(instance.ID).SetStatus(agentinstance.StatusRunning).Save(ctx)
+				update = update.SetAxonhubBaseURL(redeployBaseURL)
 			}
+
+			_, _ = update.Save(ctx)
 		}
 	default:
 		actionErr = fmt.Errorf("unknown action: %s", action)
@@ -388,117 +384,63 @@ func (svc *AgentDeployService) controlAxonclawInstance(ctx context.Context, inst
 	}, nil
 }
 
-func (svc *AgentDeployService) stopAxonclaw(ctx context.Context, runtime *ent.AgentHost, name string, deployment objects.AgentInstanceDeployment) error {
+func (svc *AgentDeployService) stopAxonclaw(ctx context.Context, runtime *ent.AgentHost, name, directory string) error {
 	switch runtime.Type {
 	case agenthost.TypeVM:
-		if strings.TrimSpace(deployment.Directory) == "" {
-			return fmt.Errorf("deployment directory not recorded")
-		}
-
-		return svc.vmStop(ctx, runtime, deployment.Directory)
+		return svc.vmStop(ctx, runtime, directory)
 	case agenthost.TypeDocker:
-		containerName := deployment.DockerContainerName
-		if strings.TrimSpace(containerName) == "" {
-			containerName = dockerContainerName(name)
-		}
-
-		return svc.dockerStop(ctx, runtime, containerName)
+		return svc.dockerStop(ctx, runtime, dockerContainerName(name))
 	case agenthost.TypeLocal:
-		if strings.TrimSpace(deployment.Directory) == "" {
-			return fmt.Errorf("deployment directory not recorded")
-		}
-
-		return svc.localStop(ctx, deployment.Directory)
+		return svc.localStop(ctx, directory)
 	default:
 		return fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 	}
 }
 
-func (svc *AgentDeployService) startAxonclaw(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name string, deployment objects.AgentInstanceDeployment) error {
+func (svc *AgentDeployService) startAxonclaw(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, directory, baseURL string) error {
 	switch runtime.Type {
 	case agenthost.TypeVM:
-		if strings.TrimSpace(deployment.Directory) == "" {
-			return fmt.Errorf("deployment directory not recorded")
-		}
-
-		return svc.vmStart(ctx, runtime, apiKey, name, deployment.Directory, deployment.AxonhubBaseURL)
+		return svc.vmStart(ctx, runtime, apiKey, name, directory, baseURL)
 	case agenthost.TypeDocker:
-		containerName := deployment.DockerContainerName
-		if strings.TrimSpace(containerName) == "" {
-			containerName = dockerContainerName(name)
-		}
-
-		return svc.dockerStart(ctx, runtime, containerName)
+		return svc.dockerStart(ctx, runtime, dockerContainerName(name))
 	case agenthost.TypeLocal:
-		if strings.TrimSpace(deployment.Directory) == "" {
-			return fmt.Errorf("deployment directory not recorded")
-		}
-
-		return svc.localStart(ctx, apiKey, name, deployment.Directory, deployment.AxonhubBaseURL)
+		return svc.localStart(ctx, apiKey, name, directory, baseURL)
 	default:
 		return fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 	}
 }
 
-func (svc *AgentDeployService) restartAxonclaw(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name string, deployment objects.AgentInstanceDeployment) error {
+func (svc *AgentDeployService) restartAxonclaw(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, directory, baseURL string) error {
 	switch runtime.Type {
 	case agenthost.TypeVM:
-		if strings.TrimSpace(deployment.Directory) == "" {
-			return fmt.Errorf("deployment directory not recorded")
-		}
-
-		return svc.vmRestart(ctx, runtime, apiKey, name, deployment.Directory, deployment.AxonhubBaseURL)
+		return svc.vmRestart(ctx, runtime, apiKey, name, directory, baseURL)
 	case agenthost.TypeDocker:
-		containerName := deployment.DockerContainerName
-		if strings.TrimSpace(containerName) == "" {
-			containerName = dockerContainerName(name)
-		}
-
-		return svc.dockerRestart(ctx, runtime, containerName)
+		return svc.dockerRestart(ctx, runtime, dockerContainerName(name))
 	case agenthost.TypeLocal:
-		if strings.TrimSpace(deployment.Directory) == "" {
-			return fmt.Errorf("deployment directory not recorded")
-		}
-
-		return svc.localRestart(ctx, apiKey, name, deployment.Directory, deployment.AxonhubBaseURL)
+		return svc.localRestart(ctx, apiKey, name, directory, baseURL)
 	default:
 		return fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 	}
 }
 
-func (svc *AgentDeployService) redeployAxonclaw(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name string, deployment objects.AgentInstanceDeployment) error {
-	baseURL := deployment.AxonhubBaseURL
-
+func (svc *AgentDeployService) redeployAxonclaw(ctx context.Context, runtime *ent.AgentHost, apiKey *ent.APIKey, name, directory, baseURL string) error {
 	switch runtime.Type {
 	case agenthost.TypeVM:
-		if strings.TrimSpace(deployment.Directory) == "" {
-			return fmt.Errorf("deployment directory not recorded")
-		}
-
-		_ = svc.vmStop(ctx, runtime, deployment.Directory)
-		if err := svc.vmInstallLatest(ctx, runtime, apiKey, name, deployment.Directory, baseURL); err != nil {
+		_ = svc.vmStop(ctx, runtime, directory)
+		if err := svc.vmInstallLatest(ctx, runtime, apiKey, name, directory, baseURL); err != nil {
 			return err
 		}
 
-		return svc.vmStart(ctx, runtime, apiKey, name, deployment.Directory, baseURL)
+		return svc.vmStart(ctx, runtime, apiKey, name, directory, baseURL)
 	case agenthost.TypeDocker:
-		containerName := deployment.DockerContainerName
-		if strings.TrimSpace(containerName) == "" {
-			containerName = dockerContainerName(name)
-		}
-
-		return svc.dockerRedeploy(ctx, runtime, apiKey, name, containerName, baseURL)
+		return svc.dockerRedeploy(ctx, runtime, apiKey, name, dockerContainerName(name), baseURL)
 	case agenthost.TypeLocal:
-		if strings.TrimSpace(deployment.Directory) == "" {
-			return fmt.Errorf("deployment directory not recorded")
-		}
-
-		_ = svc.localStop(ctx, deployment.Directory)
-		if err := svc.localInstallLatest(ctx, apiKey, name, deployment.Directory, baseURL); err != nil {
+		_ = svc.localStop(ctx, directory)
+		if err := svc.localInstallLatest(ctx, apiKey, name, directory, baseURL); err != nil {
 			return err
 		}
 
-		return svc.localStart(ctx, apiKey, name, deployment.Directory, baseURL)
+		return svc.localStart(ctx, apiKey, name, directory, baseURL)
 	default:
 		return fmt.Errorf("unsupported runtime type: %s", runtime.Type)
 	}
@@ -509,8 +451,7 @@ func shellQuote(s string) string {
 }
 
 type DeployAxonClawByAgentInput struct {
-	Name      string
-	Directory *string
+	Name string
 }
 
 func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, currentInst *ent.AgentInstance, input DeployAxonClawByAgentInput) (*DeployAxonclawResult, error) {
@@ -543,43 +484,14 @@ func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, curren
 		}, nil
 	}
 
-	directory := input.Directory
-	if host.Type == agenthost.TypeVM || host.Type == agenthost.TypeLocal {
-		if directory == nil || *directory == "" {
-			return &DeployAxonclawResult{
-				Success: false,
-				Error:   fmt.Sprintf("directory is required for %s host", host.Type),
-			}, nil
-		}
+	if (host.Type == agenthost.TypeVM || host.Type == agenthost.TypeLocal) && strings.TrimSpace(host.Directory) == "" {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   fmt.Sprintf("host directory is required for %s host type", host.Type),
+		}, nil
 	}
 
-	if host.Type == agenthost.TypeVM || host.Type == agenthost.TypeLocal {
-		if strings.TrimSpace(currentInst.Deployment.Directory) != "" &&
-			directory != nil &&
-			strings.TrimSpace(*directory) == strings.TrimSpace(currentInst.Deployment.Directory) {
-			return &DeployAxonclawResult{
-				Success: false,
-				Error:   "directory must be different from current instance directory",
-			}, nil
-		}
-	}
-
-	if host.Type == agenthost.TypeDocker {
-		currentContainer := strings.TrimSpace(currentInst.Deployment.DockerContainerName)
-
-		targetContainer := dockerContainerName(input.Name)
-		if currentContainer != "" && currentContainer == targetContainer {
-			return &DeployAxonclawResult{
-				Success: false,
-				Error:   "target docker container matches current instance container",
-			}, nil
-		}
-	}
-
-	baseURL := ""
-	if currentInst.Deployment.AxonhubBaseURL != "" {
-		baseURL = currentInst.Deployment.AxonhubBaseURL
-	}
+	baseURL := currentInst.AxonhubBaseURL
 
 	entity, err := svc.db.Agent.Query().
 		Where(agent.IDEQ(currentInst.AgentID)).
@@ -625,26 +537,13 @@ func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, curren
 			return fmt.Errorf("failed to create api key: %w", err)
 		}
 
-		deployment := objects.AgentInstanceDeployment{
-			AxonhubBaseURL: baseURL,
-		}
-
-		switch host.Type {
-		case agenthost.TypeVM:
-			deployment.Directory = *directory
-		case agenthost.TypeDocker:
-			deployment.DockerContainerName = dockerContainerName(input.Name)
-		case agenthost.TypeLocal:
-			deployment.Directory = *directory
-		}
-
 		instance, err = client.AgentInstance.Create().
 			SetProjectID(entity.ProjectID).
 			SetAgentID(currentInst.AgentID).
 			SetHostID(*currentInst.AgentHostID).
 			SetName(input.Name).
 			SetStatus(agentinstance.StatusPending).
-			SetDeployment(deployment).
+			SetAxonhubBaseURL(baseURL).
 			SetLastHeartbeatAt(time.Now()).
 			SetAPIKeyID(apiKey.ID).
 			Save(txCtx)
@@ -661,15 +560,7 @@ func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, curren
 		}, nil
 	}
 
-	deployInput := DeployAxonclawInput{
-		AgentID:        currentInst.AgentID,
-		HostID:         *currentInst.AgentHostID,
-		Name:           input.Name,
-		Directory:      lo.FromPtr(directory),
-		AxonhubBaseURL: baseURL,
-	}
-
-	err = svc.executeDeployment(ctx, host, instance, apiKey, deployInput)
+	err = svc.executeDeployment(ctx, host, instance, apiKey, entity.Name)
 	if err != nil {
 		return &DeployAxonclawResult{
 			Success: false,

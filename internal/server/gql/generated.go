@@ -273,6 +273,7 @@ type ComplexityRoot struct {
 		Addr          func(childComplexity int) int
 		AuthMethod    func(childComplexity int) int
 		CreatedAt     func(childComplexity int) int
+		Directory     func(childComplexity int) int
 		ID            func(childComplexity int) int
 		Instances     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.AgentInstanceOrder, where *ent.AgentInstanceWhereInput) int
 		Name          func(childComplexity int) int
@@ -307,8 +308,8 @@ type ComplexityRoot struct {
 		Agent                  func(childComplexity int) int
 		AgentHostID            func(childComplexity int) int
 		AgentID                func(childComplexity int) int
+		AxonhubBaseURL         func(childComplexity int) int
 		CreatedAt              func(childComplexity int) int
-		Deployment             func(childComplexity int) int
 		Description            func(childComplexity int) int
 		Host                   func(childComplexity int) int
 		ID                     func(childComplexity int) int
@@ -326,12 +327,6 @@ type ComplexityRoot struct {
 		Edges      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
 		TotalCount func(childComplexity int) int
-	}
-
-	AgentInstanceDeployment struct {
-		AxonhubBaseURL      func(childComplexity int) int
-		Directory           func(childComplexity int) int
-		DockerContainerName func(childComplexity int) int
 	}
 
 	AgentInstanceEdge struct {
@@ -3232,6 +3227,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentHost.CreatedAt(childComplexity), true
+	case "AgentHost.directory":
+		if e.complexity.AgentHost.Directory == nil {
+			break
+		}
+
+		return e.complexity.AgentHost.Directory(childComplexity), true
 	case "AgentHost.id":
 		if e.complexity.AgentHost.ID == nil {
 			break
@@ -3373,18 +3374,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentInstance.AgentID(childComplexity), true
+	case "AgentInstance.axonhubBaseURL":
+		if e.complexity.AgentInstance.AxonhubBaseURL == nil {
+			break
+		}
+
+		return e.complexity.AgentInstance.AxonhubBaseURL(childComplexity), true
 	case "AgentInstance.createdAt":
 		if e.complexity.AgentInstance.CreatedAt == nil {
 			break
 		}
 
 		return e.complexity.AgentInstance.CreatedAt(childComplexity), true
-	case "AgentInstance.deployment":
-		if e.complexity.AgentInstance.Deployment == nil {
-			break
-		}
-
-		return e.complexity.AgentInstance.Deployment(childComplexity), true
 	case "AgentInstance.description":
 		if e.complexity.AgentInstance.Description == nil {
 			break
@@ -3480,25 +3481,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentInstanceConnection.TotalCount(childComplexity), true
-
-	case "AgentInstanceDeployment.axonhubBaseUrl":
-		if e.complexity.AgentInstanceDeployment.AxonhubBaseURL == nil {
-			break
-		}
-
-		return e.complexity.AgentInstanceDeployment.AxonhubBaseURL(childComplexity), true
-	case "AgentInstanceDeployment.directory":
-		if e.complexity.AgentInstanceDeployment.Directory == nil {
-			break
-		}
-
-		return e.complexity.AgentInstanceDeployment.Directory(childComplexity), true
-	case "AgentInstanceDeployment.dockerContainerName":
-		if e.complexity.AgentInstanceDeployment.DockerContainerName == nil {
-			break
-		}
-
-		return e.complexity.AgentInstanceDeployment.DockerContainerName(childComplexity), true
 
 	case "AgentInstanceEdge.cursor":
 		if e.complexity.AgentInstanceEdge.Cursor == nil {
@@ -11618,7 +11600,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAgentBuiltinToolInput,
 		ec.unmarshalInputAgentHostOrder,
 		ec.unmarshalInputAgentHostWhereInput,
-		ec.unmarshalInputAgentInstanceDeploymentInput,
 		ec.unmarshalInputAgentInstanceOrder,
 		ec.unmarshalInputAgentInstanceWhereInput,
 		ec.unmarshalInputAgentMemoryOrder,
@@ -16961,8 +16942,8 @@ func (ec *executionContext) fieldContext_APIKey_agentInstance(_ context.Context,
 				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
-			case "deployment":
-				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "axonhubBaseURL":
+				return ec.fieldContext_AgentInstance_axonhubBaseURL(ctx, field)
 			case "status":
 				return ec.fieldContext_AgentInstance_status(ctx, field)
 			case "agent":
@@ -20127,6 +20108,35 @@ func (ec *executionContext) fieldContext_AgentHost_authMethod(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _AgentHost_directory(ctx context.Context, field graphql.CollectedField, obj *ent.AgentHost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentHost_directory,
+		func(ctx context.Context) (any, error) {
+			return obj.Directory, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentHost_directory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentHost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AgentHost_instances(ctx context.Context, field graphql.CollectedField, obj *ent.AgentHost) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20379,6 +20389,8 @@ func (ec *executionContext) fieldContext_AgentHostEdge_node(_ context.Context, f
 				return ec.fieldContext_AgentHost_user(ctx, field)
 			case "authMethod":
 				return ec.fieldContext_AgentHost_authMethod(ctx, field)
+			case "directory":
+				return ec.fieldContext_AgentHost_directory(ctx, field)
 			case "instances":
 				return ec.fieldContext_AgentHost_instances(ctx, field)
 			case "password":
@@ -20827,38 +20839,30 @@ func (ec *executionContext) fieldContext_AgentInstance_lastHeartbeatAt(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _AgentInstance_deployment(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
+func (ec *executionContext) _AgentInstance_axonhubBaseURL(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstance) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AgentInstance_deployment,
+		ec.fieldContext_AgentInstance_axonhubBaseURL,
 		func(ctx context.Context) (any, error) {
-			return obj.Deployment, nil
+			return obj.AxonhubBaseURL, nil
 		},
 		nil,
-		ec.marshalOAgentInstanceDeployment2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment,
+		ec.marshalNString2string,
 		true,
-		false,
+		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_AgentInstance_deployment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AgentInstance_axonhubBaseURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentInstance",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "directory":
-				return ec.fieldContext_AgentInstanceDeployment_directory(ctx, field)
-			case "dockerContainerName":
-				return ec.fieldContext_AgentInstanceDeployment_dockerContainerName(ctx, field)
-			case "axonhubBaseUrl":
-				return ec.fieldContext_AgentInstanceDeployment_axonhubBaseUrl(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type AgentInstanceDeployment", field.Name)
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21010,6 +21014,8 @@ func (ec *executionContext) fieldContext_AgentInstance_host(_ context.Context, f
 				return ec.fieldContext_AgentHost_user(ctx, field)
 			case "authMethod":
 				return ec.fieldContext_AgentHost_authMethod(ctx, field)
+			case "directory":
+				return ec.fieldContext_AgentHost_directory(ctx, field)
 			case "instances":
 				return ec.fieldContext_AgentHost_instances(ctx, field)
 			case "password":
@@ -21285,93 +21291,6 @@ func (ec *executionContext) fieldContext_AgentInstanceConnection_totalCount(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _AgentInstanceDeployment_directory(ctx context.Context, field graphql.CollectedField, obj *objects.AgentInstanceDeployment) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AgentInstanceDeployment_directory,
-		func(ctx context.Context) (any, error) {
-			return obj.Directory, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AgentInstanceDeployment_directory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AgentInstanceDeployment",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AgentInstanceDeployment_dockerContainerName(ctx context.Context, field graphql.CollectedField, obj *objects.AgentInstanceDeployment) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AgentInstanceDeployment_dockerContainerName,
-		func(ctx context.Context) (any, error) {
-			return obj.DockerContainerName, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AgentInstanceDeployment_dockerContainerName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AgentInstanceDeployment",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AgentInstanceDeployment_axonhubBaseUrl(ctx context.Context, field graphql.CollectedField, obj *objects.AgentInstanceDeployment) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AgentInstanceDeployment_axonhubBaseUrl,
-		func(ctx context.Context) (any, error) {
-			return obj.AxonhubBaseURL, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AgentInstanceDeployment_axonhubBaseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AgentInstanceDeployment",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _AgentInstanceEdge_node(ctx context.Context, field graphql.CollectedField, obj *ent.AgentInstanceEdge) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -21418,8 +21337,8 @@ func (ec *executionContext) fieldContext_AgentInstanceEdge_node(_ context.Contex
 				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
-			case "deployment":
-				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "axonhubBaseURL":
+				return ec.fieldContext_AgentInstance_axonhubBaseURL(ctx, field)
 			case "status":
 				return ec.fieldContext_AgentInstance_status(ctx, field)
 			case "agent":
@@ -22570,8 +22489,8 @@ func (ec *executionContext) fieldContext_AgentMessage_agentInstance(_ context.Co
 				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
-			case "deployment":
-				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "axonhubBaseURL":
+				return ec.fieldContext_AgentInstance_axonhubBaseURL(ctx, field)
 			case "status":
 				return ec.fieldContext_AgentInstance_status(ctx, field)
 			case "agent":
@@ -30726,8 +30645,8 @@ func (ec *executionContext) fieldContext_ControlAxonclawInstanceResult_instance(
 				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
-			case "deployment":
-				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "axonhubBaseURL":
+				return ec.fieldContext_AgentInstance_axonhubBaseURL(ctx, field)
 			case "status":
 				return ec.fieldContext_AgentInstance_status(ctx, field)
 			case "agent":
@@ -32002,8 +31921,8 @@ func (ec *executionContext) fieldContext_DeployAxonclawResult_instance(_ context
 				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
-			case "deployment":
-				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "axonhubBaseURL":
+				return ec.fieldContext_AgentInstance_axonhubBaseURL(ctx, field)
 			case "status":
 				return ec.fieldContext_AgentInstance_status(ctx, field)
 			case "agent":
@@ -34041,8 +33960,8 @@ func (ec *executionContext) fieldContext_MessageChannelAgentInstance_agentInstan
 				return ec.fieldContext_AgentInstance_apiKeyID(ctx, field)
 			case "lastHeartbeatAt":
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
-			case "deployment":
-				return ec.fieldContext_AgentInstance_deployment(ctx, field)
+			case "axonhubBaseURL":
+				return ec.fieldContext_AgentInstance_axonhubBaseURL(ctx, field)
 			case "status":
 				return ec.fieldContext_AgentInstance_status(ctx, field)
 			case "agent":
@@ -41516,6 +41435,8 @@ func (ec *executionContext) fieldContext_Mutation_createAgentHost(ctx context.Co
 				return ec.fieldContext_AgentHost_user(ctx, field)
 			case "authMethod":
 				return ec.fieldContext_AgentHost_authMethod(ctx, field)
+			case "directory":
+				return ec.fieldContext_AgentHost_directory(ctx, field)
 			case "instances":
 				return ec.fieldContext_AgentHost_instances(ctx, field)
 			case "password":
@@ -41583,6 +41504,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAgentHost(ctx context.Co
 				return ec.fieldContext_AgentHost_user(ctx, field)
 			case "authMethod":
 				return ec.fieldContext_AgentHost_authMethod(ctx, field)
+			case "directory":
+				return ec.fieldContext_AgentHost_directory(ctx, field)
 			case "instances":
 				return ec.fieldContext_AgentHost_instances(ctx, field)
 			case "password":
@@ -41650,6 +41573,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAgentHostStatus(ctx cont
 				return ec.fieldContext_AgentHost_user(ctx, field)
 			case "authMethod":
 				return ec.fieldContext_AgentHost_authMethod(ctx, field)
+			case "directory":
+				return ec.fieldContext_AgentHost_directory(ctx, field)
 			case "instances":
 				return ec.fieldContext_AgentHost_instances(ctx, field)
 			case "password":
@@ -50566,6 +50491,8 @@ func (ec *executionContext) fieldContext_Query_agentHost(ctx context.Context, fi
 				return ec.fieldContext_AgentHost_user(ctx, field)
 			case "authMethod":
 				return ec.fieldContext_AgentHost_authMethod(ctx, field)
+			case "directory":
+				return ec.fieldContext_AgentHost_directory(ctx, field)
 			case "instances":
 				return ec.fieldContext_AgentHost_instances(ctx, field)
 			case "password":
@@ -67045,7 +66972,7 @@ func (ec *executionContext) unmarshalInputAgentHostWhereInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "addr", "addrNEQ", "addrIn", "addrNotIn", "addrGT", "addrGTE", "addrLT", "addrLTE", "addrContains", "addrHasPrefix", "addrHasSuffix", "addrEqualFold", "addrContainsFold", "user", "userNEQ", "userIn", "userNotIn", "userGT", "userGTE", "userLT", "userLTE", "userContains", "userHasPrefix", "userHasSuffix", "userEqualFold", "userContainsFold", "authMethod", "authMethodNEQ", "authMethodIn", "authMethodNotIn", "hasInstances", "hasInstancesWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "addr", "addrNEQ", "addrIn", "addrNotIn", "addrGT", "addrGTE", "addrLT", "addrLTE", "addrContains", "addrHasPrefix", "addrHasSuffix", "addrEqualFold", "addrContainsFold", "user", "userNEQ", "userIn", "userNotIn", "userGT", "userGTE", "userLT", "userLTE", "userContains", "userHasPrefix", "userHasSuffix", "userEqualFold", "userContainsFold", "authMethod", "authMethodNEQ", "authMethodIn", "authMethodNotIn", "directory", "directoryNEQ", "directoryIn", "directoryNotIn", "directoryGT", "directoryGTE", "directoryLT", "directoryLTE", "directoryContains", "directoryHasPrefix", "directoryHasSuffix", "directoryEqualFold", "directoryContainsFold", "hasInstances", "hasInstancesWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67630,6 +67557,97 @@ func (ec *executionContext) unmarshalInputAgentHostWhereInput(ctx context.Contex
 				return it, err
 			}
 			it.AuthMethodNotIn = data
+		case "directory":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Directory = data
+		case "directoryNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryNEQ = data
+		case "directoryIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryIn = data
+		case "directoryNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryNotIn = data
+		case "directoryGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryGT = data
+		case "directoryGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryGTE = data
+		case "directoryLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryLT = data
+		case "directoryLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryLTE = data
+		case "directoryContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryContains = data
+		case "directoryHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryHasPrefix = data
+		case "directoryHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryHasSuffix = data
+		case "directoryEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryEqualFold = data
+		case "directoryContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directoryContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DirectoryContainsFold = data
 		case "hasInstances":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasInstances"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -67644,47 +67662,6 @@ func (ec *executionContext) unmarshalInputAgentHostWhereInput(ctx context.Contex
 				return it, err
 			}
 			it.HasInstancesWith = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputAgentInstanceDeploymentInput(ctx context.Context, obj any) (objects.AgentInstanceDeployment, error) {
-	var it objects.AgentInstanceDeployment
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"directory", "dockerContainerName", "axonhubBaseUrl"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "directory":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
-			data, err := ec.unmarshalOString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Directory = data
-		case "dockerContainerName":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dockerContainerName"))
-			data, err := ec.unmarshalOString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.DockerContainerName = data
-		case "axonhubBaseUrl":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseUrl"))
-			data, err := ec.unmarshalOString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.AxonhubBaseURL = data
 		}
 	}
 
@@ -67736,7 +67713,7 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "agentID", "agentIDNEQ", "agentIDIn", "agentIDNotIn", "agentHostID", "agentHostIDNEQ", "agentHostIDIn", "agentHostIDNotIn", "agentHostIDIsNil", "agentHostIDNotNil", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionEqualFold", "descriptionContainsFold", "platform", "platformNEQ", "platformIn", "platformNotIn", "platformGT", "platformGTE", "platformLT", "platformLTE", "platformContains", "platformHasPrefix", "platformHasSuffix", "platformEqualFold", "platformContainsFold", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "lastHeartbeatAt", "lastHeartbeatAtNEQ", "lastHeartbeatAtIn", "lastHeartbeatAtNotIn", "lastHeartbeatAtGT", "lastHeartbeatAtGTE", "lastHeartbeatAtLT", "lastHeartbeatAtLTE", "status", "statusNEQ", "statusIn", "statusNotIn", "hasAgent", "hasAgentWith", "hasHost", "hasHostWith", "hasAPIKey", "hasAPIKeyWith", "hasMessages", "hasMessagesWith", "hasMessageChannelBindings", "hasMessageChannelBindingsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "agentID", "agentIDNEQ", "agentIDIn", "agentIDNotIn", "agentHostID", "agentHostIDNEQ", "agentHostIDIn", "agentHostIDNotIn", "agentHostIDIsNil", "agentHostIDNotNil", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionEqualFold", "descriptionContainsFold", "platform", "platformNEQ", "platformIn", "platformNotIn", "platformGT", "platformGTE", "platformLT", "platformLTE", "platformContains", "platformHasPrefix", "platformHasSuffix", "platformEqualFold", "platformContainsFold", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "lastHeartbeatAt", "lastHeartbeatAtNEQ", "lastHeartbeatAtIn", "lastHeartbeatAtNotIn", "lastHeartbeatAtGT", "lastHeartbeatAtGTE", "lastHeartbeatAtLT", "lastHeartbeatAtLTE", "axonhubBaseURL", "axonhubBaseURLNEQ", "axonhubBaseURLIn", "axonhubBaseURLNotIn", "axonhubBaseURLGT", "axonhubBaseURLGTE", "axonhubBaseURLLT", "axonhubBaseURLLTE", "axonhubBaseURLContains", "axonhubBaseURLHasPrefix", "axonhubBaseURLHasSuffix", "axonhubBaseURLEqualFold", "axonhubBaseURLContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "hasAgent", "hasAgentWith", "hasHost", "hasHostWith", "hasAPIKey", "hasAPIKeyWith", "hasMessages", "hasMessagesWith", "hasMessageChannelBindings", "hasMessageChannelBindingsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68495,6 +68472,97 @@ func (ec *executionContext) unmarshalInputAgentInstanceWhereInput(ctx context.Co
 				return it, err
 			}
 			it.LastHeartbeatAtLTE = data
+		case "axonhubBaseURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURL = data
+		case "axonhubBaseURLNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLNEQ = data
+		case "axonhubBaseURLIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLIn = data
+		case "axonhubBaseURLNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLNotIn = data
+		case "axonhubBaseURLGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLGT = data
+		case "axonhubBaseURLGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLGTE = data
+		case "axonhubBaseURLLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLLT = data
+		case "axonhubBaseURLLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLLTE = data
+		case "axonhubBaseURLContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLContains = data
+		case "axonhubBaseURLHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLHasPrefix = data
+		case "axonhubBaseURLHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLHasSuffix = data
+		case "axonhubBaseURLEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLEqualFold = data
+		case "axonhubBaseURLContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURLContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AxonhubBaseURLContainsFold = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, v)
@@ -77269,7 +77337,7 @@ func (ec *executionContext) unmarshalInputCreateAgentHostInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "type", "status", "addr", "user", "authMethod", "password", "sshPrivateKey"}
+	fieldsInOrder := [...]string{"name", "type", "status", "addr", "user", "authMethod", "password", "sshPrivateKey", "directory"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77332,6 +77400,13 @@ func (ec *executionContext) unmarshalInputCreateAgentHostInput(ctx context.Conte
 				return it, err
 			}
 			it.SSHPrivateKey = data
+		case "directory":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Directory = data
 		}
 	}
 
@@ -77421,7 +77496,7 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectID", "name", "description", "platform", "lastHeartbeatAt", "deployment", "status", "agentID", "hostID", "apiKeyID"}
+	fieldsInOrder := [...]string{"projectID", "name", "description", "platform", "lastHeartbeatAt", "axonhubBaseURL", "status", "agentID", "hostID", "apiKeyID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77463,13 +77538,13 @@ func (ec *executionContext) unmarshalInputCreateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.LastHeartbeatAt = data
-		case "deployment":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deployment"))
-			data, err := ec.unmarshalOAgentInstanceDeploymentInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment(ctx, v)
+		case "axonhubBaseURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Deployment = data
+			it.AxonhubBaseURL = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, v)
@@ -79935,7 +80010,7 @@ func (ec *executionContext) unmarshalInputDeployAxonclawInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"agentID", "hostID", "name", "directory", "axonhubBaseUrl"}
+	fieldsInOrder := [...]string{"agentID", "hostID", "name", "axonhubBaseUrl"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -79971,13 +80046,6 @@ func (ec *executionContext) unmarshalInputDeployAxonclawInput(ctx context.Contex
 				return it, err
 			}
 			it.Name = data
-		case "directory":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
-			data, err := ec.unmarshalOString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Directory = data
 		case "axonhubBaseUrl":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseUrl"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -93752,7 +93820,7 @@ func (ec *executionContext) unmarshalInputUpdateAgentHostInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "type", "status", "addr", "user", "authMethod", "password", "sshPrivateKey"}
+	fieldsInOrder := [...]string{"name", "status", "addr", "user", "authMethod", "password", "sshPrivateKey", "directory"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93766,13 +93834,6 @@ func (ec *executionContext) unmarshalInputUpdateAgentHostInput(ctx context.Conte
 				return it, err
 			}
 			it.Name = data
-		case "type":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			data, err := ec.unmarshalOAgentHostType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagenthostᚐType(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Type = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalOAgentHostStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagenthostᚐStatus(ctx, v)
@@ -93815,6 +93876,13 @@ func (ec *executionContext) unmarshalInputUpdateAgentHostInput(ctx context.Conte
 				return it, err
 			}
 			it.SSHPrivateKey = data
+		case "directory":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Directory = data
 		}
 	}
 
@@ -93904,7 +93972,7 @@ func (ec *executionContext) unmarshalInputUpdateAgentInstanceInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "description", "platform", "lastHeartbeatAt", "deployment", "clearDeployment", "status", "hostID", "clearHost"}
+	fieldsInOrder := [...]string{"name", "description", "platform", "lastHeartbeatAt", "axonhubBaseURL", "status", "hostID", "clearHost"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93939,20 +94007,13 @@ func (ec *executionContext) unmarshalInputUpdateAgentInstanceInput(ctx context.C
 				return it, err
 			}
 			it.LastHeartbeatAt = data
-		case "deployment":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deployment"))
-			data, err := ec.unmarshalOAgentInstanceDeploymentInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment(ctx, v)
+		case "axonhubBaseURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("axonhubBaseURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Deployment = data
-		case "clearDeployment":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearDeployment"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ClearDeployment = data
+			it.AxonhubBaseURL = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalOAgentInstanceStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋagentinstanceᚐStatus(ctx, v)
@@ -101714,6 +101775,11 @@ func (ec *executionContext) _AgentHost(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "directory":
+			out.Values[i] = ec._AgentHost_directory(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "instances":
 			field := field
 
@@ -102156,8 +102222,11 @@ func (ec *executionContext) _AgentInstance(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "deployment":
-			out.Values[i] = ec._AgentInstance_deployment(ctx, field, obj)
+		case "axonhubBaseURL":
+			out.Values[i] = ec._AgentInstance_axonhubBaseURL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "status":
 			out.Values[i] = ec._AgentInstance_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -102386,46 +102455,6 @@ func (ec *executionContext) _AgentInstanceConnection(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var agentInstanceDeploymentImplementors = []string{"AgentInstanceDeployment"}
-
-func (ec *executionContext) _AgentInstanceDeployment(ctx context.Context, sel ast.SelectionSet, obj *objects.AgentInstanceDeployment) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, agentInstanceDeploymentImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("AgentInstanceDeployment")
-		case "directory":
-			out.Values[i] = ec._AgentInstanceDeployment_directory(ctx, field, obj)
-		case "dockerContainerName":
-			out.Values[i] = ec._AgentInstanceDeployment_dockerContainerName(ctx, field, obj)
-		case "axonhubBaseUrl":
-			out.Values[i] = ec._AgentInstanceDeployment_axonhubBaseUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -129004,18 +129033,6 @@ func (ec *executionContext) marshalOAgentInstance2ᚖgithubᚗcomᚋloopljᚋaxo
 		return graphql.Null
 	}
 	return ec._AgentInstance(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOAgentInstanceDeployment2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment(ctx context.Context, sel ast.SelectionSet, v objects.AgentInstanceDeployment) graphql.Marshaler {
-	return ec._AgentInstanceDeployment(ctx, sel, &v)
-}
-
-func (ec *executionContext) unmarshalOAgentInstanceDeploymentInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAgentInstanceDeployment(ctx context.Context, v any) (*objects.AgentInstanceDeployment, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputAgentInstanceDeploymentInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOAgentInstanceEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAgentInstanceEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.AgentInstanceEdge) graphql.Marshaler {

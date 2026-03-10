@@ -159,6 +159,7 @@ func (r *mutationResolver) AckAgentMessages(ctx context.Context, input AckAgentM
 	return true, nil
 }
 
+// DeployAxonClaw is the resolver for the deployAxonClaw field.
 func (r *mutationResolver) DeployAxonClaw(ctx context.Context, input DeployAxonClawInput) (*DeployAxonClawResult, error) {
 	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
 	if err != nil {
@@ -166,8 +167,7 @@ func (r *mutationResolver) DeployAxonClaw(ctx context.Context, input DeployAxonC
 	}
 
 	result, err := r.agentDeployService.DeployAxonClawByAgent(ctx, inst, biz.DeployAxonClawByAgentInput{
-		Name:      input.Name,
-		Directory: input.Directory,
+		Name: input.Name,
 	})
 	if err != nil {
 		return nil, err

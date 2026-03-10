@@ -77,8 +77,7 @@ type AgentToolDefinition struct {
 }
 
 type DeployAxonClawInput struct {
-	Name      string  `json:"name"`
-	Directory *string `json:"directory,omitempty"`
+	Name string `json:"name"`
 }
 
 type DeployAxonClawResult struct {

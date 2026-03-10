@@ -28,6 +28,7 @@ const QUERY_AGENT_HOSTS = `
           password
           authMethod
           sshPrivateKey
+          directory
         }
         cursor
       }
@@ -56,6 +57,7 @@ const CREATE_AGENT_HOST = `
       password
       authMethod
       sshPrivateKey
+      directory
     }
   }
 `;
@@ -74,6 +76,7 @@ const UPDATE_AGENT_HOST = `
       password
       authMethod
       sshPrivateKey
+      directory
     }
   }
 `;

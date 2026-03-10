@@ -169,6 +169,20 @@ func (_c *AgentHostCreate) SetNillableSSHPrivateKey(v *string) *AgentHostCreate 
 	return _c
 }
 
+// SetDirectory sets the "directory" field.
+func (_c *AgentHostCreate) SetDirectory(v string) *AgentHostCreate {
+	_c.mutation.SetDirectory(v)
+	return _c
+}
+
+// SetNillableDirectory sets the "directory" field if the given value is not nil.
+func (_c *AgentHostCreate) SetNillableDirectory(v *string) *AgentHostCreate {
+	if v != nil {
+		_c.SetDirectory(*v)
+	}
+	return _c
+}
+
 // AddInstanceIDs adds the "instances" edge to the AgentInstance entity by IDs.
 func (_c *AgentHostCreate) AddInstanceIDs(ids ...int) *AgentHostCreate {
 	_c.mutation.AddInstanceIDs(ids...)
@@ -267,6 +281,10 @@ func (_c *AgentHostCreate) defaults() error {
 		v := agenthost.DefaultSSHPrivateKey
 		_c.mutation.SetSSHPrivateKey(v)
 	}
+	if _, ok := _c.mutation.Directory(); !ok {
+		v := agenthost.DefaultDirectory
+		_c.mutation.SetDirectory(v)
+	}
 	return nil
 }
 
@@ -319,6 +337,9 @@ func (_c *AgentHostCreate) check() error {
 	}
 	if _, ok := _c.mutation.SSHPrivateKey(); !ok {
 		return &ValidationError{Name: "ssh_private_key", err: errors.New(`ent: missing required field "AgentHost.ssh_private_key"`)}
+	}
+	if _, ok := _c.mutation.Directory(); !ok {
+		return &ValidationError{Name: "directory", err: errors.New(`ent: missing required field "AgentHost.directory"`)}
 	}
 	return nil
 }
@@ -390,6 +411,10 @@ func (_c *AgentHostCreate) createSpec() (*AgentHost, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.SSHPrivateKey(); ok {
 		_spec.SetField(agenthost.FieldSSHPrivateKey, field.TypeString, value)
 		_node.SSHPrivateKey = value
+	}
+	if value, ok := _c.mutation.Directory(); ok {
+		_spec.SetField(agenthost.FieldDirectory, field.TypeString, value)
+		_node.Directory = value
 	}
 	if nodes := _c.mutation.InstancesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -501,18 +526,6 @@ func (u *AgentHostUpsert) UpdateName() *AgentHostUpsert {
 	return u
 }
 
-// SetType sets the "type" field.
-func (u *AgentHostUpsert) SetType(v agenthost.Type) *AgentHostUpsert {
-	u.Set(agenthost.FieldType, v)
-	return u
-}
-
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *AgentHostUpsert) UpdateType() *AgentHostUpsert {
-	u.SetExcluded(agenthost.FieldType)
-	return u
-}
-
 // SetStatus sets the "status" field.
 func (u *AgentHostUpsert) SetStatus(v agenthost.Status) *AgentHostUpsert {
 	u.Set(agenthost.FieldStatus, v)
@@ -585,6 +598,18 @@ func (u *AgentHostUpsert) UpdateSSHPrivateKey() *AgentHostUpsert {
 	return u
 }
 
+// SetDirectory sets the "directory" field.
+func (u *AgentHostUpsert) SetDirectory(v string) *AgentHostUpsert {
+	u.Set(agenthost.FieldDirectory, v)
+	return u
+}
+
+// UpdateDirectory sets the "directory" field to the value that was provided on create.
+func (u *AgentHostUpsert) UpdateDirectory() *AgentHostUpsert {
+	u.SetExcluded(agenthost.FieldDirectory)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -598,6 +623,9 @@ func (u *AgentHostUpsertOne) UpdateNewValues() *AgentHostUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
 		if _, exists := u.create.mutation.CreatedAt(); exists {
 			s.SetIgnore(agenthost.FieldCreatedAt)
+		}
+		if _, exists := u.create.mutation.GetType(); exists {
+			s.SetIgnore(agenthost.FieldType)
 		}
 	}))
 	return u
@@ -676,20 +704,6 @@ func (u *AgentHostUpsertOne) SetName(v string) *AgentHostUpsertOne {
 func (u *AgentHostUpsertOne) UpdateName() *AgentHostUpsertOne {
 	return u.Update(func(s *AgentHostUpsert) {
 		s.UpdateName()
-	})
-}
-
-// SetType sets the "type" field.
-func (u *AgentHostUpsertOne) SetType(v agenthost.Type) *AgentHostUpsertOne {
-	return u.Update(func(s *AgentHostUpsert) {
-		s.SetType(v)
-	})
-}
-
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *AgentHostUpsertOne) UpdateType() *AgentHostUpsertOne {
-	return u.Update(func(s *AgentHostUpsert) {
-		s.UpdateType()
 	})
 }
 
@@ -774,6 +788,20 @@ func (u *AgentHostUpsertOne) SetSSHPrivateKey(v string) *AgentHostUpsertOne {
 func (u *AgentHostUpsertOne) UpdateSSHPrivateKey() *AgentHostUpsertOne {
 	return u.Update(func(s *AgentHostUpsert) {
 		s.UpdateSSHPrivateKey()
+	})
+}
+
+// SetDirectory sets the "directory" field.
+func (u *AgentHostUpsertOne) SetDirectory(v string) *AgentHostUpsertOne {
+	return u.Update(func(s *AgentHostUpsert) {
+		s.SetDirectory(v)
+	})
+}
+
+// UpdateDirectory sets the "directory" field to the value that was provided on create.
+func (u *AgentHostUpsertOne) UpdateDirectory() *AgentHostUpsertOne {
+	return u.Update(func(s *AgentHostUpsert) {
+		s.UpdateDirectory()
 	})
 }
 
@@ -956,6 +984,9 @@ func (u *AgentHostUpsertBulk) UpdateNewValues() *AgentHostUpsertBulk {
 			if _, exists := b.mutation.CreatedAt(); exists {
 				s.SetIgnore(agenthost.FieldCreatedAt)
 			}
+			if _, exists := b.mutation.GetType(); exists {
+				s.SetIgnore(agenthost.FieldType)
+			}
 		}
 	}))
 	return u
@@ -1034,20 +1065,6 @@ func (u *AgentHostUpsertBulk) SetName(v string) *AgentHostUpsertBulk {
 func (u *AgentHostUpsertBulk) UpdateName() *AgentHostUpsertBulk {
 	return u.Update(func(s *AgentHostUpsert) {
 		s.UpdateName()
-	})
-}
-
-// SetType sets the "type" field.
-func (u *AgentHostUpsertBulk) SetType(v agenthost.Type) *AgentHostUpsertBulk {
-	return u.Update(func(s *AgentHostUpsert) {
-		s.SetType(v)
-	})
-}
-
-// UpdateType sets the "type" field to the value that was provided on create.
-func (u *AgentHostUpsertBulk) UpdateType() *AgentHostUpsertBulk {
-	return u.Update(func(s *AgentHostUpsert) {
-		s.UpdateType()
 	})
 }
 
@@ -1132,6 +1149,20 @@ func (u *AgentHostUpsertBulk) SetSSHPrivateKey(v string) *AgentHostUpsertBulk {
 func (u *AgentHostUpsertBulk) UpdateSSHPrivateKey() *AgentHostUpsertBulk {
 	return u.Update(func(s *AgentHostUpsert) {
 		s.UpdateSSHPrivateKey()
+	})
+}
+
+// SetDirectory sets the "directory" field.
+func (u *AgentHostUpsertBulk) SetDirectory(v string) *AgentHostUpsertBulk {
+	return u.Update(func(s *AgentHostUpsert) {
+		s.SetDirectory(v)
+	})
+}
+
+// UpdateDirectory sets the "directory" field to the value that was provided on create.
+func (u *AgentHostUpsertBulk) UpdateDirectory() *AgentHostUpsertBulk {
+	return u.Update(func(s *AgentHostUpsert) {
+		s.UpdateDirectory()
 	})
 }
 

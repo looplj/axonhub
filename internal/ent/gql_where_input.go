@@ -1277,6 +1277,21 @@ type AgentHostWhereInput struct {
 	SSHPrivateKeyEqualFold    *string  `json:"sshPrivateKeyEqualFold,omitempty"`
 	SSHPrivateKeyContainsFold *string  `json:"sshPrivateKeyContainsFold,omitempty"`
 
+	// "directory" field predicates.
+	Directory             *string  `json:"directory,omitempty"`
+	DirectoryNEQ          *string  `json:"directoryNEQ,omitempty"`
+	DirectoryIn           []string `json:"directoryIn,omitempty"`
+	DirectoryNotIn        []string `json:"directoryNotIn,omitempty"`
+	DirectoryGT           *string  `json:"directoryGT,omitempty"`
+	DirectoryGTE          *string  `json:"directoryGTE,omitempty"`
+	DirectoryLT           *string  `json:"directoryLT,omitempty"`
+	DirectoryLTE          *string  `json:"directoryLTE,omitempty"`
+	DirectoryContains     *string  `json:"directoryContains,omitempty"`
+	DirectoryHasPrefix    *string  `json:"directoryHasPrefix,omitempty"`
+	DirectoryHasSuffix    *string  `json:"directoryHasSuffix,omitempty"`
+	DirectoryEqualFold    *string  `json:"directoryEqualFold,omitempty"`
+	DirectoryContainsFold *string  `json:"directoryContainsFold,omitempty"`
+
 	// "instances" edge predicates.
 	HasInstances     *bool                      `json:"hasInstances,omitempty"`
 	HasInstancesWith []*AgentInstanceWhereInput `json:"hasInstancesWith,omitempty"`
@@ -1656,6 +1671,45 @@ func (i *AgentHostWhereInput) P() (predicate.AgentHost, error) {
 	if i.SSHPrivateKeyContainsFold != nil {
 		predicates = append(predicates, agenthost.SSHPrivateKeyContainsFold(*i.SSHPrivateKeyContainsFold))
 	}
+	if i.Directory != nil {
+		predicates = append(predicates, agenthost.DirectoryEQ(*i.Directory))
+	}
+	if i.DirectoryNEQ != nil {
+		predicates = append(predicates, agenthost.DirectoryNEQ(*i.DirectoryNEQ))
+	}
+	if len(i.DirectoryIn) > 0 {
+		predicates = append(predicates, agenthost.DirectoryIn(i.DirectoryIn...))
+	}
+	if len(i.DirectoryNotIn) > 0 {
+		predicates = append(predicates, agenthost.DirectoryNotIn(i.DirectoryNotIn...))
+	}
+	if i.DirectoryGT != nil {
+		predicates = append(predicates, agenthost.DirectoryGT(*i.DirectoryGT))
+	}
+	if i.DirectoryGTE != nil {
+		predicates = append(predicates, agenthost.DirectoryGTE(*i.DirectoryGTE))
+	}
+	if i.DirectoryLT != nil {
+		predicates = append(predicates, agenthost.DirectoryLT(*i.DirectoryLT))
+	}
+	if i.DirectoryLTE != nil {
+		predicates = append(predicates, agenthost.DirectoryLTE(*i.DirectoryLTE))
+	}
+	if i.DirectoryContains != nil {
+		predicates = append(predicates, agenthost.DirectoryContains(*i.DirectoryContains))
+	}
+	if i.DirectoryHasPrefix != nil {
+		predicates = append(predicates, agenthost.DirectoryHasPrefix(*i.DirectoryHasPrefix))
+	}
+	if i.DirectoryHasSuffix != nil {
+		predicates = append(predicates, agenthost.DirectoryHasSuffix(*i.DirectoryHasSuffix))
+	}
+	if i.DirectoryEqualFold != nil {
+		predicates = append(predicates, agenthost.DirectoryEqualFold(*i.DirectoryEqualFold))
+	}
+	if i.DirectoryContainsFold != nil {
+		predicates = append(predicates, agenthost.DirectoryContainsFold(*i.DirectoryContainsFold))
+	}
 
 	if i.HasInstances != nil {
 		p := agenthost.HasInstances()
@@ -1806,6 +1860,21 @@ type AgentInstanceWhereInput struct {
 	LastHeartbeatAtGTE   *time.Time  `json:"lastHeartbeatAtGTE,omitempty"`
 	LastHeartbeatAtLT    *time.Time  `json:"lastHeartbeatAtLT,omitempty"`
 	LastHeartbeatAtLTE   *time.Time  `json:"lastHeartbeatAtLTE,omitempty"`
+
+	// "axonhub_base_url" field predicates.
+	AxonhubBaseURL             *string  `json:"axonhubBaseURL,omitempty"`
+	AxonhubBaseURLNEQ          *string  `json:"axonhubBaseURLNEQ,omitempty"`
+	AxonhubBaseURLIn           []string `json:"axonhubBaseURLIn,omitempty"`
+	AxonhubBaseURLNotIn        []string `json:"axonhubBaseURLNotIn,omitempty"`
+	AxonhubBaseURLGT           *string  `json:"axonhubBaseURLGT,omitempty"`
+	AxonhubBaseURLGTE          *string  `json:"axonhubBaseURLGTE,omitempty"`
+	AxonhubBaseURLLT           *string  `json:"axonhubBaseURLLT,omitempty"`
+	AxonhubBaseURLLTE          *string  `json:"axonhubBaseURLLTE,omitempty"`
+	AxonhubBaseURLContains     *string  `json:"axonhubBaseURLContains,omitempty"`
+	AxonhubBaseURLHasPrefix    *string  `json:"axonhubBaseURLHasPrefix,omitempty"`
+	AxonhubBaseURLHasSuffix    *string  `json:"axonhubBaseURLHasSuffix,omitempty"`
+	AxonhubBaseURLEqualFold    *string  `json:"axonhubBaseURLEqualFold,omitempty"`
+	AxonhubBaseURLContainsFold *string  `json:"axonhubBaseURLContainsFold,omitempty"`
 
 	// "status" field predicates.
 	Status      *agentinstance.Status  `json:"status,omitempty"`
@@ -2183,6 +2252,45 @@ func (i *AgentInstanceWhereInput) P() (predicate.AgentInstance, error) {
 	}
 	if i.LastHeartbeatAtLTE != nil {
 		predicates = append(predicates, agentinstance.LastHeartbeatAtLTE(*i.LastHeartbeatAtLTE))
+	}
+	if i.AxonhubBaseURL != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLEQ(*i.AxonhubBaseURL))
+	}
+	if i.AxonhubBaseURLNEQ != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLNEQ(*i.AxonhubBaseURLNEQ))
+	}
+	if len(i.AxonhubBaseURLIn) > 0 {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLIn(i.AxonhubBaseURLIn...))
+	}
+	if len(i.AxonhubBaseURLNotIn) > 0 {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLNotIn(i.AxonhubBaseURLNotIn...))
+	}
+	if i.AxonhubBaseURLGT != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLGT(*i.AxonhubBaseURLGT))
+	}
+	if i.AxonhubBaseURLGTE != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLGTE(*i.AxonhubBaseURLGTE))
+	}
+	if i.AxonhubBaseURLLT != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLLT(*i.AxonhubBaseURLLT))
+	}
+	if i.AxonhubBaseURLLTE != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLLTE(*i.AxonhubBaseURLLTE))
+	}
+	if i.AxonhubBaseURLContains != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLContains(*i.AxonhubBaseURLContains))
+	}
+	if i.AxonhubBaseURLHasPrefix != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLHasPrefix(*i.AxonhubBaseURLHasPrefix))
+	}
+	if i.AxonhubBaseURLHasSuffix != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLHasSuffix(*i.AxonhubBaseURLHasSuffix))
+	}
+	if i.AxonhubBaseURLEqualFold != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLEqualFold(*i.AxonhubBaseURLEqualFold))
+	}
+	if i.AxonhubBaseURLContainsFold != nil {
+		predicates = append(predicates, agentinstance.AxonhubBaseURLContainsFold(*i.AxonhubBaseURLContainsFold))
 	}
 	if i.Status != nil {
 		predicates = append(predicates, agentinstance.StatusEQ(*i.Status))

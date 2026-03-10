@@ -208,15 +208,11 @@ func (v *DeployAxonClawDeployAxonClawDeployAxonClawResultInstanceAgentInstance) 
 }
 
 type DeployAxonClawInput struct {
-	Name      string  `json:"name"`
-	Directory *string `json:"directory"`
+	Name string `json:"name"`
 }
 
 // GetName returns DeployAxonClawInput.Name, and is useful for accessing the field via an interface.
 func (v *DeployAxonClawInput) GetName() string { return v.Name }
-
-// GetDirectory returns DeployAxonClawInput.Directory, and is useful for accessing the field via an interface.
-func (v *DeployAxonClawInput) GetDirectory() *string { return v.Directory }
 
 // DeployAxonClawResponse is returned by DeployAxonClaw on success.
 type DeployAxonClawResponse struct {

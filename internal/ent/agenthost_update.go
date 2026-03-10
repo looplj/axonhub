@@ -71,20 +71,6 @@ func (_u *AgentHostUpdate) SetNillableName(v *string) *AgentHostUpdate {
 	return _u
 }
 
-// SetType sets the "type" field.
-func (_u *AgentHostUpdate) SetType(v agenthost.Type) *AgentHostUpdate {
-	_u.mutation.SetType(v)
-	return _u
-}
-
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_u *AgentHostUpdate) SetNillableType(v *agenthost.Type) *AgentHostUpdate {
-	if v != nil {
-		_u.SetType(*v)
-	}
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *AgentHostUpdate) SetStatus(v agenthost.Status) *AgentHostUpdate {
 	_u.mutation.SetStatus(v)
@@ -165,6 +151,20 @@ func (_u *AgentHostUpdate) SetSSHPrivateKey(v string) *AgentHostUpdate {
 func (_u *AgentHostUpdate) SetNillableSSHPrivateKey(v *string) *AgentHostUpdate {
 	if v != nil {
 		_u.SetSSHPrivateKey(*v)
+	}
+	return _u
+}
+
+// SetDirectory sets the "directory" field.
+func (_u *AgentHostUpdate) SetDirectory(v string) *AgentHostUpdate {
+	_u.mutation.SetDirectory(v)
+	return _u
+}
+
+// SetNillableDirectory sets the "directory" field if the given value is not nil.
+func (_u *AgentHostUpdate) SetNillableDirectory(v *string) *AgentHostUpdate {
+	if v != nil {
+		_u.SetDirectory(*v)
 	}
 	return _u
 }
@@ -254,11 +254,6 @@ func (_u *AgentHostUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *AgentHostUpdate) check() error {
-	if v, ok := _u.mutation.GetType(); ok {
-		if err := agenthost.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "AgentHost.type": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := agenthost.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "AgentHost.status": %w`, err)}
@@ -302,9 +297,6 @@ func (_u *AgentHostUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(agenthost.FieldName, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.GetType(); ok {
-		_spec.SetField(agenthost.FieldType, field.TypeEnum, value)
-	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(agenthost.FieldStatus, field.TypeEnum, value)
 	}
@@ -322,6 +314,9 @@ func (_u *AgentHostUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.SSHPrivateKey(); ok {
 		_spec.SetField(agenthost.FieldSSHPrivateKey, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Directory(); ok {
+		_spec.SetField(agenthost.FieldDirectory, field.TypeString, value)
 	}
 	if _u.mutation.InstancesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -431,20 +426,6 @@ func (_u *AgentHostUpdateOne) SetNillableName(v *string) *AgentHostUpdateOne {
 	return _u
 }
 
-// SetType sets the "type" field.
-func (_u *AgentHostUpdateOne) SetType(v agenthost.Type) *AgentHostUpdateOne {
-	_u.mutation.SetType(v)
-	return _u
-}
-
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_u *AgentHostUpdateOne) SetNillableType(v *agenthost.Type) *AgentHostUpdateOne {
-	if v != nil {
-		_u.SetType(*v)
-	}
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *AgentHostUpdateOne) SetStatus(v agenthost.Status) *AgentHostUpdateOne {
 	_u.mutation.SetStatus(v)
@@ -525,6 +506,20 @@ func (_u *AgentHostUpdateOne) SetSSHPrivateKey(v string) *AgentHostUpdateOne {
 func (_u *AgentHostUpdateOne) SetNillableSSHPrivateKey(v *string) *AgentHostUpdateOne {
 	if v != nil {
 		_u.SetSSHPrivateKey(*v)
+	}
+	return _u
+}
+
+// SetDirectory sets the "directory" field.
+func (_u *AgentHostUpdateOne) SetDirectory(v string) *AgentHostUpdateOne {
+	_u.mutation.SetDirectory(v)
+	return _u
+}
+
+// SetNillableDirectory sets the "directory" field if the given value is not nil.
+func (_u *AgentHostUpdateOne) SetNillableDirectory(v *string) *AgentHostUpdateOne {
+	if v != nil {
+		_u.SetDirectory(*v)
 	}
 	return _u
 }
@@ -627,11 +622,6 @@ func (_u *AgentHostUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *AgentHostUpdateOne) check() error {
-	if v, ok := _u.mutation.GetType(); ok {
-		if err := agenthost.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "AgentHost.type": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := agenthost.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "AgentHost.status": %w`, err)}
@@ -692,9 +682,6 @@ func (_u *AgentHostUpdateOne) sqlSave(ctx context.Context) (_node *AgentHost, er
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(agenthost.FieldName, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.GetType(); ok {
-		_spec.SetField(agenthost.FieldType, field.TypeEnum, value)
-	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(agenthost.FieldStatus, field.TypeEnum, value)
 	}
@@ -712,6 +699,9 @@ func (_u *AgentHostUpdateOne) sqlSave(ctx context.Context) (_node *AgentHost, er
 	}
 	if value, ok := _u.mutation.SSHPrivateKey(); ok {
 		_spec.SetField(agenthost.FieldSSHPrivateKey, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Directory(); ok {
+		_spec.SetField(agenthost.FieldDirectory, field.TypeString, value)
 	}
 	if _u.mutation.InstancesCleared() {
 		edge := &sqlgraph.EdgeSpec{

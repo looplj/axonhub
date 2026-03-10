@@ -124,6 +124,7 @@ var (
 		{Name: "auth_method", Type: field.TypeEnum, Enums: []string{"password", "ssh_key"}, Default: "password"},
 		{Name: "password", Type: field.TypeString, Default: ""},
 		{Name: "ssh_private_key", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "text"}},
+		{Name: "directory", Type: field.TypeString, Default: ""},
 	}
 	// AgentHostsTable holds the schema information for the "agent_hosts" table.
 	AgentHostsTable = &schema.Table{
@@ -154,7 +155,7 @@ var (
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "platform", Type: field.TypeString, Default: ""},
 		{Name: "last_heartbeat_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime(6)"}},
-		{Name: "deployment", Type: field.TypeJSON, Nullable: true},
+		{Name: "axonhub_base_url", Type: field.TypeString, Default: ""},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "stopped", "error"}, Default: "running"},
 		{Name: "api_key_id", Type: field.TypeInt, Unique: true},
 		{Name: "agent_id", Type: field.TypeInt},

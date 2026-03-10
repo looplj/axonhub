@@ -551,7 +551,7 @@ export function AgentDetailPage() {
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem
                                         disabled={controlInstance.isPending}
-                                        onClick={() => openRedeployDialog(inst.id, inst.name, inst.deployment?.axonhubBaseUrl)}
+                                        onClick={() => openRedeployDialog(inst.id, inst.name, inst.axonhubBaseURL)}
                                       >
                                         <Rocket className='mr-2 h-4 w-4' />
                                         {t('agents.instanceActions.redeploy')}

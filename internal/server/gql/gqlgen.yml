@@ -618,12 +618,6 @@ models:
   AgentHostTestResult:
     model:
       - github.com/looplj/axonhub/internal/server/biz.TestConnectionResult
-  AgentInstanceDeployment:
-    model:
-      - github.com/looplj/axonhub/internal/objects.AgentInstanceDeployment
-  AgentInstanceDeploymentInput:
-    model:
-      - github.com/looplj/axonhub/internal/objects.AgentInstanceDeployment
   DeployAxonclawResult:
     model:
       - github.com/looplj/axonhub/internal/server/biz.DeployAxonclawResult

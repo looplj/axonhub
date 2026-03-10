@@ -2990,6 +2990,7 @@ type AgentHostMutation struct {
 	auth_method      *agenthost.AuthMethod
 	password         *string
 	ssh_private_key  *string
+	directory        *string
 	clearedFields    map[string]struct{}
 	instances        map[int]struct{}
 	removedinstances map[int]struct{}
@@ -3513,6 +3514,42 @@ func (m *AgentHostMutation) ResetSSHPrivateKey() {
 	m.ssh_private_key = nil
 }
 
+// SetDirectory sets the "directory" field.
+func (m *AgentHostMutation) SetDirectory(s string) {
+	m.directory = &s
+}
+
+// Directory returns the value of the "directory" field in the mutation.
+func (m *AgentHostMutation) Directory() (r string, exists bool) {
+	v := m.directory
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDirectory returns the old "directory" field's value of the AgentHost entity.
+// If the AgentHost object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AgentHostMutation) OldDirectory(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDirectory is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDirectory requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDirectory: %w", err)
+	}
+	return oldValue.Directory, nil
+}
+
+// ResetDirectory resets all changes to the "directory" field.
+func (m *AgentHostMutation) ResetDirectory() {
+	m.directory = nil
+}
+
 // AddInstanceIDs adds the "instances" edge to the AgentInstance entity by ids.
 func (m *AgentHostMutation) AddInstanceIDs(ids ...int) {
 	if m.instances == nil {
@@ -3601,7 +3638,7 @@ func (m *AgentHostMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AgentHostMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.created_at != nil {
 		fields = append(fields, agenthost.FieldCreatedAt)
 	}
@@ -3635,6 +3672,9 @@ func (m *AgentHostMutation) Fields() []string {
 	if m.ssh_private_key != nil {
 		fields = append(fields, agenthost.FieldSSHPrivateKey)
 	}
+	if m.directory != nil {
+		fields = append(fields, agenthost.FieldDirectory)
+	}
 	return fields
 }
 
@@ -3665,6 +3705,8 @@ func (m *AgentHostMutation) Field(name string) (ent.Value, bool) {
 		return m.Password()
 	case agenthost.FieldSSHPrivateKey:
 		return m.SSHPrivateKey()
+	case agenthost.FieldDirectory:
+		return m.Directory()
 	}
 	return nil, false
 }
@@ -3696,6 +3738,8 @@ func (m *AgentHostMutation) OldField(ctx context.Context, name string) (ent.Valu
 		return m.OldPassword(ctx)
 	case agenthost.FieldSSHPrivateKey:
 		return m.OldSSHPrivateKey(ctx)
+	case agenthost.FieldDirectory:
+		return m.OldDirectory(ctx)
 	}
 	return nil, fmt.Errorf("unknown AgentHost field %s", name)
 }
@@ -3781,6 +3825,13 @@ func (m *AgentHostMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSSHPrivateKey(v)
+		return nil
+	case agenthost.FieldDirectory:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDirectory(v)
 		return nil
 	}
 	return fmt.Errorf("unknown AgentHost field %s", name)
@@ -3878,6 +3929,9 @@ func (m *AgentHostMutation) ResetField(name string) error {
 		return nil
 	case agenthost.FieldSSHPrivateKey:
 		m.ResetSSHPrivateKey()
+		return nil
+	case agenthost.FieldDirectory:
+		m.ResetDirectory()
 		return nil
 	}
 	return fmt.Errorf("unknown AgentHost field %s", name)
@@ -3983,7 +4037,7 @@ type AgentInstanceMutation struct {
 	description                     *string
 	platform                        *string
 	last_heartbeat_at               *time.Time
-	deployment                      *objects.AgentInstanceDeployment
+	axonhub_base_url                *string
 	status                          *agentinstance.Status
 	clearedFields                   map[string]struct{}
 	agent                           *int
@@ -4550,53 +4604,40 @@ func (m *AgentInstanceMutation) ResetLastHeartbeatAt() {
 	m.last_heartbeat_at = nil
 }
 
-// SetDeployment sets the "deployment" field.
-func (m *AgentInstanceMutation) SetDeployment(oid objects.AgentInstanceDeployment) {
-	m.deployment = &oid
+// SetAxonhubBaseURL sets the "axonhub_base_url" field.
+func (m *AgentInstanceMutation) SetAxonhubBaseURL(s string) {
+	m.axonhub_base_url = &s
 }
 
-// Deployment returns the value of the "deployment" field in the mutation.
-func (m *AgentInstanceMutation) Deployment() (r objects.AgentInstanceDeployment, exists bool) {
-	v := m.deployment
+// AxonhubBaseURL returns the value of the "axonhub_base_url" field in the mutation.
+func (m *AgentInstanceMutation) AxonhubBaseURL() (r string, exists bool) {
+	v := m.axonhub_base_url
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldDeployment returns the old "deployment" field's value of the AgentInstance entity.
+// OldAxonhubBaseURL returns the old "axonhub_base_url" field's value of the AgentInstance entity.
 // If the AgentInstance object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AgentInstanceMutation) OldDeployment(ctx context.Context) (v objects.AgentInstanceDeployment, err error) {
+func (m *AgentInstanceMutation) OldAxonhubBaseURL(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDeployment is only allowed on UpdateOne operations")
+		return v, errors.New("OldAxonhubBaseURL is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDeployment requires an ID field in the mutation")
+		return v, errors.New("OldAxonhubBaseURL requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDeployment: %w", err)
+		return v, fmt.Errorf("querying old value for OldAxonhubBaseURL: %w", err)
 	}
-	return oldValue.Deployment, nil
+	return oldValue.AxonhubBaseURL, nil
 }
 
-// ClearDeployment clears the value of the "deployment" field.
-func (m *AgentInstanceMutation) ClearDeployment() {
-	m.deployment = nil
-	m.clearedFields[agentinstance.FieldDeployment] = struct{}{}
-}
-
-// DeploymentCleared returns if the "deployment" field was cleared in this mutation.
-func (m *AgentInstanceMutation) DeploymentCleared() bool {
-	_, ok := m.clearedFields[agentinstance.FieldDeployment]
-	return ok
-}
-
-// ResetDeployment resets all changes to the "deployment" field.
-func (m *AgentInstanceMutation) ResetDeployment() {
-	m.deployment = nil
-	delete(m.clearedFields, agentinstance.FieldDeployment)
+// ResetAxonhubBaseURL resets all changes to the "axonhub_base_url" field.
+func (m *AgentInstanceMutation) ResetAxonhubBaseURL() {
+	m.axonhub_base_url = nil
 }
 
 // SetStatus sets the "status" field.
@@ -4905,8 +4946,8 @@ func (m *AgentInstanceMutation) Fields() []string {
 	if m.last_heartbeat_at != nil {
 		fields = append(fields, agentinstance.FieldLastHeartbeatAt)
 	}
-	if m.deployment != nil {
-		fields = append(fields, agentinstance.FieldDeployment)
+	if m.axonhub_base_url != nil {
+		fields = append(fields, agentinstance.FieldAxonhubBaseURL)
 	}
 	if m.status != nil {
 		fields = append(fields, agentinstance.FieldStatus)
@@ -4941,8 +4982,8 @@ func (m *AgentInstanceMutation) Field(name string) (ent.Value, bool) {
 		return m.APIKeyID()
 	case agentinstance.FieldLastHeartbeatAt:
 		return m.LastHeartbeatAt()
-	case agentinstance.FieldDeployment:
-		return m.Deployment()
+	case agentinstance.FieldAxonhubBaseURL:
+		return m.AxonhubBaseURL()
 	case agentinstance.FieldStatus:
 		return m.Status()
 	}
@@ -4976,8 +5017,8 @@ func (m *AgentInstanceMutation) OldField(ctx context.Context, name string) (ent.
 		return m.OldAPIKeyID(ctx)
 	case agentinstance.FieldLastHeartbeatAt:
 		return m.OldLastHeartbeatAt(ctx)
-	case agentinstance.FieldDeployment:
-		return m.OldDeployment(ctx)
+	case agentinstance.FieldAxonhubBaseURL:
+		return m.OldAxonhubBaseURL(ctx)
 	case agentinstance.FieldStatus:
 		return m.OldStatus(ctx)
 	}
@@ -5066,12 +5107,12 @@ func (m *AgentInstanceMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLastHeartbeatAt(v)
 		return nil
-	case agentinstance.FieldDeployment:
-		v, ok := value.(objects.AgentInstanceDeployment)
+	case agentinstance.FieldAxonhubBaseURL:
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetDeployment(v)
+		m.SetAxonhubBaseURL(v)
 		return nil
 	case agentinstance.FieldStatus:
 		v, ok := value.(agentinstance.Status)
@@ -5140,9 +5181,6 @@ func (m *AgentInstanceMutation) ClearedFields() []string {
 	if m.FieldCleared(agentinstance.FieldAgentHostID) {
 		fields = append(fields, agentinstance.FieldAgentHostID)
 	}
-	if m.FieldCleared(agentinstance.FieldDeployment) {
-		fields = append(fields, agentinstance.FieldDeployment)
-	}
 	return fields
 }
 
@@ -5159,9 +5197,6 @@ func (m *AgentInstanceMutation) ClearField(name string) error {
 	switch name {
 	case agentinstance.FieldAgentHostID:
 		m.ClearAgentHostID()
-		return nil
-	case agentinstance.FieldDeployment:
-		m.ClearDeployment()
 		return nil
 	}
 	return fmt.Errorf("unknown AgentInstance nullable field %s", name)
@@ -5204,8 +5239,8 @@ func (m *AgentInstanceMutation) ResetField(name string) error {
 	case agentinstance.FieldLastHeartbeatAt:
 		m.ResetLastHeartbeatAt()
 		return nil
-	case agentinstance.FieldDeployment:
-		m.ResetDeployment()
+	case agentinstance.FieldAxonhubBaseURL:
+		m.ResetAxonhubBaseURL()
 		return nil
 	case agentinstance.FieldStatus:
 		m.ResetStatus()

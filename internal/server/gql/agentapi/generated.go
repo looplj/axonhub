@@ -4394,7 +4394,7 @@ func (ec *executionContext) unmarshalInputDeployAxonClawInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "directory"}
+	fieldsInOrder := [...]string{"name"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -4408,13 +4408,6 @@ func (ec *executionContext) unmarshalInputDeployAxonClawInput(ctx context.Contex
 				return it, err
 			}
 			it.Name = data
-		case "directory":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("directory"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Directory = data
 		}
 	}
 

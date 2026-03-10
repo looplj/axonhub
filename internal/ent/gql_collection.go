@@ -1184,6 +1184,11 @@ func (_q *AgentHostQuery) collectField(ctx context.Context, oneNode bool, opCtx 
 				selectedFields = append(selectedFields, agenthost.FieldAuthMethod)
 				fieldSeen[agenthost.FieldAuthMethod] = struct{}{}
 			}
+		case "directory":
+			if _, ok := fieldSeen[agenthost.FieldDirectory]; !ok {
+				selectedFields = append(selectedFields, agenthost.FieldDirectory)
+				fieldSeen[agenthost.FieldDirectory] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:
@@ -1541,10 +1546,10 @@ func (_q *AgentInstanceQuery) collectField(ctx context.Context, oneNode bool, op
 				selectedFields = append(selectedFields, agentinstance.FieldLastHeartbeatAt)
 				fieldSeen[agentinstance.FieldLastHeartbeatAt] = struct{}{}
 			}
-		case "deployment":
-			if _, ok := fieldSeen[agentinstance.FieldDeployment]; !ok {
-				selectedFields = append(selectedFields, agentinstance.FieldDeployment)
-				fieldSeen[agentinstance.FieldDeployment] = struct{}{}
+		case "axonhubBaseURL":
+			if _, ok := fieldSeen[agentinstance.FieldAxonhubBaseURL]; !ok {
+				selectedFields = append(selectedFields, agentinstance.FieldAxonhubBaseURL)
+				fieldSeen[agentinstance.FieldAxonhubBaseURL] = struct{}{}
 			}
 		case "status":
 			if _, ok := fieldSeen[agentinstance.FieldStatus]; !ok {

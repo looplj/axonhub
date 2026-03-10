@@ -200,6 +200,10 @@ func init() {
 	agenthostDescSSHPrivateKey := agenthostFields[7].Descriptor()
 	// agenthost.DefaultSSHPrivateKey holds the default value on creation for the ssh_private_key field.
 	agenthost.DefaultSSHPrivateKey = agenthostDescSSHPrivateKey.Default.(string)
+	// agenthostDescDirectory is the schema descriptor for directory field.
+	agenthostDescDirectory := agenthostFields[8].Descriptor()
+	// agenthost.DefaultDirectory holds the default value on creation for the directory field.
+	agenthost.DefaultDirectory = agenthostDescDirectory.Default.(string)
 	agentinstanceMixin := schema.AgentInstance{}.Mixin()
 	agentinstance.Policy = privacy.NewPolicies(schema.AgentInstance{})
 	agentinstance.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -247,6 +251,10 @@ func init() {
 	agentinstanceDescPlatform := agentinstanceFields[5].Descriptor()
 	// agentinstance.DefaultPlatform holds the default value on creation for the platform field.
 	agentinstance.DefaultPlatform = agentinstanceDescPlatform.Default.(string)
+	// agentinstanceDescAxonhubBaseURL is the schema descriptor for axonhub_base_url field.
+	agentinstanceDescAxonhubBaseURL := agentinstanceFields[8].Descriptor()
+	// agentinstance.DefaultAxonhubBaseURL holds the default value on creation for the axonhub_base_url field.
+	agentinstance.DefaultAxonhubBaseURL = agentinstanceDescAxonhubBaseURL.Default.(string)
 	agentmemoryMixin := schema.AgentMemory{}.Mixin()
 	agentmemory.Policy = privacy.NewPolicies(schema.AgentMemory{})
 	agentmemory.Hooks[0] = func(next ent.Mutator) ent.Mutator {

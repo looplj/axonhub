@@ -95,6 +95,11 @@ func SSHPrivateKey(v string) predicate.AgentHost {
 	return predicate.AgentHost(sql.FieldEQ(FieldSSHPrivateKey, v))
 }
 
+// Directory applies equality check predicate on the "directory" field. It's identical to DirectoryEQ.
+func Directory(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldEQ(FieldDirectory, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.AgentHost {
 	return predicate.AgentHost(sql.FieldEQ(FieldCreatedAt, v))
@@ -598,6 +603,71 @@ func SSHPrivateKeyEqualFold(v string) predicate.AgentHost {
 // SSHPrivateKeyContainsFold applies the ContainsFold predicate on the "ssh_private_key" field.
 func SSHPrivateKeyContainsFold(v string) predicate.AgentHost {
 	return predicate.AgentHost(sql.FieldContainsFold(FieldSSHPrivateKey, v))
+}
+
+// DirectoryEQ applies the EQ predicate on the "directory" field.
+func DirectoryEQ(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldEQ(FieldDirectory, v))
+}
+
+// DirectoryNEQ applies the NEQ predicate on the "directory" field.
+func DirectoryNEQ(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldNEQ(FieldDirectory, v))
+}
+
+// DirectoryIn applies the In predicate on the "directory" field.
+func DirectoryIn(vs ...string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldIn(FieldDirectory, vs...))
+}
+
+// DirectoryNotIn applies the NotIn predicate on the "directory" field.
+func DirectoryNotIn(vs ...string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldNotIn(FieldDirectory, vs...))
+}
+
+// DirectoryGT applies the GT predicate on the "directory" field.
+func DirectoryGT(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldGT(FieldDirectory, v))
+}
+
+// DirectoryGTE applies the GTE predicate on the "directory" field.
+func DirectoryGTE(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldGTE(FieldDirectory, v))
+}
+
+// DirectoryLT applies the LT predicate on the "directory" field.
+func DirectoryLT(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldLT(FieldDirectory, v))
+}
+
+// DirectoryLTE applies the LTE predicate on the "directory" field.
+func DirectoryLTE(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldLTE(FieldDirectory, v))
+}
+
+// DirectoryContains applies the Contains predicate on the "directory" field.
+func DirectoryContains(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldContains(FieldDirectory, v))
+}
+
+// DirectoryHasPrefix applies the HasPrefix predicate on the "directory" field.
+func DirectoryHasPrefix(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldHasPrefix(FieldDirectory, v))
+}
+
+// DirectoryHasSuffix applies the HasSuffix predicate on the "directory" field.
+func DirectoryHasSuffix(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldHasSuffix(FieldDirectory, v))
+}
+
+// DirectoryEqualFold applies the EqualFold predicate on the "directory" field.
+func DirectoryEqualFold(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldEqualFold(FieldDirectory, v))
+}
+
+// DirectoryContainsFold applies the ContainsFold predicate on the "directory" field.
+func DirectoryContainsFold(v string) predicate.AgentHost {
+	return predicate.AgentHost(sql.FieldContainsFold(FieldDirectory, v))
 }
 
 // HasInstances applies the HasEdge predicate on the "instances" edge.

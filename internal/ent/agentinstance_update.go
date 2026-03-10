@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
 	"github.com/looplj/axonhub/internal/ent/predicate"
-	"github.com/looplj/axonhub/internal/objects"
 )
 
 // AgentInstanceUpdate is the builder for updating AgentInstance entities.
@@ -136,23 +135,17 @@ func (_u *AgentInstanceUpdate) SetNillableLastHeartbeatAt(v *time.Time) *AgentIn
 	return _u
 }
 
-// SetDeployment sets the "deployment" field.
-func (_u *AgentInstanceUpdate) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpdate {
-	_u.mutation.SetDeployment(v)
+// SetAxonhubBaseURL sets the "axonhub_base_url" field.
+func (_u *AgentInstanceUpdate) SetAxonhubBaseURL(v string) *AgentInstanceUpdate {
+	_u.mutation.SetAxonhubBaseURL(v)
 	return _u
 }
 
-// SetNillableDeployment sets the "deployment" field if the given value is not nil.
-func (_u *AgentInstanceUpdate) SetNillableDeployment(v *objects.AgentInstanceDeployment) *AgentInstanceUpdate {
+// SetNillableAxonhubBaseURL sets the "axonhub_base_url" field if the given value is not nil.
+func (_u *AgentInstanceUpdate) SetNillableAxonhubBaseURL(v *string) *AgentInstanceUpdate {
 	if v != nil {
-		_u.SetDeployment(*v)
+		_u.SetAxonhubBaseURL(*v)
 	}
-	return _u
-}
-
-// ClearDeployment clears the value of the "deployment" field.
-func (_u *AgentInstanceUpdate) ClearDeployment() *AgentInstanceUpdate {
-	_u.mutation.ClearDeployment()
 	return _u
 }
 
@@ -369,11 +362,8 @@ func (_u *AgentInstanceUpdate) sqlSave(ctx context.Context) (_node int, err erro
 	if value, ok := _u.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.Deployment(); ok {
-		_spec.SetField(agentinstance.FieldDeployment, field.TypeJSON, value)
-	}
-	if _u.mutation.DeploymentCleared() {
-		_spec.ClearField(agentinstance.FieldDeployment, field.TypeJSON)
+	if value, ok := _u.mutation.AxonhubBaseURL(); ok {
+		_spec.SetField(agentinstance.FieldAxonhubBaseURL, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(agentinstance.FieldStatus, field.TypeEnum, value)
@@ -622,23 +612,17 @@ func (_u *AgentInstanceUpdateOne) SetNillableLastHeartbeatAt(v *time.Time) *Agen
 	return _u
 }
 
-// SetDeployment sets the "deployment" field.
-func (_u *AgentInstanceUpdateOne) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpdateOne {
-	_u.mutation.SetDeployment(v)
+// SetAxonhubBaseURL sets the "axonhub_base_url" field.
+func (_u *AgentInstanceUpdateOne) SetAxonhubBaseURL(v string) *AgentInstanceUpdateOne {
+	_u.mutation.SetAxonhubBaseURL(v)
 	return _u
 }
 
-// SetNillableDeployment sets the "deployment" field if the given value is not nil.
-func (_u *AgentInstanceUpdateOne) SetNillableDeployment(v *objects.AgentInstanceDeployment) *AgentInstanceUpdateOne {
+// SetNillableAxonhubBaseURL sets the "axonhub_base_url" field if the given value is not nil.
+func (_u *AgentInstanceUpdateOne) SetNillableAxonhubBaseURL(v *string) *AgentInstanceUpdateOne {
 	if v != nil {
-		_u.SetDeployment(*v)
+		_u.SetAxonhubBaseURL(*v)
 	}
-	return _u
-}
-
-// ClearDeployment clears the value of the "deployment" field.
-func (_u *AgentInstanceUpdateOne) ClearDeployment() *AgentInstanceUpdateOne {
-	_u.mutation.ClearDeployment()
 	return _u
 }
 
@@ -885,11 +869,8 @@ func (_u *AgentInstanceUpdateOne) sqlSave(ctx context.Context) (_node *AgentInst
 	if value, ok := _u.mutation.LastHeartbeatAt(); ok {
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.Deployment(); ok {
-		_spec.SetField(agentinstance.FieldDeployment, field.TypeJSON, value)
-	}
-	if _u.mutation.DeploymentCleared() {
-		_spec.ClearField(agentinstance.FieldDeployment, field.TypeJSON)
+	if value, ok := _u.mutation.AxonhubBaseURL(); ok {
+		_spec.SetField(agentinstance.FieldAxonhubBaseURL, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(agentinstance.FieldStatus, field.TypeEnum, value)

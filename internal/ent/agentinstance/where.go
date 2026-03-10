@@ -110,6 +110,11 @@ func LastHeartbeatAt(v time.Time) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldEQ(FieldLastHeartbeatAt, v))
 }
 
+// AxonhubBaseURL applies equality check predicate on the "axonhub_base_url" field. It's identical to AxonhubBaseURLEQ.
+func AxonhubBaseURL(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldAxonhubBaseURL, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldEQ(FieldCreatedAt, v))
@@ -575,14 +580,69 @@ func LastHeartbeatAtLTE(v time.Time) predicate.AgentInstance {
 	return predicate.AgentInstance(sql.FieldLTE(FieldLastHeartbeatAt, v))
 }
 
-// DeploymentIsNil applies the IsNil predicate on the "deployment" field.
-func DeploymentIsNil() predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldIsNull(FieldDeployment))
+// AxonhubBaseURLEQ applies the EQ predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLEQ(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEQ(FieldAxonhubBaseURL, v))
 }
 
-// DeploymentNotNil applies the NotNil predicate on the "deployment" field.
-func DeploymentNotNil() predicate.AgentInstance {
-	return predicate.AgentInstance(sql.FieldNotNull(FieldDeployment))
+// AxonhubBaseURLNEQ applies the NEQ predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLNEQ(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNEQ(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLIn applies the In predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLIn(vs ...string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldIn(FieldAxonhubBaseURL, vs...))
+}
+
+// AxonhubBaseURLNotIn applies the NotIn predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLNotIn(vs ...string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldNotIn(FieldAxonhubBaseURL, vs...))
+}
+
+// AxonhubBaseURLGT applies the GT predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLGT(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldGT(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLGTE applies the GTE predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLGTE(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldGTE(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLLT applies the LT predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLLT(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldLT(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLLTE applies the LTE predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLLTE(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldLTE(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLContains applies the Contains predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLContains(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldContains(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLHasPrefix applies the HasPrefix predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLHasPrefix(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldHasPrefix(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLHasSuffix applies the HasSuffix predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLHasSuffix(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldHasSuffix(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLEqualFold applies the EqualFold predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLEqualFold(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldEqualFold(FieldAxonhubBaseURL, v))
+}
+
+// AxonhubBaseURLContainsFold applies the ContainsFold predicate on the "axonhub_base_url" field.
+func AxonhubBaseURLContainsFold(v string) predicate.AgentInstance {
+	return predicate.AgentInstance(sql.FieldContainsFold(FieldAxonhubBaseURL, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

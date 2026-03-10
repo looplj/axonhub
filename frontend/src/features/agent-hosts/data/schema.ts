@@ -22,6 +22,7 @@ export const agentHostSchema = z.object({
   password: z.string(),
   authMethod: agentHostAuthMethodSchema,
   sshPrivateKey: z.string(),
+  directory: z.string().default(''),
 });
 export type AgentHost = z.infer<typeof agentHostSchema>;
 
@@ -34,6 +35,7 @@ export const createAgentHostInputSchema = z.object({
   password: z.string().optional(),
   authMethod: agentHostAuthMethodSchema.optional(),
   sshPrivateKey: z.string().optional(),
+  directory: z.string().optional(),
 }).refine(
   (data) => {
     if (!data.addr || data.addr.length === 0) {
@@ -61,13 +63,13 @@ export type CreateAgentHostInput = z.infer<typeof createAgentHostInputSchema>;
 
 export const updateAgentHostInputSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
-  type: agentHostTypeSchema.optional(),
   status: agentHostStatusSchema.optional(),
   addr: z.string().min(1, 'Host is required').optional(),
   user: z.string().optional(),
   password: z.string().optional(),
   authMethod: agentHostAuthMethodSchema.optional(),
   sshPrivateKey: z.string().optional(),
+  directory: z.string().optional(),
 });
 export type UpdateAgentHostInput = z.infer<typeof updateAgentHostInputSchema>;
 

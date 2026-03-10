@@ -66,12 +66,12 @@ export function AgentHostsActionDialog({ currentRow, open, onOpenChange }: Props
     defaultValues: isEdit
       ? {
           name: currentRow?.name || '',
-          type: currentRow?.type || 'vm',
-          addr: currentRow?.addr || '',
-          user: currentRow?.user || '',
-          password: currentRow?.password || '',
-          authMethod: currentRow?.authMethod || 'password',
-          sshPrivateKey: currentRow?.sshPrivateKey || '',
+          addr: (isEdit && currentRow?.type === 'local') ? undefined : (currentRow?.addr || ''),
+          user: currentRow?.user || undefined,
+          password: currentRow?.password || undefined,
+          authMethod: currentRow?.authMethod || undefined,
+          sshPrivateKey: currentRow?.sshPrivateKey || undefined,
+          directory: currentRow?.directory || '',
         }
       : {
           name: '',
@@ -81,24 +81,26 @@ export function AgentHostsActionDialog({ currentRow, open, onOpenChange }: Props
           password: '',
           authMethod: 'password',
           sshPrivateKey: '',
+          directory: '',
         },
   });
 
   // Reset form when dialog opens/closes or currentRow changes
   useEffect(() => {
     if (open) {
-      const hostValue = isEdit ? (currentRow?.addr || '') : '';
-      setHostSearchValue(hostValue);
+      const isLocal = isEdit && currentRow?.type === 'local';
+      const hostValue = isLocal ? undefined : (currentRow?.addr || '');
+      setHostSearchValue(isLocal ? '' : (currentRow?.addr || ''));
       form.reset(
         isEdit
           ? {
               name: currentRow?.name || '',
-              type: currentRow?.type || 'vm',
               addr: hostValue,
-              user: currentRow?.user || '',
-              password: currentRow?.password || '',
-              authMethod: currentRow?.authMethod || 'password',
-              sshPrivateKey: currentRow?.sshPrivateKey || '',
+              user: currentRow?.user || undefined,
+              password: currentRow?.password || undefined,
+              authMethod: currentRow?.authMethod || undefined,
+              sshPrivateKey: currentRow?.sshPrivateKey || undefined,
+              directory: currentRow?.directory || '',
             }
           : {
               name: '',
@@ -108,6 +110,7 @@ export function AgentHostsActionDialog({ currentRow, open, onOpenChange }: Props
               password: '',
               authMethod: 'password',
               sshPrivateKey: '',
+              directory: '',
             }
       );
     }
@@ -130,27 +133,22 @@ export function AgentHostsActionDialog({ currentRow, open, onOpenChange }: Props
     }
   };
 
-  const hostTypes = useMemo(() => {
-    const types: { value: AgentHostType; label: string }[] = [
-      { value: 'vm', label: t('agentHosts.types.vm') },
-      { value: 'docker', label: t('agentHosts.types.docker') },
-    ];
-    if (isEdit && currentRow?.type === 'local') {
-      types.push({ value: 'local', label: t('agentHosts.types.local') });
-    }
-    return types;
-  }, [isEdit, currentRow?.type, t]);
+  const hostTypes: { value: AgentHostType; label: string }[] = [
+    { value: 'vm', label: t('agentHosts.types.vm') },
+    { value: 'docker', label: t('agentHosts.types.docker') },
+  ];
 
   const hostSuggestions = useMemo(() => [
     { value: 'localhost', label: 'localhost' },
     { value: '127.0.0.1', label: '127.0.0.1' },
   ], []);
 
-  const typeValue = form.watch('type');
+  const typeValue = isEdit ? (currentRow?.type || 'vm') : form.watch('type');
   const hostValue = form.watch('addr');
   const authMethodValue = (form.watch('authMethod') || 'password') as AgentHostAuthMethod;
   const isLocalType = typeValue === 'local';
   const isLocalhost = hostValue === 'localhost' || hostValue === '127.0.0.1';
+  const isEditingLocal = isEdit && currentRow?.type === 'local';
 
   const authMethods: { value: AgentHostAuthMethod; label: string }[] = [
     { value: 'password', label: t('agentHosts.authMethods.password') },
@@ -200,6 +198,7 @@ export function AgentHostsActionDialog({ currentRow, open, onOpenChange }: Props
                       <FormControl>
                         <Input
                           placeholder={t('agentHosts.dialogs.fields.name.placeholder')}
+                          disabled={isEditingLocal}
                           {...field}
                         />
                       </FormControl>
@@ -208,38 +207,56 @@ export function AgentHostsActionDialog({ currentRow, open, onOpenChange }: Props
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('agentHosts.dialogs.fields.type.label')}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('agentHosts.dialogs.fields.type.placeholder')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {hostTypes.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {t('agentHosts.dialogs.fields.type.help')}
-                      </p>
-                      {typeValue === 'vm' && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          {t('agentHosts.dialogs.fields.type.vmLinuxHint')}
+                {!isEdit && (
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('agentHosts.dialogs.fields.type.label')}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('agentHosts.dialogs.fields.type.placeholder')} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {hostTypes.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t('agentHosts.dialogs.fields.type.help')}
                         </p>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        {typeValue === 'vm' && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            {t('agentHosts.dialogs.fields.type.vmLinuxHint')}
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {isEdit && (
+                  <FormItem>
+                    <FormLabel>{t('agentHosts.dialogs.fields.type.label')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        value={t(`agentHosts.types.${typeValue}`)}
+                        disabled
+                        className="bg-muted"
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t('agentHosts.dialogs.fields.type.help')}
+                    </p>
+                  </FormItem>
+                )}
 
                 {!isLocalType && (
                   <FormField
@@ -265,6 +282,28 @@ export function AgentHostsActionDialog({ currentRow, open, onOpenChange }: Props
                             portalContainer={dialogContent}
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {(typeValue === 'vm' || typeValue === 'local') && (
+                  <FormField
+                    control={form.control}
+                    name="directory"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('agentHosts.dialogs.fields.directory.label')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('agentHosts.dialogs.fields.directory.placeholder')}
+                            {...field}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t('agentHosts.dialogs.fields.directory.help')}
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}

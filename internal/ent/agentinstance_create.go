@@ -17,7 +17,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
-	"github.com/looplj/axonhub/internal/objects"
 )
 
 // AgentInstanceCreate is the builder for creating a AgentInstance entity.
@@ -150,16 +149,16 @@ func (_c *AgentInstanceCreate) SetLastHeartbeatAt(v time.Time) *AgentInstanceCre
 	return _c
 }
 
-// SetDeployment sets the "deployment" field.
-func (_c *AgentInstanceCreate) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceCreate {
-	_c.mutation.SetDeployment(v)
+// SetAxonhubBaseURL sets the "axonhub_base_url" field.
+func (_c *AgentInstanceCreate) SetAxonhubBaseURL(v string) *AgentInstanceCreate {
+	_c.mutation.SetAxonhubBaseURL(v)
 	return _c
 }
 
-// SetNillableDeployment sets the "deployment" field if the given value is not nil.
-func (_c *AgentInstanceCreate) SetNillableDeployment(v *objects.AgentInstanceDeployment) *AgentInstanceCreate {
+// SetNillableAxonhubBaseURL sets the "axonhub_base_url" field if the given value is not nil.
+func (_c *AgentInstanceCreate) SetNillableAxonhubBaseURL(v *string) *AgentInstanceCreate {
 	if v != nil {
-		_c.SetDeployment(*v)
+		_c.SetAxonhubBaseURL(*v)
 	}
 	return _c
 }
@@ -304,6 +303,10 @@ func (_c *AgentInstanceCreate) defaults() error {
 		v := agentinstance.DefaultPlatform
 		_c.mutation.SetPlatform(v)
 	}
+	if _, ok := _c.mutation.AxonhubBaseURL(); !ok {
+		v := agentinstance.DefaultAxonhubBaseURL
+		_c.mutation.SetAxonhubBaseURL(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := agentinstance.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -342,6 +345,9 @@ func (_c *AgentInstanceCreate) check() error {
 	}
 	if _, ok := _c.mutation.LastHeartbeatAt(); !ok {
 		return &ValidationError{Name: "last_heartbeat_at", err: errors.New(`ent: missing required field "AgentInstance.last_heartbeat_at"`)}
+	}
+	if _, ok := _c.mutation.AxonhubBaseURL(); !ok {
+		return &ValidationError{Name: "axonhub_base_url", err: errors.New(`ent: missing required field "AgentInstance.axonhub_base_url"`)}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "AgentInstance.status"`)}
@@ -416,9 +422,9 @@ func (_c *AgentInstanceCreate) createSpec() (*AgentInstance, *sqlgraph.CreateSpe
 		_spec.SetField(agentinstance.FieldLastHeartbeatAt, field.TypeTime, value)
 		_node.LastHeartbeatAt = value
 	}
-	if value, ok := _c.mutation.Deployment(); ok {
-		_spec.SetField(agentinstance.FieldDeployment, field.TypeJSON, value)
-		_node.Deployment = value
+	if value, ok := _c.mutation.AxonhubBaseURL(); ok {
+		_spec.SetField(agentinstance.FieldAxonhubBaseURL, field.TypeString, value)
+		_node.AxonhubBaseURL = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(agentinstance.FieldStatus, field.TypeEnum, value)
@@ -655,21 +661,15 @@ func (u *AgentInstanceUpsert) UpdateLastHeartbeatAt() *AgentInstanceUpsert {
 	return u
 }
 
-// SetDeployment sets the "deployment" field.
-func (u *AgentInstanceUpsert) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpsert {
-	u.Set(agentinstance.FieldDeployment, v)
+// SetAxonhubBaseURL sets the "axonhub_base_url" field.
+func (u *AgentInstanceUpsert) SetAxonhubBaseURL(v string) *AgentInstanceUpsert {
+	u.Set(agentinstance.FieldAxonhubBaseURL, v)
 	return u
 }
 
-// UpdateDeployment sets the "deployment" field to the value that was provided on create.
-func (u *AgentInstanceUpsert) UpdateDeployment() *AgentInstanceUpsert {
-	u.SetExcluded(agentinstance.FieldDeployment)
-	return u
-}
-
-// ClearDeployment clears the value of the "deployment" field.
-func (u *AgentInstanceUpsert) ClearDeployment() *AgentInstanceUpsert {
-	u.SetNull(agentinstance.FieldDeployment)
+// UpdateAxonhubBaseURL sets the "axonhub_base_url" field to the value that was provided on create.
+func (u *AgentInstanceUpsert) UpdateAxonhubBaseURL() *AgentInstanceUpsert {
+	u.SetExcluded(agentinstance.FieldAxonhubBaseURL)
 	return u
 }
 
@@ -851,24 +851,17 @@ func (u *AgentInstanceUpsertOne) UpdateLastHeartbeatAt() *AgentInstanceUpsertOne
 	})
 }
 
-// SetDeployment sets the "deployment" field.
-func (u *AgentInstanceUpsertOne) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpsertOne {
+// SetAxonhubBaseURL sets the "axonhub_base_url" field.
+func (u *AgentInstanceUpsertOne) SetAxonhubBaseURL(v string) *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.SetDeployment(v)
+		s.SetAxonhubBaseURL(v)
 	})
 }
 
-// UpdateDeployment sets the "deployment" field to the value that was provided on create.
-func (u *AgentInstanceUpsertOne) UpdateDeployment() *AgentInstanceUpsertOne {
+// UpdateAxonhubBaseURL sets the "axonhub_base_url" field to the value that was provided on create.
+func (u *AgentInstanceUpsertOne) UpdateAxonhubBaseURL() *AgentInstanceUpsertOne {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.UpdateDeployment()
-	})
-}
-
-// ClearDeployment clears the value of the "deployment" field.
-func (u *AgentInstanceUpsertOne) ClearDeployment() *AgentInstanceUpsertOne {
-	return u.Update(func(s *AgentInstanceUpsert) {
-		s.ClearDeployment()
+		s.UpdateAxonhubBaseURL()
 	})
 }
 
@@ -1218,24 +1211,17 @@ func (u *AgentInstanceUpsertBulk) UpdateLastHeartbeatAt() *AgentInstanceUpsertBu
 	})
 }
 
-// SetDeployment sets the "deployment" field.
-func (u *AgentInstanceUpsertBulk) SetDeployment(v objects.AgentInstanceDeployment) *AgentInstanceUpsertBulk {
+// SetAxonhubBaseURL sets the "axonhub_base_url" field.
+func (u *AgentInstanceUpsertBulk) SetAxonhubBaseURL(v string) *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.SetDeployment(v)
+		s.SetAxonhubBaseURL(v)
 	})
 }
 
-// UpdateDeployment sets the "deployment" field to the value that was provided on create.
-func (u *AgentInstanceUpsertBulk) UpdateDeployment() *AgentInstanceUpsertBulk {
+// UpdateAxonhubBaseURL sets the "axonhub_base_url" field to the value that was provided on create.
+func (u *AgentInstanceUpsertBulk) UpdateAxonhubBaseURL() *AgentInstanceUpsertBulk {
 	return u.Update(func(s *AgentInstanceUpsert) {
-		s.UpdateDeployment()
-	})
-}
-
-// ClearDeployment clears the value of the "deployment" field.
-func (u *AgentInstanceUpsertBulk) ClearDeployment() *AgentInstanceUpsertBulk {
-	return u.Update(func(s *AgentInstanceUpsert) {
-		s.ClearDeployment()
+		s.UpdateAxonhubBaseURL()
 	})
 }
 

@@ -3,7 +3,6 @@
 package ent
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/agenthost"
 	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/apikey"
-	"github.com/looplj/axonhub/internal/objects"
 )
 
 // AgentInstance is the model entity for the AgentInstance schema.
@@ -44,8 +42,8 @@ type AgentInstance struct {
 	APIKeyID int `json:"api_key_id,omitempty"`
 	// Last heartbeat timestamp
 	LastHeartbeatAt time.Time `json:"last_heartbeat_at,omitempty"`
-	// Deployment info - host specific deployment details
-	Deployment objects.AgentInstanceDeployment `json:"deployment,omitempty"`
+	// AxonHub base URL used by this agent instance
+	AxonhubBaseURL string `json:"axonhub_base_url,omitempty"`
 	// Instance status
 	Status agentinstance.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -132,11 +130,9 @@ func (*AgentInstance) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case agentinstance.FieldDeployment:
-			values[i] = new([]byte)
 		case agentinstance.FieldID, agentinstance.FieldDeletedAt, agentinstance.FieldProjectID, agentinstance.FieldAgentID, agentinstance.FieldAgentHostID, agentinstance.FieldAPIKeyID:
 			values[i] = new(sql.NullInt64)
-		case agentinstance.FieldName, agentinstance.FieldDescription, agentinstance.FieldPlatform, agentinstance.FieldStatus:
+		case agentinstance.FieldName, agentinstance.FieldDescription, agentinstance.FieldPlatform, agentinstance.FieldAxonhubBaseURL, agentinstance.FieldStatus:
 			values[i] = new(sql.NullString)
 		case agentinstance.FieldCreatedAt, agentinstance.FieldUpdatedAt, agentinstance.FieldLastHeartbeatAt:
 			values[i] = new(sql.NullTime)
@@ -228,13 +224,11 @@ func (_m *AgentInstance) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LastHeartbeatAt = value.Time
 			}
-		case agentinstance.FieldDeployment:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field deployment", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &_m.Deployment); err != nil {
-					return fmt.Errorf("unmarshal field deployment: %w", err)
-				}
+		case agentinstance.FieldAxonhubBaseURL:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field axonhub_base_url", values[i])
+			} else if value.Valid {
+				_m.AxonhubBaseURL = value.String
 			}
 		case agentinstance.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -338,8 +332,8 @@ func (_m *AgentInstance) String() string {
 	builder.WriteString("last_heartbeat_at=")
 	builder.WriteString(_m.LastHeartbeatAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("deployment=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Deployment))
+	builder.WriteString("axonhub_base_url=")
+	builder.WriteString(_m.AxonhubBaseURL)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))

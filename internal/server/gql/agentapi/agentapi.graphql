@@ -133,7 +133,6 @@ input AckAgentMessagesInput {
 
 input DeployAxonClawInput {
   name: String!
-  directory: String
 }
 
 type DeployAxonClawResult {

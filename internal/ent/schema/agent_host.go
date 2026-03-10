@@ -39,6 +39,7 @@ func (AgentHost) Fields() []ent.Field {
 		field.String("name").
 			Comment("Host name"),
 		field.Enum("type").
+			Immutable().
 			Values("vm", "docker", "local").
 			Default("vm").
 			Comment("Host type: vm, docker or local"),
@@ -67,6 +68,9 @@ func (AgentHost) Fields() []ent.Field {
 			}).
 			Sensitive().
 			Comment("SSH private key for authentication"),
+		field.String("directory").
+			Default("").
+			Comment("Working directory for vm/local host types, e.g. /opt/axonclaw"),
 	}
 }
 

@@ -39,6 +39,8 @@ type AgentHost struct {
 	Password string `json:"-"`
 	// SSH private key for authentication
 	SSHPrivateKey string `json:"-"`
+	// Working directory for vm/local host types, e.g. /opt/axonclaw
+	Directory string `json:"directory,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AgentHostQuery when eager-loading is set.
 	Edges        AgentHostEdges `json:"edges"`
@@ -74,7 +76,7 @@ func (*AgentHost) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case agenthost.FieldID, agenthost.FieldDeletedAt:
 			values[i] = new(sql.NullInt64)
-		case agenthost.FieldName, agenthost.FieldType, agenthost.FieldStatus, agenthost.FieldAddr, agenthost.FieldUser, agenthost.FieldAuthMethod, agenthost.FieldPassword, agenthost.FieldSSHPrivateKey:
+		case agenthost.FieldName, agenthost.FieldType, agenthost.FieldStatus, agenthost.FieldAddr, agenthost.FieldUser, agenthost.FieldAuthMethod, agenthost.FieldPassword, agenthost.FieldSSHPrivateKey, agenthost.FieldDirectory:
 			values[i] = new(sql.NullString)
 		case agenthost.FieldCreatedAt, agenthost.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -165,6 +167,12 @@ func (_m *AgentHost) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.SSHPrivateKey = value.String
 			}
+		case agenthost.FieldDirectory:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field directory", values[i])
+			} else if value.Valid {
+				_m.Directory = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -236,6 +244,9 @@ func (_m *AgentHost) String() string {
 	builder.WriteString("password=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("ssh_private_key=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("directory=")
+	builder.WriteString(_m.Directory)
 	builder.WriteByte(')')
 	return builder.String()
 }

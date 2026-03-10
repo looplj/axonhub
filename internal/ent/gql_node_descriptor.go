@@ -397,7 +397,7 @@ func (_m *AgentHost) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "AgentHost",
-		Fields: make([]*Field, 10),
+		Fields: make([]*Field, 11),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -479,6 +479,14 @@ func (_m *AgentHost) Node(ctx context.Context) (node *Node, err error) {
 	node.Fields[9] = &Field{
 		Type:  "string",
 		Name:  "ssh_private_key",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Directory); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "string",
+		Name:  "directory",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{
@@ -583,12 +591,12 @@ func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "last_heartbeat_at",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Deployment); err != nil {
+	if buf, err = json.Marshal(_m.AxonhubBaseURL); err != nil {
 		return nil, err
 	}
 	node.Fields[10] = &Field{
-		Type:  "objects.AgentInstanceDeployment",
-		Name:  "deployment",
+		Type:  "string",
+		Name:  "axonhub_base_url",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.Status); err != nil {

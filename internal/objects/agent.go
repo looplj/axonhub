@@ -15,18 +15,10 @@ type AgentSkillsPolicy struct {
 	Add string `json:"add"`
 }
 
-// AgentInstanceDeployment holds deployment-specific details for an agent instance.
-type AgentInstanceDeployment struct {
-	Directory           string `json:"directory,omitempty"`
-	DockerContainerName string `json:"docker_container_name,omitempty"`
-	AxonhubBaseURL      string `json:"axonhub_base_url,omitempty"`
-}
-
 // DeployAxonclawInput is the input for deploying axonclaw to a host.
 type DeployAxonclawInput struct {
 	AgentID        GUID   `json:"agentID"`
 	HostID         GUID   `json:"hostID"`
 	Name           string `json:"name"`
-	Directory      string `json:"directory,omitempty"`
 	AxonhubBaseURL string `json:"axonhubBaseUrl,omitempty"`
 }

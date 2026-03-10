@@ -41,12 +41,8 @@ const AGENT_DETAIL_QUERY = `
               platform
               description
               status
+              axonhubBaseURL
               lastHeartbeatAt
-              deployment {
-                directory
-                dockerContainerName
-                axonhubBaseUrl
-              }
               createdAt
               updatedAt
             }
@@ -71,8 +67,8 @@ type AgentInstanceNode = {
   platform: string;
   description: string;
   status: 'pending' | 'running' | 'stopped' | 'error';
+  axonhubBaseURL: string;
   lastHeartbeatAt: string | Date;
-  deployment?: { directory?: string; dockerContainerName?: string; axonhubBaseUrl?: string } | null;
   createdAt: string | Date;
   updatedAt: string | Date;
 };

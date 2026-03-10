@@ -103,10 +103,6 @@ func (r *mutationResolver) DeployAxonclaw(ctx context.Context, input biz.DeployA
 		return nil, err
 	}
 
-	if input.AxonhubBaseURL == "" {
-		return nil, fmt.Errorf("axonhub base url is required")
-	}
-
 	return r.agentDeployService.DeployAxonclaw(ctx, input)
 }
 

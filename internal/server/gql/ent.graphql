@@ -539,6 +539,10 @@ type AgentHost implements Node {
   Authentication method: password or ssh_key
   """
   authMethod: AgentHostAuthMethod!
+  """
+  Working directory for vm/local host types, e.g. /opt/axonclaw
+  """
+  directory: String!
   instances(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -754,6 +758,22 @@ input AgentHostWhereInput {
   authMethodIn: [AgentHostAuthMethod!]
   authMethodNotIn: [AgentHostAuthMethod!]
   """
+  directory field predicates
+  """
+  directory: String
+  directoryNEQ: String
+  directoryIn: [String!]
+  directoryNotIn: [String!]
+  directoryGT: String
+  directoryGTE: String
+  directoryLT: String
+  directoryLTE: String
+  directoryContains: String
+  directoryHasPrefix: String
+  directoryHasSuffix: String
+  directoryEqualFold: String
+  directoryContainsFold: String
+  """
   instances edge predicates
   """
   hasInstances: Boolean
@@ -793,9 +813,9 @@ type AgentInstance implements Node {
   """
   lastHeartbeatAt: Time!
   """
-  Deployment info - host specific deployment details
+  AxonHub base URL used by this agent instance
   """
-  deployment: AgentInstanceDeployment
+  axonhubBaseURL: String!
   """
   Instance status
   """
@@ -1059,6 +1079,22 @@ input AgentInstanceWhereInput {
   lastHeartbeatAtGTE: Time
   lastHeartbeatAtLT: Time
   lastHeartbeatAtLTE: Time
+  """
+  axonhub_base_url field predicates
+  """
+  axonhubBaseURL: String
+  axonhubBaseURLNEQ: String
+  axonhubBaseURLIn: [String!]
+  axonhubBaseURLNotIn: [String!]
+  axonhubBaseURLGT: String
+  axonhubBaseURLGTE: String
+  axonhubBaseURLLT: String
+  axonhubBaseURLLTE: String
+  axonhubBaseURLContains: String
+  axonhubBaseURLHasPrefix: String
+  axonhubBaseURLHasSuffix: String
+  axonhubBaseURLEqualFold: String
+  axonhubBaseURLContainsFold: String
   """
   status field predicates
   """
@@ -3458,6 +3494,10 @@ input CreateAgentHostInput {
   SSH private key for authentication
   """
   sshPrivateKey: String
+  """
+  Working directory for vm/local host types, e.g. /opt/axonclaw
+  """
+  directory: String
 }
 """
 CreateAgentInstanceInput is used for create AgentInstance object.
@@ -3485,9 +3525,9 @@ input CreateAgentInstanceInput {
   """
   lastHeartbeatAt: Time!
   """
-  Deployment info - host specific deployment details
+  AxonHub base URL used by this agent instance
   """
-  deployment: AgentInstanceDeploymentInput
+  axonhubBaseURL: String
   """
   Instance status
   """
@@ -9741,10 +9781,6 @@ input UpdateAgentHostInput {
   """
   name: String
   """
-  Host type: vm, docker or local
-  """
-  type: AgentHostType
-  """
   Host status
   """
   status: AgentHostStatus
@@ -9768,6 +9804,10 @@ input UpdateAgentHostInput {
   SSH private key for authentication
   """
   sshPrivateKey: String
+  """
+  Working directory for vm/local host types, e.g. /opt/axonclaw
+  """
+  directory: String
 }
 """
 UpdateAgentInstanceInput is used for update AgentInstance object.
@@ -9791,10 +9831,9 @@ input UpdateAgentInstanceInput {
   """
   lastHeartbeatAt: Time
   """
-  Deployment info - host specific deployment details
+  AxonHub base URL used by this agent instance
   """
-  deployment: AgentInstanceDeploymentInput
-  clearDeployment: Boolean
+  axonhubBaseURL: String
   """
   Instance status
   """

@@ -10,7 +10,6 @@ import (
 	"entgo.io/ent/schema/index"
 
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -70,9 +69,9 @@ func (AgentInstance) Fields() []ent.Field {
 			}).
 			Comment("Last heartbeat timestamp"),
 
-		field.JSON("deployment", objects.AgentInstanceDeployment{}).
-			Optional().
-			Comment("Deployment info - host specific deployment details"),
+		field.String("axonhub_base_url").
+			Default("").
+			Comment("AxonHub base URL used by this agent instance"),
 		field.Enum("status").
 			Values("pending", "running", "stopped", "error").
 			Default("running").

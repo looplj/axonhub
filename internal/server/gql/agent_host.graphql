@@ -1,20 +1,7 @@
-type AgentInstanceDeployment {
-    directory: String
-    dockerContainerName: String
-    axonhubBaseUrl: String
-}
-
-input AgentInstanceDeploymentInput {
-    directory: String
-    dockerContainerName: String
-    axonhubBaseUrl: String
-}
-
 input DeployAxonclawInput {
     agentID: ID!
     hostID: ID!
     name: String!
-    directory: String
     axonhubBaseUrl: String
 }
 

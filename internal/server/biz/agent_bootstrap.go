@@ -193,7 +193,6 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 			Where(
 				agent.IDEQ(inst.AgentID),
 				agent.ProjectIDEQ(inst.ProjectID),
-				agent.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
 		if err != nil {
@@ -204,7 +203,6 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 			Where(
 				prompt.IDEQ(a.PromptID),
 				prompt.ProjectIDEQ(inst.ProjectID),
-				prompt.DeletedAtEQ(0),
 			).
 			Only(bypassCtx)
 		if err != nil {

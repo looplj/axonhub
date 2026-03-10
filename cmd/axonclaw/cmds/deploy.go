@@ -8,8 +8,9 @@ import (
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/looplj/axonhub/axon/api"
-	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 	"github.com/spf13/cobra"
+
+	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
 func NewDeployCommand(opts StdioOptions) *cobra.Command {
@@ -17,15 +18,13 @@ func NewDeployCommand(opts StdioOptions) *cobra.Command {
 	if stdout == nil {
 		stdout = os.Stdout
 	}
+
 	stderr := opts.Stderr
 	if stderr == nil {
 		stderr = os.Stderr
 	}
 
-	var (
-		name      string
-		directory string
-	)
+	var name string
 
 	cmd := &cobra.Command{
 		Use:   "deploy",
@@ -38,12 +37,8 @@ The new instance will inherit the host and base URL from the current instance.
 Required:
   --name      Name for the new instance
 
-Optional:
-  --directory Working directory for the new instance (required for VM/Local hosts)
-
 Examples:
   axonclaw deploy --name worker-1
-  axonclaw deploy --name worker-1 --directory /opt/axonclaw/worker-1
 `,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -67,9 +62,6 @@ Examples:
 			input := &api.DeployAxonClawInput{
 				Name: name,
 			}
-			if directory != "" {
-				input.Directory = &directory
-			}
 
 			resp, err := api.DeployAxonClaw(context.Background(), client, input)
 			if err != nil {
@@ -81,6 +73,7 @@ Examples:
 				if resp.DeployAxonClaw.Error != nil {
 					errMsg = *resp.DeployAxonClaw.Error
 				}
+
 				return fmt.Errorf("deploy failed: %s", errMsg)
 			}
 
@@ -100,7 +93,6 @@ Examples:
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 	cmd.Flags().StringVar(&name, "name", "", "Name for the new instance (required)")
-	cmd.Flags().StringVar(&directory, "directory", "", "Working directory (required for VM/Local hosts)")
 
 	return cmd
 }

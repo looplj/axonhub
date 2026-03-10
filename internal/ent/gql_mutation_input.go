@@ -97,6 +97,7 @@ type CreateAgentHostInput struct {
 	AuthMethod    *agenthost.AuthMethod
 	Password      *string
 	SSHPrivateKey *string
+	Directory     *string
 }
 
 // Mutate applies the CreateAgentHostInput on the AgentHostMutation builder.
@@ -123,6 +124,9 @@ func (i *CreateAgentHostInput) Mutate(m *AgentHostMutation) {
 	if v := i.SSHPrivateKey; v != nil {
 		m.SetSSHPrivateKey(*v)
 	}
+	if v := i.Directory; v != nil {
+		m.SetDirectory(*v)
+	}
 }
 
 // SetInput applies the change-set in the CreateAgentHostInput on the AgentHostCreate builder.
@@ -134,22 +138,19 @@ func (c *AgentHostCreate) SetInput(i CreateAgentHostInput) *AgentHostCreate {
 // UpdateAgentHostInput represents a mutation input for updating agenthosts.
 type UpdateAgentHostInput struct {
 	Name          *string
-	Type          *agenthost.Type
 	Status        *agenthost.Status
 	Addr          *string
 	User          *string
 	AuthMethod    *agenthost.AuthMethod
 	Password      *string
 	SSHPrivateKey *string
+	Directory     *string
 }
 
 // Mutate applies the UpdateAgentHostInput on the AgentHostMutation builder.
 func (i *UpdateAgentHostInput) Mutate(m *AgentHostMutation) {
 	if v := i.Name; v != nil {
 		m.SetName(*v)
-	}
-	if v := i.Type; v != nil {
-		m.SetType(*v)
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
@@ -168,6 +169,9 @@ func (i *UpdateAgentHostInput) Mutate(m *AgentHostMutation) {
 	}
 	if v := i.SSHPrivateKey; v != nil {
 		m.SetSSHPrivateKey(*v)
+	}
+	if v := i.Directory; v != nil {
+		m.SetDirectory(*v)
 	}
 }
 
@@ -190,7 +194,7 @@ type CreateAgentInstanceInput struct {
 	Description     *string
 	Platform        *string
 	LastHeartbeatAt time.Time
-	Deployment      *objects.AgentInstanceDeployment
+	AxonhubBaseURL  *string
 	Status          *agentinstance.Status
 	AgentID         int
 	HostID          *int
@@ -210,8 +214,8 @@ func (i *CreateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
 		m.SetPlatform(*v)
 	}
 	m.SetLastHeartbeatAt(i.LastHeartbeatAt)
-	if v := i.Deployment; v != nil {
-		m.SetDeployment(*v)
+	if v := i.AxonhubBaseURL; v != nil {
+		m.SetAxonhubBaseURL(*v)
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
@@ -235,8 +239,7 @@ type UpdateAgentInstanceInput struct {
 	Description     *string
 	Platform        *string
 	LastHeartbeatAt *time.Time
-	ClearDeployment bool
-	Deployment      *objects.AgentInstanceDeployment
+	AxonhubBaseURL  *string
 	Status          *agentinstance.Status
 	ClearHost       bool
 	HostID          *int
@@ -256,11 +259,8 @@ func (i *UpdateAgentInstanceInput) Mutate(m *AgentInstanceMutation) {
 	if v := i.LastHeartbeatAt; v != nil {
 		m.SetLastHeartbeatAt(*v)
 	}
-	if i.ClearDeployment {
-		m.ClearDeployment()
-	}
-	if v := i.Deployment; v != nil {
-		m.SetDeployment(*v)
+	if v := i.AxonhubBaseURL; v != nil {
+		m.SetAxonhubBaseURL(*v)
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
