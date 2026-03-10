@@ -147,8 +147,8 @@ func (r *mutationResolver) CheckProviderQuotas(ctx context.Context) (bool, error
 	return true, nil
 }
 
-// TriggerGarbageCollection is the resolver for the triggerGarbageCollection field.
-func (r *mutationResolver) TriggerGarbageCollection(ctx context.Context) (bool, error) {
+// TriggerGcCleanup is the resolver for the triggerGcCleanup field.
+func (r *mutationResolver) TriggerGcCleanup(ctx context.Context) (bool, error) {
 	if !scopes.UserHasScope(ctx, scopes.ScopeWriteSettings) {
 		return false, fmt.Errorf("permission denied: requires write:settings scope")
 	}
