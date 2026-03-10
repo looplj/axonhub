@@ -207,7 +207,7 @@ extend type Mutation {
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
   updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
-  triggerGarbageCollection: Boolean!
+  triggerGcCleanup: Boolean!
 }
 
 type SystemVersion {

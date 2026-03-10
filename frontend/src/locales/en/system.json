@@ -29,7 +29,7 @@
   "system.storage.policy.runCleanupSuccess": "Background cleanup task started",
   "system.storage.policy.runCleanupError": "Failed to start background cleanup task",
   "system.storage.policy.runCleanupConfirmTitle": "Confirm Manual Cleanup",
-  "system.storage.policy.runCleanupConfirmDescription": "Are you sure you want to run the cleanup process now? This will permanently delete data according to your active storage policy settings and perform a database vacuum.",
+  "system.storage.policy.runCleanupConfirmDescription": "Are you sure you want to run cleanup now? This will permanently delete data according to policy (or all data if days is 0) and optimize the database.",
   "system.storage.policy.runCleanupCancel": "Cancel",
   "system.storage.policy.runCleanupConfirm": "Confirm",
   "system.videoStorage.title": "Video Storage",
