@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/api"
 	"github.com/looplj/axonhub/axon/bus"
+	"github.com/looplj/axonhub/axon/mcp"
 	"github.com/looplj/axonhub/axon/permission"
 	"github.com/looplj/axonhub/axon/task"
 
@@ -36,6 +37,7 @@ type Runner struct {
 	TaskScheduler *task.Scheduler
 	processMu     sync.Mutex
 	processing    atomic.Bool
+	mcpManager    *mcp.Manager
 }
 
 type NewOptions struct {
@@ -69,7 +71,7 @@ func New(opts NewOptions) *Runner {
 		agent.WithMiddlewares(permMw),
 	)
 
-	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client)
+	mcpMgr := registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client)
 
 	return &Runner{
 		Client:        opts.Client,
@@ -80,6 +82,7 @@ func New(opts NewOptions) *Runner {
 		ThreadID:      opts.Boot.ThreadID,
 		Boot:          opts.Boot,
 		TaskScheduler: opts.TaskScheduler,
+		mcpManager:    mcpMgr,
 	}
 }
 
@@ -304,4 +307,12 @@ func (r *Runner) ProcessScheduledMessage(ctx context.Context, text string) error
 
 func (r *Runner) SetTaskScheduler(s *task.Scheduler) {
 	r.TaskScheduler = s
+}
+
+func (r *Runner) Close() error {
+	if r.mcpManager == nil {
+		return nil
+	}
+
+	return r.mcpManager.Close()
 }

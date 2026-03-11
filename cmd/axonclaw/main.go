@@ -130,6 +130,10 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
+	rootCmd.AddCommand(cmds.NewMCPCommand(cmds.StdioOptions{
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}))
 
 	return rootCmd
 }
@@ -262,6 +266,11 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		PermEvaluator:  permEvaluator,
 		Bus:            eventBus,
 	})
+	defer func() {
+		if err := r.Close(); err != nil {
+			logger.Warn("close runner failed", "error", err)
+		}
+	}()
 
 	taskStore, err := task.NewStore(filepath.Join(axonclawDir, "tasks"))
 	if err != nil {

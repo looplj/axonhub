@@ -130,15 +130,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.hasSelection() {
 				return m, tea.SetClipboard(m.getSelectedText())
 			}
-			return m, nil
-		case "t":
-			if len(m.thinkingBlocks) > 0 && m.thinkingBlocks[len(m.thinkingBlocks)-1] != nil {
-				block := m.thinkingBlocks[len(m.thinkingBlocks)-1]
-				block.expanded = !block.expanded
-				m.updateThinkingBlock(block)
-				m.syncViewport()
-			}
-			return m, nil
 		}
 
 		var cmd tea.Cmd

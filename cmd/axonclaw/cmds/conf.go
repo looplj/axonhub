@@ -29,10 +29,11 @@ func NewConfCommand(opts StdioOptions) *cobra.Command {
 		Long: `Manage axonclaw configuration.
 
 Keys:
-  base_url, api_key, instance_id, name, poll_interval, heartbeat_interval
+  base_url, api_key, instance_id, name, poll_interval, heartbeat_interval, auto_sync_config, auto_sync_config_interval, debug
 
 Notes:
   - api_key is always masked in output.
+  - MCP servers are managed via "axonclaw mcp ..." and saved in .axonclaw/mcp_servers.json.
   - By default, axonclaw loads config.yml from .axonclaw directory.`,
 	}
 	root.SetOut(stdout)

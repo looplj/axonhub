@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/axon/bus"
 	axonconf "github.com/looplj/axonhub/axon/conf"
 	axoncontext "github.com/looplj/axonhub/axon/context"
+	"github.com/looplj/axonhub/axon/mcp"
 	"github.com/looplj/axonhub/axon/permission"
 	"github.com/looplj/axonhub/axon/permission/approval"
 	"github.com/looplj/axonhub/axon/permission/grant"
@@ -139,6 +140,11 @@ func main() {
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
+	rootCmd.AddCommand(cmds.NewMCPCommand(cmds.MCPOptions{
+		Dir:    configDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -224,6 +230,23 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 	a.RegisterTool(tools.NewAgentTool(tools.NewWebSearchTool(search.NewDuckDuckGoProvider())))
 	a.RegisterTool(tools.NewAgentTool(tools.NewWebFetchTool()))
 	a.RegisterTool(tools.NewAgentTool(clitools.NewAxonHelpTool()))
+
+	mcpMgr := mcp.NewManager(mcp.ManagerOptions{
+		Logger:    logger,
+		ConfigDir: configDir,
+	})
+	mcpMgr.RegisterTools(a, workspaceDir, map[string]struct{}{
+		"Read":      {},
+		"Write":     {},
+		"Edit":      {},
+		"Bash":      {},
+		"Grep":      {},
+		"Glob":      {},
+		"Skill":     {},
+		"WebSearch": {},
+		"WebFetch":  {},
+		"AxonHelp":  {},
+	})
 
 	store := axonconf.NewStore(cfg)
 	loader := axonconf.NewViperLoader[conf.Config](axonconf.ViperLoaderOptions{
