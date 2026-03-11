@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -492,6 +493,27 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformStreamChunk_StreamErrorEvent(t *testing.T) {
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
+
+	_, err = transformer.TransformStreamChunk(context.Background(), &httpclient.StreamEvent{
+		Type: "error",
+		Data: []byte(`{"error":{"code":"1311","message":"当前订阅套餐暂未开放GPT-6权限"},"request_id":"2026031122524215033670187648af"}`),
+	})
+	assert.Error(t, err)
+
+	var respErr *llm.ResponseError
+	assert.True(t, errors.As(err, &respErr))
+	assert.Equal(t, "当前订阅套餐暂未开放GPT-6权限", respErr.Detail.Message)
+	assert.Equal(t, "1311", respErr.Detail.Code)
+	assert.Equal(t, "2026031122524215033670187648af", respErr.Detail.RequestID)
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {

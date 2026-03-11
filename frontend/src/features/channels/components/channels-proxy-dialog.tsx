@@ -17,6 +17,7 @@ import LongText from '@/components/long-text';
 import { useUpdateChannel, useTestChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
+import { ErrorDisplay } from '../utils/error-formatter';
 
 interface Props {
   open: boolean;
@@ -272,9 +273,9 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
                   </p>
                 )}
                 {testResult.message && (
-                  <LongText className='text-muted-foreground mt-2 text-sm'>
-                    {testResult.message}
-                  </LongText>
+                  <div className='mt-2'>
+                    <ErrorDisplay error={testResult.message} />
+                  </div>
                 )}
               </CardContent>
             </Card>

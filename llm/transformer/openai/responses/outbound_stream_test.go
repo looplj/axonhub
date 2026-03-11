@@ -114,3 +114,18 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 		})
 	}
 }
+
+func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	responsesAPIEvents, err := xtest.LoadStreamChunks(t, "error.response.stream.jsonl")
+	require.NoError(t, err)
+
+	transformedStream, err := trans.TransformStream(t.Context(), streams.SliceStream(responsesAPIEvents))
+	require.NoError(t, err)
+
+	_, err = streams.All(transformedStream)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Something went wrong")
+}
