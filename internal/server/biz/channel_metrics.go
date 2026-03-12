@@ -435,7 +435,11 @@ func (svc *ChannelService) IncrementChannelSelection(channelID int) {
 }
 
 func deriveErrorMessage(errorCode int) string {
-	return http.StatusText(errorCode)
+	if text := http.StatusText(errorCode); text != "" {
+		return text
+	}
+
+	return fmt.Sprintf("Error %d", errorCode)
 }
 
 // PerformanceRecord contains performance metrics collected during request processing.

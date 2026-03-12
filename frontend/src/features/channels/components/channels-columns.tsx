@@ -302,7 +302,7 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
           <div className='space-y-1'>
             <p className='text-destructive text-sm'>
               {t(`channels.messages.${channel.errorMessage}`, {
-                fallback: channel.errorMessage,
+                defaultValue: channel.errorMessage,
               })}
             </p>
           </div>
