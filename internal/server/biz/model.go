@@ -418,53 +418,32 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		}
 	}
 
-	settings := svc.systemService.ModelSettingsOrDefault(ctx)
-	if !settings.QueryAllChannelModels {
-		query := svc.entFromContext(ctx).
-			Model.
-			Query().
-			Where(model.StatusEQ(model.StatusEnabled))
-		if profile != nil && len(profile.ModelIDs) > 0 {
-			query = query.Where(model.ModelIDIn(profile.ModelIDs...))
-		}
-
-		enabledModels, err := query.All(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list configured models: %w", err)
-		}
-
-		var models []ModelFacade
-
-		for _, model := range enabledModels {
-			if model.Settings == nil {
-				continue
-			}
-
-			associations := MatchAssociations(model.Settings.Associations, channels)
-			if len(associations) > 0 {
-				models = append(models, ModelFacade{
-					ID:          model.ModelID,
-					DisplayName: model.ModelID,
-					CreatedAt:   model.CreatedAt,
-					Created:     model.CreatedAt.Unix(),
-					OwnedBy:     "configured",
-				})
-			}
-		}
-
-		return models, nil
+	// Query configured Model entities (used in both modes)
+	configuredModels, err := svc.queryConfiguredModelFacades(ctx, profile, channels)
+	if err != nil {
+		return nil, err
 	}
 
+	settings := svc.systemService.ModelSettingsOrDefault(ctx)
+	if !settings.QueryAllChannelModels {
+		return configuredModels, nil
+	}
+
+	// QueryAllChannelModels=true: merge configured models (higher priority) with channel models
 	var (
-		models   []ModelFacade
-		modelSet = make(map[string]bool)
+		models   = configuredModels
+		modelSet = make(map[string]bool, len(configuredModels))
 	)
+
+	for _, m := range configuredModels {
+		modelSet[m.ID] = true
+	}
 
 	for _, ch := range channels {
 		entries := ch.GetModelEntries()
 
 		for requestModel := range entries {
-			if _, ok := modelSet[requestModel]; ok {
+			if modelSet[requestModel] {
 				continue
 			}
 
@@ -484,6 +463,44 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		models = lo.Filter(models, func(m ModelFacade, _ int) bool {
 			return lo.Contains(profile.ModelIDs, m.ID)
 		})
+	}
+
+	return models, nil
+}
+
+// queryConfiguredModelFacades queries enabled Model entities and returns them as ModelFacades
+// filtered by profile modelIDs and channel associations.
+func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, profile *objects.APIKeyProfile, channels []*Channel) ([]ModelFacade, error) {
+	query := svc.entFromContext(ctx).
+		Model.
+		Query().
+		Where(model.StatusEQ(model.StatusEnabled))
+	if profile != nil && len(profile.ModelIDs) > 0 {
+		query = query.Where(model.ModelIDIn(profile.ModelIDs...))
+	}
+
+	enabledModels, err := query.All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list configured models: %w", err)
+	}
+
+	var models []ModelFacade
+
+	for _, m := range enabledModels {
+		if m.Settings == nil {
+			continue
+		}
+
+		associations := MatchAssociations(m.Settings.Associations, channels)
+		if len(associations) > 0 {
+			models = append(models, ModelFacade{
+				ID:          m.ModelID,
+				DisplayName: m.ModelID,
+				CreatedAt:   m.CreatedAt,
+				Created:     m.CreatedAt.Unix(),
+				OwnedBy:     "configured",
+			})
+		}
 	}
 
 	return models, nil

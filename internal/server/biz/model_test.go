@@ -1122,13 +1122,14 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		result, err := modelSvc.ListEnabledModels(ctx)
 		require.NoError(t, err)
 
-		// Should only return models from the specified channel
+		// Should only return models from the specified channel or configured models
 		require.NotEmpty(t, result, "Should have models from the specified channel")
 
-		// Verify all models are from the first channel
-		for _, model := range result {
-			require.Equal(t, channels[0].Channel.Type.String(), model.OwnedBy,
-				"Model %s should be from the first channel", model.ID)
+		// Verify all models are from the first channel or configured models
+		for _, m := range result {
+			require.True(t,
+				m.OwnedBy == channels[0].Channel.Type.String() || m.OwnedBy == "configured",
+				"Model %s should be from the first channel or configured, got %s", m.ID, m.OwnedBy)
 		}
 	})
 
@@ -1290,6 +1291,62 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		require.True(t, resultMap["gpt-4"], "gpt-4 should be in result")
 		require.True(t, resultMap["claude-3-opus"], "claude-3-opus should be in result")
 		require.False(t, resultMap["gpt-3.5-turbo"], "gpt-3.5-turbo should not be in result")
+	})
+
+	t.Run("QueryAllChannelModels=true includes configured models and channel models", func(t *testing.T) {
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: true,
+		}
+		err = systemSvc.SetModelSettings(ctx, modelSettings)
+		require.NoError(t, err)
+
+		result, err := modelSvc.ListEnabledModels(ctx)
+		require.NoError(t, err)
+
+		resultMap := make(map[string]ModelFacade)
+		for _, m := range result {
+			resultMap[m.ID] = m
+		}
+
+		// Configured models should be present with OwnedBy="configured"
+		require.Contains(t, resultMap, "gpt-4")
+		require.Equal(t, "configured", resultMap["gpt-4"].OwnedBy, "configured model should have OwnedBy=configured")
+		require.Contains(t, resultMap, "claude-3-opus")
+		require.Equal(t, "configured", resultMap["claude-3-opus"].OwnedBy)
+
+		// Channel models not overridden by configured models should also be present
+		require.Contains(t, resultMap, "gpt-3.5-turbo")
+		require.Contains(t, resultMap, "claude-3-opus-20240229")
+		require.Contains(t, resultMap, "deepseek-chat")
+	})
+
+	t.Run("QueryAllChannelModels=true configured models take priority over channel models", func(t *testing.T) {
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: true,
+		}
+		err = systemSvc.SetModelSettings(ctx, modelSettings)
+		require.NoError(t, err)
+
+		result, err := modelSvc.ListEnabledModels(ctx)
+		require.NoError(t, err)
+
+		// gpt-4 exists as both a channel model and a configured model entity.
+		// The configured model should win (OwnedBy="configured").
+		for _, m := range result {
+			if m.ID == "gpt-4" {
+				require.Equal(t, "configured", m.OwnedBy,
+					"configured model should take priority over channel model")
+
+				break
+			}
+		}
+
+		// No duplicates
+		seen := make(map[string]bool)
+		for _, m := range result {
+			require.False(t, seen[m.ID], "model %s should not appear twice", m.ID)
+			seen[m.ID] = true
+		}
 	})
 }
 
