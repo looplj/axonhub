@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/axon/api"
 	"github.com/looplj/axonhub/axon/mcp"
 	"github.com/looplj/axonhub/axon/pkg/search"
+	"github.com/looplj/axonhub/axon/subagent"
 	"github.com/looplj/axonhub/axon/tools"
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
@@ -20,11 +21,13 @@ import (
 
 func registerTools(
 	a *agent.Agent,
-	threadWorkspace string,
+	workspace string,
 	boot *bootstrap.Result,
 	logger *slog.Logger,
 	client graphql.Client,
-) *mcp.Manager {
+	provider agent.Provider,
+	mcpMgr *mcp.Manager,
+) {
 	enabledBuiltin := map[string]bool{}
 	for _, t := range boot.BuiltinTools {
 		if t.Name == "" {
@@ -36,31 +39,31 @@ func registerTools(
 	}
 
 	if len(enabledBuiltin) == 0 {
-		for _, name := range []string{"Read", "Write", "Edit", "Bash", "Grep", "Glob", "Skill"} {
+		for _, name := range []string{"Read", "Write", "Edit", "Bash", "Grep", "Glob", "Skill", "SpawnAgent"} {
 			enabledBuiltin[name] = true
 		}
 	}
 
 	if enabledBuiltin["Read"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewReadTool(threadWorkspace, false)))
+		a.RegisterTool(tools.NewAgentTool(tools.NewReadTool(workspace, false)))
 	}
 	if enabledBuiltin["Write"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewWriteTool(threadWorkspace, false)))
+		a.RegisterTool(tools.NewAgentTool(tools.NewWriteTool(workspace, false)))
 	}
 	if enabledBuiltin["Edit"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewEditTool(threadWorkspace, false)))
+		a.RegisterTool(tools.NewAgentTool(tools.NewEditTool(workspace, false)))
 	}
 	if enabledBuiltin["Bash"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewBashTool(threadWorkspace, false)))
+		a.RegisterTool(tools.NewAgentTool(tools.NewBashTool(workspace, false)))
 	}
 	if enabledBuiltin["Grep"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewGrepTool(threadWorkspace, false)))
+		a.RegisterTool(tools.NewAgentTool(tools.NewGrepTool(workspace, false)))
 	}
 	if enabledBuiltin["Glob"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewGlobTool(threadWorkspace, false)))
+		a.RegisterTool(tools.NewAgentTool(tools.NewGlobTool(workspace, false)))
 	}
 	if enabledBuiltin["Skill"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewSkillTool(filepath.Join(threadWorkspace, "skills"), filepath.Join(threadWorkspace, "skills"))))
+		a.RegisterTool(tools.NewAgentTool(tools.NewSkillTool(filepath.Join(workspace, "skills"), filepath.Join(workspace, "skills"))))
 	}
 	if enabledBuiltin["WebFetch"] {
 		a.RegisterTool(tools.NewAgentTool(tools.NewWebFetchTool()))
@@ -74,7 +77,7 @@ func registerTools(
 	a.RegisterTool(tools.NewAgentTool(NewResetTool(ResetToolOptions{
 		Client:    client,
 		Agent:     a,
-		Workspace: threadWorkspace,
+		Workspace: workspace,
 		Boot:      boot,
 		Logger:    logger,
 	})))
@@ -83,6 +86,7 @@ func registerTools(
 	for name := range enabledBuiltin {
 		known[name] = struct{}{}
 	}
+
 	known["SendMessage"] = struct{}{}
 	known["AxonClawHelp"] = struct{}{}
 	known["Reset"] = struct{}{}
@@ -100,16 +104,47 @@ func registerTools(
 			continue
 		}
 		a.RegisterTool(&unimplementedTool{def: def})
+
 		known[t.Name] = struct{}{}
 	}
 
-	mgr := mcp.NewManager(mcp.ManagerOptions{
-		Logger:    logger,
-		ConfigDir: boot.ConfigDir,
-	})
-	mgr.RegisterTools(a, threadWorkspace, known)
+	// Register SpawnAgent tool last so it can enumerate all previously
+	// registered tools via the agent's registry.
+	if enabledBuiltin["SpawnAgent"] {
+		agentDir := filepath.Join(workspace, ".agent", "subagents")
 
-	return mgr
+		subagentMgr := subagent.NewManagerFromPath(agentDir)
+		if err := subagentMgr.Load(); err != nil {
+			logger.Warn("failed to load subagent definitions", "error", err, "path", agentDir)
+		}
+
+		a.RegisterTool(tools.NewAgentTool(subagent.NewTool(subagent.ToolOptions{
+			Manager:     subagentMgr,
+			Provider:    provider,
+			ToolSource:  &agentToolSource{agent: a},
+			Model:       boot.Model,
+			Middlewares: a.Middlewares(),
+			Logger:      logger,
+		})))
+	}
+
+	known[subagent.SpawnAgentToolName] = struct{}{}
+
+	mcpMgr.RegisterTools(a, workspace, known)
+}
+
+// agentToolSource adapts an *agent.Agent to the subagent.ToolSource interface,
+// allowing the SpawnAgent tool to enumerate all tools registered on the parent.
+type agentToolSource struct {
+	agent *agent.Agent
+}
+
+func (s *agentToolSource) AvailableTools() []agent.Tool {
+	return s.agent.RegisteredTools()
+}
+
+func (s *agentToolSource) Middlewares() []agent.Middleware {
+	return s.agent.Middlewares()
 }
 
 type unimplementedTool struct {

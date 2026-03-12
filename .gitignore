@@ -122,6 +122,7 @@ test-results
 .qoder
 .codebuddy
 .factory
+.agent/subagents
 dumps
 .builds
 .pnpm-store

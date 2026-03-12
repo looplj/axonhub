@@ -1062,7 +1062,7 @@ func (s *AgentBootstrapService) sendPeerMessageToInstance(
 			SetAgentInstanceID(targetInst.ID).
 			SetDirection(agentmessage.DirectionToAgent).
 			SetSenderType(agentmessage.SenderTypeAgent).
-			SetSenderID(senderInst.AgentID).
+			SetSenderID(senderInst.ID).
 			SetType(agentmessage.TypeChat).
 			SetContent(raw).
 			SetStatus(agentmessage.StatusPending).

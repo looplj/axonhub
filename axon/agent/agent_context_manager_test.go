@@ -48,7 +48,7 @@ func TestAgentWithContextManager_CompactsHistory(t *testing.T) {
 
 	for i := range 5 {
 		msg := fmt.Sprintf("user-%d", i+1)
-		err := a.Process(ctx, Content{Text: &msg})
+		_, err := a.Process(ctx, Content{Text: &msg})
 		require.NoError(t, err)
 	}
 

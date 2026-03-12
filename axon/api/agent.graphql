@@ -71,3 +71,27 @@ mutation DeployAxonClaw($input: DeployAxonClawInput!) {
     }
   }
 }
+
+query AvailableModels {
+  availableModels {
+    id
+    name
+    ownedBy
+    type
+    icon
+    description
+    contextLength
+    maxOutputTokens
+    capabilities {
+      vision
+      toolCall
+      reasoning
+    }
+    pricing {
+      input
+      output
+      cacheRead
+      cacheWrite
+    }
+  }
+}

@@ -141,11 +141,38 @@ type DeployAxonClawResult {
   instance: AgentInstance
 }
 
+type ModelCapabilities {
+  vision: Boolean!
+  toolCall: Boolean!
+  reasoning: Boolean!
+}
+
+type ModelPricing {
+  input: Float!
+  output: Float!
+  cacheRead: Float!
+  cacheWrite: Float!
+}
+
+type AvailableModel {
+  id: String!
+  name: String!
+  ownedBy: String!
+  type: String!
+  icon: String!
+  description: String
+  contextLength: Int!
+  maxOutputTokens: Int!
+  capabilities: ModelCapabilities
+  pricing: ModelPricing
+}
+
 type Query {
   agentBootstrap: AgentBootstrap!
   peerAgents: [PeerAgent!]!
   pullAgentMessages(input: PullAgentMessagesInput!): [AgentMessage!]!
   pullAgentMessagesToUser(afterSequence: Int, limit: Int = 50): [AgentMessage!]!
+  availableModels: [AvailableModel!]!
 }
 
 type Mutation {

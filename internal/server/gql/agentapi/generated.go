@@ -108,10 +108,36 @@ type ComplexityRoot struct {
 		Parameters  func(childComplexity int) int
 	}
 
+	AvailableModel struct {
+		Capabilities    func(childComplexity int) int
+		ContextLength   func(childComplexity int) int
+		Description     func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Icon            func(childComplexity int) int
+		MaxOutputTokens func(childComplexity int) int
+		Name            func(childComplexity int) int
+		OwnedBy         func(childComplexity int) int
+		Pricing         func(childComplexity int) int
+		Type            func(childComplexity int) int
+	}
+
 	DeployAxonClawResult struct {
 		Error    func(childComplexity int) int
 		Instance func(childComplexity int) int
 		Success  func(childComplexity int) int
+	}
+
+	ModelCapabilities struct {
+		Reasoning func(childComplexity int) int
+		ToolCall  func(childComplexity int) int
+		Vision    func(childComplexity int) int
+	}
+
+	ModelPricing struct {
+		CacheRead  func(childComplexity int) int
+		CacheWrite func(childComplexity int) int
+		Input      func(childComplexity int) int
+		Output     func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -133,6 +159,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		AgentBootstrap          func(childComplexity int) int
+		AvailableModels         func(childComplexity int) int
 		PeerAgents              func(childComplexity int) int
 		PullAgentMessages       func(childComplexity int, input PullAgentMessagesInput) int
 		PullAgentMessagesToUser func(childComplexity int, afterSequence *int, limit *int) int
@@ -152,6 +179,7 @@ type QueryResolver interface {
 	PeerAgents(ctx context.Context) ([]*PeerAgent, error)
 	PullAgentMessages(ctx context.Context, input PullAgentMessagesInput) ([]*AgentMessage, error)
 	PullAgentMessagesToUser(ctx context.Context, afterSequence *int, limit *int) ([]*AgentMessage, error)
+	AvailableModels(ctx context.Context) ([]*AvailableModel, error)
 }
 
 type executableSchema struct {
@@ -414,6 +442,67 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AgentToolDefinition.Parameters(childComplexity), true
 
+	case "AvailableModel.capabilities":
+		if e.complexity.AvailableModel.Capabilities == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.Capabilities(childComplexity), true
+	case "AvailableModel.contextLength":
+		if e.complexity.AvailableModel.ContextLength == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.ContextLength(childComplexity), true
+	case "AvailableModel.description":
+		if e.complexity.AvailableModel.Description == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.Description(childComplexity), true
+	case "AvailableModel.id":
+		if e.complexity.AvailableModel.ID == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.ID(childComplexity), true
+	case "AvailableModel.icon":
+		if e.complexity.AvailableModel.Icon == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.Icon(childComplexity), true
+	case "AvailableModel.maxOutputTokens":
+		if e.complexity.AvailableModel.MaxOutputTokens == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.MaxOutputTokens(childComplexity), true
+	case "AvailableModel.name":
+		if e.complexity.AvailableModel.Name == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.Name(childComplexity), true
+	case "AvailableModel.ownedBy":
+		if e.complexity.AvailableModel.OwnedBy == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.OwnedBy(childComplexity), true
+	case "AvailableModel.pricing":
+		if e.complexity.AvailableModel.Pricing == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.Pricing(childComplexity), true
+	case "AvailableModel.type":
+		if e.complexity.AvailableModel.Type == nil {
+			break
+		}
+
+		return e.complexity.AvailableModel.Type(childComplexity), true
+
 	case "DeployAxonClawResult.error":
 		if e.complexity.DeployAxonClawResult.Error == nil {
 			break
@@ -432,6 +521,50 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DeployAxonClawResult.Success(childComplexity), true
+
+	case "ModelCapabilities.reasoning":
+		if e.complexity.ModelCapabilities.Reasoning == nil {
+			break
+		}
+
+		return e.complexity.ModelCapabilities.Reasoning(childComplexity), true
+	case "ModelCapabilities.toolCall":
+		if e.complexity.ModelCapabilities.ToolCall == nil {
+			break
+		}
+
+		return e.complexity.ModelCapabilities.ToolCall(childComplexity), true
+	case "ModelCapabilities.vision":
+		if e.complexity.ModelCapabilities.Vision == nil {
+			break
+		}
+
+		return e.complexity.ModelCapabilities.Vision(childComplexity), true
+
+	case "ModelPricing.cacheRead":
+		if e.complexity.ModelPricing.CacheRead == nil {
+			break
+		}
+
+		return e.complexity.ModelPricing.CacheRead(childComplexity), true
+	case "ModelPricing.cacheWrite":
+		if e.complexity.ModelPricing.CacheWrite == nil {
+			break
+		}
+
+		return e.complexity.ModelPricing.CacheWrite(childComplexity), true
+	case "ModelPricing.input":
+		if e.complexity.ModelPricing.Input == nil {
+			break
+		}
+
+		return e.complexity.ModelPricing.Input(childComplexity), true
+	case "ModelPricing.output":
+		if e.complexity.ModelPricing.Output == nil {
+			break
+		}
+
+		return e.complexity.ModelPricing.Output(childComplexity), true
 
 	case "Mutation.ackAgentMessages":
 		if e.complexity.Mutation.AckAgentMessages == nil {
@@ -537,6 +670,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.AgentBootstrap(childComplexity), true
+	case "Query.availableModels":
+		if e.complexity.Query.AvailableModels == nil {
+			break
+		}
+
+		return e.complexity.Query.AvailableModels(childComplexity), true
 	case "Query.peerAgents":
 		if e.complexity.Query.PeerAgents == nil {
 			break
@@ -2018,6 +2157,314 @@ func (ec *executionContext) fieldContext_AgentToolDefinition_config(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _AvailableModel_id(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_name(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_ownedBy(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_ownedBy,
+		func(ctx context.Context) (any, error) {
+			return obj.OwnedBy, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_ownedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_type(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_type,
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_icon(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_icon,
+		func(ctx context.Context) (any, error) {
+			return obj.Icon, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_icon(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_description(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_contextLength(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_contextLength,
+		func(ctx context.Context) (any, error) {
+			return obj.ContextLength, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_contextLength(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_maxOutputTokens(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_maxOutputTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.MaxOutputTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_maxOutputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_capabilities(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_capabilities,
+		func(ctx context.Context) (any, error) {
+			return obj.Capabilities, nil
+		},
+		nil,
+		ec.marshalOModelCapabilities2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐModelCapabilities,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_capabilities(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "vision":
+				return ec.fieldContext_ModelCapabilities_vision(ctx, field)
+			case "toolCall":
+				return ec.fieldContext_ModelCapabilities_toolCall(ctx, field)
+			case "reasoning":
+				return ec.fieldContext_ModelCapabilities_reasoning(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelCapabilities", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableModel_pricing(ctx context.Context, field graphql.CollectedField, obj *AvailableModel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableModel_pricing,
+		func(ctx context.Context) (any, error) {
+			return obj.Pricing, nil
+		},
+		nil,
+		ec.marshalOModelPricing2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐModelPricing,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableModel_pricing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "input":
+				return ec.fieldContext_ModelPricing_input(ctx, field)
+			case "output":
+				return ec.fieldContext_ModelPricing_output(ctx, field)
+			case "cacheRead":
+				return ec.fieldContext_ModelPricing_cacheRead(ctx, field)
+			case "cacheWrite":
+				return ec.fieldContext_ModelPricing_cacheWrite(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelPricing", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _DeployAxonClawResult_success(ctx context.Context, field graphql.CollectedField, obj *DeployAxonClawResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2108,6 +2555,209 @@ func (ec *executionContext) fieldContext_DeployAxonClawResult_instance(_ context
 				return ec.fieldContext_AgentInstance_lastHeartbeatAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AgentInstance", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCapabilities_vision(ctx context.Context, field graphql.CollectedField, obj *ModelCapabilities) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCapabilities_vision,
+		func(ctx context.Context) (any, error) {
+			return obj.Vision, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCapabilities_vision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCapabilities",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCapabilities_toolCall(ctx context.Context, field graphql.CollectedField, obj *ModelCapabilities) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCapabilities_toolCall,
+		func(ctx context.Context) (any, error) {
+			return obj.ToolCall, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCapabilities_toolCall(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCapabilities",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCapabilities_reasoning(ctx context.Context, field graphql.CollectedField, obj *ModelCapabilities) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCapabilities_reasoning,
+		func(ctx context.Context) (any, error) {
+			return obj.Reasoning, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCapabilities_reasoning(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCapabilities",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPricing_input(ctx context.Context, field graphql.CollectedField, obj *ModelPricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPricing_input,
+		func(ctx context.Context) (any, error) {
+			return obj.Input, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPricing_input(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPricing_output(ctx context.Context, field graphql.CollectedField, obj *ModelPricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPricing_output,
+		func(ctx context.Context) (any, error) {
+			return obj.Output, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPricing_output(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPricing_cacheRead(ctx context.Context, field graphql.CollectedField, obj *ModelPricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPricing_cacheRead,
+		func(ctx context.Context) (any, error) {
+			return obj.CacheRead, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPricing_cacheRead(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPricing_cacheWrite(ctx context.Context, field graphql.CollectedField, obj *ModelPricing) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPricing_cacheWrite,
+		func(ctx context.Context) (any, error) {
+			return obj.CacheWrite, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPricing_cacheWrite(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPricing",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2802,6 +3452,57 @@ func (ec *executionContext) fieldContext_Query_pullAgentMessagesToUser(ctx conte
 	if fc.Args, err = ec.field_Query_pullAgentMessagesToUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_availableModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_availableModels,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().AvailableModels(ctx)
+		},
+		nil,
+		ec.marshalNAvailableModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAvailableModelᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_availableModels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AvailableModel_id(ctx, field)
+			case "name":
+				return ec.fieldContext_AvailableModel_name(ctx, field)
+			case "ownedBy":
+				return ec.fieldContext_AvailableModel_ownedBy(ctx, field)
+			case "type":
+				return ec.fieldContext_AvailableModel_type(ctx, field)
+			case "icon":
+				return ec.fieldContext_AvailableModel_icon(ctx, field)
+			case "description":
+				return ec.fieldContext_AvailableModel_description(ctx, field)
+			case "contextLength":
+				return ec.fieldContext_AvailableModel_contextLength(ctx, field)
+			case "maxOutputTokens":
+				return ec.fieldContext_AvailableModel_maxOutputTokens(ctx, field)
+			case "capabilities":
+				return ec.fieldContext_AvailableModel_capabilities(ctx, field)
+			case "pricing":
+				return ec.fieldContext_AvailableModel_pricing(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AvailableModel", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -5065,6 +5766,81 @@ func (ec *executionContext) _AgentToolDefinition(ctx context.Context, sel ast.Se
 	return out
 }
 
+var availableModelImplementors = []string{"AvailableModel"}
+
+func (ec *executionContext) _AvailableModel(ctx context.Context, sel ast.SelectionSet, obj *AvailableModel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, availableModelImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AvailableModel")
+		case "id":
+			out.Values[i] = ec._AvailableModel_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._AvailableModel_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ownedBy":
+			out.Values[i] = ec._AvailableModel_ownedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._AvailableModel_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "icon":
+			out.Values[i] = ec._AvailableModel_icon(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._AvailableModel_description(ctx, field, obj)
+		case "contextLength":
+			out.Values[i] = ec._AvailableModel_contextLength(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxOutputTokens":
+			out.Values[i] = ec._AvailableModel_maxOutputTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "capabilities":
+			out.Values[i] = ec._AvailableModel_capabilities(ctx, field, obj)
+		case "pricing":
+			out.Values[i] = ec._AvailableModel_pricing(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var deployAxonClawResultImplementors = []string{"DeployAxonClawResult"}
 
 func (ec *executionContext) _DeployAxonClawResult(ctx context.Context, sel ast.SelectionSet, obj *DeployAxonClawResult) graphql.Marshaler {
@@ -5085,6 +5861,109 @@ func (ec *executionContext) _DeployAxonClawResult(ctx context.Context, sel ast.S
 			out.Values[i] = ec._DeployAxonClawResult_error(ctx, field, obj)
 		case "instance":
 			out.Values[i] = ec._DeployAxonClawResult_instance(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelCapabilitiesImplementors = []string{"ModelCapabilities"}
+
+func (ec *executionContext) _ModelCapabilities(ctx context.Context, sel ast.SelectionSet, obj *ModelCapabilities) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelCapabilitiesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelCapabilities")
+		case "vision":
+			out.Values[i] = ec._ModelCapabilities_vision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "toolCall":
+			out.Values[i] = ec._ModelCapabilities_toolCall(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasoning":
+			out.Values[i] = ec._ModelCapabilities_reasoning(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelPricingImplementors = []string{"ModelPricing"}
+
+func (ec *executionContext) _ModelPricing(ctx context.Context, sel ast.SelectionSet, obj *ModelPricing) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelPricingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelPricing")
+		case "input":
+			out.Values[i] = ec._ModelPricing_input(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "output":
+			out.Values[i] = ec._ModelPricing_output(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cacheRead":
+			out.Values[i] = ec._ModelPricing_cacheRead(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cacheWrite":
+			out.Values[i] = ec._ModelPricing_cacheWrite(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5346,6 +6225,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_pullAgentMessagesToUser(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "availableModels":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_availableModels(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -6037,6 +6938,60 @@ func (ec *executionContext) marshalNAgentToolDefinition2ᚖgithubᚗcomᚋlooplj
 	return ec._AgentToolDefinition(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNAvailableModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAvailableModelᚄ(ctx context.Context, sel ast.SelectionSet, v []*AvailableModel) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAvailableModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAvailableModel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAvailableModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAvailableModel(ctx context.Context, sel ast.SelectionSet, v *AvailableModel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AvailableModel(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -6070,6 +7025,22 @@ func (ec *executionContext) marshalNDeployAxonClawResult2ᚖgithubᚗcomᚋloopl
 		return graphql.Null
 	}
 	return ec._DeployAxonClawResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalFloatContext(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return graphql.WrapContextMarshaler(ctx, res)
 }
 
 func (ec *executionContext) unmarshalNHeartbeatAgentInstanceInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐHeartbeatAgentInstanceInput(ctx context.Context, v any) (HeartbeatAgentInstanceInput, error) {
@@ -6706,6 +7677,20 @@ func (ec *executionContext) marshalOJSONRawMessageInput2githubᚗcomᚋloopljᚋ
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOModelCapabilities2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐModelCapabilities(ctx context.Context, sel ast.SelectionSet, v *ModelCapabilities) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ModelCapabilities(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOModelPricing2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐModelPricing(ctx context.Context, sel ast.SelectionSet, v *ModelPricing) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ModelPricing(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {

@@ -167,6 +167,110 @@ var AllAgentMessageType = []AgentMessageType{
 	AgentMessageTypeSystemEvent,
 }
 
+// AvailableModelsAvailableModelsAvailableModel includes the requested fields of the GraphQL type AvailableModel.
+type AvailableModelsAvailableModelsAvailableModel struct {
+	Id              string                                                    `json:"id"`
+	Name            string                                                    `json:"name"`
+	OwnedBy         string                                                    `json:"ownedBy"`
+	Type            string                                                    `json:"type"`
+	Icon            string                                                    `json:"icon"`
+	Description     *string                                                   `json:"description"`
+	ContextLength   int                                                       `json:"contextLength"`
+	MaxOutputTokens int                                                       `json:"maxOutputTokens"`
+	Capabilities    *AvailableModelsAvailableModelsAvailableModelCapabilities `json:"capabilities"`
+	Pricing         *AvailableModelsAvailableModelsAvailableModelPricing      `json:"pricing"`
+}
+
+// GetId returns AvailableModelsAvailableModelsAvailableModel.Id, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetId() string { return v.Id }
+
+// GetName returns AvailableModelsAvailableModelsAvailableModel.Name, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetName() string { return v.Name }
+
+// GetOwnedBy returns AvailableModelsAvailableModelsAvailableModel.OwnedBy, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetOwnedBy() string { return v.OwnedBy }
+
+// GetType returns AvailableModelsAvailableModelsAvailableModel.Type, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetType() string { return v.Type }
+
+// GetIcon returns AvailableModelsAvailableModelsAvailableModel.Icon, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetIcon() string { return v.Icon }
+
+// GetDescription returns AvailableModelsAvailableModelsAvailableModel.Description, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetDescription() *string { return v.Description }
+
+// GetContextLength returns AvailableModelsAvailableModelsAvailableModel.ContextLength, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetContextLength() int { return v.ContextLength }
+
+// GetMaxOutputTokens returns AvailableModelsAvailableModelsAvailableModel.MaxOutputTokens, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetMaxOutputTokens() int {
+	return v.MaxOutputTokens
+}
+
+// GetCapabilities returns AvailableModelsAvailableModelsAvailableModel.Capabilities, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetCapabilities() *AvailableModelsAvailableModelsAvailableModelCapabilities {
+	return v.Capabilities
+}
+
+// GetPricing returns AvailableModelsAvailableModelsAvailableModel.Pricing, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetPricing() *AvailableModelsAvailableModelsAvailableModelPricing {
+	return v.Pricing
+}
+
+// AvailableModelsAvailableModelsAvailableModelCapabilities includes the requested fields of the GraphQL type ModelCapabilities.
+type AvailableModelsAvailableModelsAvailableModelCapabilities struct {
+	Vision    bool `json:"vision"`
+	ToolCall  bool `json:"toolCall"`
+	Reasoning bool `json:"reasoning"`
+}
+
+// GetVision returns AvailableModelsAvailableModelsAvailableModelCapabilities.Vision, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelCapabilities) GetVision() bool { return v.Vision }
+
+// GetToolCall returns AvailableModelsAvailableModelsAvailableModelCapabilities.ToolCall, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelCapabilities) GetToolCall() bool {
+	return v.ToolCall
+}
+
+// GetReasoning returns AvailableModelsAvailableModelsAvailableModelCapabilities.Reasoning, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelCapabilities) GetReasoning() bool {
+	return v.Reasoning
+}
+
+// AvailableModelsAvailableModelsAvailableModelPricing includes the requested fields of the GraphQL type ModelPricing.
+type AvailableModelsAvailableModelsAvailableModelPricing struct {
+	Input      float64 `json:"input"`
+	Output     float64 `json:"output"`
+	CacheRead  float64 `json:"cacheRead"`
+	CacheWrite float64 `json:"cacheWrite"`
+}
+
+// GetInput returns AvailableModelsAvailableModelsAvailableModelPricing.Input, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelPricing) GetInput() float64 { return v.Input }
+
+// GetOutput returns AvailableModelsAvailableModelsAvailableModelPricing.Output, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelPricing) GetOutput() float64 { return v.Output }
+
+// GetCacheRead returns AvailableModelsAvailableModelsAvailableModelPricing.CacheRead, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelPricing) GetCacheRead() float64 {
+	return v.CacheRead
+}
+
+// GetCacheWrite returns AvailableModelsAvailableModelsAvailableModelPricing.CacheWrite, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelPricing) GetCacheWrite() float64 {
+	return v.CacheWrite
+}
+
+// AvailableModelsResponse is returned by AvailableModels on success.
+type AvailableModelsResponse struct {
+	AvailableModels []*AvailableModelsAvailableModelsAvailableModel `json:"availableModels"`
+}
+
+// GetAvailableModels returns AvailableModelsResponse.AvailableModels, and is useful for accessing the field via an interface.
+func (v *AvailableModelsResponse) GetAvailableModels() []*AvailableModelsAvailableModelsAvailableModel {
+	return v.AvailableModels
+}
+
 // DeployAxonClawDeployAxonClawDeployAxonClawResult includes the requested fields of the GraphQL type DeployAxonClawResult.
 type DeployAxonClawDeployAxonClawDeployAxonClawResult struct {
 	Success  bool                                                                   `json:"success"`
@@ -584,6 +688,54 @@ func AgentBootstrap(
 	}
 
 	data_ = &AgentBootstrapResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by AvailableModels.
+const AvailableModels_Operation = `
+query AvailableModels {
+	availableModels {
+		id
+		name
+		ownedBy
+		type
+		icon
+		description
+		contextLength
+		maxOutputTokens
+		capabilities {
+			vision
+			toolCall
+			reasoning
+		}
+		pricing {
+			input
+			output
+			cacheRead
+			cacheWrite
+		}
+	}
+}
+`
+
+func AvailableModels(
+	ctx_ context.Context,
+	client_ graphql.Client,
+) (data_ *AvailableModelsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "AvailableModels",
+		Query:  AvailableModels_Operation,
+	}
+
+	data_ = &AvailableModelsResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

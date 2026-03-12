@@ -23,14 +23,15 @@ import (
 	"github.com/looplj/axonhub/axon/provider/anthropic"
 	"github.com/looplj/axonhub/axon/summarizer"
 	"github.com/looplj/axonhub/axon/task"
+	"github.com/looplj/skills/skillscmd"
+	"github.com/spf13/cobra"
+	"gopkg.in/natefinch/lumberjack.v2"
+
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/build"
 	"github.com/looplj/axonhub/cmd/axonclaw/cmds"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 	"github.com/looplj/axonhub/cmd/axonclaw/runner"
-	"github.com/looplj/skills/skillscmd"
-	"github.com/spf13/cobra"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const logsDirName = "logs"
@@ -266,6 +267,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		PermEvaluator:  permEvaluator,
 		Bus:            eventBus,
 	})
+
 	defer func() {
 		if err := r.Close(); err != nil {
 			logger.Warn("close runner failed", "error", err)

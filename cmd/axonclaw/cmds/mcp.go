@@ -20,10 +20,12 @@ func NewMCPCommand(opts StdioOptions) *cobra.Command {
 	if out == nil {
 		out = os.Stdout
 	}
+
 	errOut := opts.Stderr
 	if errOut == nil {
 		errOut = os.Stderr
 	}
+
 	root := &cobra.Command{
 		Use:   "mcp",
 		Short: "Manage MCP server configuration",
@@ -74,6 +76,7 @@ func newConfMCPListCmd(out *os.File) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			if len(servers) == 0 {
 				fmt.Fprintln(out, "No MCP servers configured.")
 				return nil
@@ -83,6 +86,7 @@ func newConfMCPListCmd(out *os.File) *cobra.Command {
 			for name := range servers {
 				names = append(names, name)
 			}
+
 			sort.Strings(names)
 
 			for _, name := range names {
@@ -90,6 +94,7 @@ func newConfMCPListCmd(out *os.File) *cobra.Command {
 				fmt.Fprintf(out, "%s\tdisabled=%v\ttype=%s\tcommand=%s\turl=%s\targs=%d\ttool_prefix=%s\n",
 					name, s.Disabled, s.TransportType(), s.Command, s.URL, len(s.Args), s.ToolPrefix)
 			}
+
 			return nil
 		},
 	}
@@ -108,6 +113,7 @@ func newConfMCPGetCmd(out *os.File) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			s, ok := servers[name]
 			if !ok {
 				return fmt.Errorf("mcp server %q not found", name)
@@ -126,11 +132,14 @@ func newConfMCPGetCmd(out *os.File) *cobra.Command {
 				"request_timeout": s.RequestTimeout.String(),
 				"connect_timeout": s.ConnectTimeout.String(),
 			}
+
 			raw, err := json.MarshalIndent(view, "", "  ")
 			if err != nil {
 				return err
 			}
+
 			fmt.Fprintln(out, string(raw))
+
 			return nil
 		},
 	}
@@ -189,25 +198,31 @@ Examples:
 				if command == "" {
 					return fmt.Errorf("--command cannot be empty")
 				}
+
 				current.Command = command
 				changed = true
 			}
+
 			if cmd.Flags().Changed("arg") {
 				current.Args = args
 				changed = true
 			}
+
 			if clearArgs {
 				current.Args = nil
 				changed = true
 			}
+
 			if cmd.Flags().Changed("env") {
 				parsed, err := parseMCPEnv(envs)
 				if err != nil {
 					return err
 				}
+
 				current.Env = parsed
 				changed = true
 			}
+
 			if clearEnv {
 				current.Env = nil
 				changed = true
@@ -242,21 +257,26 @@ Examples:
 				current.Headers = nil
 				changed = true
 			}
+
 			if cmd.Flags().Changed("tool-prefix") {
 				current.ToolPrefix = strings.TrimSpace(toolPrefix)
 				changed = true
 			}
+
 			if cmd.Flags().Changed("request-timeout") {
 				if requestTimeout <= 0 {
 					return fmt.Errorf("--request-timeout must be greater than 0")
 				}
+
 				current.RequestTimeout = requestTimeout
 				changed = true
 			}
+
 			if cmd.Flags().Changed("connect-timeout") {
 				if connectTimeout <= 0 {
 					return fmt.Errorf("--connect-timeout must be greater than 0")
 				}
+
 				current.ConnectTimeout = connectTimeout
 				changed = true
 			}
@@ -273,6 +293,7 @@ Examples:
 
 				return fmt.Errorf("--command or --url is required when creating a new mcp server")
 			}
+
 			if !exists && !changed {
 				return fmt.Errorf("no fields changed")
 			}
@@ -284,6 +305,7 @@ Examples:
 
 			fmt.Fprintf(errOut, "config\t%s\n", mgr.ConfigPath())
 			fmt.Fprintf(out, "mcp_server\t%s\n", name)
+
 			return nil
 		},
 	}
@@ -317,6 +339,7 @@ func newConfMCPDeleteCmd(out *os.File, errOut *os.File) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			if _, ok := servers[name]; !ok {
 				return fmt.Errorf("mcp server %q not found", name)
 			}
@@ -329,6 +352,7 @@ func newConfMCPDeleteCmd(out *os.File, errOut *os.File) *cobra.Command {
 
 			fmt.Fprintf(errOut, "config\t%s\n", mgr.ConfigPath())
 			fmt.Fprintf(out, "mcp_server deleted\t%s\n", name)
+
 			return nil
 		},
 	}
@@ -355,6 +379,7 @@ func newConfMCPEnableCmd(out *os.File, errOut *os.File, enable bool) *cobra.Comm
 			if err != nil {
 				return err
 			}
+
 			s, ok := servers[name]
 			if !ok {
 				return fmt.Errorf("mcp server %q not found", name)
@@ -369,6 +394,7 @@ func newConfMCPEnableCmd(out *os.File, errOut *os.File, enable bool) *cobra.Comm
 
 			fmt.Fprintf(errOut, "config\t%s\n", mgr.ConfigPath())
 			fmt.Fprintf(out, "mcp_server %s\t%s\n", use, name)
+
 			return nil
 		},
 	}
@@ -381,12 +407,15 @@ func parseMCPEnv(items []string) (map[string]string, error) {
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid --env %q: expected KEY=VALUE", item)
 		}
+
 		key := strings.TrimSpace(parts[0])
 		if key == "" {
 			return nil, fmt.Errorf("invalid --env %q: key cannot be empty", item)
 		}
+
 		env[key] = parts[1]
 	}
+
 	return env, nil
 }
 

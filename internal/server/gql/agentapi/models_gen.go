@@ -76,6 +76,19 @@ type AgentToolDefinition struct {
 	Config      objects.JSONRawMessage `json:"config,omitempty"`
 }
 
+type AvailableModel struct {
+	ID              string             `json:"id"`
+	Name            string             `json:"name"`
+	OwnedBy         string             `json:"ownedBy"`
+	Type            string             `json:"type"`
+	Icon            string             `json:"icon"`
+	Description     *string            `json:"description,omitempty"`
+	ContextLength   int                `json:"contextLength"`
+	MaxOutputTokens int                `json:"maxOutputTokens"`
+	Capabilities    *ModelCapabilities `json:"capabilities,omitempty"`
+	Pricing         *ModelPricing      `json:"pricing,omitempty"`
+}
+
 type DeployAxonClawInput struct {
 	Name string `json:"name"`
 }
@@ -88,6 +101,19 @@ type DeployAxonClawResult struct {
 
 type HeartbeatAgentInstanceInput struct {
 	Dummy *bool `json:"dummy,omitempty"`
+}
+
+type ModelCapabilities struct {
+	Vision    bool `json:"vision"`
+	ToolCall  bool `json:"toolCall"`
+	Reasoning bool `json:"reasoning"`
+}
+
+type ModelPricing struct {
+	Input      float64 `json:"input"`
+	Output     float64 `json:"output"`
+	CacheRead  float64 `json:"cacheRead"`
+	CacheWrite float64 `json:"cacheWrite"`
 }
 
 type Mutation struct {

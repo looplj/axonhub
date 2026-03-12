@@ -71,7 +71,11 @@ func New(opts NewOptions) *Runner {
 		agent.WithMiddlewares(permMw),
 	)
 
-	mcpMgr := registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client)
+	mcpMgr := mcp.NewManager(mcp.ManagerOptions{
+		Logger:    opts.Logger,
+		ConfigDir: opts.Boot.ConfigDir,
+	})
+	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Provider, mcpMgr)
 
 	return &Runner{
 		Client:        opts.Client,
@@ -258,7 +262,9 @@ func (r *Runner) processMessage(ctx context.Context, text string) error {
 	traceID := uuid.New().String()
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
 	ctx = axoncontext.WithTraceID(ctx, traceID)
-	return r.Agent.Process(ctx, agent.Content{Text: &text})
+	_, err := r.Agent.Process(ctx, agent.Content{Text: &text})
+
+	return err
 }
 
 func (r *Runner) autoUpdateConfig(ctx context.Context) {

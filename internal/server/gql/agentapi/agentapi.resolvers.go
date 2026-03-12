@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -58,21 +59,31 @@ func (r *mutationResolver) HeartbeatAgentInstance(ctx context.Context, input Hea
 // SendAgentMessage is the resolver for the sendAgentMessage field.
 // Sends a message from this agent to another agent (inter-agent communication).
 func (r *mutationResolver) SendAgentMessage(ctx context.Context, input SendAgentMessageInput) (*AgentMessage, error) {
-	inst, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx)
+	// Ensure this endpoint is only accessible to authenticated agent runtimes.
+	if _, err := r.agentBootstrapService.GetAgentInstanceFromAPIKey(ctx); err != nil {
+		return nil, err
+	}
+
+	targetAgentID, err := requireGUIDType(input.TargetAgentID, ent.TypeAgent)
 	if err != nil {
 		return nil, err
 	}
 
-	view, err := r.agentBootstrapService.SendPeerMessage(ctx, biz.SendPeerMessageInput{
-		TargetAgentID: inst.AgentID,
-		TargetAgentInstanceID: func() *int {
-			if input.TargetAgentInstanceID == nil {
-				return nil
-			}
+	var targetAgentInstanceID *int
 
-			return &input.TargetAgentInstanceID.ID
-		}(),
-		Text: input.Text,
+	if input.TargetAgentInstanceID != nil {
+		id, err := requireGUIDType(*input.TargetAgentInstanceID, ent.TypeAgentInstance)
+		if err != nil {
+			return nil, err
+		}
+
+		targetAgentInstanceID = &id
+	}
+
+	view, err := r.agentBootstrapService.SendPeerMessage(ctx, biz.SendPeerMessageInput{
+		TargetAgentID:         targetAgentID,
+		TargetAgentInstanceID: targetAgentInstanceID,
+		Text:                  input.Text,
 		Content: func() *objects.JSONRawMessage {
 			if len(input.Content) == 0 || string(input.Content) == "null" {
 				return nil
@@ -281,6 +292,7 @@ func (r *queryResolver) PeerAgents(ctx context.Context) ([]*PeerAgent, error) {
 			AgentID:         objects.GUID{Type: ent.TypeAgent, ID: p.AgentID},
 			AgentInstanceID: objects.GUID{Type: ent.TypeAgentInstance, ID: p.AgentInstanceID},
 			Name:            p.Name,
+			Description:     p.Description,
 			Status:          p.Status,
 		})
 	}
@@ -358,11 +370,59 @@ func (r *queryResolver) PullAgentMessagesToUser(ctx context.Context, afterSequen
 	return out, nil
 }
 
+// AvailableModels is the resolver for the availableModels field.
+func (r *queryResolver) AvailableModels(ctx context.Context) ([]*AvailableModel, error) {
+	models, err := r.entClient.Model.Query().
+		Where(model.StatusEQ(model.StatusEnabled)).
+		Where(model.TypeEQ(model.TypeChat)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*AvailableModel, 0, len(models))
+	for _, m := range models {
+		am := &AvailableModel{
+			ID:      m.ModelID,
+			Name:    m.Name,
+			OwnedBy: m.Developer,
+			Type:    string(m.Type),
+			Icon:    m.Icon,
+		}
+
+		if m.Remark != nil {
+			am.Description = m.Remark
+		}
+
+		if m.ModelCard != nil {
+			am.ContextLength = m.ModelCard.Limit.Context
+			am.MaxOutputTokens = m.ModelCard.Limit.Output
+			am.Capabilities = &ModelCapabilities{
+				Vision:    m.ModelCard.Vision,
+				ToolCall:  m.ModelCard.ToolCall,
+				Reasoning: m.ModelCard.Reasoning.Supported,
+			}
+			am.Pricing = &ModelPricing{
+				Input:      m.ModelCard.Cost.Input,
+				Output:     m.ModelCard.Cost.Output,
+				CacheRead:  m.ModelCard.Cost.CacheRead,
+				CacheWrite: m.ModelCard.Cost.CacheWrite,
+			}
+		}
+
+		out = append(out, am)
+	}
+
+	return out, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
+type (
+	mutationResolver struct{ *Resolver }
+	queryResolver    struct{ *Resolver }
+)

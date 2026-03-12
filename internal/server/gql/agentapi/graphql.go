@@ -3,7 +3,6 @@ package agentapi
 import (
 	"net/http"
 
-	"entgo.io/contrib/entgql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
@@ -31,7 +30,7 @@ type Dependencies struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(NewSchema(deps.AgentHostService, deps.AgentDeploySvc))
+	gqlSrv := handler.New(NewSchema(deps.AgentHostService, deps.AgentDeploySvc, deps.Ent))
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})
@@ -43,9 +42,6 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(extension.Introspection{})
 	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
-	})
-	gqlSrv.Use(entgql.Transactioner{
-		TxOpener: deps.Ent,
 	})
 	gqlSrv.Use(&logging.LoggingTracer{})
 

@@ -40,6 +40,14 @@ type Config struct {
 	SystemPrompts []string
 }
 
+// Result holds the outcome of an agent run.
+type Result struct {
+	// Output is the final assistant text from the agent.
+	Output string
+	// Usage is the total token usage across all LLM calls.
+	Usage Usage
+}
+
 // Agent orchestrates LLM interactions with tool execution.
 // Each Agent instance corresponds to a single conversation; external
 // callers that need thread persistence should subscribe to agent events
@@ -91,6 +99,19 @@ func WithMiddlewares(mws ...Middleware) Option {
 	return func(a *Agent) {
 		a.middlewares = append(a.middlewares, mws...)
 	}
+}
+
+// Middlewares returns a snapshot of all middlewares currently registered
+// on this agent. The returned slice is safe to read concurrently.
+func (a *Agent) Middlewares() []Middleware {
+	if len(a.middlewares) == 0 {
+		return nil
+	}
+
+	out := make([]Middleware, len(a.middlewares))
+	copy(out, a.middlewares)
+
+	return out
 }
 
 func WithContextManager(cm ContextManager) Option {
@@ -167,6 +188,21 @@ func (a *Agent) UpdateConfig(update func(Config) Config) {
 // RegisterTool adds a tool to the agent's registry.
 func (a *Agent) RegisterTool(tool Tool) {
 	a.tools.Register(tool)
+}
+
+// RegisteredTools returns a snapshot of all tools currently registered
+// on this agent. The returned slice is safe to read concurrently.
+func (a *Agent) RegisteredTools() []Tool {
+	names := a.tools.List()
+
+	result := make([]Tool, 0, len(names))
+	for _, name := range names {
+		if t, ok := a.tools.Get(name); ok {
+			result = append(result, t)
+		}
+	}
+
+	return result
 }
 
 // emit publishes an event to the bus (if configured).
@@ -302,7 +338,7 @@ func (a *Agent) Start(ctx context.Context) {
 				a.logger.Info("agent stopped")
 				return
 			case req := <-requests:
-				err := a.Process(runCtx, req.Content)
+				_, err := a.Process(runCtx, req.Content)
 				if err != nil {
 					a.logger.Error("agent: process error", "error", err)
 					continue
@@ -329,7 +365,7 @@ func (a *Agent) Stop() {
 // Process processes a single user message synchronously and returns the
 // assistant's final text response. It appends the user message to internal
 // history, calls the LLM, executes tools in a loop, and returns the result.
-func (a *Agent) Process(ctx context.Context, content Content) error {
+func (a *Agent) Process(ctx context.Context, content Content) (*Result, error) {
 	a.emit(ctx, AgentEvent{Type: EventAgentStart})
 	defer a.emit(ctx, AgentEvent{Type: EventAgentEnd})
 
@@ -343,13 +379,13 @@ func (a *Agent) Process(ctx context.Context, content Content) error {
 		Message: &userMsg,
 	})
 
-	err := a.runLoop(ctx, cfg, roundIndex)
+	result, err := a.runLoop(ctx, cfg, roundIndex)
 	if err != nil {
 		a.emit(ctx, AgentEvent{Type: EventError, Error: err})
-		return err
+		return nil, err
 	}
 
-	return nil
+	return result, nil
 }
 
 // ProcessStream processes a single user message with streaming response.
@@ -465,7 +501,7 @@ func (a *Agent) ensureRoundIndex(msgs []Message, roundIndex int) {
 //     skipped and steering messages are injected before the next LLM call.
 //   - Follow-up: checked when the agent would otherwise stop (no more tool
 //     calls); follow-up messages are injected and the loop continues.
-func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) error {
+func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) (*Result, error) {
 	toolDefs := a.tools.Definitions()
 
 	a.emit(ctx, AgentEvent{Type: EventTraceStart})
@@ -479,6 +515,11 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 	// so user + assistant messages share the same round.
 	nextRound := initialRoundIndex
 
+	var (
+		totalUsage Usage
+		lastOutput string
+	)
+
 	// Outer loop: continues when follow-up messages arrive after the agent
 	// would otherwise stop.
 	for {
@@ -488,7 +529,7 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 		for hasMoreToolCalls {
 			iterations++
 			if iterations > cfg.MaxIterations {
-				return fmt.Errorf("agent: max iterations (%d) reached", cfg.MaxIterations)
+				return nil, fmt.Errorf("agent: max iterations (%d) reached", cfg.MaxIterations)
 			}
 
 			// Inject pending steering messages before the next LLM call.
@@ -507,9 +548,11 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 
 			resp, err := a.provider.Chat(ctx, cfg.Model, toolDefs, messages)
 			if err != nil {
-				return fmt.Errorf("agent: LLM call failed: %w", err)
+				return nil, fmt.Errorf("agent: LLM call failed: %w", err)
 			}
 			a.emit(ctx, AgentEvent{Type: EventUsage, Usage: &resp.Usage})
+			totalUsage.InputTokens += resp.Usage.InputTokens
+			totalUsage.OutputTokens += resp.Usage.OutputTokens
 
 			roundIndex := nextRound
 			nextRound = a.nextRoundIndex()
@@ -520,6 +563,12 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 			for _, msg := range resp.Messages {
 				if msg.ToolUse == nil {
 					a.addMessage(ctx, msg)
+
+					if msg.Role == RoleAssistant && msg.Content != nil {
+						if text := msg.Content.String(); text != "" {
+							lastOutput = text
+						}
+					}
 				} else {
 					toolMsgs = append(toolMsgs, msg)
 				}
@@ -589,7 +638,7 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 			continue
 		}
 
-		return nil
+		return &Result{Output: lastOutput, Usage: totalUsage}, nil
 	}
 }
 
