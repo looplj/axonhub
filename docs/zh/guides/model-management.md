@@ -277,16 +277,16 @@ response = client.chat.completions.create(
 - 模型更新时间变化
 - 缓存过期（5 分钟）
 
-### 回退策略
+### 系统模型设置
 
-当模型不存在时，可以回退到传统的渠道选择：
+这些设置在管理界面的 **系统设置 > 模型设置** 中配置，控制模型发现和请求路由的全局行为。
 
-```json
-{
-  "queryAllChannelModels": true,
-  "fallbackToChannelsOnModelNotFound": true
-}
-```
+| 设置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `queryAllChannelModels` | `true` | 控制 `/v1/models` API 的返回结果。**启用**时，返回所有启用渠道中的模型与已配置的模型实体的合集（已配置的模型实体优先级更高）。**禁用**时，仅返回已明确配置模型实体的模型。 |
+| `fallbackToChannelsOnModelNotFound` | `true` | 控制请求路由的回退行为。**启用**时，如果请求的 ModelID 没有匹配的模型实体，系统会回退到传统的渠道选择（直接匹配支持该模型的启用渠道）。**禁用**时，未配置的模型 ID 请求将返回错误。 |
+
+> **💡 提示**：当两个设置都启用时（默认），系统的行为类似于传统的 API 网关 —— 所有渠道模型都可见且可路由。如果您希望严格控制只有明确配置的模型才可访问，请同时禁用这两个设置。
 
 ## 📊 监控和调试
 
@@ -352,37 +352,6 @@ A: 理论上无限制，但建议：
 - 单个模型不超过 10 条关联
 - 总关联数量不超过 100 条
 - 避免过于复杂的正则表达式
-
-### Q: 如何实现 A/B 测试？
-
-A: 使用相同优先级的多个关联：
-
-```json
-{
-  "settings": {
-    "associations": [
-      {
-        "type": "channel_model",
-        "priority": 0,
-        "channelModel": {
-          "channelId": 1,
-          "modelId": "gpt-4-turbo"
-        }
-      },
-      {
-        "type": "channel_model",
-        "priority": 0,
-        "channelModel": {
-          "channelId": 2,
-          "modelId": "gpt-4"
-        }
-      }
-    ]
-  }
-}
-```
-
-负载均衡会在相同优先级的候选中选择。
 
 ### Q: 如何排除特定渠道？
 
