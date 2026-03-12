@@ -1302,6 +1302,22 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				require.Empty(t, result.Content.Parts[1].ThoughtSignature)
 			},
 		},
+		{
+			name: "reasoning signature without parts does not panic",
+			input: &llm.Choice{
+				Index: 0,
+				Message: &llm.Message{
+					Role:               "assistant",
+					ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_without_parts")),
+				},
+			},
+			validate: func(t *testing.T, result *Candidate) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.Content)
+				require.Empty(t, result.Content.Parts)
+			},
+		},
 	}
 
 	for _, tt := range tests {

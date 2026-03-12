@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
@@ -387,6 +388,71 @@ func TestInboundTransformer_TransformStream_AggregatesToolCallArguments(t *testi
 	require.Equal(t, "call_1", fc.ID)
 	require.Equal(t, "calculate", fc.Name)
 	require.Equal(t, "15 * 23", fc.Args["expression"])
+}
+
+func TestInboundTransformer_TransformStream_FinishOnlyChunkWithReasoningSignature(t *testing.T) {
+	transformer := NewInboundTransformer()
+
+	responses := []*llm.Response{
+		{
+			ID:     "chatcmpl-finish-only-1",
+			Model:  "gemini-2.0-flash",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("OK"),
+						},
+					},
+				},
+			},
+		},
+		{
+			ID:     "chatcmpl-finish-only-1",
+			Model:  "gemini-2.0-flash",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("finish_only_signature")),
+					},
+					FinishReason: lo.ToPtr("stop"),
+				},
+			},
+		},
+	}
+
+	inputStream := streams.SliceStream(responses)
+	outputStream, err := transformer.TransformStream(context.Background(), inputStream)
+	require.NoError(t, err)
+
+	var results []*httpclient.StreamEvent
+	for outputStream.Next() {
+		results = append(results, outputStream.Current())
+	}
+
+	require.NoError(t, outputStream.Err())
+	require.Len(t, results, 2)
+
+	var firstResp GenerateContentResponse
+	err = json.Unmarshal(results[0].Data, &firstResp)
+	require.NoError(t, err)
+	require.Len(t, firstResp.Candidates, 1)
+	require.NotNil(t, firstResp.Candidates[0].Content)
+	require.Len(t, firstResp.Candidates[0].Content.Parts, 1)
+	require.Equal(t, "OK", firstResp.Candidates[0].Content.Parts[0].Text)
+
+	var finishResp GenerateContentResponse
+	err = json.Unmarshal(results[1].Data, &finishResp)
+	require.NoError(t, err)
+	require.Len(t, finishResp.Candidates, 1)
+	require.Equal(t, "STOP", finishResp.Candidates[0].FinishReason)
+	require.NotNil(t, finishResp.Candidates[0].Content)
+	require.Empty(t, finishResp.Candidates[0].Content.Parts)
 }
 
 func TestInboundTransformer_AggregateStreamChunks(t *testing.T) {

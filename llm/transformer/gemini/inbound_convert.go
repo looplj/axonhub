@@ -565,7 +565,7 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 		if !hasToolCallThoughtSignature && msg.ReasoningSignature != nil {
 			if firstFunctionCallPart != nil {
 				firstFunctionCallPart.ThoughtSignature = *msg.ReasoningSignature
-			} else {
+			} else if lastPart != nil {
 				lastPart.ThoughtSignature = *msg.ReasoningSignature
 			}
 		}
