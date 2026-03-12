@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -118,8 +119,11 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			threadID = &thread.ID
 		}
 
+		// Bypass privacy policy so tokens without write_requests scope can still trigger tracing.
+		bypassCtx := authz.WithSystemBypass(c.Request.Context(), "trace-middleware")
+
 		// Get or create trace (errors are logged but don't block the request)
-		trace, err := traceService.GetOrCreateTrace(c.Request.Context(), projectID, traceID, threadID)
+		trace, err := traceService.GetOrCreateTrace(bypassCtx, projectID, traceID, threadID)
 		if err != nil {
 			log.Warn(c.Request.Context(), "Failed to get or create trace", log.Cause(err))
 			c.Next()
