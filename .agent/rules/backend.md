@@ -69,9 +69,10 @@ cd cmd/axoncli && go test ./...  # Run CLI tests
 ## Golang Rules
 
 1. USE `github.com/samber/lo` package to handle collection, slice, map, ptr, etc.
-2. Follow dependency injection patterns using FX framework.
-3. Use structured logging with zap.
-4. Implement proper context propagation.
+2. Use `lo.ToPtr` to get a pointer to a constant value instead of implementing helper functions like `stringPtr`.
+3. Follow dependency injection patterns using FX framework.
+4. Use structured logging with zap.
+5. Implement proper context propagation.
 
 ## Ent Rules
 
