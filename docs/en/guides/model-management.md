@@ -277,16 +277,16 @@ Association resolution results are cached. Cache invalidation conditions:
 - Model update time changes
 - Cache expires (5 minutes)
 
-### Fallback Strategy
+### System Model Settings
 
-When a model doesn't exist, it can fall back to traditional channel selection:
+These settings are configured in the Admin UI under **System Settings > Model Settings**, and control the global behavior of model discovery and request routing.
 
-```json
-{
-  "queryAllChannelModels": true,
-  "fallbackToChannelsOnModelNotFound": true
-}
-```
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `queryAllChannelModels` | `true` | Controls the response of the `/v1/models` API. When **enabled**, returns all models from enabled channels merged with configured Model entities (configured models take priority). When **disabled**, only returns models that have an explicit Model entity configuration. |
+| `fallbackToChannelsOnModelNotFound` | `true` | Controls request routing fallback. When **enabled**, if the requested ModelID has no matching Model entity, the system falls back to legacy channel selection (directly matching enabled channels that support the model). When **disabled**, requests for unconfigured model IDs return an error. |
+
+> **💡 Tip**: When both settings are enabled (default), the system behaves similarly to a traditional API gateway — all channel models are visible and routable. If you want strict control where only explicitly configured models are accessible, disable both settings.
 
 ## 📊 Monitoring and Debugging
 
@@ -352,37 +352,6 @@ A: Theoretically unlimited, but recommended:
 - No more than 10 associations per model
 - Total associations not exceeding 100
 - Avoid overly complex regex patterns
-
-### Q: How to implement A/B testing?
-
-A: Use multiple associations with the same priority:
-
-```json
-{
-  "settings": {
-    "associations": [
-      {
-        "type": "channel_model",
-        "priority": 0,
-        "channelModel": {
-          "channelId": 1,
-          "modelId": "gpt-4-turbo"
-        }
-      },
-      {
-        "type": "channel_model",
-        "priority": 0,
-        "channelModel": {
-          "channelId": 2,
-          "modelId": "gpt-4"
-        }
-      }
-    ]
-  }
-}
-```
-
-Load balancing will select among candidates with the same priority.
 
 ### Q: How to exclude specific channels?
 
