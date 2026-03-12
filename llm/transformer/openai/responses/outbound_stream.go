@@ -471,7 +471,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			Detail: llm.ErrorDetail{
 				Code:    streamEvent.Code,
 				Message: streamEvent.Message,
-				Param:   streamEvent.Param,
+				Param:   lo.FromPtr(streamEvent.Param),
 			},
 		}
 

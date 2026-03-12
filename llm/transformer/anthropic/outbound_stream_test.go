@@ -92,3 +92,19 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 		})
 	}
 }
+
+func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
+	transformer, _ := NewOutboundTransformer("https://example.com", string(PlatformDirect))
+
+	streamEvents, err := xtest.LoadStreamChunks(t, "anthropic-error.stream.jsonl")
+	require.NoError(t, err)
+
+	mockStream := streams.SliceStream(streamEvents)
+
+	transformedStream, err := transformer.TransformStream(t.Context(), mockStream)
+	require.NoError(t, err)
+
+	_, err = streams.All(transformedStream)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "当前订阅套餐暂未开放GPT-6权限")
+}

@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"bytes"
 	"context"
+	"errors"
 
 	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/internal/ent"
@@ -112,6 +113,21 @@ func (ts *InboundPersistentStream) Close() error {
 		return ts.stream.Close()
 	}
 
+	// If there's an explicit stream error (not just context cancellation), treat as failure
+	// regardless of what chunks we have. Stream errors indicate the upstream response
+	// was incomplete or corrupted.
+	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) {
+		if ts.request != nil {
+			persistCtx := context.WithoutCancel(ctx)
+
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, streamErr); err != nil {
+				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
+	}
+
 	// If we haven't received a terminal event, check if the chunks we DO have form a complete response.
 	// This handles models that aggregate internally (like Codex) or upstream proxy hung connections
 	// where the provider sent the full JSON payload but failed to send [DONE] before dropping.
@@ -130,14 +146,12 @@ func (ts *InboundPersistentStream) Close() error {
 	// Check if context was canceled (client disconnected before [DONE]).
 	// Skip the error path if we determined the stream actually completed successfully above.
 	if (ctxErr != nil || streamErr != nil) && !ts.state.StreamCompleted {
-		// Use context without cancellation to ensure persistence even if client canceled
 		if ts.request != nil {
 			persistCtx := context.WithoutCancel(ctx)
 
-			// Determine the actual error to report
-			errToReport := streamErr
+			errToReport := ctxErr
 			if errToReport == nil {
-				errToReport = ctxErr
+				errToReport = streamErr
 			}
 
 			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
