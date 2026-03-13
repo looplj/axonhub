@@ -137,6 +137,48 @@ func TestOutboundTransformer_APIFormat(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIResponse, transformer.APIFormat())
 }
 
+func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:         "https://api.openai.com",
+		APIKeyProvider:  auth.NewStaticKeyProvider("test-api-key"),
+		AccountIdentity: "channel-1",
+	})
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+		},
+	}
+
+	hreq, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, hreq.Metadata)
+
+	require.Equal(t, transformer.config.BaseURL, hreq.Metadata[shared.MetadataKeyBaseURL])
+	require.Equal(t, "channel-1", hreq.Metadata[shared.MetadataKeyAccountIdentity])
+}
+
+func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://api.openai.com",
+		APIKeyProvider: auth.NewStaticKeyProvider(""),
+	})
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+		},
+	}
+
+	hreq, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.True(t, hreq.Metadata == nil || (hreq.Metadata[shared.MetadataKeyBaseURL] == "" && hreq.Metadata[shared.MetadataKeyAccountIdentity] == ""))
+}
+
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 
@@ -764,7 +806,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 				require.Len(t, result.Choices, 1)
 				require.NotNil(t, result.Choices[0].Message)
 				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-				require.Equal(t, shared.OpenAIEncryptedContentPrefix+"encrypted_data_here", *result.Choices[0].Message.ReasoningSignature)
+				require.Equal(t, "encrypted_data_here", *result.Choices[0].Message.ReasoningSignature)
 			},
 		},
 	}

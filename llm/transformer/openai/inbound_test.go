@@ -887,10 +887,7 @@ func TestMessage_ToLLMMessage_WithGeminiThoughtSignature(t *testing.T) {
 
 	require.Len(t, got.ToolCalls, 1)
 	require.NotNil(t, got.ReasoningSignature)
-	require.True(t, shared.IsGeminiThoughtSignature(got.ReasoningSignature))
-	decoded := shared.DecodeGeminiThoughtSignature(got.ReasoningSignature)
-	require.NotNil(t, decoded)
-	require.Equal(t, "base64_signature", *decoded)
+	require.Equal(t, "base64_signature", *got.ReasoningSignature)
 }
 
 func TestMessage_ToLLMMessage_WithAlreadyPrefixedGeminiThoughtSignature(t *testing.T) {
@@ -918,9 +915,6 @@ func TestMessage_ToLLMMessage_WithAlreadyPrefixedGeminiThoughtSignature(t *testi
 
 	require.NotNil(t, got.ReasoningSignature)
 	require.Equal(t, shared.GeminiThoughtSignaturePrefix+"base64_signature", *got.ReasoningSignature)
-	decoded := shared.DecodeGeminiThoughtSignature(got.ReasoningSignature)
-	require.NotNil(t, decoded)
-	require.Equal(t, "base64_signature", *decoded)
 }
 
 func TestToolCall_ToLLMToolCall_NormalizesGeminiThoughtSignature(t *testing.T) {
@@ -944,7 +938,7 @@ func TestToolCall_ToLLMToolCall_NormalizesGeminiThoughtSignature(t *testing.T) {
 	require.NotNil(t, got.TransformerMetadata)
 	require.Equal(
 		t,
-		shared.GeminiThoughtSignaturePrefix+"base64_signature",
+		"base64_signature",
 		got.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature],
 	)
 }
@@ -972,7 +966,7 @@ func TestToolCall_ToLLMToolCall_NormalizesGeminiThoughtSignatureFromExtraFields(
 	require.NotNil(t, got.TransformerMetadata)
 	require.Equal(
 		t,
-		shared.GeminiThoughtSignaturePrefix+"base64_signature",
+		"base64_signature",
 		got.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature],
 	)
 }
@@ -1017,7 +1011,7 @@ func TestInboundTransformer_TransformRequest_WithToolCallExtraFieldsThoughtSigna
 	require.NotNil(t, got.Messages[0].ReasoningSignature)
 	require.Equal(
 		t,
-		shared.GeminiThoughtSignaturePrefix+"raw_signature_from_extra_fields",
+		"raw_signature_from_extra_fields",
 		*got.Messages[0].ReasoningSignature,
 	)
 
@@ -1025,7 +1019,7 @@ func TestInboundTransformer_TransformRequest_WithToolCallExtraFieldsThoughtSigna
 	require.True(t, ok)
 	require.Equal(
 		t,
-		shared.GeminiThoughtSignaturePrefix+"raw_signature_from_extra_fields",
+		"raw_signature_from_extra_fields",
 		metadataSignature,
 	)
 }
@@ -1033,7 +1027,7 @@ func TestInboundTransformer_TransformRequest_WithToolCallExtraFieldsThoughtSigna
 func TestMessageFromLLM_WithGeminiThoughtSignatureDoesNotInjectToolCallExtraContent(t *testing.T) {
 	msg := llm.Message{
 		Role:               "assistant",
-		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("base64_signature")),
+		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("base64_signature"), ""),
 		ToolCalls: []llm.ToolCall{
 			{
 				ID:   "call_1",
@@ -1066,7 +1060,7 @@ func TestInboundTransformer_TransformResponse_WithGeminiToolCallThoughtSignature
 				Index: 0,
 				Message: &llm.Message{
 					Role:               "assistant",
-					ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("base64_signature")),
+					ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("base64_signature"), ""),
 					ToolCalls: []llm.ToolCall{
 						{
 							ID:   "call_1",

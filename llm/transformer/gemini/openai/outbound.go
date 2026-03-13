@@ -21,8 +21,9 @@ import (
 // Config holds all configuration for the Gemini OpenAI outbound transformer.
 type Config struct {
 	// API configuration
-	BaseURL        string              `json:"base_url,omitempty"` // Custom base URL (optional)
-	APIKeyProvider auth.APIKeyProvider `json:"-"`                  // API key provider
+	BaseURL         string              `json:"base_url,omitempty"` // Custom base URL (optional)
+	APIKeyProvider  auth.APIKeyProvider `json:"-"`                  // API key provider
+	AccountIdentity string              `json:"account_identity,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for Gemini OpenAI format.
@@ -31,8 +32,9 @@ type Config struct {
 type OutboundTransformer struct {
 	transformer.Outbound
 
-	BaseURL        string
-	APIKeyProvider auth.APIKeyProvider
+	BaseURL         string
+	APIKeyProvider  auth.APIKeyProvider
+	AccountIdentity string
 }
 
 // ThinkingBudget represents a thinking budget that can be either an int or a string.
@@ -149,9 +151,10 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	}
 
 	return &OutboundTransformer{
-		Outbound:       outbound,
-		BaseURL:        baseURL,
-		APIKeyProvider: config.APIKeyProvider,
+		Outbound:        outbound,
+		BaseURL:         baseURL,
+		APIKeyProvider:  config.APIKeyProvider,
+		AccountIdentity: config.AccountIdentity,
 	}, nil
 }
 
@@ -299,6 +302,10 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Make a copy to avoid modifying the original request
 	req := *llmReq
+	scope := shared.TransportScope{
+		BaseURL:         t.BaseURL,
+		AccountIdentity: t.AccountIdentity,
+	}
 
 	// Fallback: Filter out Google native tools (not supported by OpenAI-compatible endpoint)
 	// This is a graceful degradation when no native Gemini channels are available.
@@ -330,7 +337,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Convert llm.Request to openai.Request
 	oaiReq := openai.RequestFromLLM(&req)
-	fillGeminiThoughtSignatureForGeminiOpenAIRequest(&req, oaiReq)
+	fillGeminiThoughtSignatureForGeminiOpenAIRequest(&req, oaiReq, scope)
 
 	geminiReq := Request{Request: *oaiReq}
 	if extraBody != nil {
@@ -358,15 +365,16 @@ func (t *OutboundTransformer) TransformRequest(
 	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     url,
-		Headers: headers,
-		Body:    body,
-		Auth:    auth,
+		Method:   http.MethodPost,
+		URL:      url,
+		Headers:  headers,
+		Body:     body,
+		Auth:     auth,
+		Metadata: scope.Metadata(),
 	}, nil
 }
 
-func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *openai.Request) {
+func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *openai.Request, scope shared.TransportScope) {
 	if src == nil || dst == nil {
 		return
 	}
@@ -410,15 +418,32 @@ func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *ope
 				continue
 			}
 
-			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = shared.StripGeminiThoughtSignaturePrefix(raw)
-			hasToolCallThoughtSignature = true
+			if scope.Footprint() == "" {
+				ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = raw
+				hasToolCallThoughtSignature = true
+				continue
+			}
+
+			if decoded := shared.DecodeGeminiThoughtSignatureInScope(&raw, scope); decoded != nil {
+				ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = *decoded
+				hasToolCallThoughtSignature = true
+			}
 		}
 
-		if hasToolCallThoughtSignature || !shared.IsGeminiThoughtSignature(srcMsg.ReasoningSignature) {
+		if hasToolCallThoughtSignature {
 			continue
 		}
 
-		ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = shared.StripGeminiThoughtSignaturePrefix(*srcMsg.ReasoningSignature)
+		if scope.Footprint() == "" {
+			if srcMsg.ReasoningSignature != nil && *srcMsg.ReasoningSignature != "" {
+				ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = *srcMsg.ReasoningSignature
+			}
+			continue
+		}
+
+		if decoded := shared.DecodeGeminiThoughtSignatureInScope(srcMsg.ReasoningSignature, scope); decoded != nil {
+			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = *decoded
+		}
 	}
 }
 

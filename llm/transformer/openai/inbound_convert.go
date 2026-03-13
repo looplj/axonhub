@@ -4,7 +4,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // ToLLMToolCall converts OpenAI ToolCall to unified llm.ToolCall.
@@ -27,10 +26,8 @@ func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
 	if extraContent != nil &&
 		extraContent.Google != nil &&
 		extraContent.Google.ThoughtSignature != "" {
-		if normalized := shared.NormalizeGeminiThoughtSignature(extraContent.Google.ThoughtSignature); normalized != nil {
-			toolCall.TransformerMetadata = map[string]any{
-				TransformerMetadataKeyGoogleThoughtSignature: *normalized,
-			}
+		toolCall.TransformerMetadata = map[string]any{
+			TransformerMetadataKeyGoogleThoughtSignature: extraContent.Google.ThoughtSignature,
 		}
 	}
 

@@ -346,7 +346,7 @@ func TestRequestFromLLM_KeepsGoogleThoughtSignatureInRequestModel(t *testing.T) 
 		Messages: []llm.Message{
 			{
 				Role:               "assistant",
-				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_reasoning")),
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_reasoning"), ""),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_1",
@@ -376,7 +376,7 @@ func TestRequestFromLLM_KeepsGoogleThoughtSignatureInRequestModel(t *testing.T) 
 func TestMessageFromLLM_DoesNotOverrideFirstToolCallWhenMetadataExists(t *testing.T) {
 	msg := MessageFromLLM(llm.Message{
 		Role:               "assistant",
-		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second_tool_call")),
+		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second_tool_call"), ""),
 		ToolCalls: []llm.ToolCall{
 			{
 				ID:   "call_1",
@@ -412,7 +412,7 @@ func TestMessageFromLLM_DoesNotOverrideFirstToolCallWhenMetadataExists(t *testin
 func TestMessageFromLLM_GeminiReasoningSignatureDoesNotInjectThoughtSignature(t *testing.T) {
 	msg := MessageFromLLM(llm.Message{
 		Role:               "assistant",
-		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("gemini_signature")),
+		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("gemini_signature"), ""),
 		ToolCalls: []llm.ToolCall{
 			{
 				ID:   "call_1",

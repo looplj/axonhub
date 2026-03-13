@@ -4,7 +4,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // RequestFromLLM creates OpenAI Request from unified llm.Request.
@@ -99,32 +98,19 @@ func RequestFromLLM(r *llm.Request) *Request {
 func MessageFromLLM(m llm.Message) Message {
 	var reasoningContent, reasoning *string
 
-	// Check if foreign signature is present
-	// OpenAI Chat Completions has no notion of provider-specific reasoning signatures.
-	// If we detect a foreign signature (Gemini/Anthropic), drop both reasoning fields
-	// to avoid sending provider-specific data to OpenAI and prevent upstream validation errors.
-	hasForeignSignature := m.ReasoningSignature != nil && *m.ReasoningSignature != "" && !shared.IsOpenAIEncryptedContent(m.ReasoningSignature)
+	reasoningContent = m.ReasoningContent
 
-	if hasForeignSignature {
-		// Foreign signature: clear both fields to avoid sending provider-specific data to OpenAI
-		reasoningContent = nil
-		reasoning = nil
-	} else {
-		// No foreign signature: perform sync/fallback logic
-		reasoningContent = m.ReasoningContent
+	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
+	if reasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
+		reasoningContent = m.Reasoning
+	}
 
-		// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
-		if reasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
-			reasoningContent = m.Reasoning
-		}
+	// Determine final reasoning value
+	reasoning = m.Reasoning
 
-		// Determine final reasoning value
-		reasoning = m.Reasoning
-
-		// Sync: if Reasoning is empty but ReasoningContent has value, use ReasoningContent
-		if reasoning == nil && reasoningContent != nil && *reasoningContent != "" {
-			reasoning = reasoningContent
-		}
+	// Sync: if Reasoning is empty but ReasoningContent has value, use ReasoningContent
+	if reasoning == nil && reasoningContent != nil && *reasoningContent != "" {
+		reasoning = reasoningContent
 	}
 
 	// Build the Message with both fields determined

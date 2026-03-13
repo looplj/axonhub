@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestClenupConfig(t *testing.T) {
@@ -106,6 +108,48 @@ func TestClenupConfig(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testing.T) {
+	outbound, err := NewOutboundTransformerWithConfig(Config{
+		BaseURL:         "https://generativelanguage.googleapis.com",
+		APIKeyProvider:  auth.NewStaticKeyProvider("test-api-key"),
+		AccountIdentity: "channel-1",
+	})
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gemini-2.0-flash",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+		},
+	}
+
+	hreq, err := outbound.TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+	require.NotNil(t, hreq.Metadata)
+
+	require.Equal(t, "https://generativelanguage.googleapis.com", hreq.Metadata[shared.MetadataKeyBaseURL])
+	require.Equal(t, "channel-1", hreq.Metadata[shared.MetadataKeyAccountIdentity])
+}
+
+func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing.T) {
+	outbound, err := NewOutboundTransformerWithConfig(Config{
+		BaseURL:        "https://generativelanguage.googleapis.com",
+		APIKeyProvider: auth.NewStaticKeyProvider(""),
+	})
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gemini-2.0-flash",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+		},
+	}
+
+	hreq, err := outbound.TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+	require.True(t, hreq.Metadata == nil || (hreq.Metadata[shared.MetadataKeyBaseURL] == "" && hreq.Metadata[shared.MetadataKeyAccountIdentity] == ""))
 }
 
 func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {

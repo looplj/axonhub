@@ -1,76 +1,64 @@
 package shared
 
 import (
+	"encoding/base64"
 	"strings"
 )
 
 // TransformerMetadataKeyGoogleThoughtSignature 用于在 ToolCall TransformerMetadata 中保存 Gemini thought signature。
 const TransformerMetadataKeyGoogleThoughtSignature = "google_thought_signature"
 
-func geminiThoughtSignaturePrefixLength(signature string) int {
-	if strings.HasPrefix(signature, GeminiThoughtSignaturePrefix) {
-		return len(GeminiThoughtSignaturePrefix)
+func parseGeminiThoughtSignaturePrefix(signature string) (prefixLength int, footprint string, ok bool) {
+	if len(signature) >= len(GeminiThoughtSignaturePrefix)+8 && strings.HasPrefix(signature, GeminiThoughtSignaturePrefix) {
+		fpB64 := signature[len(GeminiThoughtSignaturePrefix) : len(GeminiThoughtSignaturePrefix)+8]
+		if decoded, err := base64.StdEncoding.DecodeString(fpB64); err == nil && len(decoded) == 6 {
+			fp := string(decoded)
+			if isFootprintHex6(fp) {
+				return len(GeminiThoughtSignaturePrefix) + 8, fp, true
+			}
+		}
 	}
 
-	return 0
+	return 0, "", false
 }
 
-func IsGeminiThoughtSignature(signature *string) bool {
-	if signature == nil {
-		return false
-	}
-
-	return geminiThoughtSignaturePrefixLength(*signature) > 0
-}
-
-func DecodeGeminiThoughtSignature(signature *string) *string {
+func DecodeGeminiThoughtSignature(signature *string, footprint string) *string {
 	if signature == nil {
 		return nil
 	}
 
-	prefixLength := geminiThoughtSignaturePrefixLength(*signature)
-	if prefixLength == 0 {
+	prefixLength, embeddedFootprint, ok := parseGeminiThoughtSignaturePrefix(*signature)
+	if !ok {
+		return nil
+	}
+
+	if embeddedFootprint != "" && embeddedFootprint != footprint {
 		return nil
 	}
 
 	decoded := (*signature)[prefixLength:]
-
 	return &decoded
 }
 
-func EncodeGeminiThoughtSignature(signature *string) *string {
+func DecodeGeminiThoughtSignatureInScope(signature *string, scope TransportScope) *string {
+	return DecodeGeminiThoughtSignature(signature, scope.Footprint())
+}
+
+func EncodeGeminiThoughtSignature(signature *string, footprint string) *string {
 	if signature == nil {
 		return nil
 	}
 
-	encoded := GeminiThoughtSignaturePrefix + *signature
+	if footprint == "" || !isFootprintHex6(footprint) {
+		encoded := *signature
+		return &encoded
+	}
 
+	prefix := GeminiThoughtSignaturePrefix + base64.StdEncoding.EncodeToString([]byte(footprint))
+	encoded := prefix + *signature
 	return &encoded
 }
 
-// NormalizeGeminiThoughtSignature returns the internal-prefixed representation of a Gemini
-// thought signature, preserving already-prefixed values and converting legacy prefixes.
-// Empty strings return nil.
-func NormalizeGeminiThoughtSignature(signature string) *string {
-	if signature == "" {
-		return nil
-	}
-
-	if decoded := DecodeGeminiThoughtSignature(&signature); decoded != nil {
-		// Convert legacy prefix to the current internal prefix.
-		return EncodeGeminiThoughtSignature(decoded)
-	}
-
-	// No known prefix; wrap as internal Gemini signature.
-	return EncodeGeminiThoughtSignature(&signature)
-}
-
-// StripGeminiThoughtSignaturePrefix removes internal prefix from Gemini thought signatures.
-func StripGeminiThoughtSignaturePrefix(signature string) string {
-	prefixLength := geminiThoughtSignaturePrefixLength(signature)
-	if prefixLength == 0 {
-		return signature
-	}
-
-	return signature[prefixLength:]
+func EncodeGeminiThoughtSignatureInScope(signature *string, scope TransportScope) *string {
+	return EncodeGeminiThoughtSignature(signature, scope.Footprint())
 }
