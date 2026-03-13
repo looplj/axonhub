@@ -14,7 +14,6 @@ function Write-Err([string]$m){ Write-Host "[ERROR] $m" -ForegroundColor Red }
 $ServiceName = 'axonclaw'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $BaseDir = Join-Path $ScriptDir '.axonclaw'
-$ConfigFile = Join-Path $BaseDir 'config.yml'
 $BinaryPath = Join-Path $ScriptDir 'axonclaw.exe'
 $PidFile = Join-Path $BaseDir 'axonclaw.pid'
 $LogFile = Join-Path $BaseDir 'logs\axonclaw.log'
@@ -30,11 +29,8 @@ PID file: $PidFile
 Environment variables (all optional if config exists):
   AXONCLAW_BASE_URL      Optional. AxonHub server URL
   AXONCLAW_API_KEY       Optional. Agent API key for authentication
-  AXONCLAW_NAME          Optional. Agent instance name
+  AXONCLAW_AUTO_SYNC_CONFIG Optional. Set to 'true' to enable --auto-sync-config
   DEBUG_MODE             Optional. Set to 'true' to enable debug logging
-
-Config file: .axonclaw\config.yml
-  On first start, config will be saved and reused on subsequent starts.
 
 Example (first start):
   set AXONCLAW_API_KEY=your-key && start.bat
@@ -81,12 +77,6 @@ Write-Info "Using binary: $binaryPath"
 Ensure-Dirs $BaseDir
 Ensure-Dirs (Join-Path $BaseDir 'logs')
 
-$hasConfig = $false
-if(Test-Path $ConfigFile){
-  $hasConfig = $true
-  Write-Info "Found existing config: $ConfigFile"
-}
-
 if(Test-Path $PidFile){
   try {
     $pid = Get-Content -Path $PidFile -ErrorAction Stop
@@ -113,9 +103,8 @@ if($env:AXONCLAW_API_KEY){
   $args += $env:AXONCLAW_API_KEY
 }
 
-if($env:AXONCLAW_NAME){
-  $args += "--name"
-  $args += $env:AXONCLAW_NAME
+if($env:AXONCLAW_AUTO_SYNC_CONFIG){
+  $args += "--auto-sync-config"
 }
 
 if($env:DEBUG_MODE){
@@ -126,8 +115,8 @@ Write-Info 'Starting AxonClaw process...'
 if($env:AXONCLAW_BASE_URL){
   Write-Info "  Base URL: $env:AXONCLAW_BASE_URL"
 }
-if($env:AXONCLAW_NAME){
-  Write-Info "  Name: $env:AXONCLAW_NAME"
+if($env:AXONCLAW_AUTO_SYNC_CONFIG){
+  Write-Info "  Auto Sync Config: enabled"
 }
 
 try {
@@ -139,9 +128,6 @@ try {
     Write-Info 'Process information:'
     Write-Host "  • PID: $($p.Id)"
     Write-Host "  • Log file: $LogFile"
-    if(-not $hasConfig){
-      Write-Info "Config saved to: $ConfigFile"
-    }
     Write-Host ''
     Write-Info 'To stop AxonClaw: stop.bat'
     Write-Info "To view logs: Get-Content -Path '$LogFile' -Tail 100 -Wait"

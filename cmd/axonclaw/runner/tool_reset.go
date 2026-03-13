@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/axon/agent"
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
+	"github.com/looplj/axonhub/cmd/axonclaw/prompts"
 )
 
 type ResetTool struct {
@@ -45,6 +46,7 @@ func (t *ResetTool) Definition() agent.ToolDefinition {
 			Schema:               "https://json-schema.org/draft/2020-12/schema",
 			Type:                 "object",
 			AdditionalProperties: &jsonschema.Schema{Not: &jsonschema.Schema{}},
+			Properties:           map[string]*jsonschema.Schema{},
 		},
 	}
 }
@@ -61,21 +63,17 @@ func (t *ResetTool) Execute(ctx context.Context, _ map[string]any) agent.ToolRes
 		return agent.ToolResult{Error: fmt.Errorf("reset bootstrap failed: %w", err)}
 	}
 
-	// Preserve fields that should not change across a reset.
 	threadID := t.boot.ThreadID
-	// Update the boot struct with new values from bootstrap.
 	*t.boot = *newBoot
-	// Restore the preserved fields.
 	t.boot.ThreadID = threadID
 
 	env := buildPromptEnv(newBoot, t.workspace)
-	serverPrompt := buildServerSystemPrompt(newBoot.SystemPrompt, env)
-	serverPrompt = appendSkillsToPrompt(serverPrompt, newBoot.Skills)
-	localPrompt := buildLocalSystemPrompt(env)
+
+	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts, newBoot.Skills)
 
 	t.agent.UpdateConfig(func(cfg agent.Config) agent.Config {
 		cfg.Model = newBoot.Model
-		cfg.SystemPrompts = []string{serverPrompt, localPrompt}
+		cfg.SystemPrompts = systemPrompts
 		return cfg
 	})
 

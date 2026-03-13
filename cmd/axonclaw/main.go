@@ -60,7 +60,6 @@ func newRootCommand(opts newRootCommandOptions) *cobra.Command {
 	var (
 		baseURL        string
 		apiKey         string
-		name           string
 		autoSyncConfig bool
 		debug          bool
 	)
@@ -76,7 +75,7 @@ Build Time: %s
 Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit()),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := conf.LoadOrSaveConfig(baseURL, apiKey, name)
+			cfg, err := conf.LoadOrSaveConfig(baseURL, apiKey)
 			if err != nil {
 				return err
 			}
@@ -94,7 +93,6 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 
 	rootCmd.Flags().StringVar(&baseURL, "base-url", "", "AxonHub base URL")
 	rootCmd.Flags().StringVar(&apiKey, "api-key", "", "Agent API key")
-	rootCmd.Flags().StringVar(&name, "name", "", "Agent instance name")
 	rootCmd.Flags().BoolVar(&autoSyncConfig, "auto-sync-config", false, "Automatically sync agent configuration from server")
 	rootCmd.Flags().BoolVar(&debug, "debug", false, "Enable debug logging")
 
@@ -163,21 +161,19 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		"base_url", cfg.BaseURL,
 		"model", boot.Model,
 		"workspace", wd,
+		"soul", boot.Prompts != nil && !boot.Prompts.Soul.IsEmpty(),
+		"identity", boot.Prompts != nil && !boot.Prompts.Identity.IsEmpty(),
+		"user", boot.Prompts != nil && !boot.Prompts.User.IsEmpty(),
 	)
 
 	provider := anthropic.New(strings.TrimRight(cfg.BaseURL, "/")+"/anthropic", cfg.APIKey,
 		anthropic.WithReasoningEffort(boot.ReasoningEffort),
 	)
 
-	instanceName := "axonclaw"
-	if cfg.Name != "" {
-		instanceName = cfg.Name
-	}
 	platform := runtime.GOOS
 
 	if _, err := api.RegisterAgentInstance(ctx, gqlClient, &api.RegisterAgentInstanceInput{
 		ThreadID: &boot.ThreadID,
-		Name:     &instanceName,
 		Platform: &platform,
 	}); err != nil {
 		return fmt.Errorf("register instance: %w", err)
@@ -231,7 +227,12 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		return nil
 	}))
 
-	grantsStore := grant.NewMemoryStore(grant.NewFileStore(filepath.Join(axonclawDir, "permission")))
+	permissionDir, err := conf.PermissionDir()
+	if err != nil {
+		return fmt.Errorf("resolve permission directory: %w", err)
+	}
+
+	grantsStore := grant.NewMemoryStore(grant.NewFileStore(permissionDir))
 	if err := grantsStore.LoadGlobal(); err != nil {
 		return fmt.Errorf("load global grants: %w", err)
 	}

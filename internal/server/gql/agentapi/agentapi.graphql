@@ -36,6 +36,8 @@ type AgentSkillDefinition {
 type AgentBootstrap {
   agentID: ID!
   agentName: String!
+  agentInstanceName: String!
+  createdByUserName: String!
   model: String
   reasoningEffort: String!
   systemPrompt: String!
@@ -52,9 +54,7 @@ enum AgentMessageSenderType { user runtime system }
 enum AgentMessageType { chat approval_request approval_result system_event }
 
 input RegisterAgentInstanceInput {
-  name: String
   platform: String
-  description: String
   threadID: String
 }
 

@@ -52,7 +52,7 @@ var sendMessageParameters = jsonschema.Schema{
 		},
 		"reply_to_message_id": {
 			Type:        "string",
-			Description: "The agent message ID (gid://axonhub/AgentMessage/<id>) to reply to. If provided, the platform reply will be attached to the external message referenced by that inbound message.",
+			Description: `The agent message ID (gid://axonhub/AgentMessage/<id>) to reply to. If provided, the platform reply will be attached to the external message referenced by that inbound message.`,
 		},
 	},
 	Required: []string{"target", "message"},
@@ -78,6 +78,9 @@ func (t *SendMessageTool) Execute(ctx context.Context, input sendMessageInput) a
 }
 
 func (t *SendMessageTool) sendToUser(ctx context.Context, message string, replyToMessageID *string) agent.ToolResult {
+	if replyToMessageID == nil || *replyToMessageID == "" {
+		replyToMessageID = nil
+	}
 	_, err := api.ReplyMessage(ctx, t.client, &api.ReplyMessageInput{
 		Text:             message,
 		ReplyToMessageID: replyToMessageID,

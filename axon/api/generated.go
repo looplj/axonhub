@@ -27,14 +27,16 @@ func (v *AckAgentMessagesResponse) GetAckAgentMessages() bool { return v.AckAgen
 
 // AgentBootstrapAgentBootstrap includes the requested fields of the GraphQL type AgentBootstrap.
 type AgentBootstrapAgentBootstrap struct {
-	AgentID         string                                                      `json:"agentID"`
-	AgentName       string                                                      `json:"agentName"`
-	Model           *string                                                     `json:"model"`
-	ReasoningEffort string                                                      `json:"reasoningEffort"`
-	SystemPrompt    string                                                      `json:"systemPrompt"`
-	Tools           []*AgentBootstrapAgentBootstrapToolsAgentToolDefinition     `json:"tools"`
-	Skills          []*AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition   `json:"skills"`
-	BuiltinTools    []*AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool `json:"builtinTools"`
+	AgentID           string                                                      `json:"agentID"`
+	AgentName         string                                                      `json:"agentName"`
+	AgentInstanceName string                                                      `json:"agentInstanceName"`
+	CreatedByUserName string                                                      `json:"createdByUserName"`
+	Model             *string                                                     `json:"model"`
+	ReasoningEffort   string                                                      `json:"reasoningEffort"`
+	SystemPrompt      string                                                      `json:"systemPrompt"`
+	Tools             []*AgentBootstrapAgentBootstrapToolsAgentToolDefinition     `json:"tools"`
+	Skills            []*AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition   `json:"skills"`
+	BuiltinTools      []*AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool `json:"builtinTools"`
 }
 
 // GetAgentID returns AgentBootstrapAgentBootstrap.AgentID, and is useful for accessing the field via an interface.
@@ -42,6 +44,12 @@ func (v *AgentBootstrapAgentBootstrap) GetAgentID() string { return v.AgentID }
 
 // GetAgentName returns AgentBootstrapAgentBootstrap.AgentName, and is useful for accessing the field via an interface.
 func (v *AgentBootstrapAgentBootstrap) GetAgentName() string { return v.AgentName }
+
+// GetAgentInstanceName returns AgentBootstrapAgentBootstrap.AgentInstanceName, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrap) GetAgentInstanceName() string { return v.AgentInstanceName }
+
+// GetCreatedByUserName returns AgentBootstrapAgentBootstrap.CreatedByUserName, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrap) GetCreatedByUserName() string { return v.CreatedByUserName }
 
 // GetModel returns AgentBootstrapAgentBootstrap.Model, and is useful for accessing the field via an interface.
 func (v *AgentBootstrapAgentBootstrap) GetModel() *string { return v.Model }
@@ -445,20 +453,12 @@ func (v *PullAgentMessagesResponse) GetPullAgentMessages() []*PullAgentMessagesP
 }
 
 type RegisterAgentInstanceInput struct {
-	Name        *string `json:"name"`
-	Platform    *string `json:"platform"`
-	Description *string `json:"description"`
-	ThreadID    *string `json:"threadID"`
+	Platform *string `json:"platform"`
+	ThreadID *string `json:"threadID"`
 }
-
-// GetName returns RegisterAgentInstanceInput.Name, and is useful for accessing the field via an interface.
-func (v *RegisterAgentInstanceInput) GetName() *string { return v.Name }
 
 // GetPlatform returns RegisterAgentInstanceInput.Platform, and is useful for accessing the field via an interface.
 func (v *RegisterAgentInstanceInput) GetPlatform() *string { return v.Platform }
-
-// GetDescription returns RegisterAgentInstanceInput.Description, and is useful for accessing the field via an interface.
-func (v *RegisterAgentInstanceInput) GetDescription() *string { return v.Description }
 
 // GetThreadID returns RegisterAgentInstanceInput.ThreadID, and is useful for accessing the field via an interface.
 func (v *RegisterAgentInstanceInput) GetThreadID() *string { return v.ThreadID }
@@ -653,6 +653,8 @@ query AgentBootstrap {
 	agentBootstrap {
 		agentID
 		agentName
+		agentInstanceName
+		createdByUserName
 		model
 		reasoningEffort
 		systemPrompt

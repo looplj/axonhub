@@ -21,6 +21,7 @@ import (
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
+	"github.com/looplj/axonhub/cmd/axonclaw/prompts"
 )
 
 const defaultMaxIterations = 30
@@ -57,14 +58,13 @@ func New(opts NewOptions) *Runner {
 	permMw := NewPermissionMiddleware(opts.PermEvaluator)
 
 	env := buildPromptEnv(opts.Boot, opts.Workspace)
-	serverPrompt := buildServerSystemPrompt(opts.Boot.SystemPrompt, env)
-	serverPrompt = appendSkillsToPrompt(serverPrompt, opts.Boot.Skills)
-	localPrompt := buildLocalSystemPrompt(env)
+
+	systemPrompts := prompts.BuildSystemPrompts(env, opts.Boot.Prompts, opts.Boot.Skills)
 
 	a := agent.New(agent.Config{
 		Model:         opts.Boot.Model,
 		MaxIterations: defaultMaxIterations,
-		SystemPrompts: []string{serverPrompt, localPrompt},
+		SystemPrompts: systemPrompts,
 	}, opts.Provider,
 		agent.WithBus(opts.Bus),
 		agent.WithContextManager(opts.ContextManager),
@@ -90,8 +90,8 @@ func New(opts NewOptions) *Runner {
 	}
 }
 
-func buildPromptEnv(boot *bootstrap.Result, workspace string) PromptEnv {
-	return PromptEnv{
+func buildPromptEnv(boot *bootstrap.Result, workspace string) prompts.PromptEnv {
+	return prompts.PromptEnv{
 		Date:         boot.Date,
 		Timezone:     boot.Timezone,
 		OS:           boot.OS,
@@ -99,7 +99,6 @@ func buildPromptEnv(boot *bootstrap.Result, workspace string) PromptEnv {
 		ThreadID:     boot.ThreadID,
 		AxonClawPath: boot.AxonClawPath,
 		SkillsRoot:   boot.SkillsRoot,
-		ConfigDir:    boot.ConfigDir,
 		AgentID:      boot.AgentID,
 		AgentName:    boot.AgentName,
 	}
@@ -111,8 +110,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	msgCh := make(chan string, 64)
 
-	// Separate goroutine for polling messages so that new messages can still
-	// be received while the agent is processing (enabling steering).
 	go r.pollMessages(ctx, msgCh)
 
 	hbTicker := time.NewTicker(r.Config.HeartbeatInterval)
@@ -145,8 +142,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		case text := <-msgCh:
 			if r.processing.Load() {
-				// Agent is busy — deliver as a steering message so the
-				// current tool-call loop can be interrupted.
 				r.Logger.Info("agent busy, delivering as steering", "text_len", len(text))
 				t := text
 				r.Agent.Steer(agent.Message{
@@ -154,8 +149,6 @@ func (r *Runner) Run(ctx context.Context) error {
 					Content: &agent.Content{Text: &t},
 				})
 			} else {
-				// Agent is idle — start a new processing run in background
-				// so the main loop remains responsive.
 				t := text
 
 				go func() {
@@ -168,8 +161,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 }
 
-// pollMessages continuously pulls chat messages from the server and sends
-// their text to out. It runs until ctx is canceled.
 func (r *Runner) pollMessages(ctx context.Context, out chan<- string) {
 	ticker := time.NewTicker(r.Config.PollInterval)
 	defer ticker.Stop()
@@ -284,23 +275,22 @@ func (r *Runner) autoUpdateConfig(ctx context.Context) {
 	r.Boot.AgentID = newBoot.AgentID
 	r.Boot.AgentName = newBoot.AgentName
 	r.Boot.Model = newBoot.Model
-	r.Boot.SystemPrompt = newBoot.SystemPrompt
 	r.Boot.Tools = newBoot.Tools
 	r.Boot.Skills = newBoot.Skills
 	r.Boot.BuiltinTools = newBoot.BuiltinTools
+	r.Boot.Prompts = newBoot.Prompts
 	r.Boot.AxonClawPath = newBoot.AxonClawPath
 	r.Boot.Date = newBoot.Date
 	r.Boot.Timezone = newBoot.Timezone
 	r.Boot.OS = newBoot.OS
 
 	env := buildPromptEnv(newBoot, r.Workspace)
-	serverPrompt := buildServerSystemPrompt(newBoot.SystemPrompt, env)
-	serverPrompt = appendSkillsToPrompt(serverPrompt, newBoot.Skills)
-	localPrompt := buildLocalSystemPrompt(env)
+
+	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts, newBoot.Skills)
 
 	r.Agent.UpdateConfig(func(cfg agent.Config) agent.Config {
 		cfg.Model = newBoot.Model
-		cfg.SystemPrompts = []string{serverPrompt, localPrompt}
+		cfg.SystemPrompts = systemPrompts
 		return cfg
 	})
 

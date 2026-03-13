@@ -49,16 +49,18 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	AgentBootstrap struct {
-		AgentID         func(childComplexity int) int
-		AgentName       func(childComplexity int) int
-		BuiltinTools    func(childComplexity int) int
-		MemoryPolicy    func(childComplexity int) int
-		Model           func(childComplexity int) int
-		ReasoningEffort func(childComplexity int) int
-		Skills          func(childComplexity int) int
-		SkillsPolicy    func(childComplexity int) int
-		SystemPrompt    func(childComplexity int) int
-		Tools           func(childComplexity int) int
+		AgentID           func(childComplexity int) int
+		AgentInstanceName func(childComplexity int) int
+		AgentName         func(childComplexity int) int
+		BuiltinTools      func(childComplexity int) int
+		CreatedByUserName func(childComplexity int) int
+		MemoryPolicy      func(childComplexity int) int
+		Model             func(childComplexity int) int
+		ReasoningEffort   func(childComplexity int) int
+		Skills            func(childComplexity int) int
+		SkillsPolicy      func(childComplexity int) int
+		SystemPrompt      func(childComplexity int) int
+		Tools             func(childComplexity int) int
 	}
 
 	AgentBuiltinTool struct {
@@ -207,6 +209,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentBootstrap.AgentID(childComplexity), true
+	case "AgentBootstrap.agentInstanceName":
+		if e.complexity.AgentBootstrap.AgentInstanceName == nil {
+			break
+		}
+
+		return e.complexity.AgentBootstrap.AgentInstanceName(childComplexity), true
 	case "AgentBootstrap.agentName":
 		if e.complexity.AgentBootstrap.AgentName == nil {
 			break
@@ -219,6 +227,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentBootstrap.BuiltinTools(childComplexity), true
+	case "AgentBootstrap.createdByUserName":
+		if e.complexity.AgentBootstrap.CreatedByUserName == nil {
+			break
+		}
+
+		return e.complexity.AgentBootstrap.CreatedByUserName(childComplexity), true
 	case "AgentBootstrap.memoryPolicy":
 		if e.complexity.AgentBootstrap.MemoryPolicy == nil {
 			break
@@ -1038,6 +1052,64 @@ func (ec *executionContext) _AgentBootstrap_agentName(ctx context.Context, field
 }
 
 func (ec *executionContext) fieldContext_AgentBootstrap_agentName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentBootstrap",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentBootstrap_agentInstanceName(ctx context.Context, field graphql.CollectedField, obj *AgentBootstrap) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentBootstrap_agentInstanceName,
+		func(ctx context.Context) (any, error) {
+			return obj.AgentInstanceName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentBootstrap_agentInstanceName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentBootstrap",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentBootstrap_createdByUserName(ctx context.Context, field graphql.CollectedField, obj *AgentBootstrap) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentBootstrap_createdByUserName,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedByUserName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentBootstrap_createdByUserName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentBootstrap",
 		Field:      field,
@@ -3254,6 +3326,10 @@ func (ec *executionContext) fieldContext_Query_agentBootstrap(_ context.Context,
 				return ec.fieldContext_AgentBootstrap_agentID(ctx, field)
 			case "agentName":
 				return ec.fieldContext_AgentBootstrap_agentName(ctx, field)
+			case "agentInstanceName":
+				return ec.fieldContext_AgentBootstrap_agentInstanceName(ctx, field)
+			case "createdByUserName":
+				return ec.fieldContext_AgentBootstrap_createdByUserName(ctx, field)
 			case "model":
 				return ec.fieldContext_AgentBootstrap_model(ctx, field)
 			case "reasoningEffort":
@@ -5201,20 +5277,13 @@ func (ec *executionContext) unmarshalInputRegisterAgentInstanceInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "platform", "description", "threadID"}
+	fieldsInOrder := [...]string{"platform", "threadID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Name = data
 		case "platform":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("platform"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -5222,13 +5291,6 @@ func (ec *executionContext) unmarshalInputRegisterAgentInstanceInput(ctx context
 				return it, err
 			}
 			it.Platform = data
-		case "description":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Description = data
 		case "threadID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threadID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -5378,6 +5440,16 @@ func (ec *executionContext) _AgentBootstrap(ctx context.Context, sel ast.Selecti
 			}
 		case "agentName":
 			out.Values[i] = ec._AgentBootstrap_agentName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "agentInstanceName":
+			out.Values[i] = ec._AgentBootstrap_agentInstanceName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdByUserName":
+			out.Values[i] = ec._AgentBootstrap_createdByUserName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

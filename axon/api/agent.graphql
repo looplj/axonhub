@@ -3,6 +3,8 @@ query AgentBootstrap {
   agentBootstrap {
     agentID
     agentName
+    agentInstanceName
+    createdByUserName
     model
     reasoningEffort
     systemPrompt

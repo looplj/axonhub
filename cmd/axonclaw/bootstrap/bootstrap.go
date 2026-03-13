@@ -13,24 +13,27 @@ import (
 	"github.com/Khan/genqlient/graphql"
 	"github.com/google/uuid"
 	"github.com/looplj/axonhub/axon/api"
+
+	"github.com/looplj/axonhub/cmd/axonclaw/prompts"
 )
 
 type Result struct {
-	AgentID         string
-	AgentName       string
-	Model           string
-	ReasoningEffort string
-	SystemPrompt    string
-	ThreadID        string
-	Tools           []*api.AgentBootstrapAgentBootstrapToolsAgentToolDefinition
-	Skills          []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition
-	BuiltinTools    []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
-	AxonClawPath    string
-	SkillsRoot      string
-	ConfigDir       string
-	Date            string
-	Timezone        string
-	OS              string
+	AgentID           string
+	AgentName         string
+	CreatedByUserName string
+	Model             string
+	ReasoningEffort   string
+	ThreadID          string
+	Tools             []*api.AgentBootstrapAgentBootstrapToolsAgentToolDefinition
+	Skills            []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition
+	BuiltinTools      []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
+	Prompts           *prompts.Bootstrap
+	AxonClawPath      string
+	SkillsRoot        string
+	ConfigDir         string
+	Date              string
+	Timezone          string
+	OS                string
 }
 
 type Params struct {
@@ -60,22 +63,47 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 
 	threadID := fmt.Sprintf("th-%s", uuid.New().String())
 
+	axonClawPath := getAxonClawPath()
+
+	tmplData := prompts.PromptEnv{
+		Date:              now.Format("2006-01-02"),
+		Timezone:          timezone,
+		OS:                runtime.GOOS,
+		Workspace:         data.Workspace,
+		ThreadID:          threadID,
+		AxonClawPath:      axonClawPath,
+		SkillsRoot:        data.SkillsRoot,
+		AgentID:           bootstrap.AgentID,
+		AgentName:         bootstrap.AgentName,
+		AgentInstanceName: bootstrap.AgentInstanceName,
+		CreatedByUserName: bootstrap.CreatedByUserName,
+	}
+
+	prompt, err := prompts.Load(data.ConfigDir, &prompts.InitParams{
+		Env:                tmplData,
+		ServerSystemPrompt: bootstrap.SystemPrompt,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("load bootstrap prompts: %w", err)
+	}
+
 	return &Result{
-		AgentID:         bootstrap.AgentID,
-		AgentName:       bootstrap.AgentName,
-		Model:           model,
-		ReasoningEffort: bootstrap.ReasoningEffort,
-		SystemPrompt:    bootstrap.SystemPrompt,
-		ThreadID:        threadID,
-		Tools:           bootstrap.Tools,
-		Skills:          bootstrap.Skills,
-		BuiltinTools:    bootstrap.BuiltinTools,
-		AxonClawPath:    getAxonClawPath(),
-		SkillsRoot:      data.SkillsRoot,
-		ConfigDir:       data.ConfigDir,
-		Date:            now.Format("2006-01-02"),
-		Timezone:        timezone,
-		OS:              runtime.GOOS,
+		AgentID:           bootstrap.AgentID,
+		AgentName:         bootstrap.AgentName,
+		CreatedByUserName: bootstrap.CreatedByUserName,
+		Model:             model,
+		ReasoningEffort:   bootstrap.ReasoningEffort,
+		ThreadID:          threadID,
+		Tools:             bootstrap.Tools,
+		Skills:            bootstrap.Skills,
+		BuiltinTools:      bootstrap.BuiltinTools,
+		Prompts:           prompt,
+		AxonClawPath:      axonClawPath,
+		SkillsRoot:        data.SkillsRoot,
+		ConfigDir:         data.ConfigDir,
+		Date:              now.Format("2006-01-02"),
+		Timezone:          timezone,
+		OS:                runtime.GOOS,
 	}, nil
 }
 

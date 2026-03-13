@@ -278,7 +278,7 @@ main() {
 
     print_success "AxonClaw ${version} installed successfully to ${INSTALL_DIR}"
 
-    if [[ -n "$AXONCLAW_NAME" ]] || [[ -n "$AXONCLAW_BASE_URL" ]] || [[ -n "$AXONCLAW_API_KEY" ]]; then
+    if [[ -n "$AXONCLAW_AUTO_SYNC_CONFIG" ]] || [[ -n "$AXONCLAW_BASE_URL" ]] || [[ -n "$AXONCLAW_API_KEY" ]]; then
         start_axonclaw "$INSTALL_DIR"
     else
         print_info "Environment variables not set, skipping auto-start"
@@ -286,7 +286,7 @@ main() {
         print_info "  cd ${INSTALL_DIR} && ./start.sh"
         print_info ""
         print_info "Or with environment variables:"
-        print_info "  AXONCLAW_NAME=my-agent AXONCLAW_BASE_URL=http://localhost:8090 AXONCLAW_API_KEY=your-key ./start.sh"
+        print_info "  AXONCLAW_BASE_URL=http://localhost:8090 AXONCLAW_API_KEY=your-key AXONCLAW_AUTO_SYNC_CONFIG=true ./start.sh"
     fi
 }
 

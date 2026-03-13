@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -60,11 +61,13 @@ type AgentSkillDefinition struct {
 }
 
 type AgentBootstrap struct {
-	AgentID         int
-	AgentName       string
-	Model           *string
-	ReasoningEffort string
-	SystemPrompt    string
+	AgentID           int
+	AgentName         string
+	AgentInstanceName string
+	CreatedByUserName string
+	Model             *string
+	ReasoningEffort   string
+	SystemPrompt      string
 
 	Tools        []AgentToolDefinition
 	Skills       []AgentSkillDefinition
@@ -93,11 +96,9 @@ type AgentMessageView struct {
 }
 
 type RegisterAgentInstanceInput struct {
-	AgentID     int
-	Name        *string
-	Platform    *string
-	Description *string
-	ThreadID    *string
+	AgentID  int
+	Platform *string
+	ThreadID *string
 }
 
 type SendPeerMessageInput struct {
@@ -194,9 +195,20 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 				agent.IDEQ(inst.AgentID),
 				agent.ProjectIDEQ(inst.ProjectID),
 			).
+			WithCreatedByUser().
 			Only(bypassCtx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		createdByUserName := ""
+		if a.Edges.CreatedByUser != nil {
+			createdByUserName = a.Edges.CreatedByUser.FirstName + " " + a.Edges.CreatedByUser.LastName
+
+			createdByUserName = strings.TrimSpace(createdByUserName)
+			if createdByUserName == "" {
+				createdByUserName = a.Edges.CreatedByUser.Email
+			}
 		}
 
 		p, err := client.Prompt.Query().
@@ -291,16 +303,18 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 		}
 
 		return &AgentBootstrap{
-			AgentID:         a.ID,
-			AgentName:       a.Name,
-			Model:           model,
-			ReasoningEffort: string(a.ReasoningEffort),
-			SystemPrompt:    p.Content,
-			Tools:           tools,
-			Skills:          skills,
-			BuiltinTools:    builtinTools,
-			SkillsPolicy:    skillsPolicy,
-			MemoryPolicy:    nil,
+			AgentID:           a.ID,
+			AgentName:         a.Name,
+			AgentInstanceName: inst.Name,
+			CreatedByUserName: createdByUserName,
+			Model:             model,
+			ReasoningEffort:   string(a.ReasoningEffort),
+			SystemPrompt:      p.Content,
+			Tools:             tools,
+			Skills:            skills,
+			BuiltinTools:      builtinTools,
+			SkillsPolicy:      skillsPolicy,
+			MemoryPolicy:      nil,
 		}, nil
 	})
 }
@@ -803,15 +817,8 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 			upd := client.AgentInstance.UpdateOneID(existing.ID).
 				SetLastHeartbeatAt(now)
 
-			if input.Name != nil {
-				upd.SetName(*input.Name)
-			}
 			if input.Platform != nil {
 				upd.SetPlatform(*input.Platform)
-			}
-
-			if input.Description != nil {
-				upd.SetDescription(*input.Description)
 			}
 
 			inst, err := upd.Save(bypassCtx)
@@ -837,15 +844,8 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 			SetAPIKeyID(apiKey.ID).
 			SetLastHeartbeatAt(now)
 
-		if input.Name != nil {
-			create.SetName(*input.Name)
-		}
 		if input.Platform != nil {
 			create.SetPlatform(*input.Platform)
-		}
-
-		if input.Description != nil {
-			create.SetDescription(*input.Description)
 		}
 
 		created, err := create.Save(bypassCtx)

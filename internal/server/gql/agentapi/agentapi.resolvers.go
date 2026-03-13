@@ -25,11 +25,9 @@ func (r *mutationResolver) RegisterAgentInstance(ctx context.Context, input Regi
 	}
 
 	updatedInst, err := r.agentBootstrapService.RegisterAgentInstance(ctx, biz.RegisterAgentInstanceInput{
-		AgentID:     inst.AgentID,
-		Name:        input.Name,
-		Platform:    input.Platform,
-		Description: input.Description,
-		ThreadID:    input.ThreadID,
+		AgentID:  inst.AgentID,
+		Platform: input.Platform,
+		ThreadID: input.ThreadID,
 	})
 	if err != nil {
 		return nil, err
@@ -218,13 +216,15 @@ func (r *queryResolver) AgentBootstrap(ctx context.Context) (*AgentBootstrap, er
 	}
 
 	out := &AgentBootstrap{
-		AgentID:         objects.GUID{Type: ent.TypeAgent, ID: bootstrap.AgentID},
-		AgentName:       bootstrap.AgentName,
-		Model:           bootstrap.Model,
-		ReasoningEffort: bootstrap.ReasoningEffort,
-		SystemPrompt:    bootstrap.SystemPrompt,
-		MemoryPolicy:    nil,
-		SkillsPolicy:    &AgentSkillsPolicy{Add: AgentSkillAddPolicy(bootstrap.SkillsPolicy.Add)},
+		AgentID:           objects.GUID{Type: ent.TypeAgent, ID: bootstrap.AgentID},
+		AgentName:         bootstrap.AgentName,
+		AgentInstanceName: bootstrap.AgentInstanceName,
+		CreatedByUserName: bootstrap.CreatedByUserName,
+		Model:             bootstrap.Model,
+		ReasoningEffort:   bootstrap.ReasoningEffort,
+		SystemPrompt:      bootstrap.SystemPrompt,
+		MemoryPolicy:      nil,
+		SkillsPolicy:      &AgentSkillsPolicy{Add: AgentSkillAddPolicy(bootstrap.SkillsPolicy.Add)},
 	}
 
 	if bootstrap.MemoryPolicy != nil {
@@ -422,7 +422,5 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type (
-	mutationResolver struct{ *Resolver }
-	queryResolver    struct{ *Resolver }
-)
+type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }

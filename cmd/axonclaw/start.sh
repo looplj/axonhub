@@ -69,13 +69,6 @@ start_axonclaw() {
     
     print_info "Using binary: $binary_path"
     
-    local config_file=".axonclaw/config.yml"
-    local has_config=false
-    if [[ -f "$config_file" ]]; then
-        has_config=true
-        print_info "Found existing config: $config_file"
-    fi
-    
     local args=()
     
     if [[ -n "$AXONCLAW_BASE_URL" ]]; then
@@ -86,8 +79,8 @@ start_axonclaw() {
         args+=("--api-key" "$AXONCLAW_API_KEY")
     fi
     
-    if [[ -n "$AXONCLAW_NAME" ]]; then
-        args+=("--name" "$AXONCLAW_NAME")
+    if [[ -n "$AXONCLAW_AUTO_SYNC_CONFIG" ]]; then
+        args+=("--auto-sync-config")
     fi
     
     if [[ -n "$DEBUG_MODE" ]]; then
@@ -100,8 +93,8 @@ start_axonclaw() {
     if [[ -n "$AXONCLAW_BASE_URL" ]]; then
         print_info "  Base URL: $AXONCLAW_BASE_URL"
     fi
-    if [[ -n "$AXONCLAW_NAME" ]]; then
-        print_info "  Name: $AXONCLAW_NAME"
+    if [[ -n "$AXONCLAW_AUTO_SYNC_CONFIG" ]]; then
+        print_info "  Auto Sync Config: enabled"
     fi
 
     nohup "$binary_path" "${args[@]}" >> "$LOG_FILE" 2>&1 &
@@ -116,10 +109,6 @@ start_axonclaw() {
         print_info "Process information:"
         echo "  • PID: $pid"
         echo "  • Log file: $LOG_FILE"
-        if [[ "$has_config" == "false" ]]; then
-            echo
-            print_info "Config saved to: $config_file"
-        fi
         echo
         print_info "To stop AxonClaw: ./stop.sh"
         print_info "To view logs: tail -f $LOG_FILE"
@@ -141,11 +130,8 @@ case "${1:-}" in
         echo "Environment variables (all optional if config exists):"
         echo "  AXONCLAW_BASE_URL      Optional. AxonHub server URL"
         echo "  AXONCLAW_API_KEY       Optional. Agent API key for authentication"
-        echo "  AXONCLAW_NAME          Optional. Agent instance name"
+        echo "  AXONCLAW_AUTO_SYNC_CONFIG Optional. Set to 'true' to enable --auto-sync-config"
         echo "  DEBUG_MODE             Optional. Set to 'true' to enable debug logging"
-        echo
-        echo "Config file: .axonclaw/config.yml"
-        echo "  On first start, config will be saved and reused on subsequent starts."
         echo
         echo "Example (first start):"
         echo "  AXONCLAW_API_KEY=your-key ./start.sh"

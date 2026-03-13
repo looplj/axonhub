@@ -17,16 +17,18 @@ type AckAgentMessagesInput struct {
 }
 
 type AgentBootstrap struct {
-	AgentID         objects.GUID            `json:"agentID"`
-	AgentName       string                  `json:"agentName"`
-	Model           *string                 `json:"model,omitempty"`
-	ReasoningEffort string                  `json:"reasoningEffort"`
-	SystemPrompt    string                  `json:"systemPrompt"`
-	Tools           []*AgentToolDefinition  `json:"tools"`
-	Skills          []*AgentSkillDefinition `json:"skills"`
-	BuiltinTools    []*AgentBuiltinTool     `json:"builtinTools"`
-	SkillsPolicy    *AgentSkillsPolicy      `json:"skillsPolicy"`
-	MemoryPolicy    objects.JSONRawMessage  `json:"memoryPolicy,omitempty"`
+	AgentID           objects.GUID            `json:"agentID"`
+	AgentName         string                  `json:"agentName"`
+	AgentInstanceName string                  `json:"agentInstanceName"`
+	CreatedByUserName string                  `json:"createdByUserName"`
+	Model             *string                 `json:"model,omitempty"`
+	ReasoningEffort   string                  `json:"reasoningEffort"`
+	SystemPrompt      string                  `json:"systemPrompt"`
+	Tools             []*AgentToolDefinition  `json:"tools"`
+	Skills            []*AgentSkillDefinition `json:"skills"`
+	BuiltinTools      []*AgentBuiltinTool     `json:"builtinTools"`
+	SkillsPolicy      *AgentSkillsPolicy      `json:"skillsPolicy"`
+	MemoryPolicy      objects.JSONRawMessage  `json:"memoryPolicy,omitempty"`
 }
 
 type AgentBuiltinTool struct {
@@ -135,10 +137,8 @@ type PullAgentMessagesInput struct {
 }
 
 type RegisterAgentInstanceInput struct {
-	Name        *string `json:"name,omitempty"`
-	Platform    *string `json:"platform,omitempty"`
-	Description *string `json:"description,omitempty"`
-	ThreadID    *string `json:"threadID,omitempty"`
+	Platform *string `json:"platform,omitempty"`
+	ThreadID *string `json:"threadID,omitempty"`
 }
 
 type ReplyMessageInput struct {

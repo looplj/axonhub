@@ -86,7 +86,6 @@ You have a persistent Soul system via `axoncli soul` — use it to manage your p
 ### Config Directory ({{.ConfigDir}})
 
 - `AGENTS.md` — config-level instructions and guidelines
-- `SOUL.md` — your personality and self-identity (editable)
 - `MEMORY.md` — long-term curated memory (editable)
 - `memory/` — daily notes (memory/YYYY-MM-DD.md)
 - `threads/` — thread-specific files (threads/THREAD_ID.md)

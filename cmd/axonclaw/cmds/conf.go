@@ -34,12 +34,11 @@ Keys:
 Notes:
   - api_key is always masked in output.
   - MCP servers are managed via "axonclaw mcp ..." and saved in .axonclaw/mcp_servers.json.
-  - By default, axonclaw loads config.yml from .axonclaw directory.`,
+  - Config storage location is managed internally and is not exposed through this command.`,
 	}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 
-	root.AddCommand(newConfPathCmd(stdout))
 	root.AddCommand(newConfGetCmd(stdout))
 	root.AddCommand(newConfListCmd(stdout))
 	root.AddCommand(newConfSetCmd(stdout, stderr))
@@ -51,23 +50,6 @@ var confKeys = []string{"base_url", "api_key", "instance_id", "name", "poll_inte
 
 func isValidConfKey(k string) bool {
 	return lo.Contains(confKeys, k)
-}
-
-func newConfPathCmd(out *os.File) *cobra.Command {
-	return &cobra.Command{
-		Use:   "path",
-		Short: "Show which config file will be used",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			p := conf.DefaultPath()
-			if _, err := os.Stat(p); err != nil {
-				return fmt.Errorf("config file not found: %s", p)
-			}
-
-			fmt.Fprintln(out, p)
-			return nil
-		},
-	}
 }
 
 func newConfGetCmd(out *os.File) *cobra.Command {
@@ -112,7 +94,6 @@ func newConfListCmd(out *os.File) *cobra.Command {
 			values := map[string]string{
 				"base_url":                  cfg.BaseURL,
 				"api_key":                   maskSecret(cfg.APIKey),
-				"name":                      cfg.Name,
 				"poll_interval":             cfg.PollInterval.String(),
 				"heartbeat_interval":        cfg.HeartbeatInterval.String(),
 				"auto_sync_config":          fmt.Sprintf("%v", cfg.AutoSyncConfig),
@@ -161,12 +142,13 @@ axonclaw conf set api_key sk-***
 				return err
 			}
 
-			fmt.Fprintf(errOut, "config\t%s\n", conf.DefaultPath())
-
 			display := val
 			if key == "api_key" {
 				display = maskSecret(val)
-				fmt.Fprintln(errOut, "api_key saved (masked)")
+
+				fmt.Fprintln(errOut, "api_key saved")
+			} else {
+				fmt.Fprintln(errOut, "config updated")
 			}
 			fmt.Fprintf(out, "%s\t%s\n", key, display)
 			return nil

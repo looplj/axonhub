@@ -104,7 +104,7 @@ echo [SUCCESS] Extraction completed
 echo [SUCCESS] AxonClaw %VERSION% installed successfully to %INSTALL_DIR%
 
 :: Check environment variables
-if defined AXONCLAW_NAME goto :start
+if defined AXONCLAW_AUTO_SYNC_CONFIG goto :start
 if defined AXONCLAW_BASE_URL goto :start
 if defined AXONCLAW_API_KEY goto :start
 goto :no_start
@@ -126,9 +126,9 @@ echo [INFO] To start axonclaw manually:
 echo [INFO]   cd %INSTALL_DIR% ^&^& start.bat
 echo [INFO]
 echo [INFO] Or with environment variables:
-echo [INFO]   set AXONCLAW_NAME=my-agent
 echo [INFO]   set AXONCLAW_BASE_URL=http://localhost:8090
 echo [INFO]   set AXONCLAW_API_KEY=your-key
+echo [INFO]   set AXONCLAW_AUTO_SYNC_CONFIG=true
 echo [INFO]   start.bat
 
 :end
