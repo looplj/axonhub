@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -431,28 +432,34 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 	)
 
 	if len(req.RequestBody) > 0 {
-		httpReq := &httpclient.Request{
-			Body: req.RequestBody,
-			// Ensure the gemini path format.
-			Path: fmt.Sprintf("%s:generateContent", req.ModelID),
-			Headers: map[string][]string{
-				"Content-Type": {"application/json"},
-			},
-			TransformerMetadata: map[string]any{},
-		}
+		apiFormat := llm.APIFormat(req.Format)
 
-		inbound, err := getInboundTransformer(llm.APIFormat(req.Format))
-		if err != nil {
-			return nil, fmt.Errorf("failed to get inbound transformer: %w", err)
-		}
+		if isImageFormat(apiFormat) {
+			requestSpans = append(requestSpans, extractSpansFromImageRequestBody(req.RequestBody, fmt.Sprintf("request-%d", req.ID))...)
+		} else {
+			httpReq := &httpclient.Request{
+				Body: req.RequestBody,
+				// Ensure the gemini path format.
+				Path: fmt.Sprintf("%s:generateContent", req.ModelID),
+				Headers: map[string][]string{
+					"Content-Type": {"application/json"},
+				},
+				TransformerMetadata: map[string]any{},
+			}
 
-		llmReq, err := inbound.TransformRequest(ctx, httpReq)
-		if err != nil {
-			log.Warn(ctx, "Failed to transform request body", log.Cause(err), log.Int("request_id", req.ID))
-			return segment, nil
-		}
+			inbound, err := getInboundTransformer(apiFormat)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get inbound transformer: %w", err)
+			}
 
-		requestSpans = append(requestSpans, extractSpansFromMessages(llmReq.Messages, fmt.Sprintf("request-%d", req.ID))...)
+			llmReq, err := inbound.TransformRequest(ctx, httpReq)
+			if err != nil {
+				log.Warn(ctx, "Failed to transform request body", log.Cause(err), log.Int("request_id", req.ID))
+				return segment, nil
+			}
+
+			requestSpans = append(requestSpans, extractSpansFromMessages(llmReq.Messages, fmt.Sprintf("request-%d", req.ID))...)
+		}
 	}
 
 	if len(req.ResponseBody) > 0 {
@@ -485,6 +492,74 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 	segment.ResponseSpans = responseSpans
 
 	return segment, nil
+}
+
+func isImageFormat(format llm.APIFormat) bool {
+	//nolint:exhaustive // Checkec.
+	switch format {
+	case llm.APIFormatOpenAIImageGeneration,
+		llm.APIFormatOpenAIImageEdit,
+		llm.APIFormatOpenAIImageVariation:
+		return true
+	default:
+		return false
+	}
+}
+
+// extractSpansFromImageRequestBody extracts spans from an image edit/variation JSON request body.
+// The body is a JSON object produced by buildMultipartJSONBody with base64 data URLs.
+func extractSpansFromImageRequestBody(body []byte, idPrefix string) []Span {
+	var parsed map[string]any
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return nil
+	}
+
+	var spans []Span
+	now := time.Now()
+	idx := 0
+
+	if prompt, ok := parsed["prompt"].(string); ok && prompt != "" {
+		spans = append(spans, Span{
+			ID:        fmt.Sprintf("%s-prompt-%d", idPrefix, idx),
+			Type:      "user_query",
+			StartTime: now,
+			EndTime:   now,
+			Value: &SpanValue{
+				UserQuery: &SpanUserQuery{Text: prompt},
+			},
+		})
+		idx++
+	}
+
+	appendImageSpan := func(url string) {
+		spans = append(spans, Span{
+			ID:        fmt.Sprintf("%s-image-%d", idPrefix, idx),
+			Type:      "user_image_url",
+			StartTime: now,
+			EndTime:   now,
+			Value: &SpanValue{
+				UserImageURL: &SpanUserImageURL{URL: url},
+			},
+		})
+		idx++
+	}
+
+	switch img := parsed["image"].(type) {
+	case string:
+		appendImageSpan(img)
+	case []any:
+		for _, v := range img {
+			if s, ok := v.(string); ok {
+				appendImageSpan(s)
+			}
+		}
+	}
+
+	if maskURL, ok := parsed["mask"].(string); ok && maskURL != "" {
+		appendImageSpan(maskURL)
+	}
+
+	return spans
 }
 
 func extractSpansFromMessages(messages []llm.Message, idPrefix string) []Span {

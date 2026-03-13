@@ -135,13 +135,17 @@ func (s *RequestService) CreateRequest(
 	)
 
 	if storeRequestBody {
-		b, err := xjson.Marshal(httpRequest.Body)
-		if err != nil {
-			log.Error(ctx, "Failed to serialize request body", log.Cause(err))
-			return nil, err
-		}
+		if len(httpRequest.JSONBody) > 0 {
+			requestBodyBytes = httpRequest.JSONBody
+		} else {
+			b, err := xjson.Marshal(httpRequest.Body)
+			if err != nil {
+				log.Error(ctx, "Failed to serialize request body", log.Cause(err))
+				return nil, err
+			}
 
-		requestBodyBytes = b
+			requestBodyBytes = b
+		}
 
 		if httpRequest != nil && len(httpRequest.Headers) > 0 {
 			requestHeadersBytes, _ = xjson.Marshal(httpclient.MaskSensitiveHeaders(httpRequest.Headers))

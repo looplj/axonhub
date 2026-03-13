@@ -3,6 +3,7 @@ package openai
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -23,10 +25,22 @@ import (
 )
 
 const (
-	maxImageBodySize = 20 * 1024 * 1024
-	maxImageFileSize = 4 * 1024 * 1024
-	maxImageCount    = 10
+	maxImageBodySize        = 20 * 1024 * 1024
+	defaultMaxImageFileSize = 4 * 1024 * 1024
+	maxImageCount           = 10
 )
+
+var maxImageFileSize = initMaxImageFileSize()
+
+func initMaxImageFileSize() int {
+	if v := os.Getenv("AXONHUB_MAX_IMAGE_FILE_SIZE"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+
+	return defaultMaxImageFileSize
+}
 
 var allowedImageTypes = []string{
 	"image/png",
@@ -95,7 +109,7 @@ func (t *ImageInboundTransformer) TransformRequest(ctx context.Context, httpReq 
 	case llm.APIFormatOpenAIImageEdit:
 		return t.transformEditRequest(httpReq)
 	case llm.APIFormatOpenAIImageVariation:
-		return t.transformVariationRequest(ctx, httpReq)
+		return t.transformVariationRequest(httpReq)
 	default:
 		return nil, fmt.Errorf("%w: unknown image api format: %s", transformer.ErrInvalidRequest, t.apiFormat)
 	}
@@ -256,6 +270,11 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 		return nil, fmt.Errorf("%w: at least one image is required for edits", transformer.ErrInvalidRequest)
 	}
 
+	// Build JSONBody for logging: replace binary image data with metadata descriptions.
+	if jsonBody, err := buildMultipartJSONBody(formData.Fields, formData.Images, formData.Mask); err == nil {
+		httpReq.JSONBody = jsonBody
+	}
+
 	// Extract image data for ImageRequest
 	images := make([][]byte, 0, len(formData.Images))
 	for _, img := range formData.Images {
@@ -298,7 +317,7 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 	return llmReq, nil
 }
 
-func (t *ImageInboundTransformer) transformVariationRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
+func (t *ImageInboundTransformer) transformVariationRequest(httpReq *httpclient.Request) (*llm.Request, error) {
 	formData, err := parseMultipartRequest(httpReq)
 	if err != nil {
 		return nil, err
@@ -323,6 +342,11 @@ func (t *ImageInboundTransformer) transformVariationRequest(ctx context.Context,
 
 	if len(formData.Images) > 1 {
 		return nil, fmt.Errorf("%w: variations supports a single image", transformer.ErrInvalidRequest)
+	}
+
+	// Build JSONBody for logging: replace binary image data with metadata descriptions.
+	if jsonBody, err := buildMultipartJSONBody(formData.Fields, formData.Images, nil); err == nil {
+		httpReq.JSONBody = jsonBody
 	}
 
 	user := strings.TrimSpace(formData.Fields["user"])
@@ -402,7 +426,7 @@ func parseMultipartRequest(httpReq *httpclient.Request) (*imageFormData, error) 
 		filename := part.FileName()
 
 		if filename == "" {
-			value, err := io.ReadAll(io.LimitReader(part, maxImageFileSize+1))
+			value, err := io.ReadAll(io.LimitReader(part, int64(maxImageFileSize)+1))
 			if err != nil {
 				return nil, fmt.Errorf("%w: failed to read multipart field", transformer.ErrInvalidRequest)
 			}
@@ -423,7 +447,7 @@ func parseMultipartRequest(httpReq *httpclient.Request) (*imageFormData, error) 
 
 		contentType := strings.TrimSpace(part.Header.Get("Content-Type"))
 
-		data, err := io.ReadAll(io.LimitReader(part, maxImageFileSize+1))
+		data, err := io.ReadAll(io.LimitReader(part, int64(maxImageFileSize)+1))
 		if err != nil {
 			return nil, fmt.Errorf("%w: failed to read multipart file", transformer.ErrInvalidRequest)
 		}
@@ -455,6 +479,42 @@ func parseMultipartRequest(httpReq *httpclient.Request) (*imageFormData, error) 
 	}
 
 	return formData, nil
+}
+
+// buildMultipartJSONBody builds a JSON representation of a multipart/form-data request
+// suitable for logging. Binary image/mask data is encoded as base64 data URLs
+// so they can be displayed in the trace UI.
+func buildMultipartJSONBody(fields map[string]string, images []multipartFile, mask *multipartFile) ([]byte, error) {
+	body := make(map[string]any, len(fields)+2)
+
+	for k, v := range fields {
+		if v != "" {
+			body[k] = v
+		}
+	}
+
+	switch len(images) {
+	case 1:
+		body["image"] = multipartFileToDataURL(images[0])
+	case 0:
+		// no image
+	default:
+		urls := make([]string, len(images))
+		for i, img := range images {
+			urls[i] = multipartFileToDataURL(img)
+		}
+		body["image"] = urls
+	}
+
+	if mask != nil {
+		body["mask"] = multipartFileToDataURL(*mask)
+	}
+
+	return json.Marshal(body)
+}
+
+func multipartFileToDataURL(f multipartFile) string {
+	return fmt.Sprintf("data:%s;base64,%s", f.ContentType, base64.StdEncoding.EncodeToString(f.Data))
 }
 
 func isAllowedImageType(contentType string) bool {
