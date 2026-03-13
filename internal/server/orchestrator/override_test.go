@@ -248,6 +248,42 @@ func TestOverrideParametersNumeric(t *testing.T) {
 	require.Equal(t, "0.8", processedRequestWithHeaders.Headers.Get("X-Float-Header"))
 }
 
+func TestOverrideHeadersKeepJSONLikeString(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{Model: "gpt-4"}
+
+	expectedValue := `{"session_id":"843634473","camelCase":"AbC","xTraceId":"XyZ-001"}`
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "header-json-string-test",
+			Settings: &objects.ChannelSettings{
+				HeaderOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "Extra", Value: expectedValue},
+				},
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmRequest,
+		},
+	}
+
+	headerMiddleware := applyOverrideRequestHeaders(outbound)
+	rawRequest := &httpclient.Request{Headers: make(http.Header)}
+
+	processedRequest, err := headerMiddleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+	require.Equal(t, expectedValue, processedRequest.Headers.Get("Extra"))
+}
+
 // TestOverrideParameters tests that TransformRequest works correctly.
 // Note: Override parameters are now applied via OnRawRequest middleware,
 // so this test only verifies the base transformation without overrides.

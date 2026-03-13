@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"text/template"
@@ -234,14 +233,14 @@ func applyOverrideOperationToHeaders(
 
 	switch op.Op {
 	case objects.OverrideOpSet:
-		renderedValue := renderOverrideValue(ctx, op.Value, renderCtx)
+		renderedValue := renderTemplate(ctx, op.Value, renderCtx)
 		// For backward compatibility, we still support "__AXONHUB_CLEAR__" to clear the header.
 		if renderedValue == "__AXONHUB_CLEAR__" {
 			headers.Del(op.Path)
 			return
 		}
 
-		headers.Set(op.Path, fmt.Sprintf("%v", renderedValue))
+		headers.Set(op.Path, renderedValue)
 	case objects.OverrideOpDelete:
 		headers.Del(op.Path)
 	case objects.OverrideOpRename:
