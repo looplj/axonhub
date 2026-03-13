@@ -13,19 +13,28 @@ import { Separator } from '@/components/ui/separator';
 import { useAllChannelsForOrdering, useBulkUpdateChannelOrdering } from '../data/channels';
 import { ChannelOrderingItem } from '../data/schema';
 
+const WEIGHT_PRECISION = 0;
 const MIN_WEIGHT = 0;
 const MAX_WEIGHT = 100;
 
-const clampWeight = (value: number) => Math.round(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
+const formatWeight = (value: number) => Math.round(value);
 
-const redistributeWeights = (items: Array<{ channel: ChannelOrderingItem; orderingWeight: number }>) => {
-  const count = items.length;
-  if (count === 0) return items;
-  if (count === 1) return [{ ...items[0], orderingWeight: MAX_WEIGHT }];
-  return items.map((item, index) => ({
-    ...item,
-    orderingWeight: clampWeight(MAX_WEIGHT - (index * MAX_WEIGHT) / (count - 1)),
-  }));
+const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
+
+const calculateRelativeWeight = (prev?: number, next?: number) => {
+  if (prev == null && next == null) {
+    return clampWeight(1);
+  }
+  if (prev == null) {
+    return clampWeight((next ?? 0) + 1);
+  }
+  if (next == null) {
+    return clampWeight(prev - 1);
+  }
+  if (prev === next) {
+    return clampWeight(prev);
+  }
+  return clampWeight(Math.floor((prev + next) / 2));
 };
 
 interface ChannelOrderingItemProps {
@@ -248,7 +257,14 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
         return items;
       }
 
-      const newItems = redistributeWeights(arrayMove(items, oldIndex, newIndex));
+      const newItems = arrayMove(items, oldIndex, newIndex);
+      const prevWeight = newItems[newIndex - 1]?.orderingWeight;
+      const nextWeight = newItems[newIndex + 1]?.orderingWeight;
+
+      newItems[newIndex] = {
+        ...newItems[newIndex],
+        orderingWeight: calculateRelativeWeight(prevWeight, nextWeight),
+      };
 
       setHasChanges(true);
       return newItems;
@@ -259,10 +275,11 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
     const normalizedWeight = clampWeight(weight);
     setOrderedChannels((items) => {
       const newItems = items.map((item) => (item.channel.id === id ? { ...item, orderingWeight: normalizedWeight } : item));
+      // Sort by orderingWeight DESC (higher weight first)
+      // Maintain stable sort for equal weights? Javascript sort is stable.
       newItems.sort((a, b) => b.orderingWeight - a.orderingWeight);
-      const redistributed = redistributeWeights(newItems);
       setHasChanges(true);
-      return redistributed;
+      return newItems;
     });
   }, []);
 
@@ -272,7 +289,13 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
         return items;
       }
 
-      const newItems = redistributeWeights(arrayMove(items, index, 0));
+      const newItems = arrayMove(items, index, 0);
+      const nextWeight = newItems[1]?.orderingWeight;
+
+      newItems[0] = {
+        ...newItems[0],
+        orderingWeight: calculateRelativeWeight(undefined, nextWeight),
+      };
 
       setHasChanges(true);
       return newItems;
@@ -285,7 +308,14 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
         return items;
       }
 
-      const newItems = redistributeWeights(arrayMove(items, index, items.length - 1));
+      const targetIndex = items.length - 1;
+      const newItems = arrayMove(items, index, targetIndex);
+      const prevWeight = newItems[targetIndex - 1]?.orderingWeight;
+
+      newItems[targetIndex] = {
+        ...newItems[targetIndex],
+        orderingWeight: calculateRelativeWeight(prevWeight, undefined),
+      };
 
       setHasChanges(true);
       return newItems;
