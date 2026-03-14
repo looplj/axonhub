@@ -15,7 +15,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { motion } from 'framer-motion';
-import { IconBan, IconCheck, IconTrash, IconX } from '@tabler/icons-react';
+import { IconBan, IconX } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -303,29 +303,11 @@ export function AgentHostsTable({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700"
-              onClick={() => setOpen('bulkActivate')}
-              title={t('common.buttons.activate')}
-            >
-              <IconCheck className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
               className="h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700"
               onClick={() => setOpen('bulkDeactivate')}
-              title={t('common.buttons.deactivate')}
+              title={t('common.buttons.archive')}
             >
               <IconBan className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700"
-              onClick={() => setOpen('bulkDelete')}
-              title={t('common.buttons.delete')}
-            >
-              <IconTrash className="h-4 w-4" />
             </Button>
           </div>
         </div>

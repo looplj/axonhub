@@ -39,7 +39,7 @@ func bootstrapFileEnvelope(fileName string) (title, desc string) {
 	case UserFileName:
 		return "How You Should Work With the User", "Use this file to understand how you should collaborate with the user who owns or operates this workspace."
 	case SoulFileName:
-		return "Your Core Principles", "Use this file as your enduring guide for principles, behavioral standards, and operating boundaries."
+		return "Your Soul", "Use this file as your enduring guide for principles, behavioral standards, and operating boundaries."
 	case SystemFileName:
 		return "How You Should Operate Here", "Use this file as workspace-specific system instruction that should guide how you operate in this environment."
 	default:

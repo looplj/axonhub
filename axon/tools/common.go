@@ -10,6 +10,7 @@ import (
 )
 
 func validatePath(path, workspace string, restrict bool) (string, error) {
+	path = normalizePathInput(path)
 	if path == "" {
 		return "", fmt.Errorf("path is required")
 	}
@@ -25,6 +26,17 @@ func validatePath(path, workspace string, restrict bool) (string, error) {
 	}
 
 	return path, nil
+}
+
+func normalizePathInput(path string) string {
+	path = strings.TrimSpace(path)
+	if len(path) >= 2 {
+		if (path[0] == '"' && path[len(path)-1] == '"') || (path[0] == '\'' && path[len(path)-1] == '\'') {
+			path = strings.TrimSpace(path[1 : len(path)-1])
+		}
+	}
+
+	return path
 }
 
 func TextResult(text string) agent.ToolResult {

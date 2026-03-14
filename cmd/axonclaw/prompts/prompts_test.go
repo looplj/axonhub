@@ -78,17 +78,18 @@ func TestBuildSystemPromptsReturnsSkillsWhenSystemFileIsEmpty(t *testing.T) {
 	}
 }
 
-func TestDefaultInstructionTemplateContainsIdentityAndSoulMaintenanceGuidance(t *testing.T) {
-	instruction, err := RenderInstructionTemplate(PromptEnv{})
+func TestDefaultInstructionTemplateContainsBootstrapFileMaintenanceGuidance(t *testing.T) {
+	instruction, err := RenderInstructionTemplate(PromptEnv{Workspace: "/workspace with spaces"})
 	if err != nil {
 		t.Fatalf("render instruction template: %v", err)
 	}
 
 	expectedSnippets := []string{
-		"## Identity And Soul Maintenance",
-		"Update `IDENTITY.md` when you learn stable facts",
-		"Update `SOUL.md` when you learn durable guidance",
-		"Do not write one-off task details, temporary context, or fleeting emotional states into either file.",
+		"## Identity, User, And Soul Maintenance",
+		"Update `/workspace with spaces/.axonclaw/IDENTITY.md` when you learn stable facts",
+		"Update `/workspace with spaces/.axonclaw/USER.md` when you learn durable facts about the user",
+		"Update `/workspace with spaces/.axonclaw/SOUL.md` when you learn durable guidance",
+		"Do not write one-off task details, temporary context, or fleeting emotional states into these files.",
 	}
 
 	for _, snippet := range expectedSnippets {
