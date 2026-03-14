@@ -9,7 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -17,7 +21,12 @@ import (
 )
 
 // mockTransformer is a simple mock transformer for testing.
-type mockTransformer struct{}
+type mockTransformer struct {
+	aggregatedResponse []byte
+	aggregatedMeta     llm.ResponseMeta
+	aggregatedErr      error
+	apiFormat          llm.APIFormat
+}
 
 func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
 	body, err := json.Marshal(map[string]any{
@@ -50,10 +59,14 @@ func (m *mockTransformer) TransformError(ctx context.Context, err *httpclient.Er
 }
 
 func (m *mockTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
-	return nil, llm.ResponseMeta{}, nil
+	return m.aggregatedResponse, m.aggregatedMeta, m.aggregatedErr
 }
 
 func (m *mockTransformer) APIFormat() llm.APIFormat {
+	if m.apiFormat != "" {
+		return m.apiFormat
+	}
+
 	return llm.APIFormatOpenAIChatCompletion
 }
 
@@ -298,7 +311,236 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 	})
 }
 
-func TestPersistentOutboundTransformer_TransformRequest_WithChannelSelection(t *testing.T) {
+func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
+	t.Run("usage means completed", func(t *testing.T) {
+		require.True(t, isCompletedAggregatedOutboundResponse(llm.ResponseMeta{Usage: &llm.Usage{TotalTokens: 15}}))
+	})
+
+	t.Run("missing usage is not completed", func(t *testing.T) {
+		require.False(t, isCompletedAggregatedOutboundResponse(llm.ResponseMeta{}))
+	})
+}
+
+type sliceEventStream struct {
+	events []*httpclient.StreamEvent
+	index  int
+	err    error
+	closed bool
+}
+
+func (s *sliceEventStream) Next() bool {
+	if s.index >= len(s.events) {
+		return false
+	}
+
+	s.index++
+	return true
+}
+
+func (s *sliceEventStream) Current() *httpclient.StreamEvent {
+	if s.index == 0 || s.index > len(s.events) {
+		return nil
+	}
+
+	return s.events[s.index-1]
+}
+
+func (s *sliceEventStream) Err() error {
+	return s.err
+}
+
+func (s *sliceEventStream) Close() error {
+	s.closed = true
+	return nil
+}
+
+func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t *testing.T) {
+	ctx := context.Background()
+	ctx = authz.WithTestBypass(ctx)
+
+	t.Run("response in_progress without terminal event is not completed", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := ent.NewContext(ctx, client)
+		project := createTestProject(t, ctx, client)
+		ch := createTestChannel(t, ctx, client)
+		_, requestService, _, usageLogService := setupTestServices(t, client)
+
+		req, err := client.Request.Create().
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetStatus(request.StatusPending).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		exec, err := client.RequestExecution.Create().
+			SetRequestID(req.ID).
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetRequestBody([]byte(`{"stream":true}`)).
+			SetFormat("openai/responses").
+			SetStatus(requestexecution.StatusPending).
+			SetStream(true).
+			Save(ctx)
+		require.NoError(t, err)
+
+		stream := &sliceEventStream{
+			events: []*httpclient.StreamEvent{{Type: "response.in_progress", Data: []byte(`{"type":"response.in_progress"}`)}},
+		}
+		transformer := &mockTransformer{
+			apiFormat:          llm.APIFormatOpenAIResponse,
+			aggregatedResponse: []byte(`{"id":"resp_123","status":"in_progress"}`),
+		}
+		state := &PersistenceState{}
+
+		persistentStream := NewOutboundPersistentStream(ctx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
+		for persistentStream.Next() {
+			_ = persistentStream.Current()
+		}
+		require.NoError(t, persistentStream.Close())
+
+		dbExec, err := client.RequestExecution.Get(ctx, exec.ID)
+		require.NoError(t, err)
+		require.NotEqual(t, requestexecution.StatusCompleted, dbExec.Status)
+		require.Equal(t, requestexecution.StatusFailed, dbExec.Status)
+		require.Contains(t, dbExec.ErrorMessage, "stream ended without terminal event or completed response")
+		require.False(t, state.StreamCompleted)
+	})
+
+	t.Run("aggregated completed response without terminal event is completed", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := ent.NewContext(ctx, client)
+		project := createTestProject(t, ctx, client)
+		ch := createTestChannel(t, ctx, client)
+		_, requestService, _, usageLogService := setupTestServices(t, client)
+
+		req, err := client.Request.Create().
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetStatus(request.StatusPending).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		exec, err := client.RequestExecution.Create().
+			SetRequestID(req.ID).
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetRequestBody([]byte(`{"stream":true}`)).
+			SetFormat("openai/responses").
+			SetStatus(requestexecution.StatusPending).
+			SetStream(true).
+			Save(ctx)
+		require.NoError(t, err)
+
+		aggregated := []byte(`{"id":"resp_456","status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"hi"}]}]}`)
+		stream := &sliceEventStream{
+			events: []*httpclient.StreamEvent{{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"hi"}`)}},
+		}
+		transformer := &mockTransformer{
+			apiFormat:          llm.APIFormatOpenAIResponse,
+			aggregatedResponse: aggregated,
+			aggregatedMeta: llm.ResponseMeta{
+				ID: "resp_456",
+				Usage: &llm.Usage{
+					PromptTokens:     10,
+					CompletionTokens: 2,
+					TotalTokens:      12,
+				},
+			},
+		}
+		state := &PersistenceState{}
+
+		persistentStream := NewOutboundPersistentStream(ctx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
+		for persistentStream.Next() {
+			_ = persistentStream.Current()
+		}
+		require.NoError(t, persistentStream.Close())
+
+		dbExec, err := client.RequestExecution.Get(ctx, exec.ID)
+		require.NoError(t, err)
+		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
+		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
+		require.Equal(t, "resp_456", dbExec.ExternalID)
+		require.True(t, state.StreamCompleted)
+	})
+
+	t.Run("canceled client with aggregated completed response is still completed", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		baseCtx := ent.NewContext(ctx, client)
+		project := createTestProject(t, baseCtx, client)
+		ch := createTestChannel(t, baseCtx, client)
+		_, requestService, _, usageLogService := setupTestServices(t, client)
+
+		req, err := client.Request.Create().
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetStatus(request.StatusPending).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			Save(baseCtx)
+		require.NoError(t, err)
+
+		exec, err := client.RequestExecution.Create().
+			SetRequestID(req.ID).
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetRequestBody([]byte(`{"stream":true}`)).
+			SetFormat("openai/responses").
+			SetStatus(requestexecution.StatusPending).
+			SetStream(true).
+			Save(baseCtx)
+		require.NoError(t, err)
+
+		aggregated := []byte(`{"id":"resp_codex_like","status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"done"}]}]}`)
+		stream := &sliceEventStream{
+			events: []*httpclient.StreamEvent{{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"done"}`)}},
+			err:    context.Canceled,
+		}
+		transformer := &mockTransformer{
+			apiFormat:          llm.APIFormatOpenAIResponse,
+			aggregatedResponse: aggregated,
+			aggregatedMeta: llm.ResponseMeta{
+				ID: "resp_codex_like",
+				Usage: &llm.Usage{
+					PromptTokens:     20,
+					CompletionTokens: 1,
+					TotalTokens:      21,
+				},
+			},
+		}
+		state := &PersistenceState{}
+
+		requestCtx, cancel := context.WithCancel(baseCtx)
+		cancel()
+
+		persistentStream := NewOutboundPersistentStream(requestCtx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
+		for persistentStream.Next() {
+			_ = persistentStream.Current()
+		}
+		require.NoError(t, persistentStream.Close())
+
+		dbExec, err := client.RequestExecution.Get(baseCtx, exec.ID)
+		require.NoError(t, err)
+		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
+		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
+		require.Equal(t, "resp_codex_like", dbExec.ExternalID)
+		require.True(t, state.StreamCompleted)
+	})
+}
+
+func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t *testing.T) {
 	// Setup
 	ctx := context.Background()
 
