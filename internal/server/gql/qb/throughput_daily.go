@@ -3,6 +3,8 @@ package qb
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 )
 
 // DailyThroughputQueryType identifies the type of daily throughput query to build.
@@ -59,7 +61,8 @@ func getDateExpression(dialect string, dateExpr string, timezone string, offsetS
 		return fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", dateExpr, offsetSeconds)
 	case "mysql":
 		// MySQL: DATE_FORMAT(CONVERT_TZ(created_at, '+00:00', timezone), '%Y-%m-%d')
-		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", dateExpr, timezone)
+		offsetStr := xtime.FormatUTCOffset(offsetSeconds)
+		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", dateExpr, offsetStr)
 	case "postgres", "postgresql":
 		// PostgreSQL: to_char(created_at AT TIME ZONE 'timezone', 'YYYY-MM-DD')
 		return fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", dateExpr, timezone)

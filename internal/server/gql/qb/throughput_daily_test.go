@@ -37,8 +37,8 @@ func TestGetDateExpression(t *testing.T) {
 			dialect:       "mysql",
 			dateExpr:      "se.created_at",
 			timezone:      "America/New_York",
-			offsetSeconds: 0,
-			wantContains:  []string{"DATE_FORMAT", "CONVERT_TZ", "America/New_York", "%Y-%m-%d"},
+			offsetSeconds: -14400,
+			wantContains:  []string{"DATE_FORMAT", "CONVERT_TZ", "-04:00", "%Y-%m-%d"},
 		},
 		{
 			name:          "postgres dialect",
@@ -351,7 +351,7 @@ func TestBuildDailyThroughputQuery_DateExpressions(t *testing.T) {
 			dialect:       "mysql",
 			timezone:      "UTC",
 			offsetSeconds: 0,
-			wantExpr:      "DATE_FORMAT(CONVERT_TZ(se.created_at, '+00:00', 'UTC'), '%Y-%m-%d')",
+			wantExpr:      "DATE_FORMAT(CONVERT_TZ(se.created_at, '+00:00', '+00:00'), '%Y-%m-%d')",
 		},
 		{
 			name:          "sqlite uses strftime",
@@ -480,7 +480,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 				"r.model_id",
 				"DATE_FORMAT",
 				"CONVERT_TZ",
-				"America/New_York",
+				"-04:00",
 				"NULLIF(",
 				", 0)",
 				"GROUP BY exec_date",

@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
 
@@ -74,7 +75,8 @@ func buildDateExpression(dialectName string, timestampCol string, offsetSeconds 
 	case dialect.SQLite:
 		return fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
 	case dialect.MySQL:
-		return fmt.Sprintf("DATE(CONVERT_TZ(FROM_UNIXTIME(%s), '+00:00', '%s'))", timestampCol, locName)
+		offsetStr := xtime.FormatUTCOffset(offsetSeconds)
+		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(FROM_UNIXTIME(%s), '+00:00', '%s'), '%%Y-%%m-%%d')", timestampCol, offsetStr)
 	case dialect.Postgres:
 		return fmt.Sprintf("to_char(to_timestamp(%s) AT TIME ZONE '%s', 'YYYY-MM-DD')", timestampCol, locName)
 	default:

@@ -1,6 +1,8 @@
 package xtime
 
-import "time"
+import (
+	"time"
+)
 
 func UTCNow() time.Time {
 	return time.Now().UTC()
@@ -87,4 +89,9 @@ func GetCalendarPeriods(loc *time.Location) CalendarPeriods {
 			End:   thisMonthEnd.UTC(),
 		},
 	}
+}
+
+func FormatUTCOffset(offsetSeconds int) string {
+	loc := time.FixedZone("", offsetSeconds)
+	return time.Unix(0, 0).In(loc).Format("-07:00")
 }

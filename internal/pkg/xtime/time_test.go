@@ -214,3 +214,46 @@ func TestPeriodHalfOpenInterval(t *testing.T) {
 		t.Errorf("End should be after Start")
 	}
 }
+
+func TestFormatUTCOffset(t *testing.T) {
+	tests := []struct {
+		name          string
+		offsetSeconds int
+		want          string
+	}{
+		{
+			name:          "UTC+0",
+			offsetSeconds: 0,
+			want:          "+00:00",
+		},
+		{
+			name:          "UTC+8",
+			offsetSeconds: 8 * 3600,
+			want:          "+08:00",
+		},
+		{
+			name:          "UTC+5:30",
+			offsetSeconds: 5*3600 + 30*60,
+			want:          "+05:30",
+		},
+		{
+			name:          "UTC-5",
+			offsetSeconds: -5 * 3600,
+			want:          "-05:00",
+		},
+		{
+			name:          "UTC-3:30",
+			offsetSeconds: -3*3600 - 30*60,
+			want:          "-03:30",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatUTCOffset(tt.offsetSeconds)
+			if got != tt.want {
+				t.Errorf("FormatUTCOffset(%d) = %q, want %q", tt.offsetSeconds, got, tt.want)
+			}
+		})
+	}
+}
