@@ -31,7 +31,7 @@
               "text"
             ]
           },
-          "open_weights": false,
+          "open_weights": true,
           "cost": {
             "input": 1,
             "output": 3.2,
@@ -360,8 +360,8 @@
           },
           "temperature": true,
           "knowledge": "2024-12-01",
-          "release_date": "2025-12-17",
-          "last_updated": "2025-12-17",
+          "release_date": "2025-12-16",
+          "last_updated": "2026-02-04",
           "modalities": {
             "input": [
               "text"
@@ -372,12 +372,13 @@
           },
           "open_weights": true,
           "cost": {
-            "input": 0.07,
-            "output": 0.21
+            "input": 0.1,
+            "output": 0.3,
+            "cache_read": 0.01
           },
           "limit": {
             "context": 256000,
-            "output": 32000
+            "output": 64000
           },
           "display_name": "MiMo-V2-Flash",
           "type": "chat"
@@ -2947,7 +2948,7 @@
         },
         {
           "id": "devstral-medium-latest",
-          "name": "Devstral 2",
+          "name": "Devstral 2 (latest)",
           "family": "devstral",
           "attachment": false,
           "reasoning": {
@@ -2975,7 +2976,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Devstral 2",
+          "display_name": "Devstral 2 (latest)",
           "type": "chat"
         },
         {
@@ -3181,7 +3182,7 @@
         },
         {
           "id": "mistral-medium-latest",
-          "name": "Mistral Medium",
+          "name": "Mistral Medium (latest)",
           "family": "mistral-medium",
           "attachment": false,
           "reasoning": {
@@ -3210,7 +3211,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "Mistral Medium",
+          "display_name": "Mistral Medium (latest)",
           "type": "chat"
         },
         {
@@ -3249,7 +3250,7 @@
         },
         {
           "id": "magistral-medium-latest",
-          "name": "Magistral Medium",
+          "name": "Magistral Medium (latest)",
           "family": "magistral-medium",
           "attachment": false,
           "reasoning": {
@@ -3278,7 +3279,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "Magistral Medium",
+          "display_name": "Magistral Medium (latest)",
           "type": "chat"
         },
         {
@@ -3317,7 +3318,7 @@
         },
         {
           "id": "pixtral-large-latest",
-          "name": "Pixtral Large",
+          "name": "Pixtral Large (latest)",
           "family": "pixtral",
           "attachment": true,
           "reasoning": {
@@ -3346,12 +3347,12 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Pixtral Large",
+          "display_name": "Pixtral Large (latest)",
           "type": "chat"
         },
         {
           "id": "mistral-large-latest",
-          "name": "Mistral Large",
+          "name": "Mistral Large (latest)",
           "family": "mistral-large",
           "attachment": true,
           "reasoning": {
@@ -3380,7 +3381,7 @@
             "context": 262144,
             "output": 262144
           },
-          "display_name": "Mistral Large",
+          "display_name": "Mistral Large (latest)",
           "type": "chat"
         },
         {
@@ -3418,7 +3419,7 @@
         },
         {
           "id": "ministral-8b-latest",
-          "name": "Ministral 8B",
+          "name": "Ministral 8B (latest)",
           "family": "ministral",
           "attachment": false,
           "reasoning": {
@@ -3446,12 +3447,12 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Ministral 8B",
+          "display_name": "Ministral 8B (latest)",
           "type": "chat"
         },
         {
           "id": "ministral-3b-latest",
-          "name": "Ministral 3B",
+          "name": "Ministral 3B (latest)",
           "family": "ministral",
           "attachment": false,
           "reasoning": {
@@ -3479,7 +3480,7 @@
             "context": 128000,
             "output": 128000
           },
-          "display_name": "Ministral 3B",
+          "display_name": "Ministral 3B (latest)",
           "type": "chat"
         },
         {
@@ -3518,7 +3519,7 @@
         },
         {
           "id": "mistral-small-latest",
-          "name": "Mistral Small",
+          "name": "Mistral Small (latest)",
           "family": "mistral-small",
           "attachment": false,
           "reasoning": {
@@ -3547,7 +3548,7 @@
             "context": 128000,
             "output": 16384
           },
-          "display_name": "Mistral Small",
+          "display_name": "Mistral Small (latest)",
           "type": "chat"
         },
         {
@@ -3585,7 +3586,7 @@
         },
         {
           "id": "codestral-latest",
-          "name": "Codestral",
+          "name": "Codestral (latest)",
           "family": "codestral",
           "attachment": false,
           "reasoning": {
@@ -3613,7 +3614,7 @@
             "context": 256000,
             "output": 4096
           },
-          "display_name": "Codestral",
+          "display_name": "Codestral (latest)",
           "type": "chat"
         },
         {
@@ -3836,6 +3837,84 @@
       "doc": "https://ai.google.dev/gemini-api/docs/pricing",
       "display_name": "google",
       "models": [
+        {
+          "id": "gemini-3.1-flash-lite-preview",
+          "name": "Gemini 3.1 Flash Lite Preview",
+          "family": "gemini-flash-lite",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-03-03",
+          "last_updated": "2026-03-03",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.25,
+            "output": 1.5,
+            "cache_read": 0.025,
+            "cache_write": 1
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "display_name": "Gemini 3.1 Flash Lite Preview",
+          "type": "chat"
+        },
+        {
+          "id": "gemini-3.1-flash-image-preview",
+          "name": "Gemini 3.1 Flash Image (Preview)",
+          "family": "gemini-flash",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2025-01",
+          "release_date": "2026-02-26",
+          "last_updated": "2026-02-26",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.25,
+            "output": 60
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          },
+          "display_name": "Gemini 3.1 Flash Image (Preview)",
+          "type": "image-generation"
+        },
         {
           "id": "gemini-3.1-pro-preview-customtools",
           "name": "Gemini 3.1 Pro Preview Custom Tools",
@@ -5642,6 +5721,91 @@
       "doc": "https://platform.openai.com/docs/models",
       "display_name": "OpenAI",
       "models": [
+        {
+          "id": "gpt-5.4",
+          "name": "GPT-5.4",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": false,
+          "knowledge": "2025-08-31",
+          "release_date": "2026-03-05",
+          "last_updated": "2026-03-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2.5,
+            "output": 15,
+            "cache_read": 0.25,
+            "context_over_200k": {
+              "input": 5,
+              "output": 22.5,
+              "cache_read": 0.5
+            }
+          },
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "display_name": "GPT-5.4",
+          "type": "chat"
+        },
+        {
+          "id": "gpt-5.4-pro",
+          "name": "GPT-5.4 Pro",
+          "family": "gpt-pro",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": false,
+          "temperature": false,
+          "knowledge": "2025-08-31",
+          "release_date": "2026-03-05",
+          "last_updated": "2026-03-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 30,
+            "output": 180,
+            "context_over_200k": {
+              "input": 60,
+              "output": 270
+            }
+          },
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "display_name": "GPT-5.4 Pro",
+          "type": "chat"
+        },
         {
           "id": "gpt-5.3-codex",
           "name": "GPT-5.3 Codex",
@@ -7640,7 +7804,7 @@
           "temperature": true,
           "knowledge": "2025-08",
           "release_date": "2026-02-17",
-          "last_updated": "2026-02-17",
+          "last_updated": "2026-03-13",
           "modalities": {
             "input": [
               "text",
@@ -7656,16 +7820,10 @@
             "input": 3,
             "output": 15,
             "cache_read": 0.3,
-            "cache_write": 3.75,
-            "context_over_200k": {
-              "input": 6,
-              "output": 22.5,
-              "cache_read": 0.6,
-              "cache_write": 7.5
-            }
+            "cache_write": 3.75
           },
           "limit": {
-            "context": 200000,
+            "context": 1000000,
             "output": 64000
           },
           "display_name": "Claude Sonnet 4.6",
@@ -7684,7 +7842,7 @@
           "temperature": true,
           "knowledge": "2025-05",
           "release_date": "2026-02-05",
-          "last_updated": "2026-02-05",
+          "last_updated": "2026-03-13",
           "modalities": {
             "input": [
               "text",
@@ -7700,16 +7858,10 @@
             "input": 5,
             "output": 25,
             "cache_read": 0.5,
-            "cache_write": 6.25,
-            "context_over_200k": {
-              "input": 10,
-              "output": 37.5,
-              "cache_read": 1,
-              "cache_write": 12.5
-            }
+            "cache_write": 6.25
           },
           "limit": {
-            "context": 200000,
+            "context": 1000000,
             "output": 128000
           },
           "display_name": "Claude Opus 4.6",
@@ -8514,6 +8666,128 @@
       "doc": "https://docs.x.ai/docs/models",
       "display_name": "xai",
       "models": [
+        {
+          "id": "grok-4.20-beta-latest-non-reasoning",
+          "name": "Grok 4.20 Beta (Non-Reasoning)",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-03-09",
+          "last_updated": "2026-03-09",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 6,
+            "cache_read": 0.2,
+            "context_over_200k": {
+              "input": 4,
+              "output": 12,
+              "cache_read": 0.4
+            }
+          },
+          "limit": {
+            "context": 2000000,
+            "output": 30000
+          },
+          "status": "beta",
+          "display_name": "Grok 4.20 Beta (Non-Reasoning)",
+          "type": "chat"
+        },
+        {
+          "id": "grok-4.20-multi-agent-beta-latest",
+          "name": "Grok 4.20 Multi-Agent Beta",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-03-09",
+          "last_updated": "2026-03-09",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 6,
+            "cache_read": 0.2,
+            "context_over_200k": {
+              "input": 4,
+              "output": 12,
+              "cache_read": 0.4
+            }
+          },
+          "limit": {
+            "context": 2000000,
+            "output": 30000
+          },
+          "status": "beta",
+          "display_name": "Grok 4.20 Multi-Agent Beta",
+          "type": "chat"
+        },
+        {
+          "id": "grok-4.20-beta-latest-reasoning",
+          "name": "Grok 4.20 Beta (Reasoning)",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-03-09",
+          "last_updated": "2026-03-09",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 2,
+            "output": 6,
+            "cache_read": 0.2,
+            "context_over_200k": {
+              "input": 4,
+              "output": 12,
+              "cache_read": 0.4
+            }
+          },
+          "limit": {
+            "context": 2000000,
+            "output": 30000
+          },
+          "status": "beta",
+          "display_name": "Grok 4.20 Beta (Reasoning)",
+          "type": "chat"
+        },
         {
           "id": "grok-4-1-fast-non-reasoning",
           "name": "Grok 4.1 Fast (Non-Reasoning)",
