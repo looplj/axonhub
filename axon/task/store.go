@@ -16,8 +16,9 @@ const (
 )
 
 var (
-	ErrTaskNotFound = errors.New("task not found")
-	ErrTaskExists   = errors.New("task already exists")
+	ErrTaskNotFound     = errors.New("task not found")
+	ErrTaskExists       = errors.New("task already exists")
+	ErrSystemTaskDelete = errors.New("system task cannot be deleted")
 )
 
 type Store struct {
@@ -77,6 +78,27 @@ func (s *Store) Load() ([]Task, error) {
 	defer s.mu.Unlock()
 
 	return s.loadLocked()
+}
+
+func (s *Store) List() ([]Task, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tasks, err := s.loadLocked()
+	if err != nil {
+		return nil, err
+	}
+
+	visible := make([]Task, 0, len(tasks))
+	for _, t := range tasks {
+		if t.Hidden {
+			continue
+		}
+
+		visible = append(visible, t)
+	}
+
+	return visible, nil
 }
 
 func (s *Store) Save(tasks []Task) error {
@@ -166,6 +188,10 @@ func (s *Store) Delete(id string) error {
 		return ErrTaskNotFound
 	}
 
+	if tasks[idx].System {
+		return fmt.Errorf("%w: %s", ErrSystemTaskDelete, id)
+	}
+
 	deletedTask := tasks[idx]
 	tasks = append(tasks[:idx], tasks[idx+1:]...)
 
@@ -221,6 +247,10 @@ func (s *Store) MoveToDeleted(id string, reason string) error {
 	}
 	if idx < 0 {
 		return ErrTaskNotFound
+	}
+
+	if tasks[idx].System {
+		return fmt.Errorf("%w: %s", ErrSystemTaskDelete, id)
 	}
 
 	deletedTask := tasks[idx]

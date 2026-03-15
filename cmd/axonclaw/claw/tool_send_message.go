@@ -1,8 +1,9 @@
-package runner
+package claw
 
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/google/jsonschema-go/jsonschema"
@@ -13,11 +14,18 @@ import (
 
 type SendMessageTool struct {
 	client graphql.Client
+	logger *slog.Logger
 }
 
-func NewSendMessageTool(client graphql.Client) *SendMessageTool {
+type SendMessageToolOptions struct {
+	Client graphql.Client
+	Logger *slog.Logger
+}
+
+func NewSendMessageTool(opts SendMessageToolOptions) *SendMessageTool {
 	return &SendMessageTool{
-		client: client,
+		client: opts.Client,
+		logger: opts.Logger,
 	}
 }
 

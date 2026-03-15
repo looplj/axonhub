@@ -15,6 +15,10 @@ var (
 	DefaultSystemTemplate      = mustLoadTemplate("templates/SYSTEM.md")
 	DefaultUserTemplate        = mustLoadTemplate("templates/USER.md")
 	DefaultInstructionTemplate = mustLoadTemplate("templates/INSTRUCTION.md")
+	DefaultHeartbeatTemplate   = mustLoadTemplate("templates/HEARTBEAT.md")
+	DefaultHeartbeatTaskPrompt = mustLoadTemplate("templates/HEARTBEAT_TASK.md")
+	DefaultSelfReflectPrompt   = mustLoadTemplate("templates/SELF_REFLECT_TASK.md")
+	DefaultSelfEvolvePrompt    = mustLoadTemplate("templates/SELF_EVOLVE_TASK.md")
 )
 
 func mustLoadTemplate(name string) string {
@@ -27,7 +31,11 @@ func mustLoadTemplate(name string) string {
 }
 
 func RenderTemplate(tpl string, data PromptEnv) (string, error) {
-	tmpl, err := template.New("personality").Parse(tpl)
+	return renderTemplate("personality", tpl, data)
+}
+
+func renderTemplate(name, tpl string, data any) (string, error) {
+	tmpl, err := template.New(name).Parse(tpl)
 	if err != nil {
 		return "", err
 	}
@@ -41,15 +49,5 @@ func RenderTemplate(tpl string, data PromptEnv) (string, error) {
 }
 
 func RenderInstructionTemplate(env PromptEnv) (string, error) {
-	tmpl, err := template.New("instruction").Parse(DefaultInstructionTemplate)
-	if err != nil {
-		return "", err
-	}
-
-	var result strings.Builder
-	if err := tmpl.Execute(&result, env); err != nil {
-		return "", err
-	}
-
-	return result.String(), nil
+	return renderTemplate("instruction", DefaultInstructionTemplate, env)
 }

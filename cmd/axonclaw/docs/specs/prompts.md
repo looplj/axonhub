@@ -162,7 +162,7 @@ Available variables for template rendering (only during initialization):
 | `{{.CreatedByUserName}}` | User who created the agent |
 | `{{.Date}}` | Current date (YYYY-MM-DD) |
 | `{{.Timezone}}` | System timezone (UTC±X) |
-| `{{.OS}}` | Operating system |
+| `{{.OS}}` | Human-readable operating system name, for example `macOS`, `Linux`, or `Windows` |
 | `{{.Workspace}}` | Working directory path |
 | `{{.ThreadID}}` | Current thread ID |
 | `{{.AxonClawPath}}` | Path to axonclaw executable |

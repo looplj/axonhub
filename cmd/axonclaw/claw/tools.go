@@ -1,4 +1,4 @@
-package runner
+package claw
 
 import (
 	"context"
@@ -72,7 +72,10 @@ func registerTools(
 		a.RegisterTool(tools.NewAgentTool(tools.NewWebSearchTool(search.NewDuckDuckGoProvider())))
 	}
 
-	a.RegisterTool(tools.NewAgentTool(NewSendMessageTool(client)))
+	a.RegisterTool(tools.NewAgentTool(NewSendMessageTool(SendMessageToolOptions{
+		Client: client,
+		Logger: logger,
+	})))
 	a.RegisterTool(tools.NewAgentTool(NewAxonClawHelpTool()))
 	a.RegisterTool(tools.NewAgentTool(NewResetTool(ResetToolOptions{
 		Client:    client,

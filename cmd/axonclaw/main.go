@@ -29,9 +29,9 @@ import (
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/build"
+	"github.com/looplj/axonhub/cmd/axonclaw/claw"
 	"github.com/looplj/axonhub/cmd/axonclaw/cmds"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
-	"github.com/looplj/axonhub/cmd/axonclaw/runner"
 )
 
 const logsDirName = "logs"
@@ -130,6 +130,10 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 		Stderr: os.Stderr,
 	}))
 	rootCmd.AddCommand(cmds.NewMCPCommand(cmds.StdioOptions{
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}))
+	rootCmd.AddCommand(cmds.NewHeartbeatCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
@@ -257,7 +261,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		Grants:   grantsStore,
 	})
 
-	r := runner.New(runner.NewOptions{
+	r := claw.New(claw.NewOptions{
 		Logger:         logger,
 		Client:         gqlClient,
 		Provider:       provider,
@@ -279,7 +283,12 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	if err != nil {
 		return fmt.Errorf("init task store: %w", err)
 	}
-	taskHandler := runner.NewAxonClawTaskHandler(logger, wd, r)
+
+	if err := claw.EnsureSystemTasks(taskStore); err != nil {
+		return fmt.Errorf("ensure system tasks: %w", err)
+	}
+
+	taskHandler := claw.NewTaskHandler(logger, wd, r)
 	taskScheduler, err := task.NewScheduler(logger, taskStore, taskHandler, task.SchedulerOptions{
 		TickInterval: time.Minute,
 	})

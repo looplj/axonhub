@@ -64,11 +64,12 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 	threadID := fmt.Sprintf("th-%s", uuid.New().String())
 
 	axonClawPath := getAxonClawPath()
+	osName := humanReadableOS(runtime.GOOS)
 
 	tmplData := prompts.PromptEnv{
 		Date:              now.Format("2006-01-02"),
 		Timezone:          timezone,
-		OS:                runtime.GOOS,
+		OS:                osName,
 		Workspace:         data.Workspace,
 		ThreadID:          threadID,
 		AxonClawPath:      axonClawPath,
@@ -103,8 +104,25 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 		ConfigDir:         data.ConfigDir,
 		Date:              now.Format("2006-01-02"),
 		Timezone:          timezone,
-		OS:                runtime.GOOS,
+		OS:                osName,
 	}, nil
+}
+
+func humanReadableOS(goos string) string {
+	switch goos {
+	case "darwin":
+		return "macOS"
+	case "linux":
+		return "Linux"
+	case "windows":
+		return "Windows"
+	default:
+		if goos == "" {
+			return "Unknown"
+		}
+
+		return strings.ToUpper(goos[:1]) + goos[1:]
+	}
 }
 
 func getAxonClawPath() string {

@@ -51,7 +51,7 @@ func TestInitPersonalityFilesRendersSystemTemplateWithFullEnv(t *testing.T) {
 	env := prompts.PromptEnv{
 		Date:         "2026-03-14",
 		Timezone:     "UTC+8",
-		OS:           "darwin",
+		OS:           "macOS",
 		Workspace:    "/workspace/project",
 		ThreadID:     "th-123",
 		AxonClawPath: "/usr/local/bin/axonclaw",
@@ -78,7 +78,7 @@ func TestInitPersonalityFilesRendersSystemTemplateWithFullEnv(t *testing.T) {
 	want := []string{
 		"2026-03-14",
 		"UTC+8",
-		"darwin",
+		"macOS",
 		"/workspace/project",
 		"th-123",
 		"/usr/local/bin/axonclaw",

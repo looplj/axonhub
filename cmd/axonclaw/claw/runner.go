@@ -1,8 +1,9 @@
-package runner
+package claw
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -15,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/axon/bus"
 	"github.com/looplj/axonhub/axon/mcp"
 	"github.com/looplj/axonhub/axon/permission"
+	"github.com/looplj/axonhub/axon/subagent"
 	"github.com/looplj/axonhub/axon/task"
 
 	axoncontext "github.com/looplj/axonhub/axon/context"
@@ -29,6 +31,7 @@ const defaultMaxIterations = 30
 type Runner struct {
 	Client        graphql.Client
 	Agent         *agent.Agent
+	Provider      agent.Provider
 	Logger        *slog.Logger
 	Workspace     string
 	Config        conf.Config
@@ -39,6 +42,7 @@ type Runner struct {
 	processMu     sync.Mutex
 	processing    atomic.Bool
 	mcpManager    *mcp.Manager
+	toolSource    subagent.ToolSource
 }
 
 type NewOptions struct {
@@ -75,11 +79,14 @@ func New(opts NewOptions) *Runner {
 		Logger:    opts.Logger,
 		ConfigDir: opts.Boot.ConfigDir,
 	})
+
+	toolSource := &agentToolSource{agent: a}
 	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Provider, mcpMgr)
 
-	return &Runner{
+	r := &Runner{
 		Client:        opts.Client,
 		Agent:         a,
+		Provider:      opts.Provider,
 		Logger:        opts.Logger,
 		Workspace:     opts.Workspace,
 		Config:        opts.Config,
@@ -87,7 +94,10 @@ func New(opts NewOptions) *Runner {
 		Boot:          opts.Boot,
 		TaskScheduler: opts.TaskScheduler,
 		mcpManager:    mcpMgr,
+		toolSource:    toolSource,
 	}
+
+	return r
 }
 
 func buildPromptEnv(boot *bootstrap.Result, workspace string) prompts.PromptEnv {
@@ -297,12 +307,34 @@ func (r *Runner) autoUpdateConfig(ctx context.Context) {
 	r.Logger.Info("auto-update config completed", "agent_name", newBoot.AgentName, "model", newBoot.Model)
 }
 
-func (r *Runner) ProcessScheduledMessage(ctx context.Context, text string) error {
-	return r.processMessage(ctx, text)
+func (r *Runner) FollowUP(ctx context.Context, text string) {
+	r.Agent.FollowUp(agent.Message{
+		Role:    agent.RoleUser,
+		Content: &agent.Content{Text: &text},
+	})
 }
 
-func (r *Runner) SetTaskScheduler(s *task.Scheduler) {
-	r.TaskScheduler = s
+func (r *Runner) ProcessIsolated(ctx context.Context, text string, systemPrompts []string) (*agent.Result, error) {
+	cfg := r.Agent.Config()
+
+	ctx = newIsolatedContext(ctx)
+
+	return subagent.Run(ctx, subagent.Config{
+		Model:         cfg.Model,
+		SystemPrompts: systemPrompts,
+		Provider:      r.Provider,
+		Middlewares:   r.Agent.Middlewares(),
+		Logger:        r.Logger.With("component", "isolated_prompt"),
+	}, text, r.toolSource)
+}
+
+func newIsolatedContext(ctx context.Context) context.Context {
+	threadID := fmt.Sprintf("th-%s", uuid.New().String())
+	traceID := uuid.New().String()
+	ctx = axoncontext.WithThreadID(ctx, threadID)
+	ctx = axoncontext.WithTraceID(ctx, traceID)
+
+	return ctx
 }
 
 func (r *Runner) Close() error {

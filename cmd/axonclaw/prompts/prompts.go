@@ -83,6 +83,18 @@ func BuildSystemPrompts(env PromptEnv, p *Bootstrap, skills []*api.AgentBootstra
 	return out
 }
 
+func BuildHeartbeatTaskSystemPrompts() []string {
+	return []string{DefaultHeartbeatTaskPrompt}
+}
+
+func BuildSelfReflectTaskSystemPrompts() []string {
+	return []string{DefaultSelfReflectPrompt}
+}
+
+func BuildSelfEvolveTaskSystemPrompts() []string {
+	return []string{DefaultSelfEvolvePrompt}
+}
+
 func buildSystemPromptContent(basePrompt string, skills []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition) string {
 	var sb strings.Builder
 	sb.WriteString(basePrompt)

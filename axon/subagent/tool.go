@@ -11,6 +11,12 @@ import (
 	"github.com/looplj/axonhub/axon/tools"
 )
 
+const (
+	// SpawnAgentToolName is the tool name that must be excluded from subagent
+	// tool registrations to prevent infinite nesting.
+	SpawnAgentToolName = "SpawnAgent"
+)
+
 type Tool struct {
 	manager     *Manager
 	provider    agent.Provider
@@ -107,13 +113,13 @@ func (t *Tool) Execute(ctx context.Context, input toolInput) agent.ToolResult {
 	)
 
 	result, err := Run(ctx, Config{
-		Model:        model,
-		SystemPrompt: def.Description,
-		AllowedTools: allowedTools,
-		DeniedTools:  deniedTools,
-		Provider:     t.provider,
-		Middlewares:  t.middlewares,
-		Logger:       t.logger.With("component", "spawn_agent"),
+		Model:         model,
+		SystemPrompts: []string{def.Description},
+		AllowedTools:  allowedTools,
+		DeniedTools:   deniedTools,
+		Provider:      t.provider,
+		Middlewares:   t.middlewares,
+		Logger:        t.logger.With("component", "spawn_agent"),
 	}, input.Task, t.toolSource)
 	if err != nil {
 		return tools.ErrorResult(fmt.Errorf("spawned agent failed: %w", err))

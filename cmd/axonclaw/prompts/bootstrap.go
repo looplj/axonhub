@@ -8,17 +8,19 @@ import (
 )
 
 const (
-	SoulFileName     = "SOUL.md"
-	IdentityFileName = "IDENTITY.md"
-	UserFileName     = "USER.md"
-	SystemFileName   = "SYSTEM.md"
+	SoulFileName      = "SOUL.md"
+	IdentityFileName  = "IDENTITY.md"
+	UserFileName      = "USER.md"
+	SystemFileName    = "SYSTEM.md"
+	HeartbeatFileName = "HEARTBEAT.md"
 )
 
 type Bootstrap struct {
-	Soul     MarkdownFile
-	Identity MarkdownFile
-	User     MarkdownFile
-	System   MarkdownFile
+	Soul      MarkdownFile
+	Identity  MarkdownFile
+	User      MarkdownFile
+	System    MarkdownFile
+	Heartbeat MarkdownFile
 }
 
 type MarkdownFile struct {
@@ -56,11 +58,17 @@ func Load(configDir string, initParams *InitParams) (*Bootstrap, error) {
 		return nil, fmt.Errorf("load %s: %w", SystemFileName, err)
 	}
 
+	heartbeat, err := LoadFile(configDir, HeartbeatFileName)
+	if err != nil {
+		return nil, fmt.Errorf("load %s: %w", HeartbeatFileName, err)
+	}
+
 	boot := &Bootstrap{
-		Soul:     *soul,
-		Identity: *identity,
-		User:     *user,
-		System:   *system,
+		Soul:      *soul,
+		Identity:  *identity,
+		User:      *user,
+		System:    *system,
+		Heartbeat: *heartbeat,
 	}
 
 	if initParams != nil {
@@ -123,6 +131,14 @@ func initPromptFiles(configDir string, boot *Bootstrap, params *InitParams) erro
 		}
 
 		boot.System.Content = rendered
+	}
+
+	if boot.Heartbeat.IsEmpty() {
+		if err := SaveFile(configDir, HeartbeatFileName, DefaultHeartbeatTemplate); err != nil {
+			return fmt.Errorf("save heartbeat: %w", err)
+		}
+
+		boot.Heartbeat.Content = DefaultHeartbeatTemplate
 	}
 
 	return nil

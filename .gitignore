@@ -160,3 +160,5 @@ locales_backup
 .axonclaw/
 .axoncli/
 *.zip
+*.db-shm
+*.db-wal

@@ -4,23 +4,22 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/looplj/axonhub/axon/agent"
 )
 
 const (
 	defaultMaxIterations = 30
-	// SpawnAgentToolName is the tool name that must be excluded from subagent
-	// tool registrations to prevent infinite nesting.
-	SpawnAgentToolName = "SpawnAgent"
 )
 
 // Config configures a subagent run.
 type Config struct {
 	// Model is the LLM model identifier for the subagent.
 	Model string
-	// SystemPrompt is the system prompt for the subagent. Required.
-	SystemPrompt string
+	// SystemPrompts are the system prompts for the subagent. At least one
+	// non-empty prompt is required.
+	SystemPrompts []string
 	// AllowedTools is a whitelist of tool names the subagent may use.
 	// If nil, all tools from the ToolSource are available (except SpawnAgent itself).
 	AllowedTools []string
@@ -61,8 +60,8 @@ func Run(ctx context.Context, cfg Config, prompt string, tools ToolSource) (*age
 		return nil, fmt.Errorf("subagent: model is required")
 	}
 
-	if cfg.SystemPrompt == "" {
-		return nil, fmt.Errorf("subagent: system prompt is required")
+	if err := validateSystemPrompts(cfg.SystemPrompts); err != nil {
+		return nil, err
 	}
 
 	maxIter := cfg.MaxIterations
@@ -90,7 +89,7 @@ func Run(ctx context.Context, cfg Config, prompt string, tools ToolSource) (*age
 	a := agent.New(agent.Config{
 		Model:         cfg.Model,
 		MaxIterations: maxIter,
-		SystemPrompts: []string{cfg.SystemPrompt},
+		SystemPrompts: cfg.SystemPrompts,
 	}, cfg.Provider, opts...)
 
 	// Register tools, filtering by AllowedTools whitelist.
@@ -130,13 +129,22 @@ func Run(ctx context.Context, cfg Config, prompt string, tools ToolSource) (*age
 	return result, nil
 }
 
-// buildToolSet converts a slice of tool names to a set for O(1) lookup.
-// Returns nil if the input is nil (meaning no filtering is applied).
-func buildToolSet(names []string) map[string]struct{} {
-	if names == nil {
-		return nil
+func validateSystemPrompts(prompts []string) error {
+	if len(prompts) == 0 {
+		return fmt.Errorf("subagent: at least one system prompt is required")
 	}
 
+	for _, prompt := range prompts {
+		if strings.TrimSpace(prompt) != "" {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("subagent: at least one non-empty system prompt is required")
+}
+
+// buildToolSet converts a slice of tool names to a set for O(1) lookup.
+func buildToolSet(names []string) map[string]struct{} {
 	set := make(map[string]struct{}, len(names))
 	for _, n := range names {
 		set[n] = struct{}{}
