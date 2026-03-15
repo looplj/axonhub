@@ -116,7 +116,7 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 	rootCmd.AddCommand(cmds.NewMemoryCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
-	}))
+	}, workspaceDir))
 	rootCmd.AddCommand(cmds.NewDiscoverCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
@@ -216,9 +216,14 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	eventBus := bus.New(bus.WithRecover(logger), bus.WithTracing())
 	defer eventBus.Close()
 
-	eventBus.Subscribe(agent.TopicAgentEvent, bus.TypedHandler(func(_ context.Context, _ bus.Event, ev agent.AgentEvent) error {
+	eventBus.Subscribe(agent.TopicAgentEvent, bus.TypedHandler(func(ctx context.Context, _ bus.Event, ev agent.AgentEvent) error {
 		switch ev.Type {
 		case agent.EventMessageAdded:
+			if ev.Message != nil {
+				if err := claw.AppendArchiveMessage(ctx, wd, *ev.Message); err != nil {
+					logger.Warn("archive append failed", "error", err)
+				}
+			}
 		case agent.EventToolStart:
 			logger.Debug("tool started", "tool", ev.ToolName)
 		case agent.EventToolEnd:

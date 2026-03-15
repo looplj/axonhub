@@ -1596,6 +1596,28 @@ func TestSearcher_GlobEdgeCases(t *testing.T) {
 	}
 }
 
+func TestSearcher_GlobBraceExpansion_MixedPaths(t *testing.T) {
+	fsys := NewSliceFS(map[string]string{
+		"MEMORY.md":            "foo",
+		"memory/2026-03-16.md": "foo",
+		"memory/ignore.txt":    "foo",
+		"other.md":             "foo",
+	})
+	searcher := NewSearcherWithFS(fsys)
+
+	result, err := searcher.Search(context.Background(), Options{
+		Pattern:    "foo",
+		Glob:       "{MEMORY.md,memory/*.md}",
+		OutputMode: "files_with_matches",
+	})
+	require.NoError(t, err)
+
+	assert.Contains(t, result.Text, "MEMORY.md\n")
+	assert.Contains(t, result.Text, "memory/2026-03-16.md\n")
+	assert.NotContains(t, result.Text, "other.md\n")
+	assert.NotContains(t, result.Text, "memory/ignore.txt\n")
+}
+
 // Test all SkipDirs are skipped
 func TestSearcher_AllSkipDirs(t *testing.T) {
 	files := map[string]string{

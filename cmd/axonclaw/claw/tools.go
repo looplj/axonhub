@@ -76,7 +76,6 @@ func registerTools(
 		Client: client,
 		Logger: logger,
 	})))
-	a.RegisterTool(tools.NewAgentTool(NewAxonClawHelpTool()))
 	a.RegisterTool(tools.NewAgentTool(NewResetTool(ResetToolOptions{
 		Client:    client,
 		Agent:     a,
@@ -91,7 +90,6 @@ func registerTools(
 	}
 
 	known["SendMessage"] = struct{}{}
-	known["AxonClawHelp"] = struct{}{}
 	known["Reset"] = struct{}{}
 	for _, t := range boot.Tools {
 		if t.Name == "" {

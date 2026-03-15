@@ -16,9 +16,9 @@ var (
 	DefaultUserTemplate        = mustLoadTemplate("templates/USER.md")
 	DefaultInstructionTemplate = mustLoadTemplate("templates/INSTRUCTION.md")
 	DefaultHeartbeatTemplate   = mustLoadTemplate("templates/HEARTBEAT.md")
-	DefaultHeartbeatTaskPrompt = mustLoadTemplate("templates/HEARTBEAT_TASK.md")
-	DefaultSelfReflectPrompt   = mustLoadTemplate("templates/SELF_REFLECT_TASK.md")
-	DefaultSelfEvolvePrompt    = mustLoadTemplate("templates/SELF_EVOLVE_TASK.md")
+	DefaultHeartbeatTaskPrompt = mustLoadTemplate("templates/HEARTBEAT.md")
+	DefaultSelfReflectPrompt   = mustLoadTemplate("templates/SELF_REFLECT.md")
+	DefaultSelfEvolvePrompt    = mustLoadTemplate("templates/SELF_EVOLVE.md")
 )
 
 func mustLoadTemplate(name string) string {

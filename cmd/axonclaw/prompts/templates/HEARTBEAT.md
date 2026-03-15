@@ -1,6 +1,10 @@
-# Heartbeat Checklist
+# System Task: Heartbeat
 
-- Review any pending scheduled tasks or reminders and act on overdue items
-- Check if the user has outstanding requests that were not fully resolved
-- If the user hasn't interacted for an extended period, consider a brief and useful check-in (not empty pleasantries)
-- Scan for any workspace anomalies or issues worth surfacing (build failures, stale branches, etc.)
+You are running the scheduled heartbeat task.
+
+## Instructions
+
+- Read the heartbeat checklist from `.axonclaw/HEARTBEAT.md` before taking action.
+- If nothing needs attention, respond with exactly `HEARTBEAT_OK`.
+- If something needs attention, do not call `SendMessage` directly. Return a concise list of the items that need handling.
+- Do not include `HEARTBEAT_OK` if you have anything to report.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -13,6 +14,8 @@ const (
 	UserFileName      = "USER.md"
 	SystemFileName    = "SYSTEM.md"
 	HeartbeatFileName = "HEARTBEAT.md"
+	MemoryFileName    = "MEMORY.md"
+	MemoryDirName     = "memory"
 )
 
 type Bootstrap struct {
@@ -21,6 +24,8 @@ type Bootstrap struct {
 	User      MarkdownFile
 	System    MarkdownFile
 	Heartbeat MarkdownFile
+	Memory    MarkdownFile   // MEMORY.md long-term memory
+	DailyLogs []MarkdownFile // Recent daily logs (today, yesterday)
 }
 
 type MarkdownFile struct {
@@ -63,12 +68,21 @@ func Load(configDir string, initParams *InitParams) (*Bootstrap, error) {
 		return nil, fmt.Errorf("load %s: %w", HeartbeatFileName, err)
 	}
 
+	memoryFile, err := LoadFile(configDir, MemoryFileName)
+	if err != nil {
+		return nil, fmt.Errorf("load %s: %w", MemoryFileName, err)
+	}
+
+	dailyLogs := loadRecentDailyLogs(configDir)
+
 	boot := &Bootstrap{
 		Soul:      *soul,
 		Identity:  *identity,
 		User:      *user,
 		System:    *system,
 		Heartbeat: *heartbeat,
+		Memory:    *memoryFile,
+		DailyLogs: dailyLogs,
 	}
 
 	if initParams != nil {
@@ -192,4 +206,34 @@ func SaveFile(configDir, name, content string) error {
 
 func Path(configDir, name string) string {
 	return filepath.Join(configDir, name)
+}
+
+// loadRecentDailyLogs loads today's and yesterday's daily log files.
+func loadRecentDailyLogs(configDir string) []MarkdownFile {
+	memDir := filepath.Join(configDir, MemoryDirName)
+	now := time.Now()
+
+	dates := []time.Time{now, now.AddDate(0, 0, -1)}
+
+	var logs []MarkdownFile
+
+	for _, d := range dates {
+		name := d.Format("2006-01-02") + ".md"
+		path := filepath.Join(memDir, name)
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+
+		content := strings.TrimSpace(string(data))
+		if content != "" {
+			logs = append(logs, MarkdownFile{
+				Content: content,
+				Path:    path,
+			})
+		}
+	}
+
+	return logs
 }
