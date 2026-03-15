@@ -8,9 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
-
-	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -19,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/tidwall/gjson"
 )
 
 const (
@@ -56,7 +56,7 @@ type TokenProvider interface {
 type OutboundTransformer struct {
 	tokenProvider     TokenProvider
 	baseURL           string
-	codexResponses    *responses.OutboundTransformer
+	responses         *responses.OutboundTransformer
 	openAITransformer transformer.Outbound
 }
 
@@ -96,9 +96,9 @@ func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransfor
 	}
 
 	return &OutboundTransformer{
-		tokenProvider:  params.TokenProvider,
-		baseURL:        baseURL,
-		codexResponses: responsesTransformer,
+		tokenProvider: params.TokenProvider,
+		baseURL:       baseURL,
+		responses:     responsesTransformer,
 	}, nil
 }
 
@@ -122,9 +122,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, errors.New("messages are required")
 	}
 
-	// Check if this is a Codex model - use Responses API for Codex
-	if isCodexModel(llmReq.Model) {
-		return t.transformCodexResponsesRequest(ctx, llmReq)
+	// Check if this model requires the Responses API.
+	if usesResponsesAPI(llmReq.Model) {
+		return t.transformResponsesRequest(ctx, llmReq)
 	}
 
 	// Get Copilot token from token provider.
@@ -272,9 +272,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 				Headers:    httpResp.Headers,
 				Body:       unwrappedBody,
 			}
-			return t.codexResponses.TransformResponse(ctx, wrappedResp)
+			return t.responses.TransformResponse(ctx, wrappedResp)
 		}
-		return t.codexResponses.TransformResponse(ctx, httpResp)
+		return t.responses.TransformResponse(ctx, httpResp)
 	}
 
 	// Parse into OpenAI Response type (Chat Completions format).
@@ -366,7 +366,7 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 	})
 
 	// Delegate to the responses transformer's stream handling
-	return t.codexResponses.TransformStream(ctx, filteredStream)
+	return t.responses.TransformStream(ctx, filteredStream)
 }
 
 // convertCopilotStreamEvent fixes up Copilot's standard Responses API stream events.
@@ -544,10 +544,10 @@ func isResponsesAPIStream(chunks []*httpclient.StreamEvent) bool {
 	return false
 }
 
-// transformCodexResponsesRequest transforms a request for Codex models using the Responses API.
-func (t *OutboundTransformer) transformCodexResponsesRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+// transformResponsesRequest transforms a request for models that use the Responses API.
+func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	// Use the responses transformer to properly convert to Responses API format
-	responsesReq, err := t.codexResponses.TransformRequest(ctx, llmReq)
+	responsesReq, err := t.responses.TransformRequest(ctx, llmReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform request for Responses API: %w", err)
 	}
@@ -579,9 +579,49 @@ func (t *OutboundTransformer) transformCodexResponsesRequest(ctx context.Context
 	return responsesReq, nil
 }
 
-// isCodexModel checks if the model is a Codex model.
-func isCodexModel(model string) bool {
-	return strings.Contains(strings.ToLower(model), "codex")
+// usesResponsesAPI checks if the model uses the responses API.
+func usesResponsesAPI(model string) bool {
+	normalizedModel := strings.ToLower(model)
+
+	if strings.Contains(normalizedModel, "codex") {
+		return true
+	}
+
+	if !strings.HasPrefix(normalizedModel, "gpt-") {
+		return false
+	}
+
+	version, _, _ := strings.Cut(strings.TrimPrefix(normalizedModel, "gpt-"), "-")
+	major, minor, ok := parseModelVersion(version)
+	if !ok {
+		return false
+	}
+
+	return major > 5 || (major == 5 && minor >= 4)
+}
+
+// parseModelVersion parses a model version string into major and minor components.
+func parseModelVersion(version string) (major int, minor int, ok bool) {
+	parts := strings.Split(version, ".")
+	if len(parts) == 0 || parts[0] == "" {
+		return 0, 0, false
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, false
+	}
+
+	if len(parts) == 1 || parts[1] == "" {
+		return major, 0, true
+	}
+
+	minor, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, false
+	}
+
+	return major, minor, true
 }
 
 // prependedStream is a stream that yields a first event before forwarding to the upstream stream.

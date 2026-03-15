@@ -85,6 +85,157 @@ func TestOutboundTransformer_APIFormat(t *testing.T) {
 	assert.Equal(t, llm.APIFormatOpenAIChatCompletion, transformer.APIFormat())
 }
 
+func TestParseModelVersion(t *testing.T) {
+	tests := []struct {
+		name          string
+		version       string
+		expectedMajor int
+		expectedMinor int
+		expectedOK    bool
+	}{
+		{
+			name:          "major only version",
+			version:       "6",
+			expectedMajor: 6,
+			expectedMinor: 0,
+			expectedOK:    true,
+		},
+		{
+			name:          "major minor version",
+			version:       "5.4",
+			expectedMajor: 5,
+			expectedMinor: 4,
+			expectedOK:    true,
+		},
+		{
+			name:          "double digit minor version",
+			version:       "5.10",
+			expectedMajor: 5,
+			expectedMinor: 10,
+			expectedOK:    true,
+		},
+		{
+			name:          "ignores extra segments after minor",
+			version:       "6.1.2",
+			expectedMajor: 6,
+			expectedMinor: 1,
+			expectedOK:    true,
+		},
+		{
+			name:          "empty version is invalid",
+			version:       "",
+			expectedMajor: 0,
+			expectedMinor: 0,
+			expectedOK:    false,
+		},
+		{
+			name:          "non numeric major is invalid",
+			version:       "preview",
+			expectedMajor: 0,
+			expectedMinor: 0,
+			expectedOK:    false,
+		},
+		{
+			name:          "non numeric minor is invalid",
+			version:       "5.preview",
+			expectedMajor: 0,
+			expectedMinor: 0,
+			expectedOK:    false,
+		},
+		{
+			name:          "empty minor is treated as major only",
+			version:       "6.",
+			expectedMajor: 6,
+			expectedMinor: 0,
+			expectedOK:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			major, minor, ok := parseModelVersion(tt.version)
+			assert.Equal(t, tt.expectedMajor, major)
+			assert.Equal(t, tt.expectedMinor, minor)
+			assert.Equal(t, tt.expectedOK, ok)
+		})
+	}
+}
+
+func TestUsesResponsesAPI(t *testing.T) {
+	tests := []struct {
+		name     string
+		model    string
+		expected bool
+	}{
+		{
+			name:     "codex model uses responses API",
+			model:    "gpt-5.2-codex",
+			expected: true,
+		},
+		{
+			name:     "codex detection is case insensitive",
+			model:    "GPT-5.2-CODEX",
+			expected: true,
+		},
+		{
+			name:     "gpt-5.3 does not use responses API",
+			model:    "gpt-5.3",
+			expected: false,
+		},
+		{
+			name:     "gpt-5.4 uses responses API",
+			model:    "gpt-5.4",
+			expected: true,
+		},
+		{
+			name:     "gpt-5.4 preview uses responses API",
+			model:    "gpt-5.4-preview",
+			expected: true,
+		},
+		{
+			name:     "gpt-5.5 uses responses API",
+			model:    "gpt-5.5",
+			expected: true,
+		},
+		{
+			name:     "gpt-5.10 uses responses API",
+			model:    "gpt-5.10",
+			expected: true,
+		},
+		{
+			name:     "gpt-6 uses responses API",
+			model:    "gpt-6",
+			expected: true,
+		},
+		{
+			name:     "gpt-6.1 uses responses API",
+			model:    "gpt-6.1",
+			expected: true,
+		},
+		{
+			name:     "gpt-6-preview uses responses API",
+			model:    "gpt-6-preview",
+			expected: true,
+		},
+		{
+			name:     "regular chat model does not use responses API",
+			model:    "gpt-4o",
+			expected: false,
+		},
+		{
+			name:     "other model does not use responses API",
+			model:    "claude-sonnet-4.6",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, usesResponsesAPI(tt.model))
+		})
+	}
+}
+
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	ctx := context.Background()
 	mockToken := "ghu_testtoken123"
@@ -199,6 +350,44 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			wantErr: false,
 			validate: func(t *testing.T, req *httpclient.Request) {
 				assert.Equal(t, "https://custom.copilot.github.com"+CopilotChatCompletionsEndpoint, req.URL)
+			},
+		},
+		{
+			name: "gpt-5.4 uses responses API endpoint",
+			params: OutboundTransformerParams{
+				TokenProvider: &mockTokenProvider{token: mockToken},
+			},
+			request: &llm.Request{
+				Model: "gpt-5.4",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello, Copilot!")},
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, req *httpclient.Request) {
+				assert.Equal(t, DefaultCopilotBaseURL+"/v1/responses", req.URL)
+			},
+		},
+		{
+			name: "codex model uses responses API endpoint",
+			params: OutboundTransformerParams{
+				TokenProvider: &mockTokenProvider{token: mockToken},
+			},
+			request: &llm.Request{
+				Model: "gpt-5.2-codex",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello, Copilot!")},
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, req *httpclient.Request) {
+				assert.Equal(t, DefaultCopilotBaseURL+"/v1/responses", req.URL)
 			},
 		},
 	}
