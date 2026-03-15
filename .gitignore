@@ -162,3 +162,5 @@ locales_backup
 *.zip
 *.db-shm
 *.db-wal
+deploy_dev.sh
+redeploy_dev.sh

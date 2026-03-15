@@ -19,6 +19,13 @@ type AgentBuiltinTool {
   config: JSONRawMessage
 }
 
+type AgentBuiltinSkill {
+  name: String!
+  enabled: Boolean!
+  order: Int!
+  config: JSONRawMessage
+}
+
 type AgentToolDefinition {
   name: String!
   description: String!
@@ -44,6 +51,7 @@ type AgentBootstrap {
   tools: [AgentToolDefinition!]!
   skills: [AgentSkillDefinition!]!
   builtinTools: [AgentBuiltinTool!]!
+  builtinSkills: [AgentBuiltinSkill!]!
   skillsPolicy: AgentSkillsPolicy!
   memoryPolicy: JSONRawMessage
 }

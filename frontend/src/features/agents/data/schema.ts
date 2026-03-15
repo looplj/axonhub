@@ -14,6 +14,13 @@ export const agentBuiltinToolSchema = z.object({
 });
 export type AgentBuiltinTool = z.infer<typeof agentBuiltinToolSchema>;
 
+export const agentBuiltinSkillSchema = z.object({
+  name: z.string(),
+  enabled: z.boolean(),
+  order: z.number(),
+});
+export type AgentBuiltinSkill = z.infer<typeof agentBuiltinSkillSchema>;
+
 export const agentSchema = z.object({
   id: z.string(),
   createdAt: z.coerce.date(),
@@ -26,6 +33,7 @@ export const agentSchema = z.object({
   model: z.string(),
   reasoningEffort: reasoningEffortSchema,
   agentBuiltinTools: z.any(),
+  agentBuiltinSkills: z.any(),
   skillsPolicy: z.any(),
   prompt: z
     .object({
@@ -61,6 +69,13 @@ export const agentBuiltinToolInputSchema = z.object({
 });
 export type AgentBuiltinToolInput = z.infer<typeof agentBuiltinToolInputSchema>;
 
+export const agentBuiltinSkillInputSchema = z.object({
+  name: z.string(),
+  enabled: z.boolean().default(true),
+  order: z.number().default(0),
+});
+export type AgentBuiltinSkillInput = z.infer<typeof agentBuiltinSkillInputSchema>;
+
 export const createAgentInputSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
@@ -69,6 +84,7 @@ export const createAgentInputSchema = z.object({
   reasoningEffort: reasoningEffortSchema.optional(),
   systemPrompt: z.string().min(1),
   builtinTools: z.array(agentBuiltinToolInputSchema).optional(),
+  builtinSkills: z.array(agentBuiltinSkillInputSchema).optional(),
   skillsPolicy: agentSkillsPolicyInputSchema.optional(),
 });
 export type CreateAgentInput = z.infer<typeof createAgentInputSchema>;
@@ -81,8 +97,8 @@ export const updateAgentInputSchema = z.object({
   reasoningEffort: reasoningEffortSchema.optional(),
   systemPrompt: z.string().optional(),
   builtinTools: z.array(agentBuiltinToolInputSchema).optional(),
+  builtinSkills: z.array(agentBuiltinSkillInputSchema).optional(),
   skillsPolicy: agentSkillsPolicyInputSchema.optional(),
 });
 export type UpdateAgentInput = z.infer<typeof updateAgentInputSchema>;
-
 

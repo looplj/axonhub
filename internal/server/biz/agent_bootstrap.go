@@ -69,10 +69,11 @@ type AgentBootstrap struct {
 	ReasoningEffort   string
 	SystemPrompt      string
 
-	Tools        []AgentToolDefinition
-	Skills       []AgentSkillDefinition
-	BuiltinTools []objects.AgentBuiltinTool
-	SkillsPolicy objects.AgentSkillsPolicy
+	Tools         []AgentToolDefinition
+	Skills        []AgentSkillDefinition
+	BuiltinTools  []objects.AgentBuiltinTool
+	BuiltinSkills []objects.AgentBuiltinSkill
+	SkillsPolicy  objects.AgentSkillsPolicy
 
 	MemoryPolicy *objects.JSONRawMessage
 }
@@ -226,6 +227,11 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 			builtinTools = []objects.AgentBuiltinTool{}
 		}
 
+		builtinSkills := a.AgentBuiltinSkills
+		if builtinSkills == nil {
+			builtinSkills = []objects.AgentBuiltinSkill{}
+		}
+
 		skillsPolicy := a.SkillsPolicy
 		if skillsPolicy.Add == "" {
 			skillsPolicy.Add = "open"
@@ -313,6 +319,7 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 			Tools:             tools,
 			Skills:            skills,
 			BuiltinTools:      builtinTools,
+			BuiltinSkills:     builtinSkills,
 			SkillsPolicy:      skillsPolicy,
 			MemoryPolicy:      nil,
 		}, nil

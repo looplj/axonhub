@@ -246,6 +246,21 @@ func (r *queryResolver) AgentBootstrap(ctx context.Context) (*AgentBootstrap, er
 		})
 	}
 
+	out.BuiltinSkills = make([]*AgentBuiltinSkill, 0, len(bootstrap.BuiltinSkills))
+	for _, sk := range bootstrap.BuiltinSkills {
+		var cfg objects.JSONRawMessage
+		if sk.Config != nil {
+			cfg = *sk.Config
+		}
+
+		out.BuiltinSkills = append(out.BuiltinSkills, &AgentBuiltinSkill{
+			Name:    sk.Name,
+			Enabled: sk.Enabled,
+			Order:   sk.Order,
+			Config:  cfg,
+		})
+	}
+
 	out.Tools = make([]*AgentToolDefinition, 0, len(bootstrap.Tools))
 	for _, t := range bootstrap.Tools {
 		var cfg objects.JSONRawMessage

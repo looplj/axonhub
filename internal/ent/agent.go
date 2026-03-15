@@ -46,6 +46,8 @@ type Agent struct {
 	ReasoningEffort agent.ReasoningEffort `json:"reasoning_effort,omitempty"`
 	// Agent built-in tools configuration (JSON)
 	AgentBuiltinTools []objects.AgentBuiltinTool `json:"agent_builtin_tools,omitempty"`
+	// Agent built-in skills configuration (JSON)
+	AgentBuiltinSkills []objects.AgentBuiltinSkill `json:"agent_builtin_skills,omitempty"`
 	// Skill add/install policy (JSON)
 	SkillsPolicy objects.AgentSkillsPolicy `json:"skills_policy,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -180,7 +182,7 @@ func (*Agent) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case agent.FieldAgentBuiltinTools, agent.FieldSkillsPolicy:
+		case agent.FieldAgentBuiltinTools, agent.FieldAgentBuiltinSkills, agent.FieldSkillsPolicy:
 			values[i] = new([]byte)
 		case agent.FieldID, agent.FieldDeletedAt, agent.FieldProjectID, agent.FieldCreatedByUserID, agent.FieldPromptID:
 			values[i] = new(sql.NullInt64)
@@ -281,6 +283,14 @@ func (_m *Agent) assignValues(columns []string, values []any) error {
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &_m.AgentBuiltinTools); err != nil {
 					return fmt.Errorf("unmarshal field agent_builtin_tools: %w", err)
+				}
+			}
+		case agent.FieldAgentBuiltinSkills:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field agent_builtin_skills", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.AgentBuiltinSkills); err != nil {
+					return fmt.Errorf("unmarshal field agent_builtin_skills: %w", err)
 				}
 			}
 		case agent.FieldSkillsPolicy:
@@ -407,6 +417,9 @@ func (_m *Agent) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("agent_builtin_tools=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AgentBuiltinTools))
+	builder.WriteString(", ")
+	builder.WriteString("agent_builtin_skills=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AgentBuiltinSkills))
 	builder.WriteString(", ")
 	builder.WriteString("skills_policy=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SkillsPolicy))

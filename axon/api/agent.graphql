@@ -11,6 +11,7 @@ query AgentBootstrap {
     tools { name description parameters config }
     skills { name content entrypoint args }
     builtinTools { name enabled order config }
+    builtinSkills { name enabled order config }
   }
 }
 

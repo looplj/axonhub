@@ -52,6 +52,7 @@ type ComplexityRoot struct {
 		AgentID           func(childComplexity int) int
 		AgentInstanceName func(childComplexity int) int
 		AgentName         func(childComplexity int) int
+		BuiltinSkills     func(childComplexity int) int
 		BuiltinTools      func(childComplexity int) int
 		CreatedByUserName func(childComplexity int) int
 		MemoryPolicy      func(childComplexity int) int
@@ -61,6 +62,13 @@ type ComplexityRoot struct {
 		SkillsPolicy      func(childComplexity int) int
 		SystemPrompt      func(childComplexity int) int
 		Tools             func(childComplexity int) int
+	}
+
+	AgentBuiltinSkill struct {
+		Config  func(childComplexity int) int
+		Enabled func(childComplexity int) int
+		Name    func(childComplexity int) int
+		Order   func(childComplexity int) int
 	}
 
 	AgentBuiltinTool struct {
@@ -221,6 +229,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentBootstrap.AgentName(childComplexity), true
+	case "AgentBootstrap.builtinSkills":
+		if e.complexity.AgentBootstrap.BuiltinSkills == nil {
+			break
+		}
+
+		return e.complexity.AgentBootstrap.BuiltinSkills(childComplexity), true
 	case "AgentBootstrap.builtinTools":
 		if e.complexity.AgentBootstrap.BuiltinTools == nil {
 			break
@@ -275,6 +289,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AgentBootstrap.Tools(childComplexity), true
+
+	case "AgentBuiltinSkill.config":
+		if e.complexity.AgentBuiltinSkill.Config == nil {
+			break
+		}
+
+		return e.complexity.AgentBuiltinSkill.Config(childComplexity), true
+	case "AgentBuiltinSkill.enabled":
+		if e.complexity.AgentBuiltinSkill.Enabled == nil {
+			break
+		}
+
+		return e.complexity.AgentBuiltinSkill.Enabled(childComplexity), true
+	case "AgentBuiltinSkill.name":
+		if e.complexity.AgentBuiltinSkill.Name == nil {
+			break
+		}
+
+		return e.complexity.AgentBuiltinSkill.Name(childComplexity), true
+	case "AgentBuiltinSkill.order":
+		if e.complexity.AgentBuiltinSkill.Order == nil {
+			break
+		}
+
+		return e.complexity.AgentBuiltinSkill.Order(childComplexity), true
 
 	case "AgentBuiltinTool.config":
 		if e.complexity.AgentBuiltinTool.Config == nil {
@@ -1326,6 +1365,45 @@ func (ec *executionContext) fieldContext_AgentBootstrap_builtinTools(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _AgentBootstrap_builtinSkills(ctx context.Context, field graphql.CollectedField, obj *AgentBootstrap) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentBootstrap_builtinSkills,
+		func(ctx context.Context) (any, error) {
+			return obj.BuiltinSkills, nil
+		},
+		nil,
+		ec.marshalNAgentBuiltinSkill2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentBuiltinSkillᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentBootstrap_builtinSkills(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentBootstrap",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_AgentBuiltinSkill_name(ctx, field)
+			case "enabled":
+				return ec.fieldContext_AgentBuiltinSkill_enabled(ctx, field)
+			case "order":
+				return ec.fieldContext_AgentBuiltinSkill_order(ctx, field)
+			case "config":
+				return ec.fieldContext_AgentBuiltinSkill_config(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AgentBuiltinSkill", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AgentBootstrap_skillsPolicy(ctx context.Context, field graphql.CollectedField, obj *AgentBootstrap) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1378,6 +1456,122 @@ func (ec *executionContext) _AgentBootstrap_memoryPolicy(ctx context.Context, fi
 func (ec *executionContext) fieldContext_AgentBootstrap_memoryPolicy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AgentBootstrap",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentBuiltinSkill_name(ctx context.Context, field graphql.CollectedField, obj *AgentBuiltinSkill) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentBuiltinSkill_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentBuiltinSkill_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentBuiltinSkill",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentBuiltinSkill_enabled(ctx context.Context, field graphql.CollectedField, obj *AgentBuiltinSkill) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentBuiltinSkill_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentBuiltinSkill_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentBuiltinSkill",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentBuiltinSkill_order(ctx context.Context, field graphql.CollectedField, obj *AgentBuiltinSkill) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentBuiltinSkill_order,
+		func(ctx context.Context) (any, error) {
+			return obj.Order, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentBuiltinSkill_order(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentBuiltinSkill",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AgentBuiltinSkill_config(ctx context.Context, field graphql.CollectedField, obj *AgentBuiltinSkill) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AgentBuiltinSkill_config,
+		func(ctx context.Context) (any, error) {
+			return obj.Config, nil
+		},
+		nil,
+		ec.marshalOJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AgentBuiltinSkill_config(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AgentBuiltinSkill",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -3342,6 +3536,8 @@ func (ec *executionContext) fieldContext_Query_agentBootstrap(_ context.Context,
 				return ec.fieldContext_AgentBootstrap_skills(ctx, field)
 			case "builtinTools":
 				return ec.fieldContext_AgentBootstrap_builtinTools(ctx, field)
+			case "builtinSkills":
+				return ec.fieldContext_AgentBootstrap_builtinSkills(ctx, field)
 			case "skillsPolicy":
 				return ec.fieldContext_AgentBootstrap_skillsPolicy(ctx, field)
 			case "memoryPolicy":
@@ -5480,6 +5676,11 @@ func (ec *executionContext) _AgentBootstrap(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "builtinSkills":
+			out.Values[i] = ec._AgentBootstrap_builtinSkills(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "skillsPolicy":
 			out.Values[i] = ec._AgentBootstrap_skillsPolicy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -5487,6 +5688,57 @@ func (ec *executionContext) _AgentBootstrap(ctx context.Context, sel ast.Selecti
 			}
 		case "memoryPolicy":
 			out.Values[i] = ec._AgentBootstrap_memoryPolicy(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var agentBuiltinSkillImplementors = []string{"AgentBuiltinSkill"}
+
+func (ec *executionContext) _AgentBuiltinSkill(ctx context.Context, sel ast.SelectionSet, obj *AgentBuiltinSkill) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, agentBuiltinSkillImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AgentBuiltinSkill")
+		case "name":
+			out.Values[i] = ec._AgentBuiltinSkill_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._AgentBuiltinSkill_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "order":
+			out.Values[i] = ec._AgentBuiltinSkill_order(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "config":
+			out.Values[i] = ec._AgentBuiltinSkill_config(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6714,6 +6966,60 @@ func (ec *executionContext) marshalNAgentBootstrap2ᚖgithubᚗcomᚋloopljᚋax
 		return graphql.Null
 	}
 	return ec._AgentBootstrap(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAgentBuiltinSkill2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentBuiltinSkillᚄ(ctx context.Context, sel ast.SelectionSet, v []*AgentBuiltinSkill) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAgentBuiltinSkill2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentBuiltinSkill(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAgentBuiltinSkill2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentBuiltinSkill(ctx context.Context, sel ast.SelectionSet, v *AgentBuiltinSkill) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AgentBuiltinSkill(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNAgentBuiltinTool2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋagentapiᚐAgentBuiltinToolᚄ(ctx context.Context, sel ast.SelectionSet, v []*AgentBuiltinTool) graphql.Marshaler {

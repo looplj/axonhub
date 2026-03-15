@@ -43,6 +43,8 @@ const (
 	FieldReasoningEffort = "reasoning_effort"
 	// FieldAgentBuiltinTools holds the string denoting the agent_builtin_tools field in the database.
 	FieldAgentBuiltinTools = "agent_builtin_tools"
+	// FieldAgentBuiltinSkills holds the string denoting the agent_builtin_skills field in the database.
+	FieldAgentBuiltinSkills = "agent_builtin_skills"
 	// FieldSkillsPolicy holds the string denoting the skills_policy field in the database.
 	FieldSkillsPolicy = "skills_policy"
 	// EdgeProject holds the string denoting the project edge name in mutations.
@@ -145,6 +147,7 @@ var Columns = []string{
 	FieldModel,
 	FieldReasoningEffort,
 	FieldAgentBuiltinTools,
+	FieldAgentBuiltinSkills,
 	FieldSkillsPolicy,
 }
 
@@ -181,6 +184,8 @@ var (
 	DefaultModel string
 	// DefaultAgentBuiltinTools holds the default value on creation for the "agent_builtin_tools" field.
 	DefaultAgentBuiltinTools []objects.AgentBuiltinTool
+	// DefaultAgentBuiltinSkills holds the default value on creation for the "agent_builtin_skills" field.
+	DefaultAgentBuiltinSkills []objects.AgentBuiltinSkill
 	// DefaultSkillsPolicy holds the default value on creation for the "skills_policy" field.
 	DefaultSkillsPolicy objects.AgentSkillsPolicy
 )

@@ -145,8 +145,12 @@ func init() {
 	agentDescAgentBuiltinTools := agentFields[8].Descriptor()
 	// agent.DefaultAgentBuiltinTools holds the default value on creation for the agent_builtin_tools field.
 	agent.DefaultAgentBuiltinTools = agentDescAgentBuiltinTools.Default.([]objects.AgentBuiltinTool)
+	// agentDescAgentBuiltinSkills is the schema descriptor for agent_builtin_skills field.
+	agentDescAgentBuiltinSkills := agentFields[9].Descriptor()
+	// agent.DefaultAgentBuiltinSkills holds the default value on creation for the agent_builtin_skills field.
+	agent.DefaultAgentBuiltinSkills = agentDescAgentBuiltinSkills.Default.([]objects.AgentBuiltinSkill)
 	// agentDescSkillsPolicy is the schema descriptor for skills_policy field.
-	agentDescSkillsPolicy := agentFields[9].Descriptor()
+	agentDescSkillsPolicy := agentFields[10].Descriptor()
 	// agent.DefaultSkillsPolicy holds the default value on creation for the skills_policy field.
 	agent.DefaultSkillsPolicy = agentDescSkillsPolicy.Default.(objects.AgentSkillsPolicy)
 	agenthostMixin := schema.AgentHost{}.Mixin()

@@ -84,19 +84,20 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "Agent",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			agent.FieldCreatedAt:         {Type: field.TypeTime, Column: agent.FieldCreatedAt},
-			agent.FieldUpdatedAt:         {Type: field.TypeTime, Column: agent.FieldUpdatedAt},
-			agent.FieldDeletedAt:         {Type: field.TypeInt, Column: agent.FieldDeletedAt},
-			agent.FieldProjectID:         {Type: field.TypeInt, Column: agent.FieldProjectID},
-			agent.FieldCreatedByUserID:   {Type: field.TypeInt, Column: agent.FieldCreatedByUserID},
-			agent.FieldName:              {Type: field.TypeString, Column: agent.FieldName},
-			agent.FieldDescription:       {Type: field.TypeString, Column: agent.FieldDescription},
-			agent.FieldStatus:            {Type: field.TypeEnum, Column: agent.FieldStatus},
-			agent.FieldPromptID:          {Type: field.TypeInt, Column: agent.FieldPromptID},
-			agent.FieldModel:             {Type: field.TypeString, Column: agent.FieldModel},
-			agent.FieldReasoningEffort:   {Type: field.TypeEnum, Column: agent.FieldReasoningEffort},
-			agent.FieldAgentBuiltinTools: {Type: field.TypeJSON, Column: agent.FieldAgentBuiltinTools},
-			agent.FieldSkillsPolicy:      {Type: field.TypeJSON, Column: agent.FieldSkillsPolicy},
+			agent.FieldCreatedAt:          {Type: field.TypeTime, Column: agent.FieldCreatedAt},
+			agent.FieldUpdatedAt:          {Type: field.TypeTime, Column: agent.FieldUpdatedAt},
+			agent.FieldDeletedAt:          {Type: field.TypeInt, Column: agent.FieldDeletedAt},
+			agent.FieldProjectID:          {Type: field.TypeInt, Column: agent.FieldProjectID},
+			agent.FieldCreatedByUserID:    {Type: field.TypeInt, Column: agent.FieldCreatedByUserID},
+			agent.FieldName:               {Type: field.TypeString, Column: agent.FieldName},
+			agent.FieldDescription:        {Type: field.TypeString, Column: agent.FieldDescription},
+			agent.FieldStatus:             {Type: field.TypeEnum, Column: agent.FieldStatus},
+			agent.FieldPromptID:           {Type: field.TypeInt, Column: agent.FieldPromptID},
+			agent.FieldModel:              {Type: field.TypeString, Column: agent.FieldModel},
+			agent.FieldReasoningEffort:    {Type: field.TypeEnum, Column: agent.FieldReasoningEffort},
+			agent.FieldAgentBuiltinTools:  {Type: field.TypeJSON, Column: agent.FieldAgentBuiltinTools},
+			agent.FieldAgentBuiltinSkills: {Type: field.TypeJSON, Column: agent.FieldAgentBuiltinSkills},
+			agent.FieldSkillsPolicy:       {Type: field.TypeJSON, Column: agent.FieldSkillsPolicy},
 		},
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
@@ -2543,6 +2544,11 @@ func (f *AgentFilter) WhereReasoningEffort(p entql.StringP) {
 // WhereAgentBuiltinTools applies the entql json.RawMessage predicate on the agent_builtin_tools field.
 func (f *AgentFilter) WhereAgentBuiltinTools(p entql.BytesP) {
 	f.Where(p.Field(agent.FieldAgentBuiltinTools))
+}
+
+// WhereAgentBuiltinSkills applies the entql json.RawMessage predicate on the agent_builtin_skills field.
+func (f *AgentFilter) WhereAgentBuiltinSkills(p entql.BytesP) {
+	f.Where(p.Field(agent.FieldAgentBuiltinSkills))
 }
 
 // WhereSkillsPolicy applies the entql json.RawMessage predicate on the skills_policy field.

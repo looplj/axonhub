@@ -27,16 +27,17 @@ func (v *AckAgentMessagesResponse) GetAckAgentMessages() bool { return v.AckAgen
 
 // AgentBootstrapAgentBootstrap includes the requested fields of the GraphQL type AgentBootstrap.
 type AgentBootstrapAgentBootstrap struct {
-	AgentID           string                                                      `json:"agentID"`
-	AgentName         string                                                      `json:"agentName"`
-	AgentInstanceName string                                                      `json:"agentInstanceName"`
-	CreatedByUserName string                                                      `json:"createdByUserName"`
-	Model             *string                                                     `json:"model"`
-	ReasoningEffort   string                                                      `json:"reasoningEffort"`
-	SystemPrompt      string                                                      `json:"systemPrompt"`
-	Tools             []*AgentBootstrapAgentBootstrapToolsAgentToolDefinition     `json:"tools"`
-	Skills            []*AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition   `json:"skills"`
-	BuiltinTools      []*AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool `json:"builtinTools"`
+	AgentID           string                                                        `json:"agentID"`
+	AgentName         string                                                        `json:"agentName"`
+	AgentInstanceName string                                                        `json:"agentInstanceName"`
+	CreatedByUserName string                                                        `json:"createdByUserName"`
+	Model             *string                                                       `json:"model"`
+	ReasoningEffort   string                                                        `json:"reasoningEffort"`
+	SystemPrompt      string                                                        `json:"systemPrompt"`
+	Tools             []*AgentBootstrapAgentBootstrapToolsAgentToolDefinition       `json:"tools"`
+	Skills            []*AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition     `json:"skills"`
+	BuiltinTools      []*AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool   `json:"builtinTools"`
+	BuiltinSkills     []*AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill `json:"builtinSkills"`
 }
 
 // GetAgentID returns AgentBootstrapAgentBootstrap.AgentID, and is useful for accessing the field via an interface.
@@ -73,6 +74,35 @@ func (v *AgentBootstrapAgentBootstrap) GetSkills() []*AgentBootstrapAgentBootstr
 // GetBuiltinTools returns AgentBootstrapAgentBootstrap.BuiltinTools, and is useful for accessing the field via an interface.
 func (v *AgentBootstrapAgentBootstrap) GetBuiltinTools() []*AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool {
 	return v.BuiltinTools
+}
+
+// GetBuiltinSkills returns AgentBootstrapAgentBootstrap.BuiltinSkills, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrap) GetBuiltinSkills() []*AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill {
+	return v.BuiltinSkills
+}
+
+// AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill includes the requested fields of the GraphQL type AgentBuiltinSkill.
+type AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill struct {
+	Name    string           `json:"name"`
+	Enabled bool             `json:"enabled"`
+	Order   int              `json:"order"`
+	Config  *json.RawMessage `json:"config"`
+}
+
+// GetName returns AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill.Name, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) GetName() string { return v.Name }
+
+// GetEnabled returns AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill.Enabled, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) GetEnabled() bool {
+	return v.Enabled
+}
+
+// GetOrder returns AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill.Order, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) GetOrder() int { return v.Order }
+
+// GetConfig returns AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill.Config, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) GetConfig() *json.RawMessage {
+	return v.Config
 }
 
 // AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool includes the requested fields of the GraphQL type AgentBuiltinTool.
@@ -671,6 +701,12 @@ query AgentBootstrap {
 			args
 		}
 		builtinTools {
+			name
+			enabled
+			order
+			config
+		}
+		builtinSkills {
 			name
 			enabled
 			order

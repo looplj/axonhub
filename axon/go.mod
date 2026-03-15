@@ -10,7 +10,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/jsonschema-go v0.4.2
 	github.com/google/uuid v1.6.0
-	github.com/looplj/skills v0.0.1
+	github.com/looplj/skills v0.0.5
 	github.com/modelcontextprotocol/go-sdk v1.4.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/samber/lo v1.52.0

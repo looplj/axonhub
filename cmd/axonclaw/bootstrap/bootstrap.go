@@ -27,6 +27,7 @@ type Result struct {
 	Tools             []*api.AgentBootstrapAgentBootstrapToolsAgentToolDefinition
 	Skills            []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition
 	BuiltinTools      []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
+	BuiltinSkills     []BuiltinSkill
 	Prompts           *prompts.Bootstrap
 	AxonClawPath      string
 	SkillsRoot        string
@@ -40,6 +41,12 @@ type Params struct {
 	Workspace  string
 	SkillsRoot string
 	ConfigDir  string
+}
+
+type BuiltinSkill struct {
+	Name    string
+	Enabled bool
+	Order   int
 }
 
 func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error) {
@@ -98,6 +105,7 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 		Tools:             bootstrap.Tools,
 		Skills:            bootstrap.Skills,
 		BuiltinTools:      bootstrap.BuiltinTools,
+		BuiltinSkills:     convertBuiltinSkills(bootstrap.BuiltinSkills),
 		Prompts:           prompt,
 		AxonClawPath:      axonClawPath,
 		SkillsRoot:        data.SkillsRoot,
@@ -106,6 +114,23 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 		Timezone:          timezone,
 		OS:                osName,
 	}, nil
+}
+
+func convertBuiltinSkills(items []*api.AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) []BuiltinSkill {
+	out := make([]BuiltinSkill, 0, len(items))
+	for _, item := range items {
+		if item == nil || strings.TrimSpace(item.Name) == "" {
+			continue
+		}
+
+		out = append(out, BuiltinSkill{
+			Name:    item.Name,
+			Enabled: item.Enabled,
+			Order:   item.Order,
+		})
+	}
+
+	return out
 }
 
 func humanReadableOS(goos string) string {

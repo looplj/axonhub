@@ -23,7 +23,7 @@ import (
 	"github.com/looplj/axonhub/axon/provider/anthropic"
 	"github.com/looplj/axonhub/axon/summarizer"
 	"github.com/looplj/axonhub/axon/task"
-	"github.com/looplj/skills/skillscmd"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"gopkg.in/natefinch/lumberjack.v2"
 
@@ -32,6 +32,7 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/claw"
 	"github.com/looplj/axonhub/cmd/axonclaw/cmds"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
+	"github.com/looplj/axonhub/cmd/axonclaw/skills"
 )
 
 const logsDirName = "logs"
@@ -99,16 +100,7 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 	rootCmd.SetHelpCommand(cmds.NewHelpCommand(rootCmd))
 
 	workspaceDir := opts.WorkspaceDir
-
-	rootCmd.AddCommand(skillscmd.NewRootCommand(skillscmd.RootOptions{
-		Use:                  "skills",
-		Stdout:               os.Stdout,
-		Stderr:               os.Stderr,
-		WorkspaceDir:         filepath.Join(workspaceDir, conf.DefaultDir, "skills"),
-		Commands:             []string{"search", "list", "add", "remove"},
-		EnableAgentDiscovery: false,
-		EnableAgentFlags:     false,
-	}))
+	rootCmd.AddCommand(skills.NewCommand(workspaceDir))
 	rootCmd.AddCommand(cmds.NewConfCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
@@ -157,6 +149,16 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	})
 	if err != nil {
 		return fmt.Errorf("bootstrap: %w", err)
+	}
+
+	if err := conf.SaveBuiltinSkills(lo.Map(boot.BuiltinSkills, func(s bootstrap.BuiltinSkill, _ int) conf.BuiltinSkill {
+		return conf.BuiltinSkill{
+			Name:    s.Name,
+			Enabled: s.Enabled,
+			Order:   s.Order,
+		}
+	})); err != nil {
+		logger.Warn("save builtin skills config failed", "error", err)
 	}
 
 	logger.Info("axonclaw starting",

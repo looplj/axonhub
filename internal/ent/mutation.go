@@ -1303,49 +1303,51 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 // AgentMutation represents an operation that mutates the Agent nodes in the graph.
 type AgentMutation struct {
 	config
-	op                        Op
-	typ                       string
-	id                        *int
-	created_at                *time.Time
-	updated_at                *time.Time
-	deleted_at                *int
-	adddeleted_at             *int
-	name                      *string
-	description               *string
-	status                    *agent.Status
-	model                     *string
-	reasoning_effort          *agent.ReasoningEffort
-	agent_builtin_tools       *[]objects.AgentBuiltinTool
-	appendagent_builtin_tools []objects.AgentBuiltinTool
-	skills_policy             *objects.AgentSkillsPolicy
-	clearedFields             map[string]struct{}
-	project                   *int
-	clearedproject            bool
-	created_by_user           *int
-	clearedcreated_by_user    bool
-	prompt                    *int
-	clearedprompt             bool
-	tool_bindings             map[int]struct{}
-	removedtool_bindings      map[int]struct{}
-	clearedtool_bindings      bool
-	skill_bindings            map[int]struct{}
-	removedskill_bindings     map[int]struct{}
-	clearedskill_bindings     bool
-	instances                 map[int]struct{}
-	removedinstances          map[int]struct{}
-	clearedinstances          bool
-	threads                   map[int]struct{}
-	removedthreads            map[int]struct{}
-	clearedthreads            bool
-	messages                  map[int]struct{}
-	removedmessages           map[int]struct{}
-	clearedmessages           bool
-	memories                  map[int]struct{}
-	removedmemories           map[int]struct{}
-	clearedmemories           bool
-	done                      bool
-	oldValue                  func(context.Context) (*Agent, error)
-	predicates                []predicate.Agent
+	op                         Op
+	typ                        string
+	id                         *int
+	created_at                 *time.Time
+	updated_at                 *time.Time
+	deleted_at                 *int
+	adddeleted_at              *int
+	name                       *string
+	description                *string
+	status                     *agent.Status
+	model                      *string
+	reasoning_effort           *agent.ReasoningEffort
+	agent_builtin_tools        *[]objects.AgentBuiltinTool
+	appendagent_builtin_tools  []objects.AgentBuiltinTool
+	agent_builtin_skills       *[]objects.AgentBuiltinSkill
+	appendagent_builtin_skills []objects.AgentBuiltinSkill
+	skills_policy              *objects.AgentSkillsPolicy
+	clearedFields              map[string]struct{}
+	project                    *int
+	clearedproject             bool
+	created_by_user            *int
+	clearedcreated_by_user     bool
+	prompt                     *int
+	clearedprompt              bool
+	tool_bindings              map[int]struct{}
+	removedtool_bindings       map[int]struct{}
+	clearedtool_bindings       bool
+	skill_bindings             map[int]struct{}
+	removedskill_bindings      map[int]struct{}
+	clearedskill_bindings      bool
+	instances                  map[int]struct{}
+	removedinstances           map[int]struct{}
+	clearedinstances           bool
+	threads                    map[int]struct{}
+	removedthreads             map[int]struct{}
+	clearedthreads             bool
+	messages                   map[int]struct{}
+	removedmessages            map[int]struct{}
+	clearedmessages            bool
+	memories                   map[int]struct{}
+	removedmemories            map[int]struct{}
+	clearedmemories            bool
+	done                       bool
+	oldValue                   func(context.Context) (*Agent, error)
+	predicates                 []predicate.Agent
 }
 
 var _ ent.Mutation = (*AgentMutation)(nil)
@@ -1913,6 +1915,57 @@ func (m *AgentMutation) ResetAgentBuiltinTools() {
 	m.appendagent_builtin_tools = nil
 }
 
+// SetAgentBuiltinSkills sets the "agent_builtin_skills" field.
+func (m *AgentMutation) SetAgentBuiltinSkills(obs []objects.AgentBuiltinSkill) {
+	m.agent_builtin_skills = &obs
+	m.appendagent_builtin_skills = nil
+}
+
+// AgentBuiltinSkills returns the value of the "agent_builtin_skills" field in the mutation.
+func (m *AgentMutation) AgentBuiltinSkills() (r []objects.AgentBuiltinSkill, exists bool) {
+	v := m.agent_builtin_skills
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAgentBuiltinSkills returns the old "agent_builtin_skills" field's value of the Agent entity.
+// If the Agent object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AgentMutation) OldAgentBuiltinSkills(ctx context.Context) (v []objects.AgentBuiltinSkill, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAgentBuiltinSkills is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAgentBuiltinSkills requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAgentBuiltinSkills: %w", err)
+	}
+	return oldValue.AgentBuiltinSkills, nil
+}
+
+// AppendAgentBuiltinSkills adds obs to the "agent_builtin_skills" field.
+func (m *AgentMutation) AppendAgentBuiltinSkills(obs []objects.AgentBuiltinSkill) {
+	m.appendagent_builtin_skills = append(m.appendagent_builtin_skills, obs...)
+}
+
+// AppendedAgentBuiltinSkills returns the list of values that were appended to the "agent_builtin_skills" field in this mutation.
+func (m *AgentMutation) AppendedAgentBuiltinSkills() ([]objects.AgentBuiltinSkill, bool) {
+	if len(m.appendagent_builtin_skills) == 0 {
+		return nil, false
+	}
+	return m.appendagent_builtin_skills, true
+}
+
+// ResetAgentBuiltinSkills resets all changes to the "agent_builtin_skills" field.
+func (m *AgentMutation) ResetAgentBuiltinSkills() {
+	m.agent_builtin_skills = nil
+	m.appendagent_builtin_skills = nil
+}
+
 // SetSkillsPolicy sets the "skills_policy" field.
 func (m *AgentMutation) SetSkillsPolicy(osp objects.AgentSkillsPolicy) {
 	m.skills_policy = &osp
@@ -2388,7 +2441,7 @@ func (m *AgentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AgentMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.created_at != nil {
 		fields = append(fields, agent.FieldCreatedAt)
 	}
@@ -2425,6 +2478,9 @@ func (m *AgentMutation) Fields() []string {
 	if m.agent_builtin_tools != nil {
 		fields = append(fields, agent.FieldAgentBuiltinTools)
 	}
+	if m.agent_builtin_skills != nil {
+		fields = append(fields, agent.FieldAgentBuiltinSkills)
+	}
 	if m.skills_policy != nil {
 		fields = append(fields, agent.FieldSkillsPolicy)
 	}
@@ -2460,6 +2516,8 @@ func (m *AgentMutation) Field(name string) (ent.Value, bool) {
 		return m.ReasoningEffort()
 	case agent.FieldAgentBuiltinTools:
 		return m.AgentBuiltinTools()
+	case agent.FieldAgentBuiltinSkills:
+		return m.AgentBuiltinSkills()
 	case agent.FieldSkillsPolicy:
 		return m.SkillsPolicy()
 	}
@@ -2495,6 +2553,8 @@ func (m *AgentMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldReasoningEffort(ctx)
 	case agent.FieldAgentBuiltinTools:
 		return m.OldAgentBuiltinTools(ctx)
+	case agent.FieldAgentBuiltinSkills:
+		return m.OldAgentBuiltinSkills(ctx)
 	case agent.FieldSkillsPolicy:
 		return m.OldSkillsPolicy(ctx)
 	}
@@ -2589,6 +2649,13 @@ func (m *AgentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAgentBuiltinTools(v)
+		return nil
+	case agent.FieldAgentBuiltinSkills:
+		v, ok := value.([]objects.AgentBuiltinSkill)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAgentBuiltinSkills(v)
 		return nil
 	case agent.FieldSkillsPolicy:
 		v, ok := value.(objects.AgentSkillsPolicy)
@@ -2696,6 +2763,9 @@ func (m *AgentMutation) ResetField(name string) error {
 		return nil
 	case agent.FieldAgentBuiltinTools:
 		m.ResetAgentBuiltinTools()
+		return nil
+	case agent.FieldAgentBuiltinSkills:
+		m.ResetAgentBuiltinSkills()
 		return nil
 	case agent.FieldSkillsPolicy:
 		m.ResetSkillsPolicy()

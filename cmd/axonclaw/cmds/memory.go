@@ -33,6 +33,7 @@ func NewMemoryCommand(opts StdioOptions, workspaceDir string) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "memory",
 		Short: "Manage local memory files",
+		Hidden: true,
 		Long: `Memory is stored as Markdown files under the workspace:
 - .axonclaw/MEMORY.md for curated long-term memory
 - .axonclaw/memory/YYYY-MM-DD.md for daily append-only notes`,
@@ -67,8 +68,12 @@ axonclaw memory add "Finished migration for billing retries"
 axonclaw memory add --longterm "User prefers concise status updates"
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if content == "" && len(args) > 0 {
+			if content == "" && len(args) > 1 {
 				content = strings.Join(args, " ")
+			}
+
+			if content == "" && len(args) == 1 {
+				content = args[0]
 			}
 			if strings.TrimSpace(content) == "" {
 				return fmt.Errorf("content is required (use --content or provide as args)")
@@ -413,8 +418,7 @@ func searchMemoryFiles(query string, limit int, layout memoryLayout) ([]memorySe
 
 	opts := grep.Options{
 		Pattern:    query,
-		Path:       filepath.ToSlash(conf.DefaultDir),
-		Glob:       fmt.Sprintf("{%s,memory/*.md}", longTermMemoryFileName),
+		Path:       filepath.ToSlash(filepath.Join(conf.DefaultDir, "memory")),
 		OutputMode: "content",
 		IgnoreCase: new(bool),
 		LineNumber: new(bool),

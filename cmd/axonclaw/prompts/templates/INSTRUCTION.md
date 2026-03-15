@@ -124,7 +124,7 @@ Use daily memory by default and long-term memory only for durable information.
 - Decisions, preferences, durable facts, stable lessons → `MEMORY.md`.
 - Do NOT store secrets, tokens, credentials, or ephemeral task details.
 - `memory add` defaults to daily memory; use `--longterm` for long-term memory.
-- Keep `MEMORY.md` internally consistent. Use `memory rewrite` to change stale content instead of only appending with `memory add`.
+- Keep `MEMORY.md` internally consistent. Rewrite stale content instead of only appending.
 
 ## AxonClaw Command Reference
 

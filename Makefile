@@ -37,7 +37,7 @@ docker-build-axonclaw:
 # Build the frontend application
 build-frontend:
 	@echo "Building axonhub frontend..."
-	cd frontend && pnpm vite build
+	cd frontend && pnpm run build
 	@echo "Copying frontend dist to server static directory..."
 	rm -rf internal/server/static/dist/assets
 	mkdir -p internal/server/static/dist

@@ -27,13 +27,26 @@ type SkillTool struct {
 	// dirs are the directories to search for skills.
 	// First directory has highest priority (workspace), then global.
 	dirs []string
+	// bundledSkills are fallback skills injected directly in code.
+	// Installed skills with the same name override bundled ones.
+	bundledSkills []skills.Skill
+}
+
+type SkillToolOptions struct {
+	Dirs          []string
+	BundledSkills []skills.Skill
 }
 
 // NewSkillTool creates a new skill execution tool.
 // dirs should be provided in priority order: workspace dir first, then global dir.
 func NewSkillTool(dirs ...string) *SkillTool {
+	return NewSkillToolWithOptions(SkillToolOptions{Dirs: dirs})
+}
+
+func NewSkillToolWithOptions(opts SkillToolOptions) *SkillTool {
 	return &SkillTool{
-		dirs: dirs,
+		dirs:          opts.Dirs,
+		bundledSkills: opts.BundledSkills,
 	}
 }
 
@@ -72,8 +85,9 @@ func (t *SkillTool) Execute(ctx context.Context, input skillInput) agent.ToolRes
 	skillName := parts[len(parts)-1]
 
 	result, err := skills.Get(skills.GetOptions{
-		Skill: skillName,
-		Dirs:  t.dirs,
+		Skill:         skillName,
+		Dirs:          t.dirs,
+		BundledSkills: t.bundledSkills,
 	})
 	if err != nil {
 		return ErrorResult(fmt.Errorf("skill %q not found: %w", input.Skill, err))
@@ -104,6 +118,7 @@ func (t *SkillTool) Execute(ctx context.Context, input skillInput) agent.ToolRes
 // ListSkills returns all available skills from the configured directories.
 func (t *SkillTool) ListSkills() ([]skills.ListedSkill, error) {
 	return skills.List(skills.ListOptions{
-		Dirs: t.dirs,
+		Dirs:          t.dirs,
+		BundledSkills: t.bundledSkills,
 	})
 }

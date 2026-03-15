@@ -199,7 +199,7 @@ func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Agent",
-		Fields: make([]*Field, 12),
+		Fields: make([]*Field, 13),
 		Edges:  make([]*Edge, 9),
 	}
 	var buf []byte
@@ -291,10 +291,18 @@ func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "agent_builtin_tools",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.SkillsPolicy); err != nil {
+	if buf, err = json.Marshal(_m.AgentBuiltinSkills); err != nil {
 		return nil, err
 	}
 	node.Fields[11] = &Field{
+		Type:  "[]objects.AgentBuiltinSkill",
+		Name:  "agent_builtin_skills",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SkillsPolicy); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
 		Type:  "objects.AgentSkillsPolicy",
 		Name:  "skills_policy",
 		Value: string(buf),

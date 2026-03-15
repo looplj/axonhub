@@ -17,6 +17,8 @@ import (
 	"github.com/looplj/axonhub/axon/tools"
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
+	"github.com/looplj/axonhub/cmd/axonclaw/conf"
+	"github.com/looplj/axonhub/cmd/axonclaw/skills"
 )
 
 func registerTools(
@@ -63,7 +65,17 @@ func registerTools(
 		a.RegisterTool(tools.NewAgentTool(tools.NewGlobTool(workspace, false)))
 	}
 	if enabledBuiltin["Skill"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewSkillTool(filepath.Join(workspace, "skills"), filepath.Join(workspace, "skills"))))
+		bundled, err := skills.BundledSkills(toBuiltinSkillConfigs(boot.BuiltinSkills))
+		if err != nil {
+			logger.Warn("failed to load bundled skills", "error", err)
+		}
+
+		a.RegisterTool(tools.NewAgentTool(tools.NewSkillToolWithOptions(tools.SkillToolOptions{
+			Dirs: []string{
+				filepath.Join(workspace, conf.DefaultDir, "skills"),
+			},
+			BundledSkills: bundled,
+		})))
 	}
 	if enabledBuiltin["WebFetch"] {
 		a.RegisterTool(tools.NewAgentTool(tools.NewWebFetchTool()))
@@ -132,6 +144,19 @@ func registerTools(
 	known[subagent.SpawnAgentToolName] = struct{}{}
 
 	mcpMgr.RegisterTools(a, workspace, known)
+}
+
+func toBuiltinSkillConfigs(items []bootstrap.BuiltinSkill) []skills.Config {
+	out := make([]skills.Config, 0, len(items))
+	for _, item := range items {
+		out = append(out, skills.Config{
+			Name:    item.Name,
+			Enabled: item.Enabled,
+			Order:   item.Order,
+		})
+	}
+
+	return out
 }
 
 // agentToolSource adapts an *agent.Agent to the subagent.ToolSource interface,

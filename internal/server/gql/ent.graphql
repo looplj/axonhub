@@ -288,6 +288,10 @@ type Agent implements Node {
   """
   agentBuiltinTools: [AgentBuiltinTool!]!
   """
+  Agent built-in skills configuration (JSON)
+  """
+  agentBuiltinSkills: [AgentBuiltinSkill!]!
+  """
   Skill add/install policy (JSON)
   """
   skillsPolicy: AgentSkillsPolicy!

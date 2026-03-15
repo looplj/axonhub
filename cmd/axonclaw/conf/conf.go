@@ -17,22 +17,30 @@ import (
 )
 
 const (
-	FileName   = "config.yml"
+	FileName   = "config.yaml"
 	DefaultDir = ".axonclaw"
 	SecureDir  = ".axonclaw"
 )
 
+type BuiltinSkill struct {
+	Name    string `yaml:"name"`
+	Enabled bool   `yaml:"enabled"`
+	Order   int    `yaml:"order"`
+}
+
 type Config struct {
-	BaseURL                string        `yml:"base_url"`
-	APIKey                 string        `yml:"api_key"`
-	PollInterval           time.Duration `yml:"poll_interval"`
-	HeartbeatInterval      time.Duration `yml:"heartbeat_interval"`
-	AutoSyncConfig         bool          `yml:"auto_sync_config"`
-	AutoSyncConfigInterval time.Duration `yml:"auto_sync_config_interval"`
-	ContextRecentMessages  int           `yml:"context_recent_messages"`
-	ContextSoftTokenLimit  int           `yml:"context_soft_token_limit"`
-	ContextSummaryMaxChars int           `yml:"context_summary_max_chars"`
-	Debug                  bool          `yml:"debug"`
+	BaseURL string `yaml:"base_url"`
+	//nolint:gosec // Checked.
+	APIKey                 string         `yaml:"api_key"`
+	PollInterval           time.Duration  `yaml:"poll_interval"`
+	HeartbeatInterval      time.Duration  `yaml:"heartbeat_interval"`
+	AutoSyncConfig         bool           `yaml:"auto_sync_config"`
+	AutoSyncConfigInterval time.Duration  `yaml:"auto_sync_config_interval"`
+	ContextRecentMessages  int            `yaml:"context_recent_messages"`
+	ContextSoftTokenLimit  int            `yaml:"context_soft_token_limit"`
+	ContextSummaryMaxChars int            `yaml:"context_summary_max_chars"`
+	Debug                  bool           `yaml:"debug"`
+	BuiltinSkills          []BuiltinSkill `yaml:"builtin_skills"`
 }
 
 func DefaultConfig() Config {
@@ -55,12 +63,12 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 	}
 	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
 		ConfigName:     "config",
-		ConfigType:     "yml",
+		ConfigType:     "yaml",
 		SearchPaths:    []string{searchPath},
 		AllowMissing:   true,
 		EnvPrefix:      "AXONCLAW",
 		EnvKeyReplacer: strings.NewReplacer(".", "_"),
-		UnmarshalTag:   "yml",
+		UnmarshalTag:   "yaml",
 		SetDefaults: func(v *viper.Viper) {
 			v.SetDefault("base_url", "")
 			v.SetDefault("api_key", "")
@@ -172,10 +180,9 @@ func SaveConfig(cfg Config) error {
 		return fmt.Errorf("create config directory: %w", err)
 	}
 
-	path := filepath.Join(dir, FileName)
-	var existing Config
-	if data, err := os.ReadFile(path); err == nil {
-		yaml.Unmarshal(data, &existing)
+	existing, err := LoadConfig()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
 	}
 
 	if cfg.BaseURL != "" {
@@ -189,7 +196,47 @@ func SaveConfig(cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
+
+	path := filepath.Join(dir, FileName)
+
 	return os.WriteFile(path, data, 0o600)
+}
+
+func SaveBuiltinSkills(skills []BuiltinSkill) error {
+	dir, err := ConfigDir()
+	if err != nil {
+		return fmt.Errorf("resolve config directory: %w", err)
+	}
+
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("create config directory: %w", err)
+	}
+
+	existing, err := LoadConfig()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	existing.BuiltinSkills = skills
+
+	//nolint:gosec // Cheked.
+	data, err := yaml.Marshal(&existing)
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+
+	path := filepath.Join(dir, FileName)
+
+	return os.WriteFile(path, data, 0o600)
+}
+
+func LoadBuiltinSkills() ([]BuiltinSkill, error) {
+	cfg, err := LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+
+	return cfg.BuiltinSkills, nil
 }
 
 func DefaultPath() string {
@@ -208,12 +255,12 @@ func LoadConfig() (Config, error) {
 	}
 	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
 		ConfigName:     "config",
-		ConfigType:     "yml",
+		ConfigType:     "yaml",
 		SearchPaths:    []string{searchPath},
 		AllowMissing:   true,
 		EnvPrefix:      "AXONCLAW",
 		EnvKeyReplacer: strings.NewReplacer(".", "_"),
-		UnmarshalTag:   "yml",
+		UnmarshalTag:   "yaml",
 		SetDefaults: func(v *viper.Viper) {
 			v.SetDefault("base_url", "")
 			v.SetDefault("api_key", "")

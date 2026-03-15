@@ -22,14 +22,12 @@ func AppendArchiveMessage(ctx context.Context, workspace string, msg agent.Messa
 		threadID = "unknown-thread"
 	}
 
-	now := time.Now()
-
 	path := filepath.Join(
 		workspace,
 		conf.DefaultDir,
 		"messages",
 		"archives",
-		fmt.Sprintf("%s_%s.md", now.Format("2006-01-02"), sanitizeArchiveThreadID(threadID)),
+		fmt.Sprintf("%s_%s.md", time.Now().Format("2006-01-02"), sanitizeArchiveThreadID(threadID)),
 	)
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -42,7 +40,7 @@ func AppendArchiveMessage(ctx context.Context, workspace string, msg agent.Messa
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString(renderArchiveMessage(now.UTC(), msg)); err != nil {
+	if _, err := f.WriteString(renderArchiveMessage(time.Now().UTC(), msg)); err != nil {
 		return fmt.Errorf("append archive message: %w", err)
 	}
 

@@ -27,8 +27,16 @@ type AgentBootstrap struct {
 	Tools             []*AgentToolDefinition  `json:"tools"`
 	Skills            []*AgentSkillDefinition `json:"skills"`
 	BuiltinTools      []*AgentBuiltinTool     `json:"builtinTools"`
+	BuiltinSkills     []*AgentBuiltinSkill    `json:"builtinSkills"`
 	SkillsPolicy      *AgentSkillsPolicy      `json:"skillsPolicy"`
 	MemoryPolicy      objects.JSONRawMessage  `json:"memoryPolicy,omitempty"`
+}
+
+type AgentBuiltinSkill struct {
+	Name    string                 `json:"name"`
+	Enabled bool                   `json:"enabled"`
+	Order   int                    `json:"order"`
+	Config  objects.JSONRawMessage `json:"config,omitempty"`
 }
 
 type AgentBuiltinTool struct {

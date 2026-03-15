@@ -72,6 +72,7 @@ var (
 		{Name: "model", Type: field.TypeString, Default: ""},
 		{Name: "reasoning_effort", Type: field.TypeEnum, Enums: []string{"none", "low", "medium", "high"}, Default: "none"},
 		{Name: "agent_builtin_tools", Type: field.TypeJSON},
+		{Name: "agent_builtin_skills", Type: field.TypeJSON},
 		{Name: "skills_policy", Type: field.TypeJSON},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "prompt_id", Type: field.TypeInt},
@@ -85,19 +86,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "agents_projects_agents",
-				Columns:    []*schema.Column{AgentsColumns[11]},
+				Columns:    []*schema.Column{AgentsColumns[12]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "agents_prompts_agents",
-				Columns:    []*schema.Column{AgentsColumns[12]},
+				Columns:    []*schema.Column{AgentsColumns[13]},
 				RefColumns: []*schema.Column{PromptsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "agents_users_agents",
-				Columns:    []*schema.Column{AgentsColumns[13]},
+				Columns:    []*schema.Column{AgentsColumns[14]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -106,7 +107,7 @@ var (
 			{
 				Name:    "agents_by_project_id_name",
 				Unique:  true,
-				Columns: []*schema.Column{AgentsColumns[11], AgentsColumns[4], AgentsColumns[3]},
+				Columns: []*schema.Column{AgentsColumns[12], AgentsColumns[4], AgentsColumns[3]},
 			},
 		},
 	}

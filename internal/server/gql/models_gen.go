@@ -57,6 +57,19 @@ type AgentApprovalRequestMessage struct {
 	CreatedAt       time.Time              `json:"createdAt"`
 }
 
+type AgentBuiltinSkill struct {
+	Name    string                 `json:"name"`
+	Enabled bool                   `json:"enabled"`
+	Order   int                    `json:"order"`
+	Config  objects.JSONRawMessage `json:"config,omitempty"`
+}
+
+type AgentBuiltinSkillInput struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+	Order   int    `json:"order"`
+}
+
 // Minimal message view for Agent thread chat in Web UI.
 type AgentChatMessage struct {
 	ID              objects.GUID            `json:"id"`

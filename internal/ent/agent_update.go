@@ -146,6 +146,18 @@ func (_u *AgentUpdate) AppendAgentBuiltinTools(v []objects.AgentBuiltinTool) *Ag
 	return _u
 }
 
+// SetAgentBuiltinSkills sets the "agent_builtin_skills" field.
+func (_u *AgentUpdate) SetAgentBuiltinSkills(v []objects.AgentBuiltinSkill) *AgentUpdate {
+	_u.mutation.SetAgentBuiltinSkills(v)
+	return _u
+}
+
+// AppendAgentBuiltinSkills appends value to the "agent_builtin_skills" field.
+func (_u *AgentUpdate) AppendAgentBuiltinSkills(v []objects.AgentBuiltinSkill) *AgentUpdate {
+	_u.mutation.AppendAgentBuiltinSkills(v)
+	return _u
+}
+
 // SetSkillsPolicy sets the "skills_policy" field.
 func (_u *AgentUpdate) SetSkillsPolicy(v objects.AgentSkillsPolicy) *AgentUpdate {
 	_u.mutation.SetSkillsPolicy(v)
@@ -495,6 +507,14 @@ func (_u *AgentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AppendedAgentBuiltinTools(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, agent.FieldAgentBuiltinTools, value)
+		})
+	}
+	if value, ok := _u.mutation.AgentBuiltinSkills(); ok {
+		_spec.SetField(agent.FieldAgentBuiltinSkills, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAgentBuiltinSkills(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, agent.FieldAgentBuiltinSkills, value)
 		})
 	}
 	if value, ok := _u.mutation.SkillsPolicy(); ok {
@@ -901,6 +921,18 @@ func (_u *AgentUpdateOne) AppendAgentBuiltinTools(v []objects.AgentBuiltinTool) 
 	return _u
 }
 
+// SetAgentBuiltinSkills sets the "agent_builtin_skills" field.
+func (_u *AgentUpdateOne) SetAgentBuiltinSkills(v []objects.AgentBuiltinSkill) *AgentUpdateOne {
+	_u.mutation.SetAgentBuiltinSkills(v)
+	return _u
+}
+
+// AppendAgentBuiltinSkills appends value to the "agent_builtin_skills" field.
+func (_u *AgentUpdateOne) AppendAgentBuiltinSkills(v []objects.AgentBuiltinSkill) *AgentUpdateOne {
+	_u.mutation.AppendAgentBuiltinSkills(v)
+	return _u
+}
+
 // SetSkillsPolicy sets the "skills_policy" field.
 func (_u *AgentUpdateOne) SetSkillsPolicy(v objects.AgentSkillsPolicy) *AgentUpdateOne {
 	_u.mutation.SetSkillsPolicy(v)
@@ -1280,6 +1312,14 @@ func (_u *AgentUpdateOne) sqlSave(ctx context.Context) (_node *Agent, err error)
 	if value, ok := _u.mutation.AppendedAgentBuiltinTools(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
 			sqljson.Append(u, agent.FieldAgentBuiltinTools, value)
+		})
+	}
+	if value, ok := _u.mutation.AgentBuiltinSkills(); ok {
+		_spec.SetField(agent.FieldAgentBuiltinSkills, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedAgentBuiltinSkills(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, agent.FieldAgentBuiltinSkills, value)
 		})
 	}
 	if value, ok := _u.mutation.SkillsPolicy(); ok {

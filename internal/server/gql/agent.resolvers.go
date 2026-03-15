@@ -204,3 +204,50 @@ func (r *queryResolver) AgentChatMessages(ctx context.Context, agentID objects.G
 
 	return out, nil
 }
+
+// BuiltinSkills is the resolver for the builtinSkills field.
+func (r *createAgentInputResolver) BuiltinSkills(ctx context.Context, obj *biz.CreateAgentInput, data []*AgentBuiltinSkillInput) error {
+	obj.BuiltinSkills = make([]objects.AgentBuiltinSkill, 0, len(data))
+	for _, item := range data {
+		if item == nil {
+			continue
+		}
+
+		obj.BuiltinSkills = append(obj.BuiltinSkills, objects.AgentBuiltinSkill{
+			Name:    item.Name,
+			Enabled: item.Enabled,
+			Order:   item.Order,
+		})
+	}
+
+	return nil
+}
+
+// BuiltinSkills is the resolver for the builtinSkills field.
+func (r *updateAgentInputResolver) BuiltinSkills(ctx context.Context, obj *biz.UpdateAgentInput, data []*AgentBuiltinSkillInput) error {
+	obj.BuiltinSkills = make([]objects.AgentBuiltinSkill, 0, len(data))
+	for _, item := range data {
+		if item == nil {
+			continue
+		}
+
+		obj.BuiltinSkills = append(obj.BuiltinSkills, objects.AgentBuiltinSkill{
+			Name:    item.Name,
+			Enabled: item.Enabled,
+			Order:   item.Order,
+		})
+	}
+
+	return nil
+}
+
+// CreateAgentInput returns CreateAgentInputResolver implementation.
+func (r *Resolver) CreateAgentInput() CreateAgentInputResolver { return &createAgentInputResolver{r} }
+
+// UpdateAgentInput returns UpdateAgentInputResolver implementation.
+func (r *Resolver) UpdateAgentInput() UpdateAgentInputResolver { return &updateAgentInputResolver{r} }
+
+type (
+	createAgentInputResolver struct{ *Resolver }
+	updateAgentInputResolver struct{ *Resolver }
+)

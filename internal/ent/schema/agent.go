@@ -79,6 +79,12 @@ func (Agent) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
+		field.JSON("agent_builtin_skills", []objects.AgentBuiltinSkill{}).
+			Default([]objects.AgentBuiltinSkill{}).
+			Comment("Agent built-in skills configuration (JSON)").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 		field.JSON("skills_policy", objects.AgentSkillsPolicy{}).
 			Default(objects.AgentSkillsPolicy{Add: "open"}).
 			Comment("Skill add/install policy (JSON)").

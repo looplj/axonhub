@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/looplj/skills"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -100,4 +101,52 @@ description: Second skill
 	skills, err := tool.ListSkills()
 	require.NoError(t, err)
 	assert.Len(t, skills, 2)
+}
+
+func TestSkillToolBundledSkillsFallback(t *testing.T) {
+	tool := NewSkillToolWithOptions(SkillToolOptions{
+		Dirs: []string{t.TempDir()},
+		BundledSkills: []skills.Skill{
+			{
+				Name:        "memory-management",
+				Description: "Manage memory",
+				Dir:         "/tmp/bundled/memory-management",
+				Content: `---
+name: memory-management
+description: Manage memory
+---
+# Memory`,
+			},
+		},
+	})
+
+	result := tool.Execute(context.Background(), skillInput{Skill: "memory-management"})
+
+	assert.Nil(t, result.Error)
+	require.NotNil(t, result.Content.Text)
+	assert.Contains(t, *result.Content.Text, `<skill name="memory-management">`)
+}
+
+func TestSkillToolBundledSkillWithoutDirUsesPlaceholder(t *testing.T) {
+	tool := NewSkillToolWithOptions(SkillToolOptions{
+		Dirs: []string{t.TempDir()},
+		BundledSkills: []skills.Skill{
+			{
+				Name:        "builtin-skill",
+				Description: "Built-in skill without reference dir",
+				Content: `---
+name: builtin-skill
+description: Built-in skill without reference dir
+---
+# Builtin`,
+			},
+		},
+	})
+
+	result := tool.Execute(context.Background(), skillInput{Skill: "builtin-skill"})
+
+	assert.Nil(t, result.Error)
+	require.NotNil(t, result.Content.Text)
+	assert.Contains(t, *result.Content.Text, "<skill_dir>BUILTIN_SKILL_NO_REFERENCE</skill_dir>")
+	assert.NotContains(t, *result.Content.Text, "you MUST use absolute paths based on the skill directory above")
 }

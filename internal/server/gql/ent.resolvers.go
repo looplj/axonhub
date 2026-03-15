@@ -10,11 +10,12 @@ import (
 	"fmt"
 
 	"entgo.io/contrib/entgql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/samber/lo"
 )
 
 // ID is the resolver for the id field.
@@ -71,6 +72,23 @@ func (r *agentResolver) PromptID(ctx context.Context, obj *ent.Agent) (*objects.
 		Type: ent.TypePrompt,
 		ID:   obj.PromptID,
 	}, nil
+}
+
+// AgentBuiltinSkills is the resolver for the agentBuiltinSkills field.
+func (r *agentResolver) AgentBuiltinSkills(ctx context.Context, obj *ent.Agent) ([]*AgentBuiltinSkill, error) {
+	return lo.Map(obj.AgentBuiltinSkills, func(item objects.AgentBuiltinSkill, _ int) *AgentBuiltinSkill {
+		var cfg objects.JSONRawMessage
+		if item.Config != nil {
+			cfg = *item.Config
+		}
+
+		return &AgentBuiltinSkill{
+			Name:    item.Name,
+			Enabled: item.Enabled,
+			Order:   item.Order,
+			Config:  cfg,
+		}
+	}), nil
 }
 
 // ID is the resolver for the id field.
@@ -1570,39 +1588,41 @@ func (r *Resolver) UserProject() UserProjectResolver { return &userProjectResolv
 // UserRole returns UserRoleResolver implementation.
 func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
-type aPIKeyResolver struct{ *Resolver }
-type agentResolver struct{ *Resolver }
-type agentHostResolver struct{ *Resolver }
-type agentInstanceResolver struct{ *Resolver }
-type agentMemoryResolver struct{ *Resolver }
-type agentMessageResolver struct{ *Resolver }
-type agentSkillResolver struct{ *Resolver }
-type agentThreadResolver struct{ *Resolver }
-type agentToolResolver struct{ *Resolver }
-type channelResolver struct{ *Resolver }
-type channelModelPriceResolver struct{ *Resolver }
-type channelModelPriceVersionResolver struct{ *Resolver }
-type channelOverrideTemplateResolver struct{ *Resolver }
-type channelProbeResolver struct{ *Resolver }
-type dataStorageResolver struct{ *Resolver }
-type messageChannelResolver struct{ *Resolver }
-type messageChannelAgentInstanceResolver struct{ *Resolver }
-type messageChannelBindingRequestResolver struct{ *Resolver }
-type modelResolver struct{ *Resolver }
-type projectResolver struct{ *Resolver }
-type promptResolver struct{ *Resolver }
-type promptVersionResolver struct{ *Resolver }
-type providerQuotaStatusResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
-type requestResolver struct{ *Resolver }
-type requestExecutionResolver struct{ *Resolver }
-type roleResolver struct{ *Resolver }
-type skillResolver struct{ *Resolver }
-type systemResolver struct{ *Resolver }
-type threadResolver struct{ *Resolver }
-type toolResolver struct{ *Resolver }
-type traceResolver struct{ *Resolver }
-type usageLogResolver struct{ *Resolver }
-type userResolver struct{ *Resolver }
-type userProjectResolver struct{ *Resolver }
-type userRoleResolver struct{ *Resolver }
+type (
+	aPIKeyResolver                       struct{ *Resolver }
+	agentResolver                        struct{ *Resolver }
+	agentHostResolver                    struct{ *Resolver }
+	agentInstanceResolver                struct{ *Resolver }
+	agentMemoryResolver                  struct{ *Resolver }
+	agentMessageResolver                 struct{ *Resolver }
+	agentSkillResolver                   struct{ *Resolver }
+	agentThreadResolver                  struct{ *Resolver }
+	agentToolResolver                    struct{ *Resolver }
+	channelResolver                      struct{ *Resolver }
+	channelModelPriceResolver            struct{ *Resolver }
+	channelModelPriceVersionResolver     struct{ *Resolver }
+	channelOverrideTemplateResolver      struct{ *Resolver }
+	channelProbeResolver                 struct{ *Resolver }
+	dataStorageResolver                  struct{ *Resolver }
+	messageChannelResolver               struct{ *Resolver }
+	messageChannelAgentInstanceResolver  struct{ *Resolver }
+	messageChannelBindingRequestResolver struct{ *Resolver }
+	modelResolver                        struct{ *Resolver }
+	projectResolver                      struct{ *Resolver }
+	promptResolver                       struct{ *Resolver }
+	promptVersionResolver                struct{ *Resolver }
+	providerQuotaStatusResolver          struct{ *Resolver }
+	queryResolver                        struct{ *Resolver }
+	requestResolver                      struct{ *Resolver }
+	requestExecutionResolver             struct{ *Resolver }
+	roleResolver                         struct{ *Resolver }
+	skillResolver                        struct{ *Resolver }
+	systemResolver                       struct{ *Resolver }
+	threadResolver                       struct{ *Resolver }
+	toolResolver                         struct{ *Resolver }
+	traceResolver                        struct{ *Resolver }
+	usageLogResolver                     struct{ *Resolver }
+	userResolver                         struct{ *Resolver }
+	userProjectResolver                  struct{ *Resolver }
+	userRoleResolver                     struct{ *Resolver }
+)
