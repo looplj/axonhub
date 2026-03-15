@@ -1,7 +1,7 @@
 package cmds
 
 import (
-	"os"
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -11,23 +11,49 @@ import (
 
 func NewHelpCommand(root *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "help [command]",
+		Use:   "help [command path...]",
 		Short: "Help about any command",
 		Long: `Help provides help for any command in the application.
 Simply type ` + root.Name() + ` help [path to command] for full details.
 
-Use -all to show full command reference with all subcommands and flags.`,
+Use --all to show the full command reference for the selected command subtree.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if helpAll, _ := cmd.Flags().GetBool("all"); helpAll {
-				t := template.Must(template.New("").Funcs(funcs).Parse(cmdHelpTemplate))
-				t.Execute(os.Stdout, root)
+			target, err := findHelpTarget(root, args)
+			if err != nil {
+				_, _ = fmt.Fprintln(root.ErrOrStderr(), err.Error())
 				return
 			}
-			root.HelpFunc()(root, args)
+			if helpAll, _ := cmd.Flags().GetBool("all"); helpAll {
+				t := template.Must(template.New("").Funcs(funcs).Parse(cmdHelpTemplate))
+				_ = t.Execute(root.OutOrStdout(), target)
+				return
+			}
+
+			target.HelpFunc()(target, nil)
 		},
 	}
 	cmd.Flags().Bool("all", false, "Show full command reference")
 	return cmd
+}
+
+func findHelpTarget(root *cobra.Command, args []string) (*cobra.Command, error) {
+	target := root
+
+	for _, arg := range args {
+		name := strings.TrimSpace(arg)
+		if name == "" {
+			continue
+		}
+
+		next, _, err := target.Find([]string{name})
+		if err != nil || next == nil || next == target {
+			return nil, fmt.Errorf("unknown help topic %q for %q", name, target.CommandPath())
+		}
+
+		target = next
+	}
+
+	return target, nil
 }
 
 var funcs = template.FuncMap{

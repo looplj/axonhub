@@ -918,7 +918,6 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 					RoundIndex: roundIndex,
 				}
 				a.addMessage(ctx, assistantMsg)
-				emit(AgentEvent{Type: EventMessageAdded, Message: &assistantMsg})
 			}
 
 			hasMoreToolCalls = len(toolCalls) > 0

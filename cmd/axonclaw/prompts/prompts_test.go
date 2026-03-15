@@ -85,10 +85,13 @@ func TestDefaultInstructionTemplateContainsBootstrapFileMaintenanceGuidance(t *t
 	}
 
 	expectedSnippets := []string{
+		"## AxonClaw Workspace Files",
+		"AxonClaw workspace directory: `/workspace with spaces/.axonclaw/`",
+		"`IDENTITY.md` — stable facts about your identity, role, and relationship to the user.",
 		"## Identity, User, And Soul Maintenance",
-		"Update `/workspace with spaces/.axonclaw/IDENTITY.md` when you learn stable facts",
-		"Update `/workspace with spaces/.axonclaw/USER.md` when you learn durable facts about the user",
-		"Update `/workspace with spaces/.axonclaw/SOUL.md` when you learn durable guidance",
+		"Update `IDENTITY.md` when you learn stable facts",
+		"Update `USER.md` when you learn durable facts about the user",
+		"Update `SOUL.md` when you learn durable guidance",
 		"Do not write one-off task details, temporary context, or fleeting emotional states into these files.",
 	}
 
