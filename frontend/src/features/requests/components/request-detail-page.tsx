@@ -673,13 +673,20 @@ export default function RequestDetailPage() {
                                 </div>
                               </div>
 
-                              {execution.errorMessage && (
+                              {(execution.errorMessage || (execution.status === 'failed' && execution.responseStatusCode)) && (
                                 <div className='bg-destructive/5 border-destructive/20 space-y-3 rounded-lg border p-4'>
-                                  <span className='text-destructive flex items-center gap-2 text-sm font-semibold'>
-                                    <FileText className='h-4 w-4' />
-                                    {t('common.messages.errorMessage')}
-                                  </span>
-                                  <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>
+                                  <div className='flex items-center justify-between'>
+                                    <span className='text-destructive flex items-center gap-2 text-sm font-semibold'>
+                                      <FileText className='h-4 w-4' />
+                                      {t('common.messages.errorMessage')}
+                                    </span>
+                                    {execution.status === 'failed' && execution.responseStatusCode && (
+                                      <Badge variant='destructive'>HTTP {execution.responseStatusCode}</Badge>
+                                    )}
+                                  </div>
+                                  {execution.errorMessage && (
+                                    <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>
+                                  )}
                                 </div>
                               )}
 

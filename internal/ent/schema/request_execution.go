@@ -61,6 +61,8 @@ func (RequestExecution) Fields() []ent.Field {
 			entgql.Directives(forceResolver()),
 		),
 		field.String("error_message").Optional(),
+		field.Int("response_status_code").Optional().Nillable().
+			Comment("HTTP status code from the upstream provider"),
 		// The status of the request execution.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
 		// Whether the request is a streaming request

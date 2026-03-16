@@ -215,7 +215,7 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 			EndTime:          time.Now(),
 			Success:          false,
 			RequestCompleted: true,
-			ErrorStatusCode:  500,
+			ResponseStatusCode:  500,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}

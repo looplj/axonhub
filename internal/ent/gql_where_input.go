@@ -6258,6 +6258,18 @@ type RequestExecutionWhereInput struct {
 	ErrorMessageEqualFold    *string  `json:"errorMessageEqualFold,omitempty"`
 	ErrorMessageContainsFold *string  `json:"errorMessageContainsFold,omitempty"`
 
+	// "response_status_code" field predicates.
+	ResponseStatusCode       *int  `json:"responseStatusCode,omitempty"`
+	ResponseStatusCodeNEQ    *int  `json:"responseStatusCodeNEQ,omitempty"`
+	ResponseStatusCodeIn     []int `json:"responseStatusCodeIn,omitempty"`
+	ResponseStatusCodeNotIn  []int `json:"responseStatusCodeNotIn,omitempty"`
+	ResponseStatusCodeGT     *int  `json:"responseStatusCodeGT,omitempty"`
+	ResponseStatusCodeGTE    *int  `json:"responseStatusCodeGTE,omitempty"`
+	ResponseStatusCodeLT     *int  `json:"responseStatusCodeLT,omitempty"`
+	ResponseStatusCodeLTE    *int  `json:"responseStatusCodeLTE,omitempty"`
+	ResponseStatusCodeIsNil  bool  `json:"responseStatusCodeIsNil,omitempty"`
+	ResponseStatusCodeNotNil bool  `json:"responseStatusCodeNotNil,omitempty"`
+
 	// "status" field predicates.
 	Status      *requestexecution.Status  `json:"status,omitempty"`
 	StatusNEQ   *requestexecution.Status  `json:"statusNEQ,omitempty"`
@@ -6687,6 +6699,36 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.ErrorMessageContainsFold != nil {
 		predicates = append(predicates, requestexecution.ErrorMessageContainsFold(*i.ErrorMessageContainsFold))
+	}
+	if i.ResponseStatusCode != nil {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeEQ(*i.ResponseStatusCode))
+	}
+	if i.ResponseStatusCodeNEQ != nil {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeNEQ(*i.ResponseStatusCodeNEQ))
+	}
+	if len(i.ResponseStatusCodeIn) > 0 {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeIn(i.ResponseStatusCodeIn...))
+	}
+	if len(i.ResponseStatusCodeNotIn) > 0 {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeNotIn(i.ResponseStatusCodeNotIn...))
+	}
+	if i.ResponseStatusCodeGT != nil {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeGT(*i.ResponseStatusCodeGT))
+	}
+	if i.ResponseStatusCodeGTE != nil {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeGTE(*i.ResponseStatusCodeGTE))
+	}
+	if i.ResponseStatusCodeLT != nil {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeLT(*i.ResponseStatusCodeLT))
+	}
+	if i.ResponseStatusCodeLTE != nil {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeLTE(*i.ResponseStatusCodeLTE))
+	}
+	if i.ResponseStatusCodeIsNil {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeIsNil())
+	}
+	if i.ResponseStatusCodeNotNil {
+		predicates = append(predicates, requestexecution.ResponseStatusCodeNotNil())
 	}
 	if i.Status != nil {
 		predicates = append(predicates, requestexecution.StatusEQ(*i.Status))

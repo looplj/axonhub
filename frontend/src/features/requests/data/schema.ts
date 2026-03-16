@@ -31,6 +31,7 @@ export const requestExecutionSchema = z.object({
   responseBody: z.any().nullable(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable(), // [JSONRawMessage!]
   errorMessage: z.string().nullable(),
+  responseStatusCode: z.number().nullable().optional(),
   status: requestExecutionStatusSchema,
   format: z.string().optional(),
   metricsLatencyMs: z.number().nullable().optional(),

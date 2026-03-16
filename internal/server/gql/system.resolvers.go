@@ -9,12 +9,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/samber/lo"
 )
 
 // UpdateBrandSettings is the resolver for the updateBrandSettings field.
@@ -169,6 +170,26 @@ func (r *mutationResolver) TriggerGcCleanup(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// SaveProxyPreset is the resolver for the saveProxyPreset field.
+func (r *mutationResolver) SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error) {
+	err := r.systemService.SaveProxyPreset(ctx, input)
+	if err != nil {
+		return false, fmt.Errorf("failed to save proxy preset: %w", err)
+	}
+
+	return true, nil
+}
+
+// DeleteProxyPreset is the resolver for the deleteProxyPreset field.
+func (r *mutationResolver) DeleteProxyPreset(ctx context.Context, url string) (bool, error) {
+	err := r.systemService.DeleteProxyPreset(ctx, url)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete proxy preset: %w", err)
+	}
+
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -304,30 +325,17 @@ func (r *queryResolver) SystemGeneralSettings(ctx context.Context) (*biz.SystemG
 	return r.systemService.GeneralSettings(ctx)
 }
 
-// SaveProxyPreset is the resolver for the saveProxyPreset field.
-func (r *mutationResolver) SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error) {
-	err := r.systemService.SaveProxyPreset(ctx, input)
-	if err != nil {
-		return false, fmt.Errorf("failed to save proxy preset: %w", err)
-	}
-	return true, nil
-}
-
-// DeleteProxyPreset is the resolver for the deleteProxyPreset field.
-func (r *mutationResolver) DeleteProxyPreset(ctx context.Context, url string) (bool, error) {
-	err := r.systemService.DeleteProxyPreset(ctx, url)
-	if err != nil {
-		return false, fmt.Errorf("failed to delete proxy preset: %w", err)
-	}
-	return true, nil
-}
-
-// ProxyPresets is the resolver for the proxyPresets field.
-func (r *queryResolver) ProxyPresets(ctx context.Context) ([]biz.ProxyPreset, error) {
-	return r.systemService.ProxyPresets(ctx)
-}
-
 // VideoStorageSettings is the resolver for the videoStorageSettings field.
 func (r *queryResolver) VideoStorageSettings(ctx context.Context) (*biz.VideoStorageSettings, error) {
 	return r.systemService.VideoStorageSettings(ctx)
+}
+
+// ProxyPresets is the resolver for the proxyPresets field.
+func (r *queryResolver) ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, error) {
+	presets, err := r.systemService.ProxyPresets(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get proxy presets: %w", err)
+	}
+
+	return lo.ToSlicePtr(presets), nil
 }

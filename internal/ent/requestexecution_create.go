@@ -168,6 +168,20 @@ func (_c *RequestExecutionCreate) SetNillableErrorMessage(v *string) *RequestExe
 	return _c
 }
 
+// SetResponseStatusCode sets the "response_status_code" field.
+func (_c *RequestExecutionCreate) SetResponseStatusCode(v int) *RequestExecutionCreate {
+	_c.mutation.SetResponseStatusCode(v)
+	return _c
+}
+
+// SetNillableResponseStatusCode sets the "response_status_code" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableResponseStatusCode(v *int) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetResponseStatusCode(*v)
+	}
+	return _c
+}
+
 // SetStatus sets the "status" field.
 func (_c *RequestExecutionCreate) SetStatus(v requestexecution.Status) *RequestExecutionCreate {
 	_c.mutation.SetStatus(v)
@@ -392,6 +406,10 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 		_spec.SetField(requestexecution.FieldErrorMessage, field.TypeString, value)
 		_node.ErrorMessage = value
 	}
+	if value, ok := _c.mutation.ResponseStatusCode(); ok {
+		_spec.SetField(requestexecution.FieldResponseStatusCode, field.TypeInt, value)
+		_node.ResponseStatusCode = &value
+	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
@@ -596,6 +614,30 @@ func (u *RequestExecutionUpsert) UpdateErrorMessage() *RequestExecutionUpsert {
 // ClearErrorMessage clears the value of the "error_message" field.
 func (u *RequestExecutionUpsert) ClearErrorMessage() *RequestExecutionUpsert {
 	u.SetNull(requestexecution.FieldErrorMessage)
+	return u
+}
+
+// SetResponseStatusCode sets the "response_status_code" field.
+func (u *RequestExecutionUpsert) SetResponseStatusCode(v int) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldResponseStatusCode, v)
+	return u
+}
+
+// UpdateResponseStatusCode sets the "response_status_code" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateResponseStatusCode() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldResponseStatusCode)
+	return u
+}
+
+// AddResponseStatusCode adds v to the "response_status_code" field.
+func (u *RequestExecutionUpsert) AddResponseStatusCode(v int) *RequestExecutionUpsert {
+	u.Add(requestexecution.FieldResponseStatusCode, v)
+	return u
+}
+
+// ClearResponseStatusCode clears the value of the "response_status_code" field.
+func (u *RequestExecutionUpsert) ClearResponseStatusCode() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldResponseStatusCode)
 	return u
 }
 
@@ -841,6 +883,34 @@ func (u *RequestExecutionUpsertOne) UpdateErrorMessage() *RequestExecutionUpsert
 func (u *RequestExecutionUpsertOne) ClearErrorMessage() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearErrorMessage()
+	})
+}
+
+// SetResponseStatusCode sets the "response_status_code" field.
+func (u *RequestExecutionUpsertOne) SetResponseStatusCode(v int) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetResponseStatusCode(v)
+	})
+}
+
+// AddResponseStatusCode adds v to the "response_status_code" field.
+func (u *RequestExecutionUpsertOne) AddResponseStatusCode(v int) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.AddResponseStatusCode(v)
+	})
+}
+
+// UpdateResponseStatusCode sets the "response_status_code" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateResponseStatusCode() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateResponseStatusCode()
+	})
+}
+
+// ClearResponseStatusCode clears the value of the "response_status_code" field.
+func (u *RequestExecutionUpsertOne) ClearResponseStatusCode() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearResponseStatusCode()
 	})
 }
 
@@ -1265,6 +1335,34 @@ func (u *RequestExecutionUpsertBulk) UpdateErrorMessage() *RequestExecutionUpser
 func (u *RequestExecutionUpsertBulk) ClearErrorMessage() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearErrorMessage()
+	})
+}
+
+// SetResponseStatusCode sets the "response_status_code" field.
+func (u *RequestExecutionUpsertBulk) SetResponseStatusCode(v int) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetResponseStatusCode(v)
+	})
+}
+
+// AddResponseStatusCode adds v to the "response_status_code" field.
+func (u *RequestExecutionUpsertBulk) AddResponseStatusCode(v int) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.AddResponseStatusCode(v)
+	})
+}
+
+// UpdateResponseStatusCode sets the "response_status_code" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateResponseStatusCode() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateResponseStatusCode()
+	})
+}
+
+// ClearResponseStatusCode clears the value of the "response_status_code" field.
+func (u *RequestExecutionUpsertBulk) ClearResponseStatusCode() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearResponseStatusCode()
 	})
 }
 
