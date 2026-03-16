@@ -40,6 +40,33 @@ type TokenStatsByAPIKey {
   totalTokens: Int!
 }
 
+input APIKeyTokenUsageStatsInput {
+  apiKeyIds: [ID!]
+  createdAtGTE: Time
+  createdAtLTE: Time
+}
+
+type APIKeyTokenUsageStats {
+  apiKeyId: ID!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  topModels: [ModelTokenUsageStats!]!
+}
+
+type ModelTokenUsageStats {
+  modelId: String!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+}
+
+input ModelTokenUsageStatsInput {
+  apiKeyIds: [ID!]
+  createdAtGTE: Time
+  createdAtLTE: Time
+}
+
 type DailyRequestStats {
   date: String!
   count: Int!
@@ -140,6 +167,8 @@ extend type Query {
   requestStatsByModel: [RequestStatsByModel!]!
   requestStatsByAPIKey: [RequestStatsByAPIKey!]!
   tokenStatsByAPIKey: [TokenStatsByAPIKey!]!
+  apiKeyTokenUsageStats(input: APIKeyTokenUsageStatsInput): [APIKeyTokenUsageStats!]!
+  modelTokenUsageStats(input: ModelTokenUsageStatsInput): [ModelTokenUsageStats!]!
   dailyRequestStats: [DailyRequestStats!]!
   topRequestsProjects: [TopRequestsProjects!]!
   tokenStats: TokenStats!

@@ -154,3 +154,5 @@ locales_backup
 # Chunkhound local database
 .chunkhound/
 .superset/
+
+.omx/

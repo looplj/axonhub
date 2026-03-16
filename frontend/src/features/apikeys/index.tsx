@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
+import { buildDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
@@ -11,7 +12,7 @@ import { ApiKeysDialogs } from './components/apikeys-dialogs';
 import { ApiKeysPrimaryButtons } from './components/apikeys-primary-buttons';
 import { ApiKeysTable } from './components/apikeys-table';
 import ApiKeysProvider from './context/apikeys-context';
-import { useApiKeys } from './data/apikeys';
+import { useApiKeys, useApiKeyTokenUsageStats } from './data/apikeys';
 import { ApiKeyType } from './data/schema';
 
 type ApiKeyTabKey = ApiKeyType | 'all';
@@ -30,6 +31,7 @@ function ApiKeysContent() {
   const [nameFilter, setNameFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [userFilter, setUserFilter] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
 
   const debouncedNameFilter = useDebounce(nameFilter, 300);
 
@@ -60,11 +62,40 @@ function ApiKeysContent() {
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   });
 
+  const usageDateRangeWhere = buildDateRangeWhereClause(dateRange);
+  const apiKeyIds = data?.edges?.map((edge) => edge.node.id) ?? [];
+  const { data: usageStats } = useApiKeyTokenUsageStats(
+    {
+      apiKeyIds,
+      ...usageDateRangeWhere,
+    },
+    {
+      enabled: apiKeyIds.length > 0,
+    }
+  );
+
+  const usageStatsMap = React.useMemo(() => {
+    return new Map((usageStats ?? []).map((item) => [item.apiKeyId, item]));
+  }, [usageStats]);
+
+  const tableData = React.useMemo(
+    () =>
+      (data?.edges?.map((edge) => ({
+        ...edge.node,
+        usageStats: usageStatsMap.get(edge.node.id) ?? {
+          inputTokens: 0,
+          outputTokens: 0,
+          cachedTokens: 0,
+        },
+      })) ?? []),
+    [data?.edges, usageStatsMap]
+  );
+
   // Reset cursor when filters change
   React.useEffect(() => {
     resetCursor();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedNameFilter, activeTab, statusFilter, userFilter]);
+  }, [debouncedNameFilter, activeTab, statusFilter, userFilter, dateRange]);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -86,6 +117,7 @@ function ApiKeysContent() {
     setNameFilter('');
     setStatusFilter([]);
     setUserFilter([]);
+    setDateRange(undefined);
     resetCursor();
   };
 
@@ -108,7 +140,7 @@ function ApiKeysContent() {
       </Tabs>
       <div className='mt-6 flex-1 overflow-y-auto'>
         <ApiKeysTable
-          data={data?.edges?.map((edge) => edge.node) || []}
+          data={tableData}
           loading={isLoading}
           columns={columns}
           pageInfo={data?.pageInfo}
@@ -117,12 +149,14 @@ function ApiKeysContent() {
           nameFilter={nameFilter}
           statusFilter={statusFilter}
           userFilter={userFilter}
+          dateRange={dateRange}
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           onPageSizeChange={handlePageSizeChange}
           onNameFilterChange={setNameFilter}
           onStatusFilterChange={setStatusFilter}
           onUserFilterChange={setUserFilter}
+          onDateRangeChange={setDateRange}
           onResetFilters={handleResetFilters}
           canWrite={apiKeyPermissions.canWrite}
         />

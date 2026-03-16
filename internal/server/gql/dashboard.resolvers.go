@@ -404,6 +404,69 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 	return response, nil
 }
 
+// APIKeyTokenUsageStats is the resolver for the apiKeyTokenUsageStats field.
+// Aggregates input, output, and cached tokens per API key for the selected time range.
+func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKeyTokenUsageStatsInput) ([]*APIKeyTokenUsageStats, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	query := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDNotNil())
+
+	if input != nil {
+		if input.CreatedAtGTE != nil {
+			query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
+		}
+		if input.CreatedAtLTE != nil {
+			query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLTE))
+		}
+		if len(input.APIKeyIds) > 0 {
+			apiKeyIDs := make([]int, 0, len(input.APIKeyIds))
+			for _, guid := range input.APIKeyIds {
+				apiKeyIDs = append(apiKeyIDs, guid.ID)
+			}
+			query = query.Where(usagelog.APIKeyIDIn(apiKeyIDs...))
+		}
+	}
+
+	type usageStats struct {
+		APIKeyID     int `json:"api_key_id"`
+		InputTokens  int `json:"input_tokens"`
+		OutputTokens int `json:"output_tokens"`
+		CachedTokens int `json:"cached_tokens"`
+	}
+
+	var results []usageStats
+
+	err := query.Modify(func(s *sql.Selector) {
+		s.Select(
+			s.C(usagelog.FieldAPIKeyID),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+		).GroupBy(s.C(usagelog.FieldAPIKeyID))
+	}).Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key token usage stats: %w", err)
+	}
+
+	// Get top 3 models for each API key
+	return lo.Map(results, func(item usageStats, _ int) *APIKeyTokenUsageStats {
+		topModels := r.getTopModelsForAPIKey(ctx, item.APIKeyID, input)
+		return &APIKeyTokenUsageStats{
+			APIKeyID:     objects.GUID{Type: ent.TypeAPIKey, ID: item.APIKeyID},
+			InputTokens:  item.InputTokens,
+			OutputTokens: item.OutputTokens,
+			CachedTokens: item.CachedTokens,
+			TopModels:    topModels,
+		}
+	}), nil
+}
+
+// ModelTokenUsageStats is the resolver for the modelTokenUsageStats field.
+func (r *queryResolver) ModelTokenUsageStats(ctx context.Context, input *ModelTokenUsageStatsInput) ([]*ModelTokenUsageStats, error) {
+	panic(fmt.Errorf("not implemented: ModelTokenUsageStats - modelTokenUsageStats"))
+}
+
 // DailyRequestStats is the resolver for the dailyRequestStats field.
 // Note: Uses usage_logs table for daily aggregated statistics (count, tokens, cost).
 // Provides result-only daily metrics for the last 30 days.

@@ -1,6 +1,7 @@
 package gql
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"sync"
@@ -12,6 +13,8 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
@@ -174,4 +177,58 @@ func calculateConfidenceAndSort[T any](
 	}
 
 	return resultsToShow
+}
+
+// getTopModelsForAPIKey returns top 3 models by total tokens for a specific API key
+func (r *queryResolver) getTopModelsForAPIKey(ctx context.Context, apiKeyID int, input *APIKeyTokenUsageStatsInput) []*ModelTokenUsageStats {
+	query := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyID(apiKeyID))
+
+	if input != nil {
+		if input.CreatedAtGTE != nil {
+			query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
+		}
+		if input.CreatedAtLTE != nil {
+			query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLTE))
+		}
+	}
+
+	type modelStats struct {
+		ModelID      string `json:"model_id"`
+		InputTokens  int    `json:"input_tokens"`
+		OutputTokens int    `json:"output_tokens"`
+		CachedTokens int    `json:"cached_tokens"`
+		TotalTokens  int    `json:"total_tokens"`
+	}
+
+	var modelResults []modelStats
+
+	err := query.Modify(func(s *sql.Selector) {
+		s.Select(
+			s.C(usagelog.FieldModelID),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
+				s.C(usagelog.FieldPromptTokens),
+				s.C(usagelog.FieldCompletionTokens),
+				s.C(usagelog.FieldPromptCachedTokens)), "total_tokens"),
+		).GroupBy(s.C(usagelog.FieldModelID)).
+			OrderBy(sql.Desc("total_tokens")).
+			Limit(3)
+	}).Scan(ctx, &modelResults)
+
+	if err != nil {
+		log.Warn(ctx, "failed to get top models for API key", log.Cause(err))
+		return []*ModelTokenUsageStats{}
+	}
+
+	return lo.Map(modelResults, func(item modelStats, _ int) *ModelTokenUsageStats {
+		return &ModelTokenUsageStats{
+			ModelID:      item.ModelID,
+			InputTokens:  item.InputTokens,
+			OutputTokens: item.OutputTokens,
+			CachedTokens: item.CachedTokens,
+		}
+	})
 }
