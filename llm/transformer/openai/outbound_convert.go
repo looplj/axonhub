@@ -97,29 +97,37 @@ func RequestFromLLM(r *llm.Request) *Request {
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.
 func MessageFromLLM(m llm.Message) Message {
-	// Step 1: Determine final reasoningContent value
+	var reasoningContent, reasoning *string
+
+	// Check if foreign signature is present
 	// OpenAI Chat Completions has no notion of provider-specific reasoning signatures.
-	// If we detect a foreign signature (Gemini/Anthropic), drop reasoning_content to avoid upstream validation errors.
-	reasoningContent := m.ReasoningContent
-	if m.ReasoningSignature != nil && *m.ReasoningSignature != "" && !shared.IsOpenAIEncryptedContent(m.ReasoningSignature) {
+	// If we detect a foreign signature (Gemini/Anthropic), drop both reasoning fields
+	// to avoid sending provider-specific data to OpenAI and prevent upstream validation errors.
+	hasForeignSignature := m.ReasoningSignature != nil && *m.ReasoningSignature != "" && !shared.IsOpenAIEncryptedContent(m.ReasoningSignature)
+
+	if hasForeignSignature {
+		// Foreign signature: clear both fields to avoid sending provider-specific data to OpenAI
 		reasoningContent = nil
+		reasoning = nil
+	} else {
+		// No foreign signature: perform sync/fallback logic
+		reasoningContent = m.ReasoningContent
+
+		// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
+		if reasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
+			reasoningContent = m.Reasoning
+		}
+
+		// Determine final reasoning value
+		reasoning = m.Reasoning
+
+		// Sync: if Reasoning is empty but ReasoningContent has value, use ReasoningContent
+		if reasoning == nil && reasoningContent != nil && *reasoningContent != "" {
+			reasoning = reasoningContent
+		}
 	}
 
-	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
-	if reasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
-		reasoningContent = m.Reasoning
-	}
-
-	// Step 2: Determine final reasoning value
-	// Start with the source Reasoning field
-	reasoning := m.Reasoning
-
-	// Sync: if Reasoning is empty but ReasoningContent has value, use ReasoningContent
-	if reasoning == nil && reasoningContent != nil && *reasoningContent != "" {
-		reasoning = reasoningContent
-	}
-
-	// Step 3: Build the Message with both fields determined
+	// Build the Message with both fields determined
 	msg := Message{
 		Role:             m.Role,
 		Name:             m.Name,

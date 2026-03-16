@@ -217,7 +217,7 @@ func TestMessageFromLLM_ReasoningFallback(t *testing.T) {
 		want    Message
 	}{
 		{
-			name: "ReasoningSignature with foreign signature - should restore reasoning_content via fallback",
+			name: "ReasoningSignature with foreign signature - should clear both fields",
 			message: llm.Message{
 				Role:               "assistant",
 				Reasoning:          lo.ToPtr("I'm thinking about this step by step"),
@@ -226,8 +226,8 @@ func TestMessageFromLLM_ReasoningFallback(t *testing.T) {
 			},
 			want: Message{
 				Role:             "assistant",
-				Reasoning:        lo.ToPtr("I'm thinking about this step by step"),
-				ReasoningContent: lo.ToPtr("I'm thinking about this step by step"),
+				Reasoning:        nil,
+				ReasoningContent: nil,
 			},
 		},
 		{
@@ -236,7 +236,7 @@ func TestMessageFromLLM_ReasoningFallback(t *testing.T) {
 				Role:               "assistant",
 				Reasoning:          lo.ToPtr("I'm thinking about this step by step"),
 				ReasoningContent:   lo.ToPtr("I'm thinking about this step by step"),
-				ReasoningSignature: lo.ToPtr("sk-encrypted-reasoning-content"),
+				ReasoningSignature: lo.ToPtr("QVhOMTAz"), // AXN103 base64 encoded prefix for OpenAI encrypted content
 			},
 			want: Message{
 				Role:             "assistant",
