@@ -97,6 +97,7 @@ func RequestFromLLM(r *llm.Request) *Request {
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.
 func MessageFromLLM(m llm.Message) Message {
+	// Step 1: Determine final reasoningContent value
 	// OpenAI Chat Completions has no notion of provider-specific reasoning signatures.
 	// If we detect a foreign signature (Gemini/Anthropic), drop reasoning_content to avoid upstream validation errors.
 	reasoningContent := m.ReasoningContent
@@ -109,18 +110,23 @@ func MessageFromLLM(m llm.Message) Message {
 		reasoningContent = m.Reasoning
 	}
 
+	// Step 2: Determine final reasoning value
+	// Start with the source Reasoning field
+	reasoning := m.Reasoning
+
+	// Sync: if Reasoning is empty but ReasoningContent has value, use ReasoningContent
+	if reasoning == nil && reasoningContent != nil && *reasoningContent != "" {
+		reasoning = reasoningContent
+	}
+
+	// Step 3: Build the Message with both fields determined
 	msg := Message{
 		Role:             m.Role,
 		Name:             m.Name,
 		Refusal:          m.Refusal,
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: reasoningContent,
-		Reasoning:        m.Reasoning,
-	}
-
-	// Ensure Reasoning is populated if ReasoningContent has value
-	if msg.Reasoning == nil && msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
-		msg.Reasoning = msg.ReasoningContent
+		Reasoning:        reasoning,
 	}
 
 	// Convert Content
