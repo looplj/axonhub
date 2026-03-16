@@ -57,6 +57,7 @@ import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { ManualModelBadge } from './manual-model-badge';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ProxyType } from './channels-proxy-dialog';
+import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { matchesModelPattern } from '../utils/pattern';
 
@@ -226,6 +227,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate });
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
   const selectedProjectId = useSelectedProjectId();
+  const { data: proxyPresets = [] } = useProxyPresets();
+  const saveProxyPreset = useSaveProxyPreset();
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -288,6 +291,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return undefined;
   }, [proxyType, proxyUrl, proxyUsername, proxyPassword]);
+
+  const handleProxyPresetSelect = (presetUrl: string) => {
+    const preset = proxyPresets.find((p) => p.url === presetUrl);
+    if (preset) {
+      setProxyType(ProxyType.URL);
+      setProxyUrl(preset.url);
+      setProxyUsername(preset.username || '');
+      setProxyPassword(preset.password || '');
+    }
+  };
 
   // OAuth flows using the reusable hook
   // OAuth credentials are stored in apiKey field as JSON string, not in apiKeys array
@@ -846,6 +859,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             </Button>
           </div>
 
+          <p className='text-amber-600 dark:text-amber-400 mt-2 text-xs'>{t('channels.dialogs.proxy.oauthHint')}</p>
           <p className='text-muted-foreground mt-2 text-xs'>{description}</p>
         </div>
       </div>
@@ -931,6 +945,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
           settings: nextSettings,
         } as z.infer<typeof createChannelInputSchema>);
+
+        // Auto-save proxy preset
+        if (proxyType === ProxyType.URL && proxyUrl) {
+          saveProxyPreset.mutate({ url: proxyUrl, username: proxyUsername || undefined, password: proxyPassword || undefined });
+        }
       }
 
       form.reset();
@@ -1543,6 +1562,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   </Button>
                                 </div>
 
+                                <p className='text-amber-600 dark:text-amber-400 mt-2 text-xs'>
+                                  {t('channels.dialogs.proxy.oauthHint')}
+                                </p>
                                 <p className='text-muted-foreground mt-2 text-xs'>
                                   {t('channels.dialogs.fields.apiFormat.antigravity.description')}
                                 </p>
@@ -1595,6 +1617,80 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormItem>
                         )}
                       />
+
+                      {!isEdit && (
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                            {t('channels.dialogs.proxy.fields.type.label')}
+                          </FormLabel>
+                          <div className='space-y-3 md:col-span-6'>
+                            <Select value={proxyType} onValueChange={(value) => setProxyType(value as ProxyType)}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={t('channels.dialogs.proxy.fields.type.placeholder')} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value={ProxyType.DISABLED}>{t('channels.dialogs.proxy.types.disabled')}</SelectItem>
+                                <SelectItem value={ProxyType.ENVIRONMENT}>{t('channels.dialogs.proxy.types.environment')}</SelectItem>
+                                <SelectItem value={ProxyType.URL}>{t('channels.dialogs.proxy.types.url')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            {proxyType === ProxyType.URL && proxyPresets.length > 0 && (
+                              <div className='space-y-1'>
+                                <FormLabel className='text-sm'>{t('channels.dialogs.proxy.presets.label')}</FormLabel>
+                                <Select onValueChange={handleProxyPresetSelect}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder={t('channels.dialogs.proxy.presets.placeholder')} />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {proxyPresets.map((preset) => (
+                                      <SelectItem key={preset.url} value={preset.url}>
+                                        {preset.url}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            {proxyType === ProxyType.URL && (
+                              <>
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.url.label')}</FormLabel>
+                                  <Input
+                                    placeholder={t('channels.dialogs.proxy.fields.url.placeholder')}
+                                    value={proxyUrl}
+                                    onChange={(e) => setProxyUrl(e.target.value)}
+                                  />
+                                </div>
+
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.username.label')}</FormLabel>
+                                  <Input
+                                    placeholder={t('channels.dialogs.proxy.fields.username.placeholder')}
+                                    value={proxyUsername}
+                                    onChange={(e) => setProxyUsername(e.target.value)}
+                                  />
+                                </div>
+
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.password.label')}</FormLabel>
+                                  <Input
+                                    type='password'
+                                    placeholder={t('channels.dialogs.proxy.fields.password.placeholder')}
+                                    value={proxyPassword}
+                                    onChange={(e) => setProxyPassword(e.target.value)}
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </FormItem>
+                      )}
 
                       {(isCodexType || isClaudeCodeType) && (
                         <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
@@ -1797,60 +1893,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             )}
                           />
                         )}
-
-                      {!isEdit && (
-                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                            {t('channels.dialogs.proxy.fields.type.label')}
-                          </FormLabel>
-                          <div className='space-y-3 md:col-span-6'>
-                            <Select value={proxyType} onValueChange={(value) => setProxyType(value as ProxyType)}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder={t('channels.dialogs.proxy.fields.type.placeholder')} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value={ProxyType.DISABLED}>{t('channels.dialogs.proxy.types.disabled')}</SelectItem>
-                                <SelectItem value={ProxyType.ENVIRONMENT}>{t('channels.dialogs.proxy.types.environment')}</SelectItem>
-                                <SelectItem value={ProxyType.URL}>{t('channels.dialogs.proxy.types.url')}</SelectItem>
-                              </SelectContent>
-                            </Select>
-
-                            {proxyType === ProxyType.URL && (
-                              <>
-                                <div className='space-y-1'>
-                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.url.label')}</FormLabel>
-                                  <Input
-                                    placeholder={t('channels.dialogs.proxy.fields.url.placeholder')}
-                                    value={proxyUrl}
-                                    onChange={(e) => setProxyUrl(e.target.value)}
-                                  />
-                                </div>
-
-                                <div className='space-y-1'>
-                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.username.label')}</FormLabel>
-                                  <Input
-                                    placeholder={t('channels.dialogs.proxy.fields.username.placeholder')}
-                                    value={proxyUsername}
-                                    onChange={(e) => setProxyUsername(e.target.value)}
-                                  />
-                                </div>
-
-                                <div className='space-y-1'>
-                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.password.label')}</FormLabel>
-                                  <Input
-                                    type='password'
-                                    placeholder={t('channels.dialogs.proxy.fields.password.placeholder')}
-                                    value={proxyPassword}
-                                    onChange={(e) => setProxyPassword(e.target.value)}
-                                  />
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </FormItem>
-                      )}
 
                       <FormField
                         control={form.control}
