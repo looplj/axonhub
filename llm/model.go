@@ -322,6 +322,9 @@ type Message struct {
 	// - https://api-docs.deepseek.com/api/create-chat-completion#responses
 	ReasoningContent *string `json:"reasoning_content,omitempty"`
 
+	// Reasoning is an alternative field used by some providers (e.g., Synthetic)
+	Reasoning *string `json:"reasoning,omitempty"`
+
 	// Help field, will not be sent to the llm service, to adapt the
 	// 1. Anthropic think signature： https://platform.claude.com/docs/en/build-with-claude/extended-thinking
 	// 2. Gemini thought signature：  https://ai.google.dev/gemini-api/docs/thought-signatures#model-behavior
