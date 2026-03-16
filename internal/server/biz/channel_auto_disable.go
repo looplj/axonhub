@@ -10,18 +10,18 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 )
 
-func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, errorStatusCode int) {
+func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, responseStatusCode int) {
 	ctx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	_, err := svc.db.Channel.UpdateOneID(channelID).
 		SetStatus(channel.StatusDisabled).
-		SetErrorMessage(deriveErrorMessage(errorStatusCode)).
+		SetErrorMessage(deriveErrorMessage(responseStatusCode)).
 		Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to disable channel on unrecoverable error",
 			log.Int("channel_id", channelID),
-			log.Int("error_code", errorStatusCode),
+			log.Int("error_code", responseStatusCode),
 			log.Cause(err),
 		)
 
@@ -30,7 +30,7 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 
 	log.Warn(ctx, "Channel disabled due to unrecoverable error",
 		log.Int("channel_id", channelID),
-		log.Int("error_code", errorStatusCode),
+		log.Int("error_code", responseStatusCode),
 	)
 
 	// Reload channels to reflect the change in load balancer
@@ -40,7 +40,7 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 // checkAndHandleChannelError checks if the channel should be disabled based on the error status code.
 func (svc *ChannelService) checkAndHandleChannelError(ctx context.Context, perf *PerformanceRecord, policy *RetryPolicy) bool {
 	for _, statusConfig := range policy.AutoDisableChannel.Statuses {
-		if statusConfig.Status != perf.ErrorStatusCode {
+		if statusConfig.Status != perf.ResponseStatusCode {
 			continue
 		}
 
@@ -50,12 +50,12 @@ func (svc *ChannelService) checkAndHandleChannelError(ctx context.Context, perf 
 			svc.channelErrorCounts[perf.ChannelID] = make(map[int]int)
 		}
 
-		svc.channelErrorCounts[perf.ChannelID][perf.ErrorStatusCode]++
-		count := svc.channelErrorCounts[perf.ChannelID][perf.ErrorStatusCode]
+		svc.channelErrorCounts[perf.ChannelID][perf.ResponseStatusCode]++
+		count := svc.channelErrorCounts[perf.ChannelID][perf.ResponseStatusCode]
 		svc.channelErrorCountsLock.Unlock()
 
 		if count >= statusConfig.Times {
-			svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ErrorStatusCode)
+			svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ResponseStatusCode)
 			svc.channelErrorCountsLock.Lock()
 			delete(svc.channelErrorCounts, perf.ChannelID)
 			svc.channelErrorCountsLock.Unlock()
@@ -71,7 +71,7 @@ func (svc *ChannelService) checkAndHandleChannelError(ctx context.Context, perf 
 // Returns true if the API key was disabled.
 func (svc *ChannelService) checkAndHandleAPIKeyError(ctx context.Context, perf *PerformanceRecord, policy *RetryPolicy) bool {
 	for _, statusConfig := range policy.AutoDisableChannel.Statuses {
-		if statusConfig.Status != perf.ErrorStatusCode {
+		if statusConfig.Status != perf.ResponseStatusCode {
 			continue
 		}
 
@@ -85,16 +85,16 @@ func (svc *ChannelService) checkAndHandleAPIKeyError(ctx context.Context, perf *
 			svc.apiKeyErrorCounts[perf.ChannelID][perf.APIKey] = make(map[int]int)
 		}
 
-		svc.apiKeyErrorCounts[perf.ChannelID][perf.APIKey][perf.ErrorStatusCode]++
-		count := svc.apiKeyErrorCounts[perf.ChannelID][perf.APIKey][perf.ErrorStatusCode]
+		svc.apiKeyErrorCounts[perf.ChannelID][perf.APIKey][perf.ResponseStatusCode]++
+		count := svc.apiKeyErrorCounts[perf.ChannelID][perf.APIKey][perf.ResponseStatusCode]
 		svc.apiKeyErrorCountsLock.Unlock()
 
 		if count >= statusConfig.Times {
-			reason := fmt.Sprintf("Auto-disabled after %d consecutive errors with status %d", count, perf.ErrorStatusCode)
-			if err := svc.DisableAPIKey(ctx, perf.ChannelID, perf.APIKey, perf.ErrorStatusCode, reason); err != nil {
+			reason := fmt.Sprintf("Auto-disabled after %d consecutive errors with status %d", count, perf.ResponseStatusCode)
+			if err := svc.DisableAPIKey(ctx, perf.ChannelID, perf.APIKey, perf.ResponseStatusCode, reason); err != nil {
 				log.Error(ctx, "Failed to disable API key",
 					log.Int("channel_id", perf.ChannelID),
-					log.Int("error_code", perf.ErrorStatusCode),
+					log.Int("error_code", perf.ResponseStatusCode),
 					log.Cause(err),
 				)
 

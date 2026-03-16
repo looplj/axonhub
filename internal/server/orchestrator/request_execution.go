@@ -201,9 +201,22 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 		persistCtx,
 		state.RequestExec.ID,
 		ExtractErrorMessage(err),
+		ExtractErrorInfo(err),
 	)
 	if updateErr != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(updateErr))
+	}
+}
+
+// ExtractErrorInfo extracts HTTP status code and sanitized response body from error.
+func ExtractErrorInfo(err error) *biz.ExecutionErrorInfo {
+	httpErr, ok := xerrors.As[*httpclient.Error](err)
+	if !ok {
+		return nil
+	}
+
+	return &biz.ExecutionErrorInfo{
+		StatusCode: &httpErr.StatusCode,
 	}
 }
 

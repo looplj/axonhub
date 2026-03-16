@@ -48,6 +48,7 @@ func (s *SystemService) SaveProxyPreset(ctx context.Context, preset ProxyPreset)
 	}
 
 	found := false
+
 	for i, p := range presets {
 		if p.URL == preset.URL {
 			presets[i] = preset

@@ -352,6 +352,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldResponseBody:               {Type: field.TypeJSON, Column: requestexecution.FieldResponseBody},
 			requestexecution.FieldResponseChunks:             {Type: field.TypeJSON, Column: requestexecution.FieldResponseChunks},
 			requestexecution.FieldErrorMessage:               {Type: field.TypeString, Column: requestexecution.FieldErrorMessage},
+			requestexecution.FieldResponseStatusCode:         {Type: field.TypeInt, Column: requestexecution.FieldResponseStatusCode},
 			requestexecution.FieldStatus:                     {Type: field.TypeEnum, Column: requestexecution.FieldStatus},
 			requestexecution.FieldStream:                     {Type: field.TypeBool, Column: requestexecution.FieldStream},
 			requestexecution.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: requestexecution.FieldMetricsLatencyMs},
@@ -2979,6 +2980,11 @@ func (f *RequestExecutionFilter) WhereResponseChunks(p entql.BytesP) {
 // WhereErrorMessage applies the entql string predicate on the error_message field.
 func (f *RequestExecutionFilter) WhereErrorMessage(p entql.StringP) {
 	f.Where(p.Field(requestexecution.FieldErrorMessage))
+}
+
+// WhereResponseStatusCode applies the entql int predicate on the response_status_code field.
+func (f *RequestExecutionFilter) WhereResponseStatusCode(p entql.IntP) {
+	f.Where(p.Field(requestexecution.FieldResponseStatusCode))
 }
 
 // WhereStatus applies the entql string predicate on the status field.

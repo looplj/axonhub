@@ -194,6 +194,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 responseBody
                 responseChunks
                 errorMessage
+                responseStatusCode
                 status
                 format
                 stream
