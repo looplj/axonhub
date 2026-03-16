@@ -55,6 +55,7 @@
   "apikeys.dialogs.fields.scopes.description": "Select the permissions for this service account API key",
   "apikeys.dialogs.fields.key.label": "API Key",
   "apikeys.messages.copied": "API Key copied to clipboard",
+  "apikeys.messages.baseUrlCopied": "Base URL copied to clipboard",
   "apikeys.messages.createSuccess": "API Key created successfully",
   "apikeys.messages.createError": "Failed to create API Key",
   "apikeys.messages.updateSuccess": "API Key updated successfully",
