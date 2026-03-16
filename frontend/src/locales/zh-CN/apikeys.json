@@ -55,6 +55,7 @@
   "apikeys.dialogs.fields.scopes.description": "选择此服务账号 API Key 的权限",
   "apikeys.dialogs.fields.key.label": "API Key",
   "apikeys.messages.copied": "API Key 已复制到剪贴板",
+  "apikeys.messages.baseUrlCopied": "Base URL 已复制到剪贴板",
   "apikeys.messages.createSuccess": "API Key 创建成功",
   "apikeys.messages.createError": "创建 API Key 失败",
   "apikeys.messages.updateSuccess": "API Key 更新成功",
