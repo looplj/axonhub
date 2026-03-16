@@ -22,17 +22,17 @@ type ProxyPreset struct {
 }
 
 // ProxyPresets retrieves all proxy presets.
-func (s *SystemService) ProxyPresets(ctx context.Context) ([]ProxyPreset, error) {
+func (s *SystemService) ProxyPresets(ctx context.Context) ([]*ProxyPreset, error) {
 	value, err := s.getSystemValue(ctx, SystemKeyProxyPresets)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return []ProxyPreset{}, nil
+			return []*ProxyPreset{}, nil
 		}
 
 		return nil, fmt.Errorf("failed to get proxy presets: %w", err)
 	}
 
-	var presets []ProxyPreset
+	var presets []*ProxyPreset
 	if err := json.Unmarshal([]byte(value), &presets); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal proxy presets: %w", err)
 	}
@@ -51,7 +51,7 @@ func (s *SystemService) SaveProxyPreset(ctx context.Context, preset ProxyPreset)
 
 	for i, p := range presets {
 		if p.URL == preset.URL {
-			presets[i] = preset
+			presets[i] = &preset
 			found = true
 
 			break
@@ -59,7 +59,7 @@ func (s *SystemService) SaveProxyPreset(ctx context.Context, preset ProxyPreset)
 	}
 
 	if !found {
-		presets = append(presets, preset)
+		presets = append(presets, &preset)
 	}
 
 	jsonBytes, err := json.Marshal(presets) //nolint:gosec // G117: Password field is stored internally, not exposed to API responses
@@ -77,7 +77,7 @@ func (s *SystemService) DeleteProxyPreset(ctx context.Context, url string) error
 		return err
 	}
 
-	filtered := make([]ProxyPreset, 0, len(presets))
+	filtered := make([]*ProxyPreset, 0, len(presets))
 	for _, p := range presets {
 		if p.URL != url {
 			filtered = append(filtered, p)

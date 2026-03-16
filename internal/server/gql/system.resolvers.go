@@ -332,10 +332,5 @@ func (r *queryResolver) VideoStorageSettings(ctx context.Context) (*biz.VideoSto
 
 // ProxyPresets is the resolver for the proxyPresets field.
 func (r *queryResolver) ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, error) {
-	presets, err := r.systemService.ProxyPresets(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get proxy presets: %w", err)
-	}
-
-	return lo.ToSlicePtr(presets), nil
+	return r.systemService.ProxyPresets(ctx)
 }
