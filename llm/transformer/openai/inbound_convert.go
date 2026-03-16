@@ -129,6 +129,12 @@ func (m Message) ToLLMMessage() llm.Message {
 		Refusal:          m.Refusal,
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: m.ReasoningContent,
+		Reasoning:        m.Reasoning,
+	}
+
+	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
+	if msg.ReasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
+		msg.ReasoningContent = m.Reasoning
 	}
 
 	// Convert Content

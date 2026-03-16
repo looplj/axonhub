@@ -104,12 +104,23 @@ func MessageFromLLM(m llm.Message) Message {
 		reasoningContent = nil
 	}
 
+	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
+	if reasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
+		reasoningContent = m.Reasoning
+	}
+
 	msg := Message{
 		Role:             m.Role,
 		Name:             m.Name,
 		Refusal:          m.Refusal,
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: reasoningContent,
+		Reasoning:        m.Reasoning,
+	}
+
+	// Ensure Reasoning is populated if ReasoningContent has value
+	if msg.Reasoning == nil && msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+		msg.Reasoning = msg.ReasoningContent
 	}
 
 	// Convert Content
