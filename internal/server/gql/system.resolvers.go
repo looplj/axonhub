@@ -304,6 +304,29 @@ func (r *queryResolver) SystemGeneralSettings(ctx context.Context) (*biz.SystemG
 	return r.systemService.GeneralSettings(ctx)
 }
 
+// SaveProxyPreset is the resolver for the saveProxyPreset field.
+func (r *mutationResolver) SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error) {
+	err := r.systemService.SaveProxyPreset(ctx, input)
+	if err != nil {
+		return false, fmt.Errorf("failed to save proxy preset: %w", err)
+	}
+	return true, nil
+}
+
+// DeleteProxyPreset is the resolver for the deleteProxyPreset field.
+func (r *mutationResolver) DeleteProxyPreset(ctx context.Context, url string) (bool, error) {
+	err := r.systemService.DeleteProxyPreset(ctx, url)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete proxy preset: %w", err)
+	}
+	return true, nil
+}
+
+// ProxyPresets is the resolver for the proxyPresets field.
+func (r *queryResolver) ProxyPresets(ctx context.Context) ([]biz.ProxyPreset, error) {
+	return r.systemService.ProxyPresets(ctx)
+}
+
 // VideoStorageSettings is the resolver for the videoStorageSettings field.
 func (r *queryResolver) VideoStorageSettings(ctx context.Context) (*biz.VideoStorageSettings, error) {
 	return r.systemService.VideoStorageSettings(ctx)

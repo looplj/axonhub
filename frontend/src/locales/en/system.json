@@ -245,5 +245,14 @@
   "quota.window.5h": "5h window",
   "quota.window.7d": "7d window",
   "quota.window.none": "None",
-  "quota.unknown": "Unknown"
+  "quota.unknown": "Unknown",
+  "system.tabs.proxy": "Proxy",
+  "system.proxy.title": "Proxy Presets",
+  "system.proxy.description": "Manage saved proxy server configurations. These presets can be quickly selected when configuring channels.",
+  "system.proxy.empty": "No proxy presets saved yet. Proxy configurations will be automatically saved here when you configure a channel with a custom proxy.",
+  "system.proxy.deleteConfirm": "Are you sure you want to delete this proxy preset?",
+  "system.proxy.deleteSuccess": "Proxy preset deleted",
+  "system.proxy.columns.url": "Proxy URL",
+  "system.proxy.columns.username": "Username",
+  "system.proxy.columns.actions": "Actions"
 }
