@@ -117,6 +117,10 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}, workspaceDir))
+	rootCmd.AddCommand(cmds.NewPluginCommand(cmds.StdioOptions{
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}, workspaceDir))
 	rootCmd.AddCommand(cmds.NewDiscoverCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,

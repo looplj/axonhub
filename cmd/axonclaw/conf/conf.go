@@ -25,6 +25,7 @@ const (
 type Config struct {
 	BaseURL                string        `yml:"base_url"`
 	APIKey                 string        `yml:"api_key"`
+	MemoryEmbeddingModel   string        `yml:"memory_embedding_model"`
 	PollInterval           time.Duration `yml:"poll_interval"`
 	HeartbeatInterval      time.Duration `yml:"heartbeat_interval"`
 	AutoSyncConfig         bool          `yml:"auto_sync_config"`
@@ -37,6 +38,7 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
+		MemoryEmbeddingModel:   "text-embedding-3-small",
 		PollInterval:           5 * time.Second,
 		HeartbeatInterval:      1 * time.Minute,
 		AutoSyncConfigInterval: 5 * time.Minute,
@@ -64,6 +66,7 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 		SetDefaults: func(v *viper.Viper) {
 			v.SetDefault("base_url", "")
 			v.SetDefault("api_key", "")
+			v.SetDefault("memory_embedding_model", "text-embedding-3-small")
 			v.SetDefault("poll_interval", "5s")
 			v.SetDefault("heartbeat_interval", "1m")
 			v.SetDefault("auto_sync_config", false)
@@ -83,6 +86,9 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 	}
 	if res.Value.APIKey != "" {
 		cfg.APIKey = res.Value.APIKey
+	}
+	if strings.TrimSpace(res.Value.MemoryEmbeddingModel) != "" {
+		cfg.MemoryEmbeddingModel = strings.TrimSpace(res.Value.MemoryEmbeddingModel)
 	}
 	if res.Value.PollInterval > 0 {
 		cfg.PollInterval = res.Value.PollInterval
@@ -217,6 +223,7 @@ func LoadConfig() (Config, error) {
 		SetDefaults: func(v *viper.Viper) {
 			v.SetDefault("base_url", "")
 			v.SetDefault("api_key", "")
+			v.SetDefault("memory_embedding_model", "text-embedding-3-small")
 			v.SetDefault("poll_interval", "5s")
 			v.SetDefault("heartbeat_interval", "1m")
 			v.SetDefault("auto_sync_config", false)
