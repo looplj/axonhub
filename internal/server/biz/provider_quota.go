@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // HOW TO ADD A NEW PROVIDER QUOTA CHECKER
@@ -87,6 +88,7 @@ type ProviderQuotaServiceParams struct {
 
 	Ent           *ent.Client
 	SystemService *SystemService
+	HttpClient    *httpclient.HttpClient
 	CheckInterval time.Duration `name:"provider_quota_check_interval" optional:"true"`
 }
 
@@ -96,6 +98,7 @@ type ProviderQuotaService struct {
 	SystemService *SystemService
 	Executor      executors.ScheduledExecutor
 	checkInterval time.Duration
+	httpClient    *httpclient.HttpClient
 
 	// Registry
 	checkers map[string]provider_quota.QuotaChecker
@@ -110,6 +113,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 		Executor:        executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1)),
 		checkers:        make(map[string]provider_quota.QuotaChecker),
 		checkInterval:   params.CheckInterval,
+		httpClient:      params.HttpClient,
 	}
 
 	svc.registerClaudeCodeSupport()
@@ -119,11 +123,11 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 }
 
 func (svc *ProviderQuotaService) registerClaudeCodeSupport() {
-	svc.checkers["claudecode"] = provider_quota.NewClaudeCodeQuotaChecker()
+	svc.checkers["claudecode"] = provider_quota.NewClaudeCodeQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerCodexSupport() {
-	svc.checkers["codex"] = provider_quota.NewCodexQuotaChecker()
+	svc.checkers["codex"] = provider_quota.NewCodexQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) Start(ctx context.Context) error {

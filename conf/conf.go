@@ -25,13 +25,14 @@ import (
 type Config struct {
 	fx.Out `yaml:"-" json:"-"`
 
-	DB            db.Config           `conf:"db" yaml:"db" json:"db"`
-	Log           log.Config          `conf:"log" yaml:"log" json:"log"`
-	APIServer     server.Config       `conf:"server" yaml:"server" json:"server"`
-	Metrics       metrics.Config      `conf:"metrics" yaml:"metrics" json:"metrics"`
-	GC            gc.Config           `conf:"gc" yaml:"gc" json:"gc"`
-	Cache         xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
-	ProviderQuota providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
+	DB               db.Config           `conf:"db" yaml:"db" json:"db"`
+	Log              log.Config          `conf:"log" yaml:"log" json:"log"`
+	APIServer        server.Config       `conf:"server" yaml:"server" json:"server"`
+	Metrics          metrics.Config      `conf:"metrics" yaml:"metrics" json:"metrics"`
+	GC               gc.Config           `conf:"gc" yaml:"gc" json:"gc"`
+	Cache            xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
+	ProviderQuota    providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
+	DisableSSLVerify bool                `name:"disable_ssl_verify" yaml:"-" json:"-"`
 }
 
 type providerQuotaConfig struct {
@@ -85,6 +86,8 @@ func Load() (Config, error) {
 	}); err != nil {
 		return Config{}, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
+	config.DisableSSLVerify = config.APIServer.DisableSSLVerify
 
 	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
 
@@ -143,6 +146,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.dashboard.all_time_token_stats_hard_ttl", "24h")
 
 	v.SetDefault("server.debug", false)
+	v.SetDefault("server.disable_ssl_verify", false)
 
 	// CORS defaults
 	v.SetDefault("server.cors.enabled", false)

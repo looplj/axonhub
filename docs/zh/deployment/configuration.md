@@ -69,6 +69,7 @@ server:
     claude_code_trace_enabled: false # 启用 Claude Code 追踪提取
     codex_trace_enabled: false # 启用 Codex 追踪提取
   debug: false                  # 启用调试模式
+  disable_ssl_verify: false     # 禁用上游请求的 SSL 证书校验（自签名证书）
 ```
 
 **环境变量：**
@@ -83,6 +84,7 @@ server:
 - `AXONHUB_SERVER_TRACE_CLAUDE_CODE_TRACE_ENABLED`
 - `AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED`
 - `AXONHUB_SERVER_DEBUG`
+- `AXONHUB_SERVER_DISABLE_SSL_VERIFY`
 
 ### 数据库配置
 
