@@ -407,25 +407,37 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 // APIKeyTokenUsageStats is the resolver for the apiKeyTokenUsageStats field.
 // Aggregates input, output, and cached tokens per API key for the selected time range.
 func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKeyTokenUsageStatsInput) ([]*APIKeyTokenUsageStats, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadAPIKeys)
+	if err := authz.RequireScope(ctx, scopes.ScopeReadAPIKeys); err != nil {
+		return nil, err
+	}
+
+	// Require at least one API key ID to prevent unbounded queries
+	if input == nil || len(input.APIKeyIds) == 0 {
+		return nil, fmt.Errorf("apiKeyIds is required and must contain at least one API key")
+	}
+
+	// Limit the number of API keys to prevent performance issues
+	if len(input.APIKeyIds) > 100 {
+		return nil, fmt.Errorf("apiKeyIds cannot exceed 100 items")
+	}
+
+	// Validate all GUIDs are of type APIKey
+	apiKeyIDs := make([]int, 0, len(input.APIKeyIds))
+	for _, guid := range input.APIKeyIds {
+		if guid.Type != ent.TypeAPIKey {
+			return nil, fmt.Errorf("invalid GUID type: expected %s, got %s", ent.TypeAPIKey, guid.Type)
+		}
+		apiKeyIDs = append(apiKeyIDs, guid.ID)
+	}
 
 	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil())
+		Where(usagelog.APIKeyIDIn(apiKeyIDs...))
 
-	if input != nil {
-		if input.CreatedAtGTE != nil {
-			query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
-		}
-		if input.CreatedAtLTE != nil {
-			query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLTE))
-		}
-		if len(input.APIKeyIds) > 0 {
-			apiKeyIDs := make([]int, 0, len(input.APIKeyIds))
-			for _, guid := range input.APIKeyIds {
-				apiKeyIDs = append(apiKeyIDs, guid.ID)
-			}
-			query = query.Where(usagelog.APIKeyIDIn(apiKeyIDs...))
-		}
+	if input.CreatedAtGTE != nil {
+		query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
+	}
+	if input.CreatedAtLTE != nil {
+		query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLTE))
 	}
 
 	type usageStats struct {
@@ -449,22 +461,18 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 		return nil, fmt.Errorf("failed to get API key token usage stats: %w", err)
 	}
 
-	// Get top 3 models for each API key
+	// Get top 3 models for all API keys in a single query
+	topModelsMap := r.getTopModelsForAPIKeys(ctx, apiKeyIDs, input)
+
 	return lo.Map(results, func(item usageStats, _ int) *APIKeyTokenUsageStats {
-		topModels := r.getTopModelsForAPIKey(ctx, item.APIKeyID, input)
 		return &APIKeyTokenUsageStats{
 			APIKeyID:     objects.GUID{Type: ent.TypeAPIKey, ID: item.APIKeyID},
 			InputTokens:  item.InputTokens,
 			OutputTokens: item.OutputTokens,
 			CachedTokens: item.CachedTokens,
-			TopModels:    topModels,
+			TopModels:    topModelsMap[item.APIKeyID],
 		}
 	}), nil
-}
-
-// ModelTokenUsageStats is the resolver for the modelTokenUsageStats field.
-func (r *queryResolver) ModelTokenUsageStats(ctx context.Context, input *ModelTokenUsageStatsInput) ([]*ModelTokenUsageStats, error) {
-	panic(fmt.Errorf("not implemented: ModelTokenUsageStats - modelTokenUsageStats"))
 }
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.

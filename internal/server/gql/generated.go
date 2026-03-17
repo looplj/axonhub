@@ -988,7 +988,6 @@ type ComplexityRoot struct {
 		FetchModels                  func(childComplexity int, input biz.FetchModelsInput) int
 		Me                           func(childComplexity int) int
 		ModelPerformanceStats        func(childComplexity int) int
-		ModelTokenUsageStats         func(childComplexity int, input *ModelTokenUsageStatsInput) int
 		Models                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
 		MyProjects                   func(childComplexity int) int
 		Node                         func(childComplexity int, id objects.GUID) int
@@ -1776,7 +1775,6 @@ type QueryResolver interface {
 	RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error)
 	TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error)
 	APIKeyTokenUsageStats(ctx context.Context, input *APIKeyTokenUsageStatsInput) ([]*APIKeyTokenUsageStats, error)
-	ModelTokenUsageStats(ctx context.Context, input *ModelTokenUsageStatsInput) ([]*ModelTokenUsageStats, error)
 	DailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error)
 	TopRequestsProjects(ctx context.Context) ([]*TopRequestsProjects, error)
 	TokenStats(ctx context.Context) (*TokenStats, error)
@@ -5937,17 +5935,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ModelPerformanceStats(childComplexity), true
-	case "Query.modelTokenUsageStats":
-		if e.complexity.Query.ModelTokenUsageStats == nil {
-			break
-		}
-
-		args, err := ec.field_Query_modelTokenUsageStats_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.ModelTokenUsageStats(childComplexity, args["input"].(*ModelTokenUsageStatsInput)), true
 	case "Query.models":
 		if e.complexity.Query.Models == nil {
 			break
@@ -8572,7 +8559,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputModelPriceInput,
 		ec.unmarshalInputModelPriceItemInput,
 		ec.unmarshalInputModelSettingsInput,
-		ec.unmarshalInputModelTokenUsageStatsInput,
 		ec.unmarshalInputModelWhereInput,
 		ec.unmarshalInputOAuthCredentialsInput,
 		ec.unmarshalInputOverrideOperationInput,
@@ -10528,17 +10514,6 @@ func (ec *executionContext) field_Query_fetchModels_args(ctx context.Context, ra
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFetchModelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFetchModelsInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_modelTokenUsageStats_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalOModelTokenUsageStatsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelTokenUsageStatsInput)
 	if err != nil {
 		return nil, err
 	}
@@ -32091,57 +32066,6 @@ func (ec *executionContext) fieldContext_Query_apiKeyTokenUsageStats(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_apiKeyTokenUsageStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_modelTokenUsageStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_modelTokenUsageStats,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().ModelTokenUsageStats(ctx, fc.Args["input"].(*ModelTokenUsageStatsInput))
-		},
-		nil,
-		ec.marshalNModelTokenUsageStats2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelTokenUsageStatsᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_modelTokenUsageStats(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "modelId":
-				return ec.fieldContext_ModelTokenUsageStats_modelId(ctx, field)
-			case "inputTokens":
-				return ec.fieldContext_ModelTokenUsageStats_inputTokens(ctx, field)
-			case "outputTokens":
-				return ec.fieldContext_ModelTokenUsageStats_outputTokens(ctx, field)
-			case "cachedTokens":
-				return ec.fieldContext_ModelTokenUsageStats_cachedTokens(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ModelTokenUsageStats", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_modelTokenUsageStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -55002,47 +54926,6 @@ func (ec *executionContext) unmarshalInputModelSettingsInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputModelTokenUsageStatsInput(ctx context.Context, obj any) (ModelTokenUsageStatsInput, error) {
-	var it ModelTokenUsageStatsInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"apiKeyIds", "createdAtGTE", "createdAtLTE"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "apiKeyIds":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyIds"))
-			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.APIKeyIds = data
-		case "createdAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtGTE = data
-		case "createdAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtLTE = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputModelWhereInput(ctx context.Context, obj any) (ent.ModelWhereInput, error) {
 	var it ent.ModelWhereInput
 	asMap := map[string]any{}
@@ -77343,28 +77226,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "modelTokenUsageStats":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_modelTokenUsageStats(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "dailyRequestStats":
 			field := field
 
@@ -91861,14 +91722,6 @@ func (ec *executionContext) marshalOModelStatus2ᚖgithubᚗcomᚋloopljᚋaxonh
 		return graphql.Null
 	}
 	return v
-}
-
-func (ec *executionContext) unmarshalOModelTokenUsageStatsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelTokenUsageStatsInput(ctx context.Context, v any) (*ModelTokenUsageStatsInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputModelTokenUsageStatsInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOModelType2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋmodelᚐTypeᚄ(ctx context.Context, v any) ([]model.Type, error) {

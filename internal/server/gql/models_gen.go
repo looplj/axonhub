@@ -232,12 +232,6 @@ type ModelTokenUsageStats struct {
 	CachedTokens int    `json:"cachedTokens"`
 }
 
-type ModelTokenUsageStatsInput struct {
-	APIKeyIds    []*objects.GUID `json:"apiKeyIds,omitempty"`
-	CreatedAtGTE *time.Time      `json:"createdAtGTE,omitempty"`
-	CreatedAtLTE *time.Time      `json:"createdAtLTE,omitempty"`
-}
-
 type OnboardingInfo struct {
 	Onboarded          bool                          `json:"onboarded"`
 	CompletedAt        *time.Time                    `json:"completedAt,omitempty"`

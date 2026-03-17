@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BarChart3 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -28,20 +27,20 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
 
       switch (range) {
         case 'today': {
-          // Get start of today in UTC
-          const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+          // Get start of today in local timezone
+          const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           return {
-            createdAtGTE: todayUTC.toISOString(),
+            createdAtGTE: todayLocal.toISOString(),
             createdAtLTE: now.toISOString(),
           };
         }
         case 'last7days': {
-          // Get 7 days ago from start of today in UTC
-          const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-          const last7daysUTC = new Date(todayUTC);
-          last7daysUTC.setUTCDate(last7daysUTC.getUTCDate() - 7);
+          // Get 7 days ago from start of today in local timezone
+          const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const last7daysLocal = new Date(todayLocal);
+          last7daysLocal.setDate(last7daysLocal.getDate() - 7);
           return {
-            createdAtGTE: last7daysUTC.toISOString(),
+            createdAtGTE: last7daysLocal.toISOString(),
             createdAtLTE: now.toISOString(),
           };
         }
@@ -56,10 +55,12 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
   }, [timeRange]);
 
   const { data: usageStats, isLoading, isFetching } = useApiKeyTokenUsageStats(
-    {
-      apiKeyIds: apiKey ? [apiKey.id] : [],
-      ...usageDateRangeWhere,
-    },
+    apiKey
+      ? {
+          apiKeyIds: [apiKey.id],
+          ...usageDateRangeWhere,
+        }
+      : undefined,
     {
       enabled: open && !!apiKey,
     }
@@ -110,21 +111,21 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                         <TableCell className="font-medium">{t('apikeys.columns.inputTokens')}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatNumber(stat.inputTokens)}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {((stat.inputTokens / totalTokens) * 100).toFixed(1)}%
+                          {totalTokens > 0 ? ((stat.inputTokens / totalTokens) * 100).toFixed(1) : '0.0'}%
                         </TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-medium">{t('apikeys.columns.outputTokens')}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatNumber(stat.outputTokens)}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {((stat.outputTokens / totalTokens) * 100).toFixed(1)}%
+                          {totalTokens > 0 ? ((stat.outputTokens / totalTokens) * 100).toFixed(1) : '0.0'}%
                         </TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-medium">{t('apikeys.columns.cachedTokens')}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatNumber(stat.cachedTokens)}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {((stat.cachedTokens / totalTokens) * 100).toFixed(1)}%
+                          {totalTokens > 0 ? ((stat.cachedTokens / totalTokens) * 100).toFixed(1) : '0.0'}%
                         </TableCell>
                       </TableRow>
                       <TableRow className="bg-muted/50 font-semibold">
@@ -162,21 +163,21 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                                 <TableCell className="font-medium">{t('apikeys.columns.inputTokens')}</TableCell>
                                 <TableCell className="text-right tabular-nums">{formatNumber(model.inputTokens)}</TableCell>
                                 <TableCell className="text-right tabular-nums">
-                                  {((model.inputTokens / modelTotal) * 100).toFixed(1)}%
+                                  {modelTotal > 0 ? ((model.inputTokens / modelTotal) * 100).toFixed(1) : '0.0'}%
                                 </TableCell>
                               </TableRow>
                               <TableRow>
                                 <TableCell className="font-medium">{t('apikeys.columns.outputTokens')}</TableCell>
                                 <TableCell className="text-right tabular-nums">{formatNumber(model.outputTokens)}</TableCell>
                                 <TableCell className="text-right tabular-nums">
-                                  {((model.outputTokens / modelTotal) * 100).toFixed(1)}%
+                                  {modelTotal > 0 ? ((model.outputTokens / modelTotal) * 100).toFixed(1) : '0.0'}%
                                 </TableCell>
                               </TableRow>
                               <TableRow>
                                 <TableCell className="font-medium">{t('apikeys.columns.cachedTokens')}</TableCell>
                                 <TableCell className="text-right tabular-nums">{formatNumber(model.cachedTokens)}</TableCell>
                                 <TableCell className="text-right tabular-nums">
-                                  {((model.cachedTokens / modelTotal) * 100).toFixed(1)}%
+                                  {modelTotal > 0 ? ((model.cachedTokens / modelTotal) * 100).toFixed(1) : '0.0'}%
                                 </TableCell>
                               </TableRow>
                             </TableBody>

@@ -179,10 +179,14 @@ func calculateConfidenceAndSort[T any](
 	return resultsToShow
 }
 
-// getTopModelsForAPIKey returns top 3 models by total tokens for a specific API key
-func (r *queryResolver) getTopModelsForAPIKey(ctx context.Context, apiKeyID int, input *APIKeyTokenUsageStatsInput) []*ModelTokenUsageStats {
+// getTopModelsForAPIKeys returns top 3 models by total tokens for multiple API keys in a single query
+func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []int, input *APIKeyTokenUsageStatsInput) map[int][]*ModelTokenUsageStats {
+	if len(apiKeyIDs) == 0 {
+		return make(map[int][]*ModelTokenUsageStats)
+	}
+
 	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyID(apiKeyID))
+		Where(usagelog.APIKeyIDIn(apiKeyIDs...))
 
 	if input != nil {
 		if input.CreatedAtGTE != nil {
@@ -194,17 +198,19 @@ func (r *queryResolver) getTopModelsForAPIKey(ctx context.Context, apiKeyID int,
 	}
 
 	type modelStats struct {
+		APIKeyID     int    `json:"api_key_id"`
 		ModelID      string `json:"model_id"`
-		InputTokens  int    `json:"input_tokens"`
-		OutputTokens int    `json:"output_tokens"`
-		CachedTokens int    `json:"cached_tokens"`
-		TotalTokens  int    `json:"total_tokens"`
+		InputTokens  int64  `json:"input_tokens"`
+		OutputTokens int64  `json:"output_tokens"`
+		CachedTokens int64  `json:"cached_tokens"`
+		TotalTokens  int64  `json:"total_tokens"`
 	}
 
-	var modelResults []modelStats
+	var allResults []modelStats
 
 	err := query.Modify(func(s *sql.Selector) {
 		s.Select(
+			s.C(usagelog.FieldAPIKeyID),
 			s.C(usagelog.FieldModelID),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
@@ -213,22 +219,27 @@ func (r *queryResolver) getTopModelsForAPIKey(ctx context.Context, apiKeyID int,
 				s.C(usagelog.FieldPromptTokens),
 				s.C(usagelog.FieldCompletionTokens),
 				s.C(usagelog.FieldPromptCachedTokens)), "total_tokens"),
-		).GroupBy(s.C(usagelog.FieldModelID)).
-			OrderBy(sql.Desc("total_tokens")).
-			Limit(3)
-	}).Scan(ctx, &modelResults)
+		).GroupBy(s.C(usagelog.FieldAPIKeyID), s.C(usagelog.FieldModelID)).
+			OrderBy(sql.Desc("total_tokens"))
+	}).Scan(ctx, &allResults)
 
 	if err != nil {
-		log.Warn(ctx, "failed to get top models for API key", log.Cause(err))
-		return []*ModelTokenUsageStats{}
+		log.Warn(ctx, "failed to get top models for API keys", log.Cause(err))
+		return make(map[int][]*ModelTokenUsageStats)
 	}
 
-	return lo.Map(modelResults, func(item modelStats, _ int) *ModelTokenUsageStats {
-		return &ModelTokenUsageStats{
-			ModelID:      item.ModelID,
-			InputTokens:  item.InputTokens,
-			OutputTokens: item.OutputTokens,
-			CachedTokens: item.CachedTokens,
+	// Group by API key and take top 3 per key
+	resultMap := make(map[int][]*ModelTokenUsageStats)
+	for _, result := range allResults {
+		if len(resultMap[result.APIKeyID]) < 3 {
+			resultMap[result.APIKeyID] = append(resultMap[result.APIKeyID], &ModelTokenUsageStats{
+				ModelID:      result.ModelID,
+				InputTokens:  safeIntFromInt64(result.InputTokens),
+				OutputTokens: safeIntFromInt64(result.OutputTokens),
+				CachedTokens: safeIntFromInt64(result.CachedTokens),
+			})
 		}
-	})
+	}
+
+	return resultMap
 }
