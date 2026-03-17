@@ -24,7 +24,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const [chartOpen, setChartOpen] = React.useState(false);
 
   // Don't show menu if user has no permissions
-  if (!apiKeyPermissions.canWrite) {
+  if (!apiKeyPermissions.canRead && !apiKeyPermissions.canWrite) {
     return null;
   }
 
@@ -71,40 +71,44 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <BarChart3 className='mr-2 h-4 w-4' />
             {t('apikeys.actions.viewTokenChart')}
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleEdit(apiKey)}>
-            <IconEdit className='mr-2 h-4 w-4' />
-            {t('common.actions.edit')}
-          </DropdownMenuItem>
-          {apiKey.type !== 'service_account' && (
-            <DropdownMenuItem onClick={() => handleProfiles(apiKey)}>
-              <IconSettings className='mr-2 h-4 w-4' />
-              {t('apikeys.actions.profiles')}
-            </DropdownMenuItem>
-          )}
-          {apiKey.status !== 'archived' && (
-            <DropdownMenuItem
-              onClick={() => handleStatusChange(apiKey)}
-              className={apiKey.status === 'enabled' ? 'text-orange-600' : 'text-green-600'}
-            >
-              {apiKey.status === 'enabled' ? (
-                <>
-                  <IconUserOff className='mr-2 h-4 w-4' />
-                  {t('common.buttons.disable')}
-                </>
-              ) : (
-                <>
-                  <IconUserCheck className='mr-2 h-4 w-4' />
-                  {t('common.buttons.enable')}
-                </>
+          {apiKeyPermissions.canWrite && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleEdit(apiKey)}>
+                <IconEdit className='mr-2 h-4 w-4' />
+                {t('common.actions.edit')}
+              </DropdownMenuItem>
+              {apiKey.type !== 'service_account' && (
+                <DropdownMenuItem onClick={() => handleProfiles(apiKey)}>
+                  <IconSettings className='mr-2 h-4 w-4' />
+                  {t('apikeys.actions.profiles')}
+                </DropdownMenuItem>
               )}
-            </DropdownMenuItem>
-          )}
-          {apiKey.status !== 'archived' && (
-            <DropdownMenuItem onClick={() => handleArchive(apiKey)} className='text-orange-600'>
-              <IconArchive className='mr-2 h-4 w-4' />
-              {t('common.buttons.archive')}
-            </DropdownMenuItem>
+              {apiKey.status !== 'archived' && (
+                <DropdownMenuItem
+                  onClick={() => handleStatusChange(apiKey)}
+                  className={apiKey.status === 'enabled' ? 'text-orange-600' : 'text-green-600'}
+                >
+                  {apiKey.status === 'enabled' ? (
+                    <>
+                      <IconUserOff className='mr-2 h-4 w-4' />
+                      {t('common.buttons.disable')}
+                    </>
+                  ) : (
+                    <>
+                      <IconUserCheck className='mr-2 h-4 w-4' />
+                      {t('common.buttons.enable')}
+                    </>
+                  )}
+                </DropdownMenuItem>
+              )}
+              {apiKey.status !== 'archived' && (
+                <DropdownMenuItem onClick={() => handleArchive(apiKey)} className='text-orange-600'>
+                  <IconArchive className='mr-2 h-4 w-4' />
+                  {t('common.buttons.archive')}
+                </DropdownMenuItem>
+              )}
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

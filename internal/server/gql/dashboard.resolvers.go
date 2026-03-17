@@ -407,7 +407,7 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 // APIKeyTokenUsageStats is the resolver for the apiKeyTokenUsageStats field.
 // Aggregates input, output, and cached tokens per API key for the selected time range.
 func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKeyTokenUsageStatsInput) ([]*APIKeyTokenUsageStats, error) {
-	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadAPIKeys)
 
 	query := r.client.UsageLog.Query().
 		Where(usagelog.APIKeyIDNotNil())
