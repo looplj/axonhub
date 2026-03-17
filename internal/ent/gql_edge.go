@@ -226,6 +226,14 @@ func (_m *DataStorage) Executions(
 	return _m.QueryExecutions().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *OIDCIdentity) User(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.UserOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryUser().Only(ctx)
+	}
+	return result, err
+}
+
 func (_m *Project) Users(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserOrder, where *UserWhereInput,
 ) (*UserConnection, error) {
@@ -774,6 +782,27 @@ func (_m *User) ChannelOverrideTemplates(
 	return _m.QueryChannelOverrideTemplates().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *User) OidcIdentities(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *OIDCIdentityOrder, where *OIDCIdentityWhereInput,
+) (*OIDCIdentityConnection, error) {
+	opts := []OIDCIdentityPaginateOption{
+		WithOIDCIdentityOrder(orderBy),
+		WithOIDCIdentityFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	if nodes, err := _m.NamedOidcIdentities(alias); err == nil || hasTotalCount {
+		pager, err := newOIDCIdentityPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &OIDCIdentityConnection{Edges: []*OIDCIdentityEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryOidcIdentities().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (_m *User) ProjectUsers(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserProjectOrder, where *UserProjectWhereInput,
 ) (*UserProjectConnection, error) {
@@ -782,7 +811,7 @@ func (_m *User) ProjectUsers(
 		WithUserProjectFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
 	if nodes, err := _m.NamedProjectUsers(alias); err == nil || hasTotalCount {
 		pager, err := newUserProjectPager(opts, last != nil)
 		if err != nil {
@@ -803,7 +832,7 @@ func (_m *User) UserRoles(
 		WithUserRoleFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[6][alias]
 	if nodes, err := _m.NamedUserRoles(alias); err == nil || hasTotalCount {
 		pager, err := newUserRolePager(opts, last != nil)
 		if err != nil {

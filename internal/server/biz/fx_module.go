@@ -26,6 +26,7 @@ var Module = fx.Module("biz",
 	fx.Provide(NewPromptService),
 	fx.Provide(NewQuotaService),
 	fx.Provide(NewProviderQuotaService),
+	fx.Provide(NewOIDCService),
 	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {

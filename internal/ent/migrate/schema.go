@@ -284,6 +284,52 @@ var (
 			},
 		},
 	}
+	// OidcIdentitiesColumns holds the columns for the "oidc_identities" table.
+	OidcIdentitiesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "issuer", Type: field.TypeString},
+		{Name: "subject", Type: field.TypeString},
+		{Name: "email", Type: field.TypeString, Nullable: true},
+		{Name: "idp_name", Type: field.TypeString, Nullable: true},
+		{Name: "last_login_at", Type: field.TypeTime, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt},
+		{Name: "user_oidc_identities", Type: field.TypeInt, Nullable: true},
+	}
+	// OidcIdentitiesTable holds the schema information for the "oidc_identities" table.
+	OidcIdentitiesTable = &schema.Table{
+		Name:       "oidc_identities",
+		Columns:    OidcIdentitiesColumns,
+		PrimaryKey: []*schema.Column{OidcIdentitiesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "oidc_identities_users_user",
+				Columns:    []*schema.Column{OidcIdentitiesColumns[9]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "oidc_identities_users_oidc_identities",
+				Columns:    []*schema.Column{OidcIdentitiesColumns[10]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "oidc_identities_by_issuer_subject",
+				Unique:  true,
+				Columns: []*schema.Column{OidcIdentitiesColumns[4], OidcIdentitiesColumns[5]},
+			},
+			{
+				Name:    "oidc_identities_by_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{OidcIdentitiesColumns[9]},
+			},
+		},
+	}
 	// ProjectsColumns holds the columns for the "projects" table.
 	ProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -891,6 +937,7 @@ var (
 		ChannelProbesTable,
 		DataStoragesTable,
 		ModelsTable,
+		OidcIdentitiesTable,
 		ProjectsTable,
 		PromptsTable,
 		ProviderQuotaStatusTable,
@@ -915,6 +962,8 @@ func init() {
 	ChannelModelPriceVersionsTable.ForeignKeys[0].RefTable = ChannelModelPricesTable
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable
+	OidcIdentitiesTable.ForeignKeys[0].RefTable = UsersTable
+	OidcIdentitiesTable.ForeignKeys[1].RefTable = UsersTable
 	ProviderQuotaStatusTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable

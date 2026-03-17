@@ -34,6 +34,7 @@ type Handlers struct {
 	Antigravity    *api.AntigravityHandlers
 	Copilot        *api.CopilotHandlers
 	RequestContent *api.RequestContentHandlers
+	OIDC           *api.OIDCHandlers
 }
 
 type Services struct {
@@ -83,6 +84,8 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		unSecureAdminGroup.POST("/system/initialize", handlers.System.InitializeSystem)
 		// User Login - DO NOT AUTH
 		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
+
+		handlers.OIDC.RegisterRoutes(unSecureAdminGroup)
 	}
 
 	adminGroup := server.Group("/admin", middleware.WithJWTAuth(services.AuthService), middleware.WithProjectID())
