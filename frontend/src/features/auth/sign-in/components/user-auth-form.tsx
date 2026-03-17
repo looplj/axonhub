@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/password-input';
-import { useSignIn } from '@/features/auth/data/auth';
+import { useSignIn, useOIDCProviders, useOIDCAuthorize } from '@/features/auth/data/auth';
+import { LogIn } from 'lucide-react';
 
 type UserAuthFormProps = HTMLAttributes<HTMLFormElement>;
 
@@ -25,6 +26,8 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const { t } = useTranslation();
   const signInMutation = useSignIn();
   const [rememberMe, setRememberMe] = useState(false);
+  const { data: oidcProviders, isLoading: isLoadingProviders } = useOIDCProviders();
+  const oidcAuthorizeMutation = useOIDCAuthorize();
 
   const formSchema = createFormSchema(t);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -123,6 +126,40 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
           )}
         </Button>
       </form>
+        
+        {oidcProviders && oidcProviders.length > 0 && (
+          <div className='mt-6'>
+            <div className='relative'>
+              <div className='absolute inset-0 flex items-center'>
+                <span className='w-full border-t border-slate-300' />
+              </div>
+              <div className='relative flex justify-center text-xs uppercase'>
+                <span className='bg-white px-2 text-slate-500'>Or continue with</span>
+              </div>
+            </div>
+
+            <div className='mt-6 grid gap-2'>
+              {oidcProviders.map((provider) => (
+                <Button
+                  key={provider.name}
+                  type='button'
+                  variant='outline'
+                  className='w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50'
+                  disabled={oidcAuthorizeMutation.isPending}
+                  onClick={() => oidcAuthorizeMutation.mutate(provider.name)}
+                >
+                  {oidcAuthorizeMutation.isPending && oidcAuthorizeMutation.variables === provider.name ? (
+                    <div className='mr-2 h-4 w-4 animate-spin rounded-full border-2 border-slate-600/30 border-t-slate-600'></div>
+                  ) : (
+                    <LogIn className='mr-2 h-4 w-4' />
+                  )}
+                  {provider.displayName || provider.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
     </Form>
   );
 }

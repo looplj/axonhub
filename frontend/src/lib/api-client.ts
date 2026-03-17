@@ -143,4 +143,21 @@ export const authApi = {
       method: 'POST',
       body: data,
     }),
+
+  getOIDCProviders: (): Promise<{ data: { name: string; displayName: string }[] }> =>
+    apiRequest('/admin/auth/oidc/providers'),
+    
+  getOIDCAuthorizeURL: (provider: string): Promise<{ data: { url: string; state: string } }> =>
+    apiRequest(`/admin/auth/oidc/authorize/${provider}`),
+    
+  exchangeOIDCCode: (code: string): Promise<{
+    data: {
+      user: AuthUser;
+      token: string;
+    }
+  }> =>
+    apiRequest('/admin/auth/oidc/exchange', {
+      method: 'POST',
+      body: { code },
+    }),
 };
