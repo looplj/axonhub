@@ -174,7 +174,7 @@ func (h *CopilotHandlers) StartOAuth(c *gin.Context) {
 	// Create HTTP client with proxy if provided
 	httpClient := h.httpClient
 	if req.Proxy != nil && req.Proxy.Type == httpclient.ProxyTypeURL && req.Proxy.URL != "" {
-		httpClient = httpclient.NewHttpClientWithProxy(req.Proxy)
+		httpClient = h.httpClient.WithProxy(req.Proxy)
 	}
 
 	// Step 1: Request device code from GitHub
@@ -294,7 +294,7 @@ func (h *CopilotHandlers) PollOAuth(c *gin.Context) {
 	// Create HTTP client with proxy if provided
 	httpClient := h.httpClient
 	if req.Proxy != nil && req.Proxy.Type == httpclient.ProxyTypeURL && req.Proxy.URL != "" {
-		httpClient = httpclient.NewHttpClientWithProxy(req.Proxy)
+		httpClient = h.httpClient.WithProxy(req.Proxy)
 	}
 
 	// Step 2: Poll for access token

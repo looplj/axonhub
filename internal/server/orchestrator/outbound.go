@@ -525,7 +525,11 @@ func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Exec
 
 	// 1. Apply proxy settings. Test proxy override takes precedence over channel settings.
 	if p.state.Proxy != nil {
-		customizedExecutor = httpclient.NewHttpClientWithProxy(p.state.Proxy)
+		if channel.HTTPClient != nil {
+			customizedExecutor = channel.HTTPClient.WithProxy(p.state.Proxy)
+		} else {
+			customizedExecutor = httpclient.NewHttpClientWithProxy(p.state.Proxy)
+		}
 	} else if channel.HTTPClient != nil {
 		// Use the channel's own HTTP client, which is pre-configured with its proxy settings.
 		customizedExecutor = channel.HTTPClient

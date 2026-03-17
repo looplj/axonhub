@@ -271,6 +271,16 @@ func TestHttpClientImpl_DoStream(t *testing.T) {
 	}
 }
 
+func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(t *testing.T) {
+	hc := NewHttpClient(WithInsecureSkipVerify(true))
+
+	tr, ok := hc.GetNativeClient().Transport.(*http.Transport)
+	require.True(t, ok)
+	require.NotNil(t, tr.Proxy)
+	require.NotNil(t, tr.TLSClientConfig)
+	require.True(t, tr.TLSClientConfig.InsecureSkipVerify)
+}
+
 func TestHttpClientImpl_buildHttpRequest(t *testing.T) {
 	client := &HttpClient{
 		client: &http.Client{Timeout: 5 * time.Second},

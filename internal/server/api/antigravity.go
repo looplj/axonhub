@@ -211,7 +211,7 @@ func (h *AntigravityHandlers) Exchange(c *gin.Context) {
 	// Create HTTP client with proxy if provided
 	httpClient := h.httpClient
 	if req.Proxy != nil && req.Proxy.Type == httpclient.ProxyTypeURL && req.Proxy.URL != "" {
-		httpClient = httpclient.NewHttpClientWithProxy(req.Proxy)
+		httpClient = h.httpClient.WithProxy(req.Proxy)
 	}
 
 	tokenProvider := antigravity.NewTokenProvider(oauth.TokenProviderParams{

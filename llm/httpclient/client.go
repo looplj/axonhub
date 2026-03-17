@@ -3,6 +3,7 @@ package httpclient
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -19,10 +20,30 @@ import (
 type HttpClient struct {
 	client      *http.Client
 	proxyConfig *ProxyConfig
+	opts        []ClientOption
+}
+
+// ClientOption configures an HttpClient.
+type ClientOption func(*clientOptions)
+
+type clientOptions struct {
+	insecureSkipVerify bool
+}
+
+// WithInsecureSkipVerify disables TLS certificate verification.
+func WithInsecureSkipVerify(skip bool) ClientOption {
+	return func(o *clientOptions) {
+		o.insecureSkipVerify = skip
+	}
 }
 
 // NewHttpClientWithProxy creates a new HTTP client with proxy configuration.
-func NewHttpClientWithProxy(proxyConfig *ProxyConfig) *HttpClient {
+func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *HttpClient {
+	var options clientOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	transport := &http.Transport{
 		Proxy: getProxyFunc(proxyConfig),
 		DialContext: (&net.Dialer{
@@ -36,12 +57,25 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig) *HttpClient {
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
+	if options.insecureSkipVerify {
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // User-configured option for self-signed certificates
+		}
+	}
+
 	return &HttpClient{
 		client: &http.Client{
 			Transport: transport,
 		},
 		proxyConfig: proxyConfig,
+		opts:        opts,
 	}
+}
+
+// WithProxy returns a new HttpClient that uses the given proxy configuration,
+// while preserving all other options (e.g., InsecureSkipVerify) from the original client.
+func (hc *HttpClient) WithProxy(proxyConfig *ProxyConfig) *HttpClient {
+	return NewHttpClientWithProxy(proxyConfig, hc.opts...)
 }
 
 // GetNativeClient returns the underlying *http.Client for advanced use cases.
@@ -97,9 +131,45 @@ func getProxyFunc(config *ProxyConfig) func(*http.Request) (*url.URL, error) {
 }
 
 // NewHttpClient creates a new HTTP client.
-func NewHttpClient() *HttpClient {
+func NewHttpClient(opts ...ClientOption) *HttpClient {
+	var options clientOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	client := &http.Client{}
+	if options.insecureSkipVerify {
+		var transport *http.Transport
+		if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
+			transport = defaultTransport.Clone()
+		} else {
+			// Fall back to a transport close to http.DefaultTransport when it has been replaced.
+			transport = (&http.Transport{
+				Proxy: getProxyFunc(nil),
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          100,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			})
+		}
+
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{}
+		} else {
+			transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+		}
+		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
+		client.Transport = transport
+	}
+
 	return &HttpClient{
-		client: &http.Client{},
+		client: client,
+		opts:   opts,
 	}
 }
 

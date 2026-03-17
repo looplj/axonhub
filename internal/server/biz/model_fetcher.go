@@ -320,11 +320,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		req.Headers.Set("Authorization", "Bearer "+apiKey)
 	}
 
-	var httpClient *httpclient.HttpClient
+	httpClient := f.httpClient
 	if proxyConfig != nil {
-		httpClient = httpclient.NewHttpClientWithProxy(proxyConfig)
-	} else {
-		httpClient = f.httpClient
+		httpClient = f.httpClient.WithProxy(proxyConfig)
 	}
 
 	if channelType.IsGemini() {

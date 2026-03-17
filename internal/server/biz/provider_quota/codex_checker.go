@@ -38,12 +38,12 @@ type CodeUsageWindow struct {
 }
 
 type CodexQuotaChecker struct {
-	httpClient *http.Client
+	httpClient *httpclient.HttpClient
 }
 
-func NewCodexQuotaChecker() *CodexQuotaChecker {
+func NewCodexQuotaChecker(httpClient *httpclient.HttpClient) *CodexQuotaChecker {
 	return &CodexQuotaChecker{
-		httpClient: &http.Client{},
+		httpClient: httpClient,
 	}
 }
 
@@ -78,15 +78,12 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 	}
 
 	// Use proxy-configured HTTP client if available
-	var client *http.Client
+	hc := c.httpClient
 	if ch.Settings != nil && ch.Settings.Proxy != nil {
-		// Create HTTP client with proxy support
-		wrappedClient := httpclient.NewHttpClientWithProxy(ch.Settings.Proxy)
-		client = wrappedClient.GetNativeClient()
-	} else {
-		// Use default HTTP client
-		client = c.httpClient
+		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
 	}
+
+	client := hc.GetNativeClient()
 
 	// Build request
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://chatgpt.com/backend-api/wham/usage", nil)
