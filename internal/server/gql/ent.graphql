@@ -3789,6 +3789,10 @@ type RequestExecution implements Node {
   responseBody: JSONRawMessage @goField(forceResolver: true)
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
   errorMessage: String
+  """
+  HTTP status code from the upstream provider
+  """
+  responseStatusCode: Int
   status: RequestExecutionStatus!
   stream: Boolean!
   metricsLatencyMs: Int
@@ -4006,6 +4010,19 @@ input RequestExecutionWhereInput {
   errorMessageNotNil: Boolean
   errorMessageEqualFold: String
   errorMessageContainsFold: String
+  """
+  response_status_code field predicates
+  """
+  responseStatusCode: Int
+  responseStatusCodeNEQ: Int
+  responseStatusCodeIn: [Int!]
+  responseStatusCodeNotIn: [Int!]
+  responseStatusCodeGT: Int
+  responseStatusCodeGTE: Int
+  responseStatusCodeLT: Int
+  responseStatusCodeLTE: Int
+  responseStatusCodeIsNil: Boolean
+  responseStatusCodeNotNil: Boolean
   """
   status field predicates
   """

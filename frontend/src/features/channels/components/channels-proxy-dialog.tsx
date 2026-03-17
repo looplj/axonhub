@@ -18,6 +18,7 @@ import { useUpdateChannel, useTestChannel } from '../data/channels';
 import { Channel } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { ErrorDisplay } from '../utils/error-formatter';
+import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
 
 interface Props {
   open: boolean;
@@ -61,6 +62,8 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
   const updateChannel = useUpdateChannel();
   const testChannel = useTestChannel();
   const [isTesting, setIsTesting] = useState(false);
+  const { data: proxyPresets = [] } = useProxyPresets();
+  const saveProxyPreset = useSaveProxyPreset();
   const [testResult, setTestResult] = useState<{ success: boolean; message?: string | null; latency?: number } | null>(null);
 
   const form = useForm<ProxyConfig>({
@@ -74,6 +77,16 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
   });
 
   const selectedProxyType = form.watch('type');
+
+  const handlePresetSelect = (presetUrl: string) => {
+    const preset = proxyPresets.find((p) => p.url === presetUrl);
+    if (preset) {
+      form.setValue('type', ProxyType.URL);
+      form.setValue('url', preset.url);
+      form.setValue('username', preset.username || '');
+      form.setValue('password', preset.password || '');
+    }
+  };
 
   const onSubmit = async (values: ProxyConfig) => {
     try {
@@ -98,6 +111,10 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
         },
       });
       toast.success(t('channels.messages.updateSuccess'));
+      // Auto-save to proxy presets
+      if (values.type === ProxyType.URL && values.url) {
+        saveProxyPreset.mutate({ url: values.url, username: values.username || undefined, password: values.password || undefined });
+      }
       onOpenChange(false);
     } catch (_error) {
       toast.error(t('channels.messages.updateError'));
@@ -199,6 +216,26 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
                       </FormItem>
                     )}
                   />
+
+                  {selectedProxyType === ProxyType.URL && proxyPresets.length > 0 && (
+                    <FormItem>
+                      <FormLabel>{t('channels.dialogs.proxy.presets.label')}</FormLabel>
+                      <Select onValueChange={handlePresetSelect}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('channels.dialogs.proxy.presets.placeholder')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {proxyPresets.map((preset) => (
+                            <SelectItem key={preset.url} value={preset.url}>
+                              {preset.url}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
 
                   {selectedProxyType === ProxyType.URL && (
                     <>

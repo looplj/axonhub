@@ -245,5 +245,14 @@
   "quota.window.5h": "5小时窗口",
   "quota.window.7d": "7天窗口",
   "quota.window.none": "无",
-  "quota.unknown": "未知"
+  "quota.unknown": "未知",
+  "system.tabs.proxy": "代理",
+  "system.proxy.title": "代理预设",
+  "system.proxy.description": "管理已保存的代理服务器配置。这些预设可在配置渠道时快速选择。",
+  "system.proxy.empty": "暂无已保存的代理预设。在为渠道配置自定义代理时，代理配置将自动保存到此处。",
+  "system.proxy.deleteConfirm": "确定要删除此代理预设吗？",
+  "system.proxy.deleteSuccess": "代理预设已删除",
+  "system.proxy.columns.url": "代理 URL",
+  "system.proxy.columns.username": "用户名",
+  "system.proxy.columns.actions": "操作"
 }

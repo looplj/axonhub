@@ -14773,6 +14773,8 @@ type RequestExecutionMutation struct {
 	response_chunks                   *[]objects.JSONRawMessage
 	appendresponse_chunks             []objects.JSONRawMessage
 	error_message                     *string
+	response_status_code              *int
+	addresponse_status_code           *int
 	status                            *requestexecution.Status
 	stream                            *bool
 	metrics_latency_ms                *int64
@@ -15504,6 +15506,76 @@ func (m *RequestExecutionMutation) ResetErrorMessage() {
 	delete(m.clearedFields, requestexecution.FieldErrorMessage)
 }
 
+// SetResponseStatusCode sets the "response_status_code" field.
+func (m *RequestExecutionMutation) SetResponseStatusCode(i int) {
+	m.response_status_code = &i
+	m.addresponse_status_code = nil
+}
+
+// ResponseStatusCode returns the value of the "response_status_code" field in the mutation.
+func (m *RequestExecutionMutation) ResponseStatusCode() (r int, exists bool) {
+	v := m.response_status_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResponseStatusCode returns the old "response_status_code" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldResponseStatusCode(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResponseStatusCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResponseStatusCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResponseStatusCode: %w", err)
+	}
+	return oldValue.ResponseStatusCode, nil
+}
+
+// AddResponseStatusCode adds i to the "response_status_code" field.
+func (m *RequestExecutionMutation) AddResponseStatusCode(i int) {
+	if m.addresponse_status_code != nil {
+		*m.addresponse_status_code += i
+	} else {
+		m.addresponse_status_code = &i
+	}
+}
+
+// AddedResponseStatusCode returns the value that was added to the "response_status_code" field in this mutation.
+func (m *RequestExecutionMutation) AddedResponseStatusCode() (r int, exists bool) {
+	v := m.addresponse_status_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearResponseStatusCode clears the value of the "response_status_code" field.
+func (m *RequestExecutionMutation) ClearResponseStatusCode() {
+	m.response_status_code = nil
+	m.addresponse_status_code = nil
+	m.clearedFields[requestexecution.FieldResponseStatusCode] = struct{}{}
+}
+
+// ResponseStatusCodeCleared returns if the "response_status_code" field was cleared in this mutation.
+func (m *RequestExecutionMutation) ResponseStatusCodeCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldResponseStatusCode]
+	return ok
+}
+
+// ResetResponseStatusCode resets all changes to the "response_status_code" field.
+func (m *RequestExecutionMutation) ResetResponseStatusCode() {
+	m.response_status_code = nil
+	m.addresponse_status_code = nil
+	delete(m.clearedFields, requestexecution.FieldResponseStatusCode)
+}
+
 // SetStatus sets the "status" field.
 func (m *RequestExecutionMutation) SetStatus(r requestexecution.Status) {
 	m.status = &r
@@ -15896,7 +15968,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 19)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -15935,6 +16007,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.error_message != nil {
 		fields = append(fields, requestexecution.FieldErrorMessage)
+	}
+	if m.response_status_code != nil {
+		fields = append(fields, requestexecution.FieldResponseStatusCode)
 	}
 	if m.status != nil {
 		fields = append(fields, requestexecution.FieldStatus)
@@ -15985,6 +16060,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ResponseChunks()
 	case requestexecution.FieldErrorMessage:
 		return m.ErrorMessage()
+	case requestexecution.FieldResponseStatusCode:
+		return m.ResponseStatusCode()
 	case requestexecution.FieldStatus:
 		return m.Status()
 	case requestexecution.FieldStream:
@@ -16030,6 +16107,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldResponseChunks(ctx)
 	case requestexecution.FieldErrorMessage:
 		return m.OldErrorMessage(ctx)
+	case requestexecution.FieldResponseStatusCode:
+		return m.OldResponseStatusCode(ctx)
 	case requestexecution.FieldStatus:
 		return m.OldStatus(ctx)
 	case requestexecution.FieldStream:
@@ -16140,6 +16219,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetErrorMessage(v)
 		return nil
+	case requestexecution.FieldResponseStatusCode:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResponseStatusCode(v)
+		return nil
 	case requestexecution.FieldStatus:
 		v, ok := value.(requestexecution.Status)
 		if !ok {
@@ -16186,6 +16272,9 @@ func (m *RequestExecutionMutation) AddedFields() []string {
 	if m.addproject_id != nil {
 		fields = append(fields, requestexecution.FieldProjectID)
 	}
+	if m.addresponse_status_code != nil {
+		fields = append(fields, requestexecution.FieldResponseStatusCode)
+	}
 	if m.addmetrics_latency_ms != nil {
 		fields = append(fields, requestexecution.FieldMetricsLatencyMs)
 	}
@@ -16202,6 +16291,8 @@ func (m *RequestExecutionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case requestexecution.FieldProjectID:
 		return m.AddedProjectID()
+	case requestexecution.FieldResponseStatusCode:
+		return m.AddedResponseStatusCode()
 	case requestexecution.FieldMetricsLatencyMs:
 		return m.AddedMetricsLatencyMs()
 	case requestexecution.FieldMetricsFirstTokenLatencyMs:
@@ -16221,6 +16312,13 @@ func (m *RequestExecutionMutation) AddField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddProjectID(v)
+		return nil
+	case requestexecution.FieldResponseStatusCode:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddResponseStatusCode(v)
 		return nil
 	case requestexecution.FieldMetricsLatencyMs:
 		v, ok := value.(int64)
@@ -16262,6 +16360,9 @@ func (m *RequestExecutionMutation) ClearedFields() []string {
 	if m.FieldCleared(requestexecution.FieldErrorMessage) {
 		fields = append(fields, requestexecution.FieldErrorMessage)
 	}
+	if m.FieldCleared(requestexecution.FieldResponseStatusCode) {
+		fields = append(fields, requestexecution.FieldResponseStatusCode)
+	}
 	if m.FieldCleared(requestexecution.FieldMetricsLatencyMs) {
 		fields = append(fields, requestexecution.FieldMetricsLatencyMs)
 	}
@@ -16302,6 +16403,9 @@ func (m *RequestExecutionMutation) ClearField(name string) error {
 		return nil
 	case requestexecution.FieldErrorMessage:
 		m.ClearErrorMessage()
+		return nil
+	case requestexecution.FieldResponseStatusCode:
+		m.ClearResponseStatusCode()
 		return nil
 	case requestexecution.FieldMetricsLatencyMs:
 		m.ClearMetricsLatencyMs()
@@ -16358,6 +16462,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldErrorMessage:
 		m.ResetErrorMessage()
+		return nil
+	case requestexecution.FieldResponseStatusCode:
+		m.ResetResponseStatusCode()
 		return nil
 	case requestexecution.FieldStatus:
 		m.ResetStatus()

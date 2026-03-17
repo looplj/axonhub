@@ -90,7 +90,7 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 			perf: &PerformanceRecord{
 				ChannelID:       ch.ID,
 				APIKey:          "key1",
-				ErrorStatusCode: 401,
+				ResponseStatusCode: 401,
 				Success:         false,
 			},
 			expectedDisabled: false,
@@ -111,7 +111,7 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 			perf: &PerformanceRecord{
 				ChannelID:       ch.ID,
 				APIKey:          "key1",
-				ErrorStatusCode: 401,
+				ResponseStatusCode: 401,
 				Success:         false,
 			},
 			expectedDisabled: false,
@@ -134,7 +134,7 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 			perf: &PerformanceRecord{
 				ChannelID:       ch.ID,
 				APIKey:          "key1",
-				ErrorStatusCode: 401,
+				ResponseStatusCode: 401,
 				Success:         false,
 			},
 			expectedDisabled: true,
@@ -165,7 +165,7 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 			perf: &PerformanceRecord{
 				ChannelID:       ch.ID,
 				APIKey:          "key1",
-				ErrorStatusCode: 500,
+				ResponseStatusCode: 500,
 				Success:         false,
 			},
 			expectedDisabled: false,
@@ -188,7 +188,7 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 			perf: &PerformanceRecord{
 				ChannelID:       ch.ID,
 				APIKey:          "key2",
-				ErrorStatusCode: 401,
+				ResponseStatusCode: 401,
 				Success:         false,
 			},
 			expectedDisabled: false,
@@ -258,7 +258,7 @@ func TestChannelService_checkAndHandleChannelError(t *testing.T) {
 			},
 			perf: &PerformanceRecord{
 				ChannelID:       ch.ID,
-				ErrorStatusCode: 401,
+				ResponseStatusCode: 401,
 				Success:         false,
 			},
 			expectedDisabled: false,
@@ -284,7 +284,7 @@ func TestChannelService_checkAndHandleChannelError(t *testing.T) {
 			},
 			perf: &PerformanceRecord{
 				ChannelID:       ch.ID,
-				ErrorStatusCode: 401,
+				ResponseStatusCode: 401,
 				Success:         false,
 			},
 			expectedDisabled: true,
@@ -442,7 +442,7 @@ func TestChannelService_MultipleStatusCodes(t *testing.T) {
 	perf401 := &PerformanceRecord{
 		ChannelID:       ch.ID,
 		APIKey:          "key1",
-		ErrorStatusCode: 401,
+		ResponseStatusCode: 401,
 		Success:         false,
 	}
 
@@ -461,7 +461,7 @@ func TestChannelService_MultipleStatusCodes(t *testing.T) {
 	perf403 := &PerformanceRecord{
 		ChannelID:       ch.ID,
 		APIKey:          "key2",
-		ErrorStatusCode: 403,
+		ResponseStatusCode: 403,
 		Success:         false,
 	}
 
@@ -510,7 +510,7 @@ func TestChannelService_ConcurrentErrorTracking(t *testing.T) {
 			perf := &PerformanceRecord{
 				ChannelID:       ch.ID,
 				APIKey:          "key1",
-				ErrorStatusCode: 401,
+				ResponseStatusCode: 401,
 				Success:         false,
 			}
 			svc.checkAndHandleAPIKeyError(ctx, perf, policy)

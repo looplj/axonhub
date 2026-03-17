@@ -194,6 +194,18 @@ input UpdateVideoStorageSettingsInput {
   scanLimit: Int
 }
 
+type ProxyPreset {
+  url: String!
+  username: String
+  password: String
+}
+
+input SaveProxyPresetInput {
+  url: String!
+  username: String
+  password: String
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
@@ -208,6 +220,8 @@ extend type Mutation {
   updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
   triggerGcCleanup: Boolean!
+  saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
+  deleteProxyPreset(url: String!): Boolean!
 }
 
 type SystemVersion {
@@ -239,4 +253,5 @@ extend type Query {
   systemChannelSettings: SystemChannelSettings!
   systemGeneralSettings: SystemGeneralSettings!
   videoStorageSettings: VideoStorageSettings!
+  proxyPresets: [ProxyPreset!]!
 }

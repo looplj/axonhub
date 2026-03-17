@@ -1018,3 +1018,90 @@ export function useTriggerAutoBackup() {
     },
   });
 }
+
+// Proxy Presets
+const PROXY_PRESETS_QUERY = `
+  query ProxyPresets {
+    proxyPresets {
+      url
+      username
+      password
+    }
+  }
+`;
+
+const SAVE_PROXY_PRESET_MUTATION = `
+  mutation SaveProxyPreset($input: SaveProxyPresetInput!) {
+    saveProxyPreset(input: $input)
+  }
+`;
+
+const DELETE_PROXY_PRESET_MUTATION = `
+  mutation DeleteProxyPreset($url: String!) {
+    deleteProxyPreset(url: $url)
+  }
+`;
+
+export interface ProxyPreset {
+  url: string;
+  username?: string;
+  password?: string;
+}
+
+export interface SaveProxyPresetInput {
+  url: string;
+  username?: string;
+  password?: string;
+}
+
+export function useProxyPresets() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['proxyPresets'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ proxyPresets: ProxyPreset[] }>(PROXY_PRESETS_QUERY);
+        return data.proxyPresets;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useSaveProxyPreset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: SaveProxyPresetInput) => {
+      const data = await graphqlRequest<{ saveProxyPreset: boolean }>(SAVE_PROXY_PRESET_MUTATION, { input });
+      return data.saveProxyPreset;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proxyPresets'] });
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+export function useDeleteProxyPreset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (url: string) => {
+      const data = await graphqlRequest<{ deleteProxyPreset: boolean }>(DELETE_PROXY_PRESET_MUTATION, { url });
+      return data.deleteProxyPreset;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proxyPresets'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}

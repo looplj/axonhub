@@ -514,6 +514,12 @@ models:
   UpdateVideoStorageSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.VideoStorageSettings
+  ProxyPreset:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ProxyPreset
+  SaveProxyPresetInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ProxyPreset
   ChannelProbeSetting:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ChannelProbeSetting

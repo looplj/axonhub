@@ -600,16 +600,22 @@ func (s *RequestService) UpdateRequestExecutionCanceled(
 	executionID int,
 	errorMsg string,
 ) error {
-	return s.UpdateRequestExecutionStatus(ctx, executionID, requestexecution.StatusCanceled, errorMsg)
+	return s.UpdateRequestExecutionStatus(ctx, executionID, requestexecution.StatusCanceled, errorMsg, nil)
 }
 
-// UpdateRequestExecutionFailed updates request execution status to failed with error message.
+// ExecutionErrorInfo holds error details for a failed request execution.
+type ExecutionErrorInfo struct {
+	StatusCode *int
+}
+
+// UpdateRequestExecutionFailed updates request execution status to failed with error message and optional error details.
 func (s *RequestService) UpdateRequestExecutionFailed(
 	ctx context.Context,
 	executionID int,
 	errorMsg string,
+	errorInfo *ExecutionErrorInfo,
 ) error {
-	return s.UpdateRequestExecutionStatus(ctx, executionID, requestexecution.StatusFailed, errorMsg)
+	return s.UpdateRequestExecutionStatus(ctx, executionID, requestexecution.StatusFailed, errorMsg, errorInfo)
 }
 
 // UpdateRequestExecutionStatus updates request execution status to the provided value (e.g., canceled or failed), with optional error message.
@@ -618,6 +624,7 @@ func (s *RequestService) UpdateRequestExecutionStatus(
 	executionID int,
 	status requestexecution.Status,
 	errorMsg string,
+	errorInfo *ExecutionErrorInfo,
 ) error {
 	client := s.entFromContext(ctx)
 
@@ -625,6 +632,10 @@ func (s *RequestService) UpdateRequestExecutionStatus(
 		SetStatus(status)
 	if errorMsg != "" {
 		upd = upd.SetErrorMessage(errorMsg)
+	}
+
+	if errorInfo != nil && errorInfo.StatusCode != nil {
+		upd = upd.SetResponseStatusCode(*errorInfo.StatusCode)
 	}
 
 	_, err := upd.Save(ctx)
@@ -643,7 +654,7 @@ func (s *RequestService) UpdateRequestExecutionStatusFromError(ctx context.Conte
 		status = requestexecution.StatusCanceled
 	}
 
-	return s.UpdateRequestExecutionStatus(ctx, executionID, status, rawErr.Error())
+	return s.UpdateRequestExecutionStatus(ctx, executionID, status, rawErr.Error(), nil)
 }
 
 type jsonStreamEvent struct {

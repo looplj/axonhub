@@ -294,7 +294,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 			EndTime:          time.Now(),
 			Success:          false,
 			RequestCompleted: true,
-			ErrorStatusCode:  500,
+			ResponseStatusCode:  500,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}
@@ -373,7 +373,7 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 		EndTime:          time.Now(),
 		Success:          false,
 		RequestCompleted: true,
-		ErrorStatusCode:  500,
+		ResponseStatusCode:  500,
 	}
 	channelService.RecordPerformance(ctx, perf)
 
@@ -548,7 +548,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 			EndTime:          time.Now(),
 			Success:          false,
 			RequestCompleted: true,
-			ErrorStatusCode:  500,
+			ResponseStatusCode:  500,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}
