@@ -5,11 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/eko/gocache/lib/v4/store"
 	"go.uber.org/fx"
 	"golang.org/x/oauth2"
 
@@ -84,6 +85,9 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 			continue
 		}
 
+		// This redirect URI is for IdP -> backend callback handling.
+		// The backend will then issue a short-lived exchange code and redirect to
+		// the frontend callback route: /oauth/oidc/idp-callback?code=...
 		redirectURL := "/oauth/oidc/callback"
 		if numProviders > 1 {
 			redirectURL = fmt.Sprintf("/oauth/oidc/callback/%s", p.Name)
@@ -183,7 +187,7 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 
 	oauth2Token, err := p.oauth2.Exchange(ctx, code, opts...)
 	if err != nil {
-		return "", fmt.Errorf("Failed to exchange authorization code: " + err.Error())
+		return "", fmt.Errorf("failed to exchange authorization code: %w", err)
 	}
 
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
@@ -194,7 +198,7 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 	verifier := p.oidc.Verifier(&oidc.Config{ClientID: p.config.ClientID})
 	idToken, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		return "", fmt.Errorf("Failed to verify ID Token: " + err.Error())
+		return "", fmt.Errorf("failed to verify ID token: %w", err)
 	}
 
 	var claims struct {
@@ -224,7 +228,7 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 	exchangeCode := hex.EncodeToString(exchangeCodeBytes)
 
 	// Cache user ID for exchange (valid for 5 mins)
-	err = s.cache.Set(ctx, "oidc_exchange:"+exchangeCode, []byte(fmt.Sprintf("%d", userEntity.ID)))
+	err = s.cache.Set(ctx, "oidc_exchange:"+exchangeCode, []byte(fmt.Sprintf("%d", userEntity.ID)), store.WithExpiration(5*time.Minute))
 	if err != nil {
 		return "", fmt.Errorf("failed to cache exchange code: %w", err)
 	}
@@ -318,9 +322,9 @@ func (s *OIDCService) ExchangeCode(ctx context.Context, code string) (*ent.User,
 		return nil, fmt.Errorf("invalid or expired exchange code")
 	}
 
-	var userID int
-	if err := json.Unmarshal(userIDBytes, &userID); err != nil {
-		return nil, fmt.Errorf("invalid user ID format in cache")
+	userID, err := strconv.Atoi(string(userIDBytes))
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID format in cache: %w", err)
 	}
 
 	// Delete the code so it can only be used once

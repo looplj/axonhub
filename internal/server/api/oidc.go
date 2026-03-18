@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-		"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 type OIDCHandlers struct {
@@ -24,8 +24,8 @@ func (h *OIDCHandlers) RegisterRoutes(r gin.IRouter) {
 	group := r.Group("/oidc")
 	group.GET("/providers", h.GetProviders)
 	group.GET("/authorize/:provider", h.GetAuthorizeURL)
-	group.GET("/idp-callback", h.Callback)
-	group.GET("/idp-callback/:provider", h.Callback)
+	group.GET("/callback", h.Callback)
+	group.GET("/callback/:provider", h.Callback)
 	group.POST("/exchange", h.Exchange)
 }
 
@@ -83,7 +83,7 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")
 	errorDesc := c.Query("error")
-	
+
 	if errorDesc != "" {
 		c.Error(fmt.Errorf("%s", c.Query("error_description")))
 		return
@@ -99,8 +99,8 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
-	c.Redirect(http.StatusFound, "/oauth/oidc/callback?code="+exchangeCode)
+
+	c.Redirect(http.StatusFound, "/oauth/oidc/idp-callback?code="+exchangeCode)
 }
 
 func (h *OIDCHandlers) Exchange(c *gin.Context) {
@@ -108,7 +108,7 @@ func (h *OIDCHandlers) Exchange(c *gin.Context) {
 		Code string `json:"code" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(fmt.Errorf("%s", err.Error()))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
