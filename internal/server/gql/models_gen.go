@@ -36,11 +36,12 @@ type APIKeyQuotaWindow struct {
 }
 
 type APIKeyTokenUsageStats struct {
-	APIKeyID     objects.GUID            `json:"apiKeyId"`
-	InputTokens  int                     `json:"inputTokens"`
-	OutputTokens int                     `json:"outputTokens"`
-	CachedTokens int                     `json:"cachedTokens"`
-	TopModels    []*ModelTokenUsageStats `json:"topModels"`
+	APIKeyID        objects.GUID            `json:"apiKeyId"`
+	InputTokens     int                     `json:"inputTokens"`
+	OutputTokens    int                     `json:"outputTokens"`
+	CachedTokens    int                     `json:"cachedTokens"`
+	ReasoningTokens int                     `json:"reasoningTokens"`
+	TopModels       []*ModelTokenUsageStats `json:"topModels"`
 }
 
 type APIKeyTokenUsageStatsInput struct {
@@ -226,10 +227,11 @@ type ModelPerformanceStat struct {
 }
 
 type ModelTokenUsageStats struct {
-	ModelID      string `json:"modelId"`
-	InputTokens  int    `json:"inputTokens"`
-	OutputTokens int    `json:"outputTokens"`
-	CachedTokens int    `json:"cachedTokens"`
+	ModelID         string `json:"modelId"`
+	InputTokens     int    `json:"inputTokens"`
+	OutputTokens    int    `json:"outputTokens"`
+	CachedTokens    int    `json:"cachedTokens"`
+	ReasoningTokens int    `json:"reasoningTokens"`
 }
 
 type OnboardingInfo struct {

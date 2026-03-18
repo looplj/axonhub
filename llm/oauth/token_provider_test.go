@@ -242,4 +242,10 @@ func TestTokenProviderRefreshValidation(t *testing.T) {
 
 	_, err = provider.refresh(context.Background(), &OAuthCredentials{RefreshToken: "refresh"})
 	require.EqualError(t, err, "token URL is empty")
+
+	provider = NewTokenProvider(TokenProviderParams{
+		OAuthUrls: OAuthUrls{TokenUrl: "http://example.com/token"},
+	})
+	_, err = provider.refresh(context.Background(), &OAuthCredentials{RefreshToken: "refresh"})
+	require.EqualError(t, err, "http client is nil")
 }

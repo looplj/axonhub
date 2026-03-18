@@ -441,10 +441,11 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 	}
 
 	type usageStats struct {
-		APIKeyID     int `json:"api_key_id"`
-		InputTokens  int `json:"input_tokens"`
-		OutputTokens int `json:"output_tokens"`
-		CachedTokens int `json:"cached_tokens"`
+		APIKeyID        int   `json:"api_key_id"`
+		InputTokens     int64 `json:"input_tokens"`
+		OutputTokens    int64 `json:"output_tokens"`
+		CachedTokens    int64 `json:"cached_tokens"`
+		ReasoningTokens int64 `json:"reasoning_tokens"`
 	}
 
 	var results []usageStats
@@ -455,6 +456,7 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 		).GroupBy(s.C(usagelog.FieldAPIKeyID))
 	}).Scan(ctx, &results)
 	if err != nil {
@@ -466,11 +468,12 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 
 	return lo.Map(results, func(item usageStats, _ int) *APIKeyTokenUsageStats {
 		return &APIKeyTokenUsageStats{
-			APIKeyID:     objects.GUID{Type: ent.TypeAPIKey, ID: item.APIKeyID},
-			InputTokens:  item.InputTokens,
-			OutputTokens: item.OutputTokens,
-			CachedTokens: item.CachedTokens,
-			TopModels:    topModelsMap[item.APIKeyID],
+			APIKeyID:        objects.GUID{Type: ent.TypeAPIKey, ID: item.APIKeyID},
+			InputTokens:     safeIntFromInt64(item.InputTokens),
+			OutputTokens:    safeIntFromInt64(item.OutputTokens),
+			CachedTokens:    safeIntFromInt64(item.CachedTokens),
+			ReasoningTokens: safeIntFromInt64(item.ReasoningTokens),
+			TopModels:       topModelsMap[item.APIKeyID],
 		}
 	}), nil
 }

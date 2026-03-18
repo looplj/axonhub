@@ -51,6 +51,7 @@ type APIKeyTokenUsageStats {
   inputTokens: Int!
   outputTokens: Int!
   cachedTokens: Int!
+  reasoningTokens: Int!
   topModels: [ModelTokenUsageStats!]!
 }
 
@@ -59,6 +60,7 @@ type ModelTokenUsageStats {
   inputTokens: Int!
   outputTokens: Int!
   cachedTokens: Int!
+  reasoningTokens: Int!
 }
 
 type DailyRequestStats {

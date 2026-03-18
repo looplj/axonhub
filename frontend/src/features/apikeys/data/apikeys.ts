@@ -244,11 +244,13 @@ const APIKEY_TOKEN_USAGE_STATS_QUERY = `
       inputTokens
       outputTokens
       cachedTokens
+      reasoningTokens
       topModels {
         modelId
         inputTokens
         outputTokens
         cachedTokens
+        reasoningTokens
       }
     }
   }

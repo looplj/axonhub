@@ -177,11 +177,12 @@ type ComplexityRoot struct {
 	}
 
 	APIKeyTokenUsageStats struct {
-		APIKeyID     func(childComplexity int) int
-		CachedTokens func(childComplexity int) int
-		InputTokens  func(childComplexity int) int
-		OutputTokens func(childComplexity int) int
-		TopModels    func(childComplexity int) int
+		APIKeyID        func(childComplexity int) int
+		CachedTokens    func(childComplexity int) int
+		InputTokens     func(childComplexity int) int
+		OutputTokens    func(childComplexity int) int
+		ReasoningTokens func(childComplexity int) int
+		TopModels       func(childComplexity int) int
 	}
 
 	ApplyChannelOverrideTemplatePayload struct {
@@ -724,10 +725,11 @@ type ComplexityRoot struct {
 	}
 
 	ModelTokenUsageStats struct {
-		CachedTokens func(childComplexity int) int
-		InputTokens  func(childComplexity int) int
-		ModelID      func(childComplexity int) int
-		OutputTokens func(childComplexity int) int
+		CachedTokens    func(childComplexity int) int
+		InputTokens     func(childComplexity int) int
+		ModelID         func(childComplexity int) int
+		OutputTokens    func(childComplexity int) int
+		ReasoningTokens func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -2239,6 +2241,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIKeyTokenUsageStats.OutputTokens(childComplexity), true
+	case "APIKeyTokenUsageStats.reasoningTokens":
+		if e.complexity.APIKeyTokenUsageStats.ReasoningTokens == nil {
+			break
+		}
+
+		return e.complexity.APIKeyTokenUsageStats.ReasoningTokens(childComplexity), true
 	case "APIKeyTokenUsageStats.topModels":
 		if e.complexity.APIKeyTokenUsageStats.TopModels == nil {
 			break
@@ -4254,6 +4262,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelTokenUsageStats.OutputTokens(childComplexity), true
+	case "ModelTokenUsageStats.reasoningTokens":
+		if e.complexity.ModelTokenUsageStats.ReasoningTokens == nil {
+			break
+		}
+
+		return e.complexity.ModelTokenUsageStats.ReasoningTokens(childComplexity), true
 
 	case "Mutation.addUserToProject":
 		if e.complexity.Mutation.AddUserToProject == nil {
@@ -13005,6 +13019,35 @@ func (ec *executionContext) fieldContext_APIKeyTokenUsageStats_cachedTokens(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKeyTokenUsageStats_reasoningTokens(ctx context.Context, field graphql.CollectedField, obj *APIKeyTokenUsageStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyTokenUsageStats_reasoningTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.ReasoningTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyTokenUsageStats_reasoningTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyTokenUsageStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APIKeyTokenUsageStats_topModels(ctx context.Context, field graphql.CollectedField, obj *APIKeyTokenUsageStats) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13037,6 +13080,8 @@ func (ec *executionContext) fieldContext_APIKeyTokenUsageStats_topModels(_ conte
 				return ec.fieldContext_ModelTokenUsageStats_outputTokens(ctx, field)
 			case "cachedTokens":
 				return ec.fieldContext_ModelTokenUsageStats_cachedTokens(ctx, field)
+			case "reasoningTokens":
+				return ec.fieldContext_ModelTokenUsageStats_reasoningTokens(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelTokenUsageStats", field.Name)
 		},
@@ -23560,6 +23605,35 @@ func (ec *executionContext) fieldContext_ModelTokenUsageStats_cachedTokens(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelTokenUsageStats_reasoningTokens(ctx context.Context, field graphql.CollectedField, obj *ModelTokenUsageStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelTokenUsageStats_reasoningTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.ReasoningTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelTokenUsageStats_reasoningTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelTokenUsageStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createChannel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32052,6 +32126,8 @@ func (ec *executionContext) fieldContext_Query_apiKeyTokenUsageStats(ctx context
 				return ec.fieldContext_APIKeyTokenUsageStats_outputTokens(ctx, field)
 			case "cachedTokens":
 				return ec.fieldContext_APIKeyTokenUsageStats_cachedTokens(ctx, field)
+			case "reasoningTokens":
+				return ec.fieldContext_APIKeyTokenUsageStats_reasoningTokens(ctx, field)
 			case "topModels":
 				return ec.fieldContext_APIKeyTokenUsageStats_topModels(ctx, field)
 			}
@@ -69519,6 +69595,11 @@ func (ec *executionContext) _APIKeyTokenUsageStats(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "reasoningTokens":
+			out.Values[i] = ec._APIKeyTokenUsageStats_reasoningTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "topModels":
 			out.Values[i] = ec._APIKeyTokenUsageStats_topModels(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -74491,6 +74572,11 @@ func (ec *executionContext) _ModelTokenUsageStats(ctx context.Context, sel ast.S
 			}
 		case "cachedTokens":
 			out.Values[i] = ec._ModelTokenUsageStats_cachedTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasoningTokens":
+			out.Values[i] = ec._ModelTokenUsageStats_reasoningTokens(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

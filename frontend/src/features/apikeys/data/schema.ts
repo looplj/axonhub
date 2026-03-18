@@ -69,13 +69,6 @@ export const apiKeySchema = z.object({
     })
     .optional()
     .nullable(),
-  usageStats: z
-    .object({
-      inputTokens: z.number(),
-      outputTokens: z.number(),
-      cachedTokens: z.number(),
-    })
-    .optional(),
 });
 export type ApiKey = z.infer<typeof apiKeySchema>;
 
@@ -343,15 +336,17 @@ export type ApiKeyProfileQuotaUsage = z.infer<typeof apiKeyProfileQuotaUsageSche
 
 export const apiKeyTokenUsageStatsSchema = z.object({
   apiKeyId: z.string(),
-  inputTokens: z.number(),
-  outputTokens: z.number(),
-  cachedTokens: z.number(),
+  inputTokens: z.number().default(0),
+  outputTokens: z.number().default(0),
+  cachedTokens: z.number().default(0),
+  reasoningTokens: z.number().default(0),
   topModels: z.array(
     z.object({
       modelId: z.string(),
-      inputTokens: z.number(),
-      outputTokens: z.number(),
-      cachedTokens: z.number(),
+      inputTokens: z.number().default(0),
+      outputTokens: z.number().default(0),
+      cachedTokens: z.number().default(0),
+      reasoningTokens: z.number().default(0),
     })
   ),
 });

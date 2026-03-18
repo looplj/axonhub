@@ -36,6 +36,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 type Dependencies struct {
@@ -60,6 +61,7 @@ type Dependencies struct {
 	ChannelProbeService            *biz.ChannelProbeService
 	PromptService                  *biz.PromptService
 	ProviderQuotaService           *biz.ProviderQuotaService
+	HttpClient                     *httpclient.HttpClient
 	GCWorker                       *gc.Worker
 }
 
@@ -90,6 +92,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.ChannelProbeService,
 			deps.PromptService,
 			deps.ProviderQuotaService,
+			deps.HttpClient,
 			deps.GCWorker,
 		),
 	)

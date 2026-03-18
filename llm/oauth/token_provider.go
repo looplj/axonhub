@@ -485,6 +485,10 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		return nil, errors.New("token URL is empty")
 	}
 
+	if p.httpClient == nil {
+		return nil, errors.New("http client is nil")
+	}
+
 	req, err := p.strategy.BuildRefreshRequest(creds, p.oauthUrls.TokenUrl)
 	if err != nil {
 		return nil, fmt.Errorf("build refresh request: %w", err)

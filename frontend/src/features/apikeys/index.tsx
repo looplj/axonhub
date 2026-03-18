@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
-import { buildDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { type DateTimeRangeValue } from '@/utils/date-range';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { createColumns } from './components/apikeys-columns';
@@ -12,7 +12,7 @@ import { ApiKeysDialogs } from './components/apikeys-dialogs';
 import { ApiKeysPrimaryButtons } from './components/apikeys-primary-buttons';
 import { ApiKeysTable } from './components/apikeys-table';
 import ApiKeysProvider from './context/apikeys-context';
-import { useApiKeys, useApiKeyTokenUsageStats } from './data/apikeys';
+import { useApiKeys } from './data/apikeys';
 import { ApiKeyType } from './data/schema';
 
 type ApiKeyTabKey = ApiKeyType | 'all';
@@ -62,33 +62,9 @@ function ApiKeysContent() {
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   });
 
-  const usageDateRangeWhere = buildDateRangeWhereClause(dateRange);
-  const apiKeyIds = data?.edges?.map((edge) => edge.node.id) ?? [];
-  const { data: usageStats } = useApiKeyTokenUsageStats(
-    {
-      apiKeyIds,
-      ...usageDateRangeWhere,
-    },
-    {
-      enabled: apiKeyIds.length > 0,
-    }
-  );
-
-  const usageStatsMap = React.useMemo(() => {
-    return new Map((usageStats ?? []).map((item) => [item.apiKeyId, item]));
-  }, [usageStats]);
-
   const tableData = React.useMemo(
-    () =>
-      (data?.edges?.map((edge) => ({
-        ...edge.node,
-        usageStats: usageStatsMap.get(edge.node.id) ?? {
-          inputTokens: 0,
-          outputTokens: 0,
-          cachedTokens: 0,
-        },
-      })) ?? []),
-    [data?.edges, usageStatsMap]
+    () => (data?.edges?.map((edge) => edge.node) ?? []),
+    [data?.edges]
   );
 
   // Reset cursor when filters change

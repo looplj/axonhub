@@ -198,12 +198,13 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 	}
 
 	type modelStats struct {
-		APIKeyID     int    `json:"api_key_id"`
-		ModelID      string `json:"model_id"`
-		InputTokens  int64  `json:"input_tokens"`
-		OutputTokens int64  `json:"output_tokens"`
-		CachedTokens int64  `json:"cached_tokens"`
-		TotalTokens  int64  `json:"total_tokens"`
+		APIKeyID        int    `json:"api_key_id"`
+		ModelID         string `json:"model_id"`
+		InputTokens     int64  `json:"input_tokens"`
+		OutputTokens    int64  `json:"output_tokens"`
+		CachedTokens    int64  `json:"cached_tokens"`
+		ReasoningTokens int64  `json:"reasoning_tokens"`
+		TotalTokens     int64  `json:"total_tokens"`
 	}
 
 	var allResults []modelStats
@@ -215,10 +216,12 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
 				s.C(usagelog.FieldPromptTokens),
 				s.C(usagelog.FieldCompletionTokens),
-				s.C(usagelog.FieldPromptCachedTokens)), "total_tokens"),
+				s.C(usagelog.FieldPromptCachedTokens),
+				s.C(usagelog.FieldCompletionReasoningTokens)), "total_tokens"),
 		).GroupBy(s.C(usagelog.FieldAPIKeyID), s.C(usagelog.FieldModelID)).
 			OrderBy(sql.Desc("total_tokens"))
 	}).Scan(ctx, &allResults)
@@ -233,10 +236,11 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 	for _, result := range allResults {
 		if len(resultMap[result.APIKeyID]) < 3 {
 			resultMap[result.APIKeyID] = append(resultMap[result.APIKeyID], &ModelTokenUsageStats{
-				ModelID:      result.ModelID,
-				InputTokens:  safeIntFromInt64(result.InputTokens),
-				OutputTokens: safeIntFromInt64(result.OutputTokens),
-				CachedTokens: safeIntFromInt64(result.CachedTokens),
+				ModelID:         result.ModelID,
+				InputTokens:     safeIntFromInt64(result.InputTokens),
+				OutputTokens:    safeIntFromInt64(result.OutputTokens),
+				CachedTokens:    safeIntFromInt64(result.CachedTokens),
+				ReasoningTokens: safeIntFromInt64(result.ReasoningTokens),
 			})
 		}
 	}

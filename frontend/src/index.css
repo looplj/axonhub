@@ -1511,3 +1511,23 @@
 .rdp-custom-day.rdp-custom-disabled > .rdp-custom-day-button {
   @apply cursor-not-allowed opacity-30;
 }
+
+/* Thin scrollbar for compact scroll areas */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  direction: rtl;
+}
+.scrollbar-thin > * {
+  direction: ltr;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 2px;
+}
