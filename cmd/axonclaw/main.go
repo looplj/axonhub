@@ -32,6 +32,7 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/claw"
 	"github.com/looplj/axonhub/cmd/axonclaw/cmds"
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
+	"github.com/looplj/axonhub/cmd/axonclaw/prompts"
 	"github.com/looplj/axonhub/cmd/axonclaw/skills"
 )
 
@@ -201,6 +202,24 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	contextCfg.Summarizer = summarizer.NewProvider(summarizer.ProviderOptions{
 		Provider: provider,
 		Model:    boot.Model,
+		SystemPrompt: strings.Join(
+			prompts.BuildSystemPrompts(
+				prompts.PromptEnv{
+					Date:              boot.Date,
+					Timezone:          boot.Timezone,
+					OS:                boot.OS,
+					Workspace:         wd,
+					ThreadID:          boot.ThreadID,
+					AxonClawPath:      boot.AxonClawPath,
+					SkillsRoot:        boot.SkillsRoot,
+					AgentID:           boot.AgentID,
+					AgentName:         boot.AgentName,
+					CreatedByUserName: boot.CreatedByUserName,
+				},
+				boot.Prompts,
+			),
+			"\n\n",
+		),
 	})
 
 	contextStore := agent.NewContextManagerFileStore(filepath.Join(axonclawDir, "messages"))

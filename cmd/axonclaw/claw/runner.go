@@ -63,7 +63,7 @@ func New(opts NewOptions) *Runner {
 
 	env := buildPromptEnv(opts.Boot, opts.Workspace)
 
-	systemPrompts := prompts.BuildSystemPrompts(env, opts.Boot.Prompts, opts.Boot.Skills)
+	systemPrompts := prompts.BuildSystemPrompts(env, opts.Boot.Prompts)
 
 	a := agent.New(agent.Config{
 		Model:         opts.Boot.Model,
@@ -296,7 +296,7 @@ func (r *Runner) autoUpdateConfig(ctx context.Context) {
 
 	env := buildPromptEnv(newBoot, r.Workspace)
 
-	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts, newBoot.Skills)
+	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts)
 
 	r.Agent.UpdateConfig(func(cfg agent.Config) agent.Config {
 		cfg.Model = newBoot.Model

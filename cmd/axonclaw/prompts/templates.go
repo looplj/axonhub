@@ -12,13 +12,11 @@ var templatesFS embed.FS
 var (
 	DefaultSoulTemplate        = mustLoadTemplate("templates/SOUL.md")
 	DefaultIdentityTemplate    = mustLoadTemplate("templates/IDENTITY.md")
-	DefaultSystemTemplate      = mustLoadTemplate("templates/SYSTEM.md")
+	DefaultSystemTemplate      = mustLoadTemplate("templates/AGENTS.md")
 	DefaultUserTemplate        = mustLoadTemplate("templates/USER.md")
-	DefaultInstructionTemplate = mustLoadTemplate("templates/INSTRUCTION.md")
 	DefaultHeartbeatTemplate   = mustLoadTemplate("templates/HEARTBEAT.md")
 	DefaultHeartbeatTaskPrompt = mustLoadTemplate("templates/HEARTBEAT.md")
-	DefaultSelfReflectPrompt   = mustLoadTemplate("templates/SELF_REFLECT.md")
-	DefaultSelfEvolvePrompt    = mustLoadTemplate("templates/SELF_EVOLVE.md")
+	DefaultEnvironmentTemplate = mustLoadTemplate("templates/ENVIRONMENT.md")
 )
 
 func mustLoadTemplate(name string) string {
@@ -46,8 +44,4 @@ func renderTemplate(name, tpl string, data any) (string, error) {
 	}
 
 	return result.String(), nil
-}
-
-func RenderInstructionTemplate(env PromptEnv) (string, error) {
-	return renderTemplate("instruction", DefaultInstructionTemplate, env)
 }

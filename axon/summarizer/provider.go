@@ -69,7 +69,7 @@ func (s *ProviderSummarizer) Summarize(ctx context.Context, messages []agent.Mes
 
 func buildSummarizationPrompt(messages []agent.Message) string {
 	var b strings.Builder
-	b.WriteString("ranscript:\n")
+	b.WriteString("Summarize this transcript:\n")
 
 	for i, msg := range messages {
 		fmt.Fprintf(&b, "%d. role=%s", i+1, msg.Role)

@@ -69,7 +69,7 @@ func (t *ResetTool) Execute(ctx context.Context, _ map[string]any) agent.ToolRes
 
 	env := buildPromptEnv(newBoot, t.workspace)
 
-	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts, newBoot.Skills)
+	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts)
 
 	t.agent.UpdateConfig(func(cfg agent.Config) agent.Config {
 		cfg.Model = newBoot.Model

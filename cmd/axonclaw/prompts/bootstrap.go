@@ -12,7 +12,7 @@ const (
 	SoulFileName      = "SOUL.md"
 	IdentityFileName  = "IDENTITY.md"
 	UserFileName      = "USER.md"
-	SystemFileName    = "SYSTEM.md"
+	AgentsFileName    = "AGENTS.md"
 	HeartbeatFileName = "HEARTBEAT.md"
 	MemoryFileName    = "MEMORY.md"
 	MemoryDirName     = "memory"
@@ -58,9 +58,9 @@ func Load(configDir string, initParams *InitParams) (*Bootstrap, error) {
 		return nil, fmt.Errorf("load %s: %w", UserFileName, err)
 	}
 
-	system, err := LoadFile(configDir, SystemFileName)
+	system, err := LoadFile(configDir, AgentsFileName)
 	if err != nil {
-		return nil, fmt.Errorf("load %s: %w", SystemFileName, err)
+		return nil, fmt.Errorf("load %s: %w", AgentsFileName, err)
 	}
 
 	heartbeat, err := LoadFile(configDir, HeartbeatFileName)
@@ -140,7 +140,7 @@ func initPromptFiles(configDir string, boot *Bootstrap, params *InitParams) erro
 			return fmt.Errorf("render system prompt: %w", err)
 		}
 
-		if err := SaveFile(configDir, SystemFileName, rendered); err != nil {
+		if err := SaveFile(configDir, AgentsFileName, rendered); err != nil {
 			return fmt.Errorf("save system: %w", err)
 		}
 
