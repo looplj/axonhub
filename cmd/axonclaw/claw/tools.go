@@ -54,7 +54,7 @@ func registerTools(
 		a.RegisterTool(tools.NewAgentTool(tools.NewEditTool(workspace, false)))
 	}
 	if enabledBuiltin["Bash"] {
-		a.RegisterTool(tools.NewAgentTool(tools.NewBashTool(workspace, false)))
+		a.RegisterTool(tools.NewAgentTool(tools.NewBashTool(workspace, false, true)))
 	}
 	if enabledBuiltin["Grep"] {
 		a.RegisterTool(tools.NewAgentTool(tools.NewGrepTool(workspace, false)))

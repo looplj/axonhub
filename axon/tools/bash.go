@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,21 +72,119 @@ var denyPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`/dev/tcp/`),
 }
 
+// rtkRewritablePrefixes lists command prefixes that rtk is known to support rewriting.
+// Commands not starting with any of these prefixes skip the rtk rewrite call entirely.
+var rtkRewritablePrefixes = []string{
+	"git", "gh",
+	"cat", "head", "tail",
+	"rg", "grep",
+	"ls", "find",
+	"cargo", "go",
+	"npm", "pnpm", "pip",
+	"vitest", "jest", "pytest",
+	"tsc", "eslint", "biome",
+	"prettier", "playwright", "prisma",
+	"ruff", "golangci-lint",
+	"docker", "kubectl",
+	"curl", "wget",
+}
+
 const (
-	bashTimeout  = 60 * time.Second
-	maxOutputLen = 10000
+	bashTimeout       = 60 * time.Second
+	maxOutputLen      = 10000
+	rtkMinMajor       = 0
+	rtkMinMinor       = 23
+	rtkRewriteTimeout = 3 * time.Second
 )
 
 type BashTool struct {
 	workingDir string
 	restrict   bool
+	rtkPath    string
 }
 
-func NewBashTool(workingDir string, restrict bool) *BashTool {
-	return &BashTool{
+func NewBashTool(workingDir string, restrict bool, rtkAware bool) *BashTool {
+	t := &BashTool{
 		workingDir: workingDir,
 		restrict:   restrict,
 	}
+	if rtkAware {
+		t.rtkPath = detectRtk()
+	}
+
+	return t
+}
+
+// detectRtk checks if rtk is installed and meets the minimum version requirement.
+func detectRtk() string {
+	path, err := exec.LookPath("rtk")
+	if err != nil {
+		return ""
+	}
+
+	out, err := exec.CommandContext(context.Background(), path, "--version").Output()
+	if err != nil {
+		return ""
+	}
+
+	re := regexp.MustCompile(`(\d+)\.(\d+)\.\d+`)
+
+	matches := re.FindStringSubmatch(string(out))
+	if len(matches) < 3 {
+		return ""
+	}
+
+	major, _ := strconv.Atoi(matches[1])
+
+	minor, _ := strconv.Atoi(matches[2])
+	if major < rtkMinMajor || (major == rtkMinMajor && minor < rtkMinMinor) {
+		return ""
+	}
+
+	return path
+}
+
+// rtkRewrite attempts to rewrite a command via rtk. Returns the original command on any failure.
+func (t *BashTool) rtkRewrite(command string) string {
+	if t.rtkPath == "" {
+		return command
+	}
+
+	// Extract the leading command name to check against the whitelist.
+	cmdName := strings.Fields(command)
+	if len(cmdName) == 0 {
+		return command
+	}
+
+	leading := cmdName[0]
+
+	rewritable := slices.Contains(rtkRewritablePrefixes, leading)
+
+	if !rewritable {
+		return command
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), rtkRewriteTimeout)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, t.rtkPath, "rewrite", command).Output()
+	if err != nil {
+		return command
+	}
+
+	rewritten := strings.TrimSpace(string(out))
+	if rewritten == "" || rewritten == command {
+		return command
+	}
+
+	// Re-check deny patterns on the rewritten command.
+	for _, p := range denyPatterns {
+		if p.MatchString(rewritten) {
+			return command
+		}
+	}
+
+	return rewritten
 }
 
 type bashInput struct {
@@ -133,14 +233,16 @@ func (t *BashTool) Execute(ctx context.Context, input bashInput) agent.ToolResul
 		cwd = resolved
 	}
 
+	command := t.rtkRewrite(input.Command)
+
 	ctx, cancel := context.WithTimeout(ctx, bashTimeout)
 	defer cancel()
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(ctx, "powershell", "-Command", input.Command)
+		cmd = exec.CommandContext(ctx, "powershell", "-Command", command)
 	} else {
-		cmd = exec.CommandContext(ctx, "sh", "-c", input.Command)
+		cmd = exec.CommandContext(ctx, "sh", "-c", command)
 	}
 	cmd.Dir = cwd
 
