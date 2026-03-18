@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { type DateTimeRangeValue } from '@/utils/date-range';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { createColumns } from './components/apikeys-columns';
@@ -30,6 +31,7 @@ function ApiKeysContent() {
   const [nameFilter, setNameFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [userFilter, setUserFilter] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
 
   const debouncedNameFilter = useDebounce(nameFilter, 300);
 
@@ -60,11 +62,16 @@ function ApiKeysContent() {
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   });
 
+  const tableData = React.useMemo(
+    () => (data?.edges?.map((edge) => edge.node) ?? []),
+    [data?.edges]
+  );
+
   // Reset cursor when filters change
   React.useEffect(() => {
     resetCursor();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedNameFilter, activeTab, statusFilter, userFilter]);
+  }, [debouncedNameFilter, activeTab, statusFilter, userFilter, dateRange]);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -86,6 +93,7 @@ function ApiKeysContent() {
     setNameFilter('');
     setStatusFilter([]);
     setUserFilter([]);
+    setDateRange(undefined);
     resetCursor();
   };
 
@@ -108,7 +116,7 @@ function ApiKeysContent() {
       </Tabs>
       <div className='mt-6 flex-1 overflow-y-auto'>
         <ApiKeysTable
-          data={data?.edges?.map((edge) => edge.node) || []}
+          data={tableData}
           loading={isLoading}
           columns={columns}
           pageInfo={data?.pageInfo}
@@ -117,12 +125,14 @@ function ApiKeysContent() {
           nameFilter={nameFilter}
           statusFilter={statusFilter}
           userFilter={userFilter}
+          dateRange={dateRange}
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           onPageSizeChange={handlePageSizeChange}
           onNameFilterChange={setNameFilter}
           onStatusFilterChange={setStatusFilter}
           onUserFilterChange={setUserFilter}
+          onDateRangeChange={setDateRange}
           onResetFilters={handleResetFilters}
           canWrite={apiKeyPermissions.canWrite}
         />

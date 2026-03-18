@@ -1,6 +1,7 @@
 package gql
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"sync"
@@ -12,6 +13,8 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
@@ -174,4 +177,73 @@ func calculateConfidenceAndSort[T any](
 	}
 
 	return resultsToShow
+}
+
+// getTopModelsForAPIKeys returns top 3 models by total tokens for multiple API keys in a single query
+func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []int, input *APIKeyTokenUsageStatsInput) map[int][]*ModelTokenUsageStats {
+	if len(apiKeyIDs) == 0 {
+		return make(map[int][]*ModelTokenUsageStats)
+	}
+
+	query := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDIn(apiKeyIDs...))
+
+	if input != nil {
+		if input.CreatedAtGTE != nil {
+			query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
+		}
+		if input.CreatedAtLTE != nil {
+			query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLTE))
+		}
+	}
+
+	type modelStats struct {
+		APIKeyID        int    `json:"api_key_id"`
+		ModelID         string `json:"model_id"`
+		InputTokens     int64  `json:"input_tokens"`
+		OutputTokens    int64  `json:"output_tokens"`
+		CachedTokens    int64  `json:"cached_tokens"`
+		ReasoningTokens int64  `json:"reasoning_tokens"`
+		TotalTokens     int64  `json:"total_tokens"`
+	}
+
+	var allResults []modelStats
+
+	err := query.Modify(func(s *sql.Selector) {
+		s.Select(
+			s.C(usagelog.FieldAPIKeyID),
+			s.C(usagelog.FieldModelID),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
+				s.C(usagelog.FieldPromptTokens),
+				s.C(usagelog.FieldCompletionTokens),
+				s.C(usagelog.FieldPromptCachedTokens),
+				s.C(usagelog.FieldCompletionReasoningTokens)), "total_tokens"),
+		).GroupBy(s.C(usagelog.FieldAPIKeyID), s.C(usagelog.FieldModelID)).
+			OrderBy(sql.Desc("total_tokens"))
+	}).Scan(ctx, &allResults)
+
+	if err != nil {
+		log.Warn(ctx, "failed to get top models for API keys", log.Cause(err))
+		return make(map[int][]*ModelTokenUsageStats)
+	}
+
+	// Group by API key and take top 3 per key
+	resultMap := make(map[int][]*ModelTokenUsageStats)
+	for _, result := range allResults {
+		if len(resultMap[result.APIKeyID]) < 3 {
+			resultMap[result.APIKeyID] = append(resultMap[result.APIKeyID], &ModelTokenUsageStats{
+				ModelID:         result.ModelID,
+				InputTokens:     safeIntFromInt64(result.InputTokens),
+				OutputTokens:    safeIntFromInt64(result.OutputTokens),
+				CachedTokens:    safeIntFromInt64(result.CachedTokens),
+				ReasoningTokens: safeIntFromInt64(result.ReasoningTokens),
+			})
+		}
+	}
+
+	return resultMap
 }

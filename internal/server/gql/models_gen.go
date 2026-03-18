@@ -35,6 +35,21 @@ type APIKeyQuotaWindow struct {
 	End   *time.Time `json:"end,omitempty"`
 }
 
+type APIKeyTokenUsageStats struct {
+	APIKeyID        objects.GUID            `json:"apiKeyId"`
+	InputTokens     int                     `json:"inputTokens"`
+	OutputTokens    int                     `json:"outputTokens"`
+	CachedTokens    int                     `json:"cachedTokens"`
+	ReasoningTokens int                     `json:"reasoningTokens"`
+	TopModels       []*ModelTokenUsageStats `json:"topModels"`
+}
+
+type APIKeyTokenUsageStatsInput struct {
+	APIKeyIds    []*objects.GUID `json:"apiKeyIds,omitempty"`
+	CreatedAtGTE *time.Time      `json:"createdAtGTE,omitempty"`
+	CreatedAtLTE *time.Time      `json:"createdAtLTE,omitempty"`
+}
+
 type AddUserToProjectInput struct {
 	ProjectID objects.GUID    `json:"projectId"`
 	UserID    objects.GUID    `json:"userId"`
@@ -209,6 +224,14 @@ type ModelPerformanceStat struct {
 	Throughput   *float64 `json:"throughput,omitempty"`
 	TtftMs       *float64 `json:"ttftMs,omitempty"`
 	RequestCount int      `json:"requestCount"`
+}
+
+type ModelTokenUsageStats struct {
+	ModelID         string `json:"modelId"`
+	InputTokens     int    `json:"inputTokens"`
+	OutputTokens    int    `json:"outputTokens"`
+	CachedTokens    int    `json:"cachedTokens"`
+	ReasoningTokens int    `json:"reasoningTokens"`
 }
 
 type OnboardingInfo struct {
