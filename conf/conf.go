@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/db"
 	"github.com/looplj/axonhub/internal/server/gc"
 )
@@ -32,29 +33,12 @@ type Config struct {
 	GC               gc.Config           `conf:"gc" yaml:"gc" json:"gc"`
 	Cache            xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
 	ProviderQuota    providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
-	OIDC             OIDCConfig          `conf:"oidc" yaml:"oidc" json:"oidc"`
+	OIDC             biz.OIDCConfig      `conf:"oidc" yaml:"oidc" json:"oidc"`
 	DisableSSLVerify bool                `name:"disable_ssl_verify" yaml:"-" json:"-"`
 }
 
 type providerQuotaConfig struct {
 	CheckInterval time.Duration `conf:"check_interval" yaml:"check_interval" json:"check_interval"`
-}
-
-type OIDCProvider struct {
-	Name                  string            `conf:"name" yaml:"name" json:"name"`
-	IssuerURL             string            `conf:"issuer_url" yaml:"issuer_url" json:"issuer_url"`
-	ClientID              string            `conf:"client_id" yaml:"client_id" json:"client_id"`
-	ClientSecret          string            `conf:"client_secret" yaml:"client_secret" json:"client_secret"`
-	Scopes                []string          `conf:"scopes" yaml:"scopes" json:"scopes"`
-	JITEnabled            bool              `conf:"jit_enabled" yaml:"jit_enabled" json:"jit_enabled"`
-	AutoLinkByEmail       bool              `conf:"auto_link_by_email" yaml:"auto_link_by_email" json:"auto_link_by_email"`
-	RoleMappings          map[string]string `conf:"role_mappings" yaml:"role_mappings" json:"role_mappings"`
-	RoleMappingPrecedence string            `conf:"role_mapping_precedence" yaml:"role_mapping_precedence" json:"role_mapping_precedence"`
-	EnablePKCE            bool              `conf:"enable_pkce" yaml:"enable_pkce" json:"enable_pkce"`
-}
-
-type OIDCConfig struct {
-	Providers []OIDCProvider `conf:"providers" yaml:"providers" json:"providers"`
 }
 
 // Load loads configuration from YAML file and environment variables.
@@ -225,7 +209,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cache.redis.tls_insecure_skip_verify", false)
 
 	// OIDC defaults
-	v.SetDefault("oidc.providers", []OIDCProvider{})
+	v.SetDefault("oidc.providers", []biz.OIDCProvider{})
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.

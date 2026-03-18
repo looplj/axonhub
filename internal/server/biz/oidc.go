@@ -7,10 +7,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"encoding/json"
-	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"go.uber.org/fx"
 	"golang.org/x/oauth2"
 
 	
@@ -28,26 +28,26 @@ type ProviderInfo struct {
 }
 
 
-type OIDCConfig struct {
-	Enabled   bool           `json:"enabled" yaml:"enabled"`
-	Providers []OIDCProvider `json:"providers" yaml:"providers"`
+type OIDCProvider struct {
+	Name                  string            `conf:"name" yaml:"name" json:"name"`
+	IssuerURL             string            `conf:"issuer_url" yaml:"issuer_url" json:"issuer_url"`
+	ClientID              string            `conf:"client_id" yaml:"client_id" json:"client_id"`
+	ClientSecret          string            `conf:"client_secret" yaml:"client_secret" json:"client_secret"`
+	Scopes                []string          `conf:"scopes" yaml:"scopes" json:"scopes"`
+	JITEnabled            bool              `conf:"jit_enabled" yaml:"jit_enabled" json:"jit_enabled"`
+	AutoLinkByEmail       bool              `conf:"auto_link_by_email" yaml:"auto_link_by_email" json:"auto_link_by_email"`
+	RoleMappings          map[string]string `conf:"role_mappings" yaml:"role_mappings" json:"role_mappings"`
+	RoleMappingPrecedence string            `conf:"role_mapping_precedence" yaml:"role_mapping_precedence" json:"role_mapping_precedence"`
+	EnablePKCE            bool              `conf:"enable_pkce" yaml:"enable_pkce" json:"enable_pkce"`
 }
 
-type OIDCProvider struct {
-	Name            string `json:"name" yaml:"name"`
-	DisplayName     string `json:"display_name" yaml:"display_name"`
-	Issuer          string `json:"issuer" yaml:"issuer"`
-	ClientID        string `json:"client_id" yaml:"client_id"`
-	ClientSecret    string `json:"client_secret" yaml:"client_secret"`
-	RedirectURL     string `json:"redirect_url" yaml:"redirect_url"`
-	EnablePKCE      bool   `json:"enable_pkce" yaml:"enable_pkce"`
-	JITEnabled      bool   `json:"jit_enabled" yaml:"jit_enabled"`
-	AutoLinkByEmail bool   `json:"auto_link_by_email" yaml:"auto_link_by_email"`
+type OIDCConfig struct {
+	Providers []OIDCProvider `conf:"providers" yaml:"providers" json:"providers"`
 }
 
 type OIDCService struct {
 	cfg OIDCConfig
-	
+
 	cache     xcache.Cache[[]byte]
 	db        *ent.Client
 	providers map[string]*oidcProvider
@@ -55,35 +55,48 @@ type OIDCService struct {
 
 type oidcProvider struct {
 	config OIDCProvider
-	
+
 	oauth2 oauth2.Config
 	oidc   *oidc.Provider
 }
 
-func NewOIDCService(cfg OIDCConfig, cache xcache.Cache[[]byte], db *ent.Client) (*OIDCService, error) {
+type OIDCServiceParams struct {
+	fx.In
+
+	Config      OIDCConfig
+	CacheConfig xcache.Config
+	DB          *ent.Client
+}
+
+func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 	ctx := context.Background()
 	svc := &OIDCService{
-		cfg:       cfg,
-		cache:     cache,
-		db:        db,
+		cfg:       params.Config,
+		cache:     xcache.NewFromConfig[[]byte](params.CacheConfig),
+		db:        params.DB,
 		providers: make(map[string]*oidcProvider),
 	}
 
-	for _, p := range cfg.Providers {
-		provider, err := oidc.NewProvider(ctx, p.Issuer)
+	for _, p := range params.Config.Providers {
+		provider, err := oidc.NewProvider(ctx, p.IssuerURL)
 		if err != nil {
 			log.Error(ctx, "Failed to initialize OIDC provider", log.String("provider", p.Name), zap.Error(err))
 			continue
 		}
 
-		redirectURL := fmt.Sprintf("%s/api/admin/auth/oidc/%s/callback", strings.TrimRight("", "/"), p.Name)
-		
+		redirectURL := fmt.Sprintf("/api/admin/auth/oidc/%s/callback", p.Name)
+
+		scopes := p.Scopes
+		if len(scopes) == 0 {
+			scopes = []string{oidc.ScopeOpenID, "profile", "email"}
+		}
+
 		oauth2Config := oauth2.Config{
 			ClientID:     p.ClientID,
 			ClientSecret: p.ClientSecret,
 			Endpoint:     provider.Endpoint(),
 			RedirectURL:  redirectURL,
-			Scopes:       append([]string{oidc.ScopeOpenID, "profile", "email"}, []string{oidc.ScopeOpenID, "profile", "email"}...),
+			Scopes:       scopes,
 		}
 
 		svc.providers[p.Name] = &oidcProvider{
@@ -210,7 +223,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	// 1. Try to find existing OIDC identity
 	identity, err := s.db.OIDCIdentity.Query().
 		Where(
-			oidcidentity.Issuer(p.config.Issuer),
+			oidcidentity.Issuer(p.config.IssuerURL),
 			oidcidentity.Subject(subject),
 		).
 		WithUser().
@@ -229,7 +242,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		existingUser, err := s.db.User.Query().Where(user.Email(email)).Only(ctx)
 		if err == nil {
 			// Found user, link identity
-			err = s.createIdentity(ctx, existingUser.ID, p.config.Issuer, subject, email, p.config.Name)
+			err = s.createIdentity(ctx, existingUser.ID, p.config.IssuerURL, subject, email, p.config.Name)
 			if err != nil {
 				return nil, fmt.Errorf("failed to link identity: %w", err)
 			}
@@ -258,7 +271,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		return nil, fmt.Errorf("failed to provision user: %w", err)
 	}
 
-	err = s.createIdentity(ctx, newUser.ID, p.config.Issuer, subject, email, p.config.Name)
+	err = s.createIdentity(ctx, newUser.ID, p.config.IssuerURL, subject, email, p.config.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity for new user: %w", err)
 	}
