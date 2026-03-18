@@ -6,9 +6,11 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/invopop/jsonschema"
 	"github.com/looplj/axonhub/conf"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
@@ -20,6 +22,37 @@ func main() {
 		}
 		parts := strings.Split(pkg, "/")
 		return parts[len(parts)-1] + "." + t.Name()
+	}
+	r.RequiredFromJSONSchemaTags = true
+
+	// Map time.Duration to string with a duration pattern
+	r.Mapper = func(t reflect.Type) *jsonschema.Schema {
+		if t == reflect.TypeOf(time.Duration(0)) {
+			return &jsonschema.Schema{
+				Type:    "string",
+				Pattern: `^[0-9]+(h|m|s|ms|us|ns)$`,
+			}
+		}
+		if t == reflect.TypeOf(zapcore.InfoLevel) {
+			return &jsonschema.Schema{
+				Type: "string",
+				Enum: []any{"debug", "info", "warn", "warning", "error", "panic", "fatal"},
+			}
+		}
+		return nil
+	}
+
+	r.AdditionalFields = func(t reflect.Type) []reflect.StructField {
+		if t.PkgPath() == "github.com/looplj/axonhub/internal/server" && t.Name() == "CORS" {
+			return []reflect.StructField{
+				{
+					Name: "Debug",
+					Type: reflect.TypeOf(false),
+					Tag:  `json:"debug" yaml:"debug" conf:"debug"`,
+				},
+			}
+		}
+		return nil
 	}
 
 	s := r.Reflect(&conf.Config{})
