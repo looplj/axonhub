@@ -84,8 +84,11 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		unSecureAdminGroup.POST("/system/initialize", handlers.System.InitializeSystem)
 		// User Login - DO NOT AUTH
 		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
+	}
 
-		handlers.OIDC.RegisterRoutes(unSecureAdminGroup)
+	oauthGroup := server.Group("/oauth", middleware.WithTimeout(server.Config.RequestTimeout))
+	{
+		handlers.OIDC.RegisterRoutes(oauthGroup)
 	}
 
 	adminGroup := server.Group("/admin", middleware.WithJWTAuth(services.AuthService), middleware.WithProjectID())

@@ -21,10 +21,11 @@ func NewOIDCHandlers(oidc *biz.OIDCService, auth *biz.AuthService) *OIDCHandlers
 }
 
 func (h *OIDCHandlers) RegisterRoutes(r gin.IRouter) {
-	group := r.Group("/auth/oidc")
+	group := r.Group("/oidc")
 	group.GET("/providers", h.GetProviders)
 	group.GET("/authorize/:provider", h.GetAuthorizeURL)
-	group.GET("/callback/:provider", h.Callback)
+	group.GET("/idp-callback", h.Callback)
+	group.GET("/idp-callback/:provider", h.Callback)
 	group.POST("/exchange", h.Exchange)
 }
 
@@ -41,7 +42,14 @@ func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 		return
 	}
 
-	authURL, state, err := h.oidc.GetAuthorizeURL(c.Request.Context(), provider)
+	// Get the base URL from the request
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+
+	authURL, state, err := h.oidc.GetAuthorizeURL(c.Request.Context(), provider, baseURL)
 	if err != nil {
 		c.Error(err)
 		return
@@ -58,8 +66,18 @@ func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 func (h *OIDCHandlers) Callback(c *gin.Context) {
 	provider := c.Param("provider")
 	if provider == "" {
-		c.Error(fmt.Errorf("%s", "Provider is required"))
-		return
+		if h.oidc.CountProviders() == 1 {
+			// If only one provider, we don't need the parameter
+			providers := h.oidc.GetProviders(c.Request.Context())
+			if len(providers) > 0 {
+				provider = providers[0].Name
+			}
+		}
+
+		if provider == "" {
+			c.Error(fmt.Errorf("%s", "Provider is required"))
+			return
+		}
 	}
 
 	code := c.Query("code")
@@ -72,17 +90,17 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 	}
 
 	if code == "" || state == "" {
-		c.Error(fmt.Errorf("%s", "Code and state are required"))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Code and state are required"})
 		return
 	}
 
 	exchangeCode, err := h.oidc.Callback(c.Request.Context(), provider, code, state)
 	if err != nil {
-		c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	
-	c.Redirect(http.StatusFound, "/auth/oidc/callback?code="+exchangeCode)
+	c.Redirect(http.StatusFound, "/oauth/oidc/callback?code="+exchangeCode)
 }
 
 func (h *OIDCHandlers) Exchange(c *gin.Context) {
@@ -96,13 +114,13 @@ func (h *OIDCHandlers) Exchange(c *gin.Context) {
 
 	user, err := h.oidc.ExchangeCode(c.Request.Context(), req.Code)
 	if err != nil {
-		c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	token, err := h.auth.GenerateJWTToken(c.Request.Context(), user)
 	if err != nil {
-		c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token: " + err.Error()})
 		return
 	}
 

@@ -34,7 +34,7 @@ import { Route as AuthenticatedDataStoragesIndexRouteImport } from './routes/_au
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedApiKeysIndexRouteImport } from './routes/_authenticated/api-keys/index'
-import { Route as AuthOidcCallbackRouteImport } from './routes/auth/oidc/callback'
+import { Route as OauthOidcCallbackRouteImport } from './routes/oauth/oidc/callback'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings/profile'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
@@ -185,9 +185,9 @@ const AuthenticatedApiKeysIndexRoute =
     path: '/api-keys/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthOidcCallbackRoute = AuthOidcCallbackRouteImport.update({
-  id: '/auth/oidc/callback',
-  path: '/auth/oidc/callback',
+const OauthOidcCallbackRoute = OauthOidcCallbackRouteImport.update({
+  id: '/oauth/oidc/callback',
+  path: '/oauth/oidc/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsProfileRoute =
@@ -298,7 +298,7 @@ export interface FileRoutesByFullPath {
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
-  '/auth/oidc/callback': typeof AuthOidcCallbackRoute
+  '/oauth/oidc/callback': typeof OauthOidcCallbackRoute
   '/api-keys': typeof AuthenticatedApiKeysIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
@@ -339,7 +339,7 @@ export interface FileRoutesByTo {
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
-  '/auth/oidc/callback': typeof AuthOidcCallbackRoute
+  '/oauth/oidc/callback': typeof OauthOidcCallbackRoute
   '/api-keys': typeof AuthenticatedApiKeysIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
@@ -383,7 +383,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
-  '/auth/oidc/callback': typeof AuthOidcCallbackRoute
+  '/oauth/oidc/callback': typeof OauthOidcCallbackRoute
   '/_authenticated/api-keys/': typeof AuthenticatedApiKeysIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
@@ -427,7 +427,7 @@ export interface FileRouteTypes {
     | '/settings/display'
     | '/settings/notifications'
     | '/settings/profile'
-    | '/auth/oidc/callback'
+    | '/oauth/oidc/callback'
     | '/api-keys'
     | '/channels'
     | '/chats'
@@ -468,7 +468,7 @@ export interface FileRouteTypes {
     | '/settings/display'
     | '/settings/notifications'
     | '/settings/profile'
-    | '/auth/oidc/callback'
+    | '/oauth/oidc/callback'
     | '/api-keys'
     | '/channels'
     | '/chats'
@@ -511,7 +511,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/display'
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/profile'
-    | '/auth/oidc/callback'
+    | '/oauth/oidc/callback'
     | '/_authenticated/api-keys/'
     | '/_authenticated/channels/'
     | '/_authenticated/chats/'
@@ -548,7 +548,7 @@ export interface RootRouteChildren {
   errors404Route: typeof errors404Route
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
-  AuthOidcCallbackRoute: typeof AuthOidcCallbackRoute
+  OauthOidcCallbackRoute: typeof OauthOidcCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -728,11 +728,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedApiKeysIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/auth/oidc/callback': {
-      id: '/auth/oidc/callback'
-      path: '/auth/oidc/callback'
-      fullPath: '/auth/oidc/callback'
-      preLoaderRoute: typeof AuthOidcCallbackRouteImport
+    '/oauth/oidc/callback': {
+      id: '/oauth/oidc/callback'
+      path: '/oauth/oidc/callback'
+      fullPath: '/oauth/oidc/callback'
+      preLoaderRoute: typeof OauthOidcCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings/profile': {
@@ -941,7 +941,7 @@ const rootRouteChildren: RootRouteChildren = {
   errors404Route: errors404Route,
   errors500Route: errors500Route,
   errors503Route: errors503Route,
-  AuthOidcCallbackRoute: AuthOidcCallbackRoute,
+  OauthOidcCallbackRoute: OauthOidcCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

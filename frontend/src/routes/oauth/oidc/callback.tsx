@@ -4,7 +4,7 @@ import { useOIDCExchange } from '@/features/auth/data/auth';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const Route = createFileRoute('/auth/oidc/callback')({
+export const Route = createFileRoute('/oauth/oidc/callback')({
   component: OIDCCallback,
   validateSearch: (search: Record<string, unknown>) => {
     return {
