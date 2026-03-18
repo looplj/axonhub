@@ -103,9 +103,9 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="whitespace-nowrap">{t('apikeys.tokenUsageChart.tokenType')}</TableHead>
-                        <TableHead className="text-center whitespace-nowrap">{t('apikeys.tokenUsageChart.count')}</TableHead>
-                        <TableHead className="text-center whitespace-nowrap">{t('apikeys.tokenUsageChart.percentage')}</TableHead>
+                        <TableHead className="w-2/5 whitespace-nowrap">{t('apikeys.tokenUsageChart.tokenType')}</TableHead>
+                        <TableHead className="w-[30%] text-center whitespace-nowrap">{t('apikeys.tokenUsageChart.count')}</TableHead>
+                        <TableHead className="w-[30%] text-center whitespace-nowrap">{t('apikeys.tokenUsageChart.percentage')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -170,9 +170,9 @@ export function ApiKeyTokenChartDialog({ apiKey, open, onOpenChange }: ApiKeyTok
                             <Table>
                               <TableBody>
                                 <TableRow>
-                                  <TableCell className="font-medium whitespace-nowrap">{t('apikeys.columns.inputTokens')}</TableCell>
-                                  <TableCell className="text-center tabular-nums">{formatNumber(model.inputTokens)}</TableCell>
-                                  <TableCell className="text-center tabular-nums whitespace-nowrap">
+                                  <TableCell className="w-2/5 font-medium whitespace-nowrap">{t('apikeys.columns.inputTokens')}</TableCell>
+                                  <TableCell className="w-[30%] text-center tabular-nums">{formatNumber(model.inputTokens)}</TableCell>
+                                  <TableCell className="w-[30%] text-center tabular-nums whitespace-nowrap">
                                     {pct(model.inputTokens, modelTotal)}%
                                   </TableCell>
                                 </TableRow>
