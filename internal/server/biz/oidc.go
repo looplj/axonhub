@@ -6,7 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"mime"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -24,12 +29,16 @@ import (
 )
 
 type ProviderInfo struct {
-	Name       string `json:"name"`
-	JITEnabled bool   `json:"jit_enabled"`
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	JITEnabled  bool   `json:"jit_enabled"`
+	IconURL     string `json:"icon_url"`
+	ButtonColor string `json:"button_color"`
 }
 
 type OIDCProvider struct {
 	Name                  string            `conf:"name" yaml:"name" json:"name"`
+	DisplayName           string            `conf:"display_name" yaml:"display_name" json:"display_name"`
 	IssuerURL             string            `conf:"issuer_url" yaml:"issuer_url" json:"issuer_url"`
 	ClientID              string            `conf:"client_id" yaml:"client_id" json:"client_id"`
 	ClientSecret          string            `conf:"client_secret" yaml:"client_secret" json:"client_secret"`
@@ -39,6 +48,9 @@ type OIDCProvider struct {
 	RoleMappings          map[string]string `conf:"role_mappings" yaml:"role_mappings" json:"role_mappings"`
 	RoleMappingPrecedence string            `conf:"role_mapping_precedence" yaml:"role_mapping_precedence" json:"role_mapping_precedence"`
 	EnablePKCE            bool              `conf:"enable_pkce" yaml:"enable_pkce" json:"enable_pkce"`
+	// UI customization
+	IconURL     string `conf:"icon_url" yaml:"icon_url" json:"icon_url"`
+	ButtonColor string `conf:"button_color" yaml:"button_color" json:"button_color"`
 }
 
 type OIDCConfig struct {
@@ -78,11 +90,19 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 	}
 
 	numProviders := len(params.Config.Providers)
-	for _, p := range params.Config.Providers {
+	for i, p := range params.Config.Providers {
 		provider, err := oidc.NewProvider(ctx, p.IssuerURL)
 		if err != nil {
 			log.Error(ctx, "Failed to initialize OIDC provider", log.String("provider", p.Name), zap.Error(err))
 			continue
+		}
+
+		// Resolve icon_url: supports http(s) URL, data: URI, or local file path.
+		if resolved, err := resolveIconURL(p.IconURL); err != nil {
+			log.Error(ctx, "Failed to resolve icon for OIDC provider", log.String("provider", p.Name), zap.Error(err))
+		} else {
+			p.IconURL = resolved
+			params.Config.Providers[i].IconURL = resolved
 		}
 
 		// This redirect URI is for IdP -> backend callback handling.
@@ -116,6 +136,33 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 	return svc, nil
 }
 
+// resolveIconURL normalises the icon_url field.
+// - http/https URLs are returned unchanged.
+// - data: URIs are returned unchanged.
+// - Anything else is treated as a local file path and converted to a base64 data URL.
+// An empty string is returned unchanged.
+func resolveIconURL(raw string) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") || strings.HasPrefix(raw, "data:") {
+		return raw, nil
+	}
+	// Treat as local file path.
+	data, err := os.ReadFile(raw)
+	if err != nil {
+		return "", fmt.Errorf("reading icon file %q: %w", raw, err)
+	}
+	ext := strings.ToLower(filepath.Ext(raw))
+	mimeType := mime.TypeByExtension(ext)
+	if mimeType == "" {
+		// Fall back to sniffing the first 512 bytes.
+		mimeType = http.DetectContentType(data)
+	}
+	dataURL := "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(data)
+	return dataURL, nil
+}
+
 func (s *OIDCService) CountProviders() int {
 	return len(s.cfg.Providers)
 }
@@ -123,9 +170,16 @@ func (s *OIDCService) CountProviders() int {
 func (s *OIDCService) GetProviders(ctx context.Context) []ProviderInfo {
 	var providers []ProviderInfo
 	for _, p := range s.cfg.Providers {
+		displayName := p.DisplayName
+		if displayName == "" {
+			displayName = p.Name
+		}
 		providers = append(providers, ProviderInfo{
-			Name:       p.Name,
-			JITEnabled: p.JITEnabled,
+			Name:        p.Name,
+			DisplayName: displayName,
+			JITEnabled:  p.JITEnabled,
+			IconURL:     p.IconURL,
+			ButtonColor: p.ButtonColor,
 		})
 	}
 	return providers

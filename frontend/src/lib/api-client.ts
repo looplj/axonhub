@@ -144,7 +144,7 @@ export const authApi = {
       body: data,
     }),
 
-  getOIDCProviders: (): Promise<{ data: { name: string; displayName: string }[] }> =>
+  getOIDCProviders: (): Promise<{ data: { name: string; display_name: string; jit_enabled: boolean; icon_url: string; button_color: string }[] }> =>
     apiRequest('/oauth/oidc/providers'),
 
   getOIDCAuthorizeURL: (provider: string): Promise<{ data: { url: string; state: string } }> =>

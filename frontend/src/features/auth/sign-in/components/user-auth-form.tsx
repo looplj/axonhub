@@ -26,7 +26,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const { t } = useTranslation();
   const signInMutation = useSignIn();
   const [rememberMe, setRememberMe] = useState(false);
-  const { data: oidcProviders, isLoading: isLoadingProviders } = useOIDCProviders();
+  const { data: oidcProviders } = useOIDCProviders();
   const oidcAuthorizeMutation = useOIDCAuthorize();
 
   const formSchema = createFormSchema(t);
@@ -144,16 +144,23 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                   key={provider.name}
                   type='button'
                   variant='outline'
-                  className='w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50'
+                  className='w-full border-slate-300 disabled:opacity-50'
+                  style={
+                    provider.button_color
+                      ? { backgroundColor: provider.button_color, color: '#ffffff', borderColor: provider.button_color }
+                      : undefined
+                  }
                   disabled={oidcAuthorizeMutation.isPending}
                   onClick={() => oidcAuthorizeMutation.mutate(provider.name)}
                 >
                   {oidcAuthorizeMutation.isPending && oidcAuthorizeMutation.variables === provider.name ? (
-                    <div className='mr-2 h-4 w-4 animate-spin rounded-full border-2 border-slate-600/30 border-t-slate-600'></div>
+                    <div className='mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current'></div>
+                  ) : provider.icon_url ? (
+                    <img src={provider.icon_url} alt={provider.display_name || provider.name} className='mr-2 h-4 w-4 object-contain' />
                   ) : (
                     <LogIn className='mr-2 h-4 w-4' />
                   )}
-                  {provider.displayName || provider.name}
+                  {provider.display_name || provider.name}
                 </Button>
               ))}
             </div>

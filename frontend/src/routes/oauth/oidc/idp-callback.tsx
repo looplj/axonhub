@@ -4,7 +4,7 @@ import { useOIDCExchange } from '@/features/auth/data/auth';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const Route = createFileRoute('/oauth/oidc/callback')({
+export const Route = createFileRoute('/oauth/oidc/idp-callback')({
   component: OIDCCallback,
   validateSearch: (search: Record<string, unknown>) => {
     return {
@@ -40,8 +40,7 @@ function OIDCCallback() {
     }
 
     exchangeMutation.mutate(code);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, error]);
+  }, [code, error, error_description, navigate, exchangeMutation]);
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50">
