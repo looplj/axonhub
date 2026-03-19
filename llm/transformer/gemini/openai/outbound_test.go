@@ -753,13 +753,14 @@ func TestFillGeminiThoughtSignatureForGeminiOpenAIRequest_FallbackByToolCallID(t
 		},
 	}
 
-	fillGeminiThoughtSignatureForGeminiOpenAIRequest(src, dst, scope)
+	fillGeminiThoughtSignatureForGeminiOpenAIRequest(src, dst)
 
 	require.Len(t, dst.Messages, 1)
 	require.Len(t, dst.Messages[0].ToolCalls, 2)
 	require.NotNil(t, dst.Messages[0].ToolCalls[0].ExtraContent)
 	require.NotNil(t, dst.Messages[0].ToolCalls[0].ExtraContent.Google)
-	require.Equal(t, "sig_call_2", dst.Messages[0].ToolCalls[0].ExtraContent.Google.ThoughtSignature)
+	// The raw encoded value is passed through as-is (no footprint decode)
+	require.Equal(t, *prefixed, dst.Messages[0].ToolCalls[0].ExtraContent.Google.ThoughtSignature)
 	require.Nil(t, dst.Messages[0].ToolCalls[1].ExtraContent)
 }
 
@@ -809,13 +810,14 @@ func TestFillGeminiThoughtSignatureForGeminiOpenAIRequest_StripsPrefixedMetadata
 		},
 	}
 
-	fillGeminiThoughtSignatureForGeminiOpenAIRequest(src, dst, scope)
+	fillGeminiThoughtSignatureForGeminiOpenAIRequest(src, dst)
 
 	require.Len(t, dst.Messages, 1)
 	require.Len(t, dst.Messages[0].ToolCalls, 1)
 	require.NotNil(t, dst.Messages[0].ToolCalls[0].ExtraContent)
 	require.NotNil(t, dst.Messages[0].ToolCalls[0].ExtraContent.Google)
-	require.Equal(t, "sig_prefixed", dst.Messages[0].ToolCalls[0].ExtraContent.Google.ThoughtSignature)
+	// The raw encoded value is passed through as-is (no footprint decode)
+	require.Equal(t, *prefixed, dst.Messages[0].ToolCalls[0].ExtraContent.Google.ThoughtSignature)
 }
 
 func TestTransformRequestWithExtraBody(t *testing.T) {

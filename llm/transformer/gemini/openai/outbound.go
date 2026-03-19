@@ -337,7 +337,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Convert llm.Request to openai.Request
 	oaiReq := openai.RequestFromLLM(&req)
-	fillGeminiThoughtSignatureForGeminiOpenAIRequest(&req, oaiReq, scope)
+	fillGeminiThoughtSignatureForGeminiOpenAIRequest(&req, oaiReq)
 
 	geminiReq := Request{Request: *oaiReq}
 	if extraBody != nil {
@@ -374,7 +374,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}, nil
 }
 
-func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *openai.Request, scope shared.TransportScope) {
+func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *openai.Request) {
 	if src == nil || dst == nil {
 		return
 	}
@@ -418,31 +418,19 @@ func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *ope
 				continue
 			}
 
-			if scope.Footprint() == "" {
-				ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = raw
-				hasToolCallThoughtSignature = true
-				continue
-			}
-
-			if decoded := shared.DecodeGeminiThoughtSignatureInScope(&raw, scope); decoded != nil {
-				ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = *decoded
-				hasToolCallThoughtSignature = true
-			}
+			// Gemini OpenAI response direction does not encode footprint (it reuses
+			// openai.OutboundTransformer.TransformResponse which stores raw values),
+			// so we passthrough the raw value here without attempting to decode.
+			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = raw
+			hasToolCallThoughtSignature = true
 		}
 
 		if hasToolCallThoughtSignature {
 			continue
 		}
 
-		if scope.Footprint() == "" {
-			if srcMsg.ReasoningSignature != nil && *srcMsg.ReasoningSignature != "" {
-				ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = *srcMsg.ReasoningSignature
-			}
-			continue
-		}
-
-		if decoded := shared.DecodeGeminiThoughtSignatureInScope(srcMsg.ReasoningSignature, scope); decoded != nil {
-			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = *decoded
+		if srcMsg.ReasoningSignature != nil && *srcMsg.ReasoningSignature != "" {
+			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = *srcMsg.ReasoningSignature
 		}
 	}
 }
