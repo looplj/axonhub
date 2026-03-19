@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 	"github.com/looplj/axonhub/llm/vertex"
 )
 
@@ -52,6 +53,8 @@ type Config struct {
 
 	// BaseURL is the base URL for the Anthropic API, required.
 	BaseURL string `json:"base_url,omitempty"`
+
+	AccountIdentity string `json:"account_identity,omitempty"`
 
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
@@ -122,9 +125,9 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
-	// Get API key from provider
+	// Get API key from provider (Vertex/ClaudeCode use OAuth, not API keys)
 	var apiKey string
-	if t.config.APIKeyProvider != nil && t.config.Type != PlatformVertex {
+	if t.config.APIKeyProvider != nil {
 		apiKey = t.config.APIKeyProvider.Get(ctx)
 	}
 
@@ -151,7 +154,11 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert to Anthropic request format
-	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
+		scope := shared.TransportScope{
+			BaseURL:         t.config.BaseURL,
+			AccountIdentity: t.config.AccountIdentity,
+		}
+		anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config, scope)
 
 	// Apply cache_control breakpoint policy to optimize cache control if client requests with cache_control.
 	if countCacheControls(anthropicReq) > 0 {
@@ -224,11 +231,12 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	return &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     url,
-		Headers: headers,
-		Body:    body,
-		Auth:    authConfig,
+		Method:   http.MethodPost,
+		URL:      url,
+		Headers:  headers,
+		Body:     body,
+		Auth:     authConfig,
+		Metadata: scope.Metadata(),
 	}, nil
 }
 
@@ -302,7 +310,8 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to ChatCompletionResponse
-	chatResp := convertToLlmResponse(&anthropicResp, t.config.Type)
+	scope, _ := shared.GetTransportScope(ctx)
+	chatResp := convertToLlmResponse(&anthropicResp, t.config.Type, scope)
 
 	return chatResp, nil
 }

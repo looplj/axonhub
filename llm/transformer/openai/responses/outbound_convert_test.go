@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestConvertToolMessage(t *testing.T) {
@@ -616,7 +617,7 @@ func TestConvertInputFromMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertInputFromMessages(tt.msgs, tt.transformOptions)
+			result := convertInputFromMessages(tt.msgs, tt.transformOptions, shared.TransportScope{})
 			require.Equal(t, tt.expected, result)
 		})
 	}

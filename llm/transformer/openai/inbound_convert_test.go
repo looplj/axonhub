@@ -226,8 +226,8 @@ func TestMessageFromLLM_ReasoningFallback(t *testing.T) {
 			},
 			want: Message{
 				Role:             "assistant",
-				Reasoning:        nil,
-				ReasoningContent: nil,
+				Reasoning:        lo.ToPtr("I'm thinking about this step by step"),
+				ReasoningContent: lo.ToPtr("I'm thinking about this step by step"),
 			},
 		},
 		{
@@ -282,8 +282,8 @@ func TestMessageFromLLM_ReasoningFallback(t *testing.T) {
 			},
 			want: Message{
 				Role:             "assistant",
-				Reasoning:        nil,
-				ReasoningContent: nil,
+				Reasoning:        lo.ToPtr("foreign reasoning content"),
+				ReasoningContent: lo.ToPtr("foreign reasoning content"),
 			},
 		},
 		{

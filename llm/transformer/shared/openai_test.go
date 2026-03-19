@@ -1,88 +1,50 @@
 package shared
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsOpenAIEncryptedContent(t *testing.T) {
-	tests := []struct {
-		name     string
-		content  *string
-		expected bool
-	}{
-		{
-			name:     "nil content",
-			content:  nil,
-			expected: false,
-		},
-		{
-			name:     "empty string",
-			content:  new(string),
-			expected: false,
-		},
-		{
-			name:     "valid encrypted content",
-			content:  new(OpenAIEncryptedContentPrefix + "some-encrypted-content"),
-			expected: true,
-		},
-		{
-			name:     "invalid prefix",
-			content:  new("some-encrypted-content"),
-			expected: false,
-		},
-		{
-			name:     "only prefix",
-			content:  new(OpenAIEncryptedContentPrefix),
-			expected: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := IsOpenAIEncryptedContent(tt.content)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
+const testOpenAIFootprint = "a1b2c3"
 
 func TestDecodeOpenAIEncryptedContent(t *testing.T) {
 	tests := []struct {
-		name     string
-		content  *string
-		expected *string
+		name      string
+		content   *string
+		footprint string
+		expected  *string
 	}{
 		{
-			name:     "nil content",
-			content:  nil,
-			expected: nil,
+			name:      "nil content",
+			content:   nil,
+			footprint: "",
+			expected:  nil,
 		},
 		{
-			name:     "empty string",
-			content:  new(""),
-			expected: nil,
+			name:      "empty string",
+			content:   new(""),
+			footprint: "",
+			expected:  nil,
 		},
 		{
-			name:     "valid encrypted content",
-			content:  new(OpenAIEncryptedContentPrefix + "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
-			expected: new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			name:      "valid encrypted content with footprint",
+			content:   EncodeOpenAIEncryptedContent(new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"), testOpenAIFootprint),
+			footprint: testOpenAIFootprint,
+			expected:  new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
 		},
 		{
-			name:     "invalid prefix",
-			content:  new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
-			expected: nil,
-		},
-		{
-			name:     "only prefix returns empty string",
-			content:  new(OpenAIEncryptedContentPrefix),
-			expected: new(""),
+			name:      "invalid prefix",
+			content:   new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			footprint: "",
+			expected:  nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := DecodeOpenAIEncryptedContent(tt.content)
+			result := DecodeOpenAIEncryptedContent(tt.content, tt.footprint)
 			if tt.expected == nil {
 				require.Nil(t, result)
 			} else {
@@ -105,20 +67,20 @@ func TestEncodeOpenAIEncryptedContent(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name:     "only prefix",
+			name:     "empty content remains raw",
 			content:  new(""),
-			expected: new(OpenAIEncryptedContentPrefix),
+			expected: new(""),
 		},
 		{
-			name:     "valid encrypted content",
+			name:     "valid encrypted content remains raw without footprint",
 			content:  new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
-			expected: new(OpenAIEncryptedContentPrefix + "gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
+			expected: new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := EncodeOpenAIEncryptedContent(tt.content)
+			result := EncodeOpenAIEncryptedContent(tt.content, "")
 			if tt.expected == nil {
 				require.Nil(t, result)
 			} else {
@@ -133,12 +95,32 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	original := new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp")
 
 	// Encode
-	encoded := EncodeOpenAIEncryptedContent(original)
+	encoded := EncodeOpenAIEncryptedContent(original, "")
 	require.NotNil(t, encoded)
-	require.True(t, IsOpenAIEncryptedContent(encoded))
 
 	// Decode
-	decoded := DecodeOpenAIEncryptedContent(encoded)
+	decoded := DecodeOpenAIEncryptedContent(encoded, "")
+	require.Nil(t, decoded)
+}
+
+func TestEncodeDecodeOpenAIEncryptedContent(t *testing.T) {
+	original := new("gAAAAABpg2hk4yLqQUPBKlNLPwYE5lSfBmhv0P1P10QyeNeFLD2yVYYnLJY8-QnwOjWp")
+	encoded := EncodeOpenAIEncryptedContent(original, testOpenAIFootprint)
+	require.NotNil(t, encoded)
+	require.NotNil(t, DecodeOpenAIEncryptedContent(encoded, testOpenAIFootprint))
+	require.NotNil(t, DecodeOpenAIEncryptedContent(encoded, testOpenAIFootprint))
+
+	decoded := DecodeOpenAIEncryptedContent(encoded, testOpenAIFootprint)
 	require.NotNil(t, decoded)
 	require.Equal(t, *original, *decoded)
+	require.Nil(t, DecodeOpenAIEncryptedContent(encoded, "ffffff"))
+}
+
+func TestOpenAIEncryptedContentWholeValueCanDecodeAsBase64(t *testing.T) {
+	content := new("YWJjZA==")
+
+	encoded := EncodeOpenAIEncryptedContent(content, testOpenAIFootprint)
+	require.NotNil(t, encoded)
+	_, err := base64.StdEncoding.DecodeString(*encoded)
+	require.NoError(t, err)
 }

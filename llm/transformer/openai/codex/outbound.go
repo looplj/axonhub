@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -51,8 +52,9 @@ var (
 )
 
 type Params struct {
-	TokenProvider oauth.TokenGetter
-	BaseURL       string
+	TokenProvider   oauth.TokenGetter
+	BaseURL         string
+	AccountIdentity string
 }
 
 func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
@@ -68,7 +70,11 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
-	ro, err := responses.NewOutboundTransformer(baseURL, "dummy")
+	ro, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
+		BaseURL:         baseURL,
+		APIKeyProvider:  auth.NewStaticKeyProvider("dummy"),
+		AccountIdentity: params.AccountIdentity,
+	})
 	if err != nil {
 		return nil, err
 	}
