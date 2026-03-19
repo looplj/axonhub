@@ -1,10 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTokensByAPIKey } from '../data/dashboard';
+import type { TimePeriod } from '../types';
 
 const TOKEN_COLORS = {
   input: 'var(--chart-1)',
@@ -14,7 +17,8 @@ const TOKEN_COLORS = {
 
 export function TokensByAPIKeyChart() {
   const { t } = useTranslation();
-  const { data: tokenData, isLoading, error } = useTokensByAPIKey();
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('allTime');
+  const { data: tokenData, isLoading, error } = useTokensByAPIKey(timePeriod);
 
   if (isLoading) {
     return (
@@ -98,8 +102,26 @@ export function TokensByAPIKeyChart() {
 
   return (
     <div className='space-y-6'>
+      <div className='flex items-center gap-2'>
+        <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
+          <TabsList className='h-7 p-0.5'>
+            <TabsTrigger value='allTime' className='h-6 px-2 text-[10px]'>
+              {t('dashboard.stats.all')}
+            </TabsTrigger>
+            <TabsTrigger value='month' className='h-6 px-2 text-[10px]'>
+              {t('dashboard.stats.month')}
+            </TabsTrigger>
+            <TabsTrigger value='week' className='h-6 px-2 text-[10px]'>
+              {t('dashboard.stats.week')}
+            </TabsTrigger>
+            <TabsTrigger value='day' className='h-6 px-2 text-[10px]'>
+              {t('dashboard.stats.day')}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
       <ResponsiveContainer width='100%' height={320}>
-        <BarChart data={chartData} isAnimationActive={false}>
+        <BarChart data={chartData}>
           <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
           <XAxis
             dataKey='name'

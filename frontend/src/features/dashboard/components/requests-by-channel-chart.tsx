@@ -1,19 +1,22 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeneralSettings } from '../../system/data/system';
 import { useRequestsByChannel, useCostByChannel } from '../data/dashboard';
+import type { TimePeriod } from '../types';
 
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-1)'];
 
 export function RequestsByChannelChart() {
   const { t, i18n } = useTranslation();
-  const { data: channelData, isLoading: isRequestsLoading, error: requestsError } = useRequestsByChannel();
-  const { data: costData, isLoading: isCostLoading, error: costError } = useCostByChannel();
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('allTime');
+  const { data: channelData, isLoading: isRequestsLoading, error: requestsError } = useRequestsByChannel(timePeriod);
+  const { data: costData, isLoading: isCostLoading, error: costError } = useCostByChannel(timePeriod);
   const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
 
   const isLoading = isRequestsLoading || isCostLoading || isSettingsLoading;
@@ -127,8 +130,26 @@ export function RequestsByChannelChart() {
 
   return (
     <div className='space-y-6'>
+      <div className='flex items-center justify-end'>
+        <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
+          <TabsList className='h-7 p-0.5'>
+            <TabsTrigger value='allTime' className='h-6 px-2 text-[10px]'>
+              {t('dashboard.stats.all')}
+            </TabsTrigger>
+            <TabsTrigger value='month' className='h-6 px-2 text-[10px]'>
+              {t('dashboard.stats.month')}
+            </TabsTrigger>
+            <TabsTrigger value='week' className='h-6 px-2 text-[10px]'>
+              {t('dashboard.stats.week')}
+            </TabsTrigger>
+            <TabsTrigger value='day' className='h-6 px-2 text-[10px]'>
+              {t('dashboard.stats.day')}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
       <ResponsiveContainer width='100%' height={320}>
-        <BarChart data={chartData} barSize={32} isAnimationActive={false}>
+        <BarChart data={chartData} barSize={32}>
           <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
           <XAxis dataKey='name' hide />
           <YAxis yAxisId='left' tickLine={false} axisLine={false} width={60} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
