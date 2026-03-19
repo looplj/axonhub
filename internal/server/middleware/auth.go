@@ -17,19 +17,34 @@ import (
 
 // WithAPIKeyAuth 中间件用于验证 API key.
 func WithAPIKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
-	return WithAPIKeyConfig(auth, nil)
+	return WithAPIKeyConfig(auth, false, nil)
 }
 
 // WithAPIKeyConfig 中间件用于验证 API key，支持自定义配置.
-func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFunc {
+func WithAPIKeyConfig(auth *biz.AuthService, allowNoAuth bool, config *APIKeyConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key, err := ExtractAPIKeyFromRequest(c.Request, config)
+		if err != nil && !allowNoAuth {
+			AbortWithError(c, http.StatusUnauthorized, err)
+			return
+		}
+
+		if err == nil && !allowNoAuth && key == biz.NoAuthAPIKeyValue {
+			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
+			return
+		}
+
+		if errors.Is(err, ErrAPIKeyRequired) && allowNoAuth {
+			key = biz.NoAuthAPIKeyValue
+			err = nil
+		}
+
 		if err != nil {
 			AbortWithError(c, http.StatusUnauthorized, err)
 			return
 		}
 
-		apiKey, err := auth.AnthenticateAPIKey(c.Request.Context(), key)
+		apiKey, err := auth.AuthenticateAPIKey(c.Request.Context(), key, allowNoAuth)
 		if err != nil {
 			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {
 				AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
@@ -108,7 +123,7 @@ func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		apiKey, err := auth.AnthenticateAPIKey(c.Request.Context(), key)
+		apiKey, err := auth.AuthenticateAPIKey(c.Request.Context(), key, false)
 		if err != nil {
 			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {
 				AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
@@ -155,7 +170,7 @@ func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 			}
 		}
 
-		apiKey, err := auth.AnthenticateAPIKey(c.Request.Context(), key)
+		apiKey, err := auth.AuthenticateAPIKey(c.Request.Context(), key, false)
 		if err != nil {
 			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {
 				AbortWithError(c, http.StatusUnauthorized, biz.ErrInvalidAPIKey)

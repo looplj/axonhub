@@ -16,13 +16,23 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/watcher"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/scopes"
+)
+
+const (
+	//nolint:gosec // Checked.
+	NoAuthAPIKeyValue = "AXONHUB_API_KEY_NO_AUTH"
+
+	//nolint:gosec // Checked.
+	NoAuthAPIKeyName = "No Auth System Key"
 )
 
 type APIKeyServiceParams struct {
@@ -219,6 +229,10 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 
 	// Set type (default is 'user' from schema)
 	if input.Type != nil {
+		if *input.Type == apikey.TypeNoauth {
+			return nil, fmt.Errorf("noauth type API key is reserved")
+		}
+
 		create.SetType(*input.Type)
 		apiKeyType = *input.Type
 	}
@@ -257,6 +271,10 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 		}
 	}
 
+	if apiKey.Type == apikey.TypeNoauth {
+		return nil, fmt.Errorf("noauth type API key cannot be updated")
+	}
+
 	update := client.APIKey.UpdateOneID(id).SetNillableName(input.Name)
 
 	if apiKey.Type == apikey.TypeServiceAccount {
@@ -287,6 +305,15 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status apikey.Status) (*ent.APIKey, error) {
 	client := s.entFromContext(ctx)
 
+	existing, err := client.APIKey.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if existing.Type == apikey.TypeNoauth {
+		return nil, fmt.Errorf("noauth type API key status cannot be updated")
+	}
+
 	apiKey, err := client.APIKey.UpdateOneID(id).
 		SetStatus(status).
 		Save(ctx)
@@ -303,6 +330,15 @@ func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status a
 // UpdateAPIKeyProfiles updates the profiles of an API key.
 func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profiles objects.APIKeyProfiles) (*ent.APIKey, error) {
 	client := s.entFromContext(ctx)
+
+	existing, err := client.APIKey.Get(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if existing.Type == apikey.TypeNoauth {
+		return nil, fmt.Errorf("noauth type API key profiles cannot be updated")
+	}
 
 	// Validate that profile names are unique (case-insensitive)
 	if err := validateProfileNames(profiles.Profiles); err != nil {
@@ -494,6 +530,17 @@ func (s *APIKeyService) bulkUpdateAPIKeyStatus(ctx context.Context, ids []int, s
 		return fmt.Errorf("expected to find %d API keys, but found %d", len(ids), count)
 	}
 
+	noAuthExists, err := client.APIKey.Query().
+		Where(apikey.IDIn(ids...), apikey.TypeEQ(apikey.TypeNoauth)).
+		Exist(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to validate API keys for bulk %s: %w", action, err)
+	}
+
+	if noAuthExists {
+		return fmt.Errorf("noauth type API key cannot be bulk %sd", action)
+	}
+
 	apiKeys, err := client.APIKey.Query().
 		Where(apikey.IDIn(ids...)).
 		All(ctx)
@@ -527,4 +574,63 @@ func (s *APIKeyService) BulkEnableAPIKeys(ctx context.Context, ids []int) error 
 // BulkArchiveAPIKeys archives multiple API keys by their IDs.
 func (s *APIKeyService) BulkArchiveAPIKeys(ctx context.Context, ids []int) error {
 	return s.bulkUpdateAPIKeyStatus(ctx, ids, apikey.StatusArchived, "archive")
+}
+
+func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, error) {
+	client := s.entFromContext(ctx)
+
+	proj, err := client.Project.Query().
+		Order(ent.Asc(project.FieldID)).
+		First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get default project: %w", err)
+	}
+
+	owner, err := client.User.Query().Where(user.IsOwnerEQ(true)).First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get owner user for noauth api key: %w", err)
+	}
+
+	scopeValues := []string{
+		string(scopes.ScopeReadChannels),
+		string(scopes.ScopeWriteRequests),
+	}
+
+	existing, err := client.APIKey.Query().Where(apikey.KeyEQ(NoAuthAPIKeyValue)).Only(ctx)
+	if err == nil {
+		updated, updateErr := client.APIKey.UpdateOneID(existing.ID).
+			SetName(NoAuthAPIKeyName).
+			SetType(apikey.TypeNoauth).
+			SetStatus(apikey.StatusEnabled).
+			SetScopes(scopeValues).
+			Save(ctx)
+		if updateErr != nil {
+			return nil, fmt.Errorf("failed to update noauth api key: %w", updateErr)
+		}
+
+		s.invalidateAPIKeyCaches(ctx, updated.Key)
+
+		return updated, nil
+	}
+
+	if !ent.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to query noauth api key: %w", err)
+	}
+
+	created, err := client.APIKey.Create().
+		SetName(NoAuthAPIKeyName).
+		SetKey(NoAuthAPIKeyValue).
+		SetUserID(owner.ID).
+		SetProjectID(proj.ID).
+		SetType(apikey.TypeNoauth).
+		SetStatus(apikey.StatusEnabled).
+		SetScopes(scopeValues).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create noauth api key: %w", err)
+	}
+
+	s.invalidateAPIKeyCaches(ctx, created.Key)
+
+	return created, nil
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/api"
 	"github.com/looplj/axonhub/internal/server/backup"
@@ -113,6 +115,22 @@ func Run(opts ...fx.Option) {
 					},
 					OnStop: func(ctx context.Context) error {
 						return worker.Stop(ctx)
+					},
+				})
+			}),
+			fx.Invoke(func(lc fx.Lifecycle, cfg Config, db *ent.Client, svc *biz.APIKeyService) {
+				lc.Append(fx.Hook{
+					OnStart: func(ctx context.Context) error {
+						if !cfg.API.Auth.AllowNoAuth {
+							return nil
+						}
+
+						ctx = ent.NewContext(ctx, db)
+						ctx = authz.WithSystemBypass(ctx, "ensure-noauth-api-key")
+
+						_, err := svc.EnsureNoAuthAPIKey(ctx)
+
+						return err
 					},
 				})
 			}),

@@ -183,7 +183,7 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 	return u, nil
 }
 
-func (s *AuthService) AnthenticateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
+func (s *AuthService) AuthenticateAPIKey(ctx context.Context, key string, allowNoAuth bool) (*ent.APIKey, error) {
 	apiKey, err := authz.RunWithSystemBypass(ctx, "auth-lookup", func(bypassCtx context.Context) (*ent.APIKey, error) {
 		return s.APIKeyService.GetAPIKey(bypassCtx, key)
 	})
@@ -202,6 +202,10 @@ func (s *AuthService) AnthenticateAPIKey(ctx context.Context, key string) (*ent.
 
 	if proj == nil || proj.Status != project.StatusActive {
 		return nil, fmt.Errorf("api key project not valid: %w", ErrInvalidAPIKey)
+	}
+
+	if apiKey.Type == apikey.TypeNoauth && !allowNoAuth {
+		return nil, fmt.Errorf("noauth api key is only available when api auth is disabled: %w", ErrInvalidAPIKey)
 	}
 
 	return apiKey, nil
