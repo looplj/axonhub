@@ -52,7 +52,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@tabler/icons-react": "^3.34.0",
-    "@tailwindcss/vite": "^4.1.10",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.81.2",
     "@tanstack/react-router": "^1.121.34",
     "@tanstack/react-table": "^8.21.3",
@@ -107,8 +107,7 @@
     "@types/node": "^24.0.4",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "@vitejs/plugin-react": "^5.1.0",
-    "@vitejs/plugin-react-swc": "^3.10.2",
+    "@vitejs/plugin-react-swc": "^4.3.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.29.0",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -121,7 +120,7 @@
     "prettier-plugin-tailwindcss": "^0.6.13",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.0",
-    "vite": "^7.0.8"
+    "vite": "^8.0.1"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
