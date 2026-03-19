@@ -147,6 +147,25 @@ type CompleteSystemModelSettingOnboardingInput struct {
 	Dummy *string `json:"dummy,omitempty"`
 }
 
+// Cost statistics grouped by API key
+type CostStatsByAPIKey struct {
+	APIKeyID   objects.GUID `json:"apiKeyId"`
+	APIKeyName string       `json:"apiKeyName"`
+	Cost       float64      `json:"cost"`
+}
+
+// Cost statistics grouped by channel
+type CostStatsByChannel struct {
+	ChannelName string  `json:"channelName"`
+	Cost        float64 `json:"cost"`
+}
+
+// Cost statistics grouped by model
+type CostStatsByModel struct {
+	ModelID string  `json:"modelId"`
+	Cost    float64 `json:"cost"`
+}
+
 type CountChannelsByTypeInput struct {
 	// Filtering options for Channels returned from the connection.
 	StatusIn []channel.Status `json:"statusIn,omitempty"`
@@ -348,6 +367,26 @@ type TokenStatsByAPIKey struct {
 	CachedTokens    int          `json:"cachedTokens"`
 	ReasoningTokens int          `json:"reasoningTokens"`
 	TotalTokens     int          `json:"totalTokens"`
+}
+
+// Token usage statistics grouped by channel
+type TokenStatsByChannel struct {
+	ChannelName     string `json:"channelName"`
+	InputTokens     int    `json:"inputTokens"`
+	OutputTokens    int    `json:"outputTokens"`
+	CachedTokens    int    `json:"cachedTokens"`
+	ReasoningTokens int    `json:"reasoningTokens"`
+	TotalTokens     int    `json:"totalTokens"`
+}
+
+// Token usage statistics grouped by model
+type TokenStatsByModel struct {
+	ModelID         string `json:"modelId"`
+	InputTokens     int    `json:"inputTokens"`
+	OutputTokens    int    `json:"outputTokens"`
+	CachedTokens    int    `json:"cachedTokens"`
+	ReasoningTokens int    `json:"reasoningTokens"`
+	TotalTokens     int    `json:"totalTokens"`
 }
 
 type TopRequestsProjects struct {

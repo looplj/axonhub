@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTokensByAPIKey } from '../data/dashboard';
+import { useTokensByModel } from '../data/dashboard';
 
 const TOKEN_COLORS = {
   input: 'var(--chart-1)',
@@ -12,9 +12,9 @@ const TOKEN_COLORS = {
   cached: 'var(--chart-3)',
 };
 
-export function TokensByAPIKeyChart() {
+export function TokensByModelChart() {
   const { t } = useTranslation();
-  const { data: tokenData, isLoading, error } = useTokensByAPIKey();
+  const { data: tokenData, isLoading, error } = useTokensByModel();
 
   if (isLoading) {
     return (
@@ -42,16 +42,15 @@ export function TokensByAPIKeyChart() {
     );
   }
 
-  // Prepare data for stacked bar chart
   const chartData = tokenData.map((item) => ({
-    name: item.apiKeyName,
+    name: item.modelId,
     inputTokens: item.inputTokens,
     outputTokens: item.outputTokens,
     cachedTokens: item.cachedTokens,
     totalTokens: item.totalTokens,
   }));
 
-  const totalAllKeys = tokenData.reduce((sum, item) => sum + item.totalTokens, 0);
+  const totalAllModels = tokenData.reduce((sum, item) => sum + item.totalTokens, 0);
 
   type TokenTooltipProps = TooltipProps<number, string> & {
     payload?: Array<{
@@ -69,7 +68,7 @@ export function TokensByAPIKeyChart() {
     if (!props.active || !props.payload?.length) return null;
 
     const data = props.payload[0].payload;
-    const percent = totalAllKeys ? ((data.totalTokens ?? 0) / totalAllKeys) * 100 : 0;
+    const percent = totalAllModels ? ((data.totalTokens ?? 0) / totalAllModels) * 100 : 0;
 
     return (
       <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
@@ -145,7 +144,7 @@ export function TokensByAPIKeyChart() {
 
       <div className='grid gap-4 sm:grid-cols-1'>
         {chartData.map((item, index) => {
-          const percent = totalAllKeys ? (item.totalTokens / totalAllKeys) * 100 : 0;
+          const percent = totalAllModels ? (item.totalTokens / totalAllModels) * 100 : 0;
           return (
             <div key={item.name} className='grid w-full grid-cols-[auto_1fr_auto] items-start gap-3'>
               <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
