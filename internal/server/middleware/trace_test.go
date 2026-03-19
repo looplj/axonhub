@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 )
 
 func setupTestTraceMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.TraceService) {
@@ -60,8 +61,13 @@ func TestExtractClaudeTraceID(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "valid claude user id",
+			name:     "valid claude user id (legacy)",
 			userID:   "user_20836b5653ed68aa981604f502c0a491397f6053826a93c953423632578d38ad_account__session_f25958b8-e75c-455d-8b40-f006d87cc2a4",
+			expected: "f25958b8-e75c-455d-8b40-f006d87cc2a4",
+		},
+		{
+			name:     "valid claude user id (v2 json)",
+			userID:   `{"device_id":"67bad5aabbccdd1122334455667788990011223344556677889900aabbccddee","account_uuid":"","session_id":"f25958b8-e75c-455d-8b40-f006d87cc2a4"}`,
 			expected: "f25958b8-e75c-455d-8b40-f006d87cc2a4",
 		},
 		{
@@ -77,7 +83,12 @@ func TestExtractClaudeTraceID(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		result := extractClaudeTraceID(tc.userID)
+		uid := claudecode.ParseUserID(tc.userID)
+
+		var result string
+		if uid != nil {
+			result = uid.SessionID
+		}
 		require.Equal(t, tc.expected, result, tc.name)
 	}
 }
