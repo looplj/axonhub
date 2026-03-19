@@ -38,7 +38,7 @@ func (h *OIDCHandlers) GetProviders(c *gin.Context) {
 func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 	provider := c.Param("provider")
 	if provider == "" {
-		c.Error(fmt.Errorf("%s", "Provider is required"))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Provider is required"})
 		return
 	}
 
@@ -51,7 +51,7 @@ func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 
 	authURL, state, err := h.oidc.GetAuthorizeURL(c.Request.Context(), provider, baseURL)
 	if err != nil {
-		c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 		}
 
 		if provider == "" {
-			c.Error(fmt.Errorf("%s", "Provider is required"))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Provider is required"})
 			return
 		}
 	}
@@ -85,7 +85,7 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 	errorDesc := c.Query("error")
 
 	if errorDesc != "" {
-		c.Error(fmt.Errorf("%s", c.Query("error_description")))
+		c.JSON(http.StatusBadRequest, gin.H{"error": c.Query("error_description")})
 		return
 	}
 
