@@ -14,9 +14,6 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/samber/lo"
-	"github.com/vektah/gqlparser/v2/gqlerror"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -31,6 +28,8 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
+	"github.com/samber/lo"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -141,8 +140,26 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 // RequestStatsByChannel is the resolver for the requestStatsByChannel field.
 // Note: Uses usage_logs table for result-only statistics aggregated by channel.
 // For channel-level process tracking (e.g., success/failure rates), use request_execution table.
-func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error) {
+func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *string) ([]*RequestStatsByChannel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	// Use efficient aggregation query with JOIN to get channel details and filter out deleted channels
 	type channelStats struct {
@@ -163,6 +180,11 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 
 			// Filter: only non-deleted channels
 			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+
+			// Apply time window filter when provided
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
 
 			// Group by channel fields to get names and types directly
 			s.GroupBy(channelTable.C(channel.FieldName))
@@ -193,8 +215,26 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 // RequestStatsByModel is the resolver for the requestStatsByModel field.
 // Note: Uses usage_logs table for result-only statistics aggregated by model.
 // This provides successful request counts per model.
-func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error) {
+func (r *queryResolver) RequestStatsByModel(ctx context.Context, timeWindow *string) ([]*RequestStatsByModel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	type modelStats struct {
 		ModelID string `json:"model_id"`
@@ -203,7 +243,14 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 
 	var results []modelStats
 
-	err := r.client.UsageLog.Query().
+	query := r.client.UsageLog.Query()
+
+	// Apply time window filter when provided
+	if applyFilter {
+		query = query.Where(usagelog.CreatedAtGTE(since))
+	}
+
+	err := query.
 		GroupBy(usagelog.FieldModelID).
 		Aggregate(ent.As(ent.Count(), "request_count")).
 		Scan(ctx, &results)
@@ -233,8 +280,26 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 // RequestStatsByAPIKey is the resolver for the requestStatsByAPIKey field.
 // Note: Uses usage_logs table for result-only statistics aggregated by API key.
 // This provides successful request counts per API key.
-func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error) {
+func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*RequestStatsByAPIKey, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	type apiKeyStats struct {
 		APIKeyID int `json:"api_key_id"`
@@ -244,8 +309,15 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 	var results []apiKeyStats
 
 	// Database-level aggregation
-	err := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil()).
+	query := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDNotNil())
+
+	// Apply time window filter when provided
+	if applyFilter {
+		query = query.Where(usagelog.CreatedAtGTE(since))
+	}
+
+	err := query.
 		GroupBy(usagelog.FieldAPIKeyID).
 		Aggregate(ent.As(ent.Count(), "request_count")).
 		Scan(ctx, &results)
@@ -303,8 +375,26 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 // TokenStatsByAPIKey is the resolver for the tokenStatsByAPIKey field.
 // Note: Uses usage_logs table for token consumption statistics aggregated by API key.
 // This provides actual token usage (input, output, cached, reasoning) per API key.
-func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error) {
+func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*TokenStatsByAPIKey, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	type tokenStats struct {
 		APIKeyID        int   `json:"api_key_id"`
@@ -328,6 +418,11 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 
 			// Filter: only requests with non-null api_key_id
 			s.Where(sql.NotNull(requestTable.C(request.FieldAPIKeyID)))
+
+			// Apply time window filter when provided
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
 
 			// Group by api_key_id
 			s.GroupBy(requestTable.C(request.FieldAPIKeyID))
@@ -1413,8 +1508,26 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 }
 
 // TokenStatsByChannel is the resolver for the tokenStatsByChannel field.
-func (r *queryResolver) TokenStatsByChannel(ctx context.Context) ([]*TokenStatsByChannel, error) {
+func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *string) ([]*TokenStatsByChannel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	type channelTokenStats struct {
 		ChannelName     string `json:"channel_name"`
@@ -1435,6 +1548,11 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context) ([]*TokenStatsB
 			)
 
 			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+
+			// Apply time window filter when provided
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
 
 			s.GroupBy(channelTable.C(channel.FieldName))
 
@@ -1469,8 +1587,26 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context) ([]*TokenStatsB
 }
 
 // TokenStatsByModel is the resolver for the tokenStatsByModel field.
-func (r *queryResolver) TokenStatsByModel(ctx context.Context) ([]*TokenStatsByModel, error) {
+func (r *queryResolver) TokenStatsByModel(ctx context.Context, timeWindow *string) ([]*TokenStatsByModel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	type modelTokenStats struct {
 		ModelID         string `json:"model_id"`
@@ -1484,6 +1620,11 @@ func (r *queryResolver) TokenStatsByModel(ctx context.Context) ([]*TokenStatsByM
 
 	err := r.client.UsageLog.Query().
 		Modify(func(s *sql.Selector) {
+			// Apply time window filter when provided
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
+
 			s.GroupBy(s.C(usagelog.FieldModelID))
 
 			s.Select(
@@ -1517,8 +1658,26 @@ func (r *queryResolver) TokenStatsByModel(ctx context.Context) ([]*TokenStatsByM
 }
 
 // CostStatsByChannel is the resolver for the costStatsByChannel field.
-func (r *queryResolver) CostStatsByChannel(ctx context.Context) ([]*CostStatsByChannel, error) {
+func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *string) ([]*CostStatsByChannel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	type channelCostStats struct {
 		ChannelName string  `json:"channel_name"`
@@ -1536,6 +1695,11 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context) ([]*CostStatsByC
 			)
 
 			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+
+			// Apply time window filtering
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
 
 			s.GroupBy(channelTable.C(channel.FieldName))
 
@@ -1561,8 +1725,26 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context) ([]*CostStatsByC
 }
 
 // CostStatsByModel is the resolver for the costStatsByModel field.
-func (r *queryResolver) CostStatsByModel(ctx context.Context) ([]*CostStatsByModel, error) {
+func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string) ([]*CostStatsByModel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	type modelCostStats struct {
 		ModelID string  `json:"model_id"`
@@ -1573,6 +1755,11 @@ func (r *queryResolver) CostStatsByModel(ctx context.Context) ([]*CostStatsByMod
 
 	err := r.client.UsageLog.Query().
 		Modify(func(s *sql.Selector) {
+			// Apply time window filtering
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
+
 			s.GroupBy(s.C(usagelog.FieldModelID))
 
 			s.Select(
@@ -1597,8 +1784,26 @@ func (r *queryResolver) CostStatsByModel(ctx context.Context) ([]*CostStatsByMod
 }
 
 // CostStatsByAPIKey is the resolver for the costStatsByAPIKey field.
-func (r *queryResolver) CostStatsByAPIKey(ctx context.Context) ([]*CostStatsByAPIKey, error) {
+func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*CostStatsByAPIKey, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	// Parse time window using calendar periods
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	var since time.Time
+	applyFilter := false
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		}
+	}
 
 	type apiKeyCostStats struct {
 		APIKeyID int     `json:"api_key_id"`
@@ -1610,6 +1815,11 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context) ([]*CostStatsByAP
 	err := r.client.UsageLog.Query().
 		Where(usagelog.APIKeyIDNotNil()).
 		Modify(func(s *sql.Selector) {
+			// Apply time window filtering
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
+
 			s.GroupBy(s.C(usagelog.FieldAPIKeyID))
 
 			s.Select(
