@@ -160,6 +160,55 @@ input FastestChannelsInput {
   limit: Int = 5
 }
 
+"""
+Token usage statistics grouped by channel
+"""
+type TokenStatsByChannel {
+  channelName: String!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  reasoningTokens: Int!
+  totalTokens: Int!
+}
+
+"""
+Token usage statistics grouped by model
+"""
+type TokenStatsByModel {
+  modelId: String!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  reasoningTokens: Int!
+  totalTokens: Int!
+}
+
+"""
+Cost statistics grouped by channel
+"""
+type CostStatsByChannel {
+  channelName: String!
+  cost: Float!
+}
+
+"""
+Cost statistics grouped by model
+"""
+type CostStatsByModel {
+  modelId: String!
+  cost: Float!
+}
+
+"""
+Cost statistics grouped by API key
+"""
+type CostStatsByAPIKey {
+  apiKeyId: ID!
+  apiKeyName: String!
+  cost: Float!
+}
+
 extend type Query {
   dashboardOverview: DashboardOverview!
   requestStats: RequestStats!
@@ -184,4 +233,9 @@ extend type Query {
   Get performance statistics for channels over time
   """
   channelPerformanceStats: [ChannelPerformanceStat!]!
+  tokenStatsByChannel: [TokenStatsByChannel!]!
+  tokenStatsByModel: [TokenStatsByModel!]!
+  costStatsByChannel: [CostStatsByChannel!]!
+  costStatsByModel: [CostStatsByModel!]!
+  costStatsByAPIKey: [CostStatsByAPIKey!]!
 }

@@ -43,6 +43,40 @@ export const tokensByAPIKeySchema = z.object({
   totalTokens: z.number(),
 });
 
+export const tokensByChannelSchema = z.object({
+  channelName: z.string(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  cachedTokens: z.number(),
+  reasoningTokens: z.number(),
+  totalTokens: z.number(),
+});
+
+export const tokensByModelSchema = z.object({
+  modelId: z.string(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  cachedTokens: z.number(),
+  reasoningTokens: z.number(),
+  totalTokens: z.number(),
+});
+
+export const costByChannelSchema = z.object({
+  channelName: z.string(),
+  cost: z.number(),
+});
+
+export const costByModelSchema = z.object({
+  modelId: z.string(),
+  cost: z.number(),
+});
+
+export const costByAPIKeySchema = z.object({
+  apiKeyId: z.string(),
+  apiKeyName: z.string(),
+  cost: z.number(),
+});
+
 export const dailyRequestStatsSchema = z.object({
   date: z.string(),
   count: z.number(),
@@ -95,6 +129,11 @@ export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>;
 export type RequestsByModel = z.infer<typeof requestsByModelSchema>;
 export type RequestsByAPIKey = z.infer<typeof requestsByAPIKeySchema>;
 export type TokensByAPIKey = z.infer<typeof tokensByAPIKeySchema>;
+export type TokensByChannel = z.infer<typeof tokensByChannelSchema>;
+export type TokensByModel = z.infer<typeof tokensByModelSchema>;
+export type CostByChannel = z.infer<typeof costByChannelSchema>;
+export type CostByModel = z.infer<typeof costByModelSchema>;
+export type CostByAPIKey = z.infer<typeof costByAPIKeySchema>;
 export type DailyRequestStats = z.infer<typeof dailyRequestStatsSchema>;
 export type HourlyRequestStats = z.infer<typeof hourlyRequestStatsSchema>;
 export type TopProjects = z.infer<typeof topProjectsSchema>;
@@ -175,6 +214,60 @@ const TOKENS_BY_API_KEY_QUERY = `
       cachedTokens
       reasoningTokens
       totalTokens
+    }
+  }
+`;
+
+const TOKENS_BY_CHANNEL_QUERY = `
+  query GetTokensByChannel {
+    tokenStatsByChannel {
+      channelName
+      inputTokens
+      outputTokens
+      cachedTokens
+      reasoningTokens
+      totalTokens
+    }
+  }
+`;
+
+const TOKENS_BY_MODEL_QUERY = `
+  query GetTokensByModel {
+    tokenStatsByModel {
+      modelId
+      inputTokens
+      outputTokens
+      cachedTokens
+      reasoningTokens
+      totalTokens
+    }
+  }
+`;
+
+const COST_BY_CHANNEL_QUERY = `
+  query GetCostByChannel {
+    costStatsByChannel {
+      channelName
+      cost
+    }
+  }
+`;
+
+const COST_BY_MODEL_QUERY = `
+  query GetCostByModel {
+    costStatsByModel {
+      modelId
+      cost
+    }
+  }
+`;
+
+const COST_BY_API_KEY_QUERY = `
+  query GetCostByAPIKey {
+    costStatsByAPIKey {
+      apiKeyId
+      apiKeyName
+      cost
     }
   }
 `;
@@ -325,6 +418,61 @@ export function useTokensByAPIKey() {
       return data.tokenStatsByAPIKey.map((item) => tokensByAPIKeySchema.parse(item));
     },
     refetchInterval: 60000, // Auto-refresh every 60 seconds
+  });
+}
+
+export function useTokensByChannel() {
+  return useQuery({
+    queryKey: ['tokenStatsByChannel'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ tokenStatsByChannel: TokensByChannel[] }>(TOKENS_BY_CHANNEL_QUERY);
+      return data.tokenStatsByChannel.map((item) => tokensByChannelSchema.parse(item));
+    },
+    refetchInterval: 60000,
+  });
+}
+
+export function useTokensByModel() {
+  return useQuery({
+    queryKey: ['tokenStatsByModel'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ tokenStatsByModel: TokensByModel[] }>(TOKENS_BY_MODEL_QUERY);
+      return data.tokenStatsByModel.map((item) => tokensByModelSchema.parse(item));
+    },
+    refetchInterval: 60000,
+  });
+}
+
+export function useCostByChannel() {
+  return useQuery({
+    queryKey: ['costStatsByChannel'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ costStatsByChannel: CostByChannel[] }>(COST_BY_CHANNEL_QUERY);
+      return data.costStatsByChannel.map((item) => costByChannelSchema.parse(item));
+    },
+    refetchInterval: 60000,
+  });
+}
+
+export function useCostByModel() {
+  return useQuery({
+    queryKey: ['costStatsByModel'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ costStatsByModel: CostByModel[] }>(COST_BY_MODEL_QUERY);
+      return data.costStatsByModel.map((item) => costByModelSchema.parse(item));
+    },
+    refetchInterval: 60000,
+  });
+}
+
+export function useCostByAPIKey() {
+  return useQuery({
+    queryKey: ['costStatsByAPIKey'],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ costStatsByAPIKey: CostByAPIKey[] }>(COST_BY_API_KEY_QUERY);
+      return data.costStatsByAPIKey.map((item) => costByAPIKeySchema.parse(item));
+    },
+    refetchInterval: 60000,
   });
 }
 

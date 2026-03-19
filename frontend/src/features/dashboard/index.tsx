@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BarChart3, Key, Zap, ChevronDown } from 'lucide-react';
+import { BarChart3, Brain, Key, Zap, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,6 +12,8 @@ import { RequestsByChannelChart } from './components/requests-by-channel-chart';
 import { RequestsByModelChart } from './components/requests-by-model-chart';
 import { RequestsByAPIKeyChart } from './components/requests-by-api-key-chart';
 import { TokensByAPIKeyChart } from './components/tokens-by-api-key-chart';
+import { TokensByChannelChart } from './components/tokens-by-channel-chart';
+import { TokensByModelChart } from './components/tokens-by-model-chart';
 import { SuccessRateCard } from './components/success-rate-card';
 import { TodayRequestsCard } from './components/today-requests-card';
 import { TokenStatsCard } from './components/token-stats-card';
@@ -174,8 +176,8 @@ export default function DashboardPage() {
         <div className='grid gap-4 md:grid-cols-2'>
           <Card className='hover-card'>
             <CardHeader>
-              <CardTitle>{t('dashboard.charts.requestsByChannel')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.requestsByChannelDescription')}</CardDescription>
+              <CardTitle>{t('dashboard.charts.requestsCostByChannel')}</CardTitle>
+              <CardDescription>{t('dashboard.charts.requestsCostByChannelDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <RequestsByChannelChart />
@@ -183,11 +185,39 @@ export default function DashboardPage() {
           </Card>
           <Card className='hover-card'>
             <CardHeader>
-              <CardTitle>{t('dashboard.charts.requestsByModel')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.requestsByModelDescription')}</CardDescription>
+              <CardTitle>{t('dashboard.charts.tokensByChannel')}</CardTitle>
+              <CardDescription>{t('dashboard.charts.tokensByChannelDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TokensByChannelChart />
+            </CardContent>
+          </Card>
+        </div>
+      </CollapsibleSection>
+
+      {/* 模型分析 - 可折叠 */}
+      <CollapsibleSection
+        title={t('dashboard.sections.models')}
+        icon={<Brain className='h-4 w-4 text-primary' />}
+        storageKey='models'
+      >
+        <div className='grid gap-4 md:grid-cols-2'>
+          <Card className='hover-card'>
+            <CardHeader>
+              <CardTitle>{t('dashboard.charts.requestsCostByModel')}</CardTitle>
+              <CardDescription>{t('dashboard.charts.requestsCostByModelDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <RequestsByModelChart />
+            </CardContent>
+          </Card>
+          <Card className='hover-card'>
+            <CardHeader>
+              <CardTitle>{t('dashboard.charts.tokensByModel')}</CardTitle>
+              <CardDescription>{t('dashboard.charts.tokensByModelDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TokensByModelChart />
             </CardContent>
           </Card>
         </div>
@@ -202,8 +232,8 @@ export default function DashboardPage() {
         <div className='grid gap-4 md:grid-cols-2'>
           <Card className='hover-card'>
             <CardHeader>
-              <CardTitle>{t('dashboard.charts.requestsByAPIKey')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.requestsByAPIKeyDescription')}</CardDescription>
+              <CardTitle>{t('dashboard.charts.requestsCostByAPIKey')}</CardTitle>
+              <CardDescription>{t('dashboard.charts.requestsCostByAPIKeyDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               <RequestsByAPIKeyChart />
