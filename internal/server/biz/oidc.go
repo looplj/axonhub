@@ -282,10 +282,18 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		email = fmt.Sprintf("%s@%s.oidc", subject, p.config.Name)
 	}
 
+	// Generate a cryptographically secure random password for JIT users.
+	// These users are expected to authenticate via OIDC only.
+	randPasswordBytes := make([]byte, 32)
+	if _, err := rand.Read(randPasswordBytes); err != nil {
+		return nil, fmt.Errorf("failed to generate secure password: %w", err)
+	}
+	randPassword := hex.EncodeToString(randPasswordBytes)
+
 	newUser, err := s.db.User.Create().
 		SetEmail(email).
 		SetFirstName(name).
-		SetPassword("oidc_sso_" + base64.StdEncoding.EncodeToString([]byte(subject))). // Dummy password
+		SetPassword(randPassword).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to provision user: %w", err)
