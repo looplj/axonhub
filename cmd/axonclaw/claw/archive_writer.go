@@ -67,58 +67,54 @@ func sanitizeArchiveThreadID(threadID string) string {
 }
 
 func renderArchiveMessage(now time.Time, msg agent.Message) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "## %s %s\n\n", now.Format(time.RFC3339), msg.Role)
+	timeStr := now.Format("15:04:05")
 
-	if msg.RoundIndex != 0 {
-		fmt.Fprintf(&b, "- Round index: %d\n", msg.RoundIndex)
+	switch {
+	case msg.ToolUse != nil:
+		return fmt.Sprintf("[%s] tool:%s(id:%s): %s\n", timeStr, msg.ToolUse.Name, msg.ToolUse.ID, strings.TrimSpace(msg.ToolUse.Input))
+
+	case msg.ToolUseID != nil:
+		prefix := "tool_result"
+		if msg.IsError != nil && *msg.IsError {
+			prefix = "tool_error"
+		}
+
+		content := renderArchiveContentInline(msg.Content)
+
+		return fmt.Sprintf("[%s] %s(%s): %s\n", timeStr, prefix, *msg.ToolUseID, content)
+
+	default:
+		content := renderArchiveContentInline(msg.Content)
+		return fmt.Sprintf("[%s] %s: %s\n", timeStr, msg.Role, content)
 	}
-
-	if msg.ToolUse != nil {
-		fmt.Fprintf(&b, "- Tool use: `%s` (id: `%s`)\n", msg.ToolUse.Name, msg.ToolUse.ID)
-	}
-
-	if msg.ToolUseID != nil {
-		fmt.Fprintf(&b, "- Tool call id: `%s`\n", *msg.ToolUseID)
-	}
-
-	if msg.IsError != nil && *msg.IsError {
-		b.WriteString("- Is error: true\n")
-	}
-
-	b.WriteString("\n")
-
-	if msg.ToolUse != nil {
-		fmt.Fprintf(&b, "```json\n%s\n```\n\n", strings.TrimSpace(msg.ToolUse.Input))
-		return b.String()
-	}
-
-	if msg.Content != nil {
-		renderArchiveContent(&b, msg.Content)
-	}
-
-	b.WriteString("\n")
-
-	return b.String()
 }
 
-func renderArchiveContent(b *strings.Builder, c *agent.Content) {
-	if c.Text != nil && strings.TrimSpace(*c.Text) != "" {
-		fmt.Fprintf(b, "```\n%s\n```\n", strings.TrimSpace(*c.Text))
-		return
+func renderArchiveContentInline(c *agent.Content) string {
+	if c == nil {
+		return ""
 	}
 
+	if c.Text != nil && strings.TrimSpace(*c.Text) != "" {
+		return strings.TrimSpace(*c.Text)
+	}
+
+	var parts []string
 	for _, part := range c.Parts {
-		//nolint:exhaustive // Archive rendering only persists text/thinking parts; other part types are intentionally skipped.
 		switch part.Type {
 		case agent.ContentPartText:
 			if strings.TrimSpace(part.Text) != "" {
-				fmt.Fprintf(b, "```\n%s\n```\n", strings.TrimSpace(part.Text))
+				parts = append(parts, strings.TrimSpace(part.Text))
 			}
 		case agent.ContentPartThinking:
 			if strings.TrimSpace(part.Thinking) != "" {
-				fmt.Fprintf(b, "**Thinking:**\n```\n%s\n```\n", strings.TrimSpace(part.Thinking))
+				parts = append(parts, "[thinking] "+strings.TrimSpace(part.Thinking))
 			}
 		}
 	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return strings.Join(parts, " | ")
 }
