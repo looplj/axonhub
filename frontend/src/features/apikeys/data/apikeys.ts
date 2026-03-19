@@ -1,12 +1,20 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
-import type { ApiKey, ApiKeyConnection, ApiKeyProfileQuotaUsage, CreateApiKeyInput, UpdateApiKeyInput, UpdateApiKeyProfilesInput } from './schema';
-import { apiKeyConnectionSchema, apiKeyProfileQuotaUsageSchema, apiKeySchema } from './schema';
+import type {
+  ApiKey,
+  ApiKeyConnection,
+  ApiKeyProfileQuotaUsage,
+  ApiKeyTokenUsageStats,
+  CreateApiKeyInput,
+  UpdateApiKeyInput,
+  UpdateApiKeyProfilesInput,
+} from './schema';
+import { apiKeyConnectionSchema, apiKeyProfileQuotaUsageSchema, apiKeySchema, apiKeyTokenUsageStatsSchema } from './schema';
 
 // Dynamic GraphQL query builders
 function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
@@ -229,6 +237,25 @@ const APIKEY_QUOTA_USAGES_QUERY = `
   }
 `;
 
+const APIKEY_TOKEN_USAGE_STATS_QUERY = `
+  query APIKeyTokenUsageStats($input: APIKeyTokenUsageStatsInput) {
+    apiKeyTokenUsageStats(input: $input) {
+      apiKeyId
+      inputTokens
+      outputTokens
+      cachedTokens
+      reasoningTokens
+      topModels {
+        modelId
+        inputTokens
+        outputTokens
+        cachedTokens
+        reasoningTokens
+      }
+    }
+  }
+`;
+
 // React Query hooks
 export function useApiKeys(
   variables?: {
@@ -321,6 +348,42 @@ export function useApiKeyQuotaUsages(
     },
     enabled: !!apiKeyId && (options?.enabled ?? true),
     refetchInterval: options?.refetchInterval,
+  });
+}
+
+export function useApiKeyTokenUsageStats(
+  variables?: {
+    apiKeyIds?: string[];
+    createdAtGTE?: string;
+    createdAtLTE?: string;
+  },
+  options?: {
+    enabled?: boolean;
+  }
+) {
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
+
+  return useQuery({
+    queryKey: ['apiKeyTokenUsageStats', variables, selectedProjectId],
+    queryFn: async () => {
+      try {
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ apiKeyTokenUsageStats: ApiKeyTokenUsageStats[] }>(
+          APIKEY_TOKEN_USAGE_STATS_QUERY,
+          { input: variables && Object.keys(variables).length > 0 ? variables : undefined },
+          headers
+        );
+        return apiKeyTokenUsageStatsSchema.array().parse(data.apiKeyTokenUsageStats);
+      } catch (error) {
+        handleError(error, t('apikeys.errors.fetchUsageStats'));
+        throw error;
+      }
+    },
+    enabled: !!selectedProjectId && (options?.enabled ?? true),
+    placeholderData: keepPreviousData,
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 }
 

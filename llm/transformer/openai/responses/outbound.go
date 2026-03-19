@@ -24,6 +24,8 @@ type Config struct {
 	// BaseURL is the base URL for the OpenAI API, required.
 	BaseURL string `json:"base_url,omitempty"`
 
+	AccountIdentity string `json:"account_identity,omitempty"`
+
 	// RawURL is whether to use raw URL for requests, default is false.
 	// If true, the request URL will be used as is, without appending the response endpoint.
 	RawURL bool `json:"raw_url,omitempty"`
@@ -127,6 +129,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		llmReq.TransformerMetadata = map[string]any{}
 	}
 
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+	scope := shared.TransportScope{
+		BaseURL:         t.config.BaseURL,
+		AccountIdentity: t.config.AccountIdentity,
+	}
+
 	var tools []Tool
 	// Convert tools to Responses API format
 	for _, item := range llmReq.Tools {
@@ -150,7 +158,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	payload := Request{
 		Model:                llmReq.Model,
-		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions),
+		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions, scope),
 		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,
@@ -205,10 +213,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKeyProvider.Get(ctx),
+			APIKey: apiKey,
 		},
 		TransformerMetadata:   llmReq.TransformerMetadata,
 		SkipInboundQueryMerge: true,
+		Metadata:              scope.Metadata(),
 	}, nil
 }
 
@@ -230,6 +239,8 @@ func (t *OutboundTransformer) TransformResponse(
 	if httpResp == nil {
 		return nil, fmt.Errorf("http response is nil")
 	}
+
+	scope, _ := shared.GetTransportScope(ctx)
 
 	if httpResp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
@@ -317,7 +328,7 @@ func (t *OutboundTransformer) TransformResponse(
 			}
 			// Preserve encrypted reasoning content in ReasoningSignature.
 			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {
-				reasoningSignature = shared.EncodeOpenAIEncryptedContent(outputItem.EncryptedContent)
+				reasoningSignature = shared.EncodeOpenAIEncryptedContentInScope(outputItem.EncryptedContent, scope)
 			}
 		case "image_generation_call":
 			imageOutputFormat := "png"

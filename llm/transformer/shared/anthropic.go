@@ -1,51 +1,68 @@
 package shared
 
 import (
+	"encoding/base64"
 	"strings"
 )
 
-// IsAnthropicSignature checks if the signature is an Anthropic-encoded signature.
-func IsAnthropicSignature(signature *string) bool {
-	if signature == nil {
-		return false
+func parseAnthropicSignaturePrefix(signature string) (prefixLength int, footprint string, ok bool) {
+	if len(signature) >= len(AnthropicSignaturePrefix)+8 && strings.HasPrefix(signature, AnthropicSignaturePrefix) {
+		fpB64 := signature[len(AnthropicSignaturePrefix) : len(AnthropicSignaturePrefix)+8]
+		if decoded, err := base64.StdEncoding.DecodeString(fpB64); err == nil && len(decoded) == 6 {
+			fp := string(decoded)
+			if isFootprintHex6(fp) {
+				return len(AnthropicSignaturePrefix) + 8, fp, true
+			}
+		}
 	}
 
-	return strings.HasPrefix(*signature, AnthropicSignaturePrefix)
+	return 0, "", false
 }
 
-// DecodeAnthropicSignature strips the Anthropic prefix from an encoded signature.
-// Returns nil if the signature does not have the Anthropic prefix.
-func DecodeAnthropicSignature(signature *string) *string {
-	if !IsAnthropicSignature(signature) {
+// DecodeAnthropicSignature strips the full Anthropic prefix (type marker + footprint)
+// from an encoded signature. Returns nil if the prefix does not match.
+func DecodeAnthropicSignature(signature *string, footprint string) *string {
+	if signature == nil {
 		return nil
 	}
 
-	decoded := (*signature)[len(AnthropicSignaturePrefix):]
+	prefixLength, embeddedFootprint, ok := parseAnthropicSignaturePrefix(*signature)
+	if !ok {
+		return nil
+	}
 
+	if embeddedFootprint != "" && embeddedFootprint != footprint {
+		return nil
+	}
+
+	decoded := (*signature)[prefixLength:]
 	return &decoded
 }
 
-// EncodeAnthropicSignature adds the Anthropic prefix to a raw signature.
-func EncodeAnthropicSignature(signature *string) *string {
+func DecodeAnthropicSignatureInScope(signature *string, scope TransportScope) *string {
+	return DecodeAnthropicSignature(signature, scope.Footprint())
+}
+
+// EncodeAnthropicSignature encodes a raw signature with the Anthropic type marker and footprint.
+// Format:
+//   - without footprint: EnsureBase64Encoding(rawSignature)
+//   - with footprint: AnthropicSignaturePrefix + base64(footprint) + EnsureBase64Encoding(rawSignature)
+func EncodeAnthropicSignature(signature *string, footprint string) *string {
 	if signature == nil {
 		return nil
 	}
 
-	// Some provider, like Deepseek, will response uuid as signature instead of base64-encoded string.
-	// We should encode it to base64-encoded string.
 	encoded := EnsureBase64Encoding(*signature)
-	encoded = AnthropicSignaturePrefix + encoded
+	if footprint == "" || !isFootprintHex6(footprint) {
+		return &encoded
+	}
+
+	prefix := AnthropicSignaturePrefix + base64.StdEncoding.EncodeToString([]byte(footprint))
+	encoded = prefix + encoded
+
 	return &encoded
 }
 
-// IsAnthropicRedactedContent checks if the content should be treated as Anthropic redacted content.
-// It explicitly excludes signatures from all providers (Gemini, OpenAI, and Anthropic encoding) to prevent
-// conflicts during the transformation process. This isolation ensures that model-specific
-// private protocols do not interfere with each other when converting to the Anthropic format.
-func IsAnthropicRedactedContent(content *string) bool {
-	if content == nil {
-		return false
-	}
-
-	return !IsGeminiThoughtSignature(content) && !IsOpenAIEncryptedContent(content) && !IsAnthropicSignature(content)
+func EncodeAnthropicSignatureInScope(signature *string, scope TransportScope) *string {
+	return EncodeAnthropicSignature(signature, scope.Footprint())
 }

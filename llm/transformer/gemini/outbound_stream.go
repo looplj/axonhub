@@ -10,11 +10,13 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // streamState tracks state across streaming events.
 type streamState struct {
 	toolCallIndex int
+	scope         shared.TransportScope
 }
 
 // TransformStream transforms the HTTP stream response to the unified response format.
@@ -26,7 +28,8 @@ func (t *OutboundTransformer) TransformStream(
 	stream = streams.AppendStream(stream, lo.ToPtr(llm.DoneStreamEvent))
 
 	// Track tool call index across stream events
-	state := &streamState{}
+	scope, _ := shared.GetTransportScope(ctx)
+	state := &streamState{scope: scope}
 
 	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.transformStreamChunkWithState(event, state)
@@ -39,7 +42,8 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	ctx context.Context,
 	event *httpclient.StreamEvent,
 ) (*llm.Response, error) {
-	return t.transformStreamChunkWithState(event, &streamState{})
+	scope, _ := shared.GetTransportScope(ctx)
+	return t.transformStreamChunkWithState(event, &streamState{scope: scope})
 }
 
 // transformStreamChunkWithState transforms a single Gemini streaming chunk with state tracking.
@@ -69,7 +73,7 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	}
 
 	// Convert to unified response format (streaming) with tool call index tracking
-	llmResp, nextIndex := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex)
+	llmResp, nextIndex := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex, state.scope)
 	state.toolCallIndex = nextIndex
 
 	return llmResp, nil

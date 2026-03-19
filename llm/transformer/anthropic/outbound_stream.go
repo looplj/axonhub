@@ -24,7 +24,9 @@ func (t *OutboundTransformer) TransformStream(
 	// Append the DONE event to the filtered stream
 	streamWithDone := streams.AppendStream(filteredStream, lo.ToPtr(llm.DoneStreamEvent))
 
-	return streams.NoNil(newOutboundStream(streamWithDone, t.config.Type)), nil
+	scope, _ := shared.GetTransportScope(ctx)
+
+	return streams.NoNil(newOutboundStream(streamWithDone, t.config.Type, scope)), nil
 }
 
 // filterStreamEvent determines if a stream event should be processed
@@ -53,6 +55,7 @@ type streamState struct {
 	streamModel  string
 	streamUsage  *llm.Usage
 	platformType PlatformType
+	scope        shared.TransportScope
 	// Tool call tracking
 	toolIndex int
 	toolCalls map[int]*llm.ToolCall // index -> tool call
@@ -66,13 +69,14 @@ type outboundStream struct {
 	err     error
 }
 
-func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent], platformType PlatformType) *outboundStream {
+func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent], platformType PlatformType, scope shared.TransportScope) *outboundStream {
 	return &outboundStream{
 		stream: stream,
 		state: &streamState{
 			toolCalls:    make(map[int]*llm.ToolCall),
 			toolIndex:    -1,
 			platformType: platformType,
+			scope:        scope,
 		},
 	}
 }
@@ -231,7 +235,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			case "thinking_delta":
 				choice.Delta.ReasoningContent = streamEvent.Delta.Thinking
 			case "signature_delta":
-				choice.Delta.ReasoningSignature = shared.EncodeAnthropicSignature(streamEvent.Delta.Signature)
+				choice.Delta.ReasoningSignature = shared.EncodeAnthropicSignatureInScope(streamEvent.Delta.Signature, s.state.scope)
 			}
 
 			resp.Choices = []llm.Choice{choice}

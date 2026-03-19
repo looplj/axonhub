@@ -42,9 +42,10 @@ var claudeCodeHeaders = [][]string{
 
 // Params contains parameters for creating a ClaudeCodeTransformer.
 type Params struct {
-	TokenProvider oauth.TokenGetter // OAuth token provider (required)
-	BaseURL       string            // Base URL for the Anthropic API (optional)
-	IsOfficial    bool              // Whether the channel uses official OAuth credentials
+	TokenProvider   oauth.TokenGetter // OAuth token provider (required)
+	BaseURL         string            // Base URL for the Anthropic API (optional)
+	IsOfficial      bool              // Whether the channel uses official OAuth credentials
+	AccountIdentity string
 }
 
 // NewOutboundTransformer creates a new ClaudeCodeTransformer with OAuth authentication.
@@ -60,8 +61,9 @@ func NewOutboundTransformer(params Params) (*ClaudeCodeTransformer, error) {
 
 	// Create base transformer with minimal config
 	outbound, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-		Type:    anthropic.PlatformClaudeCode,
-		BaseURL: baseURL,
+		Type:            anthropic.PlatformClaudeCode,
+		BaseURL:         baseURL,
+		AccountIdentity: params.AccountIdentity,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

@@ -418,7 +418,7 @@ func TestInboundTransformer_TransformStream_FinishOnlyChunkWithReasoningSignatur
 				{
 					Index: 0,
 					Delta: &llm.Message{
-						ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("finish_only_signature")),
+						ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("finish_only_signature"), ""),
 					},
 					FinishReason: lo.ToPtr("stop"),
 				},

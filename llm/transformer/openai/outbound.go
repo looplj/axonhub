@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // PlatformType represents the platform type for OpenAI API.
@@ -33,6 +34,8 @@ type Config struct {
 
 	// BaseURL is the base URL for the OpenAI API, required.
 	BaseURL string `json:"base_url,omitempty"`
+
+	AccountIdentity string `json:"account_identity,omitempty"`
 
 	// RawURL is whether to use raw URL for requests, default is false.
 	// If true, the request URL will be used as is, without appending the chat completions endpoint.
@@ -151,6 +154,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Get API key from provider
 	apiKey := t.config.APIKeyProvider.Get(ctx)
+	scope := shared.TransportScope{
+		BaseURL:         t.config.BaseURL,
+		AccountIdentity: t.config.AccountIdentity,
+	}
 
 	// Prepare headers
 	headers := make(http.Header)
@@ -169,11 +176,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	return &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     url,
-		Headers: headers,
-		Body:    body,
-		Auth:    authConfig,
+		Method:   http.MethodPost,
+		URL:      url,
+		Headers:  headers,
+		Body:     body,
+		Auth:     authConfig,
+		Metadata: scope.Metadata(),
 	}, nil
 }
 

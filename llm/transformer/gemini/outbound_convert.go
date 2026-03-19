@@ -17,13 +17,13 @@ import (
 
 // convertLLMToGeminiRequest converts unified Request to Gemini GenerateContentRequest.
 func convertLLMToGeminiRequest(chatReq *llm.Request) *GenerateContentRequest {
-	return convertLLMToGeminiRequestWithConfig(chatReq, nil)
+	return convertLLMToGeminiRequestWithConfig(chatReq, nil, shared.TransportScope{})
 }
 
 // convertLLMToGeminiRequestWithConfig converts unified Request to Gemini GenerateContentRequest with config.
 //
 //nolint:maintidx // Checked.
-func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *GenerateContentRequest {
+func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config, scope shared.TransportScope) *GenerateContentRequest {
 	req := &GenerateContentRequest{}
 
 	// Convert generation config
@@ -222,7 +222,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 			}
 
 		default:
-			content := convertLLMMessageToGeminiContent(&msg)
+			content := convertLLMMessageToGeminiContent(&msg, scope)
 			if content != nil {
 				contents = append(contents, content)
 			}
@@ -309,7 +309,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 }
 
 // convertLLMMessageToGeminiContent converts an LLM Message to Gemini Content.
-func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
+func convertLLMMessageToGeminiContent(msg *llm.Message, scope shared.TransportScope) *Content {
 	if msg == nil {
 		return nil
 	}
@@ -326,12 +326,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 	)
 
 	// Add reasoning content (thinking) first if present.
-	// If the reasoning signature is from another provider (OpenAI/Anthropic),
-	// drop thinking content to avoid invalid signature/thinking pairing.
 	reasoningContent := msg.ReasoningContent
-	// if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" && !shared.IsGeminiThoughtSignature(msg.ReasoningSignature) {
-	// 	reasoningContent = nil
-	// }
 
 	if reasoningContent != nil && *reasoningContent != "" {
 		p := &Part{
@@ -405,7 +400,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 				Args: args,
 			},
 		}
-		if signature := getOutbountGeminiToolCallThoughtSignature(toolCall); signature != nil {
+		if signature := getOutbountGeminiToolCallThoughtSignature(toolCall, scope); signature != nil {
 			part.ThoughtSignature = *signature
 			hasToolCallThoughtSignature = true
 		}
@@ -424,7 +419,10 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		// This field is not compatible with OpenAI sdk, so we use the default value.
 		// We try the best to support this fields to keep this fields in the chat conversions, so we use the ReasoningSignature to hold the field,
 		// And this field will be preserved during claude code trace, will not degrade the gemini model performance.
-		msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.ReasoningSignature)
+		msgThoughtSignature := shared.DecodeGeminiThoughtSignatureInScope(msg.ReasoningSignature, scope)
+		if msgThoughtSignature == nil && scope.Footprint() == "" && msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
+			msgThoughtSignature = msg.ReasoningSignature
+		}
 
 		if (len(msg.ToolCalls) > 0 || msg.ReasoningContent != nil) && msgThoughtSignature == nil {
 			msgThoughtSignature = lo.ToPtr(ContextEngineeringThoughtSignature)
@@ -510,8 +508,8 @@ func isPreviousContentToolResponse(contents []*Content) bool {
 
 // convertGeminiToLLMResponse converts Gemini GenerateContentResponse to unified Response.
 // When isStream is true, it sets Delta instead of Message in choices.
-func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bool) *llm.Response {
-	resp, _ := convertGeminiToLLMResponseWithState(geminiResp, isStream, 0)
+func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bool, scope shared.TransportScope) *llm.Response {
+	resp, _ := convertGeminiToLLMResponseWithState(geminiResp, isStream, 0, scope)
 	return resp
 }
 
@@ -520,7 +518,7 @@ const TransformerMetadataKeyGroundingMetadata = "gemini_grounding_metadata"
 
 // convertGeminiToLLMResponseWithState converts Gemini response with tool call index tracking.
 // Returns the response and the next tool call index to use.
-func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int) (*llm.Response, int) {
+func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int, scope shared.TransportScope) (*llm.Response, int) {
 	resp := &llm.Response{
 		ID:          geminiResp.ResponseID,
 		Model:       geminiResp.ModelVersion,
@@ -548,7 +546,7 @@ func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, is
 	for _, candidate := range geminiResp.Candidates {
 		var choice llm.Choice
 
-		choice, nextToolCallIndex = convertGeminiCandidateToLLMChoiceWithState(candidate, isStream, nextToolCallIndex)
+		choice, nextToolCallIndex = convertGeminiCandidateToLLMChoiceWithState(candidate, isStream, nextToolCallIndex, scope)
 
 		// Store GroundingMetadata in Choice.TransformerMetadata if present
 		if candidate.GroundingMetadata != nil {
@@ -570,7 +568,7 @@ func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, is
 
 // convertGeminiCandidateToLLMChoiceWithState converts a Gemini Candidate to an LLM Choice with tool call index tracking.
 // Returns the choice and the next tool call index to use.
-func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream bool, toolCallIndexOffset int) (llm.Choice, int) {
+func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream bool, toolCallIndexOffset int, scope shared.TransportScope) (llm.Choice, int) {
 	choice := llm.Choice{
 		Index: int(candidate.Index),
 	}
@@ -593,7 +591,7 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 
 		for _, part := range candidate.Content.Parts {
 			if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
-				msg.ReasoningSignature = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
+				msg.ReasoningSignature = shared.EncodeGeminiThoughtSignatureInScope(&part.ThoughtSignature, scope)
 			}
 
 			switch {
@@ -643,7 +641,7 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 					tc.ID = fmt.Sprintf("tc_%s", uuid.NewString())
 				}
 
-				setOutboundToolCallThoughtSignature(&tc, part.ThoughtSignature)
+				setOutboundToolCallThoughtSignature(&tc, part.ThoughtSignature, scope)
 				toolCalls = append(toolCalls, tc)
 				nextToolCallIndex++
 			}
