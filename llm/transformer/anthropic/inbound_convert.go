@@ -373,11 +373,18 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 		if message != nil {
 			var contentBlocks []MessageContentBlock
 
-			// Handle reasoning content (thinking) first if present
+			// Handle reasoning content (thinking) first if present.
+			// Also emit a thinking block when only a signature exists (no content),
+			// so the signature is not dropped — mirrors the streaming-side logic in
+			// flushPendingSignatureBlock().
 			if (message.ReasoningContent != nil && *message.ReasoningContent != "") || (message.ReasoningSignature != nil && *message.ReasoningSignature != "") {
+				thinkingContent := message.ReasoningContent
+				if thinkingContent == nil {
+					thinkingContent = lo.ToPtr("")
+				}
 				thinkingBlock := MessageContentBlock{
 					Type:     "thinking",
-					Thinking: message.ReasoningContent,
+					Thinking: thinkingContent,
 				}
 				if message.ReasoningSignature != nil {
 					thinkingBlock.Signature = message.ReasoningSignature

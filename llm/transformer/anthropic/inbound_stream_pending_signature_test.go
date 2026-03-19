@@ -64,6 +64,23 @@ func withTextContent(text string) func(*llm.Response) {
 	}
 }
 
+func withToolCall(index int, id, name, args string) func(*llm.Response) {
+	return func(r *llm.Response) {
+		if r.Choices[0].Delta == nil {
+			r.Choices[0].Delta = &llm.Message{Role: "assistant"}
+		}
+		r.Choices[0].Delta.ToolCalls = append(r.Choices[0].Delta.ToolCalls, llm.ToolCall{
+			Index: index,
+			ID:    id,
+			Type:  "function",
+			Function: llm.FunctionCall{
+				Name:      name,
+				Arguments: args,
+			},
+		})
+	}
+}
+
 func withFinishReason(reason string) func(*llm.Response) {
 	return func(r *llm.Response) {
 		r.Choices[0].FinishReason = lo.ToPtr(reason)
@@ -294,4 +311,265 @@ func TestPendingSignature_NoSignature(t *testing.T) {
 			require.NotEqual(t, "signature_delta", *ev.Delta.Type, "signature_delta should not appear without signature")
 		}
 	}
+}
+
+// TestPendingSignature_EmptyThinkingWithSignature_TextAndToolUse reproduces the
+// exact bug from issue #1105: the upstream provider sends an empty thinking block
+// (ReasoningContent="") followed by a signature, then text and tool_use.
+// Previously the empty thinking block was discarded and the signature attached
+// to the last tool_use block.
+func TestPendingSignature_EmptyThinkingWithSignature_TextAndToolUse(t *testing.T) {
+	const (
+		id    = "msg_test_005"
+		model = "test-model"
+		sig   = "sig_empty_thinking"
+	)
+
+	responses := []*llm.Response{
+		buildChunk(id, model, withUsage(10, 1)),
+		// Signature without thinking block
+		buildChunk(id, model, withReasoningSignature(sig)),
+		// Text content
+		buildChunk(id, model, withTextContent("Sure!")),
+		// Tool use
+		buildChunk(id, model, withToolCall(0, "toolu_01", "Bash", `{"command":"pwd"}`)),
+		// Finish
+		buildChunk(id, model, withFinishReason("tool_calls")),
+		buildChunk(id, model, withUsage(10, 30)),
+	}
+
+	events := collectStreamEvents(t, responses)
+
+	// Expected event order:
+	// 0: message_start
+	// 1: content_block_start (thinking, thinking: "")
+	// 2: content_block_delta (signature_delta)       <-- on thinking block (index 0)
+	// 3: content_block_stop (index 0)
+	// 4: content_block_start (text, index 1)
+	// 5: content_block_delta (text_delta "Sure!")
+	// 6: content_block_stop (index 1)
+	// 7: content_block_start (tool_use, index 2)
+	// 8: content_block_delta (input_json_delta)
+	// 9: content_block_stop (index 2)
+	// 10: message_delta
+	// 11: message_stop
+
+	require.Len(t, events, 12)
+
+	// Thinking block at index 0
+	require.Equal(t, "content_block_start", events[1].Type)
+	require.Equal(t, "thinking", events[1].ContentBlock.Type)
+	require.Equal(t, int64(0), *events[1].Index)
+
+	// Signature on the thinking block (index 0)
+	require.Equal(t, "content_block_delta", events[2].Type)
+	require.Equal(t, "signature_delta", *events[2].Delta.Type)
+	require.Equal(t, sig, *events[2].Delta.Signature)
+	require.Equal(t, int64(0), *events[2].Index)
+
+	// Thinking block stop
+	require.Equal(t, "content_block_stop", events[3].Type)
+	require.Equal(t, int64(0), *events[3].Index)
+
+	// Text at index 1
+	require.Equal(t, "content_block_start", events[4].Type)
+	require.Equal(t, "text", events[4].ContentBlock.Type)
+	require.Equal(t, int64(1), *events[4].Index)
+
+	// Tool use at index 2
+	require.Equal(t, "content_block_start", events[7].Type)
+	require.Equal(t, "tool_use", events[7].ContentBlock.Type)
+	require.Equal(t, int64(2), *events[7].Index)
+
+	// No signature_delta on the tool_use block
+	for i := 7; i < len(events); i++ {
+		if events[i].Delta != nil && events[i].Delta.Type != nil {
+			require.NotEqual(t, "signature_delta", *events[i].Delta.Type,
+				"signature_delta must not appear on tool_use block")
+		}
+	}
+}
+
+// TestPendingSignature_SignatureWithoutThinking_ToolUse tests the defensive path:
+// signature arrives with no ReasoningContent at all, then tool_use directly.
+// The flushPendingSignatureBlock() creates a synthetic empty thinking block.
+func TestPendingSignature_SignatureWithoutThinking_ToolUse(t *testing.T) {
+	const (
+		id    = "msg_test_006"
+		model = "test-model"
+		sig   = "orphan_sig_tool"
+	)
+
+	responses := []*llm.Response{
+		buildChunk(id, model, withUsage(10, 1)),
+		// Signature without any thinking content
+		buildChunk(id, model, withReasoningSignature(sig)),
+		// Tool use directly
+		buildChunk(id, model, withToolCall(0, "toolu_01", "Bash", `{"command":"ls"}`)),
+		buildChunk(id, model, withFinishReason("tool_calls")),
+		buildChunk(id, model, withUsage(10, 20)),
+	}
+
+	events := collectStreamEvents(t, responses)
+
+	// Expected: synthetic thinking block created for the signature
+	// 0: message_start
+	// 1: content_block_start (thinking)
+	// 2: content_block_delta (signature_delta)
+	// 3: content_block_stop (index 0)
+	// 4: content_block_start (tool_use, index 1)
+	// 5: content_block_delta (input_json_delta)
+	// 6: content_block_stop (index 1)
+	// 7: message_delta
+	// 8: message_stop
+
+	require.Len(t, events, 9)
+
+	// Synthetic thinking block
+	require.Equal(t, "content_block_start", events[1].Type)
+	require.Equal(t, "thinking", events[1].ContentBlock.Type)
+	require.Equal(t, int64(0), *events[1].Index)
+
+	// Signature on the thinking block
+	require.Equal(t, "content_block_delta", events[2].Type)
+	require.Equal(t, "signature_delta", *events[2].Delta.Type)
+	require.Equal(t, sig, *events[2].Delta.Signature)
+	require.Equal(t, int64(0), *events[2].Index)
+
+	require.Equal(t, "content_block_stop", events[3].Type)
+	require.Equal(t, int64(0), *events[3].Index)
+
+	// Tool use at index 1
+	require.Equal(t, "content_block_start", events[4].Type)
+	require.Equal(t, "tool_use", events[4].ContentBlock.Type)
+	require.Equal(t, int64(1), *events[4].Index)
+}
+
+// TestPendingSignature_SignatureWithoutThinking_Text tests the defensive path:
+// signature arrives with no ReasoningContent, then text directly.
+func TestPendingSignature_SignatureWithoutThinking_Text(t *testing.T) {
+	const (
+		id    = "msg_test_007"
+		model = "test-model"
+		sig   = "orphan_sig_text"
+	)
+
+	responses := []*llm.Response{
+		buildChunk(id, model, withUsage(10, 1)),
+		// Signature without any thinking content
+		buildChunk(id, model, withReasoningSignature(sig)),
+		// Text directly
+		buildChunk(id, model, withTextContent("Hello")),
+		buildChunk(id, model, withFinishReason("stop")),
+		buildChunk(id, model, withUsage(10, 10)),
+	}
+
+	events := collectStreamEvents(t, responses)
+
+	// Expected: synthetic thinking block, then text
+	// 0: message_start
+	// 1: content_block_start (thinking)
+	// 2: content_block_delta (signature_delta)
+	// 3: content_block_stop (index 0)
+	// 4: content_block_start (text, index 1)
+	// 5: content_block_delta (text_delta "Hello")
+	// 6: content_block_stop (index 1)
+	// 7: message_delta
+	// 8: message_stop
+
+	require.Len(t, events, 9)
+
+	// Synthetic thinking block
+	require.Equal(t, "content_block_start", events[1].Type)
+	require.Equal(t, "thinking", events[1].ContentBlock.Type)
+	require.Equal(t, int64(0), *events[1].Index)
+
+	// Signature on the thinking block
+	require.Equal(t, "content_block_delta", events[2].Type)
+	require.Equal(t, "signature_delta", *events[2].Delta.Type)
+	require.Equal(t, sig, *events[2].Delta.Signature)
+	require.Equal(t, int64(0), *events[2].Index)
+
+	require.Equal(t, "content_block_stop", events[3].Type)
+
+	// Text at index 1
+	require.Equal(t, "content_block_start", events[4].Type)
+	require.Equal(t, "text", events[4].ContentBlock.Type)
+	require.Equal(t, int64(1), *events[4].Index)
+}
+
+// TestPendingSignature_NonStream_SignatureOnly verifies the non-streaming path:
+// when a response has only a ReasoningSignature (no ReasoningContent),
+// convertToAnthropicResponse still emits a thinking block so the signature
+// is not dropped.
+func TestPendingSignature_NonStream_SignatureOnly(t *testing.T) {
+	const sig = "sig_non_stream"
+
+	chatResp := &llm.Response{
+		ID:    "msg_ns_001",
+		Model: "test-model",
+		Choices: []llm.Choice{
+			{
+				Message: &llm.Message{
+					Role:               "assistant",
+					ReasoningSignature: lo.ToPtr(sig),
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Hello"),
+					},
+				},
+				FinishReason: lo.ToPtr("stop"),
+			},
+		},
+	}
+
+	resp := convertToAnthropicResponse(chatResp)
+
+	// First content block must be a thinking block carrying the signature
+	require.GreaterOrEqual(t, len(resp.Content), 2)
+	require.Equal(t, "thinking", resp.Content[0].Type)
+	require.NotNil(t, resp.Content[0].Thinking)
+	require.Equal(t, "", *resp.Content[0].Thinking)
+	require.NotNil(t, resp.Content[0].Signature)
+	require.Equal(t, sig, *resp.Content[0].Signature)
+
+	// Second block is the text
+	require.Equal(t, "text", resp.Content[1].Type)
+	require.Equal(t, "Hello", *resp.Content[1].Text)
+}
+
+// TestPendingSignature_NonStream_ThinkingAndSignature verifies the non-streaming
+// path when both ReasoningContent and ReasoningSignature are present.
+func TestPendingSignature_NonStream_ThinkingAndSignature(t *testing.T) {
+	const (
+		thinking = "Let me think..."
+		sig      = "sig_with_thinking"
+	)
+
+	chatResp := &llm.Response{
+		ID:    "msg_ns_002",
+		Model: "test-model",
+		Choices: []llm.Choice{
+			{
+				Message: &llm.Message{
+					Role:               "assistant",
+					ReasoningContent:   lo.ToPtr(thinking),
+					ReasoningSignature: lo.ToPtr(sig),
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Answer"),
+					},
+				},
+				FinishReason: lo.ToPtr("stop"),
+			},
+		},
+	}
+
+	resp := convertToAnthropicResponse(chatResp)
+
+	require.GreaterOrEqual(t, len(resp.Content), 2)
+	require.Equal(t, "thinking", resp.Content[0].Type)
+	require.Equal(t, thinking, *resp.Content[0].Thinking)
+	require.Equal(t, sig, *resp.Content[0].Signature)
+
+	require.Equal(t, "text", resp.Content[1].Type)
+	require.Equal(t, "Answer", *resp.Content[1].Text)
 }
