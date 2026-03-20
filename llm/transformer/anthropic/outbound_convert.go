@@ -689,6 +689,29 @@ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageConten
 	return nil
 }
 
+func systemMessageToParts(msg llm.Message) []SystemPromptPart {
+	if msg.Content.Content != nil {
+		return []SystemPromptPart{{
+			Type:         "text",
+			Text:         *msg.Content.Content,
+			CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
+		}}
+	}
+
+	parts := make([]SystemPromptPart, 0, len(msg.Content.MultipleContent))
+	for _, part := range msg.Content.MultipleContent {
+		if part.Type == "text" && part.Text != nil {
+			parts = append(parts, SystemPromptPart{
+				Type:         "text",
+				Text:         *part.Text,
+				CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+			})
+		}
+	}
+
+	return parts
+}
+
 func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 	// Partition messages into system and developer roles in a single loop for better performance
 	var systemOnlyMessages, developerMessages []llm.Message
@@ -712,32 +735,35 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 		// Leave System as nil when there are no system messages
 		return nil
 	case 1:
+		msg := systemMessages[0]
+		parts := systemMessageToParts(msg)
+
 		// If it was originally in array format, preserve that format
 		if wasArrayFormat {
 			return &SystemPrompt{
-				MultiplePrompts: []SystemPromptPart{{
-					Type:         "text",
-					Text:         *systemMessages[0].Content.Content,
-					CacheControl: convertToAnthropicCacheControl(systemMessages[0].CacheControl),
-				}},
+				MultiplePrompts: parts,
+			}
+		}
+
+		// Single string format
+		if len(parts) == 1 {
+			return &SystemPrompt{
+				Prompt: &parts[0].Text,
 			}
 		}
 
 		return &SystemPrompt{
-			Prompt: systemMessages[0].Content.Content,
+			MultiplePrompts: parts,
 		}
 	default:
 		// Combine system and developer messages in order
-		return &SystemPrompt{
-			MultiplePrompts: lo.Map(systemMessages, func(msg llm.Message, _ int) SystemPromptPart {
-				part := SystemPromptPart{
-					Type:         "text",
-					Text:         *msg.Content.Content,
-					CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
-				}
+		var parts []SystemPromptPart
+		for _, msg := range systemMessages {
+			parts = append(parts, systemMessageToParts(msg)...)
+		}
 
-				return part
-			}),
+		return &SystemPrompt{
+			MultiplePrompts: parts,
 		}
 	}
 }

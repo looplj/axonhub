@@ -886,6 +886,170 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "system message with MultipleContent single text part",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: lo.ToPtr("You are helpful.")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello!"),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					Prompt: lo.ToPtr("You are helpful."),
+				},
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("Hello!")},
+					},
+				},
+			},
+		},
+		{
+			name: "system message with MultipleContent multiple text parts",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: lo.ToPtr("You are helpful.")},
+								{Type: "text", Text: lo.ToPtr("Be concise.")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello!"),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					MultiplePrompts: []SystemPromptPart{
+						{Type: "text", Text: "You are helpful."},
+						{Type: "text", Text: "Be concise."},
+					},
+				},
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("Hello!")},
+					},
+				},
+			},
+		},
+		{
+			name: "system message with MultipleContent and wasArrayFormat",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(1024)),
+				TransformOptions: llm.TransformOptions{
+					ArrayInstructions: lo.ToPtr(true),
+				},
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: lo.ToPtr("You are helpful.")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello!"),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					MultiplePrompts: []SystemPromptPart{
+						{Type: "text", Text: "You are helpful."},
+					},
+				},
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("Hello!")},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple system messages with mixed Content and MultipleContent",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("System instruction."),
+						},
+					},
+					{
+						Role: "developer",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: lo.ToPtr("Dev instruction 1.")},
+								{Type: "text", Text: lo.ToPtr("Dev instruction 2.")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello!"),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					MultiplePrompts: []SystemPromptPart{
+						{Type: "text", Text: "System instruction."},
+						{Type: "text", Text: "Dev instruction 1."},
+						{Type: "text", Text: "Dev instruction 2."},
+					},
+				},
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("Hello!")},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
