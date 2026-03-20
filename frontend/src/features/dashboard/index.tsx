@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, Brain, Key, Zap, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/layout/header';
 import { formatNumber } from '@/utils/format-number';
+import { TimePeriodSelector, type TimePeriod, type FastestTimeWindow } from '@/components/time-period-selector';
 import { ChannelSuccessRate } from './components/channel-success-rate';
 import { DailyRequestStats } from './components/daily-requests-stats';
 import { RequestsByChannelChart } from './components/requests-by-channel-chart';
@@ -93,6 +94,15 @@ export default function DashboardPage() {
   const [modelTotalRequests, setModelTotalRequests] = useState(0);
   const [channelTotalRequests, setChannelTotalRequests] = useState(0);
 
+  const [channelTimePeriod, setChannelTimePeriod] = useState<TimePeriod>('allTime');
+  const [channelTokensTimePeriod, setChannelTokensTimePeriod] = useState<TimePeriod>('allTime');
+  const [modelTimePeriod, setModelTimePeriod] = useState<TimePeriod>('allTime');
+  const [modelTokensTimePeriod, setModelTokensTimePeriod] = useState<TimePeriod>('allTime');
+  const [apiKeyTimePeriod, setApiKeyTimePeriod] = useState<TimePeriod>('allTime');
+  const [apiKeyTokensTimePeriod, setApiKeyTokensTimePeriod] = useState<TimePeriod>('allTime');
+  const [fastestModelsTimePeriod, setFastestModelsTimePeriod] = useState<FastestTimeWindow>('month');
+  const [fastestChannelsTimePeriod, setFastestChannelsTimePeriod] = useState<FastestTimeWindow>('month');
+
   const modelPerformanceDescription = useMemo(() => {
     return t('dashboard.charts.performanceDescription', { count: formatNumber(modelTotalRequests) });
   }, [t, modelTotalRequests]);
@@ -178,18 +188,24 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByChannel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByChannelDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={channelTimePeriod} onChange={setChannelTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <RequestsByChannelChart />
+              <RequestsByChannelChart timePeriod={channelTimePeriod} />
             </CardContent>
           </Card>
           <Card className='hover-card'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByChannel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByChannelDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={channelTokensTimePeriod} onChange={setChannelTokensTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <TokensByChannelChart />
+              <TokensByChannelChart timePeriod={channelTokensTimePeriod} />
             </CardContent>
           </Card>
         </div>
@@ -206,18 +222,24 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByModel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByModelDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={modelTimePeriod} onChange={setModelTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <RequestsByModelChart />
+              <RequestsByModelChart timePeriod={modelTimePeriod} />
             </CardContent>
           </Card>
           <Card className='hover-card'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByModel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByModelDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={modelTokensTimePeriod} onChange={setModelTokensTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <TokensByModelChart />
+              <TokensByModelChart timePeriod={modelTokensTimePeriod} />
             </CardContent>
           </Card>
         </div>
@@ -234,18 +256,24 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByAPIKey')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByAPIKeyDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={apiKeyTimePeriod} onChange={setApiKeyTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <RequestsByAPIKeyChart />
+              <RequestsByAPIKeyChart timePeriod={apiKeyTimePeriod} />
             </CardContent>
           </Card>
           <Card className='hover-card'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByAPIKey')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByAPIKeyDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={apiKeyTokensTimePeriod} onChange={setApiKeyTokensTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <TokensByAPIKeyChart />
+              <TokensByAPIKeyChart timePeriod={apiKeyTokensTimePeriod} />
             </CardContent>
           </Card>
         </div>
@@ -267,9 +295,18 @@ export default function DashboardPage() {
               <ModelPerformanceStats onTotalRequestsChange={setModelTotalRequests} />
             </CardContent>
           </Card>
-          <div className='col-span-1 lg:col-span-3'>
-            <FastestModelsCard />
-          </div>
+          <Card className='hover-card col-span-1 lg:col-span-3'>
+            <CardHeader>
+              <CardTitle>{t('dashboard.cards.fastestPerformers.models')}</CardTitle>
+              <CardDescription>{t('dashboard.cards.fastestPerformers.description', { type: t('dashboard.cards.fastestPerformers.modelType'), count: formatNumber(0) })}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={fastestModelsTimePeriod} onChange={setFastestModelsTimePeriod} periods={['month', 'week', 'day']} />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <FastestModelsCard timeWindow={fastestModelsTimePeriod} />
+            </CardContent>
+          </Card>
         </div>
         <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
           <Card className='hover-card col-span-1 lg:col-span-4'>
@@ -281,9 +318,18 @@ export default function DashboardPage() {
               <ChannelPerformanceStats onTotalRequestsChange={setChannelTotalRequests} />
             </CardContent>
           </Card>
-          <div className='col-span-1 lg:col-span-3'>
-            <FastestChannelsCard />
-          </div>
+          <Card className='hover-card col-span-1 lg:col-span-3'>
+            <CardHeader>
+              <CardTitle>{t('dashboard.cards.fastestPerformers.channels')}</CardTitle>
+              <CardDescription>{t('dashboard.cards.fastestPerformers.description', { type: t('dashboard.cards.fastestPerformers.channelType'), count: formatNumber(0) })}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={fastestChannelsTimePeriod} onChange={setFastestChannelsTimePeriod} periods={['month', 'week', 'day']} />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <FastestChannelsCard timeWindow={fastestChannelsTimePeriod} />
+            </CardContent>
+          </Card>
         </div>
       </CollapsibleSection>
     </div>

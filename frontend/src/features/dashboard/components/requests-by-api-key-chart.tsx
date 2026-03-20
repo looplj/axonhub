@@ -1,20 +1,22 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeneralSettings } from '../../system/data/system';
 import { useRequestsByAPIKey, useCostByAPIKey } from '../data/dashboard';
-import type { TimePeriod } from '../types';
+import type { TimePeriod } from '@/components/time-period-selector';
 
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
 
-export function RequestsByAPIKeyChart() {
+interface RequestsByAPIKeyChartProps {
+  timePeriod: TimePeriod;
+}
+
+export function RequestsByAPIKeyChart({ timePeriod }: RequestsByAPIKeyChartProps) {
   const { t, i18n } = useTranslation();
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('allTime');
   const { data: apiKeyData, isLoading: isRequestsLoading, error: requestsError } = useRequestsByAPIKey(timePeriod);
   const { data: costData, isLoading: isCostLoading, error: costError } = useCostByAPIKey(timePeriod);
   const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
@@ -128,24 +130,6 @@ export function RequestsByAPIKeyChart() {
 
   return (
     <div className='space-y-6'>
-      <div className='flex items-center justify-end'>
-        <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
-          <TabsList className='h-7 p-0.5'>
-            <TabsTrigger value='allTime' className='h-6 px-2 text-[10px]'>
-              {t('dashboard.stats.all')}
-            </TabsTrigger>
-            <TabsTrigger value='month' className='h-6 px-2 text-[10px]'>
-              {t('dashboard.stats.month')}
-            </TabsTrigger>
-            <TabsTrigger value='week' className='h-6 px-2 text-[10px]'>
-              {t('dashboard.stats.week')}
-            </TabsTrigger>
-            <TabsTrigger value='day' className='h-6 px-2 text-[10px]'>
-              {t('dashboard.stats.day')}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
       <ResponsiveContainer width='100%' height={320}>
         <BarChart data={chartData} barSize={32}>
           <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />

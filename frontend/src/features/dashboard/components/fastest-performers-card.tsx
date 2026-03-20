@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Loader2 } from 'lucide-react';
@@ -14,16 +12,6 @@ import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../u
 
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
-
-export type TimeWindow = 'day' | 'week' | 'month';
-
-export interface LegendItem {
-  name: string;
-  throughput: number;
-  requestCount: number;
-  color: string;
-  index: number;
-}
 
 interface HorizontalBarChartProps {
   data: ChartData[];
@@ -120,7 +108,8 @@ interface FastestPerformersCardProps<T extends ThroughputData> {
   title: string;
   description: (totalRequests: number) => string;
   noDataLabel: string;
-  useData: (timeWindow: TimeWindow) => UseQueryResult<T[], Error>;
+  timeWindow: string;
+  useData: (timeWindow: string) => UseQueryResult<T[], Error>;
   getName: (item: T) => string | null;
 }
 
@@ -128,11 +117,11 @@ export function FastestPerformersCard<T extends ThroughputData>({
   title,
   description,
   noDataLabel,
+  timeWindow,
   useData,
   getName,
 }: FastestPerformersCardProps<T>) {
   const { t } = useTranslation();
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>('day');
 
   const { data: items, isLoading, isFetching, error } = useData(timeWindow);
 
@@ -190,21 +179,6 @@ export function FastestPerformersCard<T extends ThroughputData>({
         <div className='space-y-1'>
           <CardTitle className='text-base font-medium'>{title}</CardTitle>
           <CardDescription>{description(totalRequests)}</CardDescription>
-        </div>
-        <div className='flex items-center gap-2'>
-          <Tabs value={timeWindow} onValueChange={(v) => setTimeWindow(v as TimeWindow)}>
-            <TabsList className='h-7 p-0.5'>
-              <TabsTrigger value='month' className='h-6 px-2 text-[10px]'>
-                {t('dashboard.stats.month')}
-              </TabsTrigger>
-              <TabsTrigger value='week' className='h-6 px-2 text-[10px]'>
-                {t('dashboard.stats.week')}
-              </TabsTrigger>
-              <TabsTrigger value='day' className='h-6 px-2 text-[10px]'>
-                {t('dashboard.stats.day')}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
       </CardHeader>
       <CardContent className='relative'>
