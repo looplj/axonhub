@@ -53,23 +53,82 @@ type anthropicInboundStream struct {
 	pendingSignature *string
 }
 
-// flushPendingSignature emits a buffered signature_delta event.
-// Call this before closing a thinking block so the signature appears after thinking content.
-func (s *anthropicInboundStream) flushPendingSignature() error {
-	if s.pendingSignature == nil {
+// closeThinkingBlock ensures any open or implied thinking block is properly
+// closed. It handles three scenarios:
+//  1. pendingSignature exists but no thinking block was started — creates a
+//     synthetic empty thinking block (start + signature_delta + stop).
+//  2. A thinking block is open — flushes any pending signature as
+//     signature_delta, then emits content_block_stop.
+//  3. Neither — no-op.
+func (s *anthropicInboundStream) closeThinkingBlock() error {
+	if s.pendingSignature != nil && !s.hasThinkingContentStarted {
+		sig := s.pendingSignature
+		s.pendingSignature = nil
+
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_start",
+			Index: &s.contentIndex,
+			ContentBlock: &MessageContentBlock{
+				Type:     "thinking",
+				Thinking: lo.ToPtr(""),
+			},
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue thinking content_block_start for pending signature: %w", err)
+		}
+
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_delta",
+			Index: &s.contentIndex,
+			Delta: &StreamDelta{
+				Type:      lo.ToPtr("signature_delta"),
+				Signature: sig,
+			},
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue signature_delta for pending signature: %w", err)
+		}
+
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_stop",
+			Index: &s.contentIndex,
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue content_block_stop for pending signature: %w", err)
+		}
+
+		s.contentIndex += 1
+
 		return nil
 	}
-	sig := s.pendingSignature
-	s.pendingSignature = nil
 
-	return s.enqueEvent(&StreamEvent{
-		Type:  "content_block_delta",
-		Index: &s.contentIndex,
-		Delta: &StreamDelta{
-			Type:      lo.ToPtr("signature_delta"),
-			Signature: sig,
-		},
-	})
+	if s.hasThinkingContentStarted {
+		s.hasThinkingContentStarted = false
+
+		if s.pendingSignature != nil {
+			sig := s.pendingSignature
+			s.pendingSignature = nil
+
+			if err := s.enqueEvent(&StreamEvent{
+				Type:  "content_block_delta",
+				Index: &s.contentIndex,
+				Delta: &StreamDelta{
+					Type:      lo.ToPtr("signature_delta"),
+					Signature: sig,
+				},
+			}); err != nil {
+				return fmt.Errorf("failed to enqueue signature_delta event: %w", err)
+			}
+		}
+
+		if err := s.enqueEvent(&StreamEvent{
+			Type:  "content_block_stop",
+			Index: &s.contentIndex,
+		}); err != nil {
+			return fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
+		}
+
+		s.contentIndex += 1
+	}
+
+	return nil
 }
 
 func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
@@ -244,27 +303,9 @@ func (s *anthropicInboundStream) Next() bool {
 
 		// Handle redacted reasoning content (redacted_thinking)
 		if choice.Delta != nil && choice.Delta.RedactedReasoningContent != nil && *choice.Delta.RedactedReasoningContent != "" {
-			// If the thinking content has started before the redacted thinking content, we need to stop it
-			if s.hasThinkingContentStarted {
-				s.hasThinkingContentStarted = false
-
-				if err := s.flushPendingSignature(); err != nil {
-					s.err = fmt.Errorf("failed to flush pending signature: %w", err)
-					return false
-				}
-
-				stopEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
-
-				err := s.enqueEvent(&stopEvent)
-				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
-					return false
-				}
-
-				s.contentIndex += 1
+			if err := s.closeThinkingBlock(); err != nil {
+				s.err = fmt.Errorf("failed to close thinking block: %w", err)
+				return false
 			}
 
 			// If the tool content has started before the redacted thinking content, we need to stop it
@@ -333,27 +374,9 @@ func (s *anthropicInboundStream) Next() bool {
 
 		// Handle content delta
 		if choice.Delta != nil && choice.Delta.Content.Content != nil && *choice.Delta.Content.Content != "" {
-			// If the thinking content has started before the text content, we need to stop it
-			if s.hasThinkingContentStarted {
-				s.hasThinkingContentStarted = false
-
-				if err := s.flushPendingSignature(); err != nil {
-					s.err = fmt.Errorf("failed to flush pending signature: %w", err)
-					return false
-				}
-
-				stopEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
-
-				err := s.enqueEvent(&stopEvent)
-				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
-					return false
-				}
-
-				s.contentIndex += 1
+			if err := s.closeThinkingBlock(); err != nil {
+				s.err = fmt.Errorf("failed to close thinking block: %w", err)
+				return false
 			}
 
 			// If the tool content has started before the content block, we need to stop it
@@ -413,28 +436,9 @@ func (s *anthropicInboundStream) Next() bool {
 
 		// Handle tool calls
 		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
-			// Support tool call when the thinking.
-			// If the thinking content has started before the text content, we need to stop it
-			if s.hasThinkingContentStarted {
-				s.hasThinkingContentStarted = false
-
-				if err := s.flushPendingSignature(); err != nil {
-					s.err = fmt.Errorf("failed to flush pending signature: %w", err)
-					return false
-				}
-
-				stopEvent := StreamEvent{
-					Type:  "content_block_stop",
-					Index: &s.contentIndex,
-				}
-
-				err := s.enqueEvent(&stopEvent)
-				if err != nil {
-					s.err = fmt.Errorf("failed to enqueue content_block_stop event: %w", err)
-					return false
-				}
-
-				s.contentIndex += 1
+			if err := s.closeThinkingBlock(); err != nil {
+				s.err = fmt.Errorf("failed to close thinking block: %w", err)
+				return false
 			}
 
 			// If the text content has started before the tool content, we need to stop it
@@ -553,8 +557,8 @@ func (s *anthropicInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 
-			if err := s.flushPendingSignature(); err != nil {
-				s.err = fmt.Errorf("failed to flush pending signature: %w", err)
+			if err := s.closeThinkingBlock(); err != nil {
+				s.err = fmt.Errorf("failed to close thinking block: %w", err)
 				return false
 			}
 
