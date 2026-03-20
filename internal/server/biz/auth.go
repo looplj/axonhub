@@ -27,6 +27,7 @@ type AuthServiceParams struct {
 	APIKeyService *APIKeyService
 	UserService   *UserService
 	Ent           *ent.Client
+	AllowNoAuth   bool `name:"allow_no_auth"`
 }
 
 func NewAuthService(params AuthServiceParams) *AuthService {
@@ -37,6 +38,7 @@ func NewAuthService(params AuthServiceParams) *AuthService {
 		SystemService: params.SystemService,
 		APIKeyService: params.APIKeyService,
 		UserService:   params.UserService,
+		AllowNoAuth:   params.AllowNoAuth,
 	}
 }
 
@@ -46,6 +48,7 @@ type AuthService struct {
 	SystemService *SystemService
 	APIKeyService *APIKeyService
 	UserService   *UserService
+	AllowNoAuth   bool
 }
 
 // HashPassword hashes a password using bcrypt.
@@ -183,7 +186,7 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 	return u, nil
 }
 
-func (s *AuthService) AuthenticateAPIKey(ctx context.Context, key string, allowNoAuth bool) (*ent.APIKey, error) {
+func (s *AuthService) AuthenticateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {
 	apiKey, err := authz.RunWithSystemBypass(ctx, "auth-lookup", func(bypassCtx context.Context) (*ent.APIKey, error) {
 		return s.APIKeyService.GetAPIKey(bypassCtx, key)
 	})
@@ -204,8 +207,36 @@ func (s *AuthService) AuthenticateAPIKey(ctx context.Context, key string, allowN
 		return nil, fmt.Errorf("api key project not valid: %w", ErrInvalidAPIKey)
 	}
 
-	if apiKey.Type == apikey.TypeNoauth && !allowNoAuth {
+	if apiKey.Type == apikey.TypeNoauth {
 		return nil, fmt.Errorf("noauth api key is only available when api auth is disabled: %w", ErrInvalidAPIKey)
+	}
+
+	return apiKey, nil
+}
+
+func (s *AuthService) AuthenticateNoAuth(ctx context.Context) (*ent.APIKey, error) {
+	if !s.AllowNoAuth {
+		return nil, fmt.Errorf("noauth api key is only available when api auth is disabled: %w", ErrInvalidAPIKey)
+	}
+
+	apiKey, err := authz.RunWithSystemBypass(ctx, "auth-noauth", func(bypassCtx context.Context) (*ent.APIKey, error) {
+		return s.APIKeyService.EnsureNoAuthAPIKey(bypassCtx)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure noauth api key: %w", err)
+	}
+
+	if apiKey.Status != apikey.StatusEnabled {
+		return nil, fmt.Errorf("api key not enabled: %w", ErrInvalidAPIKey)
+	}
+
+	proj, err := apiKey.Project(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get api key project: %w", err)
+	}
+
+	if proj == nil || proj.Status != project.StatusActive {
+		return nil, fmt.Errorf("api key project not valid: %w", ErrInvalidAPIKey)
 	}
 
 	return apiKey, nil

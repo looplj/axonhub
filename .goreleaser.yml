@@ -62,18 +62,32 @@ archives:
         dst: start.sh
       - src: deploy/stop.sh
         dst: stop.sh
+      - src: deploy/restart.sh
+        dst: restart.sh
+      - src: deploy/upgrade.sh
+        dst: upgrade.sh
+        
       - src: deploy/install.ps1
         dst: install.ps1
       - src: deploy/start.ps1
         dst: start.ps1
       - src: deploy/stop.ps1
         dst: stop.ps1
+      - src: deploy/restart.ps1
+        dst: restart.ps1
+      - src: deploy/upgrade.ps1
+        dst: upgrade.ps1
+
       - src: deploy/install.bat
         dst: install.bat
       - src: deploy/start.bat
         dst: start.bat
       - src: deploy/stop.bat
         dst: stop.bat
+      - src: deploy/restart.bat
+        dst: restart.bat
+      - src: deploy/upgrade.bat
+        dst: upgrade.bat
 
 brews:
   - name: axonhub

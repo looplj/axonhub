@@ -14,35 +14,61 @@ import (
 
 var ErrPromptProtectionRejected = errors.New("prompt protection rejected request")
 
-func ApplyPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionRule) (*llm.Request, *ent.PromptProtectionRule, bool) {
+type PromptProtectionResult struct {
+	Request      *llm.Request
+	MatchedRules []*ent.PromptProtectionRule
+	Rejected     bool
+}
+
+// ApplyPromptProtectionRules applies prompt protection rules to a request.
+func ApplyPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionRule) PromptProtectionResult {
 	if req == nil || len(req.Messages) == 0 || len(rules) == 0 {
-		return req, nil, false
+		return PromptProtectionResult{Request: req}
 	}
 
-	newReq := *req
-	newReq.Messages = clonePromptProtectionMessages(req.Messages)
+	messages := req.Messages
+
+	var matchedRules []*ent.PromptProtectionRule
 
 	for _, rule := range rules {
-		applied := false
+		if rule == nil || rule.Settings == nil {
+			continue
+		}
 
-		for i, msg := range newReq.Messages {
+		var ruleMatches bool
+
+		for i, msg := range messages {
 			if !promptProtectionRuleAppliesToRole(rule.Settings.Scopes, msg.Role) {
 				continue
 			}
 
 			updatedMsg, msgApplied := applyPromptProtectionRuleToMessage(msg, rule)
 			if msgApplied {
-				newReq.Messages[i] = updatedMsg
-				applied = true
+				if rule.Settings.Action == objects.PromptProtectionActionReject {
+					return PromptProtectionResult{
+						MatchedRules: []*ent.PromptProtectionRule{rule},
+						Rejected:     true,
+					}
+				}
+
+				messages[i] = updatedMsg
+				ruleMatches = true
 			}
 		}
 
-		if applied {
-			return &newReq, rule, true
+		if !ruleMatches {
+			continue
 		}
+
+		matchedRules = append(matchedRules, rule)
 	}
 
-	return req, nil, false
+	req.Messages = messages
+
+	return PromptProtectionResult{
+		Request:      req,
+		MatchedRules: matchedRules,
+	}
 }
 
 func (svc *PromptProtectionRuleService) Protect(ctx context.Context, req *llm.Request) (*llm.Request, error) {
@@ -53,35 +79,37 @@ func (svc *PromptProtectionRuleService) Protect(ctx context.Context, req *llm.Re
 	}
 
 	if len(rules) == 0 {
-		log.Debug(ctx, "no enabled prompt protection rules")
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "no enabled prompt protection rules")
+		}
 		return req, nil
 	}
 
-	protected, matchedRule, matched := ApplyPromptProtectionRules(req, rules)
-	if !matched || matchedRule == nil || matchedRule.Settings == nil {
-		log.Debug(ctx, "prompt protection passed without rule match", log.Int("rule_count", len(rules)))
+	result := ApplyPromptProtectionRules(req, rules)
+	if len(result.MatchedRules) == 0 {
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "prompt protection passed without rule match", log.Int("rule_count", len(rules)))
+		}
 		return req, nil
 	}
 
-	if matchedRule.Settings.Action == objects.PromptProtectionActionReject {
+	if result.Rejected {
 		log.Warn(ctx, "prompt protection rejected request",
-			log.String("rule_name", matchedRule.Name),
-			log.String("action", string(matchedRule.Settings.Action)),
+			log.String("rule_name", result.MatchedRules[0].Name),
 		)
 
-		return protected, ErrPromptProtectionRejected
+		return result.Request, ErrPromptProtectionRejected
 	}
 
-	log.Debug(ctx, "prompt protection masked request",
-		log.String("rule_name", matchedRule.Name),
-		log.String("action", string(matchedRule.Settings.Action)),
-	)
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "prompt protection masked request", log.Any("rules", result.MatchedRules))
+	}
 
-	return protected, nil
+	return result.Request, nil
 }
 
 func applyPromptProtectionRuleToMessage(msg llm.Message, rule *ent.PromptProtectionRule) (llm.Message, bool) {
-	applied := false
+	matched := false
 
 	if msg.Content.Content != nil && *msg.Content.Content != "" && MatchPromptProtectionRule(rule.Pattern, *msg.Content.Content) {
 		if rule.Settings.Action == objects.PromptProtectionActionMask {
@@ -89,7 +117,7 @@ func applyPromptProtectionRuleToMessage(msg llm.Message, rule *ent.PromptProtect
 			msg.Content = llm.MessageContent{Content: &masked}
 		}
 
-		applied = true
+		matched = true
 	}
 
 	for i, part := range msg.Content.MultipleContent {
@@ -106,22 +134,10 @@ func applyPromptProtectionRuleToMessage(msg llm.Message, rule *ent.PromptProtect
 			msg.Content.MultipleContent[i].Text = &masked
 		}
 
-		applied = true
+		matched = true
 	}
 
-	return msg, applied
-}
-
-func clonePromptProtectionMessages(messages []llm.Message) []llm.Message {
-	cloned := make([]llm.Message, len(messages))
-	for i, msg := range messages {
-		cloned[i] = msg
-		if len(msg.Content.MultipleContent) > 0 {
-			cloned[i].Content.MultipleContent = append([]llm.MessageContentPart(nil), msg.Content.MultipleContent...)
-		}
-	}
-
-	return cloned
+	return msg, matched
 }
 
 func promptProtectionRuleAppliesToRole(scopes []objects.PromptProtectionScope, role string) bool {
