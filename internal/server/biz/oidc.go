@@ -45,12 +45,14 @@ type OIDCProvider struct {
 	Scopes                []string          `conf:"scopes" yaml:"scopes" json:"scopes"`
 	JITEnabled            bool              `conf:"jit_enabled" yaml:"jit_enabled" json:"jit_enabled"`
 	AutoLinkByEmail       bool              `conf:"auto_link_by_email" yaml:"auto_link_by_email" json:"auto_link_by_email"`
+	RequireEmailVerified  bool              `conf:"require_email_verified" yaml:"require_email_verified" json:"require_email_verified"`
 	RoleMappings          map[string]string `conf:"role_mappings" yaml:"role_mappings" json:"role_mappings"`
 	RoleMappingPrecedence string            `conf:"role_mapping_precedence" yaml:"role_mapping_precedence" json:"role_mapping_precedence"`
 	EnablePKCE            bool              `conf:"enable_pkce" yaml:"enable_pkce" json:"enable_pkce"`
 	// UI customization
-	IconURL     string `conf:"icon_url" yaml:"icon_url" json:"icon_url"`
-	ButtonColor string `conf:"button_color" yaml:"button_color" json:"button_color"`
+	IconURL      string `conf:"icon_url" yaml:"icon_url" json:"icon_url"`
+	ButtonColor  string `conf:"button_color" yaml:"button_color" json:"button_color"`
+	SyncUserInfo bool   `conf:"sync_user_info" yaml:"sync_user_info" json:"sync_user_info"`
 }
 
 type OIDCConfig struct {
@@ -262,12 +264,13 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 		GivenName         string `json:"given_name"`
 		FamilyName        string `json:"family_name"`
 		PreferredUsername string `json:"preferred_username"`
+		Picture           string `json:"picture"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
 		return "", fmt.Errorf("failed to parse claims: %w", err)
 	}
 
-	userEntity, err := s.resolveUser(ctx, p, idToken.Subject, claims.Email, claims.EmailVerified, claims.Name)
+	userEntity, err := s.resolveUser(ctx, p, idToken.Subject, claims.Email, claims.EmailVerified, claims.Name, claims.GivenName, claims.FamilyName, claims.Picture)
 	if err != nil {
 		return "", err
 	}
@@ -290,7 +293,7 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 	return exchangeCode, nil
 }
 
-func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject, email string, emailVerified bool, name string) (*ent.User, error) {
+func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject, email string, emailVerified bool, name, givenName, familyName, picture string) (*ent.User, error) {
 	// Elevate privileges for OIDC user resolution as this is an unauthenticated flow
 	ctx = contexts.WithUser(ctx, &ent.User{IsOwner: true})
 
@@ -306,9 +309,25 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	if err == nil {
 		// Update last login
 		_, _ = identity.Update().SetLastLoginAt(time.Now()).Save(ctx)
+
+		// Sync user info if enabled
+		if p.config.SyncUserInfo {
+			updatedUser, err := s.syncUserInfo(ctx, identity.Edges.User, name, givenName, familyName, picture)
+			if err != nil {
+				log.Warn(ctx, "Failed to sync user info during OIDC login", zap.Error(err), log.Int("user_id", identity.UserID))
+			} else {
+				return updatedUser, nil
+			}
+		}
+
 		return identity.Edges.User, nil
 	} else if !ent.IsNotFound(err) {
 		return nil, fmt.Errorf("database error querying identity: %w", err)
+	}
+
+	// Check if email verification is required for new identities/users
+	if p.config.RequireEmailVerified && !emailVerified {
+		return nil, fmt.Errorf("email not verified")
 	}
 
 	// 2. Identity not found. Check auto-link
@@ -320,6 +339,17 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 			if err != nil {
 				return nil, fmt.Errorf("failed to link identity: %w", err)
 			}
+
+			// Sync user info if enabled
+			if p.config.SyncUserInfo {
+				updatedUser, err := s.syncUserInfo(ctx, existingUser, name, givenName, familyName, picture)
+				if err != nil {
+					log.Warn(ctx, "Failed to sync user info during OIDC auto-link", zap.Error(err), log.Int("user_id", existingUser.ID))
+				} else {
+					return updatedUser, nil
+				}
+			}
+
 			return existingUser, nil
 		} else if !ent.IsNotFound(err) {
 			return nil, fmt.Errorf("database error querying user by email: %w", err)
@@ -344,11 +374,23 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	}
 	randPassword := hex.EncodeToString(randPasswordBytes)
 
-	newUser, err := s.db.User.Create().
+	firstName := givenName
+	lastName := familyName
+	if firstName == "" && lastName == "" {
+		firstName = name
+	}
+
+	userCreate := s.db.User.Create().
 		SetEmail(email).
-		SetFirstName(name).
-		SetPassword(randPassword).
-		Save(ctx)
+		SetFirstName(firstName).
+		SetLastName(lastName).
+		SetPassword(randPassword)
+
+	if picture != "" {
+		userCreate.SetAvatar(picture)
+	}
+
+	newUser, err := userCreate.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to provision user: %w", err)
 	}
@@ -359,6 +401,24 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	}
 
 	return newUser, nil
+}
+
+func (s *OIDCService) syncUserInfo(ctx context.Context, u *ent.User, name, givenName, familyName, picture string) (*ent.User, error) {
+	firstName := givenName
+	lastName := familyName
+	if firstName == "" && lastName == "" {
+		firstName = name
+	}
+
+	update := u.Update()
+	if firstName != "" || lastName != "" {
+		update.SetFirstName(firstName).SetLastName(lastName)
+	}
+	if picture != "" {
+		update.SetAvatar(picture)
+	}
+
+	return update.Save(ctx)
 }
 
 func (s *OIDCService) createIdentity(ctx context.Context, userID int, issuer, subject, email, idpName string) error {
