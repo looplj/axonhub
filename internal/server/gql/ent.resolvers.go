@@ -209,6 +209,14 @@ func (r *promptResolver) ID(ctx context.Context, obj *ent.Prompt) (*objects.GUID
 }
 
 // ID is the resolver for the id field.
+func (r *promptProtectionRuleResolver) ID(ctx context.Context, obj *ent.PromptProtectionRule) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypePromptProtectionRule,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *providerQuotaStatusResolver) ID(ctx context.Context, obj *ent.ProviderQuotaStatus) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeProviderQuotaStatus,
@@ -339,6 +347,22 @@ func (r *queryResolver) Prompts(ctx context.Context, after *entgql.Cursor[int], 
 	return r.client.Prompt.Query().Paginate(ctx, after, first, before, last,
 		ent.WithPromptOrder(orderBy),
 		ent.WithPromptFilter(where.Filter),
+	)
+}
+
+// PromptProtectionRules is the resolver for the promptProtectionRules field.
+func (r *queryResolver) PromptProtectionRules(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptProtectionRuleOrder, where *ent.PromptProtectionRuleWhereInput) (*ent.PromptProtectionRuleConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultPromptProtectionRuleOrder.Field
+	}
+
+	return r.client.PromptProtectionRule.Query().Paginate(ctx, after, first, before, last,
+		ent.WithPromptProtectionRuleOrder(orderBy),
+		ent.WithPromptProtectionRuleFilter(where.Filter),
 	)
 }
 
@@ -844,6 +868,11 @@ func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 // Prompt returns PromptResolver implementation.
 func (r *Resolver) Prompt() PromptResolver { return &promptResolver{r} }
 
+// PromptProtectionRule returns PromptProtectionRuleResolver implementation.
+func (r *Resolver) PromptProtectionRule() PromptProtectionRuleResolver {
+	return &promptProtectionRuleResolver{r}
+}
+
 // ProviderQuotaStatus returns ProviderQuotaStatusResolver implementation.
 func (r *Resolver) ProviderQuotaStatus() ProviderQuotaStatusResolver {
 	return &providerQuotaStatusResolver{r}
@@ -892,6 +921,7 @@ type dataStorageResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type promptResolver struct{ *Resolver }
+type promptProtectionRuleResolver struct{ *Resolver }
 type providerQuotaStatusResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }

@@ -5,6 +5,7 @@
   "sidebar.items.dashboard": "仪表板",
   "sidebar.items.channels": "渠道",
   "sidebar.items.models": "模型",
+  "sidebar.items.promptProtectionRules": "提示保护",
   "sidebar.items.prompts": "提示词",
   "sidebar.items.dataStorages": "数据存储",
   "sidebar.items.users": "用户",

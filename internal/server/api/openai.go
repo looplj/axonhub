@@ -31,6 +31,7 @@ type OpenAIHandlersParams struct {
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	PromptService   *biz.PromptService
+	PromptProtectionRuleService *biz.PromptProtectionRuleService
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 	Client          *ent.Client
@@ -67,6 +68,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -80,6 +82,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -93,6 +96,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -106,6 +110,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -119,6 +124,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -132,6 +138,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -145,6 +152,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		VideoInboundTransformer: videoInbound,

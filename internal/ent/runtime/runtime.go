@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -421,6 +422,45 @@ func init() {
 	promptDescOrder := promptFields[6].Descriptor()
 	// prompt.DefaultOrder holds the default value on creation for the order field.
 	prompt.DefaultOrder = promptDescOrder.Default.(int)
+	promptprotectionruleMixin := schema.PromptProtectionRule{}.Mixin()
+	promptprotectionrule.Policy = privacy.NewPolicies(schema.PromptProtectionRule{})
+	promptprotectionrule.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := promptprotectionrule.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	promptprotectionruleMixinHooks1 := promptprotectionruleMixin[1].Hooks()
+
+	promptprotectionrule.Hooks[1] = promptprotectionruleMixinHooks1[0]
+	promptprotectionruleMixinInters1 := promptprotectionruleMixin[1].Interceptors()
+	promptprotectionrule.Interceptors[0] = promptprotectionruleMixinInters1[0]
+	promptprotectionruleMixinFields0 := promptprotectionruleMixin[0].Fields()
+	_ = promptprotectionruleMixinFields0
+	promptprotectionruleMixinFields1 := promptprotectionruleMixin[1].Fields()
+	_ = promptprotectionruleMixinFields1
+	promptprotectionruleFields := schema.PromptProtectionRule{}.Fields()
+	_ = promptprotectionruleFields
+	// promptprotectionruleDescCreatedAt is the schema descriptor for created_at field.
+	promptprotectionruleDescCreatedAt := promptprotectionruleMixinFields0[0].Descriptor()
+	// promptprotectionrule.DefaultCreatedAt holds the default value on creation for the created_at field.
+	promptprotectionrule.DefaultCreatedAt = promptprotectionruleDescCreatedAt.Default.(func() time.Time)
+	// promptprotectionruleDescUpdatedAt is the schema descriptor for updated_at field.
+	promptprotectionruleDescUpdatedAt := promptprotectionruleMixinFields0[1].Descriptor()
+	// promptprotectionrule.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	promptprotectionrule.DefaultUpdatedAt = promptprotectionruleDescUpdatedAt.Default.(func() time.Time)
+	// promptprotectionrule.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	promptprotectionrule.UpdateDefaultUpdatedAt = promptprotectionruleDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// promptprotectionruleDescDeletedAt is the schema descriptor for deleted_at field.
+	promptprotectionruleDescDeletedAt := promptprotectionruleMixinFields1[0].Descriptor()
+	// promptprotectionrule.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	promptprotectionrule.DefaultDeletedAt = promptprotectionruleDescDeletedAt.Default.(int)
+	// promptprotectionruleDescDescription is the schema descriptor for description field.
+	promptprotectionruleDescDescription := promptprotectionruleFields[1].Descriptor()
+	// promptprotectionrule.DefaultDescription holds the default value on creation for the description field.
+	promptprotectionrule.DefaultDescription = promptprotectionruleDescDescription.Default.(string)
 	providerquotastatusMixin := schema.ProviderQuotaStatus{}.Mixin()
 	providerquotastatusMixinHooks1 := providerquotastatusMixin[1].Hooks()
 	providerquotastatus.Hooks[0] = providerquotastatusMixinHooks1[0]
