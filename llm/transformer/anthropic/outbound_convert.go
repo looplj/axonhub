@@ -83,6 +83,13 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Thinking = buildThinking(chatReq, config)
 	}
 
+	// Restore thinking display from TransformerMetadata
+	if req.Thinking != nil && chatReq.TransformerMetadata != nil {
+		if display, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay].(string); ok && display != "" {
+			req.Thinking.Display = display
+		}
+	}
+
 	// Restore output_config from TransformerMetadata
 	if chatReq.TransformerMetadata != nil {
 		if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
