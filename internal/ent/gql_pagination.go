@@ -24,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -3296,6 +3297,338 @@ func (_m *Prompt) ToEdge(order *PromptOrder) *PromptEdge {
 		order = DefaultPromptOrder
 	}
 	return &PromptEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// PromptProtectionRuleEdge is the edge representation of PromptProtectionRule.
+type PromptProtectionRuleEdge struct {
+	Node   *PromptProtectionRule `json:"node"`
+	Cursor Cursor                `json:"cursor"`
+}
+
+// PromptProtectionRuleConnection is the connection containing edges to PromptProtectionRule.
+type PromptProtectionRuleConnection struct {
+	Edges      []*PromptProtectionRuleEdge `json:"edges"`
+	PageInfo   PageInfo                    `json:"pageInfo"`
+	TotalCount int                         `json:"totalCount"`
+}
+
+func (c *PromptProtectionRuleConnection) build(nodes []*PromptProtectionRule, pager *promptprotectionrulePager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *PromptProtectionRule
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *PromptProtectionRule {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *PromptProtectionRule {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*PromptProtectionRuleEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &PromptProtectionRuleEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// PromptProtectionRulePaginateOption enables pagination customization.
+type PromptProtectionRulePaginateOption func(*promptprotectionrulePager) error
+
+// WithPromptProtectionRuleOrder configures pagination ordering.
+func WithPromptProtectionRuleOrder(order *PromptProtectionRuleOrder) PromptProtectionRulePaginateOption {
+	if order == nil {
+		order = DefaultPromptProtectionRuleOrder
+	}
+	o := *order
+	return func(pager *promptprotectionrulePager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultPromptProtectionRuleOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithPromptProtectionRuleFilter configures pagination filter.
+func WithPromptProtectionRuleFilter(filter func(*PromptProtectionRuleQuery) (*PromptProtectionRuleQuery, error)) PromptProtectionRulePaginateOption {
+	return func(pager *promptprotectionrulePager) error {
+		if filter == nil {
+			return errors.New("PromptProtectionRuleQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type promptprotectionrulePager struct {
+	reverse bool
+	order   *PromptProtectionRuleOrder
+	filter  func(*PromptProtectionRuleQuery) (*PromptProtectionRuleQuery, error)
+}
+
+func newPromptProtectionRulePager(opts []PromptProtectionRulePaginateOption, reverse bool) (*promptprotectionrulePager, error) {
+	pager := &promptprotectionrulePager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultPromptProtectionRuleOrder
+	}
+	return pager, nil
+}
+
+func (p *promptprotectionrulePager) applyFilter(query *PromptProtectionRuleQuery) (*PromptProtectionRuleQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *promptprotectionrulePager) toCursor(_m *PromptProtectionRule) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *promptprotectionrulePager) applyCursors(query *PromptProtectionRuleQuery, after, before *Cursor) (*PromptProtectionRuleQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultPromptProtectionRuleOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *promptprotectionrulePager) applyOrder(query *PromptProtectionRuleQuery) *PromptProtectionRuleQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultPromptProtectionRuleOrder.Field {
+		query = query.Order(DefaultPromptProtectionRuleOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *promptprotectionrulePager) orderExpr(query *PromptProtectionRuleQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultPromptProtectionRuleOrder.Field {
+			b.Comma().Ident(DefaultPromptProtectionRuleOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to PromptProtectionRule.
+func (_m *PromptProtectionRuleQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...PromptProtectionRulePaginateOption,
+) (*PromptProtectionRuleConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newPromptProtectionRulePager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &PromptProtectionRuleConnection{Edges: []*PromptProtectionRuleEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+var (
+	// PromptProtectionRuleOrderFieldCreatedAt orders PromptProtectionRule by created_at.
+	PromptProtectionRuleOrderFieldCreatedAt = &PromptProtectionRuleOrderField{
+		Value: func(_m *PromptProtectionRule) (ent.Value, error) {
+			return _m.CreatedAt, nil
+		},
+		column: promptprotectionrule.FieldCreatedAt,
+		toTerm: promptprotectionrule.ByCreatedAt,
+		toCursor: func(_m *PromptProtectionRule) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.CreatedAt,
+			}
+		},
+	}
+	// PromptProtectionRuleOrderFieldUpdatedAt orders PromptProtectionRule by updated_at.
+	PromptProtectionRuleOrderFieldUpdatedAt = &PromptProtectionRuleOrderField{
+		Value: func(_m *PromptProtectionRule) (ent.Value, error) {
+			return _m.UpdatedAt, nil
+		},
+		column: promptprotectionrule.FieldUpdatedAt,
+		toTerm: promptprotectionrule.ByUpdatedAt,
+		toCursor: func(_m *PromptProtectionRule) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.UpdatedAt,
+			}
+		},
+	}
+	// PromptProtectionRuleOrderFieldName orders PromptProtectionRule by name.
+	PromptProtectionRuleOrderFieldName = &PromptProtectionRuleOrderField{
+		Value: func(_m *PromptProtectionRule) (ent.Value, error) {
+			return _m.Name, nil
+		},
+		column: promptprotectionrule.FieldName,
+		toTerm: promptprotectionrule.ByName,
+		toCursor: func(_m *PromptProtectionRule) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.Name,
+			}
+		},
+	}
+)
+
+// String implement fmt.Stringer interface.
+func (f PromptProtectionRuleOrderField) String() string {
+	var str string
+	switch f.column {
+	case PromptProtectionRuleOrderFieldCreatedAt.column:
+		str = "CREATED_AT"
+	case PromptProtectionRuleOrderFieldUpdatedAt.column:
+		str = "UPDATED_AT"
+	case PromptProtectionRuleOrderFieldName.column:
+		str = "NAME"
+	}
+	return str
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (f PromptProtectionRuleOrderField) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(f.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (f *PromptProtectionRuleOrderField) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("PromptProtectionRuleOrderField %T must be a string", v)
+	}
+	switch str {
+	case "CREATED_AT":
+		*f = *PromptProtectionRuleOrderFieldCreatedAt
+	case "UPDATED_AT":
+		*f = *PromptProtectionRuleOrderFieldUpdatedAt
+	case "NAME":
+		*f = *PromptProtectionRuleOrderFieldName
+	default:
+		return fmt.Errorf("%s is not a valid PromptProtectionRuleOrderField", str)
+	}
+	return nil
+}
+
+// PromptProtectionRuleOrderField defines the ordering field of PromptProtectionRule.
+type PromptProtectionRuleOrderField struct {
+	// Value extracts the ordering value from the given PromptProtectionRule.
+	Value    func(*PromptProtectionRule) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) promptprotectionrule.OrderOption
+	toCursor func(*PromptProtectionRule) Cursor
+}
+
+// PromptProtectionRuleOrder defines the ordering of PromptProtectionRule.
+type PromptProtectionRuleOrder struct {
+	Direction OrderDirection                  `json:"direction"`
+	Field     *PromptProtectionRuleOrderField `json:"field"`
+}
+
+// DefaultPromptProtectionRuleOrder is the default ordering of PromptProtectionRule.
+var DefaultPromptProtectionRuleOrder = &PromptProtectionRuleOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &PromptProtectionRuleOrderField{
+		Value: func(_m *PromptProtectionRule) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: promptprotectionrule.FieldID,
+		toTerm: promptprotectionrule.ByID,
+		toCursor: func(_m *PromptProtectionRule) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts PromptProtectionRule into PromptProtectionRuleEdge.
+func (_m *PromptProtectionRule) ToEdge(order *PromptProtectionRuleOrder) *PromptProtectionRuleEdge {
+	if order == nil {
+		order = DefaultPromptProtectionRuleOrder
+	}
+	return &PromptProtectionRuleEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -2888,6 +2889,125 @@ func newPromptPaginateArgs(rv map[string]any) *promptPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*PromptWhereInput); ok {
 		args.opts = append(args.opts, WithPromptFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *PromptProtectionRuleQuery) CollectFields(ctx context.Context, satisfies ...string) (*PromptProtectionRuleQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *PromptProtectionRuleQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(promptprotectionrule.Columns))
+		selectedFields = []string{promptprotectionrule.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "createdAt":
+			if _, ok := fieldSeen[promptprotectionrule.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, promptprotectionrule.FieldCreatedAt)
+				fieldSeen[promptprotectionrule.FieldCreatedAt] = struct{}{}
+			}
+		case "updatedAt":
+			if _, ok := fieldSeen[promptprotectionrule.FieldUpdatedAt]; !ok {
+				selectedFields = append(selectedFields, promptprotectionrule.FieldUpdatedAt)
+				fieldSeen[promptprotectionrule.FieldUpdatedAt] = struct{}{}
+			}
+		case "name":
+			if _, ok := fieldSeen[promptprotectionrule.FieldName]; !ok {
+				selectedFields = append(selectedFields, promptprotectionrule.FieldName)
+				fieldSeen[promptprotectionrule.FieldName] = struct{}{}
+			}
+		case "description":
+			if _, ok := fieldSeen[promptprotectionrule.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, promptprotectionrule.FieldDescription)
+				fieldSeen[promptprotectionrule.FieldDescription] = struct{}{}
+			}
+		case "pattern":
+			if _, ok := fieldSeen[promptprotectionrule.FieldPattern]; !ok {
+				selectedFields = append(selectedFields, promptprotectionrule.FieldPattern)
+				fieldSeen[promptprotectionrule.FieldPattern] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[promptprotectionrule.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, promptprotectionrule.FieldStatus)
+				fieldSeen[promptprotectionrule.FieldStatus] = struct{}{}
+			}
+		case "settings":
+			if _, ok := fieldSeen[promptprotectionrule.FieldSettings]; !ok {
+				selectedFields = append(selectedFields, promptprotectionrule.FieldSettings)
+				fieldSeen[promptprotectionrule.FieldSettings] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type promptprotectionrulePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []PromptProtectionRulePaginateOption
+}
+
+func newPromptProtectionRulePaginateArgs(rv map[string]any) *promptprotectionrulePaginateArgs {
+	args := &promptprotectionrulePaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[orderByField]; ok {
+		switch v := v.(type) {
+		case map[string]any:
+			var (
+				err1, err2 error
+				order      = &PromptProtectionRuleOrder{Field: &PromptProtectionRuleOrderField{}, Direction: entgql.OrderDirectionAsc}
+			)
+			if d, ok := v[directionField]; ok {
+				err1 = order.Direction.UnmarshalGQL(d)
+			}
+			if f, ok := v[fieldField]; ok {
+				err2 = order.Field.UnmarshalGQL(f)
+			}
+			if err1 == nil && err2 == nil {
+				args.opts = append(args.opts, WithPromptProtectionRuleOrder(order))
+			}
+		case *PromptProtectionRuleOrder:
+			if v != nil {
+				args.opts = append(args.opts, WithPromptProtectionRuleOrder(v))
+			}
+		}
+	}
+	if v, ok := rv[whereField].(*PromptProtectionRuleWhereInput); ok {
+		args.opts = append(args.opts, WithPromptProtectionRuleFilter(v.Filter))
 	}
 	return args
 }

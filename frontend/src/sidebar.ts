@@ -84,6 +84,11 @@ export function useSidebarData(): SidebarData {
           icon: IconRobot,
         } as NavLink,
         {
+          title: t('sidebar.items.promptProtectionRules'),
+          url: '/prompt-protection-rules',
+          icon: IconShield,
+        } as NavLink,
+        {
           title: t('sidebar.items.dataStorages'),
           url: '/data-storages',
           icon: IconDatabase,

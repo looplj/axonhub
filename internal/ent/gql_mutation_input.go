@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -688,6 +689,72 @@ func (c *PromptUpdate) SetInput(i UpdatePromptInput) *PromptUpdate {
 
 // SetInput applies the change-set in the UpdatePromptInput on the PromptUpdateOne builder.
 func (c *PromptUpdateOne) SetInput(i UpdatePromptInput) *PromptUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreatePromptProtectionRuleInput represents a mutation input for creating promptprotectionrules.
+type CreatePromptProtectionRuleInput struct {
+	Name        string
+	Description *string
+	Pattern     string
+	Settings    *objects.PromptProtectionSettings
+}
+
+// Mutate applies the CreatePromptProtectionRuleInput on the PromptProtectionRuleMutation builder.
+func (i *CreatePromptProtectionRuleInput) Mutate(m *PromptProtectionRuleMutation) {
+	m.SetName(i.Name)
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	m.SetPattern(i.Pattern)
+	if v := i.Settings; v != nil {
+		m.SetSettings(v)
+	}
+}
+
+// SetInput applies the change-set in the CreatePromptProtectionRuleInput on the PromptProtectionRuleCreate builder.
+func (c *PromptProtectionRuleCreate) SetInput(i CreatePromptProtectionRuleInput) *PromptProtectionRuleCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdatePromptProtectionRuleInput represents a mutation input for updating promptprotectionrules.
+type UpdatePromptProtectionRuleInput struct {
+	Name        *string
+	Description *string
+	Pattern     *string
+	Status      *promptprotectionrule.Status
+	Settings    *objects.PromptProtectionSettings
+}
+
+// Mutate applies the UpdatePromptProtectionRuleInput on the PromptProtectionRuleMutation builder.
+func (i *UpdatePromptProtectionRuleInput) Mutate(m *PromptProtectionRuleMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Description; v != nil {
+		m.SetDescription(*v)
+	}
+	if v := i.Pattern; v != nil {
+		m.SetPattern(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.Settings; v != nil {
+		m.SetSettings(v)
+	}
+}
+
+// SetInput applies the change-set in the UpdatePromptProtectionRuleInput on the PromptProtectionRuleUpdate builder.
+func (c *PromptProtectionRuleUpdate) SetInput(i UpdatePromptProtectionRuleInput) *PromptProtectionRuleUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdatePromptProtectionRuleInput on the PromptProtectionRuleUpdateOne builder.
+func (c *PromptProtectionRuleUpdateOne) SetInput(i UpdatePromptProtectionRuleInput) *PromptProtectionRuleUpdateOne {
 	i.Mutate(c.Mutation())
 	return c
 }
