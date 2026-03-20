@@ -16,6 +16,8 @@ import type {
 } from './schema';
 import { apiKeyConnectionSchema, apiKeyProfileQuotaUsageSchema, apiKeySchema, apiKeyTokenUsageStatsSchema } from './schema';
 
+const NOAUTH_API_KEY_TYPE = 'noauth';
+
 // Dynamic GraphQL query builders
 function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
   const userFields = permissions.canViewUsers
@@ -285,7 +287,14 @@ export function useApiKeys(
       try {
         const query = buildApiKeysQuery(permissions);
         const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, variables, headers);
+        const mergedVariables = {
+          ...variables,
+          where: {
+            ...variables?.where,
+            typeNotIn: [NOAUTH_API_KEY_TYPE],
+          },
+        };
+        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, mergedVariables, headers);
         return apiKeyConnectionSchema.parse(data?.apiKeys);
       } catch (error) {
         handleError(error, t('apikeys.errors.fetchData'));
