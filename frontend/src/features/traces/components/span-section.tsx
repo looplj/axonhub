@@ -21,7 +21,7 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
     if (!selectedSpan?.value) return [];
 
     const sections: { title: string; content: React.ReactNode }[] = [];
-    const { userQuery: query, userImageUrl, text, thinking, toolUse, toolResult, imageUrl, systemInstruction } = selectedSpan.value;
+    const { userQuery: query, userImageUrl, userInputAudio, text, thinking, toolUse, toolResult, imageUrl, audio, systemInstruction } = selectedSpan.value;
 
     if (query?.text) {
       sections.push({
@@ -129,11 +129,65 @@ export function SpanSection({ selectedTrace, selectedSpan, selectedSpanType }: S
       });
     }
 
+    if (userInputAudio?.format || userInputAudio?.data) {
+      const audioSrc =
+        userInputAudio.data && userInputAudio.format
+          ? `data:audio/${userInputAudio.format};base64,${userInputAudio.data}`
+          : undefined;
+
+      sections.push({
+        title: t('traces.detail.userInputAudio'),
+        content: (
+          <div className='space-y-3'>
+            {userInputAudio.format && (
+              <div className='bg-background/70 flex items-center justify-between rounded-lg border px-3 py-2 text-sm'>
+                <span className='text-muted-foreground'>{t('traces.detail.formatLabel')}</span>
+                <span className='font-mono text-xs'>{userInputAudio.format}</span>
+              </div>
+            )}
+            {audioSrc ? <audio controls src={audioSrc} className='w-full' /> : null}
+          </div>
+        ),
+      });
+    }
+
     if (imageUrl?.url) {
       sections.push({
         title: t('traces.detail.image'),
         content: (
           <img src={imageUrl.url || ''} alt={t('traces.detail.imageAlt')} className='max-h-96 w-full rounded-lg border object-contain' />
+        ),
+      });
+    }
+
+    if (audio?.transcript || audio?.data || audio?.format || audio?.id) {
+      const audioMime = audio?.format ? `audio/${audio.format}` : 'audio/mpeg';
+      const audioSrc = audio?.data ? `data:${audioMime};base64,${audio.data}` : undefined;
+
+      sections.push({
+        title: t('traces.detail.audio'),
+        content: (
+          <div className='space-y-3'>
+            {audio.id && (
+              <div className='bg-background/70 flex items-center justify-between rounded-lg border px-3 py-2 text-sm'>
+                <span className='text-muted-foreground'>{t('traces.detail.idLabel')}</span>
+                <span className='font-mono text-xs'>{audio.id}</span>
+              </div>
+            )}
+            {audio.format && (
+              <div className='bg-background/70 flex items-center justify-between rounded-lg border px-3 py-2 text-sm'>
+                <span className='text-muted-foreground'>{t('traces.detail.formatLabel')}</span>
+                <span className='font-mono text-xs'>{audio.format}</span>
+              </div>
+            )}
+            {audioSrc ? <audio controls src={audioSrc} className='w-full' /> : null}
+            {audio.transcript ? (
+              <div>
+                <p className='text-muted-foreground text-xs tracking-wide uppercase'>{t('traces.detail.transcriptLabel')}</p>
+                <pre className='bg-muted/40 mt-2 max-h-160 overflow-auto rounded-lg p-3 text-sm whitespace-pre-wrap'>{audio.transcript}</pre>
+              </div>
+            ) : null}
+          </div>
         ),
       });
     }

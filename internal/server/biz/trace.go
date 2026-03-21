@@ -249,10 +249,12 @@ type Span struct {
 	// "user_query": the query from user.
 	// "user_image_url": the image url from user.
 	// "user_video_url": the video url from user.
+	// "user_input_audio": the audio input from user.
 	// "text": llm responsed text.
 	// "thinking": llm responsed thinking.
 	// "image_url": User image url
 	// "video_url": User video url
+	// "audio": llm responsed audio.
 	// "tool_use": llm responsed tool use.
 	// "tool_result": result of tool running.
 	Type      string     `json:"type"`
@@ -266,10 +268,12 @@ type SpanValue struct {
 	UserQuery         *SpanUserQuery         `json:"userQuery,omitempty"`
 	UserImageURL      *SpanUserImageURL      `json:"userImageUrl,omitempty"`
 	UserVideoURL      *SpanUserVideoURL      `json:"userVideoUrl,omitempty"`
+	UserInputAudio    *SpanUserInputAudio    `json:"userInputAudio,omitempty"`
 	Text              *SpanText              `json:"text,omitempty"`
 	Thinking          *SpanThinking          `json:"thinking,omitempty"`
 	ImageURL          *SpanImageURL          `json:"imageUrl,omitempty"`
 	VideoURL          *SpanVideoURL          `json:"videoUrl,omitempty"`
+	Audio             *SpanAudio             `json:"audio,omitempty"`
 	ToolUse           *SpanToolUse           `json:"toolUse,omitempty"`
 	ToolResult        *SpanToolResult        `json:"toolResult,omitempty"`
 }
@@ -290,6 +294,11 @@ type SpanUserVideoURL struct {
 	URL string `json:"url,omitempty"`
 }
 
+type SpanUserInputAudio struct {
+	Format string `json:"format,omitempty"`
+	Data   string `json:"data,omitempty"`
+}
+
 type SpanThinking struct {
 	Thinking string `json:"thinking,omitempty"`
 }
@@ -304,6 +313,13 @@ type SpanImageURL struct {
 
 type SpanVideoURL struct {
 	URL string `json:"url,omitempty"`
+}
+
+type SpanAudio struct {
+	ID         string `json:"id,omitempty"`
+	Format     string `json:"format,omitempty"`
+	Data       string `json:"data,omitempty"`
+	Transcript string `json:"transcript,omitempty"`
 }
 
 type SpanToolUse struct {
@@ -606,6 +622,22 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 		})
 	}
 
+	if msg.Audio != nil {
+		spans = append(spans, Span{
+			ID:        fmt.Sprintf("%s-audio-%d", idPrefix, len(spans)),
+			Type:      "audio",
+			StartTime: now,
+			EndTime:   now,
+			Value: &SpanValue{
+				Audio: &SpanAudio{
+					ID:         msg.Audio.ID,
+					Data:       msg.Audio.Data,
+					Transcript: msg.Audio.Transcript,
+				},
+			},
+		})
+	}
+
 	// Handle text content
 	if msg.Content.Content != nil && *msg.Content.Content != "" {
 		switch msg.Role {
@@ -807,6 +839,52 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 				})
 			}
 
+		case "input_audio":
+			if part.InputAudio == nil {
+				continue
+			}
+
+			switch msg.Role {
+			case "user":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-input_audio-%d", idPrefix, len(spans)),
+					Type:      "user_input_audio",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						UserInputAudio: &SpanUserInputAudio{
+							Format: part.InputAudio.Format,
+							Data:   part.InputAudio.Data,
+						},
+					},
+				})
+			case "tool":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-input_audio-%d", idPrefix, len(spans)),
+					Type:      "tool_result",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						ToolResult: &SpanToolResult{
+							Text: new(fmt.Sprintf("[audio input: %s]", part.InputAudio.Format)),
+						},
+					},
+				})
+			default:
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-input_audio-%d", idPrefix, len(spans)),
+					Type:      "audio",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						Audio: &SpanAudio{
+							Format: part.InputAudio.Format,
+							Data:   part.InputAudio.Data,
+						},
+					},
+				})
+			}
+
 		default:
 			// ignore for now.
 		}
@@ -975,6 +1053,10 @@ func spanToKey(span Span) string {
 		if span.Value.UserVideoURL != nil {
 			return fmt.Sprintf("%s:%s", span.Type, span.Value.UserVideoURL.URL)
 		}
+	case "user_input_audio":
+		if span.Value.UserInputAudio != nil {
+			return fmt.Sprintf("%s:%s:%s", span.Type, span.Value.UserInputAudio.Format, span.Value.UserInputAudio.Data)
+		}
 	case "text":
 		if span.Value.Text != nil {
 			return fmt.Sprintf("%s:%s", span.Type, span.Value.Text.Text)
@@ -990,6 +1072,10 @@ func spanToKey(span Span) string {
 	case "video_url":
 		if span.Value.VideoURL != nil {
 			return fmt.Sprintf("%s:%s", span.Type, span.Value.VideoURL.URL)
+		}
+	case "audio":
+		if span.Value.Audio != nil {
+			return fmt.Sprintf("%s:%s:%s:%s", span.Type, span.Value.Audio.ID, span.Value.Audio.Format, span.Value.Audio.Transcript)
 		}
 	case "tool_use":
 		if span.Value.ToolUse != nil {

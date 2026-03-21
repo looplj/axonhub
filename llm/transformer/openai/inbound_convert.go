@@ -129,6 +129,15 @@ func (m Message) ToLLMMessage() llm.Message {
 		Reasoning:        m.Reasoning,
 	}
 
+	if m.Audio != nil {
+		msg.Audio = &llm.OutputAudio{
+			ID:         m.Audio.ID,
+			Data:       m.Audio.Data,
+			ExpiresAt:  m.Audio.ExpiresAt,
+			Transcript: m.Audio.Transcript,
+		}
+	}
+
 	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
 	if msg.ReasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
 		msg.ReasoningContent = m.Reasoning
@@ -214,10 +223,10 @@ func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 		}
 	}
 
-	if p.Audio != nil {
-		part.Audio = &llm.Audio{
-			Format: p.Audio.Format,
-			Data:   p.Audio.Data,
+	if p.InputAudio != nil {
+		part.InputAudio = &llm.InputAudio{
+			Format: p.InputAudio.Format,
+			Data:   p.InputAudio.Data,
 		}
 	}
 

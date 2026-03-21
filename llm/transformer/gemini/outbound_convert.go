@@ -377,6 +377,14 @@ func convertLLMMessageToGeminiContent(msg *llm.Message, scope shared.TransportSc
 						lastPart = geminiPart
 					}
 				}
+			case "input_audio":
+				if part.InputAudio != nil && part.InputAudio.Data != "" {
+					geminiPart := convertAudioToGeminiPart(part.InputAudio)
+					if geminiPart != nil {
+						parts = append(parts, geminiPart)
+						lastPart = geminiPart
+					}
+				}
 			}
 		}
 	}

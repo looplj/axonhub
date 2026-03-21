@@ -178,6 +178,19 @@ func convertVideoURLToGeminiPart(video *llm.VideoURL) *Part {
 	}
 }
 
+func convertAudioToGeminiPart(audio *llm.InputAudio) *Part {
+	if audio == nil || audio.Data == "" {
+		return nil
+	}
+
+	return &Part{
+		InlineData: &Blob{
+			MIMEType: audioFormatToMIMEType(audio.Format),
+			Data:     audio.Data,
+		},
+	}
+}
+
 // convertDocumentURLToGeminiPart converts a DocumentURL to a Gemini Part.
 // Handles both data URLs and regular URLs for documents (PDF, Word, etc.)
 func convertDocumentURLToGeminiPart(doc *llm.DocumentURL) *Part {
@@ -233,6 +246,58 @@ func isVideoMIMEType(mimeType string) bool {
 	}
 
 	return strings.HasPrefix(strings.ToLower(mimeType), "video/")
+}
+
+func isAudioMIMEType(mimeType string) bool {
+	if mimeType == "" {
+		return false
+	}
+
+	return strings.HasPrefix(strings.ToLower(mimeType), "audio/")
+}
+
+func audioFormatToMIMEType(format string) string {
+	switch strings.ToLower(format) {
+	case "wav", "wave", "x-wav":
+		return "audio/wav"
+	case "mpeg", "mpga":
+		return "audio/mpeg"
+	case "webm":
+		return "audio/webm"
+	case "ogg":
+		return "audio/ogg"
+	case "flac":
+		return "audio/flac"
+	case "aac":
+		return "audio/aac"
+	case "mp4", "m4a":
+		return "audio/mp4"
+	case "mp3":
+		fallthrough
+	default:
+		return "audio/mp3"
+	}
+}
+
+func audioMIMETypeToFormat(mimeType string) string {
+	switch strings.ToLower(mimeType) {
+	case "audio/wav", "audio/wave", "audio/x-wav":
+		return "wav"
+	case "audio/mpeg", "audio/mpga":
+		return "mp3"
+	case "audio/webm":
+		return "webm"
+	case "audio/ogg":
+		return "ogg"
+	case "audio/flac":
+		return "flac"
+	case "audio/aac":
+		return "aac"
+	case "audio/mp4", "audio/m4a":
+		return "mp4"
+	default:
+		return "mp3"
+	}
 }
 
 func convertGeminiFunctionCallingConfigToToolChoice(fcc *FunctionCallingConfig) *llm.ToolChoice {
