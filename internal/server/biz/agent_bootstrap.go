@@ -1353,6 +1353,7 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.AgentInstanceIDEQ(inst.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToAgent),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 			).
@@ -1427,6 +1428,7 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, ins
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.AgentInstanceIDEQ(inst.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
 				agentmessage.TypeEQ(agentmessage.TypeChat),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
@@ -1480,6 +1482,7 @@ func (s *AgentBootstrapService) AckAgentMessages(ctx context.Context, inst *ent.
 			Where(
 				agentmessage.IDIn(messageIDs...),
 				agentmessage.AgentIDEQ(inst.AgentID),
+				agentmessage.AgentInstanceIDEQ(inst.ID),
 				agentmessage.ProjectIDEQ(inst.ProjectID),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 			).

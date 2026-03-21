@@ -455,6 +455,14 @@ type DeployAxonClawByAgentInput struct {
 }
 
 func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, currentInst *ent.AgentInstance, input DeployAxonClawByAgentInput) (*DeployAxonclawResult, error) {
+	bypassCtx, err := authz.WithBypassPrivacy(authz.NewSystemContext(ctx), "agent-deploy-axonclaw-by-agent")
+	if err != nil {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   fmt.Sprintf("failed to initialize deploy context: %v", err),
+		}, nil
+	}
+
 	if currentInst.AgentHostID == nil {
 		return &DeployAxonclawResult{
 			Success: false,
@@ -462,7 +470,7 @@ func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, curren
 		}, nil
 	}
 
-	host, err := svc.db.AgentHost.Query().Where(agenthost.IDEQ(*currentInst.AgentHostID)).Only(ctx)
+	host, err := svc.db.AgentHost.Query().Where(agenthost.IDEQ(*currentInst.AgentHostID)).Only(bypassCtx)
 	if err != nil {
 		return &DeployAxonclawResult{
 			Success: false,
@@ -495,11 +503,49 @@ func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, curren
 
 	entity, err := svc.db.Agent.Query().
 		Where(agent.IDEQ(currentInst.AgentID)).
-		Only(ctx)
+		Only(bypassCtx)
 	if err != nil {
 		return &DeployAxonclawResult{
 			Success: false,
 			Error:   fmt.Sprintf("failed to load agent: %v", err),
+		}, nil
+	}
+
+	existing, err := svc.db.AgentInstance.Query().
+		Where(
+			agentinstance.AgentIDEQ(currentInst.AgentID),
+			agentinstance.NameEQ(input.Name),
+		).
+		Only(bypassCtx)
+	if err == nil {
+		redeployResult, redeployErr := svc.RedeployAxonclawInstance(bypassCtx, existing.ID, &baseURL)
+		if redeployErr != nil {
+			return nil, redeployErr
+		}
+
+		if !redeployResult.Success {
+			errMsg := redeployResult.Error
+			if errMsg == "" {
+				errMsg = "redeploy failed"
+			}
+
+			return &DeployAxonclawResult{
+				Success:  false,
+				Error:    errMsg,
+				Instance: redeployResult.Instance,
+			}, nil
+		}
+
+		return &DeployAxonclawResult{
+			Success:  true,
+			Instance: redeployResult.Instance,
+		}, nil
+	}
+
+	if !ent.IsNotFound(err) {
+		return &DeployAxonclawResult{
+			Success: false,
+			Error:   fmt.Sprintf("failed to load existing instance: %v", err),
 		}, nil
 	}
 
@@ -508,7 +554,7 @@ func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, curren
 		apiKey   *ent.APIKey
 	)
 
-	err = svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+	err = svc.RunInTransaction(bypassCtx, func(txCtx context.Context) error {
 		client := svc.entFromContext(txCtx)
 
 		apiKeyName := fmt.Sprintf("agent-instance:%d:%s", currentInst.AgentID, input.Name)
@@ -560,7 +606,7 @@ func (svc *AgentDeployService) DeployAxonClawByAgent(ctx context.Context, curren
 		}, nil
 	}
 
-	err = svc.executeDeployment(ctx, host, instance, apiKey, entity.Name)
+	err = svc.executeDeployment(bypassCtx, host, instance, apiKey, entity.Name)
 	if err != nil {
 		return &DeployAxonclawResult{
 			Success: false,

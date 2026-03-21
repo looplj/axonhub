@@ -123,13 +123,17 @@ func (t *GrepTool) Definition() agent.ToolDefinition {
 }
 
 func (t *GrepTool) Execute(ctx context.Context, input grepInput) agent.ToolResult {
-	searchPath := t.workspace
+	searchPath := "."
 	if input.Path != "" {
 		resolved, err := validatePath(input.Path, t.workspace, t.restrict)
 		if err != nil {
 			return ErrorResult(err)
 		}
-		searchPath = resolved
+
+		searchPath, err = toFSPath(resolved, t.workspace)
+		if err != nil {
+			return ErrorResult(err)
+		}
 	}
 
 	searcher := grep.NewSearcher(t.workspace)

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/agent"
 	"github.com/looplj/axonhub/internal/ent/agenthost"
@@ -165,4 +166,82 @@ func TestAgentDeployService_DeployAxonClawByAgent_RejectsDuplicateInstanceName(t
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, result.Success)
+}
+
+// TestAgentDeployService_DeployAxonClawByAgent_AllowsAgentAPIContextDuplicateRedeploy checks that
+// the agent API key path can redeploy an existing instance without user context privacy failures.
+func TestAgentDeployService_DeployAxonClawByAgent_AllowsAgentAPIContextDuplicateRedeploy(t *testing.T) {
+	ctx, client, u, p, a := makeTestBaseEnv(t)
+
+	h, err := client.AgentHost.Create().
+		SetName("Docker").
+		SetType(agenthost.TypeDocker).
+		SetStatus(agenthost.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	k, err := GenerateAPIKey()
+	require.NoError(t, err)
+
+	currentAPIKey, err := client.APIKey.Create().
+		SetUserID(u.ID).
+		SetProjectID(p.ID).
+		SetKey(k).
+		SetName("current agent api key").
+		SetType(apikey.TypeAgent).
+		Save(ctx)
+	require.NoError(t, err)
+
+	currentInst, err := client.AgentInstance.Create().
+		SetProjectID(p.ID).
+		SetAgentID(a.ID).
+		SetHostID(h.ID).
+		SetAPIKeyID(currentAPIKey.ID).
+		SetName("current").
+		SetAxonhubBaseURL("http://localhost:8090").
+		SetStatus(agentinstance.StatusRunning).
+		SetLastHeartbeatAt(time.Now()).
+		Save(ctx)
+	require.NoError(t, err)
+
+	existingAPIKeyValue, err := GenerateAPIKey()
+	require.NoError(t, err)
+
+	existingAPIKey, err := client.APIKey.Create().
+		SetUserID(u.ID).
+		SetProjectID(p.ID).
+		SetKey(existingAPIKeyValue).
+		SetName("existing agent api key").
+		SetType(apikey.TypeAgent).
+		Save(ctx)
+	require.NoError(t, err)
+
+	existingInst, err := client.AgentInstance.Create().
+		SetProjectID(p.ID).
+		SetAgentID(a.ID).
+		SetHostID(h.ID).
+		SetAPIKeyID(existingAPIKey.ID).
+		SetName("worker-1").
+		SetAxonhubBaseURL("http://localhost:8090").
+		SetStatus(agentinstance.StatusError).
+		SetLastHeartbeatAt(time.Now()).
+		Save(ctx)
+	require.NoError(t, err)
+
+	agentCtx := ent.NewContext(context.Background(), client)
+	agentCtx = authz.NewAPIKeyContext(agentCtx, currentAPIKey.ID, p.ID)
+	agentCtx = contexts.WithAPIKey(agentCtx, currentAPIKey)
+
+	svc := NewAgentDeployService(AgentDeployServiceParams{Ent: client})
+
+	result, err := svc.DeployAxonClawByAgent(agentCtx, currentInst, DeployAxonClawByAgentInput{
+		Name: existingInst.Name,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.False(t, result.Success)
+	require.NotContains(t, result.Error, "no user in context")
+	require.NotContains(t, result.Error, "failed to load host")
+	require.NotContains(t, result.Error, "failed to load agent")
+	require.NotContains(t, result.Error, "failed to create instance")
 }

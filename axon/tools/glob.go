@@ -59,13 +59,17 @@ func (t *GlobTool) Definition() agent.ToolDefinition {
 }
 
 func (t *GlobTool) Execute(ctx context.Context, input globInput) agent.ToolResult {
-	searchPath := t.workspace
+	searchPath := "."
 	if input.Path != "" {
 		resolved, err := validatePath(input.Path, t.workspace, t.restrict)
 		if err != nil {
 			return ErrorResult(err)
 		}
-		searchPath = resolved
+
+		searchPath, err = toFSPath(resolved, t.workspace)
+		if err != nil {
+			return ErrorResult(err)
+		}
 	}
 
 	globber := glob.NewGlobber(t.workspace)

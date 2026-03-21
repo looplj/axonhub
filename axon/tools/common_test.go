@@ -29,3 +29,19 @@ func TestValidatePath(t *testing.T) {
 		assert.Contains(t, err.Error(), "outside the workspace")
 	})
 }
+
+func TestToFSPath(t *testing.T) {
+	workspace := filepath.Join(string(filepath.Separator), "workspace")
+
+	t.Run("maps workspace root to dot", func(t *testing.T) {
+		got, err := toFSPath(workspace, workspace)
+		require.NoError(t, err)
+		assert.Equal(t, ".", got)
+	})
+
+	t.Run("maps absolute child path to relative path", func(t *testing.T) {
+		got, err := toFSPath(filepath.Join(workspace, "Claw 001/no01"), workspace)
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Join("Claw 001", "no01"), got)
+	})
+}

@@ -28,6 +28,22 @@ func validatePath(path, workspace string, restrict bool) (string, error) {
 	return path, nil
 }
 
+func toFSPath(path, workspace string) (string, error) {
+	path = filepath.Clean(path)
+	workspace = filepath.Clean(workspace)
+
+	if path == workspace {
+		return ".", nil
+	}
+
+	rel, err := filepath.Rel(workspace, path)
+	if err != nil {
+		return "", err
+	}
+
+	return rel, nil
+}
+
 func normalizePathInput(path string) string {
 	path = strings.TrimSpace(path)
 	if len(path) >= 2 {
