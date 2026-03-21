@@ -15,7 +15,7 @@ func TestWithAPIKeyConfig_RejectsNoAuthKeyWhenDisabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
-	router.Use(WithAPIKeyConfig(&biz.AuthService{}, false, nil))
+	router.Use(WithAPIKeyConfig(&biz.AuthService{}, nil))
 	router.GET("/test", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
@@ -35,7 +35,7 @@ func TestWithAPIKeyConfig_RejectsMalformedAuthorizationWhenNoAuthAllowed(t *test
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
-	router.Use(WithAPIKeyConfig(&biz.AuthService{}, true, &APIKeyConfig{
+	router.Use(WithAPIKeyConfig(&biz.AuthService{AllowNoAuth: true}, &APIKeyConfig{
 		Headers:       []string{"Authorization"},
 		RequireBearer: true,
 	}))
@@ -85,5 +85,28 @@ func TestWithAPIKeyConfig_AllowsMissingAuthorizationWhenNoAuthAllowed(t *testing
 
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("expected status %d, got %d", http.StatusNoContent, recorder.Code)
+	}
+}
+
+func TestWithAPIKeyConfig_RejectsEmptyBearerWhenNoAuthAllowed(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	router := gin.New()
+	router.Use(WithAPIKeyConfig(&biz.AuthService{AllowNoAuth: true}, &APIKeyConfig{
+		Headers:       []string{"Authorization"},
+		RequireBearer: true,
+	}))
+	router.GET("/test", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("Authorization", "Bearer ")
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, recorder.Code)
 	}
 }

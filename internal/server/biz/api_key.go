@@ -577,8 +577,16 @@ func (s *APIKeyService) BulkArchiveAPIKeys(ctx context.Context, ids []int) error
 }
 
 func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, error) {
-	client := s.entFromContext(ctx)
+	existing, err := s.GetAPIKey(ctx, NoAuthAPIKeyValue)
+	if err == nil {
+		return existing, nil
+	}
 
+	if !errors.Is(err, ErrInvalidAPIKey) {
+		return nil, fmt.Errorf("failed to query noauth api key from cache: %w", err)
+	}
+
+	client := s.entFromContext(ctx)
 	proj, err := client.Project.Query().
 		Order(ent.Asc(project.FieldID)).
 		First(ctx)
@@ -591,46 +599,28 @@ func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, er
 		return nil, fmt.Errorf("failed to get owner user for noauth api key: %w", err)
 	}
 
-	scopeValues := []string{
-		string(scopes.ScopeReadChannels),
-		string(scopes.ScopeWriteRequests),
-	}
-
-	existing, err := client.APIKey.Query().Where(apikey.KeyEQ(NoAuthAPIKeyValue)).Only(ctx)
-	if err == nil {
-		updated, updateErr := client.APIKey.UpdateOneID(existing.ID).
-			SetName(NoAuthAPIKeyName).
-			SetType(apikey.TypeNoauth).
-			SetStatus(apikey.StatusEnabled).
-			SetScopes(scopeValues).
-			Save(ctx)
-		if updateErr != nil {
-			return nil, fmt.Errorf("failed to update noauth api key: %w", updateErr)
-		}
-
-		s.invalidateAPIKeyCaches(ctx, updated.Key)
-
-		return updated, nil
-	}
-
-	if !ent.IsNotFound(err) {
-		return nil, fmt.Errorf("failed to query noauth api key: %w", err)
-	}
-
-	created, err := client.APIKey.Create().
+	apiKey, err := client.APIKey.Create().
 		SetName(NoAuthAPIKeyName).
 		SetKey(NoAuthAPIKeyValue).
 		SetUserID(owner.ID).
 		SetProjectID(proj.ID).
 		SetType(apikey.TypeNoauth).
 		SetStatus(apikey.StatusEnabled).
-		SetScopes(scopeValues).
+		SetScopes([]string{string(scopes.ScopeWriteRequests), string(scopes.ScopeReadChannels)}).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create noauth api key: %w", err)
 	}
 
-	s.invalidateAPIKeyCaches(ctx, created.Key)
+	// DO NOT CACHE PROJECT
+	project, err := s.ProjectService.GetProjectByID(ctx, apiKey.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get api key project: %w", err)
+	}
 
-	return created, nil
+	apiKey.Edges.Project = project
+
+	s.invalidateAPIKeyCaches(ctx, apiKey.Key)
+
+	return apiKey, nil
 }

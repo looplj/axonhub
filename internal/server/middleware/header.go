@@ -76,12 +76,12 @@ func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, er
 			}
 
 			apiKey := strings.TrimPrefix(headerValue, "Bearer ")
-			if apiKey == "" {
-				lastError = ErrAPIKeyRequired
+			if strings.TrimSpace(apiKey) == "" {
+				lastError = fmt.Errorf("%w: API key is required", biz.ErrInvalidToken)
 				continue
 			}
 
-			return apiKey, nil
+			return strings.TrimSpace(apiKey), nil
 		}
 
 		// 尝试匹配允许的前缀

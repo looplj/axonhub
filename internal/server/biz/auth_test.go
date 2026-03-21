@@ -19,7 +19,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
-	"github.com/looplj/axonhub/internal/scopes"
 )
 
 func TestHashPassword(t *testing.T) {
@@ -117,6 +116,7 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 		SystemService: systemService,
 		APIKeyService: apiKeyService,
 		UserService:   userService,
+		AllowNoAuth:   false,
 	}
 
 	cleanup := func() {
@@ -375,18 +375,18 @@ func TestAuthService_AuthenticateAPIKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test successful API key authentication
-	authenticatedAPIKey, err := authService.AuthenticateAPIKey(ctx, apiKeyString, false)
+	authenticatedAPIKey, err := authService.AuthenticateAPIKey(ctx, apiKeyString)
 	require.NoError(t, err)
 	require.Equal(t, apiKey.ID, authenticatedAPIKey.ID)
 	require.Equal(t, apiKey.Key, authenticatedAPIKey.Key)
 
 	// Test cache behavior - second call should still work (even with noop cache)
-	authenticatedAPIKey2, err := authService.AuthenticateAPIKey(ctx, apiKeyString, false)
+	authenticatedAPIKey2, err := authService.AuthenticateAPIKey(ctx, apiKeyString)
 	require.NoError(t, err)
 	require.Equal(t, apiKey.ID, authenticatedAPIKey2.ID)
 
 	// Test invalid API key
-	_, err = authService.AuthenticateAPIKey(ctx, "invalid-api-key", false)
+	_, err = authService.AuthenticateAPIKey(ctx, "invalid-api-key")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to get api key")
 
@@ -397,7 +397,7 @@ func TestAuthService_AuthenticateAPIKey(t *testing.T) {
 	// Synchronously invalidate the cache for testing (async notification may not complete in time)
 	authService.APIKeyService.APIKeyCache.Invalidate(buildAPIKeyCacheKey(apiKeyString))
 
-	_, err = authService.AuthenticateAPIKey(ctx, apiKeyString, false)
+	_, err = authService.AuthenticateAPIKey(ctx, apiKeyString)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "api key not enabled")
 
@@ -415,12 +415,12 @@ func TestAuthService_AuthenticateAPIKey(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	_, err = authService.AuthenticateAPIKey(ctx, apiKeyString, false)
+	_, err = authService.AuthenticateAPIKey(ctx, apiKeyString)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "api key project not valid")
 }
 
-func TestAuthService_AuthenticateAPIKey_NoAuthKeyRequiresDisabledMode(t *testing.T) {
+func TestAuthService_AuthenticateNoAuth(t *testing.T) {
 	cacheConfig := xcache.Config{}
 
 	authService, client, cleanup := setupTestAuthService(t, cacheConfig)
@@ -430,6 +430,7 @@ func TestAuthService_AuthenticateAPIKey_NoAuthKeyRequiresDisabledMode(t *testing
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
+	authService.AllowNoAuth = true
 
 	hashedPassword, err := HashPassword("test-password")
 	require.NoError(t, err)
@@ -458,17 +459,31 @@ func TestAuthService_AuthenticateAPIKey_NoAuthKeyRequiresDisabledMode(t *testing
 		SetProjectID(defaultProject.ID).
 		SetType(apikey.TypeNoauth).
 		SetStatus(apikey.StatusEnabled).
-		SetScopes([]string{string(scopes.ScopeReadChannels), string(scopes.ScopeWriteRequests)}).
 		Save(ctx)
 	require.NoError(t, err)
 
-	_, err = authService.AuthenticateAPIKey(ctx, noAuthKey.Key, false)
+	_, err = authService.AuthenticateAPIKey(ctx, NoAuthAPIKeyValue)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "noauth api key is only available when api auth is disabled")
 
-	authenticatedAPIKey, err := authService.AuthenticateAPIKey(ctx, noAuthKey.Key, true)
+	authenticatedAPIKey, err := authService.AuthenticateNoAuth(ctx)
 	require.NoError(t, err)
 	require.Equal(t, noAuthKey.ID, authenticatedAPIKey.ID)
+	require.Equal(t, NoAuthAPIKeyValue, authenticatedAPIKey.Key)
+}
+
+func TestAuthService_AuthenticateNoAuth_DisabledByConfig(t *testing.T) {
+	authService, client, cleanup := setupTestAuthService(t, xcache.Config{})
+	defer cleanup()
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	_, err := authService.AuthenticateNoAuth(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "noauth api key is only available when api auth is disabled")
 }
 
 func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {
@@ -614,7 +629,7 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 	require.NoError(t, err)
 
 	// First call - should cache the result
-	authenticatedAPIKey, err := authService.AuthenticateAPIKey(ctx, apiKeyString, false)
+	authenticatedAPIKey, err := authService.AuthenticateAPIKey(ctx, apiKeyString)
 	require.NoError(t, err)
 	require.Equal(t, apiKey.ID, authenticatedAPIKey.ID)
 
@@ -622,7 +637,7 @@ func TestAuthService_CacheExpiration(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	// Second call - cache should be expired, should hit database again
-	authenticatedAPIKey2, err := authService.AuthenticateAPIKey(ctx, apiKeyString, false)
+	authenticatedAPIKey2, err := authService.AuthenticateAPIKey(ctx, apiKeyString)
 	require.NoError(t, err)
 	require.Equal(t, apiKey.ID, authenticatedAPIKey2.ID)
 }
