@@ -338,6 +338,14 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 						URL: dataURL,
 					},
 				})
+			} else if isAudioMIMEType(part.InlineData.MIMEType) {
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "input_audio",
+					InputAudio: &llm.InputAudio{
+						Format: audioMIMETypeToFormat(part.InlineData.MIMEType),
+						Data:   part.InlineData.Data,
+					},
+				})
 			} else {
 				// Image type
 				textParts = append(textParts, llm.MessageContentPart{
@@ -365,6 +373,13 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 					Type: "video_url",
 					VideoURL: &llm.VideoURL{
 						URL: part.FileData.FileURI,
+					},
+				})
+			} else if isAudioMIMEType(mimeType) {
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "input_audio",
+					InputAudio: &llm.InputAudio{
+						Format: audioMIMETypeToFormat(mimeType),
 					},
 				})
 			} else {

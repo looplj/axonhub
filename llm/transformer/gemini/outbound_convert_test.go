@@ -212,6 +212,35 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 			},
 		},
 		{
+			name: "request with audio input",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type: "input_audio",
+									InputAudio: &llm.InputAudio{
+										Format: "wav",
+										Data:   "UklGRiQAAABXQVZF",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.Len(t, result.Contents, 1)
+				require.Len(t, result.Contents[0].Parts, 1)
+				require.NotNil(t, result.Contents[0].Parts[0].InlineData)
+				require.Equal(t, "audio/wav", result.Contents[0].Parts[0].InlineData.MIMEType)
+				require.Equal(t, "UklGRiQAAABXQVZF", result.Contents[0].Parts[0].InlineData.Data)
+			},
+		},
+		{
 			name: "request with reasoning effort low",
 			input: &llm.Request{
 				ReasoningEffort: "low",
@@ -1646,11 +1675,11 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				require.Equal(t, "call_001", tc.ID)
 				require.Equal(t, "check_flight", tc.Function.Name)
 				require.NotNil(t, tc.TransformerMetadata)
-					require.Equal(
-						t,
-						"signature_A",
-						tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
-					)
+				require.Equal(
+					t,
+					"signature_A",
+					tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 			},
 		},
 		{
@@ -1696,11 +1725,11 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				tc1 := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_paris", tc1.ID)
 				require.NotNil(t, tc1.TransformerMetadata)
-					require.Equal(
-						t,
-						"signature_parallel",
-						tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
-					)
+				require.Equal(
+					t,
+					"signature_parallel",
+					tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 
 				// Second call should not have signature
 				tc2 := result.Choices[0].Message.ToolCalls[1]
@@ -1746,11 +1775,11 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				require.Nil(t, decoded)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
 				require.NotNil(t, result.Choices[0].Message.ToolCalls[0].TransformerMetadata)
-					require.Equal(
-						t,
-						shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
-						result.Choices[0].Message.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
-					)
+				require.Equal(
+					t,
+					shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
+					result.Choices[0].Message.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
+				)
 			},
 		},
 		{

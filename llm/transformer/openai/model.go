@@ -166,6 +166,9 @@ type Message struct {
 	// Annotations contains citation information for the message.
 	// This is used by providers like Perplexity to provide source URLs.
 	Annotations []Annotation `json:"annotations,omitempty"`
+
+	// Audio contains model-generated audio metadata for assistant messages.
+	Audio *OutputAudio `json:"audio,omitempty"`
 }
 
 // Annotation represents a citation or reference annotation in a message.
@@ -231,11 +234,11 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 
 // MessageContentPart represents different types of content (text, image, video, etc.)
 type MessageContentPart struct {
-	Type     string    `json:"type"`
-	Text     *string   `json:"text,omitempty"`
-	ImageURL *ImageURL `json:"image_url,omitempty"`
-	VideoURL *VideoURL `json:"video_url,omitempty"`
-	Audio    *Audio    `json:"audio,omitempty"`
+	Type       string      `json:"type"`
+	Text       *string     `json:"text,omitempty"`
+	ImageURL   *ImageURL   `json:"image_url,omitempty"`
+	VideoURL   *VideoURL   `json:"video_url,omitempty"`
+	InputAudio *InputAudio `json:"input_audio,omitempty"`
 }
 
 // ImageURL represents an image URL with optional detail level.
@@ -249,10 +252,21 @@ type VideoURL struct {
 	URL string `json:"url"`
 }
 
-// Audio represents audio content.
-type Audio struct {
+// InputAudio represents audio content.
+type InputAudio struct {
+	// Format of the audio data, e.g., "wav" or "mp3".
 	Format string `json:"format"`
-	Data   string `json:"data"`
+
+	// Base64-encoded audio data.
+	Data string `json:"data"`
+}
+
+// OutputAudio contains model-generated audio metadata for assistant messages.
+type OutputAudio struct {
+	ID         string `json:"id,omitempty"`
+	Data       string `json:"data,omitempty"`
+	ExpiresAt  int64  `json:"expires_at,omitempty"`
+	Transcript string `json:"transcript,omitempty"`
 }
 
 // ResponseFormat specifies the format of the response.

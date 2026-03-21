@@ -191,7 +191,7 @@ func TestConvertToolMessage(t *testing.T) {
 						},
 						{
 							Type: "input_audio",
-							Audio: &llm.Audio{
+							InputAudio: &llm.InputAudio{
 								Data:   "audio-data",
 								Format: "wav",
 							},
