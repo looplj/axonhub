@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
@@ -106,6 +107,30 @@ func TestToLLMMessage_ReasoningField(t *testing.T) {
 			assert.Equal(t, tt.want.Reasoning, got.Reasoning)
 			assert.Equal(t, tt.want.ReasoningContent, got.ReasoningContent)
 		})
+	}
+}
+
+func TestMessageContent_VideoURLRoundTrip(t *testing.T) {
+	raw := []byte(`[{"type":"video_url","video_url":{"url":"https://example.com/example.mp4"}}]`)
+
+	var content MessageContent
+	err := json.Unmarshal(raw, &content)
+	assert.NoError(t, err)
+	assert.Len(t, content.MultipleContent, 1)
+	assert.Equal(t, "video_url", content.MultipleContent[0].Type)
+	if assert.NotNil(t, content.MultipleContent[0].VideoURL) {
+		assert.Equal(t, "https://example.com/example.mp4", content.MultipleContent[0].VideoURL.URL)
+	}
+
+	llmContent := content.ToLLMContent()
+	assert.Len(t, llmContent.MultipleContent, 1)
+	if assert.NotNil(t, llmContent.MultipleContent[0].VideoURL) {
+		assert.Equal(t, "https://example.com/example.mp4", llmContent.MultipleContent[0].VideoURL.URL)
+	}
+
+	roundTrip := MessageContentFromLLM(llmContent)
+	if assert.NotNil(t, roundTrip.MultipleContent[0].VideoURL) {
+		assert.Equal(t, "https://example.com/example.mp4", roundTrip.MultipleContent[0].VideoURL.URL)
 	}
 }
 

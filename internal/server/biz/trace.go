@@ -248,9 +248,11 @@ type Span struct {
 	// "system_instruction": system instruction.
 	// "user_query": the query from user.
 	// "user_image_url": the image url from user.
+	// "user_video_url": the video url from user.
 	// "text": llm responsed text.
 	// "thinking": llm responsed thinking.
 	// "image_url": User image url
+	// "video_url": User video url
 	// "tool_use": llm responsed tool use.
 	// "tool_result": result of tool running.
 	Type      string     `json:"type"`
@@ -263,9 +265,11 @@ type SpanValue struct {
 	SystemInstruction *SpanSystemInstruction `json:"systemInstruction,omitempty"`
 	UserQuery         *SpanUserQuery         `json:"userQuery,omitempty"`
 	UserImageURL      *SpanUserImageURL      `json:"userImageUrl,omitempty"`
+	UserVideoURL      *SpanUserVideoURL      `json:"userVideoUrl,omitempty"`
 	Text              *SpanText              `json:"text,omitempty"`
 	Thinking          *SpanThinking          `json:"thinking,omitempty"`
 	ImageURL          *SpanImageURL          `json:"imageUrl,omitempty"`
+	VideoURL          *SpanVideoURL          `json:"videoUrl,omitempty"`
 	ToolUse           *SpanToolUse           `json:"toolUse,omitempty"`
 	ToolResult        *SpanToolResult        `json:"toolResult,omitempty"`
 }
@@ -282,6 +286,10 @@ type SpanUserImageURL struct {
 	URL string `json:"url,omitempty"`
 }
 
+type SpanUserVideoURL struct {
+	URL string `json:"url,omitempty"`
+}
+
 type SpanThinking struct {
 	Thinking string `json:"thinking,omitempty"`
 }
@@ -291,6 +299,10 @@ type SpanText struct {
 }
 
 type SpanImageURL struct {
+	URL string `json:"url,omitempty"`
+}
+
+type SpanVideoURL struct {
 	URL string `json:"url,omitempty"`
 }
 
@@ -751,6 +763,50 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 				})
 			}
 
+		case "video_url":
+			if part.VideoURL == nil {
+				continue
+			}
+
+			switch msg.Role {
+			case "user":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-video_url-%d", idPrefix, len(spans)),
+					Type:      "user_video_url",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						UserVideoURL: &SpanUserVideoURL{
+							URL: part.VideoURL.URL,
+						},
+					},
+				})
+			case "tool":
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-video_url-%d", idPrefix, len(spans)),
+					Type:      "tool_result",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						ToolResult: &SpanToolResult{
+							Text: &part.VideoURL.URL,
+						},
+					},
+				})
+			default:
+				spans = append(spans, Span{
+					ID:        fmt.Sprintf("%s-video_url-%d", idPrefix, len(spans)),
+					Type:      "video_url",
+					StartTime: now,
+					EndTime:   now,
+					Value: &SpanValue{
+						VideoURL: &SpanVideoURL{
+							URL: part.VideoURL.URL,
+						},
+					},
+				})
+			}
+
 		default:
 			// ignore for now.
 		}
@@ -915,6 +971,10 @@ func spanToKey(span Span) string {
 		if span.Value.UserImageURL != nil {
 			return fmt.Sprintf("%s:%s", span.Type, span.Value.UserImageURL.URL)
 		}
+	case "user_video_url":
+		if span.Value.UserVideoURL != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.UserVideoURL.URL)
+		}
 	case "text":
 		if span.Value.Text != nil {
 			return fmt.Sprintf("%s:%s", span.Type, span.Value.Text.Text)
@@ -926,6 +986,10 @@ func spanToKey(span Span) string {
 	case "image_url":
 		if span.Value.ImageURL != nil {
 			return fmt.Sprintf("%s:%s", span.Type, span.Value.ImageURL.URL)
+		}
+	case "video_url":
+		if span.Value.VideoURL != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.VideoURL.URL)
 		}
 	case "tool_use":
 		if span.Value.ToolUse != nil {

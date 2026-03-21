@@ -483,6 +483,33 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 	}
 }
 
+func TestConvertLLMToGeminiRequest_VideoURL(t *testing.T) {
+	req := &llm.Request{
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "video_url",
+							VideoURL: &llm.VideoURL{
+								URL: "https://example.com/example.mp4",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := convertLLMToGeminiRequest(req)
+	require.Len(t, result.Contents, 1)
+	require.Len(t, result.Contents[0].Parts, 1)
+	require.NotNil(t, result.Contents[0].Parts[0].FileData)
+	require.Equal(t, "https://example.com/example.mp4", result.Contents[0].Parts[0].FileData.FileURI)
+	require.Equal(t, "video/*", result.Contents[0].Parts[0].FileData.MIMEType)
+}
+
 func TestConvertLLMToGeminiRequest_ResponseFormat(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -156,6 +156,28 @@ func convertImageURLToGeminiPart(url string) *Part {
 	return part
 }
 
+func convertVideoURLToGeminiPart(video *llm.VideoURL) *Part {
+	if video == nil || video.URL == "" {
+		return nil
+	}
+
+	if parsed := xurl.ParseDataURL(video.URL); parsed != nil {
+		return &Part{
+			InlineData: &Blob{
+				MIMEType: parsed.MediaType,
+				Data:     parsed.Data,
+			},
+		}
+	}
+
+	return &Part{
+		FileData: &FileData{
+			FileURI:  video.URL,
+			MIMEType: "video/*",
+		},
+	}
+}
+
 // convertDocumentURLToGeminiPart converts a DocumentURL to a Gemini Part.
 // Handles both data URLs and regular URLs for documents (PDF, Word, etc.)
 func convertDocumentURLToGeminiPart(doc *llm.DocumentURL) *Part {
@@ -203,6 +225,14 @@ func isDocumentMIMEType(mimeType string) bool {
 		strings.HasPrefix(mimeType, "application/vnd.openxmlformats-officedocument") ||
 		strings.HasPrefix(mimeType, "application/vnd.ms-") ||
 		strings.HasPrefix(mimeType, "text/")
+}
+
+func isVideoMIMEType(mimeType string) bool {
+	if mimeType == "" {
+		return false
+	}
+
+	return strings.HasPrefix(strings.ToLower(mimeType), "video/")
 }
 
 func convertGeminiFunctionCallingConfigToToolChoice(fcc *FunctionCallingConfig) *llm.ToolChoice {

@@ -229,11 +229,12 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	return errors.New("invalid content type")
 }
 
-// MessageContentPart represents different types of content (text, image, etc.)
+// MessageContentPart represents different types of content (text, image, video, etc.)
 type MessageContentPart struct {
 	Type     string    `json:"type"`
 	Text     *string   `json:"text,omitempty"`
 	ImageURL *ImageURL `json:"image_url,omitempty"`
+	VideoURL *VideoURL `json:"video_url,omitempty"`
 	Audio    *Audio    `json:"audio,omitempty"`
 }
 
@@ -241,6 +242,11 @@ type MessageContentPart struct {
 type ImageURL struct {
 	URL    string  `json:"url"`
 	Detail *string `json:"detail,omitempty"`
+}
+
+// VideoURL represents a video URL.
+type VideoURL struct {
+	URL string `json:"url"`
 }
 
 // Audio represents audio content.
