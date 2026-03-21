@@ -63,6 +63,13 @@ const spanUserImageURLSchema = z
   .nullable()
   .optional();
 
+const spanUserVideoURLSchema = z
+  .object({
+    url: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
 const spanTextSchema = z
   .object({
     text: z.string().nullable().optional(),
@@ -71,6 +78,13 @@ const spanTextSchema = z
   .optional();
 
 const spanImageURLSchema = z
+  .object({
+    url: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
+const spanVideoURLSchema = z
   .object({
     url: z.string().nullable().optional(),
   })
@@ -108,9 +122,11 @@ const spanValueSchema = z
     systemInstruction: spanSystemInstructionSchema,
     userQuery: spanUserQuerySchema,
     userImageUrl: spanUserImageURLSchema,
+    userVideoUrl: spanUserVideoURLSchema,
     text: spanTextSchema,
     thinking: spanThinkingSchema,
     imageUrl: spanImageURLSchema,
+    videoUrl: spanVideoURLSchema,
     toolUse: spanToolUseSchema,
     toolResult: spanToolResultSchema,
   })

@@ -331,6 +331,13 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 						MIMEType: part.InlineData.MIMEType,
 					},
 				})
+			} else if isVideoMIMEType(part.InlineData.MIMEType) {
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "video_url",
+					VideoURL: &llm.VideoURL{
+						URL: dataURL,
+					},
+				})
 			} else {
 				// Image type
 				textParts = append(textParts, llm.MessageContentPart{
@@ -351,6 +358,13 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 					Document: &llm.DocumentURL{
 						URL:      part.FileData.FileURI,
 						MIMEType: mimeType,
+					},
+				})
+			} else if isVideoMIMEType(mimeType) {
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "video_url",
+					VideoURL: &llm.VideoURL{
+						URL: part.FileData.FileURI,
 					},
 				})
 			} else {
@@ -516,6 +530,14 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 					// Handle image_url type
 					if part.ImageURL != nil && part.ImageURL.URL != "" {
 						geminiPart := convertImageURLToGeminiPart(part.ImageURL.URL)
+						if geminiPart != nil {
+							parts = append(parts, geminiPart)
+							lastPart = geminiPart
+						}
+					}
+				case "video_url":
+					if part.VideoURL != nil && part.VideoURL.URL != "" {
+						geminiPart := convertVideoURLToGeminiPart(part.VideoURL)
 						if geminiPart != nil {
 							parts = append(parts, geminiPart)
 							lastPart = geminiPart

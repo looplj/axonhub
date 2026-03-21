@@ -360,6 +360,14 @@ func convertLLMMessageToGeminiContent(msg *llm.Message, scope shared.TransportSc
 						lastPart = geminiPart
 					}
 				}
+			case "video_url":
+				if part.VideoURL != nil && part.VideoURL.URL != "" {
+					geminiPart := convertVideoURLToGeminiPart(part.VideoURL)
+					if geminiPart != nil {
+						parts = append(parts, geminiPart)
+						lastPart = geminiPart
+					}
+				}
 			case "document":
 				// Handle document type (PDF, Word, etc.)
 				if part.Document != nil && part.Document.URL != "" {

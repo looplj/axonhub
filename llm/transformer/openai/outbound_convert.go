@@ -188,6 +188,12 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 		}
 	}
 
+	if p.VideoURL != nil {
+		part.VideoURL = &VideoURL{
+			URL: p.VideoURL.URL,
+		}
+	}
+
 	if p.Audio != nil {
 		part.Audio = &Audio{
 			Format: p.Audio.Format,
