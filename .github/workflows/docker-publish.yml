@@ -73,7 +73,7 @@ jobs:
           push: true
           tags: |
             looplj/axonhub:${{ env.TAG }}-${{ matrix.arch }}
-            ${{ !env.IS_PRERELEASE && format('looplj/axonhub:latest-{0}', matrix.arch) || '' }}
+            ${{ env.IS_PRERELEASE != 'true' && format('looplj/axonhub:latest-{0}', matrix.arch) || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
