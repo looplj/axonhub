@@ -32,6 +32,32 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
+// parseTimeWindow parses a time window string and returns the start time and a flag indicating
+// if a filter should be applied. It returns the since time (zero if no filter) and applyFilter.
+// Supported timeWindow values: "day", "week", "month", "allTime", or empty string.
+// Defaults to "allTime" behavior (no filtering) for unknown or empty values.
+func (r *queryResolver) parseTimeWindow(ctx context.Context, timeWindow *string) (since time.Time, applyFilter bool) {
+	loc := r.systemService.TimeLocation(ctx)
+	period := xtime.GetCalendarPeriods(loc)
+
+	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
+		applyFilter = true
+		switch *timeWindow {
+		case "day":
+			since = period.Today.Start
+		case "week":
+			since = period.ThisWeek.Start
+		case "month":
+			since = period.ThisMonth.Start
+		default:
+			// Unknown value - default to allTime behavior (no filtering)
+			applyFilter = false
+		}
+	}
+
+	return since, applyFilter
+}
+
 // DashboardOverview is the resolver for the dashboardOverview field.
 // Note: This resolver provides high-level dashboard metrics.
 // For detailed request statistics, see RequestStats resolver documentation.
@@ -143,23 +169,7 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *string) ([]*RequestStatsByChannel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	// Use efficient aggregation query with JOIN to get channel details and filter out deleted channels
 	type channelStats struct {
@@ -218,23 +228,7 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *s
 func (r *queryResolver) RequestStatsByModel(ctx context.Context, timeWindow *string) ([]*RequestStatsByModel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type modelStats struct {
 		ModelID string `json:"model_id"`
@@ -283,23 +277,7 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context, timeWindow *str
 func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*RequestStatsByAPIKey, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type apiKeyStats struct {
 		APIKeyID int `json:"api_key_id"`
@@ -378,23 +356,7 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context, timeWindow *st
 func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*TokenStatsByAPIKey, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type tokenStats struct {
 		APIKeyID        int   `json:"api_key_id"`
@@ -1511,23 +1473,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *string) ([]*TokenStatsByChannel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type channelTokenStats struct {
 		ChannelName     string `json:"channel_name"`
@@ -1590,23 +1536,7 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 func (r *queryResolver) TokenStatsByModel(ctx context.Context, timeWindow *string) ([]*TokenStatsByModel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type modelTokenStats struct {
 		ModelID         string `json:"model_id"`
@@ -1661,23 +1591,7 @@ func (r *queryResolver) TokenStatsByModel(ctx context.Context, timeWindow *strin
 func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *string) ([]*CostStatsByChannel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type channelCostStats struct {
 		ChannelName string  `json:"channel_name"`
@@ -1728,23 +1642,7 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *stri
 func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string) ([]*CostStatsByModel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type modelCostStats struct {
 		ModelID string  `json:"model_id"`
@@ -1787,23 +1685,7 @@ func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string
 func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*CostStatsByAPIKey, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
-	// Parse time window using calendar periods
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	var since time.Time
-	applyFilter := false
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		}
-	}
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type apiKeyCostStats struct {
 		APIKeyID int     `json:"api_key_id"`

@@ -5,7 +5,6 @@ export type TimePeriod = 'allTime' | 'month' | 'week' | 'day';
 export type FastestTimeWindow = 'month' | 'week' | 'day';
 
 const DEFAULT_PERIODS: readonly TimePeriod[] = ['allTime', 'month', 'week', 'day'];
-const DEFAULT_FASTEST_PERIODS: readonly FastestTimeWindow[] = ['month', 'week', 'day'];
 
 interface TimePeriodSelectorProps<T extends string = TimePeriod> {
   value: T;
@@ -13,16 +12,8 @@ interface TimePeriodSelectorProps<T extends string = TimePeriod> {
   periods?: readonly T[];
 }
 
-function getDefaultPeriods<T extends string>(value: T): readonly T[] {
-  const isFastestTimeWindow = ['month', 'week', 'day'].includes(value);
-  if (isFastestTimeWindow) {
-    return DEFAULT_FASTEST_PERIODS as readonly T[];
-  }
-  return DEFAULT_PERIODS as readonly T[];
-}
-
 export function TimePeriodSelector<T extends string>({ value, onChange, periods }: TimePeriodSelectorProps<T>) {
-  const effectivePeriods = periods ?? getDefaultPeriods(value);
+  const effectivePeriods = periods ?? DEFAULT_PERIODS as readonly T[];
   const { t } = useTranslation();
 
   return (
