@@ -1,13 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-
 import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
+import { TimePeriodSelector } from '@/components/time-period-selector';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
 
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
@@ -104,11 +105,12 @@ interface ThroughputData {
   requestCount?: number;
 }
 
+type FastestTimeWindow = 'month' | 'week' | 'day';
+
 interface FastestPerformersCardProps<T extends ThroughputData> {
   title: string;
   description: (totalRequests: number) => string;
   noDataLabel: string;
-  timeWindow: string;
   useData: (timeWindow: string) => UseQueryResult<T[], Error>;
   getName: (item: T) => string | null;
 }
@@ -117,11 +119,11 @@ export function FastestPerformersCard<T extends ThroughputData>({
   title,
   description,
   noDataLabel,
-  timeWindow,
   useData,
   getName,
 }: FastestPerformersCardProps<T>) {
   const { t } = useTranslation();
+  const [timeWindow, setTimeWindow] = useState<FastestTimeWindow>('month');
 
   const { data: items, isLoading, isFetching, error } = useData(timeWindow);
 
@@ -148,7 +150,9 @@ export function FastestPerformersCard<T extends ThroughputData>({
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='text-sm text-red-500'>{t('common.loadError')}</div>
+          <div className='text-sm text-red-500'>
+            {t('common.loadError')}: {error.message}
+          </div>
         </CardContent>
       </Card>
     );
@@ -180,6 +184,7 @@ export function FastestPerformersCard<T extends ThroughputData>({
           <CardTitle className='text-base font-medium'>{title}</CardTitle>
           <CardDescription>{description(totalRequests)}</CardDescription>
         </div>
+        <TimePeriodSelector value={timeWindow} onChange={setTimeWindow} periods={['month', 'week', 'day']} />
       </CardHeader>
       <CardContent className='relative'>
         <div className='space-y-4'>

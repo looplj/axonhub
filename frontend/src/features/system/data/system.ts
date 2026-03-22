@@ -724,6 +724,7 @@ export function useGeneralSettings() {
         throw error;
       }
     },
+    placeholderData: (previousData) => previousData,
   });
 }
 

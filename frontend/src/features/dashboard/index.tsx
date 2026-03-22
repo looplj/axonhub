@@ -6,7 +6,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/layout/header';
 import { formatNumber } from '@/utils/format-number';
-import { TimePeriodSelector, type TimePeriod, type FastestTimeWindow } from '@/components/time-period-selector';
+import { TimePeriodSelector, type TimePeriod } from '@/components/time-period-selector';
 import { ChannelSuccessRate } from './components/channel-success-rate';
 import { DailyRequestStats } from './components/daily-requests-stats';
 import { RequestsByChannelChart } from './components/requests-by-channel-chart';
@@ -74,11 +74,10 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className='overflow-visible'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: 'easeInOut' }}
           >
             <div className='space-y-4'>{children}</div>
           </motion.div>
@@ -100,8 +99,6 @@ export default function DashboardPage() {
   const [modelTokensTimePeriod, setModelTokensTimePeriod] = useState<TimePeriod>('allTime');
   const [apiKeyTimePeriod, setApiKeyTimePeriod] = useState<TimePeriod>('allTime');
   const [apiKeyTokensTimePeriod, setApiKeyTokensTimePeriod] = useState<TimePeriod>('allTime');
-  const [fastestModelsTimePeriod, setFastestModelsTimePeriod] = useState<FastestTimeWindow>('month');
-  const [fastestChannelsTimePeriod, setFastestChannelsTimePeriod] = useState<FastestTimeWindow>('month');
 
   const modelPerformanceDescription = useMemo(() => {
     return t('dashboard.charts.performanceDescription', { count: formatNumber(modelTotalRequests) });
@@ -295,18 +292,9 @@ export default function DashboardPage() {
               <ModelPerformanceStats onTotalRequestsChange={setModelTotalRequests} />
             </CardContent>
           </Card>
-          <Card className='hover-card col-span-1 lg:col-span-3'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.cards.fastestPerformers.models')}</CardTitle>
-              <CardDescription>{t('dashboard.cards.fastestPerformers.description', { type: t('dashboard.cards.fastestPerformers.modelType'), count: formatNumber(0) })}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={fastestModelsTimePeriod} onChange={setFastestModelsTimePeriod} periods={['month', 'week', 'day']} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <FastestModelsCard timeWindow={fastestModelsTimePeriod} />
-            </CardContent>
-          </Card>
+          <div className='col-span-1 lg:col-span-3'>
+            <FastestModelsCard />
+          </div>
         </div>
         <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
           <Card className='hover-card col-span-1 lg:col-span-4'>
@@ -318,18 +306,9 @@ export default function DashboardPage() {
               <ChannelPerformanceStats onTotalRequestsChange={setChannelTotalRequests} />
             </CardContent>
           </Card>
-          <Card className='hover-card col-span-1 lg:col-span-3'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.cards.fastestPerformers.channels')}</CardTitle>
-              <CardDescription>{t('dashboard.cards.fastestPerformers.description', { type: t('dashboard.cards.fastestPerformers.channelType'), count: formatNumber(0) })}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={fastestChannelsTimePeriod} onChange={setFastestChannelsTimePeriod} periods={['month', 'week', 'day']} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <FastestChannelsCard timeWindow={fastestChannelsTimePeriod} />
-            </CardContent>
-          </Card>
+          <div className='col-span-1 lg:col-span-3'>
+            <FastestChannelsCard />
+          </div>
         </div>
       </CollapsibleSection>
     </div>

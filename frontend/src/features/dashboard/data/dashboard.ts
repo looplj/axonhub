@@ -388,6 +388,7 @@ export function useRequestsByChannel(timeWindow?: string) {
       return data.requestStatsByChannel.map((item) => requestsByChannelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -402,6 +403,7 @@ export function useRequestsByModel(timeWindow?: string) {
       return data.requestStatsByModel.map((item) => requestsByModelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -416,6 +418,7 @@ export function useRequestsByAPIKey(timeWindow?: string) {
       return data.requestStatsByAPIKey.map((item) => requestsByAPIKeySchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -429,7 +432,8 @@ export function useTokensByAPIKey(timeWindow?: string) {
       );
       return data.tokenStatsByAPIKey.map((item) => tokensByAPIKeySchema.parse(item));
     },
-    refetchInterval: 60000, // Auto-refresh every 60 seconds
+    refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -444,6 +448,7 @@ export function useTokensByChannel(timeWindow?: string) {
       return data.tokenStatsByChannel.map((item) => tokensByChannelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -458,6 +463,7 @@ export function useTokensByModel(timeWindow?: string) {
       return data.tokenStatsByModel.map((item) => tokensByModelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -472,6 +478,7 @@ export function useCostByChannel(timeWindow?: string) {
       return data.costStatsByChannel.map((item) => costByChannelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -486,6 +493,7 @@ export function useCostByModel(timeWindow?: string) {
       return data.costStatsByModel.map((item) => costByModelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -500,6 +508,7 @@ export function useCostByAPIKey(timeWindow?: string) {
       return data.costStatsByAPIKey.map((item) => costByAPIKeySchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 

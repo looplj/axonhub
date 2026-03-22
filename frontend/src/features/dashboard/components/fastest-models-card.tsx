@@ -6,11 +6,7 @@ import { FastestPerformersCard } from './fastest-performers-card';
 import { useFastestModels } from '../data/fastest-performers';
 import type { FastestModel } from '../data/fastest-performers';
 
-interface FastestModelsCardProps {
-  timeWindow: string;
-}
-
-export function FastestModelsCard({ timeWindow }: FastestModelsCardProps) {
+export function FastestModelsCard() {
   const { t } = useTranslation();
 
   return (
@@ -18,7 +14,6 @@ export function FastestModelsCard({ timeWindow }: FastestModelsCardProps) {
       title={t('dashboard.cards.fastestPerformers.models')}
       description={(totalRequests) => t('dashboard.cards.fastestPerformers.description', { type: t('dashboard.cards.fastestPerformers.modelType'), count: formatNumber(totalRequests) })}
       noDataLabel={t('dashboard.cards.fastestPerformers.noData')}
-      timeWindow={timeWindow}
       useData={useFastestModels}
       getName={(item) => item.modelName}
     />
