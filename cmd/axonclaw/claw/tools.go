@@ -21,6 +21,24 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/skills"
 )
 
+func newSkillManager(workspace string, boot *bootstrap.Result) *tools.SkillManager {
+	bundled, err := skills.BundledSkills(toBuiltinSkillConfigs(boot.BuiltinSkills))
+	if err != nil {
+		return tools.NewSkillManager(tools.SkillManagerOptions{
+			Dirs: []string{
+				filepath.Join(workspace, conf.DefaultDir, "skills"),
+			},
+		})
+	}
+
+	return tools.NewSkillManager(tools.SkillManagerOptions{
+		Dirs: []string{
+			filepath.Join(workspace, conf.DefaultDir, "skills"),
+		},
+		BundledSkills: bundled,
+	})
+}
+
 func registerTools(
 	a *agent.Agent,
 	workspace string,
@@ -29,6 +47,8 @@ func registerTools(
 	client graphql.Client,
 	provider agent.Provider,
 	mcpMgr *mcp.Manager,
+	subagentMgr *subagent.Manager,
+	skillMgr *tools.SkillManager,
 ) {
 	enabledBuiltin := map[string]bool{}
 	for _, t := range boot.BuiltinTools {
@@ -64,18 +84,9 @@ func registerTools(
 	if enabledBuiltin["Glob"] {
 		a.RegisterTool(tools.NewAgentTool(tools.NewGlobTool(workspace, false)))
 	}
-	if enabledBuiltin["Skill"] {
-		bundled, err := skills.BundledSkills(toBuiltinSkillConfigs(boot.BuiltinSkills))
-		if err != nil {
-			logger.Warn("failed to load bundled skills", "error", err)
-		}
 
-		a.RegisterTool(tools.NewAgentTool(tools.NewSkillToolWithOptions(tools.SkillToolOptions{
-			Dirs: []string{
-				filepath.Join(workspace, conf.DefaultDir, "skills"),
-			},
-			BundledSkills: bundled,
-		})))
+	if enabledBuiltin["Skill"] && skillMgr != nil {
+		a.RegisterTool(tools.NewAgentTool(tools.NewSkillTool(skillMgr)))
 	}
 	if enabledBuiltin["WebFetch"] {
 		a.RegisterTool(tools.NewAgentTool(tools.NewWebFetchTool()))
@@ -88,13 +99,6 @@ func registerTools(
 		Client: client,
 		Logger: logger,
 	})))
-	a.RegisterTool(tools.NewAgentTool(NewResetTool(ResetToolOptions{
-		Client:    client,
-		Agent:     a,
-		Workspace: workspace,
-		Boot:      boot,
-		Logger:    logger,
-	})))
 
 	known := map[string]struct{}{}
 	for name := range enabledBuiltin {
@@ -102,7 +106,6 @@ func registerTools(
 	}
 
 	known["SendMessage"] = struct{}{}
-	known["Reset"] = struct{}{}
 	for _, t := range boot.Tools {
 		if t.Name == "" {
 			continue
@@ -121,16 +124,7 @@ func registerTools(
 		known[t.Name] = struct{}{}
 	}
 
-	// Register SpawnAgent tool last so it can enumerate all previously
-	// registered tools via the agent's registry.
-	if enabledBuiltin["SpawnAgent"] {
-		agentDir := filepath.Join(workspace, ".agent", "subagents")
-
-		subagentMgr := subagent.NewManagerFromPath(agentDir)
-		if err := subagentMgr.Load(); err != nil {
-			logger.Warn("failed to load subagent definitions", "error", err, "path", agentDir)
-		}
-
+	if enabledBuiltin["SpawnAgent"] && subagentMgr != nil {
 		a.RegisterTool(tools.NewAgentTool(subagent.NewTool(subagent.ToolOptions{
 			Manager:     subagentMgr,
 			Provider:    provider,
@@ -159,8 +153,6 @@ func toBuiltinSkillConfigs(items []bootstrap.BuiltinSkill) []skills.Config {
 	return out
 }
 
-// agentToolSource adapts an *agent.Agent to the subagent.ToolSource interface,
-// allowing the SpawnAgent tool to enumerate all tools registered on the parent.
 type agentToolSource struct {
 	agent *agent.Agent
 }

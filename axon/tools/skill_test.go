@@ -27,7 +27,8 @@ Follow these instructions.
 `
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skillContent), 0644))
 
-	tool := NewSkillTool(tmpDir)
+	mgr := NewSkillManager(SkillManagerOptions{Dirs: []string{tmpDir}})
+	tool := NewSkillTool(mgr)
 
 	t.Run("Definition", func(t *testing.T) {
 		def := tool.Definition()
@@ -96,7 +97,8 @@ description: Second skill
 # Skill Two
 `), 0644))
 
-	tool := NewSkillTool(tmpDir)
+	mgr := NewSkillManager(SkillManagerOptions{Dirs: []string{tmpDir}})
+	tool := NewSkillTool(mgr)
 
 	skills, err := tool.ListSkills()
 	require.NoError(t, err)
@@ -104,7 +106,7 @@ description: Second skill
 }
 
 func TestSkillToolBundledSkillsFallback(t *testing.T) {
-	tool := NewSkillToolWithOptions(SkillToolOptions{
+	mgr := NewSkillManager(SkillManagerOptions{
 		Dirs: []string{t.TempDir()},
 		BundledSkills: []skills.Skill{
 			{
@@ -119,6 +121,7 @@ description: Manage memory
 			},
 		},
 	})
+	tool := NewSkillTool(mgr)
 
 	result := tool.Execute(context.Background(), skillInput{Skill: "memory-management"})
 
@@ -128,7 +131,7 @@ description: Manage memory
 }
 
 func TestSkillToolBundledSkillWithoutDirUsesPlaceholder(t *testing.T) {
-	tool := NewSkillToolWithOptions(SkillToolOptions{
+	mgr := NewSkillManager(SkillManagerOptions{
 		Dirs: []string{t.TempDir()},
 		BundledSkills: []skills.Skill{
 			{
@@ -142,6 +145,7 @@ description: Built-in skill without reference dir
 			},
 		},
 	})
+	tool := NewSkillTool(mgr)
 
 	result := tool.Execute(context.Background(), skillInput{Skill: "builtin-skill"})
 

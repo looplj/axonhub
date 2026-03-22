@@ -230,7 +230,14 @@ func runTUI(cfg conf.Config, configDir string, workspaceDir string, debug bool) 
 	a.RegisterTool(tools.NewAgentTool(tools.NewBashTool(workspaceDir, false, true)))
 	a.RegisterTool(tools.NewAgentTool(tools.NewGrepTool(workspaceDir, false)))
 	a.RegisterTool(tools.NewAgentTool(tools.NewGlobTool(workspaceDir, false)))
-	a.RegisterTool(tools.NewAgentTool(tools.NewSkillTool(filepath.Join(workspaceDir, "skills"), filepath.Join(configDir, "skills"))))
+
+	skillMgr := tools.NewSkillManager(tools.SkillManagerOptions{
+		Dirs: []string{
+			filepath.Join(workspaceDir, "skills"),
+			filepath.Join(configDir, "skills"),
+		},
+	})
+	a.RegisterTool(tools.NewAgentTool(tools.NewSkillTool(skillMgr)))
 	a.RegisterTool(tools.NewAgentTool(tools.NewWebSearchTool(search.NewDuckDuckGoProvider())))
 	a.RegisterTool(tools.NewAgentTool(tools.NewWebFetchTool()))
 	a.RegisterTool(tools.NewAgentTool(clitools.NewAxonHelpTool()))

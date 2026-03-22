@@ -22,32 +22,16 @@ var skillResultTemplateStr string
 
 var skillResultTemplate = template.Must(template.New("skill_result").Parse(skillResultTemplateStr))
 
-// SkillTool executes skills within the conversation.
 type SkillTool struct {
-	// dirs are the directories to search for skills.
-	// First directory has highest priority (workspace), then global.
-	dirs []string
-	// bundledSkills are fallback skills injected directly in code.
-	// Installed skills with the same name override bundled ones.
-	bundledSkills []skills.Skill
+	manager *SkillManager
 }
 
 type SkillToolOptions struct {
-	Dirs          []string
-	BundledSkills []skills.Skill
+	Manager *SkillManager
 }
 
-// NewSkillTool creates a new skill execution tool.
-// dirs should be provided in priority order: workspace dir first, then global dir.
-func NewSkillTool(dirs ...string) *SkillTool {
-	return NewSkillToolWithOptions(SkillToolOptions{Dirs: dirs})
-}
-
-func NewSkillToolWithOptions(opts SkillToolOptions) *SkillTool {
-	return &SkillTool{
-		dirs:          opts.Dirs,
-		bundledSkills: opts.BundledSkills,
-	}
+func NewSkillTool(manager *SkillManager) *SkillTool {
+	return &SkillTool{manager: manager}
 }
 
 type skillInput struct {
@@ -84,11 +68,7 @@ func (t *SkillTool) Execute(ctx context.Context, input skillInput) agent.ToolRes
 	parts := strings.SplitN(input.Skill, ":", 2)
 	skillName := parts[len(parts)-1]
 
-	result, err := skills.Get(skills.GetOptions{
-		Skill:         skillName,
-		Dirs:          t.dirs,
-		BundledSkills: t.bundledSkills,
-	})
+	result, err := t.manager.Get(skillName)
 	if err != nil {
 		return ErrorResult(fmt.Errorf("skill %q not found: %w", input.Skill, err))
 	}
@@ -115,10 +95,6 @@ func (t *SkillTool) Execute(ctx context.Context, input skillInput) agent.ToolRes
 	return TextResult(sb.String())
 }
 
-// ListSkills returns all available skills from the configured directories.
 func (t *SkillTool) ListSkills() ([]skills.ListedSkill, error) {
-	return skills.List(skills.ListOptions{
-		Dirs:          t.dirs,
-		BundledSkills: t.bundledSkills,
-	})
+	return t.manager.List()
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/axon/permission"
 	"github.com/looplj/axonhub/axon/subagent"
 	"github.com/looplj/axonhub/axon/task"
+	"github.com/looplj/axonhub/axon/tools"
 
 	axoncontext "github.com/looplj/axonhub/axon/context"
 
@@ -43,6 +45,9 @@ type Runner struct {
 	processing    atomic.Bool
 	mcpManager    *mcp.Manager
 	toolSource    subagent.ToolSource
+	slashCommands *SlashCommandRegistry
+	subagentMgr   *subagent.Manager
+	skillMgr      *tools.SkillManager
 }
 
 type NewOptions struct {
@@ -80,8 +85,17 @@ func New(opts NewOptions) *Runner {
 		ConfigDir: opts.Boot.ConfigDir,
 	})
 
+	agentDir := filepath.Join(opts.Workspace, ".agent", "subagents")
+
+	subagentMgr := subagent.NewManagerFromPath(agentDir)
+	if err := subagentMgr.Load(); err != nil {
+		opts.Logger.Warn("failed to load subagent definitions", "error", err, "path", agentDir)
+	}
+
+	skillMgr := newSkillManager(opts.Workspace, opts.Boot)
+
 	toolSource := &agentToolSource{agent: a}
-	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Provider, mcpMgr)
+	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Provider, mcpMgr, subagentMgr, skillMgr)
 
 	r := &Runner{
 		Client:        opts.Client,
@@ -95,6 +109,9 @@ func New(opts NewOptions) *Runner {
 		TaskScheduler: opts.TaskScheduler,
 		mcpManager:    mcpMgr,
 		toolSource:    toolSource,
+		slashCommands: NewDefaultSlashCommands(opts.Client),
+		subagentMgr:   subagentMgr,
+		skillMgr:      skillMgr,
 	}
 
 	return r
@@ -259,6 +276,18 @@ func (r *Runner) processMessage(ctx context.Context, text string) error {
 
 	r.processing.Store(true)
 	defer r.processing.Store(false)
+
+	if cmd, args, ok := r.slashCommands.Match(text); ok {
+		result, err := cmd.Execute(ctx, r, args)
+		if err != nil {
+			r.Logger.Warn("slash command failed", "command", cmd.Name, "error", err)
+			result = fmt.Sprintf("Error executing /%s: %v", cmd.Name, err)
+		}
+
+		r.sendSlashCommandResult(result)
+
+		return nil
+	}
 
 	traceID := uuid.New().String()
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
