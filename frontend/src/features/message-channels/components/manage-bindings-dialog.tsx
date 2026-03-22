@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconLink, IconUser, IconUsers } from '@tabler/icons-react';
+import { useEffect, useState, useRef } from 'react';
+import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconLink, IconUser, IconUsers, IconCheck } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { extractNumberIDAsNumber } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useQueryAgentInstances } from '@/features/agents/data/agent-instances';
-import { useBatchSaveMessageChannelBindings, useCreateBindingRequest, type BatchBindingInput } from '../data/message-channels';
+import { useBatchSaveMessageChannelBindings, useCreateBindingRequest, useBindingRequestStatus, type BatchBindingInput } from '../data/message-channels';
 import type { MessageChannel, MessageChannelAgentInstanceBindingInput, MessageChatType } from '../data/schema';
 
 interface ManageBindingsDialogProps {
@@ -38,6 +39,9 @@ export function ManageBindingsDialog({ open, onOpenChange, currentRow, onRefresh
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [showPairCodeDialog, setShowPairCodeDialog] = useState(false);
   const [generatedPairCode, setGeneratedPairCode] = useState<string>('');
+  const [hasPendingPairCode, setHasPendingPairCode] = useState(false);
+  const [saveDisabled, setSaveDisabled] = useState(false);
+  const pairedRef = useRef(false);
 
   const { data: agentInstancesData, isLoading } = useQueryAgentInstances({
     first: 100,
@@ -45,6 +49,22 @@ export function ManageBindingsDialog({ open, onOpenChange, currentRow, onRefresh
 
   const saveBindingsMutation = useBatchSaveMessageChannelBindings();
   const createRequestMutation = useCreateBindingRequest();
+
+  const { data: bindingRequestStatus } = useBindingRequestStatus(
+    generatedPairCode,
+    { enabled: showPairCodeDialog && hasPendingPairCode }
+  );
+
+  useEffect(() => {
+    if (bindingRequestStatus?.status === 'approved' && !pairedRef.current) {
+      pairedRef.current = true;
+      setHasPendingPairCode(false);
+      setSaveDisabled(true);
+      toast.success(t('messageChannels.messages.pairingSuccess'));
+      onRefresh?.();
+      setShowPairCodeDialog(false);
+    }
+  }, [bindingRequestStatus, t, onRefresh]);
 
   useEffect(() => {
     if (open) {
@@ -54,13 +74,17 @@ export function ManageBindingsDialog({ open, onOpenChange, currentRow, onRefresh
         agentInstanceID: edge.node.agentInstanceID,
         agentInstanceName: edge.node.agentInstance.name,
         enabled: edge.node.enabled,
-        config: edge.node.config || { chatType: 'dm', chatID: '', allowFrom: [], excludeKeywords: [] },
+        config: edge.node.config || { chatType: 'dm', chatID: '', allowFrom: [], excludeKeywords: [], allowWithoutMention: false },
         expanded: false,
       }));
       setBindings(existingBindings);
+      setSaveDisabled(false);
     } else {
       setBindings([]);
       setGeneratedPairCode('');
+      setHasPendingPairCode(false);
+      setSaveDisabled(false);
+      pairedRef.current = false;
     }
   }, [open, currentRow]);
 
@@ -79,7 +103,7 @@ export function ManageBindingsDialog({ open, onOpenChange, currentRow, onRefresh
         agentInstanceID: agent.id,
         agentInstanceName: agent.name || t('messageChannels.dialogs.manageBindings.instancePrefix', { id: agent.id.slice(0, 8) }),
         enabled: true,
-        config: { chatType: 'dm', chatID: '', allowFrom: [], excludeKeywords: [] },
+        config: { chatType: 'dm', chatID: '', allowFrom: [], excludeKeywords: [], allowWithoutMention: false },
         expanded: true,
       },
     ]);
@@ -101,7 +125,7 @@ export function ManageBindingsDialog({ open, onOpenChange, currentRow, onRefresh
   const handleConfigChange = (
     index: number,
     field: keyof MessageChannelAgentInstanceBindingInput,
-    value: string | string[] | MessageChatType
+    value: string | string[] | MessageChatType | boolean
   ) => {
     setBindings((prev) => prev.map((b, i) => (i === index ? { ...b, config: { ...b.config, [field]: value } } : b)));
   };
@@ -176,6 +200,8 @@ export function ManageBindingsDialog({ open, onOpenChange, currentRow, onRefresh
       {
         onSuccess: (data) => {
           setGeneratedPairCode(data.pairCode);
+          setHasPendingPairCode(true);
+          pairedRef.current = false;
           setShowPairCodeDialog(true);
         },
       }
@@ -328,6 +354,23 @@ export function ManageBindingsDialog({ open, onOpenChange, currentRow, onRefresh
                               </div>
                             </div>
 
+                            {binding.config.chatType === 'group' && (
+                              <div className='flex items-center justify-between rounded-md border px-3 py-2'>
+                                <div className='space-y-0.5'>
+                                  <Label className='text-xs font-medium'>
+                                    {t('messageChannels.dialogs.manageBindings.config.allowWithoutMention')}
+                                  </Label>
+                                  <p className='text-muted-foreground text-xs'>
+                                    {t('messageChannels.dialogs.manageBindings.config.allowWithoutMentionHint')}
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={binding.config.allowWithoutMention || false}
+                                  onCheckedChange={(checked) => handleConfigChange(index, 'allowWithoutMention', checked)}
+                                />
+                              </div>
+                            )}
+
                             <div className='space-y-1.5'>
                               <div className='flex items-center justify-between'>
                                 <Label className='text-xs font-medium'>
@@ -431,7 +474,7 @@ export function ManageBindingsDialog({ open, onOpenChange, currentRow, onRefresh
             <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
               {t('common.buttons.cancel')}
             </Button>
-            <Button type='button' onClick={handleSave} disabled={saveBindingsMutation.isPending}>
+            <Button type='button' onClick={handleSave} disabled={saveBindingsMutation.isPending || saveDisabled}>
               {saveBindingsMutation.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
             </Button>
           </DialogFooter>

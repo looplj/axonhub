@@ -29,6 +29,7 @@ type MessageChannelAgentInstanceBinding {
   chatID: String!
   allowFrom: [String!]
   excludeKeywords: [String!]
+  allowWithoutMention: Boolean!
 }
 
 input MessageChannelAgentInstanceBindingInput {
@@ -36,6 +37,7 @@ input MessageChannelAgentInstanceBindingInput {
   chatID: String!
   allowFrom: [String!]
   excludeKeywords: [String!]
+  allowWithoutMention: Boolean
 }
 
 enum MessageChatType {
@@ -46,7 +48,7 @@ enum MessageChatType {
 input BatchMessageChannelAgentInstanceBindingInput {
   agentInstanceID: ID!
   enabled: Boolean!
-  config: MessageChannelAgentInstanceBindingInput
+  config: MessageChannelAgentInstanceBindingInput!
 }
 
 

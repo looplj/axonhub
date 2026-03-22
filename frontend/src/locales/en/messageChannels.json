@@ -74,6 +74,8 @@
   "messageChannels.dialogs.manageBindings.config.chatIDPlaceholder": "Enter chat ID (group ID or leave empty for DM)",
   "messageChannels.dialogs.manageBindings.config.dm": "Direct Message",
   "messageChannels.dialogs.manageBindings.config.group": "Group",
+  "messageChannels.dialogs.manageBindings.config.allowWithoutMention": "Allow Without Mention",
+  "messageChannels.dialogs.manageBindings.config.allowWithoutMentionHint": "Receive messages in group chats without being mentioned",
   "messageChannels.dialogs.manageBindings.createRequest": "Create Request",
   "messageChannels.dialogs.manageBindings.instancePrefix": "Instance {{id}}",
   "messageChannels.dialogs.bindingRequest.title": "Create Binding Request",
@@ -93,5 +95,7 @@
   "messageChannels.messages.bindSuccess": "Agent instance bound successfully",
   "messageChannels.messages.bindError": "Failed to bind agent instance: {{error}}",
   "messageChannels.messages.bindingsSaveSuccess": "Bindings saved successfully",
-  "messageChannels.messages.bindingsSaveError": "Failed to save bindings: {{error}}"
+  "messageChannels.messages.bindingsSaveError": "Failed to save bindings: {{error}}",
+  "messageChannels.messages.pairingSuccess": "Pairing successful! Agent instance has been bound.",
+  "messageChannels.messages.bindingRequestError": "Failed to create binding request: {{error}}"
 }

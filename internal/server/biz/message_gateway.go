@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 	"time"
 
@@ -409,29 +408,12 @@ func (r *channelRunner) processPendingAgentMessages(ctx context.Context) {
 }
 
 func extractMessageContent(content objects.JSONRawMessage) (string, error) {
-	var data map[string]any
-	if err := json.Unmarshal(content, &data); err != nil {
-		return "", err
+	text := ExtractTextFromContent(content)
+	if text == "" {
+		return string(content), nil
 	}
 
-	if text, ok := data["text"].(string); ok {
-		return text, nil
-	}
-
-	return string(content), nil
-}
-
-func extractChatIDFromContent(content objects.JSONRawMessage) string {
-	var data map[string]any
-	if err := json.Unmarshal(content, &data); err != nil {
-		return ""
-	}
-
-	if chatID, ok := data["chat_id"].(string); ok {
-		return chatID
-	}
-
-	return ""
+	return text, nil
 }
 
 func (r *channelRunner) resolveReplyTarget(ctx context.Context, msg *ent.AgentMessage) (replyToExternalMessageID string, replyToChatID string) {
@@ -458,7 +440,7 @@ func (r *channelRunner) resolveReplyTarget(ctx context.Context, msg *ent.AgentMe
 		return "", ""
 	}
 
-	return *replyTo.ExternalMessageID, extractChatIDFromContent(replyTo.Content)
+	return *replyTo.ExternalMessageID, ExtractChatIDFromContent(replyTo.Content)
 }
 
 func truncate(s string, maxLen int) string {

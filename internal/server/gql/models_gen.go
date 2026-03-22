@@ -138,7 +138,7 @@ type BackupPayload struct {
 type BatchMessageChannelAgentInstanceBindingInput struct {
 	AgentInstanceID objects.GUID                                `json:"agentInstanceID"`
 	Enabled         bool                                        `json:"enabled"`
-	Config          *objects.MessageChannelAgentInstanceBinding `json:"config,omitempty"`
+	Config          *objects.MessageChannelAgentInstanceBinding `json:"config"`
 }
 
 type BrandSettings struct {

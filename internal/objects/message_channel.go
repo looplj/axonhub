@@ -22,10 +22,11 @@ const (
 
 // MessageChannelAgentInstanceBinding holds the configuration for a message channel to agent instance binding.
 type MessageChannelAgentInstanceBinding struct {
-	ChatType        MessageChatType `json:"chatType,omitempty"`
-	ChatID          string          `json:"chatID,omitempty"`
-	AllowFrom       []string        `json:"allowFrom,omitempty"`
-	ExcludeKeywords []string        `json:"excludeKeywords,omitempty"`
+	ChatType            MessageChatType `json:"chatType,omitempty"`
+	ChatID              string          `json:"chatID,omitempty"`
+	AllowFrom           []string        `json:"allowFrom,omitempty"`
+	ExcludeKeywords     []string        `json:"excludeKeywords,omitempty"`
+	AllowWithoutMention bool            `json:"allowWithoutMention,omitempty"`
 }
 
 func (b *MessageChannelAgentInstanceBinding) Equals(other *MessageChannelAgentInstanceBinding) bool {
@@ -61,5 +62,5 @@ func (b *MessageChannelAgentInstanceBinding) Equals(other *MessageChannelAgentIn
 		}
 	}
 
-	return true
+	return b.AllowWithoutMention == other.AllowWithoutMention
 }

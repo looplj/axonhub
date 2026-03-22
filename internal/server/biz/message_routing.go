@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -33,14 +32,6 @@ func (r *MessageRouting) HandleInbound(ctx context.Context, msg InboundMessage) 
 		log.String("chat_type", string(msg.ChatType)),
 		log.Bool("mentioned", msg.Mentioned),
 		log.String("content_preview", truncate(msg.Content, 80)))
-
-	if msg.ChatType == objects.MessageChatTypeGroup && !msg.Mentioned {
-		log.Debug(ctx, "group message without mention, skipping",
-			log.Int("channel_id", r.channel.ID),
-			log.String("chat_id", msg.ChatID))
-
-		return nil
-	}
 
 	if !r.isSenderAllowed(msg.SenderID) {
 		log.Debug(ctx, "sender not allowed by channel",
@@ -173,6 +164,15 @@ func (r *MessageRouting) routeToAgent(ctx context.Context, msg InboundMessage) e
 			}
 		}
 
+		if msg.ChatType == objects.MessageChatTypeGroup && !msg.Mentioned && !binding.Config.AllowWithoutMention {
+			log.Debug(ctx, "group message without mention and binding requires mention, skipping",
+				log.Int("binding_id", binding.ID),
+				log.Int("agent_instance_id", agentInstance.ID),
+				log.String("chat_id", msg.ChatID))
+
+			continue
+		}
+
 		if !isBindingSenderAllowed(binding, msg.SenderID) {
 			log.Debug(ctx, "sender not allowed for binding",
 				log.Int("binding_id", binding.ID),
@@ -223,43 +223,25 @@ func (r *MessageRouting) createAgentMessage(ctx context.Context, agentInstanceID
 		return nil, fmt.Errorf("query agent: %w", err)
 	}
 
-	contentData := map[string]any{
-		"text":       msg.Content,
-		"chat_id":    msg.ChatID,
-		"chat_type":  msg.ChatType,
-		"message_id": msg.MessageID,
+	msgContent := MarshalChatContent(msg.Content, msg.ChatID, string(msg.ChatType), msg.MessageID)
+
+	input := CreateAgentMessageParams{
+		ProjectID:       agent.ProjectID,
+		AgentID:         agent.ID,
+		AgentInstanceID: agentInstanceID,
+		Direction:       agentmessage.DirectionToAgent,
+		SenderType:      agentmessage.SenderTypeMessageChannel,
+		SenderID:        &r.channel.ID,
+		Type:            agentmessage.TypeChat,
+		Content:         msgContent,
 	}
-	contentBytes, _ := json.Marshal(contentData)
-	msgContent := objects.JSONRawMessage(contentBytes)
-
-	var lastSeq int64
-
-	lastMsg, err := r.db.AgentMessage.Query().
-		Where(agentmessage.AgentIDEQ(agent.ID)).
-		Order(ent.Desc(agentmessage.FieldSequence)).
-		First(ctx)
-	if err == nil && lastMsg != nil {
-		lastSeq = lastMsg.Sequence
-	}
-
-	creator := r.db.AgentMessage.Create().
-		SetProjectID(agent.ProjectID).
-		SetAgentID(agent.ID).
-		SetAgentInstanceID(agentInstanceID).
-		SetDirection(agentmessage.DirectionToAgent).
-		SetSenderType(agentmessage.SenderTypeMessageChannel).
-		SetSenderID(r.channel.ID).
-		SetType(agentmessage.TypeChat).
-		SetContent(msgContent).
-		SetStatus(agentmessage.StatusPending).
-		SetSequence(lastSeq + 1)
 	if msg.MessageID != "" {
-		creator = creator.SetExternalMessageID(msg.MessageID)
+		input.ExternalMessageID = &msg.MessageID
 	}
 
-	agentMsg, err := creator.Save(ctx)
+	agentMsg, err := CreateAgentMessage(ctx, r.db, input)
 	if err != nil {
-		return nil, fmt.Errorf("create message: %w", err)
+		return nil, err
 	}
 
 	log.Debug(ctx, "agent message created",
@@ -272,6 +254,9 @@ func (r *MessageRouting) createAgentMessage(ctx context.Context, agentInstanceID
 }
 
 func (r *MessageRouting) tryMatchPairCode(ctx context.Context, msg InboundMessage) bool {
+	if !msg.Mentioned {
+		return false
+	}
 	content := strings.TrimSpace(msg.Content)
 	if len(content) != 9 {
 		log.Debug(ctx, "invalid pair code length", log.String("pair_code", content))
@@ -352,7 +337,48 @@ func (r *MessageRouting) tryMatchPairCode(ctx context.Context, msg InboundMessag
 		log.String("chat_id", msg.ChatID),
 		log.String("target_type", string(msg.ChatType)))
 
+	r.sendPairingNotificationToAgent(ctx, req.AgentInstanceID, msg)
+
 	return true
+}
+
+func (r *MessageRouting) sendPairingNotificationToAgent(ctx context.Context, agentInstanceID int, msg InboundMessage) {
+	agent, err := r.db.AgentInstance.Query().
+		Where(agentinstance.IDEQ(agentInstanceID)).
+		QueryAgent().
+		Only(ctx)
+	if err != nil {
+		log.Error(ctx, "failed to query agent for pairing notification",
+			log.Int("agent_instance_id", agentInstanceID),
+			log.Cause(err))
+
+		return
+	}
+
+	msgContent := MarshalPairingSuccessContent(msg.ChatID, string(msg.ChatType), msg.MessageID, r.channel.ID)
+
+	input := CreateAgentMessageParams{
+		ProjectID:       agent.ProjectID,
+		AgentID:         agent.ID,
+		AgentInstanceID: agentInstanceID,
+		Direction:       agentmessage.DirectionToAgent,
+		SenderType:      agentmessage.SenderTypeSystem,
+		Type:            agentmessage.TypeSystemEvent,
+		Content:         msgContent,
+	}
+
+	_, err = CreateAgentMessage(ctx, r.db, input)
+	if err != nil {
+		log.Error(ctx, "failed to create pairing notification message",
+			log.Int("agent_instance_id", agentInstanceID),
+			log.Cause(err))
+
+		return
+	}
+
+	log.Info(ctx, "pairing notification sent to agent",
+		log.Int("agent_instance_id", agentInstanceID),
+		log.Int("agent_id", agent.ID))
 }
 
 func isBindingSenderAllowed(binding *ent.MessageChannelAgentInstance, senderID string) bool {

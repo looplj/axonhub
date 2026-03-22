@@ -74,6 +74,8 @@
   "messageChannels.dialogs.manageBindings.config.chatIDPlaceholder": "输入聊天 ID（群组 ID 或留空表示私聊）",
   "messageChannels.dialogs.manageBindings.config.dm": "私聊",
   "messageChannels.dialogs.manageBindings.config.group": "群聊",
+  "messageChannels.dialogs.manageBindings.config.allowWithoutMention": "允许无提及接收",
+  "messageChannels.dialogs.manageBindings.config.allowWithoutMentionHint": "在群聊中无需被提及也能接收消息",
   "messageChannels.dialogs.manageBindings.createRequest": "创建请求",
   "messageChannels.dialogs.manageBindings.instancePrefix": "实例 {{id}}",
   "messageChannels.dialogs.bindingRequest.title": "创建绑定请求",
@@ -93,5 +95,7 @@
   "messageChannels.messages.bindSuccess": "智能体实例绑定成功",
   "messageChannels.messages.bindError": "绑定智能体实例失败：{{error}}",
   "messageChannels.messages.bindingsSaveSuccess": "绑定保存成功",
-  "messageChannels.messages.bindingsSaveError": "保存绑定失败：{{error}}"
+  "messageChannels.messages.bindingsSaveError": "保存绑定失败：{{error}}",
+  "messageChannels.messages.pairingSuccess": "配对成功！智能体实例已绑定。",
+  "messageChannels.messages.bindingRequestError": "创建绑定请求失败：{{error}}"
 }

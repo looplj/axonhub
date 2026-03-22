@@ -972,10 +972,11 @@ type ComplexityRoot struct {
 	}
 
 	MessageChannelAgentInstanceBinding struct {
-		AllowFrom       func(childComplexity int) int
-		ChatID          func(childComplexity int) int
-		ChatType        func(childComplexity int) int
-		ExcludeKeywords func(childComplexity int) int
+		AllowFrom           func(childComplexity int) int
+		AllowWithoutMention func(childComplexity int) int
+		ChatID              func(childComplexity int) int
+		ChatType            func(childComplexity int) int
+		ExcludeKeywords     func(childComplexity int) int
 	}
 
 	MessageChannelAgentInstanceConnection struct {
@@ -6069,6 +6070,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.MessageChannelAgentInstanceBinding.AllowFrom(childComplexity), true
+	case "MessageChannelAgentInstanceBinding.allowWithoutMention":
+		if e.complexity.MessageChannelAgentInstanceBinding.AllowWithoutMention == nil {
+			break
+		}
+
+		return e.complexity.MessageChannelAgentInstanceBinding.AllowWithoutMention(childComplexity), true
 	case "MessageChannelAgentInstanceBinding.chatID":
 		if e.complexity.MessageChannelAgentInstanceBinding.ChatID == nil {
 			break
@@ -35227,6 +35234,8 @@ func (ec *executionContext) fieldContext_MessageChannelAgentInstance_config(_ co
 				return ec.fieldContext_MessageChannelAgentInstanceBinding_allowFrom(ctx, field)
 			case "excludeKeywords":
 				return ec.fieldContext_MessageChannelAgentInstanceBinding_excludeKeywords(ctx, field)
+			case "allowWithoutMention":
+				return ec.fieldContext_MessageChannelAgentInstanceBinding_allowWithoutMention(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MessageChannelAgentInstanceBinding", field.Name)
 		},
@@ -35467,6 +35476,35 @@ func (ec *executionContext) fieldContext_MessageChannelAgentInstanceBinding_excl
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MessageChannelAgentInstanceBinding_allowWithoutMention(ctx context.Context, field graphql.CollectedField, obj *objects.MessageChannelAgentInstanceBinding) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MessageChannelAgentInstanceBinding_allowWithoutMention,
+		func(ctx context.Context) (any, error) {
+			return obj.AllowWithoutMention, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MessageChannelAgentInstanceBinding_allowWithoutMention(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MessageChannelAgentInstanceBinding",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -76399,7 +76437,7 @@ func (ec *executionContext) unmarshalInputBatchMessageChannelAgentInstanceBindin
 			it.Enabled = data
 		case "config":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
-			data, err := ec.unmarshalOMessageChannelAgentInstanceBindingInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐMessageChannelAgentInstanceBinding(ctx, v)
+			data, err := ec.unmarshalNMessageChannelAgentInstanceBindingInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐMessageChannelAgentInstanceBinding(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -83864,7 +83902,7 @@ func (ec *executionContext) unmarshalInputMessageChannelAgentInstanceBindingInpu
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"chatType", "chatID", "allowFrom", "excludeKeywords"}
+	fieldsInOrder := [...]string{"chatType", "chatID", "allowFrom", "excludeKeywords", "allowWithoutMention"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83899,6 +83937,13 @@ func (ec *executionContext) unmarshalInputMessageChannelAgentInstanceBindingInpu
 				return it, err
 			}
 			it.ExcludeKeywords = data
+		case "allowWithoutMention":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowWithoutMention"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllowWithoutMention = data
 		}
 	}
 
@@ -113435,6 +113480,11 @@ func (ec *executionContext) _MessageChannelAgentInstanceBinding(ctx context.Cont
 			out.Values[i] = ec._MessageChannelAgentInstanceBinding_allowFrom(ctx, field, obj)
 		case "excludeKeywords":
 			out.Values[i] = ec._MessageChannelAgentInstanceBinding_excludeKeywords(ctx, field, obj)
+		case "allowWithoutMention":
+			out.Values[i] = ec._MessageChannelAgentInstanceBinding_allowWithoutMention(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -130641,6 +130691,11 @@ func (ec *executionContext) marshalNMessageChannel2ᚖgithubᚗcomᚋloopljᚋax
 
 func (ec *executionContext) marshalNMessageChannelAgentInstanceBinding2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐMessageChannelAgentInstanceBinding(ctx context.Context, sel ast.SelectionSet, v objects.MessageChannelAgentInstanceBinding) graphql.Marshaler {
 	return ec._MessageChannelAgentInstanceBinding(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNMessageChannelAgentInstanceBindingInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐMessageChannelAgentInstanceBinding(ctx context.Context, v any) (*objects.MessageChannelAgentInstanceBinding, error) {
+	res, err := ec.unmarshalInputMessageChannelAgentInstanceBindingInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNMessageChannelAgentInstanceConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐMessageChannelAgentInstanceConnection(ctx context.Context, sel ast.SelectionSet, v ent.MessageChannelAgentInstanceConnection) graphql.Marshaler {

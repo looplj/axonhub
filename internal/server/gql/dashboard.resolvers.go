@@ -14,9 +14,6 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/samber/lo"
-	"github.com/vektah/gqlparser/v2/gqlerror"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -31,6 +28,8 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
+	"github.com/samber/lo"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.

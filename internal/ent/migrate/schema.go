@@ -285,9 +285,9 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "agent_messages_by_agent_id_sequence",
+				Name:    "agent_messages_by_agent_instance_id_sequence",
 				Unique:  true,
-				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[10]},
+				Columns: []*schema.Column{AgentMessagesColumns[15], AgentMessagesColumns[10]},
 			},
 			{
 				Name:    "agent_messages_by_agent_id_status_created_at",
