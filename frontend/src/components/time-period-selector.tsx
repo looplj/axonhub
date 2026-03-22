@@ -14,7 +14,7 @@ interface TimePeriodSelectorProps<T extends string = TimePeriod> {
 }
 
 function getDefaultPeriods<T extends string>(value: T): readonly T[] {
-  const isFastestTimeWindow = ['month', 'week', 'day'].includes(value) && value !== 'allTime';
+  const isFastestTimeWindow = ['month', 'week', 'day'].includes(value);
   if (isFastestTimeWindow) {
     return DEFAULT_FASTEST_PERIODS as readonly T[];
   }

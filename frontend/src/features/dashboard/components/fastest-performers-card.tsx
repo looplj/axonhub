@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
-import { TimePeriodSelector } from '@/components/time-period-selector';
+import { TimePeriodSelector, type FastestTimeWindow } from '@/components/time-period-selector';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
 
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
@@ -104,8 +104,6 @@ interface ThroughputData {
   throughput?: number;
   requestCount?: number;
 }
-
-type FastestTimeWindow = 'month' | 'week' | 'day';
 
 interface FastestPerformersCardProps<T extends ThroughputData> {
   title: string;
