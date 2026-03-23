@@ -14,6 +14,14 @@ import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../u
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 
+interface LegendItem {
+  index: number;
+  name: string;
+  color: string;
+  throughput: number;
+  requestCount: number;
+}
+
 interface HorizontalBarChartProps {
   data: ChartData[];
   total: number;
