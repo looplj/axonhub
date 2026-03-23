@@ -70,9 +70,10 @@ cd cmd/axoncli && go test ./...  # Run CLI tests
 
 1. USE `github.com/samber/lo` package to handle collection, slice, map, ptr, etc.
 2. Use `lo.ToPtr` to get a pointer to a constant value instead of implementing helper functions like `stringPtr`.
-3. Follow dependency injection patterns using FX framework.
-4. Use structured logging with zap.
-5. Implement proper context propagation.
+3. Apply the same rule in tests: do not add `strPtr`/`testStrPtr`/`boolPtr`-style helpers when `lo.ToPtr` is sufficient.
+4. Follow dependency injection patterns using FX framework.
+5. Use structured logging with zap.
+6. Implement proper context propagation.
 
 ## Ent Rules
 

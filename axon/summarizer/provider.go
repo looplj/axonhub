@@ -73,8 +73,9 @@ func buildSummarizationPrompt(messages []agent.Message) string {
 
 	for i, msg := range messages {
 		fmt.Fprintf(&b, "%d. role=%s", i+1, msg.Role)
-		if msg.ToolUse != nil {
-			fmt.Fprintf(&b, " tool_use=%s(%s)", msg.ToolUse.Name, msg.ToolUse.Input)
+
+		if msg.ToolCall != nil {
+			fmt.Fprintf(&b, " tool_use=%s(%s)", msg.ToolCall.Name, msg.ToolCall.Input)
 		}
 		if msg.IsError != nil && *msg.IsError {
 			fmt.Fprintf(&b, " is_error=true")

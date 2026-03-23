@@ -70,8 +70,8 @@ func renderArchiveMessage(now time.Time, msg agent.Message) string {
 	timeStr := now.Format("15:04:05")
 
 	switch {
-	case msg.ToolUse != nil:
-		return fmt.Sprintf("[%s] tool:%s(id:%s): %s\n", timeStr, msg.ToolUse.Name, msg.ToolUse.ID, strings.TrimSpace(msg.ToolUse.Input))
+	case msg.ToolCall != nil:
+		return fmt.Sprintf("[%s] tool:%s(id:%s): %s\n", timeStr, msg.ToolCall.Name, msg.ToolCall.ID, strings.TrimSpace(msg.ToolCall.Input))
 
 	case msg.ToolUseID != nil:
 		prefix := "tool_result"

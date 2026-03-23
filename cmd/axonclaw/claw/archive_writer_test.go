@@ -46,7 +46,7 @@ func TestAppendArchiveMessage_AppendsToDailyThreadFile(t *testing.T) {
 func TestRenderArchiveMessage_ToolUse(t *testing.T) {
 	msg := agent.Message{
 		Role: agent.RoleAssistant,
-		ToolUse: &agent.ToolUse{
+		ToolCall: &agent.ToolCall{
 			ID:    "tool_123",
 			Name:  "read_file",
 			Input: `{"path": "/src/main.go"}`,

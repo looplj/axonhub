@@ -6,6 +6,7 @@ import (
 )
 
 type AgentEvent struct {
+	RunID     string
 	Type      AgentEventType
 	Message   *Message
 	ToolName  string
@@ -18,6 +19,7 @@ type AgentEvent struct {
 }
 
 type agentEventJSON struct {
+	RunID     string         `json:"run_id,omitempty"`
 	Type      AgentEventType `json:"type"`
 	Message   *Message       `json:"message,omitempty"`
 	ToolName  string         `json:"tool_name,omitempty"`
@@ -35,6 +37,7 @@ func (e AgentEvent) MarshalJSON() ([]byte, error) {
 		errMsg = e.Error.Error()
 	}
 	return json.Marshal(agentEventJSON{
+		RunID:     e.RunID,
 		Type:      e.Type,
 		Message:   e.Message,
 		ToolName:  e.ToolName,
@@ -52,6 +55,8 @@ func (e *AgentEvent) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &tmp); err != nil {
 		return err
 	}
+
+	e.RunID = tmp.RunID
 	e.Type = tmp.Type
 	e.Message = tmp.Message
 	e.ToolName = tmp.ToolName
@@ -89,4 +94,6 @@ const (
 	EventToolCallDelta    AgentEventType = "tool_call_delta"
 	EventToolCallComplete AgentEventType = "tool_call_complete"
 	EventUsage            AgentEventType = "usage"
+	EventLoopDetected     AgentEventType = "loop_detected"
+	EventLoopRecovery     AgentEventType = "loop_recovery"
 )

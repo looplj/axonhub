@@ -159,14 +159,16 @@ type sliceFileInfo struct {
 
 func (fi *sliceFileInfo) Name() string       { return fi.name }
 func (fi *sliceFileInfo) Size() int64        { return fi.size }
-func (fi *sliceFileInfo) Mode() fs.FileMode  { return 0644 }
+func (fi *sliceFileInfo) Mode() fs.FileMode  { return 0o644 }
 func (fi *sliceFileInfo) ModTime() time.Time { return time.Time{} }
 func (fi *sliceFileInfo) IsDir() bool        { return fi.isDir }
 func (fi *sliceFileInfo) Sys() interface{}   { return nil }
 
-var _ fs.FS = SliceFS{}
-var _ fs.StatFS = SliceFS{}
-var _ fs.ReadDirFS = SliceFS{}
+var (
+	_ fs.FS        = SliceFS{}
+	_ fs.StatFS    = SliceFS{}
+	_ fs.ReadDirFS = SliceFS{}
+)
 
 func NewSliceFS(files map[string]string) SliceFS {
 	var entries []FileEntry
@@ -284,7 +286,7 @@ func TestSearcher_Search(t *testing.T) {
 			},
 			opts: Options{
 				Pattern:    "func",
-				IgnoreCase: boolPtr(true),
+				IgnoreCase: new(true),
 			},
 			wantResult: "main.go\n",
 		},
@@ -357,7 +359,7 @@ func TestSearcher_Search(t *testing.T) {
 			opts: Options{
 				Pattern:    "func main",
 				OutputMode: "content",
-				Context:    intPtr(1),
+				Context:    new(1),
 			},
 			wantResult: "main.go:3-line3\nmain.go:4:func main() {\nmain.go:5-line5\n",
 		},
@@ -369,7 +371,7 @@ func TestSearcher_Search(t *testing.T) {
 			opts: Options{
 				Pattern:    "func main",
 				OutputMode: "content",
-				Before:     intPtr(2),
+				Before:     new(2),
 			},
 			wantResult: "main.go:1-line1\nmain.go:2-line2\nmain.go:3:func main() {\n",
 		},
@@ -381,7 +383,7 @@ func TestSearcher_Search(t *testing.T) {
 			opts: Options{
 				Pattern:    "func main",
 				OutputMode: "content",
-				After:      intPtr(2),
+				After:      new(2),
 			},
 			wantResult: "main.go:2:func main() {\nmain.go:3-line3\nmain.go:4-line4\n",
 		},
@@ -393,7 +395,7 @@ func TestSearcher_Search(t *testing.T) {
 			opts: Options{
 				Pattern:    "func main",
 				OutputMode: "content",
-				LineNumber: boolPtr(false),
+				LineNumber: new(false),
 			},
 			wantResult: "main.go:func main() {}\n",
 		},
@@ -1062,7 +1064,7 @@ func TestFormatContentMatches(t *testing.T) {
 			path:      "test.go",
 			lines:     []string{"before", "match", "after"},
 			matchIdxs: []int{1},
-			opts:      Options{Context: intPtr(1)},
+			opts:      Options{Context: new(1)},
 			want:      []string{"test.go:1-before", "test.go:2:match", "test.go:3-after"},
 		},
 		{
@@ -1070,7 +1072,7 @@ func TestFormatContentMatches(t *testing.T) {
 			path:      "test.go",
 			lines:     []string{"match1", "line2", "line3", "match2"},
 			matchIdxs: []int{0, 3},
-			opts:      Options{Context: intPtr(0)},
+			opts:      Options{Context: new(0)},
 			want:      []string{"test.go:1:match1", "test.go:4:match2"},
 		},
 		{
@@ -1078,7 +1080,7 @@ func TestFormatContentMatches(t *testing.T) {
 			path:      "test.go",
 			lines:     []string{"match"},
 			matchIdxs: []int{0},
-			opts:      Options{LineNumber: boolPtr(false)},
+			opts:      Options{LineNumber: new(false)},
 			want:      []string{"test.go:match"},
 		},
 	}
@@ -1112,7 +1114,7 @@ func TestCompilePattern(t *testing.T) {
 		},
 		{
 			name: "ignore case",
-			opts: Options{Pattern: "hello", IgnoreCase: boolPtr(true)},
+			opts: Options{Pattern: "hello", IgnoreCase: new(true)},
 			want: "(?i)hello",
 		},
 		{
@@ -1122,7 +1124,7 @@ func TestCompilePattern(t *testing.T) {
 		},
 		{
 			name: "ignore case and multiline",
-			opts: Options{Pattern: "hello", IgnoreCase: boolPtr(true), Multiline: true},
+			opts: Options{Pattern: "hello", IgnoreCase: new(true), Multiline: true},
 			want: "(?is)hello",
 		},
 		{
@@ -1300,10 +1302,10 @@ func TestSearcher_WithOSFS(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create test files
-	err := os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0644)
+	err := os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644)
 	require.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(tmpDir, "utils.go"), []byte("package main\n\nfunc utils() {}\n"), 0644)
+	err = os.WriteFile(filepath.Join(tmpDir, "utils.go"), []byte("package main\n\nfunc utils() {}\n"), 0o644)
 	require.NoError(t, err)
 
 	// Use os.DirFS for the test
@@ -1321,7 +1323,7 @@ func TestSearcher_WithOSFS(t *testing.T) {
 func TestNewSearcher(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := os.WriteFile(filepath.Join(tmpDir, "test.go"), []byte("package main\n\nfunc test() {}\n"), 0644)
+	err := os.WriteFile(filepath.Join(tmpDir, "test.go"), []byte("package main\n\nfunc test() {}\n"), 0o644)
 	require.NoError(t, err)
 
 	searcher := NewSearcher(tmpDir)
@@ -1492,7 +1494,7 @@ func TestSearcher_MultipleMatchesWithContext(t *testing.T) {
 	result, err := searcher.Search(context.Background(), Options{
 		Pattern:    "match",
 		OutputMode: "content",
-		Context:    intPtr(1),
+		Context:    new(1),
 	})
 	require.NoError(t, err)
 	// Verify all matches are found
@@ -1688,13 +1690,4 @@ func TestSearcher_OutputModes(t *testing.T) {
 			assert.Contains(t, result.Text, tt.want)
 		})
 	}
-}
-
-// Helper functions
-func boolPtr(b bool) *bool {
-	return &b
-}
-
-func intPtr(i int) *int {
-	return &i
 }

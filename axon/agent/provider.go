@@ -13,8 +13,9 @@ type StreamEvent struct {
 	Text string
 
 	// For tool_call/tool_call_delta
-	// ToolUse contains tool call info (ID, Name for delta; full for complete).
-	ToolUse *ToolUse
+	// ToolCall contains tool call info (ID, Name for delta; full for complete).
+	ToolCall *ToolCall
+
 	// For thinking/thinking_delta
 	// Thinking contains thinking content (for thinking_complete).
 	Thinking *Thinking // Thinking content (for thinking_complete)

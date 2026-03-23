@@ -18,7 +18,7 @@ func TestCloneMessages_DeepCopiesContent(t *testing.T) {
 		},
 		{
 			Role:      RoleAssistant,
-			ToolUse:   &ToolUse{ID: "tu-1", Name: "search", Input: `{"q":"test"}`},
+			ToolCall:  &ToolCall{ID: "tu-1", Name: "search", Input: `{"q":"test"}`},
 			ToolUseID: &toolID,
 			IsError:   &isErr,
 		},
@@ -29,13 +29,13 @@ func TestCloneMessages_DeepCopiesContent(t *testing.T) {
 
 	// Mutate originals
 	*msgs[0].Content.Text = "mutated"
-	msgs[1].ToolUse.Name = "mutated"
+	msgs[1].ToolCall.Name = "mutated"
 	*msgs[1].ToolUseID = "mutated"
 	*msgs[1].IsError = false
 
 	// Cloned values should be unaffected
 	assert.Equal(t, "original", *cloned[0].Content.Text)
-	assert.Equal(t, "search", cloned[1].ToolUse.Name)
+	assert.Equal(t, "search", cloned[1].ToolCall.Name)
 	assert.Equal(t, "tool-1", *cloned[1].ToolUseID)
 	assert.Equal(t, true, *cloned[1].IsError)
 }

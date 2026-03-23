@@ -8,8 +8,8 @@ type Event struct {
 	Topic string
 	// Metadata carries contextual information for the event.
 	Metadata Metadata
-	// Payload is the raw event data.
-	Payload []byte
+	// Payload is the event data.
+	Payload any
 }
 
 // Metadata carries contextual information for events.

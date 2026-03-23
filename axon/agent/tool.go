@@ -13,14 +13,14 @@ import (
 )
 
 type toolCallBuilder struct {
-	id        string
-	name      string
-	jsonParts []string
+	Id         string
+	Name       string
+	InputDelta []string
 }
 
 func (b *toolCallBuilder) buildJSON() string {
 	var sb strings.Builder
-	for _, part := range b.jsonParts {
+	for _, part := range b.InputDelta {
 		sb.WriteString(part)
 	}
 	return sb.String()

@@ -43,9 +43,9 @@ func cloneMessage(in Message) Message {
 		out.IsError = &b
 	}
 
-	if in.ToolUse != nil {
-		tu := *in.ToolUse
-		out.ToolUse = &tu
+	if in.ToolCall != nil {
+		tu := *in.ToolCall
+		out.ToolCall = &tu
 	}
 
 	return out

@@ -247,8 +247,9 @@ func adjustCompactionCut(messages []Message, cut int) int {
 		if msg.RoundIndex != 0 {
 			overflowRoundIndexes[msg.RoundIndex] = struct{}{}
 		}
-		if msg.ToolUse != nil && msg.ToolUse.ID != "" {
-			overflowToolUseIDs[msg.ToolUse.ID] = struct{}{}
+
+		if msg.ToolCall != nil && msg.ToolCall.ID != "" {
+			overflowToolUseIDs[msg.ToolCall.ID] = struct{}{}
 		}
 	}
 
@@ -257,8 +258,8 @@ func adjustCompactionCut(messages []Message, cut int) int {
 
 		if msg.RoundIndex != 0 {
 			if _, ok := overflowRoundIndexes[msg.RoundIndex]; ok {
-				if msg.ToolUse != nil && msg.ToolUse.ID != "" {
-					overflowToolUseIDs[msg.ToolUse.ID] = struct{}{}
+				if msg.ToolCall != nil && msg.ToolCall.ID != "" {
+					overflowToolUseIDs[msg.ToolCall.ID] = struct{}{}
 				}
 				cut++
 				continue

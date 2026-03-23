@@ -25,13 +25,22 @@ func Chain(middlewares ...Middleware) Middleware {
 	}
 }
 
-// TypedHandler creates a Handler that automatically deserializes the event
-// payload into the specified type T before invoking fn.
+// TypedHandler creates a Handler that extracts the event payload via type
+// assertion into the specified type T before invoking fn.
+// It also supports []byte payloads by falling back to JSON unmarshal.
 func TypedHandler[T any](fn func(ctx context.Context, event Event, payload T) error) Handler {
 	return func(ctx context.Context, event Event) error {
-		var v T
-		if err := json.Unmarshal(event.Payload, &v); err != nil {
-			return fmt.Errorf("bus: failed to unmarshal payload: %w", err)
+		v, ok := event.Payload.(T)
+		if !ok {
+			// Fall back to JSON unmarshal for []byte payloads.
+			raw, isBytes := event.Payload.([]byte)
+			if !isBytes {
+				return fmt.Errorf("bus: unexpected payload type %T, want %T", event.Payload, v)
+			}
+
+			if err := json.Unmarshal(raw, &v); err != nil {
+				return fmt.Errorf("bus: failed to unmarshal payload: %w", err)
+			}
 		}
 		return fn(ctx, event, v)
 	}

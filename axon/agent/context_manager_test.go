@@ -112,8 +112,8 @@ func TestAdjustCompactionCut_RespectsToolUseAndToolResultGrouping(t *testing.T) 
 	toolID := "tool-1"
 	messages := []Message{
 		newTextMessage(RoleUser, "u1"),
-		{Role: RoleAssistant, ToolUse: &ToolUse{ID: toolID, Name: "search", Input: "{}"}},
-		{Role: RoleTool, ToolUseID: &toolID, Content: &Content{Text: strPtr("tool-result")}},
+		{Role: RoleAssistant, ToolCall: &ToolCall{ID: toolID, Name: "search", Input: "{}"}},
+		{Role: RoleTool, ToolUseID: &toolID, Content: &Content{Text: new("tool-result")}},
 		newTextMessage(RoleAssistant, "a2"),
 	}
 
@@ -275,8 +275,4 @@ func newTextMessage(role Role, text string) Message {
 		Role:    role,
 		Content: &Content{Text: &text},
 	}
-}
-
-func strPtr(s string) *string {
-	return &s
 }

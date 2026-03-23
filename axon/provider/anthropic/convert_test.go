@@ -129,7 +129,7 @@ func TestConvertMessages(t *testing.T) {
 		messages := []agent.Message{
 			{
 				Role: agent.RoleAssistant,
-				ToolUse: &agent.ToolUse{
+				ToolCall: &agent.ToolCall{
 					ID:    "tool_123",
 					Name:  "get_weather",
 					Input: `{"location": "Tokyo"}`,
@@ -308,7 +308,7 @@ func TestAssistantToBlocks(t *testing.T) {
 
 	t.Run("tool use only", func(t *testing.T) {
 		msg := agent.Message{
-			ToolUse: &agent.ToolUse{
+			ToolCall: &agent.ToolCall{
 				ID:    "tool_123",
 				Name:  "get_weather",
 				Input: `{"location": "Tokyo"}`,
@@ -321,7 +321,7 @@ func TestAssistantToBlocks(t *testing.T) {
 
 	t.Run("tool use with empty input", func(t *testing.T) {
 		msg := agent.Message{
-			ToolUse: &agent.ToolUse{
+			ToolCall: &agent.ToolCall{
 				ID:    "tool_123",
 				Name:  "empty_tool",
 				Input: "",
@@ -334,7 +334,7 @@ func TestAssistantToBlocks(t *testing.T) {
 
 	t.Run("tool use with invalid JSON input", func(t *testing.T) {
 		msg := agent.Message{
-			ToolUse: &agent.ToolUse{
+			ToolCall: &agent.ToolCall{
 				ID:    "tool_123",
 				Name:  "invalid_tool",
 				Input: `not valid json`,
@@ -398,7 +398,7 @@ func TestAssistantToBlocks(t *testing.T) {
 	t.Run("combined tool use and content", func(t *testing.T) {
 		text := "Let me help you."
 		msg := agent.Message{
-			ToolUse: &agent.ToolUse{
+			ToolCall: &agent.ToolCall{
 				ID:    "tool_123",
 				Name:  "get_weather",
 				Input: `{"location": "Tokyo"}`,
@@ -412,7 +412,7 @@ func TestAssistantToBlocks(t *testing.T) {
 
 	t.Run("combined tool use and parts", func(t *testing.T) {
 		msg := agent.Message{
-			ToolUse: &agent.ToolUse{
+			ToolCall: &agent.ToolCall{
 				ID:    "tool_123",
 				Name:  "get_weather",
 				Input: `{"location": "Tokyo"}`,

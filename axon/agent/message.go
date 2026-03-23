@@ -27,15 +27,15 @@ type Message struct {
 
 	// For tool use message
 	// One tool use per message, it is helpful to handle parallel tool use.
-	ToolUse *ToolUse `json:"tool_use,omitempty"`
+	ToolCall *ToolCall `json:"tool_call,omitempty"`
 
 	// RoundIndex groups messages from the same LLM call round.
 	// Messages with the same RoundIndex should be aggregated into a single API message.
 	RoundIndex int `json:"round_index"`
 }
 
-// ToolUse represents an AI tool invocation.
-type ToolUse struct {
+// ToolCall represents an AI tool invocation.
+type ToolCall struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Input string `json:"arguments"` // JSON arguments (valid JSON only when complete)

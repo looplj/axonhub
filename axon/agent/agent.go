@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/looplj/axonhub/axon/bus"
 	axoncontext "github.com/looplj/axonhub/axon/context"
 	clawcontext "github.com/looplj/axonhub/axon/context"
@@ -38,6 +40,9 @@ type Config struct {
 	MaxIterations int
 	// SystemPrompts is an array of system prompts that will be joined together.
 	SystemPrompts []string
+	// LoopDetector configures behavioral loop detection.
+	// When nil, default settings are used (enabled, threshold=5).
+	LoopDetector *LoopDetectorConfig
 }
 
 // Result holds the outcome of an agent run.
@@ -68,6 +73,8 @@ type Agent struct {
 	// (assistant text/thinking, tool_use, and tool result), so downstream
 	// adapters can safely aggregate and compaction can keep them together.
 	roundIndex atomic.Int64
+
+	loopDetector *loopDetector
 
 	steeringQueue []Message
 	followUpQueue []Message
@@ -132,15 +139,25 @@ func New(config Config, provider Provider, opts ...Option) *Agent {
 		config.MaxIterations = defaultMaxIterations
 	}
 
+	ldCfg := DefaultLoopDetectorConfig()
+	if config.LoopDetector != nil {
+		ldCfg = *config.LoopDetector
+	}
+
 	a := &Agent{
-		provider: provider,
-		tools:    NewToolRegistry(),
-		logger:   slog.Default(),
+		provider:     provider,
+		tools:        NewToolRegistry(),
+		logger:       slog.Default(),
+		loopDetector: newLoopDetector(ldCfg),
 	}
 	a.config.Store(&config)
 
 	for _, opt := range opts {
 		opt(a)
+	}
+
+	if a.bus == nil {
+		a.bus = bus.NewInProcess()
 	}
 
 	if a.contextManager == nil {
@@ -205,25 +222,41 @@ func (a *Agent) RegisteredTools() []Tool {
 	return result
 }
 
-// emit publishes an event to the bus (if configured).
+// emit publishes an event to the bus.
 func (a *Agent) emit(ctx context.Context, event AgentEvent) {
-	if a.bus == nil {
-		return
-	}
-
-	payload, err := json.Marshal(event)
-	if err != nil {
-		a.logger.Error("agent: failed to marshal event", "error", err)
-		return
+	if event.RunID == "" {
+		event.RunID = a.runIDFromContext(ctx)
 	}
 
 	if err := a.bus.Publish(ctx, bus.Event{
 		Topic:   TopicAgentEvent,
 		Type:    string(event.Type),
-		Payload: payload,
+		Payload: event,
 	}); err != nil {
 		a.logger.Error("agent: failed to publish event", "error", err)
 	}
+}
+
+type runIDContextKey struct{}
+
+func withRunID(ctx context.Context, runID string) context.Context {
+	return context.WithValue(ctx, runIDContextKey{}, runID)
+}
+
+func (a *Agent) runIDFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+
+	runID, _ := ctx.Value(runIDContextKey{}).(string)
+
+	return runID
+}
+
+func (a *Agent) newRunContext(ctx context.Context) (context.Context, string) {
+	runID := uuid.NewString()
+
+	return withRunID(ctx, runID), runID
 }
 
 // addMessage appends a message to the internal history and emits
@@ -309,11 +342,6 @@ func (a *Agent) dequeueFollowUp() []Message {
 // bus for agent.request events. It returns immediately. Call Stop to
 // unsubscribe and terminate the loop.
 func (a *Agent) Start(ctx context.Context) {
-	if a.bus == nil {
-		a.logger.Warn("agent: bus is nil, Start is a no-op; use Process directly")
-		return
-	}
-
 	runCtx, cancel := context.WithCancel(ctx)
 	a.cancelRun = cancel
 	a.running.Store(true)
@@ -338,7 +366,9 @@ func (a *Agent) Start(ctx context.Context) {
 				a.logger.Info("agent stopped")
 				return
 			case req := <-requests:
-				_, err := a.Process(runCtx, req.Content)
+				reqCtx, _ := a.newRunContext(runCtx)
+
+				_, err := a.Process(reqCtx, req.Content)
 				if err != nil {
 					a.logger.Error("agent: process error", "error", err)
 					continue
@@ -354,7 +384,8 @@ func (a *Agent) Stop() {
 	if a.cancelRun != nil {
 		a.cancelRun()
 	}
-	if a.bus != nil && a.subID != "" {
+
+	if a.subID != "" {
 		a.bus.Unsubscribe(a.subID)
 		a.subID = ""
 	}
@@ -366,6 +397,10 @@ func (a *Agent) Stop() {
 // assistant's final text response. It appends the user message to internal
 // history, calls the LLM, executes tools in a loop, and returns the result.
 func (a *Agent) Process(ctx context.Context, content Content) (*Result, error) {
+	if a.runIDFromContext(ctx) == "" {
+		ctx, _ = a.newRunContext(ctx)
+	}
+
 	a.emit(ctx, AgentEvent{Type: EventAgentStart})
 	defer a.emit(ctx, AgentEvent{Type: EventAgentEnd})
 
@@ -393,34 +428,48 @@ func (a *Agent) Process(ctx context.Context, content Content) (*Result, error) {
 // The channel is closed when processing completes or an error occurs.
 func (a *Agent) ProcessStream(ctx context.Context, content Content) <-chan AgentEvent {
 	events := make(chan AgentEvent, 256)
+	runCtx, runID := a.newRunContext(ctx)
 
-	go func() {
-		defer close(events)
-
-		emit := func(ev AgentEvent) {
-			select {
-			case events <- ev:
-			case <-ctx.Done():
-			}
-			a.emit(ctx, ev)
+	subID := a.bus.Subscribe(TopicAgentEvent, func(_ context.Context, ev bus.Event) error {
+		agentEv, ok := ev.Payload.(AgentEvent)
+		if !ok {
+			return nil
 		}
 
-		emit(AgentEvent{Type: EventAgentStart})
-		defer emit(AgentEvent{Type: EventAgentEnd})
+		if agentEv.RunID != runID {
+			return nil
+		}
+
+		select {
+		case events <- agentEv:
+		case <-runCtx.Done():
+		}
+
+		return nil
+	})
+
+	go func() {
+		defer func() {
+			a.bus.Unsubscribe(subID)
+			close(events)
+		}()
+
+		a.emit(runCtx, AgentEvent{Type: EventAgentStart})
+		defer a.emit(runCtx, AgentEvent{Type: EventAgentEnd})
 
 		cfg := a.Config()
 
 		roundIndex := a.nextRoundIndex()
 		userMsg := Message{Role: RoleUser, Content: &content, RoundIndex: roundIndex}
-		a.addMessage(ctx, userMsg)
-		emit(AgentEvent{
+		a.addMessage(runCtx, userMsg)
+		a.emit(runCtx, AgentEvent{
 			Type:    EventMessageStart,
 			Message: &userMsg,
 		})
 
-		err := a.runLoopStream(ctx, cfg, events, roundIndex)
+		err := a.runLoopStream(runCtx, cfg, roundIndex)
 		if err != nil {
-			emit(AgentEvent{Type: EventError, Error: err})
+			a.emit(runCtx, AgentEvent{Type: EventError, Error: err})
 		}
 	}()
 
@@ -429,19 +478,10 @@ func (a *Agent) ProcessStream(ctx context.Context, content Content) <-chan Agent
 
 // PublishRequest publishes an agent request onto the bus for asynchronous processing.
 func (a *Agent) PublishRequest(ctx context.Context, content Content) error {
-	if a.bus == nil {
-		return fmt.Errorf("agent: bus is required for PublishRequest; use WithBus option")
-	}
-
-	payload, err := json.Marshal(AgentRequest{Content: content})
-	if err != nil {
-		return fmt.Errorf("agent: failed to marshal request: %w", err)
-	}
-
 	return a.bus.Publish(ctx, bus.Event{
 		Topic:   TopicAgentRequest,
 		Type:    "request",
-		Payload: payload,
+		Payload: AgentRequest{Content: content},
 	})
 }
 
@@ -507,6 +547,9 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 	a.emit(ctx, AgentEvent{Type: EventTraceStart})
 	defer a.emit(ctx, AgentEvent{Type: EventTraceEnd})
 
+	// Reset loop detector state for this request.
+	a.loopDetector.reset()
+
 	// Check for steering messages that arrived before the loop started.
 	pendingSteering := a.dequeueSteering()
 
@@ -561,7 +604,7 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 			// Separate tool-use messages from non-tool messages.
 			var toolMsgs []Message
 			for _, msg := range resp.Messages {
-				if msg.ToolUse == nil {
+				if msg.ToolCall == nil {
 					a.addMessage(ctx, msg)
 
 					if msg.Role == RoleAssistant && msg.Content != nil {
@@ -576,10 +619,17 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 
 			hasMoreToolCalls = len(toolMsgs) > 0
 
+			// Extract tool calls from messages for unified processing.
+			toolCalls := make([]ToolCall, len(toolMsgs))
+			for i, msg := range toolMsgs {
+				toolCalls[i] = *msg.ToolCall
+			}
+
 			// Execute tool calls one by one, checking for steering after each.
 			steered := false
-			for i, msg := range toolMsgs {
-				toolResult := a.executeTool(ctx, *msg.ToolUse)
+
+			for i, tc := range toolCalls {
+				toolResult := a.executeTool(ctx, tc)
 
 				var toolContent Content
 				var isError bool
@@ -594,20 +644,26 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 				toolMsg := Message{
 					Role:       RoleTool,
 					Content:    &toolContent,
-					ToolUseID:  &msg.ToolUse.ID,
+					ToolUseID:  &tc.ID,
 					IsError:    &isError,
 					RoundIndex: roundIndex,
 				}
-				a.addMessage(ctx, msg, toolMsg)
+				a.addMessage(ctx, toolMsgs[i], toolMsg)
+
+				// Check for loop detection after each tool execution.
+				steered, err = a.handleLoopDetection(ctx, tc, toolCalls[i+1:], roundIndex)
+				if err != nil {
+					return nil, err
+				}
+
+				if steered {
+					break
+				}
 
 				// Check for steering after each tool execution.
 				if steering := a.dequeueSteering(); len(steering) > 0 {
-					for _, skipped := range toolMsgs[i+1:] {
-						skippedIndex := roundIndex
-						if skipped.RoundIndex != 0 {
-							skippedIndex = skipped.RoundIndex
-						}
-						a.skipToolCall(ctx, *skipped.ToolUse, skippedIndex)
+					for _, skipped := range toolCalls[i+1:] {
+						a.skipToolCall(ctx, skipped, roundIndex)
 					}
 					pendingSteering = steering
 					steered = true
@@ -644,7 +700,7 @@ func (a *Agent) runLoop(ctx context.Context, cfg Config, initialRoundIndex int) 
 
 // executeTool runs a single tool call and returns the result.
 // If the tool panics or is not found, Error is set in the result.
-func (a *Agent) executeTool(ctx context.Context, tc ToolUse) (result ToolResult) {
+func (a *Agent) executeTool(ctx context.Context, tc ToolCall) (result ToolResult) {
 	defer func() {
 		if r := recover(); r != nil {
 			result.Error = fmt.Errorf("panic in tool %q: %v", tc.Name, r)
@@ -724,9 +780,27 @@ func (a *Agent) executeTool(ctx context.Context, tc ToolUse) (result ToolResult)
 	return result
 }
 
+// buildLoopRecoveryMessage creates a user message that nudges the LLM to
+// break out of a detected loop.
+func (a *Agent) buildLoopRecoveryMessage(detection LoopDetection, roundIndex int) Message {
+	text := fmt.Sprintf(
+		"System: Potential loop detected. Details: %s. "+
+			"Please take a step back and confirm you are making forward progress. "+
+			"If not, analyze your previous actions and try a different approach. "+
+			"Avoid repeating the same tool calls or responses without meaningful new results.",
+		detection.Detail,
+	)
+
+	return Message{
+		Role:       RoleUser,
+		Content:    &Content{Text: &text},
+		RoundIndex: roundIndex,
+	}
+}
+
 // skipToolCall emits a skipped-tool message pair (tool_use + tool result)
 // so the conversation history stays consistent for the LLM.
-func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse, roundIndex int) {
+func (a *Agent) skipToolCall(ctx context.Context, tc ToolCall, roundIndex int) {
 	a.emit(ctx, AgentEvent{
 		Type:     EventToolSkipped,
 		ToolName: tc.Name,
@@ -744,28 +818,54 @@ func (a *Agent) skipToolCall(ctx context.Context, tc ToolUse, roundIndex int) {
 	// Add original tool-use message + skipped result so history is valid.
 	a.addMessage(ctx, Message{
 		Role:       RoleAssistant,
-		ToolUse:    &tc,
+		ToolCall:   &tc,
 		RoundIndex: roundIndex,
 	}, toolMsg)
 }
 
-// runLoopStream is the streaming version of runLoop.
-// It processes streaming events from the LLM and emits them to the events channel.
-//
-//nolint:maintidx // Checked.
-func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan AgentEvent, initialRoundIndex int) error {
-	toolDefs := a.tools.Definitions()
-
-	emit := func(ev AgentEvent) {
-		select {
-		case events <- ev:
-		case <-ctx.Done():
-		}
-		a.emit(ctx, ev)
+// handleLoopDetection checks for loop detection after a tool execution.
+// It returns steered=true if a recovery was performed and remaining calls should be skipped,
+// or an error if recovery is exhausted.
+func (a *Agent) handleLoopDetection(ctx context.Context, tc ToolCall, remainingToolCalls []ToolCall, roundIndex int) (steered bool, err error) {
+	detection := a.loopDetector.checkToolCall(tc.Name, tc.Input)
+	if !detection.Detected {
+		return false, nil
 	}
 
-	emit(AgentEvent{Type: EventTraceStart})
-	defer emit(AgentEvent{Type: EventTraceEnd})
+	a.emit(ctx, AgentEvent{Type: EventLoopDetected, Delta: detection.Detail})
+	a.logger.Warn("agent: loop detected",
+		"type", detection.Type,
+		"detail", detection.Detail,
+		"count", detection.Count,
+	)
+
+	if a.loopDetector.canRecover() {
+		a.emit(ctx, AgentEvent{Type: EventLoopRecovery, Delta: detection.Detail})
+		recoveryMsg := a.buildLoopRecoveryMessage(detection, roundIndex)
+		a.addMessage(ctx, recoveryMsg)
+
+		for _, skipped := range remainingToolCalls {
+			a.skipToolCall(ctx, skipped, roundIndex)
+		}
+
+		return true, nil
+	}
+
+	return false, fmt.Errorf("agent: loop detected and recovery exhausted: %s", detection.Detail)
+}
+
+// runLoopStream is the streaming version of runLoop.
+// It processes streaming events from the LLM and emits them via the bus.
+//
+//nolint:maintidx // Checked.
+func (a *Agent) runLoopStream(ctx context.Context, cfg Config, initialRoundIndex int) error {
+	toolDefs := a.tools.Definitions()
+
+	a.emit(ctx, AgentEvent{Type: EventTraceStart})
+	defer a.emit(ctx, AgentEvent{Type: EventTraceEnd})
+
+	// Reset loop detector state for this request.
+	a.loopDetector.reset()
 
 	pendingSteering := a.dequeueSteering()
 	iterations := 0
@@ -782,7 +882,7 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 
 			if len(pendingSteering) > 0 {
 				a.addMessage(ctx, pendingSteering...)
-				emit(AgentEvent{Type: EventSteeringApplied})
+				a.emit(ctx, AgentEvent{Type: EventSteeringApplied})
 				pendingSteering = nil
 			}
 
@@ -801,12 +901,15 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 			roundIndex := nextRound
 			nextRound = a.nextRoundIndex()
 
-			var textBuilder strings.Builder
-			var thinkingBuilder strings.Builder
-			var thinkingSignature string
-			var toolCalls []ToolUse
-			var toolCallBuilders map[string]*toolCallBuilder
-			var usage *Usage
+			var (
+				textBuilder       strings.Builder
+				thinkingBuilder   strings.Builder
+				thinkingSignature string
+				toolCalls         []ToolCall
+				toolCallBuilders  map[string]*toolCallBuilder
+				toolCallOrder     []string
+				usage             *Usage
+			)
 
 			for ev := range stream {
 				if ctx.Err() != nil {
@@ -816,58 +919,61 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 				switch ev.Type {
 				case StreamEventTextDelta:
 					textBuilder.WriteString(ev.Text)
-					emit(AgentEvent{Type: EventTextDelta, Delta: ev.Text})
+					a.emit(ctx, AgentEvent{Type: EventTextDelta, Delta: ev.Text})
 
 				case StreamEventTextComplete:
-					emit(AgentEvent{Type: EventTextComplete, Delta: ev.Text})
+					a.emit(ctx, AgentEvent{Type: EventTextComplete, Delta: ev.Text})
 
 				case StreamEventThinkingDelta:
 					if ev.Thinking != nil {
 						thinkingBuilder.WriteString(ev.Thinking.Content)
-						emit(AgentEvent{Type: EventThinkingDelta, Thinking: ev.Thinking.Content})
+						a.emit(ctx, AgentEvent{Type: EventThinkingDelta, Thinking: ev.Thinking.Content})
 					}
 
 				case StreamEventThinkingComplete:
 					if ev.Thinking != nil {
-						emit(AgentEvent{Type: EventThinkingComplete, Thinking: ev.Thinking.Content})
+						a.emit(ctx, AgentEvent{Type: EventThinkingComplete, Thinking: ev.Thinking.Content})
 						thinkingSignature = ev.Thinking.Signature
 					}
 
 				case StreamEventToolCallDelta:
-					if ev.ToolUse == nil {
+					if ev.ToolCall == nil {
 						continue
 					}
 					if toolCallBuilders == nil {
 						toolCallBuilders = make(map[string]*toolCallBuilder)
 					}
-					builder, ok := toolCallBuilders[ev.ToolUse.ID]
+
+					builder, ok := toolCallBuilders[ev.ToolCall.ID]
 					if !ok {
 						builder = &toolCallBuilder{
-							id:   ev.ToolUse.ID,
-							name: ev.ToolUse.Name,
+							Id:   ev.ToolCall.ID,
+							Name: ev.ToolCall.Name,
 						}
-						toolCallBuilders[ev.ToolUse.ID] = builder
+						toolCallBuilders[ev.ToolCall.ID] = builder
+						toolCallOrder = append(toolCallOrder, ev.ToolCall.ID)
 					}
-					builder.jsonParts = append(builder.jsonParts, ev.Text)
-					emit(AgentEvent{
+
+					builder.InputDelta = append(builder.InputDelta, ev.Text)
+					a.emit(ctx, AgentEvent{
 						Type:      EventToolCallDelta,
-						ToolName:  ev.ToolUse.Name,
+						ToolName:  ev.ToolCall.Name,
 						ToolInput: ev.Text,
 					})
 
 				case StreamEventToolCallComplete:
-					if ev.ToolUse != nil {
-						toolCalls = append(toolCalls, *ev.ToolUse)
-						emit(AgentEvent{
+					if ev.ToolCall != nil {
+						toolCalls = append(toolCalls, *ev.ToolCall)
+						a.emit(ctx, AgentEvent{
 							Type:      EventToolCallComplete,
-							ToolName:  ev.ToolUse.Name,
-							ToolInput: ev.ToolUse.Input,
+							ToolName:  ev.ToolCall.Name,
+							ToolInput: ev.ToolCall.Input,
 						})
 					}
 
 				case StreamEventUsage:
 					usage = ev.Usage
-					emit(AgentEvent{Type: EventUsage, Usage: ev.Usage})
+					a.emit(ctx, AgentEvent{Type: EventUsage, Usage: ev.Usage})
 
 				case StreamEventError:
 					return ev.Error
@@ -877,14 +983,19 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 			}
 
 			if len(toolCalls) == 0 && toolCallBuilders != nil {
-				for _, builder := range toolCallBuilders {
-					tc := ToolUse{
-						ID:    builder.id,
-						Name:  builder.name,
+				for _, toolCallID := range toolCallOrder {
+					builder := toolCallBuilders[toolCallID]
+					if builder == nil {
+						continue
+					}
+
+					tc := ToolCall{
+						ID:    builder.Id,
+						Name:  builder.Name,
 						Input: builder.buildJSON(),
 					}
 					toolCalls = append(toolCalls, tc)
-					emit(AgentEvent{
+					a.emit(ctx, AgentEvent{
 						Type:      EventToolCallComplete,
 						ToolName:  tc.Name,
 						ToolInput: tc.Input,
@@ -924,7 +1035,7 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 
 			steered := false
 			for i, tc := range toolCalls {
-				toolResult := a.executeToolStream(ctx, tc, events)
+				toolResult := a.executeTool(ctx, tc)
 
 				var toolContent Content
 				var isError bool
@@ -943,7 +1054,16 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 					IsError:    &isError,
 					RoundIndex: roundIndex,
 				}
-				a.addMessage(ctx, Message{Role: RoleAssistant, ToolUse: &tc, RoundIndex: roundIndex}, toolMsg)
+				a.addMessage(ctx, Message{Role: RoleAssistant, ToolCall: &tc, RoundIndex: roundIndex}, toolMsg)
+
+				steered, err = a.handleLoopDetection(ctx, tc, toolCalls[i+1:], roundIndex)
+				if err != nil {
+					return err
+				}
+
+				if steered {
+					break
+				}
 
 				if steering := a.dequeueSteering(); len(steering) > 0 {
 					for _, skipped := range toolCalls[i+1:] {
@@ -979,90 +1099,7 @@ func (a *Agent) runLoopStream(ctx context.Context, cfg Config, events chan Agent
 	}
 }
 
-// executeToolStream runs a tool and emits events to the stream channel.
-func (a *Agent) executeToolStream(ctx context.Context, tc ToolUse, events chan AgentEvent) (result ToolResult) {
-	emit := func(ev AgentEvent) {
-		select {
-		case events <- ev:
-		case <-ctx.Done():
-		}
-		a.emit(ctx, ev)
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			result.Error = fmt.Errorf("panic in tool %q: %v", tc.Name, r)
-			a.logger.Error("agent: tool panic", "tool", tc.Name, "panic", r)
-		}
-	}()
-
-	emit(AgentEvent{
-		Type:      EventToolStart,
-		ToolName:  tc.Name,
-		ToolInput: tc.Input,
-	})
-
-	if err := a.tools.ValidateArguments(tc.Name, json.RawMessage(tc.Input)); err != nil {
-		result.Error = fmt.Errorf("invalid arguments for tool %q: %w", tc.Name, err)
-		emit(AgentEvent{
-			Type:     EventToolEnd,
-			ToolName: tc.Name,
-			Result:   &result,
-		})
-		return result
-	}
-
-	tool, ok := a.tools.Get(tc.Name)
-	if !ok {
-		result.Error = fmt.Errorf("tool %q not found", tc.Name)
-		emit(AgentEvent{
-			Type:     EventToolEnd,
-			ToolName: tc.Name,
-			Result:   &result,
-		})
-		return result
-	}
-
-	a.logger.Debug("agent: executing tool", "tool", tc.Name)
-
-	var executedMiddlewares []Middleware
-	for _, mw := range a.middlewares {
-		req := ToolRequest{
-			ThreadID:   clawcontext.ThreadID(ctx),
-			Workspace:  axoncontext.Workspace(ctx),
-			ToolCallID: tc.ID,
-			ToolName:   tc.Name,
-			ToolInput:  tc.Input,
-			StartedAt:  time.Now(),
-		}
-		if err := mw.BeforeTool(ctx, req); err != nil {
-			result.Error = err
-			emit(AgentEvent{
-				Type:      EventToolEnd,
-				ToolName:  tc.Name,
-				ToolInput: tc.Input,
-				Result:    &result,
-			})
-			a.runAfterMiddlewares(ctx, tc, result.Error, executedMiddlewares)
-			return result
-		}
-		executedMiddlewares = append(executedMiddlewares, mw)
-	}
-
-	result = tool.Execute(ctx, json.RawMessage(tc.Input))
-	a.runAfterMiddlewares(ctx, tc, result.Error, executedMiddlewares)
-
-	emit(AgentEvent{
-		Type:      EventToolEnd,
-		ToolName:  tc.Name,
-		ToolInput: tc.Input,
-		Result:    &result,
-	})
-
-	return result
-}
-
-func (a *Agent) runAfterMiddlewares(ctx context.Context, tc ToolUse, toolErr error, mws []Middleware) {
+func (a *Agent) runAfterMiddlewares(ctx context.Context, tc ToolCall, toolErr error, mws []Middleware) {
 	for i := len(mws) - 1; i >= 0; i-- {
 		req := ToolRequest{
 			ThreadID:   axoncontext.ThreadID(ctx),

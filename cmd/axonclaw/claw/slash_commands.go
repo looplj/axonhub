@@ -6,11 +6,10 @@ import (
 	"strings"
 
 	"github.com/Khan/genqlient/graphql"
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/api"
 	"github.com/looplj/axonhub/axon/subagent"
+	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
 	"github.com/looplj/axonhub/cmd/axonclaw/prompts"
@@ -232,6 +231,7 @@ func buildSubAgentTools(tools map[string]bool) (allowed []string, denied []strin
 	if tools == nil {
 		return nil, nil
 	}
+
 	if len(tools) == 0 {
 		return []string{}, nil
 	}
@@ -286,6 +286,7 @@ func (r *Runner) sendSlashCommandResult(ctx context.Context, text string, msgID 
 	if msgID != "" {
 		replyToID = &msgID
 	}
+
 	_, err := api.ReplyMessage(ctx, r.Client, &api.ReplyMessageInput{
 		Text:             text,
 		ReplyToMessageID: replyToID,

@@ -159,7 +159,7 @@ func (p *streamProcessor) handleContentBlockDelta(e anthropic.MessageStreamEvent
 			p.emit(agent.StreamEvent{
 				Type: agent.StreamEventToolCallDelta,
 				Text: delta.PartialJSON,
-				ToolUse: &agent.ToolUse{
+				ToolCall: &agent.ToolCall{
 					ID:   builder.id,
 					Name: builder.name,
 				},
@@ -209,7 +209,7 @@ func (p *streamProcessor) handleMessageDelta(e anthropic.MessageStreamEventUnion
 		input := builder.buildJSON()
 		p.emit(agent.StreamEvent{
 			Type: agent.StreamEventToolCallComplete,
-			ToolUse: &agent.ToolUse{
+			ToolCall: &agent.ToolCall{
 				ID:    builder.id,
 				Name:  builder.name,
 				Input: input,
