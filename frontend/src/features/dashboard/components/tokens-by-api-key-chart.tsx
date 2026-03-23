@@ -1,10 +1,13 @@
 'use client';
 
+
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTokensByAPIKey } from '../data/dashboard';
+import type { TimePeriod } from '@/components/time-period-selector';
 
 const TOKEN_COLORS = {
   input: 'var(--chart-1)',
@@ -12,9 +15,13 @@ const TOKEN_COLORS = {
   cached: 'var(--chart-3)',
 };
 
-export function TokensByAPIKeyChart() {
+interface TokensByAPIKeyChartProps {
+  timePeriod: TimePeriod;
+}
+
+export function TokensByAPIKeyChart({ timePeriod }: TokensByAPIKeyChartProps) {
   const { t } = useTranslation();
-  const { data: tokenData, isLoading, error } = useTokensByAPIKey();
+  const { data: tokenData, isLoading, isFetching, error } = useTokensByAPIKey(timePeriod);
 
   if (isLoading) {
     return (
@@ -24,34 +31,19 @@ export function TokensByAPIKeyChart() {
     );
   }
 
-  if (error) {
-    return (
-      <div className='flex h-[300px] items-center justify-center'>
-        <div className='text-sm text-red-500'>
-          {t('dashboard.charts.errorLoadingTokenData')} {error.message}
-        </div>
-      </div>
-    );
-  }
+  const hasError = error;
 
-  if (!tokenData || tokenData.length === 0) {
-    return (
-      <div className='flex h-[300px] items-center justify-center'>
-        <div className='text-muted-foreground text-sm'>{t('dashboard.charts.noTokenData')}</div>
-      </div>
-    );
-  }
+  const chartData = tokenData
+    ?.map((item) => ({
+      name: item.apiKeyName,
+      inputTokens: item.inputTokens,
+      outputTokens: item.outputTokens,
+      cachedTokens: item.cachedTokens,
+      totalTokens: item.totalTokens,
+    }))
+    .slice(0, 10) ?? [];
 
-  // Prepare data for stacked bar chart
-  const chartData = tokenData.map((item) => ({
-    name: item.apiKeyName,
-    inputTokens: item.inputTokens,
-    outputTokens: item.outputTokens,
-    cachedTokens: item.cachedTokens,
-    totalTokens: item.totalTokens,
-  }));
-
-  const totalAllKeys = tokenData.reduce((sum, item) => sum + item.totalTokens, 0);
+  const totalAllKeys = chartData.reduce((sum, item) => sum + item.totalTokens, 0);
 
   type TokenTooltipProps = TooltipProps<number, string> & {
     payload?: Array<{
@@ -97,9 +89,21 @@ export function TokensByAPIKeyChart() {
   };
 
   return (
-    <div className='space-y-6'>
-      <ResponsiveContainer width='100%' height={320}>
-        <BarChart data={chartData} isAnimationActive={false}>
+    <div className='relative space-y-6'>
+      {hasError ? (
+        <div className='flex h-[300px] items-center justify-center'>
+          <div className='text-sm text-red-500'>
+            {t('dashboard.charts.errorLoadingTokenData')} {error.message}
+          </div>
+        </div>
+      ) : chartData.length === 0 ? (
+        <div className='flex h-[300px] items-center justify-center'>
+          <div className='text-muted-foreground text-sm'>{t('dashboard.charts.noTokenData')}</div>
+        </div>
+      ) : (
+        <>
+          <ResponsiveContainer width='100%' height={320}>
+        <BarChart data={chartData}>
           <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
           <XAxis
             dataKey='name'
@@ -143,23 +147,30 @@ export function TokensByAPIKeyChart() {
         </BarChart>
       </ResponsiveContainer>
 
-      <div className='grid gap-4 sm:grid-cols-1'>
-        {chartData.map((item, index) => {
-          const percent = totalAllKeys ? (item.totalTokens / totalAllKeys) * 100 : 0;
-          return (
-            <div key={item.name} className='grid w-full grid-cols-[auto_1fr_auto] items-start gap-3'>
-              <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
-                {(index + 1).toString().padStart(2, '0')}.
-              </span>
-              <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-              <div className='text-right leading-tight'>
-                <div className='text-foreground text-sm font-medium tabular-nums'>{formatNumber(item.totalTokens)}</div>
-                <div className='text-muted-foreground text-xs tabular-nums'>{percent.toFixed(1)}%</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+          <div className='grid gap-4 sm:grid-cols-1'>
+            {chartData.map((item, index) => {
+              const percent = totalAllKeys ? (item.totalTokens / totalAllKeys) * 100 : 0;
+              return (
+                <div key={item.name} className='grid w-full grid-cols-[auto_1fr_auto] items-start gap-3'>
+                  <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
+                    {(index + 1).toString().padStart(2, '0')}.
+                  </span>
+                  <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
+                  <div className='text-right leading-tight'>
+                    <div className='text-foreground text-sm font-medium tabular-nums'>{formatNumber(item.totalTokens)}</div>
+                    <div className='text-muted-foreground text-xs tabular-nums'>{percent.toFixed(1)}%</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {isFetching && (
+        <div className='absolute inset-0 flex items-center justify-center bg-background/50'>
+          <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+        </div>
+      )}
     </div>
   );
 }

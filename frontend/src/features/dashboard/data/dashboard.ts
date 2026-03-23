@@ -177,8 +177,8 @@ const DASHBOARD_STATS_QUERY = `
 `;
 
 const REQUESTS_BY_CHANNEL_QUERY = `
-  query GetRequestsByChannel {
-    requestStatsByChannel {
+  query GetRequestsByChannel($timeWindow: String) {
+    requestStatsByChannel(timeWindow: $timeWindow) {
       channelName
       count
     }
@@ -186,8 +186,8 @@ const REQUESTS_BY_CHANNEL_QUERY = `
 `;
 
 const REQUESTS_BY_MODEL_QUERY = `
-  query GetRequestsByModel {
-    requestStatsByModel {
+  query GetRequestsByModel($timeWindow: String) {
+    requestStatsByModel(timeWindow: $timeWindow) {
       modelId
       count
     }
@@ -195,8 +195,8 @@ const REQUESTS_BY_MODEL_QUERY = `
 `;
 
 const REQUESTS_BY_API_KEY_QUERY = `
-  query GetRequestsByAPIKey {
-    requestStatsByAPIKey {
+  query GetRequestsByAPIKey($timeWindow: String) {
+    requestStatsByAPIKey(timeWindow: $timeWindow) {
       apiKeyId
       apiKeyName
       count
@@ -205,8 +205,8 @@ const REQUESTS_BY_API_KEY_QUERY = `
 `;
 
 const TOKENS_BY_API_KEY_QUERY = `
-  query GetTokensByAPIKey {
-    tokenStatsByAPIKey {
+  query GetTokensByAPIKey($timeWindow: String) {
+    tokenStatsByAPIKey(timeWindow: $timeWindow) {
       apiKeyId
       apiKeyName
       inputTokens
@@ -219,8 +219,8 @@ const TOKENS_BY_API_KEY_QUERY = `
 `;
 
 const TOKENS_BY_CHANNEL_QUERY = `
-  query GetTokensByChannel {
-    tokenStatsByChannel {
+  query GetTokensByChannel($timeWindow: String) {
+    tokenStatsByChannel(timeWindow: $timeWindow) {
       channelName
       inputTokens
       outputTokens
@@ -232,8 +232,8 @@ const TOKENS_BY_CHANNEL_QUERY = `
 `;
 
 const TOKENS_BY_MODEL_QUERY = `
-  query GetTokensByModel {
-    tokenStatsByModel {
+  query GetTokensByModel($timeWindow: String) {
+    tokenStatsByModel(timeWindow: $timeWindow) {
       modelId
       inputTokens
       outputTokens
@@ -245,8 +245,8 @@ const TOKENS_BY_MODEL_QUERY = `
 `;
 
 const COST_BY_CHANNEL_QUERY = `
-  query GetCostByChannel {
-    costStatsByChannel {
+  query GetCostByChannel($timeWindow: String) {
+    costStatsByChannel(timeWindow: $timeWindow) {
       channelName
       cost
     }
@@ -254,8 +254,8 @@ const COST_BY_CHANNEL_QUERY = `
 `;
 
 const COST_BY_MODEL_QUERY = `
-  query GetCostByModel {
-    costStatsByModel {
+  query GetCostByModel($timeWindow: String) {
+    costStatsByModel(timeWindow: $timeWindow) {
       modelId
       cost
     }
@@ -263,8 +263,8 @@ const COST_BY_MODEL_QUERY = `
 `;
 
 const COST_BY_API_KEY_QUERY = `
-  query GetCostByAPIKey {
-    costStatsByAPIKey {
+  query GetCostByAPIKey($timeWindow: String) {
+    costStatsByAPIKey(timeWindow: $timeWindow) {
       apiKeyId
       apiKeyName
       cost
@@ -377,102 +377,138 @@ export function useDashboardStats() {
   });
 }
 
-export function useRequestsByChannel() {
+export function useRequestsByChannel(timeWindow?: string) {
   return useQuery({
-    queryKey: ['requestStatsByChannel'],
+    queryKey: ['requestStatsByChannel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByChannel: RequestsByChannel[] }>(REQUESTS_BY_CHANNEL_QUERY);
+      const data = await graphqlRequest<{ requestStatsByChannel: RequestsByChannel[] }>(
+        REQUESTS_BY_CHANNEL_QUERY,
+        { timeWindow }
+      );
       return data.requestStatsByChannel.map((item) => requestsByChannelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
-export function useRequestsByModel() {
+export function useRequestsByModel(timeWindow?: string) {
   return useQuery({
-    queryKey: ['requestStatsByModel'],
+    queryKey: ['requestStatsByModel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByModel: RequestsByModel[] }>(REQUESTS_BY_MODEL_QUERY);
+      const data = await graphqlRequest<{ requestStatsByModel: RequestsByModel[] }>(
+        REQUESTS_BY_MODEL_QUERY,
+        { timeWindow }
+      );
       return data.requestStatsByModel.map((item) => requestsByModelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
-export function useRequestsByAPIKey() {
+export function useRequestsByAPIKey(timeWindow?: string) {
   return useQuery({
-    queryKey: ['requestStatsByAPIKey'],
+    queryKey: ['requestStatsByAPIKey', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByAPIKey: RequestsByAPIKey[] }>(REQUESTS_BY_API_KEY_QUERY);
+      const data = await graphqlRequest<{ requestStatsByAPIKey: RequestsByAPIKey[] }>(
+        REQUESTS_BY_API_KEY_QUERY,
+        { timeWindow }
+      );
       return data.requestStatsByAPIKey.map((item) => requestsByAPIKeySchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
-export function useTokensByAPIKey() {
+export function useTokensByAPIKey(timeWindow?: string) {
   return useQuery({
-    queryKey: ['tokenStatsByAPIKey'],
+    queryKey: ['tokenStatsByAPIKey', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ tokenStatsByAPIKey: TokensByAPIKey[] }>(TOKENS_BY_API_KEY_QUERY);
+      const data = await graphqlRequest<{ tokenStatsByAPIKey: TokensByAPIKey[] }>(
+        TOKENS_BY_API_KEY_QUERY,
+        { timeWindow }
+      );
       return data.tokenStatsByAPIKey.map((item) => tokensByAPIKeySchema.parse(item));
     },
-    refetchInterval: 60000, // Auto-refresh every 60 seconds
+    refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
-export function useTokensByChannel() {
+export function useTokensByChannel(timeWindow?: string) {
   return useQuery({
-    queryKey: ['tokenStatsByChannel'],
+    queryKey: ['tokenStatsByChannel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ tokenStatsByChannel: TokensByChannel[] }>(TOKENS_BY_CHANNEL_QUERY);
+      const data = await graphqlRequest<{ tokenStatsByChannel: TokensByChannel[] }>(
+        TOKENS_BY_CHANNEL_QUERY,
+        { timeWindow }
+      );
       return data.tokenStatsByChannel.map((item) => tokensByChannelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
-export function useTokensByModel() {
+export function useTokensByModel(timeWindow?: string) {
   return useQuery({
-    queryKey: ['tokenStatsByModel'],
+    queryKey: ['tokenStatsByModel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ tokenStatsByModel: TokensByModel[] }>(TOKENS_BY_MODEL_QUERY);
+      const data = await graphqlRequest<{ tokenStatsByModel: TokensByModel[] }>(
+        TOKENS_BY_MODEL_QUERY,
+        { timeWindow }
+      );
       return data.tokenStatsByModel.map((item) => tokensByModelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
-export function useCostByChannel() {
+export function useCostByChannel(timeWindow?: string) {
   return useQuery({
-    queryKey: ['costStatsByChannel'],
+    queryKey: ['costStatsByChannel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ costStatsByChannel: CostByChannel[] }>(COST_BY_CHANNEL_QUERY);
+      const data = await graphqlRequest<{ costStatsByChannel: CostByChannel[] }>(
+        COST_BY_CHANNEL_QUERY,
+        { timeWindow }
+      );
       return data.costStatsByChannel.map((item) => costByChannelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
-export function useCostByModel() {
+export function useCostByModel(timeWindow?: string) {
   return useQuery({
-    queryKey: ['costStatsByModel'],
+    queryKey: ['costStatsByModel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ costStatsByModel: CostByModel[] }>(COST_BY_MODEL_QUERY);
+      const data = await graphqlRequest<{ costStatsByModel: CostByModel[] }>(
+        COST_BY_MODEL_QUERY,
+        { timeWindow }
+      );
       return data.costStatsByModel.map((item) => costByModelSchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
-export function useCostByAPIKey() {
+export function useCostByAPIKey(timeWindow?: string) {
   return useQuery({
-    queryKey: ['costStatsByAPIKey'],
+    queryKey: ['costStatsByAPIKey', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ costStatsByAPIKey: CostByAPIKey[] }>(COST_BY_API_KEY_QUERY);
+      const data = await graphqlRequest<{ costStatsByAPIKey: CostByAPIKey[] }>(
+        COST_BY_API_KEY_QUERY,
+        { timeWindow }
+      );
       return data.costStatsByAPIKey.map((item) => costByAPIKeySchema.parse(item));
     },
     refetchInterval: 60000,
+    placeholderData: (previousData) => previousData,
   });
 }
 

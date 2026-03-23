@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart3, Brain, Key, Zap, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/layout/header';
 import { formatNumber } from '@/utils/format-number';
+import { TimePeriodSelector, type TimePeriod } from '@/components/time-period-selector';
 import { ChannelSuccessRate } from './components/channel-success-rate';
 import { DailyRequestStats } from './components/daily-requests-stats';
 import { RequestsByChannelChart } from './components/requests-by-channel-chart';
@@ -73,11 +74,10 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className='overflow-visible'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: 'easeInOut' }}
           >
             <div className='space-y-4'>{children}</div>
           </motion.div>
@@ -92,6 +92,13 @@ export default function DashboardPage() {
   const { isLoading, error } = useDashboardStats();
   const [modelTotalRequests, setModelTotalRequests] = useState(0);
   const [channelTotalRequests, setChannelTotalRequests] = useState(0);
+
+  const [channelTimePeriod, setChannelTimePeriod] = useState<TimePeriod>('allTime');
+  const [channelTokensTimePeriod, setChannelTokensTimePeriod] = useState<TimePeriod>('allTime');
+  const [modelTimePeriod, setModelTimePeriod] = useState<TimePeriod>('allTime');
+  const [modelTokensTimePeriod, setModelTokensTimePeriod] = useState<TimePeriod>('allTime');
+  const [apiKeyTimePeriod, setApiKeyTimePeriod] = useState<TimePeriod>('allTime');
+  const [apiKeyTokensTimePeriod, setApiKeyTokensTimePeriod] = useState<TimePeriod>('allTime');
 
   const modelPerformanceDescription = useMemo(() => {
     return t('dashboard.charts.performanceDescription', { count: formatNumber(modelTotalRequests) });
@@ -178,18 +185,24 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByChannel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByChannelDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={channelTimePeriod} onChange={setChannelTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <RequestsByChannelChart />
+              <RequestsByChannelChart timePeriod={channelTimePeriod} />
             </CardContent>
           </Card>
           <Card className='hover-card'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByChannel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByChannelDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={channelTokensTimePeriod} onChange={setChannelTokensTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <TokensByChannelChart />
+              <TokensByChannelChart timePeriod={channelTokensTimePeriod} />
             </CardContent>
           </Card>
         </div>
@@ -206,18 +219,24 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByModel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByModelDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={modelTimePeriod} onChange={setModelTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <RequestsByModelChart />
+              <RequestsByModelChart timePeriod={modelTimePeriod} />
             </CardContent>
           </Card>
           <Card className='hover-card'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByModel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByModelDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={modelTokensTimePeriod} onChange={setModelTokensTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <TokensByModelChart />
+              <TokensByModelChart timePeriod={modelTokensTimePeriod} />
             </CardContent>
           </Card>
         </div>
@@ -234,18 +253,24 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByAPIKey')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByAPIKeyDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={apiKeyTimePeriod} onChange={setApiKeyTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <RequestsByAPIKeyChart />
+              <RequestsByAPIKeyChart timePeriod={apiKeyTimePeriod} />
             </CardContent>
           </Card>
           <Card className='hover-card'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByAPIKey')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByAPIKeyDescription')}</CardDescription>
+              <CardAction>
+                <TimePeriodSelector value={apiKeyTokensTimePeriod} onChange={setApiKeyTokensTimePeriod} />
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <TokensByAPIKeyChart />
+              <TokensByAPIKeyChart timePeriod={apiKeyTokensTimePeriod} />
             </CardContent>
           </Card>
         </div>

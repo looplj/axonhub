@@ -212,10 +212,10 @@ type CostStatsByAPIKey {
 extend type Query {
   dashboardOverview: DashboardOverview!
   requestStats: RequestStats!
-  requestStatsByChannel: [RequestStatsByChannel!]!
-  requestStatsByModel: [RequestStatsByModel!]!
-  requestStatsByAPIKey: [RequestStatsByAPIKey!]!
-  tokenStatsByAPIKey: [TokenStatsByAPIKey!]!
+  requestStatsByChannel(timeWindow: String): [RequestStatsByChannel!]!
+  requestStatsByModel(timeWindow: String): [RequestStatsByModel!]!
+  requestStatsByAPIKey(timeWindow: String): [RequestStatsByAPIKey!]!
+  tokenStatsByAPIKey(timeWindow: String): [TokenStatsByAPIKey!]!
   apiKeyTokenUsageStats(
     input: APIKeyTokenUsageStatsInput
   ): [APIKeyTokenUsageStats!]!
@@ -233,9 +233,9 @@ extend type Query {
   Get performance statistics for channels over time
   """
   channelPerformanceStats: [ChannelPerformanceStat!]!
-  tokenStatsByChannel: [TokenStatsByChannel!]!
-  tokenStatsByModel: [TokenStatsByModel!]!
-  costStatsByChannel: [CostStatsByChannel!]!
-  costStatsByModel: [CostStatsByModel!]!
-  costStatsByAPIKey: [CostStatsByAPIKey!]!
+  tokenStatsByChannel(timeWindow: String): [TokenStatsByChannel!]!
+  tokenStatsByModel(timeWindow: String): [TokenStatsByModel!]!
+  costStatsByChannel(timeWindow: String): [CostStatsByChannel!]!
+  costStatsByModel(timeWindow: String): [CostStatsByModel!]!
+  costStatsByAPIKey(timeWindow: String): [CostStatsByAPIKey!]!
 }

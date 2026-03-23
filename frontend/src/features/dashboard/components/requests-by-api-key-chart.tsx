@@ -3,20 +3,28 @@
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGeneralSettings } from '../../system/data/system';
 import { useRequestsByAPIKey, useCostByAPIKey } from '../data/dashboard';
+import type { TimePeriod } from '@/components/time-period-selector';
 
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
 
-export function RequestsByAPIKeyChart() {
+interface RequestsByAPIKeyChartProps {
+  timePeriod: TimePeriod;
+}
+
+export function RequestsByAPIKeyChart({ timePeriod }: RequestsByAPIKeyChartProps) {
   const { t, i18n } = useTranslation();
-  const { data: apiKeyData, isLoading: isRequestsLoading, error: requestsError } = useRequestsByAPIKey();
-  const { data: costData, isLoading: isCostLoading, error: costError } = useCostByAPIKey();
-  const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
+  
+  const { data: apiKeyData, isLoading: isRequestsLoading, isFetching: isRequestsFetching, error: requestsError } = useRequestsByAPIKey(timePeriod);
+  const { data: costData, isLoading: isCostLoading, isFetching: isCostFetching, error: costError } = useCostByAPIKey(timePeriod);
+  const { data: generalSettings, isLoading: isSettingsLoading, isFetching: isSettingsFetching } = useGeneralSettings();
 
   const isLoading = isRequestsLoading || isCostLoading || isSettingsLoading;
+  const isFetching = isRequestsFetching || isCostFetching || isSettingsFetching;
   const error = requestsError || costError;
 
   const currencyCode = generalSettings?.currencyCode || 'USD';
@@ -38,14 +46,18 @@ export function RequestsByAPIKeyChart() {
     if (!apiKeyData) return { chartData: [], totalRequests: 0, totalCost: 0 };
 
     const costMap = new Map((costData ?? []).map((item) => [item.apiKeyName, item.cost]));
-    const totalReq = apiKeyData.reduce((sum, item) => sum + item.count, 0);
-    const totalC = (costData ?? []).reduce((sum, item) => sum + item.cost, 0);
 
-    const data = apiKeyData.map((item) => ({
-      name: item.apiKeyName,
-      requests: item.count,
-      cost: costMap.get(item.apiKeyName) ?? 0,
-    }));
+    const data = apiKeyData
+      .map((item) => ({
+        name: item.apiKeyName,
+        requests: item.count,
+        cost: costMap.get(item.apiKeyName) ?? 0,
+      }))
+      .sort((a, b) => b.requests - a.requests)
+      .slice(0, 10);
+
+    const totalReq = data.reduce((sum, item) => sum + item.requests, 0);
+    const totalC = data.reduce((sum, item) => sum + item.cost, 0);
 
     return { chartData: data, totalRequests: totalReq, totalCost: totalC };
   }, [apiKeyData, costData]);
@@ -58,23 +70,7 @@ export function RequestsByAPIKeyChart() {
     );
   }
 
-  if (error) {
-    return (
-      <div className='flex h-[300px] items-center justify-center'>
-        <div className='text-sm text-red-500'>
-          {t('dashboard.charts.errorLoadingAPIKeyData')} {error.message}
-        </div>
-      </div>
-    );
-  }
-
-  if (!apiKeyData || apiKeyData.length === 0) {
-    return (
-      <div className='flex h-[300px] items-center justify-center'>
-        <div className='text-muted-foreground text-sm'>{t('dashboard.charts.noAPIKeyData')}</div>
-      </div>
-    );
-  }
+  const hasError = error;
 
   const legendItems = chartData.map((item, index) => ({
     ...item,
@@ -124,46 +120,66 @@ export function RequestsByAPIKeyChart() {
   };
 
   return (
-    <div className='space-y-6'>
-      <ResponsiveContainer width='100%' height={320}>
-        <BarChart data={chartData} barSize={32} isAnimationActive={false}>
-          <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
-          <XAxis dataKey='name' hide />
-          <YAxis yAxisId='left' tickLine={false} axisLine={false} width={60} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
-          <YAxis
-            yAxisId='right'
-            orientation='right'
-            tickLine={false}
-            axisLine={false}
-            width={70}
-            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
-            tickFormatter={(value) => formatCurrency(value, 0)}
-          />
-          <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
-          <Bar yAxisId='left' dataKey='requests' radius={[6, 6, 0, 0]} isAnimationActive={false}>
-            {chartData.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Bar>
-          <Bar yAxisId='right' dataKey='cost' radius={[6, 6, 0, 0]} fill='var(--chart-5)' opacity={0.5} isAnimationActive={false} />
-        </BarChart>
-      </ResponsiveContainer>
-
-      <div className='grid gap-4 sm:grid-cols-2'>
-        {legendItems.map((item) => (
-          <div key={item.name} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-start gap-3'>
-            <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
-              {item.index.toString().padStart(2, '0')}.
-            </span>
-            <span className='mt-1 h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
-            <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-            <div className='text-right leading-tight'>
-              <div className='text-foreground text-sm font-medium tabular-nums'>{formatNumber(item.requests)}</div>
-              <div className='text-muted-foreground text-xs tabular-nums'>{formatCurrency(item.cost, 4)}</div>
-            </div>
+    <div className='relative space-y-6'>
+      {hasError ? (
+        <div className='flex h-[300px] items-center justify-center'>
+          <div className='text-sm text-red-500'>
+            {t('dashboard.charts.errorLoadingAPIKeyData')} {error.message}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : chartData.length === 0 ? (
+        <div className='flex h-[300px] items-center justify-center'>
+          <div className='text-muted-foreground text-sm'>{t('dashboard.charts.noAPIKeyData')}</div>
+        </div>
+      ) : (
+        <>
+          <ResponsiveContainer width='100%' height={320}>
+            <BarChart data={chartData} barSize={32}>
+              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
+              <XAxis dataKey='name' hide />
+              <YAxis yAxisId='left' tickLine={false} axisLine={false} width={60} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
+              <YAxis
+                yAxisId='right'
+                orientation='right'
+                tickLine={false}
+                axisLine={false}
+                width={70}
+                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                tickFormatter={(value) => formatCurrency(value, 0)}
+              />
+              <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
+              <Bar yAxisId='left' dataKey='requests' radius={[6, 6, 0, 0]} isAnimationActive={false}>
+                {chartData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+              <Bar yAxisId='right' dataKey='cost' radius={[6, 6, 0, 0]} fill='var(--chart-5)' opacity={0.5} isAnimationActive={false} />
+            </BarChart>
+          </ResponsiveContainer>
+
+          <div className='grid gap-4 sm:grid-cols-2'>
+            {legendItems.map((item) => (
+              <div key={item.name} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-start gap-3'>
+                <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
+                  {item.index.toString().padStart(2, '0')}.
+                </span>
+                <span className='mt-1 h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
+                <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
+                <div className='text-right leading-tight'>
+                  <div className='text-foreground text-sm font-medium tabular-nums'>{formatNumber(item.requests)}</div>
+                  <div className='text-muted-foreground text-xs tabular-nums'>{formatCurrency(item.cost, 4)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {isFetching && (
+        <div className='absolute inset-0 flex items-center justify-center bg-background/50'>
+          <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+        </div>
+      )}
     </div>
   );
 }

@@ -1033,9 +1033,9 @@ type ComplexityRoot struct {
 		ChannelSuccessRates          func(childComplexity int) int
 		Channels                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
 		CheckForUpdate               func(childComplexity int) int
-		CostStatsByAPIKey            func(childComplexity int) int
-		CostStatsByChannel           func(childComplexity int) int
-		CostStatsByModel             func(childComplexity int) int
+		CostStatsByAPIKey            func(childComplexity int, timeWindow *string) int
+		CostStatsByChannel           func(childComplexity int, timeWindow *string) int
+		CostStatsByModel             func(childComplexity int, timeWindow *string) int
 		CountChannelsByType          func(childComplexity int, input CountChannelsByTypeInput) int
 		DailyRequestStats            func(childComplexity int) int
 		DashboardOverview            func(childComplexity int) int
@@ -1060,9 +1060,9 @@ type ComplexityRoot struct {
 		QueryModels                  func(childComplexity int, input QueryModelsInput) int
 		QueryUnassociatedChannels    func(childComplexity int) int
 		RequestStats                 func(childComplexity int) int
-		RequestStatsByAPIKey         func(childComplexity int) int
-		RequestStatsByChannel        func(childComplexity int) int
-		RequestStatsByModel          func(childComplexity int) int
+		RequestStatsByAPIKey         func(childComplexity int, timeWindow *string) int
+		RequestStatsByChannel        func(childComplexity int, timeWindow *string) int
+		RequestStatsByModel          func(childComplexity int, timeWindow *string) int
 		Requests                     func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) int
 		RetryPolicy                  func(childComplexity int) int
 		Roles                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) int
@@ -1075,9 +1075,9 @@ type ComplexityRoot struct {
 		Systems                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
 		Threads                      func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) int
 		TokenStats                   func(childComplexity int) int
-		TokenStatsByAPIKey           func(childComplexity int) int
-		TokenStatsByChannel          func(childComplexity int) int
-		TokenStatsByModel            func(childComplexity int) int
+		TokenStatsByAPIKey           func(childComplexity int, timeWindow *string) int
+		TokenStatsByChannel          func(childComplexity int, timeWindow *string) int
+		TokenStatsByModel            func(childComplexity int, timeWindow *string) int
 		TopRequestsProjects          func(childComplexity int) int
 		Traces                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
 		UsageLogs                    func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
@@ -1860,10 +1860,10 @@ type QueryResolver interface {
 	APIKeyQuotaUsages(ctx context.Context, apiKeyID objects.GUID) ([]*APIKeyProfileQuotaUsage, error)
 	DashboardOverview(ctx context.Context) (*DashboardOverview, error)
 	RequestStats(ctx context.Context) (*RequestStats, error)
-	RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error)
-	RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error)
-	RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error)
-	TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error)
+	RequestStatsByChannel(ctx context.Context, timeWindow *string) ([]*RequestStatsByChannel, error)
+	RequestStatsByModel(ctx context.Context, timeWindow *string) ([]*RequestStatsByModel, error)
+	RequestStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*RequestStatsByAPIKey, error)
+	TokenStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*TokenStatsByAPIKey, error)
 	APIKeyTokenUsageStats(ctx context.Context, input *APIKeyTokenUsageStatsInput) ([]*APIKeyTokenUsageStats, error)
 	DailyRequestStats(ctx context.Context) ([]*DailyRequestStats, error)
 	TopRequestsProjects(ctx context.Context) ([]*TopRequestsProjects, error)
@@ -1873,11 +1873,11 @@ type QueryResolver interface {
 	FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error)
 	ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error)
 	ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error)
-	TokenStatsByChannel(ctx context.Context) ([]*TokenStatsByChannel, error)
-	TokenStatsByModel(ctx context.Context) ([]*TokenStatsByModel, error)
-	CostStatsByChannel(ctx context.Context) ([]*CostStatsByChannel, error)
-	CostStatsByModel(ctx context.Context) ([]*CostStatsByModel, error)
-	CostStatsByAPIKey(ctx context.Context) ([]*CostStatsByAPIKey, error)
+	TokenStatsByChannel(ctx context.Context, timeWindow *string) ([]*TokenStatsByChannel, error)
+	TokenStatsByModel(ctx context.Context, timeWindow *string) ([]*TokenStatsByModel, error)
+	CostStatsByChannel(ctx context.Context, timeWindow *string) ([]*CostStatsByChannel, error)
+	CostStatsByModel(ctx context.Context, timeWindow *string) ([]*CostStatsByModel, error)
+	CostStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*CostStatsByAPIKey, error)
 	AllScopes(ctx context.Context, level *string) ([]*ScopeInfo, error)
 	Me(ctx context.Context) (*objects.UserInfo, error)
 	MyProjects(ctx context.Context) ([]*ent.Project, error)
@@ -6184,19 +6184,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.CostStatsByAPIKey(childComplexity), true
+		args, err := ec.field_Query_costStatsByAPIKey_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CostStatsByAPIKey(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.costStatsByChannel":
 		if e.complexity.Query.CostStatsByChannel == nil {
 			break
 		}
 
-		return e.complexity.Query.CostStatsByChannel(childComplexity), true
+		args, err := ec.field_Query_costStatsByChannel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CostStatsByChannel(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.costStatsByModel":
 		if e.complexity.Query.CostStatsByModel == nil {
 			break
 		}
 
-		return e.complexity.Query.CostStatsByModel(childComplexity), true
+		args, err := ec.field_Query_costStatsByModel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CostStatsByModel(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.countChannelsByType":
 		if e.complexity.Query.CountChannelsByType == nil {
 			break
@@ -6416,19 +6431,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.RequestStatsByAPIKey(childComplexity), true
+		args, err := ec.field_Query_requestStatsByAPIKey_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.RequestStatsByAPIKey(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.requestStatsByChannel":
 		if e.complexity.Query.RequestStatsByChannel == nil {
 			break
 		}
 
-		return e.complexity.Query.RequestStatsByChannel(childComplexity), true
+		args, err := ec.field_Query_requestStatsByChannel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.RequestStatsByChannel(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.requestStatsByModel":
 		if e.complexity.Query.RequestStatsByModel == nil {
 			break
 		}
 
-		return e.complexity.Query.RequestStatsByModel(childComplexity), true
+		args, err := ec.field_Query_requestStatsByModel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.RequestStatsByModel(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.requests":
 		if e.complexity.Query.Requests == nil {
 			break
@@ -6526,19 +6556,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.TokenStatsByAPIKey(childComplexity), true
+		args, err := ec.field_Query_tokenStatsByAPIKey_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TokenStatsByAPIKey(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.tokenStatsByChannel":
 		if e.complexity.Query.TokenStatsByChannel == nil {
 			break
 		}
 
-		return e.complexity.Query.TokenStatsByChannel(childComplexity), true
+		args, err := ec.field_Query_tokenStatsByChannel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TokenStatsByChannel(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.tokenStatsByModel":
 		if e.complexity.Query.TokenStatsByModel == nil {
 			break
 		}
 
-		return e.complexity.Query.TokenStatsByModel(childComplexity), true
+		args, err := ec.field_Query_tokenStatsByModel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TokenStatsByModel(childComplexity, args["timeWindow"].(*string)), true
 	case "Query.topRequestsProjects":
 		if e.complexity.Query.TopRequestsProjects == nil {
 			break
@@ -10978,6 +11023,39 @@ func (ec *executionContext) field_Query_channels_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_costStatsByAPIKey_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_costStatsByChannel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_costStatsByModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_countChannelsByType_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11257,6 +11335,39 @@ func (ec *executionContext) field_Query_queryModels_args(ctx context.Context, ra
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_requestStatsByAPIKey_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_requestStatsByChannel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_requestStatsByModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_requests_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11398,6 +11509,39 @@ func (ec *executionContext) field_Query_threads_args(ctx context.Context, rawArg
 		return nil, err
 	}
 	args["where"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_tokenStatsByAPIKey_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_tokenStatsByChannel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_tokenStatsByModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
 	return args, nil
 }
 
@@ -33588,7 +33732,8 @@ func (ec *executionContext) _Query_requestStatsByChannel(ctx context.Context, fi
 		field,
 		ec.fieldContext_Query_requestStatsByChannel,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().RequestStatsByChannel(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().RequestStatsByChannel(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNRequestStatsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByChannelᚄ,
@@ -33597,7 +33742,7 @@ func (ec *executionContext) _Query_requestStatsByChannel(ctx context.Context, fi
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_requestStatsByChannel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_requestStatsByChannel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -33613,6 +33758,17 @@ func (ec *executionContext) fieldContext_Query_requestStatsByChannel(_ context.C
 			return nil, fmt.Errorf("no field named %q was found under type RequestStatsByChannel", field.Name)
 		},
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_requestStatsByChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
 	return fc, nil
 }
 
@@ -33623,7 +33779,8 @@ func (ec *executionContext) _Query_requestStatsByModel(ctx context.Context, fiel
 		field,
 		ec.fieldContext_Query_requestStatsByModel,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().RequestStatsByModel(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().RequestStatsByModel(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNRequestStatsByModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByModelᚄ,
@@ -33632,7 +33789,7 @@ func (ec *executionContext) _Query_requestStatsByModel(ctx context.Context, fiel
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_requestStatsByModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_requestStatsByModel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -33648,6 +33805,17 @@ func (ec *executionContext) fieldContext_Query_requestStatsByModel(_ context.Con
 			return nil, fmt.Errorf("no field named %q was found under type RequestStatsByModel", field.Name)
 		},
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_requestStatsByModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
 	return fc, nil
 }
 
@@ -33658,7 +33826,8 @@ func (ec *executionContext) _Query_requestStatsByAPIKey(ctx context.Context, fie
 		field,
 		ec.fieldContext_Query_requestStatsByAPIKey,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().RequestStatsByAPIKey(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().RequestStatsByAPIKey(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNRequestStatsByAPIKey2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRequestStatsByAPIKeyᚄ,
@@ -33667,7 +33836,7 @@ func (ec *executionContext) _Query_requestStatsByAPIKey(ctx context.Context, fie
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_requestStatsByAPIKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_requestStatsByAPIKey(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -33685,6 +33854,17 @@ func (ec *executionContext) fieldContext_Query_requestStatsByAPIKey(_ context.Co
 			return nil, fmt.Errorf("no field named %q was found under type RequestStatsByAPIKey", field.Name)
 		},
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_requestStatsByAPIKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
 	return fc, nil
 }
 
@@ -33695,7 +33875,8 @@ func (ec *executionContext) _Query_tokenStatsByAPIKey(ctx context.Context, field
 		field,
 		ec.fieldContext_Query_tokenStatsByAPIKey,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().TokenStatsByAPIKey(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().TokenStatsByAPIKey(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNTokenStatsByAPIKey2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStatsByAPIKeyᚄ,
@@ -33704,7 +33885,7 @@ func (ec *executionContext) _Query_tokenStatsByAPIKey(ctx context.Context, field
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_tokenStatsByAPIKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_tokenStatsByAPIKey(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -33729,6 +33910,17 @@ func (ec *executionContext) fieldContext_Query_tokenStatsByAPIKey(_ context.Cont
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TokenStatsByAPIKey", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_tokenStatsByAPIKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -34175,7 +34367,8 @@ func (ec *executionContext) _Query_tokenStatsByChannel(ctx context.Context, fiel
 		field,
 		ec.fieldContext_Query_tokenStatsByChannel,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().TokenStatsByChannel(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().TokenStatsByChannel(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNTokenStatsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStatsByChannelᚄ,
@@ -34184,7 +34377,7 @@ func (ec *executionContext) _Query_tokenStatsByChannel(ctx context.Context, fiel
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_tokenStatsByChannel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_tokenStatsByChannel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -34208,6 +34401,17 @@ func (ec *executionContext) fieldContext_Query_tokenStatsByChannel(_ context.Con
 			return nil, fmt.Errorf("no field named %q was found under type TokenStatsByChannel", field.Name)
 		},
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_tokenStatsByChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
 	return fc, nil
 }
 
@@ -34218,7 +34422,8 @@ func (ec *executionContext) _Query_tokenStatsByModel(ctx context.Context, field 
 		field,
 		ec.fieldContext_Query_tokenStatsByModel,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().TokenStatsByModel(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().TokenStatsByModel(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNTokenStatsByModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTokenStatsByModelᚄ,
@@ -34227,7 +34432,7 @@ func (ec *executionContext) _Query_tokenStatsByModel(ctx context.Context, field 
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_tokenStatsByModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_tokenStatsByModel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -34251,6 +34456,17 @@ func (ec *executionContext) fieldContext_Query_tokenStatsByModel(_ context.Conte
 			return nil, fmt.Errorf("no field named %q was found under type TokenStatsByModel", field.Name)
 		},
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_tokenStatsByModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
 	return fc, nil
 }
 
@@ -34261,7 +34477,8 @@ func (ec *executionContext) _Query_costStatsByChannel(ctx context.Context, field
 		field,
 		ec.fieldContext_Query_costStatsByChannel,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().CostStatsByChannel(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().CostStatsByChannel(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNCostStatsByChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCostStatsByChannelᚄ,
@@ -34270,7 +34487,7 @@ func (ec *executionContext) _Query_costStatsByChannel(ctx context.Context, field
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_costStatsByChannel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_costStatsByChannel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -34286,6 +34503,17 @@ func (ec *executionContext) fieldContext_Query_costStatsByChannel(_ context.Cont
 			return nil, fmt.Errorf("no field named %q was found under type CostStatsByChannel", field.Name)
 		},
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_costStatsByChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
 	return fc, nil
 }
 
@@ -34296,7 +34524,8 @@ func (ec *executionContext) _Query_costStatsByModel(ctx context.Context, field g
 		field,
 		ec.fieldContext_Query_costStatsByModel,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().CostStatsByModel(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().CostStatsByModel(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNCostStatsByModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCostStatsByModelᚄ,
@@ -34305,7 +34534,7 @@ func (ec *executionContext) _Query_costStatsByModel(ctx context.Context, field g
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_costStatsByModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_costStatsByModel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -34321,6 +34550,17 @@ func (ec *executionContext) fieldContext_Query_costStatsByModel(_ context.Contex
 			return nil, fmt.Errorf("no field named %q was found under type CostStatsByModel", field.Name)
 		},
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_costStatsByModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
 	return fc, nil
 }
 
@@ -34331,7 +34571,8 @@ func (ec *executionContext) _Query_costStatsByAPIKey(ctx context.Context, field 
 		field,
 		ec.fieldContext_Query_costStatsByAPIKey,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().CostStatsByAPIKey(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().CostStatsByAPIKey(ctx, fc.Args["timeWindow"].(*string))
 		},
 		nil,
 		ec.marshalNCostStatsByAPIKey2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCostStatsByAPIKeyᚄ,
@@ -34340,7 +34581,7 @@ func (ec *executionContext) _Query_costStatsByAPIKey(ctx context.Context, field 
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_costStatsByAPIKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_costStatsByAPIKey(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -34357,6 +34598,17 @@ func (ec *executionContext) fieldContext_Query_costStatsByAPIKey(_ context.Conte
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostStatsByAPIKey", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_costStatsByAPIKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
