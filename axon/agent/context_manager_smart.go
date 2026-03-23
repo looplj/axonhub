@@ -49,6 +49,7 @@ type SmartContextManager struct {
 	mu              sync.RWMutex
 	state           ContextManagerState
 	lastCompactedAt time.Time
+	onCompaction    func()
 }
 
 func NewSmartContextManager(config ContextManagerConfig, store ContextManagerStore) (*SmartContextManager, error) {
@@ -191,6 +192,10 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
 				)
 
 				m.ContextManager.SetMessages(ctx, working)
+
+				if m.onCompaction != nil {
+					m.onCompaction()
+				}
 			} else {
 				m.logger.Debug("context manager: summarize skipped",
 					"error", err,
@@ -215,6 +220,13 @@ func (m *SmartContextManager) Snapshot() ContextManagerState {
 	defer m.mu.RUnlock()
 
 	return copyContextState(m.state)
+}
+
+func (m *SmartContextManager) OnCompaction(fn func()) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.onCompaction = fn
 }
 
 func (m *SmartContextManager) saveLocked(ctx context.Context, messages []Message) {

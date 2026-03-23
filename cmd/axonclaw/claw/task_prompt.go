@@ -60,7 +60,7 @@ func (h *TaskHandler) handlePrompt(ctx context.Context, t task.Task) error {
 		return nil
 	}
 
-	_, err = h.runner.ProcessIsolated(ctx, action.Message, nil)
+	_, err = h.runner.ProcessIsolated(ctx, action.Message, h.runner.Agent.Config().SystemPrompts)
 	if err != nil {
 		return fmt.Errorf("process isolated prompt task: %w", err)
 	}

@@ -340,17 +340,19 @@ func (r *Runner) autoUpdateConfig(ctx context.Context) {
 	r.Boot.Timezone = newBoot.Timezone
 	r.Boot.OS = newBoot.OS
 
-	env := buildPromptEnv(newBoot, r.Workspace)
+	r.ReloadSystemPrompts()
 
-	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts)
+	r.Logger.Info("auto-update config completed", "agent_name", newBoot.AgentName, "model", newBoot.Model)
+}
 
+func (r *Runner) ReloadSystemPrompts() {
+	env := buildPromptEnv(r.Boot, r.Workspace)
+	systemPrompts := prompts.BuildSystemPrompts(env, r.Boot.Prompts)
 	r.Agent.UpdateConfig(func(cfg agent.Config) agent.Config {
-		cfg.Model = newBoot.Model
+		cfg.Model = r.Boot.Model
 		cfg.SystemPrompts = systemPrompts
 		return cfg
 	})
-
-	r.Logger.Info("auto-update config completed", "agent_name", newBoot.AgentName, "model", newBoot.Model)
 }
 
 func (r *Runner) FollowUP(ctx context.Context, text string) {

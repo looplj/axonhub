@@ -299,6 +299,10 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		Bus:            eventBus,
 	})
 
+	cm.OnCompaction(func() {
+		r.ReloadSystemPrompts()
+	})
+
 	defer func() {
 		if err := r.Close(); err != nil {
 			logger.Warn("close runner failed", "error", err)
