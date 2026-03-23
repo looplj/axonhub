@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useGeneralSettings } from '../../system/data/system';
 import { useRequestsByAPIKey, useCostByAPIKey } from '../data/dashboard';
 import type { TimePeriod } from '@/components/time-period-selector';
+import { ChartLegend } from './chart-legend';
 
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
 
@@ -73,11 +74,11 @@ export function RequestsByAPIKeyChart({ timePeriod }: RequestsByAPIKeyChartProps
   const hasError = error;
 
   const legendItems = chartData.map((item, index) => ({
-    ...item,
+    name: item.name,
     index: index + 1,
     color: COLORS[index % COLORS.length],
-    requestPercent: totalRequests ? (item.requests / totalRequests) * 100 : 0,
-    costPercent: totalCost ? (item.cost / totalCost) * 100 : 0,
+    primaryValue: formatNumber(item.requests),
+    secondaryValue: formatCurrency(item.cost, 4),
   }));
 
   type CombinedTooltipProps = TooltipProps<number, string> & {
@@ -157,21 +158,7 @@ export function RequestsByAPIKeyChart({ timePeriod }: RequestsByAPIKeyChartProps
             </BarChart>
           </ResponsiveContainer>
 
-          <div className='grid gap-4 sm:grid-cols-2'>
-            {legendItems.map((item) => (
-              <div key={item.name} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-start gap-3'>
-                <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
-                  {item.index.toString().padStart(2, '0')}.
-                </span>
-                <span className='mt-1 h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
-                <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-                <div className='text-right leading-tight'>
-                  <div className='text-foreground text-sm font-medium tabular-nums'>{formatNumber(item.requests)}</div>
-                  <div className='text-muted-foreground text-xs tabular-nums'>{formatCurrency(item.cost, 4)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <ChartLegend items={legendItems} />
         </>
       )}
 
