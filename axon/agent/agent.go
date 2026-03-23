@@ -430,7 +430,13 @@ func (a *Agent) ProcessStream(ctx context.Context, content Content) <-chan Agent
 	events := make(chan AgentEvent, 256)
 	runCtx, runID := a.newRunContext(ctx)
 
+	var closed atomic.Bool
+
 	subID := a.bus.Subscribe(TopicAgentEvent, func(_ context.Context, ev bus.Event) error {
+		if closed.Load() {
+			return nil
+		}
+
 		agentEv, ok := ev.Payload.(AgentEvent)
 		if !ok {
 			return nil
@@ -450,6 +456,7 @@ func (a *Agent) ProcessStream(ctx context.Context, content Content) <-chan Agent
 
 	go func() {
 		defer func() {
+			closed.Store(true)
 			a.bus.Unsubscribe(subID)
 			close(events)
 		}()

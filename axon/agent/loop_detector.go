@@ -77,7 +77,7 @@ func newLoopDetector(cfg LoopDetectorConfig) *loopDetector {
 		cfg.ToolCallThreshold = defaultToolCallLoopThreshold
 	}
 
-	if cfg.MaxRecoveries <= 0 {
+	if cfg.MaxRecoveries < 0 {
 		cfg.MaxRecoveries = defaultMaxLoopRecoveries
 	}
 
