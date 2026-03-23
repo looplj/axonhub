@@ -6,7 +6,10 @@ import (
 	"strings"
 
 	"github.com/Khan/genqlient/graphql"
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/axon/agent"
+	"github.com/looplj/axonhub/axon/api"
 	"github.com/looplj/axonhub/axon/subagent"
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
@@ -94,12 +97,6 @@ func NewDefaultSlashCommands(client graphql.Client) *SlashCommandRegistry {
 		Name:        "/subagent",
 		Description: "Spawn a subagent: /subagent <agent_type> <task>",
 		Execute:     executeSubagent,
-	})
-
-	registry.Register(&SlashCommand{
-		Name:        "/skill",
-		Description: "Execute a skill: /skill <skill_name> [args]",
-		Execute:     executeSkill,
 	})
 
 	return registry
@@ -205,74 +202,36 @@ func executeSubagent(ctx context.Context, r *Runner, args []string) (string, err
 		"task_len", len(task),
 	)
 
-	result, err := subagent.Run(ctx, subagent.Config{
-		Model:         model,
-		SystemPrompts: []string{def.Description},
-		AllowedTools:  allowedTools,
-		DeniedTools:   deniedTools,
-		Provider:      r.Provider,
-		Middlewares:   r.Agent.Middlewares(),
-		Logger:        r.Logger.With("component", "slash_subagent"),
-	}, task, r.toolSource)
-	if err != nil {
-		return "", fmt.Errorf("subagent failed: %w", err)
-	}
-
-	if result.Output == "" {
-		return "Subagent completed but produced no output.", nil
-	}
-
-	return result.Output, nil
-}
-
-func executeSkill(_ context.Context, r *Runner, args []string) (string, error) {
-	if r.skillMgr == nil {
-		return "", fmt.Errorf("skill manager not configured")
-	}
-
-	if len(args) == 0 {
-		skills, err := r.skillMgr.List()
+	go func() {
+		result, err := subagent.Run(ctx, subagent.Config{
+			Model:         model,
+			SystemPrompts: []string{def.Description},
+			AllowedTools:  allowedTools,
+			DeniedTools:   deniedTools,
+			Provider:      r.Provider,
+			Middlewares:   r.Agent.Middlewares(),
+			Logger:        r.Logger.With("component", "slash_subagent"),
+		}, task, r.toolSource)
 		if err != nil {
-			return "", fmt.Errorf("failed to list skills: %w", err)
+			r.Logger.Warn("subagent failed", "agent_type", agentType, "error", err)
+			return
 		}
 
-		if len(skills) == 0 {
-			return "No skills available.", nil
+		if result.Output != "" {
+			r.Agent.FollowUp(agent.Message{
+				Role:    agent.RoleUser,
+				Content: &agent.Content{Text: &result.Output},
+			})
 		}
+	}()
 
-		var sb strings.Builder
-		sb.WriteString("Available skills:\n")
-
-		for _, s := range skills {
-			fmt.Fprintf(&sb, "  - %s\n", s.Name)
-		}
-
-		sb.WriteString("\nUsage: /skill <skill_name> [args]")
-
-		return sb.String(), nil
-	}
-
-	skillName := args[0]
-
-	result, err := r.skillMgr.Get(skillName)
-	if err != nil {
-		return "", fmt.Errorf("skill %q not found: %w", skillName, err)
-	}
-
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "Skill: %s\n", result.Skill.Name)
-	fmt.Fprintf(&sb, "Directory: %s\n", result.Skill.Dir)
-	sb.WriteString("\nContent:\n")
-	sb.WriteString(result.Skill.Content)
-
-	if len(args) > 1 {
-		fmt.Fprintf(&sb, "\n\nArguments: %s", strings.Join(args[1:], " "))
-	}
-
-	return sb.String(), nil
+	return fmt.Sprintf("Subagent %q spawned in background.", agentType), nil
 }
 
 func buildSubAgentTools(tools map[string]bool) (allowed []string, denied []string) {
+	if tools == nil {
+		return nil, nil
+	}
 	if len(tools) == 0 {
 		return []string{}, nil
 	}
@@ -322,9 +281,17 @@ func buildSubAgentTools(tools map[string]bool) (allowed []string, denied []strin
 	return allowed, nil
 }
 
-func (r *Runner) sendSlashCommandResult(text string) {
-	r.Agent.FollowUp(agent.Message{
-		Role:    agent.RoleAssistant,
-		Content: &agent.Content{Text: &text},
+func (r *Runner) sendSlashCommandResult(ctx context.Context, text string, msgID string) {
+	var replyToID *string
+	if msgID != "" {
+		replyToID = &msgID
+	}
+	_, err := api.ReplyMessage(ctx, r.Client, &api.ReplyMessageInput{
+		Text:             text,
+		ReplyToMessageID: replyToID,
+		Type:             lo.ToPtr(api.AgentMessageTypeChat),
 	})
+	if err != nil {
+		r.Logger.Warn("failed to send slash command result", "error", err)
+	}
 }

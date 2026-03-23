@@ -92,7 +92,7 @@ func New(opts NewOptions) *Runner {
 		opts.Logger.Warn("failed to load subagent definitions", "error", err, "path", agentDir)
 	}
 
-	skillMgr := newSkillManager(opts.Workspace, opts.Boot)
+	skillMgr := newSkillManager(opts.Workspace, opts.Boot, opts.Logger)
 
 	toolSource := &agentToolSource{agent: a}
 	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Provider, mcpMgr, subagentMgr, skillMgr)
@@ -131,11 +131,21 @@ func buildPromptEnv(boot *bootstrap.Result, workspace string) prompts.PromptEnv 
 	}
 }
 
+type IncomingMessage struct {
+	Id                string
+	Text              string
+	Type              api.AgentMessageType
+	CorrelationID     string
+	Content           json.RawMessage
+	ExternalMessageID *string
+	Sequence          int
+}
+
 func (r *Runner) Run(ctx context.Context) error {
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
 	ctx = axoncontext.WithWorkspace(ctx, r.Workspace)
 
-	msgCh := make(chan string, 64)
+	msgCh := make(chan IncomingMessage, 64)
 
 	go r.pollMessages(ctx, msgCh)
 
@@ -167,19 +177,17 @@ func (r *Runner) Run(ctx context.Context) error {
 				continue
 			}
 
-		case text := <-msgCh:
+		case msg := <-msgCh:
 			if r.processing.Load() {
-				r.Logger.Info("agent busy, delivering as steering", "text_len", len(text))
-				t := text
+				r.Logger.Info("agent busy, delivering as steering", "text_len", len(msg.Text))
+				t := r.formatMessageForLLM(msg)
 				r.Agent.Steer(agent.Message{
 					Role:    agent.RoleUser,
 					Content: &agent.Content{Text: &t},
 				})
 			} else {
-				t := text
-
 				go func() {
-					if err := r.processMessage(ctx, t); err != nil {
+					if err := r.processMessage(ctx, msg); err != nil {
 						r.Logger.Warn("agent process failed", "error", err)
 					}
 				}()
@@ -188,7 +196,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 }
 
-func (r *Runner) pollMessages(ctx context.Context, out chan<- string) {
+func (r *Runner) pollMessages(ctx context.Context, out chan<- IncomingMessage) {
 	ticker := time.NewTicker(r.Config.PollInterval)
 	defer ticker.Stop()
 
@@ -228,7 +236,15 @@ func (r *Runner) pollMessages(ctx context.Context, out chan<- string) {
 				}
 
 				select {
-				case out <- r.formatMessageForLLM(msg):
+				case out <- IncomingMessage{
+					Id:                msg.Id,
+					Text:              msg.Text,
+					Type:              msg.Type,
+					CorrelationID:     msg.CorrelationID,
+					Content:           msg.Content,
+					ExternalMessageID: msg.ExternalMessageID,
+					Sequence:          msg.Sequence,
+				}:
 					ackedIDs = append(ackedIDs, msg.Id)
 				case <-ctx.Done():
 					return
@@ -246,7 +262,7 @@ func (r *Runner) pollMessages(ctx context.Context, out chan<- string) {
 	}
 }
 
-func (r *Runner) formatMessageForLLM(msg *api.PullAgentMessagesPullAgentMessagesAgentMessage) string {
+func (r *Runner) formatMessageForLLM(msg IncomingMessage) string {
 	if msg.ExternalMessageID != nil && *msg.ExternalMessageID != "" {
 		payload := map[string]any{
 			"content":    msg.Text,
@@ -270,21 +286,21 @@ func (r *Runner) formatMessageForLLM(msg *api.PullAgentMessagesPullAgentMessages
 	return msg.Text
 }
 
-func (r *Runner) processMessage(ctx context.Context, text string) error {
+func (r *Runner) processMessage(ctx context.Context, msg IncomingMessage) error {
 	r.processMu.Lock()
 	defer r.processMu.Unlock()
 
 	r.processing.Store(true)
 	defer r.processing.Store(false)
 
-	if cmd, args, ok := r.slashCommands.Match(text); ok {
+	if cmd, args, ok := r.slashCommands.Match(msg.Text); ok {
 		result, err := cmd.Execute(ctx, r, args)
 		if err != nil {
 			r.Logger.Warn("slash command failed", "command", cmd.Name, "error", err)
-			result = fmt.Sprintf("Error executing /%s: %v", cmd.Name, err)
+			result = fmt.Sprintf("Error executing %s: %v", cmd.Name, err)
 		}
 
-		r.sendSlashCommandResult(result)
+		r.sendSlashCommandResult(ctx, result, msg.Id)
 
 		return nil
 	}
@@ -292,7 +308,8 @@ func (r *Runner) processMessage(ctx context.Context, text string) error {
 	traceID := uuid.New().String()
 	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
 	ctx = axoncontext.WithTraceID(ctx, traceID)
-	_, err := r.Agent.Process(ctx, agent.Content{Text: &text})
+	formatted := r.formatMessageForLLM(msg)
+	_, err := r.Agent.Process(ctx, agent.Content{Text: &formatted})
 
 	return err
 }

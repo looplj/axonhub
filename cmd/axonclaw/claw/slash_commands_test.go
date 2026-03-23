@@ -17,9 +17,9 @@ func TestBuildSubAgentTools(t *testing.T) {
 		wantDeniedSorted  bool
 	}{
 		{
-			name:        "nil tools returns empty allowed slice",
+			name:        "nil tools returns nil (allow all)",
 			tools:       nil,
-			wantAllowed: []string{},
+			wantAllowed: nil,
 			wantDenied:  nil,
 		},
 		{

@@ -21,22 +21,21 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/skills"
 )
 
-func newSkillManager(workspace string, boot *bootstrap.Result) *tools.SkillManager {
-	bundled, err := skills.BundledSkills(toBuiltinSkillConfigs(boot.BuiltinSkills))
-	if err != nil {
-		return tools.NewSkillManager(tools.SkillManagerOptions{
-			Dirs: []string{
-				filepath.Join(workspace, conf.DefaultDir, "skills"),
-			},
-		})
-	}
-
-	return tools.NewSkillManager(tools.SkillManagerOptions{
+func newSkillManager(workspace string, boot *bootstrap.Result, logger *slog.Logger) *tools.SkillManager {
+	opts := tools.SkillManagerOptions{
 		Dirs: []string{
 			filepath.Join(workspace, conf.DefaultDir, "skills"),
 		},
-		BundledSkills: bundled,
-	})
+	}
+
+	bundled, err := skills.BundledSkills(toBuiltinSkillConfigs(boot.BuiltinSkills))
+	if err != nil {
+		logger.Warn("failed to load bundled skills", "error", err)
+	} else {
+		opts.BundledSkills = bundled
+	}
+
+	return tools.NewSkillManager(opts)
 }
 
 func registerTools(

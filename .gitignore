@@ -123,6 +123,7 @@ test-results
 .codebuddy
 .factory
 .agent/subagents
+.agent/summary
 dumps
 .builds
 .pnpm-store
