@@ -65,6 +65,33 @@ func (s *anthropicInboundStream) closeThinkingBlock() error {
 		sig := s.pendingSignature
 		s.pendingSignature = nil
 
+		// Close any previously open content block before creating the synthetic thinking block.
+		if s.hasTextContentStarted {
+			s.hasTextContentStarted = false
+
+			if err := s.enqueEvent(&StreamEvent{
+				Type:  "content_block_stop",
+				Index: &s.contentIndex,
+			}); err != nil {
+				return fmt.Errorf("failed to enqueue content_block_stop for text before pending signature: %w", err)
+			}
+
+			s.contentIndex += 1
+		}
+
+		if s.hasToolContentStarted {
+			s.hasToolContentStarted = false
+
+			if err := s.enqueEvent(&StreamEvent{
+				Type:  "content_block_stop",
+				Index: &s.contentIndex,
+			}); err != nil {
+				return fmt.Errorf("failed to enqueue content_block_stop for tool before pending signature: %w", err)
+			}
+
+			s.contentIndex += 1
+		}
+
 		if err := s.enqueEvent(&StreamEvent{
 			Type:  "content_block_start",
 			Index: &s.contentIndex,
@@ -480,6 +507,7 @@ func (s *anthropicInboundStream) Next() bool {
 						s.contentIndex += 1
 					}
 
+					s.hasToolContentStarted = true
 					s.toolCalls[toolCallIndex] = &llm.ToolCall{
 						Index: toolCallIndex,
 						ID:    deltaToolCall.ID,
