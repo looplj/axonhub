@@ -25,8 +25,8 @@ export function ChartLegend({ items, columns = 2, showIndex = true }: ChartLegen
         gridAutoFlow: columns === 2 ? 'column' : undefined,
       }}
     >
-      {items.map((item) => (
-        <div key={item.name} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-start gap-3'>
+      {items.map((item, index) => (
+        <div key={`${item.name}-${index}`} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-start gap-3'>
           {showIndex && item.index !== undefined && (
             <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
               {item.index.toString().padStart(2, '0')}.
