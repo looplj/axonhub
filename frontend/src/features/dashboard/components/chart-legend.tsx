@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface ChartLegendItem {
   name: string;
@@ -14,15 +15,17 @@ export interface ChartLegendProps {
   showIndex?: boolean;
 }
 
-export function ChartLegend({ items, columns = 2, showIndex = true }: ChartLegendProps) {
-  const rows = columns === 2 ? Math.ceil(items.length / 2) : items.length;
+export function ChartLegend({ items, columns, showIndex = true }: ChartLegendProps) {
+  const isMobile = useIsMobile();
+  const effectiveColumns = columns ?? (isMobile ? 1 : 2);
+  const rows = effectiveColumns === 2 ? Math.ceil(items.length / 2) : items.length;
 
   return (
     <div
       className={cn('grid gap-x-4 gap-y-4')}
       style={{
-        gridTemplateRows: columns === 2 ? `repeat(${rows}, auto)` : undefined,
-        gridAutoFlow: columns === 2 ? 'column' : undefined,
+        gridTemplateRows: effectiveColumns === 2 ? `repeat(${rows}, auto)` : undefined,
+        gridAutoFlow: effectiveColumns === 2 ? 'column' : undefined,
       }}
     >
       {items.map((item, index) => (
