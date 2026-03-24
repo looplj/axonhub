@@ -25,7 +25,6 @@ type OIDCIdentityQuery struct {
 	inters     []Interceptor
 	predicates []predicate.OIDCIdentity
 	withUser   *UserQuery
-	withFKs    bool
 	loadTotal  []func(context.Context, []*OIDCIdentity) error
 	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
@@ -380,15 +379,11 @@ func (_q *OIDCIdentityQuery) prepareQuery(ctx context.Context) error {
 func (_q *OIDCIdentityQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*OIDCIdentity, error) {
 	var (
 		nodes       = []*OIDCIdentity{}
-		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
 			_q.withUser != nil,
 		}
 	)
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, oidcidentity.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*OIDCIdentity).scanValues(nil, columns)
 	}

@@ -88,7 +88,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "oidcidentity" package.
 	OidcIdentitiesInverseTable = "oidc_identities"
 	// OidcIdentitiesColumn is the table column denoting the oidc_identities relation/edge.
-	OidcIdentitiesColumn = "user_oidc_identities"
+	OidcIdentitiesColumn = "user_id"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -388,7 +388,7 @@ func newOidcIdentitiesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(OidcIdentitiesInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, OidcIdentitiesTable, OidcIdentitiesColumn),
+		sqlgraph.Edge(sqlgraph.O2M, true, OidcIdentitiesTable, OidcIdentitiesColumn),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {

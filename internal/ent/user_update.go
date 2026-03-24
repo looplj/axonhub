@@ -781,7 +781,7 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.OidcIdentitiesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Inverse: true,
 			Table:   user.OidcIdentitiesTable,
 			Columns: []string{user.OidcIdentitiesColumn},
 			Bidi:    false,
@@ -794,7 +794,7 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if nodes := _u.mutation.RemovedOidcIdentitiesIDs(); len(nodes) > 0 && !_u.mutation.OidcIdentitiesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Inverse: true,
 			Table:   user.OidcIdentitiesTable,
 			Columns: []string{user.OidcIdentitiesColumn},
 			Bidi:    false,
@@ -810,7 +810,7 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if nodes := _u.mutation.OidcIdentitiesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Inverse: true,
 			Table:   user.OidcIdentitiesTable,
 			Columns: []string{user.OidcIdentitiesColumn},
 			Bidi:    false,
@@ -1709,7 +1709,7 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if _u.mutation.OidcIdentitiesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Inverse: true,
 			Table:   user.OidcIdentitiesTable,
 			Columns: []string{user.OidcIdentitiesColumn},
 			Bidi:    false,
@@ -1722,7 +1722,7 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if nodes := _u.mutation.RemovedOidcIdentitiesIDs(); len(nodes) > 0 && !_u.mutation.OidcIdentitiesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Inverse: true,
 			Table:   user.OidcIdentitiesTable,
 			Columns: []string{user.OidcIdentitiesColumn},
 			Bidi:    false,
@@ -1738,7 +1738,7 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	if nodes := _u.mutation.OidcIdentitiesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Inverse: true,
 			Table:   user.OidcIdentitiesTable,
 			Columns: []string{user.OidcIdentitiesColumn},
 			Bidi:    false,

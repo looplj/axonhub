@@ -351,7 +351,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	// Elevate privileges for OIDC user resolution as this is an unauthenticated flow
 	ctx = contexts.WithUser(ctx, &ent.User{IsOwner: true})
 
-	// 1. Try to find existing OIDC identity
+	// 1. Try to find existing OIDC identity by issuer and subject
 	identity, err := s.db.OIDCIdentity.Query().
 		Where(
 			oidcidentity.Issuer(p.config.IssuerURL),
@@ -379,26 +379,22 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		return nil, fmt.Errorf("database error querying identity: %w", err)
 	}
 
-	// Check if email verification is required for new identities/users
-	if p.config.RequireEmailVerified && !emailVerified {
-		return nil, fmt.Errorf("email not verified")
-	}
-
-	// 2. Identity not found. Check auto-link
-	if p.config.AutoLinkByEmail && email != "" && emailVerified {
+	// 2. Identity not found. Check if an account with this email already exists (and is verified if required).
+	// This follows the "Account First" logic: if a user exists, we link to them.
+	if email != "" && emailVerified {
 		existingUser, err := s.db.User.Query().Where(user.Email(email)).Only(ctx)
 		if err == nil {
-			// Found user, link identity
+			// Found user by email, link this OIDC identity to them.
 			err = s.createIdentity(ctx, existingUser.ID, p.config.IssuerURL, subject, email, p.config.Name)
 			if err != nil {
-				return nil, fmt.Errorf("failed to link identity: %w", err)
+				return nil, fmt.Errorf("failed to link OIDC identity: %w", err)
 			}
 
 			// Sync user info if enabled
 			if p.config.SyncUserInfo {
 				updatedUser, err := s.syncUserInfo(ctx, existingUser, name, givenName, familyName, picture)
 				if err != nil {
-					log.Warn(ctx, "Failed to sync user info during OIDC auto-link", zap.Error(err), log.Int("user_id", existingUser.ID))
+					log.Warn(ctx, "Failed to sync user info during OIDC link", zap.Error(err), log.Int("user_id", existingUser.ID))
 				} else {
 					return updatedUser, nil
 				}
@@ -410,9 +406,14 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		}
 	}
 
-	// 3. JIT Provisioning
+	// 3. No existing account found. Check if JIT Provisioning is enabled.
 	if !p.config.JITEnabled {
-		return nil, fmt.Errorf("User not found and JIT provisioning is disabled")
+		return nil, fmt.Errorf("account not found and JIT provisioning is disabled")
+	}
+
+	// Check if email verification is required for new accounts
+	if p.config.RequireEmailVerified && !emailVerified {
+		return nil, fmt.Errorf("email not verified")
 	}
 
 	if email == "" {
@@ -429,6 +430,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		firstName = name
 	}
 
+	// Create the User record FIRST
 	userCreate := s.db.User.Create().
 		SetEmail(email).
 		SetFirstName(firstName).
@@ -441,11 +443,14 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 
 	newUser, err := userCreate.Save(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to provision user: %w", err)
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
+	// Create the Identity record SECOND
 	err = s.createIdentity(ctx, newUser.ID, p.config.IssuerURL, subject, email, p.config.Name)
 	if err != nil {
+		// Note: Since this is a newly created user, failing here leaves an orphaned user.
+		// However, with SoftDelete and unique email, re-trying will either hit step 2 or fail.
 		return nil, fmt.Errorf("failed to create identity for new user: %w", err)
 	}
 

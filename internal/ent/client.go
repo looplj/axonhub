@@ -4046,7 +4046,7 @@ func (c *UserClient) QueryOidcIdentities(_m *User) *OIDCIdentityQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(oidcidentity.Table, oidcidentity.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, user.OidcIdentitiesTable, user.OidcIdentitiesColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, user.OidcIdentitiesTable, user.OidcIdentitiesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

@@ -38,9 +38,8 @@ type OIDCIdentity struct {
 	UserID int `json:"user_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the OIDCIdentityQuery when eager-loading is set.
-	Edges                OIDCIdentityEdges `json:"edges"`
-	user_oidc_identities *int
-	selectValues         sql.SelectValues
+	Edges        OIDCIdentityEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // OIDCIdentityEdges holds the relations/edges for other nodes in the graph.
@@ -76,8 +75,6 @@ func (*OIDCIdentity) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case oidcidentity.FieldCreatedAt, oidcidentity.FieldUpdatedAt, oidcidentity.FieldLastLoginAt:
 			values[i] = new(sql.NullTime)
-		case oidcidentity.ForeignKeys[0]: // user_oidc_identities
-			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -153,13 +150,6 @@ func (_m *OIDCIdentity) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field user_id", values[i])
 			} else if value.Valid {
 				_m.UserID = int(value.Int64)
-			}
-		case oidcidentity.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field user_oidc_identities", value)
-			} else if value.Valid {
-				_m.user_oidc_identities = new(int)
-				*_m.user_oidc_identities = int(value.Int64)
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])

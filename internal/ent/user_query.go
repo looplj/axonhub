@@ -185,7 +185,7 @@ func (_q *UserQuery) QueryOidcIdentities() *OIDCIdentityQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(oidcidentity.Table, oidcidentity.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, user.OidcIdentitiesTable, user.OidcIdentitiesColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, user.OidcIdentitiesTable, user.OidcIdentitiesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -935,7 +935,9 @@ func (_q *UserQuery) loadOidcIdentities(ctx context.Context, query *OIDCIdentity
 			init(nodes[i])
 		}
 	}
-	query.withFKs = true
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(oidcidentity.FieldUserID)
+	}
 	query.Where(predicate.OIDCIdentity(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.OidcIdentitiesColumn), fks...))
 	}))
@@ -944,13 +946,10 @@ func (_q *UserQuery) loadOidcIdentities(ctx context.Context, query *OIDCIdentity
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.user_oidc_identities
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "user_oidc_identities" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		fk := n.UserID
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "user_oidc_identities" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

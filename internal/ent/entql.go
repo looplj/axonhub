@@ -1216,7 +1216,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"oidc_identities",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Inverse: true,
 			Table:   user.OidcIdentitiesTable,
 			Columns: []string{user.OidcIdentitiesColumn},
 			Bidi:    false,

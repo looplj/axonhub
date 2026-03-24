@@ -762,7 +762,7 @@ func HasOidcIdentities() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, OidcIdentitiesTable, OidcIdentitiesColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, OidcIdentitiesTable, OidcIdentitiesColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})

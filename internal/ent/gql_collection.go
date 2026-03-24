@@ -5491,7 +5491,7 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 							ids[i] = nodes[i].ID
 						}
 						var v []struct {
-							NodeID int `sql:"user_oidc_identities"`
+							NodeID int `sql:"user_id"`
 							Count  int `sql:"count"`
 						}
 						query.Where(func(s *sql.Selector) {

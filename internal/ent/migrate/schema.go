@@ -296,7 +296,6 @@ var (
 		{Name: "idp_name", Type: field.TypeString, Nullable: true},
 		{Name: "last_login_at", Type: field.TypeTime, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt},
-		{Name: "user_oidc_identities", Type: field.TypeInt, Nullable: true},
 	}
 	// OidcIdentitiesTable holds the schema information for the "oidc_identities" table.
 	OidcIdentitiesTable = &schema.Table{
@@ -308,13 +307,7 @@ var (
 				Symbol:     "oidc_identities_users_user",
 				Columns:    []*schema.Column{OidcIdentitiesColumns[9]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-			{
-				Symbol:     "oidc_identities_users_oidc_identities",
-				Columns:    []*schema.Column{OidcIdentitiesColumns[10]},
-				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.Cascade,
 			},
 		},
 		Indexes: []*schema.Index{
@@ -989,7 +982,6 @@ func init() {
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable
 	OidcIdentitiesTable.ForeignKeys[0].RefTable = UsersTable
-	OidcIdentitiesTable.ForeignKeys[1].RefTable = UsersTable
 	ProviderQuotaStatusTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
