@@ -128,8 +128,8 @@ export function useOIDCAuthorize() {
         toast.error('Invalid authorization URL received');
       }
     },
-    onError: (error: any) => {
-      const errorMessage = error.message || 'Failed to initialize SSO login';
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize SSO login';
       toast.error(errorMessage);
     },
   });
@@ -166,8 +166,8 @@ export function useOIDCExchange() {
       const redirectPath = data.user.isOwner ? '/' : '/project/playground';
       router.navigate({ to: redirectPath });
     },
-    onError: (error: any) => {
-      const errorMessage = error.message || 'SSO login failed';
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'SSO login failed';
       toast.error(errorMessage);
       router.navigate({ to: '/sign-in' });
     },
