@@ -604,7 +604,7 @@ func TestThinking_AdaptiveInbound(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, chatReq.TransformerMetadata)
 				require.Equal(t, "adaptive", chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType])
-				require.Empty(t, chatReq.ReasoningEffort)
+				require.Equal(t, "high", chatReq.ReasoningEffort)
 				require.Nil(t, chatReq.ReasoningBudget)
 			},
 		},
@@ -745,7 +745,7 @@ func TestOutputConfig_Inbound(t *testing.T) {
 		validate     func(t *testing.T, chatReq *llm.Request)
 	}{
 		{
-			name: "OutputConfig effort=high -> TransformerMetadata output_config_effort=high",
+			name: "OutputConfig effort=high -> TransformerMetadata output_config_effort=high and ReasoningEffort=high",
 			anthropicReq: &MessageRequest{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: 4096,
@@ -761,6 +761,7 @@ func TestOutputConfig_Inbound(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, chatReq.TransformerMetadata)
 				require.Equal(t, "high", chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
+				require.Equal(t, "high", chatReq.ReasoningEffort)
 			},
 		},
 		{
