@@ -2,12 +2,15 @@
 
 
 import { useTranslation } from 'react-i18next';
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTokensByAPIKey } from '../data/dashboard';
 import type { TimePeriod } from '@/components/time-period-selector';
+import { ChartLegend } from './chart-legend';
+
+const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
 
 const TOKEN_COLORS = {
   input: 'var(--chart-1)',
@@ -88,6 +91,17 @@ export function TokensByAPIKeyChart({ timePeriod }: TokensByAPIKeyChartProps) {
     );
   };
 
+  const legendItems = chartData.map((item, index) => {
+    const percent = totalAllKeys ? (item.totalTokens / totalAllKeys) * 100 : 0;
+    return {
+      name: item.name,
+      index: index + 1,
+      color: COLORS[index % COLORS.length],
+      primaryValue: formatNumber(item.totalTokens),
+      secondaryValue: `${percent.toFixed(1)}%`,
+    };
+  });
+
   return (
     <div className='relative space-y-6'>
       {hasError ? (
@@ -119,10 +133,6 @@ export function TokensByAPIKeyChart({ timePeriod }: TokensByAPIKeyChartProps) {
             tickFormatter={(value) => formatNumber(value)}
           />
           <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
-          <Legend
-            wrapperStyle={{ fontSize: '12px' }}
-            iconType='circle'
-          />
           <Bar
             dataKey='inputTokens'
             fill={TOKEN_COLORS.input}
@@ -147,23 +157,7 @@ export function TokensByAPIKeyChart({ timePeriod }: TokensByAPIKeyChartProps) {
         </BarChart>
       </ResponsiveContainer>
 
-          <div className='grid gap-4 sm:grid-cols-1'>
-            {chartData.map((item, index) => {
-              const percent = totalAllKeys ? (item.totalTokens / totalAllKeys) * 100 : 0;
-              return (
-                <div key={item.name} className='grid w-full grid-cols-[auto_1fr_auto] items-start gap-3'>
-                  <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
-                    {(index + 1).toString().padStart(2, '0')}.
-                  </span>
-                  <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-                  <div className='text-right leading-tight'>
-                    <div className='text-foreground text-sm font-medium tabular-nums'>{formatNumber(item.totalTokens)}</div>
-                    <div className='text-muted-foreground text-xs tabular-nums'>{percent.toFixed(1)}%</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ChartLegend items={legendItems} />
         </>
       )}
       {isFetching && (

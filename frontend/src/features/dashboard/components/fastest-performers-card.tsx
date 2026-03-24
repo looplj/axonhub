@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { TimePeriodSelector, type FastestTimeWindow } from '@/components/time-period-selector';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
+import { ChartLegend, type ChartLegendItem } from './chart-legend';
 
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
@@ -75,28 +76,6 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
         </Bar>
       </BarChart>
     </ResponsiveContainer>
-  );
-}
-
-function ChartLegend({ items }: { items: LegendItem[] }) {
-  return (
-    <div className='grid gap-3'>
-      {items.map((item, index) => {
-        return (
-          <div key={`${item.name}-${index}`} className='grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3'>
-            <span className='text-muted-foreground w-8 text-right text-sm font-semibold tabular-nums'>
-              {item.index.toString().padStart(2, '0')}.
-            </span>
-            <span className='h-2.5 w-2.5 rounded-full' style={{ backgroundColor: item.color }} />
-            <span className='text-foreground min-w-0 text-sm font-medium break-words'>{item.name}</span>
-            <div className='text-right leading-tight'>
-              <div className='text-foreground text-sm font-medium tabular-nums'>{safeToFixed(item.throughput, 0)} tok/s</div>
-              <div className='text-muted-foreground text-xs tabular-nums'>{formatNumber(safeNumber(item.requestCount))} req</div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
@@ -169,10 +148,12 @@ export function FastestPerformersCard<T extends ThroughputData>({
   const total = chartData.reduce((sum, item) => sum + safeNumber(item.throughput), 0);
   const totalRequests = chartData.reduce((sum, item) => sum + item.requestCount, 0);
 
-  const legendItems: LegendItem[] = chartData.map((item, index) => ({
-    ...item,
+  const legendItems: ChartLegendItem[] = chartData.map((item, index) => ({
+    name: item.name,
     index: index + 1,
     color: COLORS[index % COLORS.length],
+    primaryValue: `${safeToFixed(item.throughput, 0)} tok/s`,
+    secondaryValue: `${formatNumber(item.requestCount)} req`,
   }));
 
   return (
@@ -187,7 +168,7 @@ export function FastestPerformersCard<T extends ThroughputData>({
       <CardContent className='relative'>
         <div className='space-y-4'>
           <HorizontalBarChart data={chartData} total={total} noDataLabel={noDataLabel} />
-          <ChartLegend items={legendItems} />
+          <ChartLegend items={legendItems} columns={1} />
         </div>
         {isFetching && (
           <div className='absolute inset-0 flex items-center justify-center bg-background/50'>
