@@ -26,6 +26,7 @@ builds:
       - linux
       - windows
       - darwin
+      - freebsd
     goarch:
       - amd64
       - arm64
@@ -44,6 +45,12 @@ builds:
       - goos: darwin
         goarch: s390x
       - goos: darwin
+        goarch: loong64
+      - goos: freebsd
+        goarch: arm
+      - goos: freebsd
+        goarch: s390x
+      - goos: freebsd
         goarch: loong64
 
 release:
