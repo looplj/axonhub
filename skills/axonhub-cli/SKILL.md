@@ -95,7 +95,7 @@ npx @axonhub/graphql-cli query '{ models(input: {}) { id } }' -e axonhub
 ```bash
 npx @axonhub/graphql-cli mutate '<graphql-mutation>' -e axonhub
 npx @axonhub/graphql-cli mutate 'mutation { testChannel(input: { channelID: "1" }) { success latency message error } }' -e axonhub
-npx @axonhub/graphql-cli mutate 'mutation { updateChannelStatus(id: "1", status: active) { id name status } }' -e axonhub
+npx @axonhub/graphql-cli mutate 'mutation { updateChannelStatus(id: "1", status: enabled) { id name status } }' -e axonhub
 ```
 
 ## Common patterns
