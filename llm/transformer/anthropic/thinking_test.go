@@ -765,6 +765,49 @@ func TestOutputConfig_Inbound(t *testing.T) {
 			},
 		},
 		{
+			name: "OutputConfig effort=max -> TransformerMetadata output_config_effort=max and ReasoningEffort=xhigh",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				OutputConfig: &OutputConfig{Effort: "max"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				require.Equal(t, "max", chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
+				require.Equal(t, "xhigh", chatReq.ReasoningEffort)
+			},
+		},
+		{
+			name: "OutputConfig effort=high with thinking enabled -> does not override ReasoningEffort",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				Thinking:     &Thinking{Type: "enabled", BudgetTokens: 5000},
+				OutputConfig: &OutputConfig{Effort: "high"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				// output_config should NOT override the effort set by enabled thinking
+				require.Equal(t, "low", chatReq.ReasoningEffort)
+				// output_config should NOT be stored in TransformerMetadata
+				_, hasEffort := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort]
+				require.False(t, hasEffort)
+			},
+		},
+		{
 			name: "without output_config -> TransformerMetadata has no output_config_effort",
 			anthropicReq: &MessageRequest{
 				Model:     "claude-3-sonnet-20240229",

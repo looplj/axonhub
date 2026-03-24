@@ -398,6 +398,7 @@ var defaultGeminiReasoningEffortMapping = map[string]int64{
 	"low":    1024,
 	"medium": 8192,
 	"high":   32768,
+	"xhigh":  32768,
 }
 
 func reasoningEffortToThinkingBudget(effort string) int64 {

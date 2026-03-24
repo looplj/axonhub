@@ -104,6 +104,19 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 		}
 	}
 
+	// Validate output_config.effort when thinking is not adaptive
+	// (adaptive case is already validated above)
+	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
+		if anthropicReq.Thinking == nil || anthropicReq.Thinking.Type != "adaptive" {
+			switch anthropicReq.OutputConfig.Effort {
+			case "low", "medium", "high", "max":
+				// valid
+			default:
+				return nil, fmt.Errorf("%w: output_config.effort must be one of: low, medium, high, max", transformer.ErrInvalidRequest)
+			}
+		}
+	}
+
 	// Validate tool_choice
 	if anthropicReq.ToolChoice != nil {
 		switch anthropicReq.ToolChoice.Type {

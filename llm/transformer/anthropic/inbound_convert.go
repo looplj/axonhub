@@ -322,10 +322,19 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	}
 
 	// Convert output_config
+	// output_config is intended for adaptive thinking; do not override effort set by enabled thinking.
 	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
-		chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
-		// Map output_config effort to reasoning_effort so other outbound transformers can use it.
-		chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+		if anthropicReq.Thinking == nil || anthropicReq.Thinking.Type != "enabled" {
+			chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
+			// Map output_config effort to reasoning_effort so other outbound transformers can use it.
+			// Anthropic "max" has no direct equivalent in other providers; map to "xhigh"
+			// so downstream transformers can handle it explicitly.
+			if anthropicReq.OutputConfig.Effort == "max" {
+				chatReq.ReasoningEffort = "xhigh"
+			} else {
+				chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+			}
+		}
 	}
 
 	return chatReq, nil
