@@ -11,6 +11,7 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/api"
+	"github.com/looplj/axonhub/axon/bus"
 	"github.com/looplj/axonhub/axon/mcp"
 	"github.com/looplj/axonhub/axon/pkg/search"
 	"github.com/looplj/axonhub/axon/subagent"
@@ -45,6 +46,7 @@ func registerTools(
 	logger *slog.Logger,
 	client graphql.Client,
 	provider agent.Provider,
+	eventBus bus.EventBus,
 	mcpMgr *mcp.Manager,
 	subagentMgr *subagent.Manager,
 	skillMgr *tools.SkillManager,
@@ -130,6 +132,7 @@ func registerTools(
 			ToolSource:  &agentToolSource{agent: a},
 			Model:       boot.Model,
 			Middlewares: a.Middlewares(),
+			Bus:         eventBus,
 			Logger:      logger,
 		})))
 	}

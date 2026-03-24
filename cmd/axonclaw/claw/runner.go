@@ -48,6 +48,7 @@ type Runner struct {
 	slashCommands *SlashCommandRegistry
 	subagentMgr   *subagent.Manager
 	skillMgr      *tools.SkillManager
+	bus           bus.EventBus
 }
 
 type NewOptions struct {
@@ -95,7 +96,7 @@ func New(opts NewOptions) *Runner {
 	skillMgr := newSkillManager(opts.Workspace, opts.Boot, opts.Logger)
 
 	toolSource := &agentToolSource{agent: a}
-	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Provider, mcpMgr, subagentMgr, skillMgr)
+	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Provider, opts.Bus, mcpMgr, subagentMgr, skillMgr)
 
 	r := &Runner{
 		Client:        opts.Client,
@@ -112,6 +113,7 @@ func New(opts NewOptions) *Runner {
 		slashCommands: NewDefaultSlashCommands(opts.Client),
 		subagentMgr:   subagentMgr,
 		skillMgr:      skillMgr,
+		bus:           opts.Bus,
 	}
 
 	return r
@@ -367,12 +369,19 @@ func (r *Runner) ProcessIsolated(ctx context.Context, text string, systemPrompts
 
 	ctx = newIsolatedContext(ctx)
 
+	// Each isolated run gets its own context manager to ensure complete
+	// separation from the main agent's message history. The parent bus is
+	// shared so that events (e.g. archive writing) are still propagated.
+	cm := agent.NewSimpleContextManager(nil)
+
 	return subagent.Run(ctx, subagent.Config{
-		Model:         cfg.Model,
-		SystemPrompts: systemPrompts,
-		Provider:      r.Provider,
-		Middlewares:   r.Agent.Middlewares(),
-		Logger:        r.Logger.With("component", "isolated_prompt"),
+		Model:          cfg.Model,
+		SystemPrompts:  systemPrompts,
+		Provider:       r.Provider,
+		ContextManager: cm,
+		Bus:            r.bus,
+		Middlewares:    r.Agent.Middlewares(),
+		Logger:         r.Logger.With("component", "isolated_prompt"),
 	}, text, r.toolSource)
 }
 

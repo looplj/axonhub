@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/axon/agent"
+	"github.com/looplj/axonhub/axon/bus"
 )
 
 const (
@@ -30,6 +31,16 @@ type Config struct {
 	MaxIterations int
 	// Provider is the LLM provider to use.
 	Provider agent.Provider
+	// ContextManager is an optional isolated context manager for the subagent.
+	// If nil, a new SimpleContextManager is created automatically, ensuring
+	// the subagent never shares context with the parent agent.
+	ContextManager agent.ContextManager
+	// Bus is an optional event bus shared with the parent agent. When provided,
+	// the subagent publishes lifecycle events (e.g. EventMessageAdded) to this
+	// bus so external consumers (archive writer, tracing) can observe them.
+	// If nil, the subagent creates its own isolated bus and events are not
+	// propagated to the parent.
+	Bus bus.EventBus
 	// Middlewares are optional tool-execution middlewares inherited from the
 	// parent agent (e.g. permission evaluation). If omitted, the subagent will
 	// run tools without any middleware enforcement.
@@ -74,8 +85,22 @@ func Run(ctx context.Context, cfg Config, prompt string, tools ToolSource) (*age
 		logger = slog.Default()
 	}
 
-	// Create the ephemeral agent.
-	opts := []agent.Option{agent.WithLogger(logger)}
+	// Create the ephemeral agent with an isolated context manager.
+	// Each subagent MUST have its own context manager to prevent message
+	// history from leaking between parent and child agents.
+	cm := cfg.ContextManager
+	if cm == nil {
+		cm = agent.NewSimpleContextManager(nil)
+	}
+
+	opts := []agent.Option{
+		agent.WithLogger(logger),
+		agent.WithContextManager(cm),
+	}
+
+	if cfg.Bus != nil {
+		opts = append(opts, agent.WithBus(cfg.Bus))
+	}
 
 	middlewares := cfg.Middlewares
 	if middlewares == nil && tools != nil {

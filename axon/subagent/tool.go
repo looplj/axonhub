@@ -8,6 +8,7 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 
 	"github.com/looplj/axonhub/axon/agent"
+	"github.com/looplj/axonhub/axon/bus"
 	"github.com/looplj/axonhub/axon/tools"
 )
 
@@ -23,6 +24,7 @@ type Tool struct {
 	toolSource  ToolSource
 	model       string
 	middlewares []agent.Middleware
+	bus         bus.EventBus
 	logger      *slog.Logger
 }
 
@@ -32,6 +34,7 @@ type ToolOptions struct {
 	ToolSource  ToolSource
 	Model       string
 	Middlewares []agent.Middleware
+	Bus         bus.EventBus
 	Logger      *slog.Logger
 }
 
@@ -47,6 +50,7 @@ func NewTool(opts ToolOptions) *Tool {
 		toolSource:  opts.ToolSource,
 		model:       opts.Model,
 		middlewares: opts.Middlewares,
+		bus:         opts.Bus,
 		logger:      logger,
 	}
 }
@@ -118,6 +122,7 @@ func (t *Tool) Execute(ctx context.Context, input toolInput) agent.ToolResult {
 		AllowedTools:  allowedTools,
 		DeniedTools:   deniedTools,
 		Provider:      t.provider,
+		Bus:           t.bus,
 		Middlewares:   t.middlewares,
 		Logger:        t.logger.With("component", "spawn_agent"),
 	}, input.Task, t.toolSource)
