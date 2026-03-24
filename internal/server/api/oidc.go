@@ -3,21 +3,33 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/fx"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 type OIDCHandlers struct {
-	oidc *biz.OIDCService
-	auth *biz.AuthService
+	oidc      *biz.OIDCService
+	auth      *biz.AuthService
+	publicURL string
 }
 
-func NewOIDCHandlers(oidc *biz.OIDCService, auth *biz.AuthService) *OIDCHandlers {
+type OIDCHandlerParams struct {
+	fx.In
+
+	OIDCService *biz.OIDCService
+	AuthService *biz.AuthService
+	PublicURL   string `name:"public_url"`
+}
+
+func NewOIDCHandlers(params OIDCHandlerParams) *OIDCHandlers {
 	return &OIDCHandlers{
-		oidc: oidc,
-		auth: auth,
+		oidc:      params.OIDCService,
+		auth:      params.AuthService,
+		publicURL: params.PublicURL,
 	}
 }
 
@@ -43,12 +55,8 @@ func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 		return
 	}
 
-	// Get the base URL from the request
-	scheme := "http"
-	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-		scheme = "https"
-	}
-	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	// Get the base URL (priority: config public URL > request host)
+	baseURL := h.getBaseURL(c)
 
 	authURL, state, err := h.oidc.GetAuthorizeURL(c.Request.Context(), provider, baseURL)
 	if err != nil {
@@ -79,11 +87,8 @@ func (h *OIDCHandlers) GetLinkAuthorizeURL(c *gin.Context) {
 	}
 	userID := user.(*ent.User).ID
 
-	scheme := "http"
-	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-		scheme = "https"
-	}
-	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	// Get the base URL (priority: config public URL > request host)
+	baseURL := h.getBaseURL(c)
 
 	authURL, state, err := h.oidc.GetLinkAuthorizeURL(c.Request.Context(), provider, baseURL, userID)
 	if err != nil {
@@ -136,12 +141,26 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 		return
 	}
 
+	baseURL := h.getBaseURL(c)
+
 	if intent == "link" {
-		c.Redirect(http.StatusFound, "/settings/security?oidc_link=success")
+		c.Redirect(http.StatusFound, baseURL+"/settings/profile?oidc_link=success")
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/oauth/oidc/idp-callback?code="+exchangeCode)
+	c.Redirect(http.StatusFound, baseURL+"/oauth/oidc/idp-callback?code="+exchangeCode)
+}
+
+func (h *OIDCHandlers) getBaseURL(c *gin.Context) string {
+	baseURL := h.publicURL
+	if baseURL == "" {
+		scheme := "http"
+		if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		baseURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	}
+	return strings.TrimSuffix(baseURL, "/")
 }
 
 func (h *OIDCHandlers) Exchange(c *gin.Context) {

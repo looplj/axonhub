@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Host        string        `conf:"host" yaml:"host" json:"host"`
 	Port        int           `conf:"port" yaml:"port" json:"port"`
+	PublicURL   string        `conf:"public_url" yaml:"public_url" json:"public_url"`
 	Name        string        `conf:"name" yaml:"name" json:"name"`
 	BasePath    string        `conf:"base_path" yaml:"base_path" json:"base_path"`
 	ReadTimeout time.Duration `conf:"read_timeout" yaml:"read_timeout" json:"read_timeout"`
