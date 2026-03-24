@@ -20,6 +20,36 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 )
 
+const OIDC_ONLY_PLACEHOLDER = "!OIDC_SSO_ONLY!"
+
+// HashPassword hashes a password using bcrypt.
+func HashPassword(password string) (string, error) {
+	if password == OIDC_ONLY_PLACEHOLDER {
+		return OIDC_ONLY_PLACEHOLDER, nil
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	return hex.EncodeToString(hashedPassword), nil
+}
+
+// VerifyPassword verifies a password against a hash.
+func VerifyPassword(hashedPassword, password string) error {
+	if hashedPassword == OIDC_ONLY_PLACEHOLDER {
+		return ErrOIDCLoginRequired
+	}
+
+	decodedHashedPassword, err := hex.DecodeString(hashedPassword)
+	if err != nil {
+		return fmt.Errorf("failed to decode hashed password: %w", err)
+	}
+
+	return bcrypt.CompareHashAndPassword(decodedHashedPassword, []byte(password))
+}
+
 type AuthServiceParams struct {
 	fx.In
 
@@ -49,26 +79,6 @@ type AuthService struct {
 	APIKeyService *APIKeyService
 	UserService   *UserService
 	AllowNoAuth   bool
-}
-
-// HashPassword hashes a password using bcrypt.
-func HashPassword(password string) (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	return hex.EncodeToString(hashedPassword), nil
-}
-
-// VerifyPassword verifies a password against a hash.
-func VerifyPassword(hashedPassword, password string) error {
-	decodedHashedPassword, err := hex.DecodeString(hashedPassword)
-	if err != nil {
-		return fmt.Errorf("failed to decode hashed password: %w", err)
-	}
-
-	return bcrypt.CompareHashAndPassword(decodedHashedPassword, []byte(password))
 }
 
 // GenerateSecretKey generates a random secret key for JWT.

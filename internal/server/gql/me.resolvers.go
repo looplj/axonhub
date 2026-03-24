@@ -7,6 +7,7 @@ package gql
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -34,12 +35,75 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input UpdateMeInput) (*
 	})
 }
 
-// Me is the resolver for the me field.
-func (r *queryResolver) Me(ctx context.Context) (*objects.UserInfo, error) {
+// UpdateMyPassword is the resolver for the updateMyPassword field.
+func (r *mutationResolver) UpdateMyPassword(ctx context.Context, input UpdateMyPasswordInput) (bool, error) {
 	// Get current user from context
 	user, ok := contexts.GetUser(ctx)
 	if !ok || user == nil {
+		return false, fmt.Errorf("user not found in context")
+	}
+
+	if user.Password == hex.EncodeToString([]byte("!OIDC_SSO_ONLY")) {
+		// OIDC-only user setting their password for the first time, no old password required
+	} else {
+		if input.OldPassword == nil {
+			return false, fmt.Errorf("current password is required")
+		}
+		err := biz.VerifyPassword(user.Password, *input.OldPassword)
+		if err != nil {
+			return false, fmt.Errorf("incorrect old password")
+		}
+	}
+
+	_, err := r.userService.UpdateUser(ctx, user.ID, ent.UpdateUserInput{
+		Password: &input.NewPassword,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// UnlinkOIDCIdentity is the resolver for the unlinkOIDCIdentity field.
+func (r *mutationResolver) UnlinkOIDCIdentity(ctx context.Context, id objects.GUID) (bool, error) {
+	// Get current user from context
+	user, ok := contexts.GetUser(ctx)
+	if !ok || user == nil {
+		return false, fmt.Errorf("user not found in context")
+	}
+
+	// Make sure the identity belongs to the user
+	identity, err := r.client.OIDCIdentity.Get(ctx, id.ID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get identity: %w", err)
+	}
+
+	if identity.UserID != user.ID {
+		return false, fmt.Errorf("permission denied: this identity does not belong to you")
+	}
+
+	// Delete
+	err = r.client.OIDCIdentity.DeleteOneID(id.ID).Exec(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to unlink identity: %w", err)
+	}
+
+	return true, nil
+}
+
+// Me is the resolver for the me field.
+func (r *queryResolver) Me(ctx context.Context) (*objects.UserInfo, error) {
+	// Get current user from context
+	userCtx, ok := contexts.GetUser(ctx)
+	if !ok || userCtx == nil {
 		return nil, fmt.Errorf("user not found in context")
+	}
+
+	// Fetch the full user model with all preloaded edges
+	user, err := r.userService.GetUserByID(ctx, userCtx.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user details: %w", err)
 	}
 
 	// Use UserService to convert user to UserInfo
@@ -61,3 +125,23 @@ func (r *queryResolver) MyProjects(ctx context.Context) ([]*ent.Project, error) 
 		Where(project.StatusEQ(project.StatusActive)).
 		All(ctx)
 }
+
+// OidcIdentities is the resolver for the oidcIdentities field.
+func (r *userInfoResolver) OidcIdentities(ctx context.Context, obj *objects.UserInfo) ([]*OIDCIdentityInfo, error) {
+	result := make([]*OIDCIdentityInfo, 0, len(obj.OIDCIdentities))
+	for _, identity := range obj.OIDCIdentities {
+		result = append(result, &OIDCIdentityInfo{
+			ID:      identity.ID,
+			IdpName: identity.IdpName,
+			Issuer:  identity.Issuer,
+			Subject: identity.Subject,
+			Email:   identity.Email,
+		})
+	}
+	return result, nil
+}
+
+// UserInfo returns UserInfoResolver implementation.
+func (r *Resolver) UserInfo() UserInfoResolver { return &userInfoResolver{r} }
+
+type userInfoResolver struct{ *Resolver }

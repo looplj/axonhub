@@ -206,3 +206,15 @@ export const UPDATE_ME_MUTATION = `
     }
   }
 `;
+
+export const UPDATE_MY_PASSWORD_MUTATION = `
+  mutation UpdateMyPassword($input: UpdateMyPasswordInput!) {
+    updateMyPassword(input: $input)
+  }
+`;
+
+export const UNLINK_OIDC_IDENTITY_MUTATION = `
+  mutation UnlinkOIDCIdentity($id: ID!) {
+    unlinkOIDCIdentity(id: $id)
+  }
+`;

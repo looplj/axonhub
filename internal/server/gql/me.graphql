@@ -10,6 +10,16 @@ type UserInfo {
   scopes: [String!]!
   roles: [RoleInfo!]!
   projects: [UserProjectInfo!]!
+  oidcIdentities: [OIDCIdentityInfo!]!
+  hasPassword: Boolean!
+}
+
+type OIDCIdentityInfo {
+  id: ID!
+  idpName: String!
+  issuer: String!
+  subject: String!
+  email: String!
 }
 
 type RoleInfo {
@@ -37,4 +47,11 @@ input UpdateMeInput {
 
 extend type Mutation {
     updateMe(input: UpdateMeInput!): User!
+    updateMyPassword(input: UpdateMyPasswordInput!): Boolean!
+    unlinkOIDCIdentity(id: ID!): Boolean!
+}
+
+input UpdateMyPasswordInput {
+  oldPassword: String
+  newPassword: String!
 }

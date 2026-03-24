@@ -190,7 +190,20 @@ func (s *OIDCService) GetProviders(ctx context.Context) []ProviderInfo {
 func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerName string, baseURL string) (string, string, error) {
 	p, ok := s.providers[providerName]
 	if !ok {
-		return "", "", fmt.Errorf("OIDC provider not found")
+		log.Error(ctx, "OIDC provider not found in map", log.String("provider", providerName), log.Int("map_size", len(s.providers)))
+		// Try case-insensitive and space-flexible matching
+		for k, val := range s.providers {
+			log.Debug(ctx, "Available provider in map", log.String("key", k))
+			if strings.EqualFold(strings.ReplaceAll(k, " ", ""), strings.ReplaceAll(providerName, " ", "")) {
+				log.Info(ctx, "Found OIDC provider using flexible matching", log.String("original", providerName), log.String("matched", k))
+				p = val
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return "", "", fmt.Errorf("OIDC provider not found")
+		}
 	}
 
 	// Make redirect URL absolute
@@ -225,17 +238,42 @@ func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerName string, 
 	return authURL, state, nil
 }
 
-func (s *OIDCService) Callback(ctx context.Context, providerName, code, state string) (string, error) {
+func (s *OIDCService) GetLinkAuthorizeURL(ctx context.Context, providerName string, baseURL string, userID int) (string, string, error) {
+	authURL, state, err := s.GetAuthorizeURL(ctx, providerName, baseURL)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Cache the intent to link this identity to a specific user
+	err = s.cache.Set(ctx, "oidc_link_state:"+state, []byte(strconv.Itoa(userID)), store.WithExpiration(10*time.Minute))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to cache link state: %w", err)
+	}
+
+	return authURL, state, nil
+}
+
+func (s *OIDCService) Callback(ctx context.Context, providerName, code, state string) (string, string, error) {
 	p, ok := s.providers[providerName]
 	if !ok {
-		return "", fmt.Errorf("OIDC provider not found")
+		// Try case-insensitive and space-flexible matching
+		for k, val := range s.providers {
+			if strings.EqualFold(strings.ReplaceAll(k, " ", ""), strings.ReplaceAll(providerName, " ", "")) {
+				p = val
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return "", "", fmt.Errorf("OIDC provider not found: %s", providerName)
+		}
 	}
 
 	var opts []oauth2.AuthCodeOption
 	if p.config.EnablePKCE {
 		verifierBytes, err := s.cache.Get(ctx, "oidc_pkce:"+state)
 		if err != nil || len(verifierBytes) == 0 {
-			return "", fmt.Errorf("invalid state parameter: invalid state or PKCE verifier expired")
+			return "", "", fmt.Errorf("invalid state parameter: invalid state or PKCE verifier expired")
 		}
 		opts = append(opts, oauth2.SetAuthURLParam("code_verifier", string(verifierBytes)))
 		_ = s.cache.Delete(ctx, "oidc_pkce:"+state) // Consume once
@@ -243,18 +281,18 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 
 	oauth2Token, err := p.oauth2.Exchange(ctx, code, opts...)
 	if err != nil {
-		return "", fmt.Errorf("failed to exchange authorization code: %w", err)
+		return "", "", fmt.Errorf("failed to exchange authorization code: %w", err)
 	}
 
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
-		return "", fmt.Errorf("No id_token field in oauth2 token")
+		return "", "", fmt.Errorf("No id_token field in oauth2 token")
 	}
 
 	verifier := p.oidc.Verifier(&oidc.Config{ClientID: p.config.ClientID})
 	idToken, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		return "", fmt.Errorf("failed to verify ID token: %w", err)
+		return "", "", fmt.Errorf("failed to verify ID token: %w", err)
 	}
 
 	var claims struct {
@@ -267,16 +305,32 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 		Picture           string `json:"picture"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		return "", fmt.Errorf("failed to parse claims: %w", err)
+		return "", "", fmt.Errorf("failed to parse claims: %w", err)
+	}
+
+	// Check if this is a linking flow
+	linkUserIDBytes, err := s.cache.Get(ctx, "oidc_link_state:"+state)
+	if err == nil && len(linkUserIDBytes) > 0 {
+		// Consume link state
+		_ = s.cache.Delete(ctx, "oidc_link_state:"+state)
+		userID, err := strconv.Atoi(string(linkUserIDBytes))
+		if err == nil {
+			err = s.createIdentity(ctx, userID, p.config.IssuerURL, idToken.Subject, claims.Email, p.config.Name)
+			if err != nil {
+				return "", "", fmt.Errorf("failed to link identity: %w", err)
+			}
+			// Let the API caller know this was a link operation
+			return "", "link", nil
+		}
 	}
 
 	userEntity, err := s.resolveUser(ctx, p, idToken.Subject, claims.Email, claims.EmailVerified, claims.Name, claims.GivenName, claims.FamilyName, claims.Picture)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if userEntity.Status == "deactivated" {
-		return "", fmt.Errorf("User account is deactivated")
+		return "", "", fmt.Errorf("User account is deactivated")
 	}
 
 	// Generate short-lived exchange code
@@ -287,10 +341,10 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 	// Cache user ID for exchange (valid for 5 mins)
 	err = s.cache.Set(ctx, "oidc_exchange:"+exchangeCode, []byte(fmt.Sprintf("%d", userEntity.ID)), store.WithExpiration(5*time.Minute))
 	if err != nil {
-		return "", fmt.Errorf("failed to cache exchange code: %w", err)
+		return "", "", fmt.Errorf("failed to cache exchange code: %w", err)
 	}
 
-	return exchangeCode, nil
+	return exchangeCode, "login", nil
 }
 
 func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject, email string, emailVerified bool, name, givenName, familyName, picture string) (*ent.User, error) {
@@ -366,13 +420,8 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		email = fmt.Sprintf("%s@%s.oidc", subject, p.config.Name)
 	}
 
-	// Generate a cryptographically secure random password for JIT users.
-	// These users are expected to authenticate via OIDC only.
-	randPasswordBytes := make([]byte, 32)
-	if _, err := rand.Read(randPasswordBytes); err != nil {
-		return nil, fmt.Errorf("failed to generate secure password: %w", err)
-	}
-	randPassword := hex.EncodeToString(randPasswordBytes)
+	// Set a magic password indicating this user must login via OIDC only.
+	randPassword := hex.EncodeToString([]byte("!OIDC_SSO_ONLY"))
 
 	firstName := givenName
 	lastName := familyName

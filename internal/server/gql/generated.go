@@ -88,6 +88,7 @@ type ResolverRoot interface {
 	Trace() TraceResolver
 	UsageLog() UsageLogResolver
 	User() UserResolver
+	UserInfo() UserInfoResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
 }
@@ -811,6 +812,7 @@ type ComplexityRoot struct {
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
 		TriggerAutoBackup                    func(childComplexity int) int
 		TriggerGcCleanup                     func(childComplexity int) int
+		UnlinkOIDCIdentity                   func(childComplexity int, id objects.GUID) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
 		UpdateAPIKeyProfiles                 func(childComplexity int, id objects.GUID, input objects.APIKeyProfiles) int
 		UpdateAPIKeyStatus                   func(childComplexity int, id objects.GUID, status apikey.Status) int
@@ -824,6 +826,7 @@ type ComplexityRoot struct {
 		UpdateMe                             func(childComplexity int, input UpdateMeInput) int
 		UpdateModel                          func(childComplexity int, id objects.GUID, input ent.UpdateModelInput) int
 		UpdateModelStatus                    func(childComplexity int, id objects.GUID, status model.Status) int
+		UpdateMyPassword                     func(childComplexity int, input UpdateMyPasswordInput) int
 		UpdateProject                        func(childComplexity int, id objects.GUID, input ent.UpdateProjectInput) int
 		UpdateProjectStatus                  func(childComplexity int, id objects.GUID, status project.Status) int
 		UpdateProjectUser                    func(childComplexity int, input UpdateProjectUserInput) int
@@ -873,6 +876,14 @@ type ComplexityRoot struct {
 	OIDCIdentityEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
+	}
+
+	OIDCIdentityInfo struct {
+		Email   func(childComplexity int) int
+		ID      func(childComplexity int) int
+		IdpName func(childComplexity int) int
+		Issuer  func(childComplexity int) int
+		Subject func(childComplexity int) int
 	}
 
 	OnboardingInfo struct {
@@ -1643,9 +1654,11 @@ type ComplexityRoot struct {
 		Avatar         func(childComplexity int) int
 		Email          func(childComplexity int) int
 		FirstName      func(childComplexity int) int
+		HasPassword    func(childComplexity int) int
 		ID             func(childComplexity int) int
 		IsOwner        func(childComplexity int) int
 		LastName       func(childComplexity int) int
+		OidcIdentities func(childComplexity int) int
 		PreferLanguage func(childComplexity int) int
 		Projects       func(childComplexity int) int
 		Roles          func(childComplexity int) int
@@ -1803,6 +1816,8 @@ type MutationResolver interface {
 	ApplyChannelOverrideTemplate(ctx context.Context, input ApplyChannelOverrideTemplateInput) (*ApplyChannelOverrideTemplatePayload, error)
 	SyncChannelModels(ctx context.Context, channelID objects.GUID, pattern *string) (*SyncChannelModelsPayload, error)
 	UpdateMe(ctx context.Context, input UpdateMeInput) (*ent.User, error)
+	UpdateMyPassword(ctx context.Context, input UpdateMyPasswordInput) (bool, error)
+	UnlinkOIDCIdentity(ctx context.Context, id objects.GUID) (bool, error)
 	UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error)
 	UpdateStoragePolicy(ctx context.Context, input biz.StoragePolicy) (bool, error)
 	UpdateRetryPolicy(ctx context.Context, input biz.RetryPolicy) (bool, error)
@@ -2012,6 +2027,9 @@ type UserResolver interface {
 
 	ProjectUsers(ctx context.Context, obj *ent.User) ([]*ent.UserProject, error)
 	UserRoles(ctx context.Context, obj *ent.User) ([]*ent.UserRole, error)
+}
+type UserInfoResolver interface {
+	OidcIdentities(ctx context.Context, obj *objects.UserInfo) ([]*OIDCIdentityInfo, error)
 }
 type UserProjectResolver interface {
 	ID(ctx context.Context, obj *ent.UserProject) (*objects.GUID, error)
@@ -5074,6 +5092,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.TriggerGcCleanup(childComplexity), true
+	case "Mutation.unlinkOIDCIdentity":
+		if e.complexity.Mutation.UnlinkOIDCIdentity == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unlinkOIDCIdentity_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnlinkOIDCIdentity(childComplexity, args["id"].(objects.GUID)), true
 	case "Mutation.updateAPIKey":
 		if e.complexity.Mutation.UpdateAPIKey == nil {
 			break
@@ -5217,6 +5246,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateModelStatus(childComplexity, args["id"].(objects.GUID), args["status"].(model.Status)), true
+	case "Mutation.updateMyPassword":
+		if e.complexity.Mutation.UpdateMyPassword == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMyPassword_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateMyPassword(childComplexity, args["input"].(UpdateMyPasswordInput)), true
 	case "Mutation.updateProject":
 		if e.complexity.Mutation.UpdateProject == nil {
 			break
@@ -5523,6 +5563,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OIDCIdentityEdge.Node(childComplexity), true
+
+	case "OIDCIdentityInfo.email":
+		if e.complexity.OIDCIdentityInfo.Email == nil {
+			break
+		}
+
+		return e.complexity.OIDCIdentityInfo.Email(childComplexity), true
+	case "OIDCIdentityInfo.id":
+		if e.complexity.OIDCIdentityInfo.ID == nil {
+			break
+		}
+
+		return e.complexity.OIDCIdentityInfo.ID(childComplexity), true
+	case "OIDCIdentityInfo.idpName":
+		if e.complexity.OIDCIdentityInfo.IdpName == nil {
+			break
+		}
+
+		return e.complexity.OIDCIdentityInfo.IdpName(childComplexity), true
+	case "OIDCIdentityInfo.issuer":
+		if e.complexity.OIDCIdentityInfo.Issuer == nil {
+			break
+		}
+
+		return e.complexity.OIDCIdentityInfo.Issuer(childComplexity), true
+	case "OIDCIdentityInfo.subject":
+		if e.complexity.OIDCIdentityInfo.Subject == nil {
+			break
+		}
+
+		return e.complexity.OIDCIdentityInfo.Subject(childComplexity), true
 
 	case "OnboardingInfo.autoDisableChannel":
 		if e.complexity.OnboardingInfo.AutoDisableChannel == nil {
@@ -8864,6 +8935,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserInfo.FirstName(childComplexity), true
+	case "UserInfo.hasPassword":
+		if e.complexity.UserInfo.HasPassword == nil {
+			break
+		}
+
+		return e.complexity.UserInfo.HasPassword(childComplexity), true
 	case "UserInfo.id":
 		if e.complexity.UserInfo.ID == nil {
 			break
@@ -8882,6 +8959,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserInfo.LastName(childComplexity), true
+	case "UserInfo.oidcIdentities":
+		if e.complexity.UserInfo.OidcIdentities == nil {
+			break
+		}
+
+		return e.complexity.UserInfo.OidcIdentities(childComplexity), true
 	case "UserInfo.preferLanguage":
 		if e.complexity.UserInfo.PreferLanguage == nil {
 			break
@@ -9257,6 +9340,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateDefaultDataStorageInput,
 		ec.unmarshalInputUpdateMeInput,
 		ec.unmarshalInputUpdateModelInput,
+		ec.unmarshalInputUpdateMyPasswordInput,
 		ec.unmarshalInputUpdateOIDCIdentityInput,
 		ec.unmarshalInputUpdateProjectInput,
 		ec.unmarshalInputUpdateProjectUserInput,
@@ -10279,6 +10363,17 @@ func (ec *executionContext) field_Mutation_testChannel_args(ctx context.Context,
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_unlinkOIDCIdentity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateAPIKeyProfiles_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10464,6 +10559,17 @@ func (ec *executionContext) field_Mutation_updateModel_args(ctx context.Context,
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMyPassword_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateMyPasswordInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateMyPasswordInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -27437,6 +27543,88 @@ func (ec *executionContext) fieldContext_Mutation_updateMe(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateMyPassword(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateMyPassword,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateMyPassword(ctx, fc.Args["input"].(UpdateMyPasswordInput))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateMyPassword(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMyPassword_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unlinkOIDCIdentity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_unlinkOIDCIdentity,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UnlinkOIDCIdentity(ctx, fc.Args["id"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unlinkOIDCIdentity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unlinkOIDCIdentity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateBrandSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30062,6 +30250,151 @@ func (ec *executionContext) fieldContext_OIDCIdentityEdge_cursor(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Cursor does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OIDCIdentityInfo_id(ctx context.Context, field graphql.CollectedField, obj *OIDCIdentityInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OIDCIdentityInfo_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OIDCIdentityInfo_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OIDCIdentityInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OIDCIdentityInfo_idpName(ctx context.Context, field graphql.CollectedField, obj *OIDCIdentityInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OIDCIdentityInfo_idpName,
+		func(ctx context.Context) (any, error) {
+			return obj.IdpName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OIDCIdentityInfo_idpName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OIDCIdentityInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OIDCIdentityInfo_issuer(ctx context.Context, field graphql.CollectedField, obj *OIDCIdentityInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OIDCIdentityInfo_issuer,
+		func(ctx context.Context) (any, error) {
+			return obj.Issuer, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OIDCIdentityInfo_issuer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OIDCIdentityInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OIDCIdentityInfo_subject(ctx context.Context, field graphql.CollectedField, obj *OIDCIdentityInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OIDCIdentityInfo_subject,
+		func(ctx context.Context) (any, error) {
+			return obj.Subject, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OIDCIdentityInfo_subject(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OIDCIdentityInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OIDCIdentityInfo_email(ctx context.Context, field graphql.CollectedField, obj *OIDCIdentityInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OIDCIdentityInfo_email,
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OIDCIdentityInfo_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OIDCIdentityInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35504,6 +35837,10 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_UserInfo_roles(ctx, field)
 			case "projects":
 				return ec.fieldContext_UserInfo_projects(ctx, field)
+			case "oidcIdentities":
+				return ec.fieldContext_UserInfo_oidcIdentities(ctx, field)
+			case "hasPassword":
+				return ec.fieldContext_UserInfo_hasPassword(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserInfo", field.Name)
 		},
@@ -47783,6 +48120,76 @@ func (ec *executionContext) fieldContext_UserInfo_projects(_ context.Context, fi
 				return ec.fieldContext_UserProjectInfo_roles(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserProjectInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserInfo_oidcIdentities(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserInfo_oidcIdentities,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.UserInfo().OidcIdentities(ctx, obj)
+		},
+		nil,
+		ec.marshalNOIDCIdentityInfo2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐOIDCIdentityInfoᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserInfo_oidcIdentities(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserInfo",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_OIDCIdentityInfo_id(ctx, field)
+			case "idpName":
+				return ec.fieldContext_OIDCIdentityInfo_idpName(ctx, field)
+			case "issuer":
+				return ec.fieldContext_OIDCIdentityInfo_issuer(ctx, field)
+			case "subject":
+				return ec.fieldContext_OIDCIdentityInfo_subject(ctx, field)
+			case "email":
+				return ec.fieldContext_OIDCIdentityInfo_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OIDCIdentityInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserInfo_hasPassword(ctx context.Context, field graphql.CollectedField, obj *objects.UserInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserInfo_hasPassword,
+		func(ctx context.Context) (any, error) {
+			return obj.HasPassword, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserInfo_hasPassword(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -68986,6 +69393,40 @@ func (ec *executionContext) unmarshalInputUpdateModelInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateMyPasswordInput(ctx context.Context, obj any) (UpdateMyPasswordInput, error) {
+	var it UpdateMyPasswordInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"oldPassword", "newPassword"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "oldPassword":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("oldPassword"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OldPassword = data
+		case "newPassword":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newPassword"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NewPassword = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateOIDCIdentityInput(ctx context.Context, obj any) (ent.UpdateOIDCIdentityInput, error) {
 	var it ent.UpdateOIDCIdentityInput
 	asMap := map[string]any{}
@@ -80040,6 +80481,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateMyPassword":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMyPassword(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unlinkOIDCIdentity":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unlinkOIDCIdentity(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateBrandSettings":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateBrandSettings(ctx, field)
@@ -80639,6 +81094,65 @@ func (ec *executionContext) _OIDCIdentityEdge(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._OIDCIdentityEdge_node(ctx, field, obj)
 		case "cursor":
 			out.Values[i] = ec._OIDCIdentityEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var oIDCIdentityInfoImplementors = []string{"OIDCIdentityInfo"}
+
+func (ec *executionContext) _OIDCIdentityInfo(ctx context.Context, sel ast.SelectionSet, obj *OIDCIdentityInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, oIDCIdentityInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OIDCIdentityInfo")
+		case "id":
+			out.Values[i] = ec._OIDCIdentityInfo_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "idpName":
+			out.Values[i] = ec._OIDCIdentityInfo_idpName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "issuer":
+			out.Values[i] = ec._OIDCIdentityInfo_issuer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subject":
+			out.Values[i] = ec._OIDCIdentityInfo_subject(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "email":
+			out.Values[i] = ec._OIDCIdentityInfo_email(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -89424,49 +89938,90 @@ func (ec *executionContext) _UserInfo(ctx context.Context, sel ast.SelectionSet,
 		case "id":
 			out.Values[i] = ec._UserInfo_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "email":
 			out.Values[i] = ec._UserInfo_email(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "firstName":
 			out.Values[i] = ec._UserInfo_firstName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "lastName":
 			out.Values[i] = ec._UserInfo_lastName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "isOwner":
 			out.Values[i] = ec._UserInfo_isOwner(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "preferLanguage":
 			out.Values[i] = ec._UserInfo_preferLanguage(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "avatar":
 			out.Values[i] = ec._UserInfo_avatar(ctx, field, obj)
 		case "scopes":
 			out.Values[i] = ec._UserInfo_scopes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "roles":
 			out.Values[i] = ec._UserInfo_roles(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "projects":
 			out.Values[i] = ec._UserInfo_projects(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "oidcIdentities":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._UserInfo_oidcIdentities(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "hasPassword":
+			out.Values[i] = ec._UserInfo_hasPassword(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -93270,6 +93825,60 @@ func (ec *executionContext) marshalNOIDCIdentityConnection2ᚖgithubᚗcomᚋloo
 	return ec._OIDCIdentityConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNOIDCIdentityInfo2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐOIDCIdentityInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*OIDCIdentityInfo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNOIDCIdentityInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐOIDCIdentityInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNOIDCIdentityInfo2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐOIDCIdentityInfo(ctx context.Context, sel ast.SelectionSet, v *OIDCIdentityInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._OIDCIdentityInfo(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNOIDCIdentityOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐOIDCIdentityOrderField(ctx context.Context, v any) (*ent.OIDCIdentityOrderField, error) {
 	var res = new(ent.OIDCIdentityOrderField)
 	err := res.UnmarshalGQL(v)
@@ -95190,6 +95799,11 @@ func (ec *executionContext) unmarshalNUpdateMeInput2githubᚗcomᚋloopljᚋaxon
 
 func (ec *executionContext) unmarshalNUpdateModelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateModelInput(ctx context.Context, v any) (ent.UpdateModelInput, error) {
 	res, err := ec.unmarshalInputUpdateModelInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateMyPasswordInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateMyPasswordInput(ctx context.Context, v any) (UpdateMyPasswordInput, error) {
+	res, err := ec.unmarshalInputUpdateMyPasswordInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

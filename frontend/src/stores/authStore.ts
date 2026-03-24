@@ -26,6 +26,8 @@ export interface AuthUser {
   scopes: string[];
   roles: Role[];
   projects: Project[];
+  oidcIdentities?: { id: string; idpName: string; issuer: string; subject: string; email: string }[];
+  hasPassword?: boolean;
 }
 
 interface AuthState {

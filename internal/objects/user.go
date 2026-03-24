@@ -11,6 +11,16 @@ type UserInfo struct {
 	Scopes         []string          `json:"scopes"`
 	Roles          []RoleInfo        `json:"roles"`
 	Projects       []UserProjectInfo `json:"projects"`
+	OIDCIdentities []OIDCIdentityInfo `json:"oidcIdentities"`
+	HasPassword    bool              `json:"hasPassword"`
+}
+
+type OIDCIdentityInfo struct {
+	ID      GUID   `json:"id"`
+	IdpName string `json:"idpName"`
+	Issuer  string `json:"issuer"`
+	Subject string `json:"subject"`
+	Email   string `json:"email"`
 }
 
 type UserProjectInfo struct {

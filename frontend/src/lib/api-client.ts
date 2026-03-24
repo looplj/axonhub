@@ -150,6 +150,9 @@ export const authApi = {
   getOIDCAuthorizeURL: (provider: string): Promise<{ data: { url: string; state: string } }> =>
     apiRequest(`/oauth/oidc/authorize/${provider}`),
 
+  getOIDCLinkAuthorizeURL: (provider: string): Promise<{ data: { url: string; state: string } }> =>
+    apiRequest(`/admin/oidc/link/${provider}`, { requireAuth: true }),
+
   exchangeOIDCCode: (code: string): Promise<{
     data: {
       user: AuthUser;

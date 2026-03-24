@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -63,6 +64,41 @@ func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 	})
 }
 
+func (h *OIDCHandlers) GetLinkAuthorizeURL(c *gin.Context) {
+	provider := c.Param("provider")
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Provider is required"})
+		return
+	}
+
+	// This assumes the route is protected by AuthMiddleware so contexts.GetUser should succeed.
+	user, _ := c.Get("user")
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	userID := user.(*ent.User).ID
+
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+
+	authURL, state, err := h.oidc.GetLinkAuthorizeURL(c.Request.Context(), provider, baseURL, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"url":   authURL,
+			"state": state,
+		},
+	})
+}
+
 func (h *OIDCHandlers) Callback(c *gin.Context) {
 	provider := c.Param("provider")
 	if provider == "" {
@@ -94,9 +130,14 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 		return
 	}
 
-	exchangeCode, err := h.oidc.Callback(c.Request.Context(), provider, code, state)
+	exchangeCode, intent, err := h.oidc.Callback(c.Request.Context(), provider, code, state)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if intent == "link" {
+		c.Redirect(http.StatusFound, "/settings/security?oidc_link=success")
 		return
 	}
 
