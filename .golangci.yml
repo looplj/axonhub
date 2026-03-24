@@ -249,7 +249,7 @@ linters:
         # For compatibility with previous versions.
       # Also, those reports are not relevant.
       - linters: [gosec]
-        text: "(G704: SSRF via taint analysis|G703: Path traversal via taint analysis|G702: Command injection via taint analysis|G115: integer overflow conversion uintptr)"
+        text: "(G704: SSRF via taint analysis|G703: Path traversal via taint analysis|G702: Command injection via taint analysis|G115: integer overflow conversion uintptr|G705: XSS via taint analysis)"
 
       # Exclude some staticcheck messages
       - linters:
