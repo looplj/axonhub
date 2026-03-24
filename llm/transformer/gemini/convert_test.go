@@ -95,6 +95,50 @@ func TestConvertDocumentURLToGeminiPart(t *testing.T) {
 	}
 }
 
+func TestConvertAudioToGeminiPart(t *testing.T) {
+	tests := []struct {
+		name     string
+		audio    *llm.InputAudio
+		validate func(t *testing.T, result *Part)
+	}{
+		{
+			name: "mp3 audio",
+			audio: &llm.InputAudio{
+				Format: "mp3",
+				Data:   "SUQzBAAAAAA=",
+			},
+			validate: func(t *testing.T, result *Part) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.InlineData)
+				assert.Equal(t, "audio/mp3", result.InlineData.MIMEType)
+				assert.Equal(t, "SUQzBAAAAAA=", result.InlineData.Data)
+			},
+		},
+		{
+			name: "wav audio",
+			audio: &llm.InputAudio{
+				Format: "wav",
+				Data:   "UklGRiQAAABXQVZF",
+			},
+			validate: func(t *testing.T, result *Part) {
+				t.Helper()
+				require.NotNil(t, result)
+				require.NotNil(t, result.InlineData)
+				assert.Equal(t, "audio/wav", result.InlineData.MIMEType)
+				assert.Equal(t, "UklGRiQAAABXQVZF", result.InlineData.Data)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertAudioToGeminiPart(tt.audio)
+			tt.validate(t, result)
+		})
+	}
+}
+
 func TestIsDocumentMIMEType(t *testing.T) {
 	tests := []struct {
 		name     string

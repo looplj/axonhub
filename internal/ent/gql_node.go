@@ -25,6 +25,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -99,6 +100,11 @@ var promptImplementors = []string{"Prompt", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Prompt) IsNode() {}
+
+var promptprotectionruleImplementors = []string{"PromptProtectionRule", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*PromptProtectionRule) IsNode() {}
 
 var providerquotastatusImplementors = []string{"ProviderQuotaStatus", "Node"}
 
@@ -308,6 +314,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(prompt.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, promptImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case promptprotectionrule.Table:
+		query := c.PromptProtectionRule.Query().
+			Where(promptprotectionrule.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, promptprotectionruleImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -648,6 +663,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.Prompt.Query().
 			Where(prompt.IDIn(ids...))
 		query, err := query.CollectFields(ctx, promptImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case promptprotectionrule.Table:
+		query := c.PromptProtectionRule.Query().
+			Where(promptprotectionrule.IDIn(ids...))
+		query, err := query.CollectFields(ctx, promptprotectionruleImplementors...)
 		if err != nil {
 			return nil, err
 		}

@@ -26,6 +26,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -66,6 +67,8 @@ type Client struct {
 	Project *ProjectClient
 	// Prompt is the client for interacting with the Prompt builders.
 	Prompt *PromptClient
+	// PromptProtectionRule is the client for interacting with the PromptProtectionRule builders.
+	PromptProtectionRule *PromptProtectionRuleClient
 	// ProviderQuotaStatus is the client for interacting with the ProviderQuotaStatus builders.
 	ProviderQuotaStatus *ProviderQuotaStatusClient
 	// Request is the client for interacting with the Request builders.
@@ -112,6 +115,7 @@ func (c *Client) init() {
 	c.OIDCIdentity = NewOIDCIdentityClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.Prompt = NewPromptClient(c.config)
+	c.PromptProtectionRule = NewPromptProtectionRuleClient(c.config)
 	c.ProviderQuotaStatus = NewProviderQuotaStatusClient(c.config)
 	c.Request = NewRequestClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
@@ -226,6 +230,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		OIDCIdentity:             NewOIDCIdentityClient(cfg),
 		Project:                  NewProjectClient(cfg),
 		Prompt:                   NewPromptClient(cfg),
+		PromptProtectionRule:     NewPromptProtectionRuleClient(cfg),
 		ProviderQuotaStatus:      NewProviderQuotaStatusClient(cfg),
 		Request:                  NewRequestClient(cfg),
 		RequestExecution:         NewRequestExecutionClient(cfg),
@@ -267,6 +272,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		OIDCIdentity:             NewOIDCIdentityClient(cfg),
 		Project:                  NewProjectClient(cfg),
 		Prompt:                   NewPromptClient(cfg),
+		PromptProtectionRule:     NewPromptProtectionRuleClient(cfg),
 		ProviderQuotaStatus:      NewProviderQuotaStatusClient(cfg),
 		Request:                  NewRequestClient(cfg),
 		RequestExecution:         NewRequestExecutionClient(cfg),
@@ -309,9 +315,9 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.APIKey, c.Channel, c.ChannelModelPrice, c.ChannelModelPriceVersion,
 		c.ChannelOverrideTemplate, c.ChannelProbe, c.DataStorage, c.Model,
-		c.OIDCIdentity, c.Project, c.Prompt, c.ProviderQuotaStatus, c.Request,
-		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
-		c.UserProject, c.UserRole,
+		c.OIDCIdentity, c.Project, c.Prompt, c.PromptProtectionRule,
+		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.System,
+		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -323,9 +329,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.APIKey, c.Channel, c.ChannelModelPrice, c.ChannelModelPriceVersion,
 		c.ChannelOverrideTemplate, c.ChannelProbe, c.DataStorage, c.Model,
-		c.OIDCIdentity, c.Project, c.Prompt, c.ProviderQuotaStatus, c.Request,
-		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
-		c.UserProject, c.UserRole,
+		c.OIDCIdentity, c.Project, c.Prompt, c.PromptProtectionRule,
+		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.System,
+		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -356,6 +362,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Project.mutate(ctx, m)
 	case *PromptMutation:
 		return c.Prompt.mutate(ctx, m)
+	case *PromptProtectionRuleMutation:
+		return c.PromptProtectionRule.mutate(ctx, m)
 	case *ProviderQuotaStatusMutation:
 		return c.ProviderQuotaStatus.mutate(ctx, m)
 	case *RequestMutation:
@@ -2294,6 +2302,141 @@ func (c *PromptClient) mutate(ctx context.Context, m *PromptMutation) (Value, er
 		return (&PromptDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Prompt mutation op: %q", m.Op())
+	}
+}
+
+// PromptProtectionRuleClient is a client for the PromptProtectionRule schema.
+type PromptProtectionRuleClient struct {
+	config
+}
+
+// NewPromptProtectionRuleClient returns a client for the PromptProtectionRule from the given config.
+func NewPromptProtectionRuleClient(c config) *PromptProtectionRuleClient {
+	return &PromptProtectionRuleClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `promptprotectionrule.Hooks(f(g(h())))`.
+func (c *PromptProtectionRuleClient) Use(hooks ...Hook) {
+	c.hooks.PromptProtectionRule = append(c.hooks.PromptProtectionRule, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `promptprotectionrule.Intercept(f(g(h())))`.
+func (c *PromptProtectionRuleClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PromptProtectionRule = append(c.inters.PromptProtectionRule, interceptors...)
+}
+
+// Create returns a builder for creating a PromptProtectionRule entity.
+func (c *PromptProtectionRuleClient) Create() *PromptProtectionRuleCreate {
+	mutation := newPromptProtectionRuleMutation(c.config, OpCreate)
+	return &PromptProtectionRuleCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PromptProtectionRule entities.
+func (c *PromptProtectionRuleClient) CreateBulk(builders ...*PromptProtectionRuleCreate) *PromptProtectionRuleCreateBulk {
+	return &PromptProtectionRuleCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PromptProtectionRuleClient) MapCreateBulk(slice any, setFunc func(*PromptProtectionRuleCreate, int)) *PromptProtectionRuleCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PromptProtectionRuleCreateBulk{err: fmt.Errorf("calling to PromptProtectionRuleClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PromptProtectionRuleCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PromptProtectionRuleCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PromptProtectionRule.
+func (c *PromptProtectionRuleClient) Update() *PromptProtectionRuleUpdate {
+	mutation := newPromptProtectionRuleMutation(c.config, OpUpdate)
+	return &PromptProtectionRuleUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PromptProtectionRuleClient) UpdateOne(_m *PromptProtectionRule) *PromptProtectionRuleUpdateOne {
+	mutation := newPromptProtectionRuleMutation(c.config, OpUpdateOne, withPromptProtectionRule(_m))
+	return &PromptProtectionRuleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PromptProtectionRuleClient) UpdateOneID(id int) *PromptProtectionRuleUpdateOne {
+	mutation := newPromptProtectionRuleMutation(c.config, OpUpdateOne, withPromptProtectionRuleID(id))
+	return &PromptProtectionRuleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PromptProtectionRule.
+func (c *PromptProtectionRuleClient) Delete() *PromptProtectionRuleDelete {
+	mutation := newPromptProtectionRuleMutation(c.config, OpDelete)
+	return &PromptProtectionRuleDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PromptProtectionRuleClient) DeleteOne(_m *PromptProtectionRule) *PromptProtectionRuleDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PromptProtectionRuleClient) DeleteOneID(id int) *PromptProtectionRuleDeleteOne {
+	builder := c.Delete().Where(promptprotectionrule.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PromptProtectionRuleDeleteOne{builder}
+}
+
+// Query returns a query builder for PromptProtectionRule.
+func (c *PromptProtectionRuleClient) Query() *PromptProtectionRuleQuery {
+	return &PromptProtectionRuleQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePromptProtectionRule},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PromptProtectionRule entity by its id.
+func (c *PromptProtectionRuleClient) Get(ctx context.Context, id int) (*PromptProtectionRule, error) {
+	return c.Query().Where(promptprotectionrule.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PromptProtectionRuleClient) GetX(ctx context.Context, id int) *PromptProtectionRule {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PromptProtectionRuleClient) Hooks() []Hook {
+	hooks := c.hooks.PromptProtectionRule
+	return append(hooks[:len(hooks):len(hooks)], promptprotectionrule.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *PromptProtectionRuleClient) Interceptors() []Interceptor {
+	inters := c.inters.PromptProtectionRule
+	return append(inters[:len(inters):len(inters)], promptprotectionrule.Interceptors[:]...)
+}
+
+func (c *PromptProtectionRuleClient) mutate(ctx context.Context, m *PromptProtectionRuleMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PromptProtectionRuleCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PromptProtectionRuleUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PromptProtectionRuleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PromptProtectionRuleDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PromptProtectionRule mutation op: %q", m.Op())
 	}
 }
 
@@ -4306,13 +4449,15 @@ type (
 	hooks struct {
 		APIKey, Channel, ChannelModelPrice, ChannelModelPriceVersion,
 		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, OIDCIdentity,
-		Project, Prompt, ProviderQuotaStatus, Request, RequestExecution, Role, System,
-		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
+		Project, Prompt, PromptProtectionRule, ProviderQuotaStatus, Request,
+		RequestExecution, Role, System, Thread, Trace, UsageLog, User, UserProject,
+		UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, Channel, ChannelModelPrice, ChannelModelPriceVersion,
 		ChannelOverrideTemplate, ChannelProbe, DataStorage, Model, OIDCIdentity,
-		Project, Prompt, ProviderQuotaStatus, Request, RequestExecution, Role, System,
-		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
+		Project, Prompt, PromptProtectionRule, ProviderQuotaStatus, Request,
+		RequestExecution, Role, System, Thread, Trace, UsageLog, User, UserProject,
+		UserRole []ent.Interceptor
 	}
 )

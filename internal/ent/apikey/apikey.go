@@ -133,6 +133,7 @@ const DefaultType = TypeUser
 const (
 	TypeUser           Type = "user"
 	TypeServiceAccount Type = "service_account"
+	TypeNoauth         Type = "noauth"
 )
 
 func (_type Type) String() string {
@@ -142,7 +143,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeUser, TypeServiceAccount:
+	case TypeUser, TypeServiceAccount, TypeNoauth:
 		return nil
 	default:
 		return fmt.Errorf("apikey: invalid enum value for type field: %q", _type)

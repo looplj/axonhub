@@ -75,6 +75,57 @@ func TestRequestFromLLM(t *testing.T) {
 	}
 }
 
+func TestMessageContentPartAudioRoundTrip(t *testing.T) {
+	part := llm.MessageContentPart{
+		Type: "input_audio",
+		InputAudio: &llm.InputAudio{
+			Format: "mp3",
+			Data:   "audio-base64",
+		},
+	}
+
+	oaiPart := MessageContentPartFromLLM(part)
+	require.Equal(t, "input_audio", oaiPart.Type)
+	require.NotNil(t, oaiPart.InputAudio)
+	require.Equal(t, "mp3", oaiPart.InputAudio.Format)
+	require.Equal(t, "audio-base64", oaiPart.InputAudio.Data)
+
+	roundTrip := oaiPart.ToLLMPart()
+	require.Equal(t, "input_audio", roundTrip.Type)
+	require.NotNil(t, roundTrip.InputAudio)
+	require.Equal(t, "mp3", roundTrip.InputAudio.Format)
+	require.Equal(t, "audio-base64", roundTrip.InputAudio.Data)
+}
+
+func TestMessageAudioRoundTrip(t *testing.T) {
+	msg := llm.Message{
+		Role: "assistant",
+		Content: llm.MessageContent{
+			Content: lo.ToPtr("Audio reply"),
+		},
+		Audio: &llm.OutputAudio{
+			ID:         "audio_123",
+			Data:       "base64-audio",
+			ExpiresAt:  1234567890,
+			Transcript: "hello world",
+		},
+	}
+
+	oaiMsg := MessageFromLLM(msg)
+	require.NotNil(t, oaiMsg.Audio)
+	require.Equal(t, "audio_123", oaiMsg.Audio.ID)
+	require.Equal(t, "base64-audio", oaiMsg.Audio.Data)
+	require.Equal(t, int64(1234567890), oaiMsg.Audio.ExpiresAt)
+	require.Equal(t, "hello world", oaiMsg.Audio.Transcript)
+
+	roundTrip := oaiMsg.ToLLMMessage()
+	require.NotNil(t, roundTrip.Audio)
+	require.Equal(t, "audio_123", roundTrip.Audio.ID)
+	require.Equal(t, "base64-audio", roundTrip.Audio.Data)
+	require.Equal(t, int64(1234567890), roundTrip.Audio.ExpiresAt)
+	require.Equal(t, "hello world", roundTrip.Audio.Transcript)
+}
+
 func TestResponse_ToLLMResponse(t *testing.T) {
 	tests := []struct {
 		name     string

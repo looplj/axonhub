@@ -160,13 +160,62 @@ input FastestChannelsInput {
   limit: Int = 5
 }
 
+"""
+Token usage statistics grouped by channel
+"""
+type TokenStatsByChannel {
+  channelName: String!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  reasoningTokens: Int!
+  totalTokens: Int!
+}
+
+"""
+Token usage statistics grouped by model
+"""
+type TokenStatsByModel {
+  modelId: String!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  reasoningTokens: Int!
+  totalTokens: Int!
+}
+
+"""
+Cost statistics grouped by channel
+"""
+type CostStatsByChannel {
+  channelName: String!
+  cost: Float!
+}
+
+"""
+Cost statistics grouped by model
+"""
+type CostStatsByModel {
+  modelId: String!
+  cost: Float!
+}
+
+"""
+Cost statistics grouped by API key
+"""
+type CostStatsByAPIKey {
+  apiKeyId: ID!
+  apiKeyName: String!
+  cost: Float!
+}
+
 extend type Query {
   dashboardOverview: DashboardOverview!
   requestStats: RequestStats!
-  requestStatsByChannel: [RequestStatsByChannel!]!
-  requestStatsByModel: [RequestStatsByModel!]!
-  requestStatsByAPIKey: [RequestStatsByAPIKey!]!
-  tokenStatsByAPIKey: [TokenStatsByAPIKey!]!
+  requestStatsByChannel(timeWindow: String): [RequestStatsByChannel!]!
+  requestStatsByModel(timeWindow: String): [RequestStatsByModel!]!
+  requestStatsByAPIKey(timeWindow: String): [RequestStatsByAPIKey!]!
+  tokenStatsByAPIKey(timeWindow: String): [TokenStatsByAPIKey!]!
   apiKeyTokenUsageStats(
     input: APIKeyTokenUsageStatsInput
   ): [APIKeyTokenUsageStats!]!
@@ -184,4 +233,9 @@ extend type Query {
   Get performance statistics for channels over time
   """
   channelPerformanceStats: [ChannelPerformanceStat!]!
+  tokenStatsByChannel(timeWindow: String): [TokenStatsByChannel!]!
+  tokenStatsByModel(timeWindow: String): [TokenStatsByModel!]!
+  costStatsByChannel(timeWindow: String): [CostStatsByChannel!]!
+  costStatsByModel(timeWindow: String): [CostStatsByModel!]!
+  costStatsByAPIKey(timeWindow: String): [CostStatsByAPIKey!]!
 }

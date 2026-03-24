@@ -370,6 +370,55 @@ func TestConvertGeminiToLLMRequest_Basic(t *testing.T) {
 	}
 }
 
+func TestConvertGeminiToLLMRequest_AudioInput(t *testing.T) {
+	input := &GenerateContentRequest{
+		Contents: []*Content{
+			{
+				Role: "user",
+				Parts: []*Part{
+					{
+						InlineData: &Blob{
+							MIMEType: "audio/wav",
+							Data:     "UklGRiQAAABXQVZF",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := convertGeminiToLLMRequest(input)
+	require.NoError(t, err)
+	require.Len(t, result.Messages, 1)
+	require.Len(t, result.Messages[0].Content.MultipleContent, 1)
+	require.Equal(t, "input_audio", result.Messages[0].Content.MultipleContent[0].Type)
+	require.NotNil(t, result.Messages[0].Content.MultipleContent[0].InputAudio)
+	require.Equal(t, "wav", result.Messages[0].Content.MultipleContent[0].InputAudio.Format)
+	require.Equal(t, "UklGRiQAAABXQVZF", result.Messages[0].Content.MultipleContent[0].InputAudio.Data)
+}
+
+func TestConvertGeminiContentToLLMMessage_VideoFileData(t *testing.T) {
+	content := &Content{
+		Role: "user",
+		Parts: []*Part{
+			{
+				FileData: &FileData{
+					FileURI:  "https://example.com/example.mp4",
+					MIMEType: "video/mp4",
+				},
+			},
+		},
+	}
+
+	msg, err := convertGeminiContentToLLMMessage(content, nil)
+	require.NoError(t, err)
+	require.NotNil(t, msg)
+	require.Len(t, msg.Content.MultipleContent, 1)
+	require.Equal(t, "video_url", msg.Content.MultipleContent[0].Type)
+	require.NotNil(t, msg.Content.MultipleContent[0].VideoURL)
+	require.Equal(t, "https://example.com/example.mp4", msg.Content.MultipleContent[0].VideoURL.URL)
+}
+
 func TestConvertGeminiToLLMRequest_ResponseFormat(t *testing.T) {
 	tests := []struct {
 		name     string

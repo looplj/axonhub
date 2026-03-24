@@ -24,15 +24,16 @@ import (
 // TestChannelOrchestrator handles channel testing functionality.
 // It is stateless and can be reused across multiple test requests.
 type TestChannelOrchestrator struct {
-	channelService      *biz.ChannelService
-	requestService      *biz.RequestService
-	systemService       *biz.SystemService
-	usageLogService     *biz.UsageLogService
-	httpClient          *httpclient.HttpClient
-	modelCircuitBreaker *biz.ModelCircuitBreaker
-	modelMapper         *ModelMapper
-	loadBalancer        *LoadBalancer
-	connectionTracking  ConnectionTracker
+	channelService              *biz.ChannelService
+	requestService              *biz.RequestService
+	systemService               *biz.SystemService
+	usageLogService             *biz.UsageLogService
+	promptProtectionRuleService *biz.PromptProtectionRuleService
+	httpClient                  *httpclient.HttpClient
+	modelCircuitBreaker         *biz.ModelCircuitBreaker
+	modelMapper                 *ModelMapper
+	loadBalancer                *LoadBalancer
+	connectionTracking          ConnectionTracker
 }
 
 // NewTestChannelOrchestrator creates a new TestChannelOrchestrator.
@@ -41,18 +42,20 @@ func NewTestChannelOrchestrator(
 	requestService *biz.RequestService,
 	systemService *biz.SystemService,
 	usageLogService *biz.UsageLogService,
+	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	httpClient *httpclient.HttpClient,
 ) *TestChannelOrchestrator {
 	return &TestChannelOrchestrator{
-		channelService:      channelService,
-		requestService:      requestService,
-		systemService:       systemService,
-		usageLogService:     usageLogService,
-		httpClient:          httpClient,
-		modelCircuitBreaker: biz.NewModelCircuitBreaker(),
-		modelMapper:         NewModelMapper(),
-		loadBalancer:        NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
-		connectionTracking:  NewDefaultConnectionTracker(100),
+		channelService:              channelService,
+		requestService:              requestService,
+		systemService:               systemService,
+		usageLogService:             usageLogService,
+		promptProtectionRuleService: promptProtectionRuleService,
+		httpClient:                  httpClient,
+		modelCircuitBreaker:         biz.NewModelCircuitBreaker(),
+		modelMapper:                 NewModelMapper(),
+		loadBalancer:                NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
+		connectionTracking:          NewDefaultConnectionTracker(100),
 	}
 }
 
@@ -84,6 +87,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		RequestService:  processor.requestService,
 		ChannelService:  processor.channelService,
 		PromptProvider:  &stubPromptProvider{},
+		PromptProtecter: processor.promptProtectionRuleService,
 		PipelineFactory: pipeline.NewFactory(processor.httpClient),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),

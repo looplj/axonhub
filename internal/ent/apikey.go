@@ -35,7 +35,7 @@ type APIKey struct {
 	Key string `json:"key,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
-	// API Key type: user or service_account
+	// API Key type: user, service_account, or noauth
 	Type apikey.Type `json:"type,omitempty"`
 	// Status holds the value of the "status" field.
 	Status apikey.Status `json:"status,omitempty"`

@@ -81,7 +81,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify all Claude Code headers
-		assert.Contains(t, httpReq.Headers.Get("Anthropic-Beta"), "claude-code-20250219")
+		assert.Contains(t, httpReq.Headers.Get("Anthropic-Beta"), "interleaved-thinking-2025-05-14")
 		assert.Equal(t, "2023-06-01", httpReq.Headers.Get("Anthropic-Version"))
 		assert.Equal(t, "true", httpReq.Headers.Get("Anthropic-Dangerous-Direct-Browser-Access"))
 		assert.Equal(t, "cli", httpReq.Headers.Get("X-App"))
@@ -185,7 +185,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		// Should have generated user ID
 		userID := gjson.GetBytes(httpReq.Body, "metadata.user_id").String()
 		assert.NotEmpty(t, userID)
-		assert.True(t, isValidUserID(userID))
+		assert.NotNil(t, ParseUserID(userID))
 	})
 
 	t.Run("does not add billing cch when not official", func(t *testing.T) {

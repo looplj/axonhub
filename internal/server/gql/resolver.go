@@ -39,6 +39,7 @@ type Resolver struct {
 	backupService                  *backup.BackupService
 	channelProbeService            *biz.ChannelProbeService
 	promptService                  *biz.PromptService
+	promptProtectionRuleService    *biz.PromptProtectionRuleService
 	providerQuotaService           *biz.ProviderQuotaService
 	modelFetcher                   *biz.ModelFetcher
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
@@ -65,6 +66,7 @@ func NewSchema(
 	backupService *backup.BackupService,
 	channelProbeService *biz.ChannelProbeService,
 	promptService *biz.PromptService,
+	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	providerQuotaService *biz.ProviderQuotaService,
 	httpClient *httpclient.HttpClient,
 	gcWorker *gc.Worker,
@@ -90,9 +92,10 @@ func NewSchema(
 			backupService:                  backupService,
 			channelProbeService:            channelProbeService,
 			promptService:                  promptService,
+			promptProtectionRuleService:    promptProtectionRuleService,
 			providerQuotaService:           providerQuotaService,
 			modelFetcher:                   modelFetcher,
-			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),
+			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient),
 			gcWorker:                       gcWorker,
 		},
 	})

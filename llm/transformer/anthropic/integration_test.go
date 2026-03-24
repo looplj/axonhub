@@ -20,10 +20,11 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 
 	tests := []struct {
-		name                 string
-		anthropicRequestJSON string
-		expectedModel        string
-		expectedMaxTokens    int64
+		name                    string
+		anthropicRequestJSON    string
+		expectedModel           string
+		expectedMaxTokens       int64
+		expectedThinkingDisplay string
 	}{
 		{
 			name: "simple text message",
@@ -85,6 +86,88 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			expectedModel:     "claude-3-sonnet-20240229",
 			expectedMaxTokens: 1024,
 		},
+		{
+			name: "thinking with display summarized",
+			anthropicRequestJSON: `{
+				"model": "claude-sonnet-4-20250514",
+				"max_tokens": 8096,
+				"thinking": {
+					"type": "enabled",
+					"budget_tokens": 5000,
+					"display": "summarized"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello"
+					}
+				]
+			}`,
+			expectedModel:           "claude-sonnet-4-20250514",
+			expectedMaxTokens:       8096,
+			expectedThinkingDisplay: "summarized",
+		},
+		{
+			name: "thinking with display omitted",
+			anthropicRequestJSON: `{
+				"model": "claude-sonnet-4-20250514",
+				"max_tokens": 4096,
+				"thinking": {
+					"type": "enabled",
+					"budget_tokens": 10000,
+					"display": "omitted"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello"
+					}
+				]
+			}`,
+			expectedModel:           "claude-sonnet-4-20250514",
+			expectedMaxTokens:       4096,
+			expectedThinkingDisplay: "omitted",
+		},
+		{
+			name: "adaptive thinking with display summarized",
+			anthropicRequestJSON: `{
+				"model": "claude-sonnet-4-20250514",
+				"max_tokens": 4096,
+				"thinking": {
+					"type": "adaptive",
+					"display": "summarized"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello"
+					}
+				]
+			}`,
+			expectedModel:           "claude-sonnet-4-20250514",
+			expectedMaxTokens:       4096,
+			expectedThinkingDisplay: "summarized",
+		},
+		{
+			name: "disabled thinking ignores display",
+			anthropicRequestJSON: `{
+				"model": "claude-sonnet-4-20250514",
+				"max_tokens": 4096,
+				"thinking": {
+					"type": "disabled",
+					"display": "summarized"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello"
+					}
+				]
+			}`,
+			expectedModel:           "claude-sonnet-4-20250514",
+			expectedMaxTokens:       4096,
+			expectedThinkingDisplay: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -124,6 +207,14 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedModel, anthropicReq.Model)
 			require.Equal(t, tt.expectedMaxTokens, anthropicReq.MaxTokens)
+
+			// Verify thinking display round-trip
+			if tt.expectedThinkingDisplay != "" {
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, tt.expectedThinkingDisplay, anthropicReq.Thinking.Display)
+			} else if anthropicReq.Thinking != nil {
+				require.Empty(t, anthropicReq.Thinking.Display)
+			}
 
 			// Step 3: Simulate Anthropic response and transform back
 			anthropicResponse := &Message{

@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -289,6 +290,27 @@ var schemaGraph = func() *sqlgraph.Schema {
 			prompt.FieldStatus:      {Type: field.TypeEnum, Column: prompt.FieldStatus},
 			prompt.FieldOrder:       {Type: field.TypeInt, Column: prompt.FieldOrder},
 			prompt.FieldSettings:    {Type: field.TypeJSON, Column: prompt.FieldSettings},
+		},
+	}
+	graph.Nodes[11] = &sqlgraph.Node{
+		NodeSpec: sqlgraph.NodeSpec{
+			Table:   promptprotectionrule.Table,
+			Columns: promptprotectionrule.Columns,
+			ID: &sqlgraph.FieldSpec{
+				Type:   field.TypeInt,
+				Column: promptprotectionrule.FieldID,
+			},
+		},
+		Type: "PromptProtectionRule",
+		Fields: map[string]*sqlgraph.FieldSpec{
+			promptprotectionrule.FieldCreatedAt:   {Type: field.TypeTime, Column: promptprotectionrule.FieldCreatedAt},
+			promptprotectionrule.FieldUpdatedAt:   {Type: field.TypeTime, Column: promptprotectionrule.FieldUpdatedAt},
+			promptprotectionrule.FieldDeletedAt:   {Type: field.TypeInt, Column: promptprotectionrule.FieldDeletedAt},
+			promptprotectionrule.FieldName:        {Type: field.TypeString, Column: promptprotectionrule.FieldName},
+			promptprotectionrule.FieldDescription: {Type: field.TypeString, Column: promptprotectionrule.FieldDescription},
+			promptprotectionrule.FieldPattern:     {Type: field.TypeString, Column: promptprotectionrule.FieldPattern},
+			promptprotectionrule.FieldStatus:      {Type: field.TypeEnum, Column: promptprotectionrule.FieldStatus},
+			promptprotectionrule.FieldSettings:    {Type: field.TypeJSON, Column: promptprotectionrule.FieldSettings},
 		},
 	}
 	graph.Nodes[11] = &sqlgraph.Node{
@@ -2659,6 +2681,86 @@ func (f *PromptFilter) WhereHasProjectsWith(preds ...predicate.Project) {
 			p(s)
 		}
 	})))
+}
+
+// addPredicate implements the predicateAdder interface.
+func (_q *PromptProtectionRuleQuery) addPredicate(pred func(s *sql.Selector)) {
+	_q.predicates = append(_q.predicates, pred)
+}
+
+// Filter returns a Filter implementation to apply filters on the PromptProtectionRuleQuery builder.
+func (_q *PromptProtectionRuleQuery) Filter() *PromptProtectionRuleFilter {
+	return &PromptProtectionRuleFilter{config: _q.config, predicateAdder: _q}
+}
+
+// addPredicate implements the predicateAdder interface.
+func (m *PromptProtectionRuleMutation) addPredicate(pred func(s *sql.Selector)) {
+	m.predicates = append(m.predicates, pred)
+}
+
+// Filter returns an entql.Where implementation to apply filters on the PromptProtectionRuleMutation builder.
+func (m *PromptProtectionRuleMutation) Filter() *PromptProtectionRuleFilter {
+	return &PromptProtectionRuleFilter{config: m.config, predicateAdder: m}
+}
+
+// PromptProtectionRuleFilter provides a generic filtering capability at runtime for PromptProtectionRuleQuery.
+type PromptProtectionRuleFilter struct {
+	predicateAdder
+	config
+}
+
+// Where applies the entql predicate on the query filter.
+func (f *PromptProtectionRuleFilter) Where(p entql.P) {
+	f.addPredicate(func(s *sql.Selector) {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[10].Type, p, s); err != nil {
+			s.AddError(err)
+		}
+	})
+}
+
+// WhereID applies the entql int predicate on the id field.
+func (f *PromptProtectionRuleFilter) WhereID(p entql.IntP) {
+	f.Where(p.Field(promptprotectionrule.FieldID))
+}
+
+// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
+func (f *PromptProtectionRuleFilter) WhereCreatedAt(p entql.TimeP) {
+	f.Where(p.Field(promptprotectionrule.FieldCreatedAt))
+}
+
+// WhereUpdatedAt applies the entql time.Time predicate on the updated_at field.
+func (f *PromptProtectionRuleFilter) WhereUpdatedAt(p entql.TimeP) {
+	f.Where(p.Field(promptprotectionrule.FieldUpdatedAt))
+}
+
+// WhereDeletedAt applies the entql int predicate on the deleted_at field.
+func (f *PromptProtectionRuleFilter) WhereDeletedAt(p entql.IntP) {
+	f.Where(p.Field(promptprotectionrule.FieldDeletedAt))
+}
+
+// WhereName applies the entql string predicate on the name field.
+func (f *PromptProtectionRuleFilter) WhereName(p entql.StringP) {
+	f.Where(p.Field(promptprotectionrule.FieldName))
+}
+
+// WhereDescription applies the entql string predicate on the description field.
+func (f *PromptProtectionRuleFilter) WhereDescription(p entql.StringP) {
+	f.Where(p.Field(promptprotectionrule.FieldDescription))
+}
+
+// WherePattern applies the entql string predicate on the pattern field.
+func (f *PromptProtectionRuleFilter) WherePattern(p entql.StringP) {
+	f.Where(p.Field(promptprotectionrule.FieldPattern))
+}
+
+// WhereStatus applies the entql string predicate on the status field.
+func (f *PromptProtectionRuleFilter) WhereStatus(p entql.StringP) {
+	f.Where(p.Field(promptprotectionrule.FieldStatus))
+}
+
+// WhereSettings applies the entql json.RawMessage predicate on the settings field.
+func (f *PromptProtectionRuleFilter) WhereSettings(p entql.BytesP) {
+	f.Where(p.Field(promptprotectionrule.FieldSettings))
 }
 
 // addPredicate implements the predicateAdder interface.

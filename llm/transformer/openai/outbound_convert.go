@@ -123,6 +123,15 @@ func MessageFromLLM(m llm.Message) Message {
 		Reasoning:        reasoning,
 	}
 
+	if m.Audio != nil {
+		msg.Audio = &OutputAudio{
+			ID:         m.Audio.ID,
+			Data:       m.Audio.Data,
+			ExpiresAt:  m.Audio.ExpiresAt,
+			Transcript: m.Audio.Transcript,
+		}
+	}
+
 	// Convert Content
 	msg.Content = MessageContentFromLLM(m.Content)
 
@@ -188,10 +197,16 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 		}
 	}
 
-	if p.Audio != nil {
-		part.Audio = &Audio{
-			Format: p.Audio.Format,
-			Data:   p.Audio.Data,
+	if p.VideoURL != nil {
+		part.VideoURL = &VideoURL{
+			URL: p.VideoURL.URL,
+		}
+	}
+
+	if p.InputAudio != nil {
+		part.InputAudio = &InputAudio{
+			Format: p.InputAudio.Format,
+			Data:   p.InputAudio.Data,
 		}
 	}
 

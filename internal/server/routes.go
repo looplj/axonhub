@@ -140,7 +140,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 	apiGroup := server.Group("/",
 		middleware.WithTimeout(server.Config.LLMRequestTimeout),
-		middleware.WithAPIKeyAuth(services.AuthService),
+		middleware.WithAPIKeyConfig(services.AuthService, nil),
 		middleware.WithSource(request.SourceAPI),
 		middleware.WithThread(server.Config.Trace, services.ThreadService),
 		middleware.WithTrace(server.Config.Trace, services.TraceService),

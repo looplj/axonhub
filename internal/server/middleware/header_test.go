@@ -1,8 +1,11 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"testing"
+
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 func TestExtractAPIKeyFromHeader(t *testing.T) {
@@ -190,7 +193,7 @@ func TestExtractAPIKeyFromRequest(t *testing.T) {
 				AllowedPrefixes: []string{"Bearer "},
 			},
 			expectedKey: "",
-			expectedErr: "Authorization header must start with 'Bearer '",
+			expectedErr: "invalid token: Authorization header must start with 'Bearer '",
 		},
 		{
 			name: "Custom config with custom headers",
@@ -261,6 +264,12 @@ func TestExtractAPIKeyFromRequest(t *testing.T) {
 				if err == nil {
 					t.Errorf("expected error '%s', got nil", tt.expectedErr)
 					return
+				}
+
+				if tt.name == "Custom config with RequireBearer" {
+					if !errors.Is(err, biz.ErrInvalidToken) {
+						t.Errorf("expected error to wrap ErrInvalidToken, got %v", err)
+					}
 				}
 
 				if err.Error() != tt.expectedErr {

@@ -302,6 +302,8 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Make a copy to avoid modifying the original request
 	req := *llmReq
+	// Gemini OpenAI endpoint does not accept metadata.
+	req.Metadata = nil
 	scope := shared.TransportScope{
 		BaseURL:         t.BaseURL,
 		AccountIdentity: t.AccountIdentity,
@@ -365,12 +367,13 @@ func (t *OutboundTransformer) TransformRequest(
 	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
-		Method:   http.MethodPost,
-		URL:      url,
-		Headers:  headers,
-		Body:     body,
-		Auth:     auth,
-		Metadata: scope.Metadata(),
+		Method:                http.MethodPost,
+		URL:                   url,
+		Headers:               headers,
+		Body:                  body,
+		Auth:                  auth,
+		SkipInboundQueryMerge: true,
+		Metadata:              scope.Metadata(),
 	}, nil
 }
 

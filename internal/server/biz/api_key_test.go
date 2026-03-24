@@ -234,7 +234,7 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 
 			// Update API key to invalidate cache
 			_, err = apiKeyService.UpdateAPIKey(ctx, apiKey.ID, ent.UpdateAPIKeyInput{
-				Name: stringPtr("Updated API Key"),
+				Name: new("Updated API Key"),
 			})
 			require.NoError(t, err)
 
@@ -246,10 +246,6 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 			require.Equal(t, testProject.ID, retrievedAPIKey3.Edges.Project.ID)
 		})
 	}
-}
-
-func stringPtr(s string) *string {
-	return &s
 }
 
 func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
