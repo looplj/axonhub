@@ -81,12 +81,6 @@ export function NavUser({
                   {t('sidebar.userMenu.account')}
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to='/settings/security'>
-                  <BadgeCheck />
-                  {t('sidebar.userMenu.security', 'Security')}
-                </Link>
-              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
