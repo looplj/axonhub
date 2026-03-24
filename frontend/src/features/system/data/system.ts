@@ -144,7 +144,53 @@ const TRIGGER_GC_CLEANUP_MUTATION = `
   }
 `;
 
+const GLOBAL_CLOAKING_CONFIG_QUERY = `
+  query GlobalCloakingConfig {
+    globalCloakingConfig {
+      mode
+      tlsFingerprint
+      headerAutoFill
+      bodyCloak
+      cacheUserID
+      sensitiveWordsMode
+      sensitiveWords
+      cacheControlAutoInject
+    }
+  }
+`;
+
+const UPDATE_GLOBAL_CLOAKING_CONFIG_MUTATION = `
+  mutation UpdateGlobalCloakingConfig($input: UpdateGlobalCloakingConfigInput!) {
+    updateGlobalCloakingConfig(input: $input)
+  }
+`;
+
 // Types
+export type GlobalCloakingMode = 'AUTO' | 'ALWAYS' | 'NEVER';
+export type SensitiveWordsMode = 'EXTEND' | 'REPLACE' | 'DISABLE';
+
+export interface GlobalCloakingConfig {
+  mode?: GlobalCloakingMode;
+  tlsFingerprint?: boolean;
+  headerAutoFill?: boolean;
+  bodyCloak?: boolean;
+  cacheUserID?: boolean;
+  sensitiveWordsMode?: SensitiveWordsMode;
+  sensitiveWords?: string[];
+  cacheControlAutoInject?: boolean;
+}
+
+export interface UpdateGlobalCloakingConfigInput {
+  mode?: GlobalCloakingMode;
+  tlsFingerprint?: boolean;
+  headerAutoFill?: boolean;
+  bodyCloak?: boolean;
+  cacheUserID?: boolean;
+  sensitiveWordsMode?: SensitiveWordsMode;
+  sensitiveWords?: string[];
+  cacheControlAutoInject?: boolean;
+}
+
 export interface BrandSettings {
   brandName?: string;
   brandLogo?: string;
@@ -1099,6 +1145,42 @@ export function useDeleteProxyPreset() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proxyPresets'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+
+export function useGlobalCloakingConfig() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['globalCloakingConfig'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ globalCloakingConfig: GlobalCloakingConfig }>(GLOBAL_CLOAKING_CONFIG_QUERY);
+        return data.globalCloakingConfig;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateGlobalCloakingConfig() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateGlobalCloakingConfigInput) => {
+      const data = await graphqlRequest<{ updateGlobalCloakingConfig: boolean }>(UPDATE_GLOBAL_CLOAKING_CONFIG_MUTATION, { input });
+      return data.updateGlobalCloakingConfig;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['globalCloakingConfig'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: () => {

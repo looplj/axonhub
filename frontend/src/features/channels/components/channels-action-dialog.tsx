@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
+
+import { useCallback, useEffect, useMemo, useRef, useState, memo, useId } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,7 +53,7 @@ import {
   getApiFormatsForProvider,
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
-import { Channel, ChannelType, ApiFormat, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
+import { Channel, ChannelType, ApiFormat, ChannelCloakingMode, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { ManualModelBadge } from './manual-model-badge';
 import { CopilotDeviceFlow } from './copilot-device-flow';
@@ -72,6 +73,7 @@ interface Props {
 const MAX_MODELS_DISPLAY = 2;
 
 const duplicateNameRegex = /^(.*) \((\d+)\)$/;
+const channelCloakingModes: ChannelCloakingMode[] = ['follow_global', 'auto', 'always', 'never'];
 
 // Custom hook for debounced value
 function useDebounce<T>(value: T, delay: number): T {
@@ -199,9 +201,9 @@ function getNextDuplicateName(name: string, existingNames: Set<string>) {
 // Providers that are always OAuth (no third-party API key mode)
 const alwaysOAuthProviderKeys = ['antigravity', 'github_copilot'];
 
-function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string } }): boolean {
+function isOfficialCodexChannel(channel: Pick<Channel, 'credentials'>): boolean {
   try {
-    const apiKey = channel.credentials?.apiKey || '';
+    const apiKey = channel.credentials?.apiKey ?? '';
     const json = JSON.parse(apiKey);
     return !!(json.access_token && json.refresh_token);
   } catch {
@@ -209,14 +211,17 @@ function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string } }):
   }
 }
 
-function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string }; baseURL: string }): boolean {
-  const apiKey = channel.credentials?.apiKey || '';
+function isOfficialClaudeCodeChannel(
+  channel: Pick<Channel, 'credentials' | 'baseURL'>
+): boolean {
+  const apiKey = channel.credentials?.apiKey ?? '';
   const defaultURL = getDefaultBaseURL('claudecode');
   return apiKey.includes('sk-ant-oat') || apiKey.includes('sk-ant-api03') || channel.baseURL === defaultURL;
 }
 
 export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation();
+  const formId = useId();
   const isEdit = !!currentRow;
   const isDuplicate = !!duplicateFromRow && !isEdit;
   const initialRow: Channel | undefined = currentRow || duplicateFromRow;
@@ -255,10 +260,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
   const [confirmRemoveSelectedOpen, setConfirmRemoveSelectedOpen] = useState(false);
   const [confirmRemoveKey, setConfirmRemoveKey] = useState<string | null>(null);
-  const [showGcpJsonData, setShowGcpJsonData] = useState(false);
   const [authMode, setAuthMode] = useState<'official' | 'third-party'>('official');
   const [patternError, setPatternError] = useState<string | null>(null);
-  const dialogContentRef = useRef<HTMLDivElement>(null);
 
   // Debounced search values for better performance
   const debouncedFetchedModelsSearch = useDebounce(fetchedModelsSearch, 300);
@@ -498,6 +501,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             defaultTestModel: currentRow.defaultTestModel,
             tags: currentRow.tags || [],
             remark: currentRow.remark || '',
+            settings: currentRow.settings ?? undefined,
             credentials: {
               // OAuth 类型 (codex/claudecode/antigravity) 的凭据存储在 apiKey 字段，不放入 apiKeys
               apiKey: currentRow.credentials?.apiKey || undefined,
@@ -585,6 +589,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isAntigravityType = (selectedType || derivedChannelType) === 'antigravity';
   const isClaudeCodeType = (selectedType || derivedChannelType) === 'claudecode';
   const isCopilotType = (selectedType || derivedChannelType) === 'github_copilot';
+  const isAnthropicType = (selectedType || derivedChannelType) === 'anthropic';
+  const supportsChannelCloaking = isAnthropicType || isClaudeCodeType;
 
 
 
@@ -886,6 +892,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             type: derivedChannelType,
           };
 
+      const normalizedSettings = values.settings ? { ...values.settings } : undefined;
+      const shouldPersistCloakingMode = supportsChannelCloaking && form.getFieldState('settings.cloakingMode').isDirty;
+      if (supportsChannelCloaking && normalizedSettings?.cloakingMode === 'follow_global' && !shouldPersistCloakingMode) {
+        delete normalizedSettings.cloakingMode;
+      }
       const dataWithModels = {
         ...valuesForSubmit,
         supportedModels,
@@ -903,7 +914,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (isEdit && currentRow) {
         const updateInput = {
           ...dataWithModels,
-          settings: undefined,
+          settings: shouldPersistCloakingMode
+            ? mergeChannelSettingsForUpdate(currentRow.settings, { cloakingMode: normalizedSettings?.cloakingMode })
+            : undefined,
           ...(isOAuthChannel ? { type: undefined } : {}),
         } as z.infer<typeof updateChannelInputSchema>;
 
@@ -939,6 +952,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
         const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
           proxy: proxyConfig,
+          ...(normalizedSettings?.cloakingMode !== undefined ? { cloakingMode: normalizedSettings.cloakingMode } : {}),
         });
 
         await createChannel.mutateAsync({
@@ -1369,7 +1383,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               className={`flex min-h-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'pr-2' : 'pr-0'}`}
             >
               <Form {...form}>
-                <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col space-y-6 p-0.5'>
+                <form
+                  id={formId}
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className='flex min-h-0 flex-1 flex-col space-y-6 p-0.5'
+                >
                   {/* Provider Selection - Left Side */}
                   <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:flex-row md:gap-6'>
                     <div className='flex max-h-48 min-h-0 w-full flex-shrink-0 flex-col md:max-h-none md:w-60'>
@@ -1920,6 +1938,40 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormItem>
                         )}
                       />
+
+                      {supportsChannelCloaking && (
+                        <FormField
+                          control={form.control}
+                          name='settings.cloakingMode'
+                          render={({ field }) => (
+                            <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                              <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                {t('channels.dialogs.fields.cloakingMode.label')}
+                              </FormLabel>
+                              <div className='space-y-1 md:col-span-6'>
+                                <Select
+                                  value={field.value || 'follow_global'}
+                                  onValueChange={(value) => field.onChange(value as ChannelCloakingMode)}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger data-testid='channel-cloaking-mode-select'>
+                                      <SelectValue placeholder={t('channels.dialogs.fields.cloakingMode.placeholder')} />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {channelCloakingModes.map((mode) => (
+                                      <SelectItem key={mode} value={mode}>
+                                        {t(`channels.dialogs.fields.cloakingMode.options.${mode}`)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      )}
 
                       <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                         <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
@@ -2609,7 +2661,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             </Button>
             <Button
               type='submit'
-              form='channel-form'
+              form={formId}
               disabled={createChannel.isPending || updateChannel.isPending || supportedModels.length === 0}
               data-testid='channel-submit-button'
             >

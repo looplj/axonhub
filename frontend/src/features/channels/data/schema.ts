@@ -141,6 +141,12 @@ export const channelProbeDataSchema = z.object({
 });
 export type ChannelProbeData = z.infer<typeof channelProbeDataSchema>;
 
+export const channelCloakingModeSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.toLowerCase() : value),
+  z.enum(['follow_global', 'auto', 'always', 'never'])
+);
+export type ChannelCloakingMode = z.infer<typeof channelCloakingModeSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -152,6 +158,7 @@ export const channelSettingsSchema = z.object({
   headerOverrideOperations: z.array(overrideOperationSchema).optional(),
   proxy: proxyConfigSchema.optional().nullable(),
   transformOptions: transformOptionsSchema.optional(),
+  cloakingMode: channelCloakingModeSchema.optional().nullable(),
 });
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
 
@@ -283,7 +290,7 @@ export const saveChannelModelPriceInputSchema = z.object({
 export type SaveChannelModelPriceInput = z.infer<typeof saveChannelModelPriceInputSchema>;
 // Helper function to validate OAuth credentials
 function validateOAuthCredentials(
-  type: string,
+  type: string | undefined,
   apiKey: string | undefined,
   ctx: z.RefinementCtx
 ) {
@@ -457,23 +464,16 @@ export const updateChannelInputSchema = z
     // (which indicates OAuth credentials are being set)
     const isOAuthType = effectiveType === 'codex' || effectiveType === 'claudecode' || effectiveType === 'antigravity' || effectiveType === 'github_copilot';
 
-    // Derive type from parent context if not available
-    let derivedType = effectiveType;
-    if (!derivedType && hasApiKey) {
-      // Try to get type from parent context
-      const parent = ctx.parent;
-      if (parent && typeof parent === 'object' && 'type' in parent) {
-        derivedType = (parent as { type?: string }).type;
-      }
-    }
+    const derivedType = effectiveType;
 
     // If we have an OAuth key but no type, check if it looks like Copilot credentials
     const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
 
-    if (isOAuthType || (derivedType === 'github_copilot') || isCopilotKey) {
-      if (isCopilotKey && !derivedType) {
+    if (isOAuthType || derivedType === 'github_copilot' || isCopilotKey) {
+      const oauthApiKey = data.credentials?.apiKey;
+      if (isCopilotKey && !derivedType && oauthApiKey) {
         try {
-          const parsed = JSON.parse(data.credentials.apiKey);
+          const parsed = JSON.parse(oauthApiKey);
           if (!parsed.access_token) {
             ctx.addIssue({
               code: 'custom',
@@ -490,7 +490,7 @@ export const updateChannelInputSchema = z
         }
         return;
       }
-      validateOAuthCredentials(derivedType, data.credentials?.apiKey, ctx);
+      validateOAuthCredentials(derivedType, oauthApiKey, ctx);
     }
 
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）

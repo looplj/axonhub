@@ -98,6 +98,7 @@ const CREATE_CHANNEL_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          cloakingMode
         }
       orderingWeight
       remark
@@ -190,6 +191,7 @@ const UPDATE_CHANNEL_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          cloakingMode
         }
       orderingWeight
       errorMessage
@@ -580,6 +582,7 @@ const QUERY_CHANNELS_QUERY = `
               forceArrayInputs
               replaceDeveloperRoleWithSystem
             }
+            cloakingMode
           }
           orderingWeight
           errorMessage
