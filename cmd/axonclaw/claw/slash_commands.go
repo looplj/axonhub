@@ -156,8 +156,20 @@ func executeClear(_ context.Context, r *Runner, _ []string) (string, error) {
 	return "Conversation history cleared.", nil
 }
 
-func executeStop(_ context.Context, _ *Runner, _ []string) (string, error) {
-	return "Agent is not currently processing.", nil
+func executeStop(_ context.Context, r *Runner, _ []string) (string, error) {
+	if !r.processing.Load() {
+		return "Agent is not currently processing.", nil
+	}
+
+	r.Logger.Info("received /stop, canceling current processing")
+
+	if r.processCancel != nil {
+		r.processCancel()
+	}
+
+	r.Agent.ClearQueues()
+
+	return "Agent stopped.", nil
 }
 
 func executeSubagent(ctx context.Context, r *Runner, args []string) (string, error) {

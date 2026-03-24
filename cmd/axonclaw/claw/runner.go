@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -182,19 +181,21 @@ func (r *Runner) Run(ctx context.Context) error {
 			}
 
 		case msg := <-msgCh:
-			if r.processing.Load() {
-				if strings.TrimSpace(msg.Text) == "/stop" {
-					r.Logger.Info("received /stop, canceling current processing")
-
-					if r.processCancel != nil {
-						r.processCancel()
-					}
-
-					r.Agent.ClearQueues()
-					r.sendSlashCommandResult(ctx, "Agent stopped.", msg.Id)
-
-					continue
+			// Slash commands are handled immediately, regardless of
+			// whether the agent is currently processing.
+			if cmd, args, ok := r.slashCommands.Match(msg.Text); ok {
+				result, err := cmd.Execute(ctx, r, args)
+				if err != nil {
+					r.Logger.Warn("slash command failed", "command", cmd.Name, "error", err)
+					result = fmt.Sprintf("Error executing %s: %v", cmd.Name, err)
 				}
+
+				r.sendSlashCommandResult(ctx, result, msg.Id)
+
+				continue
+			}
+
+			if r.processing.Load() {
 				r.Logger.Info("agent busy, delivering as steering", "text_len", len(msg.Text))
 				t := r.formatMessageForLLM(msg)
 				r.Agent.Steer(agent.Message{
@@ -316,18 +317,6 @@ func (r *Runner) processMessage(ctx context.Context, msg IncomingMessage) error 
 		r.processing.Store(false)
 		r.processCancel = nil
 	}()
-
-	if cmd, args, ok := r.slashCommands.Match(msg.Text); ok {
-		result, err := cmd.Execute(ctx, r, args)
-		if err != nil {
-			r.Logger.Warn("slash command failed", "command", cmd.Name, "error", err)
-			result = fmt.Sprintf("Error executing %s: %v", cmd.Name, err)
-		}
-
-		r.sendSlashCommandResult(ctx, result, msg.Id)
-
-		return nil
-	}
 
 	traceID := uuid.New().String()
 	processCtx = axoncontext.WithThreadID(processCtx, r.ThreadID)
