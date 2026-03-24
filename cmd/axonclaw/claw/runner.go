@@ -327,6 +327,22 @@ func (r *Runner) processMessage(ctx context.Context, msg IncomingMessage) error 
 	return err
 }
 
+// stopProcessing cancels the active agent processing if running.
+// Returns true if processing was active and has been canceled.
+func (r *Runner) stopProcessing() bool {
+	if !r.processing.Load() {
+		return false
+	}
+
+	r.Logger.Info("stopping current processing")
+
+	if r.processCancel != nil {
+		r.processCancel()
+	}
+
+	return true
+}
+
 func (r *Runner) autoUpdateConfig(ctx context.Context) {
 	r.processMu.Lock()
 	defer r.processMu.Unlock()

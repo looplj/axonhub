@@ -108,6 +108,7 @@ func NewDefaultSlashCommands(client graphql.Client) *SlashCommandRegistry {
 }
 
 func executeReset(ctx context.Context, r *Runner, _ []string) (string, error) {
+	r.stopProcessing()
 	r.Agent.ClearMessages()
 
 	newBoot, err := bootstrap.Do(ctx, r.Client, bootstrap.Params{
@@ -152,22 +153,15 @@ func executeHelp(_ context.Context, r *Runner, _ []string) (string, error) {
 }
 
 func executeClear(_ context.Context, r *Runner, _ []string) (string, error) {
+	r.stopProcessing()
 	r.Agent.ClearMessages()
 	return "Conversation history cleared.", nil
 }
 
 func executeStop(_ context.Context, r *Runner, _ []string) (string, error) {
-	if !r.processing.Load() {
+	if !r.stopProcessing() {
 		return "Agent is not currently processing.", nil
 	}
-
-	r.Logger.Info("received /stop, canceling current processing")
-
-	if r.processCancel != nil {
-		r.processCancel()
-	}
-
-	r.Agent.ClearQueues()
 
 	return "Agent stopped.", nil
 }
