@@ -201,7 +201,7 @@ func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []
 	var channels []*Channel
 
 	for _, c := range entities {
-		channel, err := svc.buildChannelWithTransformer(c)
+		channel, err := svc.buildChannelWithTransformer(ctx, c)
 		if err != nil {
 			log.Warn(ctx, "failed to build channel",
 				log.String("channel", c.Name),
@@ -295,7 +295,7 @@ func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Chan
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	return svc.buildChannelWithTransformer(entity)
+	return svc.buildChannelWithTransformer(ctx, entity)
 }
 
 // ListModelsInput represents the input for listing models with filters.
@@ -507,20 +507,21 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	if input.Settings != nil {
-		// Always normalize and validate override settings.
-		if input.Settings.BodyOverrideOperations != nil {
-			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
-				return nil, fmt.Errorf("invalid body override operations: %w", err)
+		// Merge settings: preserve existing fields when input omits them
+		existingChannel, err := svc.entFromContext(ctx).Channel.Get(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get existing channel: %w", err)
+		}
+
+		mergedSettings := input.Settings
+		if existingChannel.Settings != nil {
+			// Preserve CloakingMode if not provided in input
+			if mergedSettings.CloakingMode == nil && existingChannel.Settings.CloakingMode != nil {
+				mergedSettings.CloakingMode = existingChannel.Settings.CloakingMode
 			}
 		}
 
-		if input.Settings.HeaderOverrideOperations != nil {
-			if err := ValidateOverrideHeaders(input.Settings.HeaderOverrideOperations); err != nil {
-				return nil, fmt.Errorf("invalid header override operations: %w", err)
-			}
-		}
-
-		mut.SetSettings(input.Settings)
+		mut.SetSettings(mergedSettings)
 	}
 
 	if input.Policies != nil {

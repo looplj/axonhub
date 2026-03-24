@@ -180,7 +180,7 @@ func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Confi
 		return "", nil
 	}
 
-	traceID := uid.SessionID
+	traceID := uid.SessionUUID
 
 	log.Debug(c.Request.Context(), "Extracted trace ID from claude code payload", log.String("trace_id", traceID))
 

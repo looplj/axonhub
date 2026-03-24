@@ -204,6 +204,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		checkApiKeyModelAccess(inbound),
 		applyModelMapping(inbound),
 		selectCandidates(inbound),
+		applyStructuredCloaking(inbound),
 		injectPrompts(inbound),
 		protectPrompts(inbound),
 		persistRequest(inbound),
@@ -213,6 +214,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	middlewares = append(middlewares,
 		applyOverrideRequestBody(outbound),
 		applyOverrideRequestHeaders(outbound),
+		applyCloakingHeaders(outbound),
 
 		// Unified performance tracking middleware.
 		withPerformanceRecording(outbound),

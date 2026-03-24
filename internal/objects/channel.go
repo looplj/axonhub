@@ -128,6 +128,9 @@ type ChannelSettings struct {
 
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`
+	// CloakingMode controls per-channel cloaking behavior: "follow_global", "auto", "always", or "never".
+	CloakingMode *string `json:"cloaking_mode,omitempty"`
+
 }
 
 // DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）

@@ -93,14 +93,50 @@ func getProxyConfig(channelSettings *objects.ChannelSettings) *httpclient.ProxyC
 	return channelSettings.Proxy
 }
 
-// getHttpClient returns the injected default HTTP client when no custom proxy is configured,
-// or creates a new one with proxy support (inheriting TLS settings from the default client).
-func (svc *ChannelService) getHttpClient(channelSettings *objects.ChannelSettings) *httpclient.HttpClient {
-	if channelSettings == nil || channelSettings.Proxy == nil {
-		return svc.httpClient
+// getEffectiveCloakingMode determines the effective cloaking mode for a channel.
+// Channel mode takes precedence; nil or 'follow_global' uses global mode.
+func (svc *ChannelService) getEffectiveCloakingMode(ctx context.Context, c *ent.Channel) *string {
+	var channelMode *string
+	if c.Settings != nil {
+		channelMode = c.Settings.CloakingMode
 	}
+	if channelMode != nil && *channelMode != "follow_global" {
+		return channelMode
+	}
+	
+	// Follow global mode
+	globalConfig := svc.SystemService.GlobalCloakingConfigOrDefault(ctx)
+	return globalConfig.Mode
+}
 
-	return svc.httpClient.WithProxy(channelSettings.Proxy)
+// getHttpClient returns the HTTP client with optional TLS fingerprint and proxy support.
+// TLS fingerprint is only enabled when:
+// 1. Effective cloaking mode is 'auto' or 'always' (cutover gate)
+// 2. Global TLSFingerprint sub-switch is explicitly true
+func (svc *ChannelService) getHttpClient(ctx context.Context, c *ent.Channel) *httpclient.HttpClient {
+	effectiveMode := svc.getEffectiveCloakingMode(ctx, c)
+	inNewProcessorPath := effectiveMode != nil && (*effectiveMode == "auto" || *effectiveMode == "always")
+	
+	var proxyConfig *httpclient.ProxyConfig
+	if c.Settings != nil && c.Settings.Proxy != nil {
+		proxyConfig = c.Settings.Proxy
+	}
+	
+	var enableTLS bool
+	if inNewProcessorPath {
+		globalConfig := svc.SystemService.GlobalCloakingConfigOrDefault(ctx)
+		if globalConfig.TLSFingerprint != nil && *globalConfig.TLSFingerprint {
+			enableTLS = true
+		}
+	}
+	
+	if enableTLS {
+		return httpclient.NewHttpClientWithProxy(proxyConfig, httpclient.WithTLSFingerprint(true))
+	}
+	if proxyConfig != nil {
+		return svc.httpClient.WithProxy(proxyConfig)
+	}
+	return svc.httpClient
 }
 
 // buildChannel creates a Channel with precomputed caches (transformer is set separately).
@@ -157,7 +193,7 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 }
 
 //nolint:maintidx // Checked.
-func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel, error) {
+func (svc *ChannelService) buildChannelWithTransformer(ctx context.Context, c *ent.Channel) (*Channel, error) {
 	// Validate credentials early so we can fail fast without constructing HTTP clients/transformers.
 	//
 	// NOTE: "enabled" keys excludes keys that were explicitly disabled for this channel.
@@ -189,7 +225,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		}
 	}
 
-	httpClient := svc.getHttpClient(c.Settings)
+	httpClient := svc.getHttpClient(ctx, c)
 	ch := buildChannel(c, httpClient)
 	accountIdentity := strconv.Itoa(c.ID)
 

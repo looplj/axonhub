@@ -67,7 +67,7 @@ func TestExtractClaudeTraceID(t *testing.T) {
 		},
 		{
 			name:     "valid claude user id (v2 json)",
-			userID:   `{"device_id":"67bad5aabbccdd1122334455667788990011223344556677889900aabbccddee","account_uuid":"","session_id":"f25958b8-e75c-455d-8b40-f006d87cc2a4"}`,
+			userID:   `{"client_id_hex":"67bad5aabbccdd1122334455667788990011223344556677889900aabbccddee","account_uuid":"","session_uuid":"f25958b8-e75c-455d-8b40-f006d87cc2a4"}`,
 			expected: "f25958b8-e75c-455d-8b40-f006d87cc2a4",
 		},
 		{
@@ -87,7 +87,7 @@ func TestExtractClaudeTraceID(t *testing.T) {
 
 		var result string
 		if uid != nil {
-			result = uid.SessionID
+			result = uid.SessionUUID
 		}
 		require.Equal(t, tc.expected, result, tc.name)
 	}

@@ -436,6 +436,34 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 			},
 		},
 		{
+			name: "update settings without cloaking_mode preserves existing value",
+			id:   ch1.ID,
+			input: &ent.UpdateChannelInput{
+				Settings: &objects.ChannelSettings{
+					CloakingMode: lo.ToPtr("always"),
+				},
+			},
+			wantErr: false,
+			verify: func(t *testing.T, result *ent.Channel) {
+				require.NotNil(t, result.Settings)
+				require.NotNil(t, result.Settings.CloakingMode)
+				require.Equal(t, "always", *result.Settings.CloakingMode)
+			},
+		},
+		{
+			name: "partial settings update preserves cloaking_mode",
+			id:   ch1.ID,
+			input: &ent.UpdateChannelInput{
+				Settings: &objects.ChannelSettings{},
+			},
+			wantErr: false,
+			verify: func(t *testing.T, result *ent.Channel) {
+				require.NotNil(t, result.Settings)
+				require.NotNil(t, result.Settings.CloakingMode)
+				require.Equal(t, "always", *result.Settings.CloakingMode)
+			},
+		},
+		{
 			name: "update non-existent channel",
 			id:   99999,
 			input: &ent.UpdateChannelInput{
