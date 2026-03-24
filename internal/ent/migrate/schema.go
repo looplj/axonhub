@@ -97,6 +97,28 @@ var (
 			},
 		},
 	}
+	// ChannelClientIdsColumns holds the columns for the "channel_client_ids" table.
+	ChannelClientIdsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "channel_id", Type: field.TypeInt},
+		{Name: "principal_kind", Type: field.TypeString},
+		{Name: "principal_hash", Type: field.TypeString},
+		{Name: "client_id_hex", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// ChannelClientIdsTable holds the schema information for the "channel_client_ids" table.
+	ChannelClientIdsTable = &schema.Table{
+		Name:       "channel_client_ids",
+		Columns:    ChannelClientIdsColumns,
+		PrimaryKey: []*schema.Column{ChannelClientIdsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "channel_client_ids_by_channel_principal",
+				Unique:  true,
+				Columns: []*schema.Column{ChannelClientIdsColumns[1], ChannelClientIdsColumns[3]},
+			},
+		},
+	}
 	// ChannelModelPricesColumns holds the columns for the "channel_model_prices" table.
 	ChannelModelPricesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -910,6 +932,7 @@ var (
 	Tables = []*schema.Table{
 		APIKeysTable,
 		ChannelsTable,
+		ChannelClientIdsTable,
 		ChannelModelPricesTable,
 		ChannelModelPriceVersionsTable,
 		ChannelOverrideTemplatesTable,

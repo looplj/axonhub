@@ -12,6 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelclientid"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
@@ -756,6 +757,93 @@ func newChannelPaginateArgs(rv map[string]any) *channelPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*ChannelWhereInput); ok {
 		args.opts = append(args.opts, WithChannelFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *ChannelClientIDQuery) CollectFields(ctx context.Context, satisfies ...string) (*ChannelClientIDQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *ChannelClientIDQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(channelclientid.Columns))
+		selectedFields = []string{channelclientid.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "channelID":
+			if _, ok := fieldSeen[channelclientid.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, channelclientid.FieldChannelID)
+				fieldSeen[channelclientid.FieldChannelID] = struct{}{}
+			}
+		case "principalKind":
+			if _, ok := fieldSeen[channelclientid.FieldPrincipalKind]; !ok {
+				selectedFields = append(selectedFields, channelclientid.FieldPrincipalKind)
+				fieldSeen[channelclientid.FieldPrincipalKind] = struct{}{}
+			}
+		case "principalHash":
+			if _, ok := fieldSeen[channelclientid.FieldPrincipalHash]; !ok {
+				selectedFields = append(selectedFields, channelclientid.FieldPrincipalHash)
+				fieldSeen[channelclientid.FieldPrincipalHash] = struct{}{}
+			}
+		case "clientIDHex":
+			if _, ok := fieldSeen[channelclientid.FieldClientIDHex]; !ok {
+				selectedFields = append(selectedFields, channelclientid.FieldClientIDHex)
+				fieldSeen[channelclientid.FieldClientIDHex] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[channelclientid.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, channelclientid.FieldCreatedAt)
+				fieldSeen[channelclientid.FieldCreatedAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type channelclientidPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ChannelClientIDPaginateOption
+}
+
+func newChannelClientIDPaginateArgs(rv map[string]any) *channelclientidPaginateArgs {
+	args := &channelclientidPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*ChannelClientIDWhereInput); ok {
+		args.opts = append(args.opts, WithChannelClientIDFilter(v.Filter))
 	}
 	return args
 }

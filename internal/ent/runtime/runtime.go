@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelclientid"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
@@ -152,6 +153,12 @@ func init() {
 	channelDescOrderingWeight := channelFields[14].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
+	channelclientidFields := schema.ChannelClientID{}.Fields()
+	_ = channelclientidFields
+	// channelclientidDescCreatedAt is the schema descriptor for created_at field.
+	channelclientidDescCreatedAt := channelclientidFields[4].Descriptor()
+	// channelclientid.DefaultCreatedAt holds the default value on creation for the created_at field.
+	channelclientid.DefaultCreatedAt = channelclientidDescCreatedAt.Default.(func() time.Time)
 	channelmodelpriceMixin := schema.ChannelModelPrice{}.Mixin()
 	channelmodelprice.Policy = privacy.NewPolicies(schema.ChannelModelPrice{})
 	channelmodelprice.Hooks[0] = func(next ent.Mutator) ent.Mutator {

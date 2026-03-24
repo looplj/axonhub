@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/channelclientid"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
@@ -1227,6 +1228,360 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 		return predicates[0], nil
 	default:
 		return channel.And(predicates...), nil
+	}
+}
+
+// ChannelClientIDWhereInput represents a where input for filtering ChannelClientID queries.
+type ChannelClientIDWhereInput struct {
+	Predicates []predicate.ChannelClientID  `json:"-"`
+	Not        *ChannelClientIDWhereInput   `json:"not,omitempty"`
+	Or         []*ChannelClientIDWhereInput `json:"or,omitempty"`
+	And        []*ChannelClientIDWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "channel_id" field predicates.
+	ChannelID      *int  `json:"channelID,omitempty"`
+	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
+	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
+	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
+	ChannelIDGT    *int  `json:"channelIDGT,omitempty"`
+	ChannelIDGTE   *int  `json:"channelIDGTE,omitempty"`
+	ChannelIDLT    *int  `json:"channelIDLT,omitempty"`
+	ChannelIDLTE   *int  `json:"channelIDLTE,omitempty"`
+
+	// "principal_kind" field predicates.
+	PrincipalKind             *string  `json:"principalKind,omitempty"`
+	PrincipalKindNEQ          *string  `json:"principalKindNEQ,omitempty"`
+	PrincipalKindIn           []string `json:"principalKindIn,omitempty"`
+	PrincipalKindNotIn        []string `json:"principalKindNotIn,omitempty"`
+	PrincipalKindGT           *string  `json:"principalKindGT,omitempty"`
+	PrincipalKindGTE          *string  `json:"principalKindGTE,omitempty"`
+	PrincipalKindLT           *string  `json:"principalKindLT,omitempty"`
+	PrincipalKindLTE          *string  `json:"principalKindLTE,omitempty"`
+	PrincipalKindContains     *string  `json:"principalKindContains,omitempty"`
+	PrincipalKindHasPrefix    *string  `json:"principalKindHasPrefix,omitempty"`
+	PrincipalKindHasSuffix    *string  `json:"principalKindHasSuffix,omitempty"`
+	PrincipalKindEqualFold    *string  `json:"principalKindEqualFold,omitempty"`
+	PrincipalKindContainsFold *string  `json:"principalKindContainsFold,omitempty"`
+
+	// "principal_hash" field predicates.
+	PrincipalHash             *string  `json:"principalHash,omitempty"`
+	PrincipalHashNEQ          *string  `json:"principalHashNEQ,omitempty"`
+	PrincipalHashIn           []string `json:"principalHashIn,omitempty"`
+	PrincipalHashNotIn        []string `json:"principalHashNotIn,omitempty"`
+	PrincipalHashGT           *string  `json:"principalHashGT,omitempty"`
+	PrincipalHashGTE          *string  `json:"principalHashGTE,omitempty"`
+	PrincipalHashLT           *string  `json:"principalHashLT,omitempty"`
+	PrincipalHashLTE          *string  `json:"principalHashLTE,omitempty"`
+	PrincipalHashContains     *string  `json:"principalHashContains,omitempty"`
+	PrincipalHashHasPrefix    *string  `json:"principalHashHasPrefix,omitempty"`
+	PrincipalHashHasSuffix    *string  `json:"principalHashHasSuffix,omitempty"`
+	PrincipalHashEqualFold    *string  `json:"principalHashEqualFold,omitempty"`
+	PrincipalHashContainsFold *string  `json:"principalHashContainsFold,omitempty"`
+
+	// "client_id_hex" field predicates.
+	ClientIDHex             *string  `json:"clientIDHex,omitempty"`
+	ClientIDHexNEQ          *string  `json:"clientIDHexNEQ,omitempty"`
+	ClientIDHexIn           []string `json:"clientIDHexIn,omitempty"`
+	ClientIDHexNotIn        []string `json:"clientIDHexNotIn,omitempty"`
+	ClientIDHexGT           *string  `json:"clientIDHexGT,omitempty"`
+	ClientIDHexGTE          *string  `json:"clientIDHexGTE,omitempty"`
+	ClientIDHexLT           *string  `json:"clientIDHexLT,omitempty"`
+	ClientIDHexLTE          *string  `json:"clientIDHexLTE,omitempty"`
+	ClientIDHexContains     *string  `json:"clientIDHexContains,omitempty"`
+	ClientIDHexHasPrefix    *string  `json:"clientIDHexHasPrefix,omitempty"`
+	ClientIDHexHasSuffix    *string  `json:"clientIDHexHasSuffix,omitempty"`
+	ClientIDHexEqualFold    *string  `json:"clientIDHexEqualFold,omitempty"`
+	ClientIDHexContainsFold *string  `json:"clientIDHexContainsFold,omitempty"`
+
+	// "created_at" field predicates.
+	CreatedAt      *time.Time  `json:"createdAt,omitempty"`
+	CreatedAtNEQ   *time.Time  `json:"createdAtNEQ,omitempty"`
+	CreatedAtIn    []time.Time `json:"createdAtIn,omitempty"`
+	CreatedAtNotIn []time.Time `json:"createdAtNotIn,omitempty"`
+	CreatedAtGT    *time.Time  `json:"createdAtGT,omitempty"`
+	CreatedAtGTE   *time.Time  `json:"createdAtGTE,omitempty"`
+	CreatedAtLT    *time.Time  `json:"createdAtLT,omitempty"`
+	CreatedAtLTE   *time.Time  `json:"createdAtLTE,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ChannelClientIDWhereInput) AddPredicates(predicates ...predicate.ChannelClientID) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ChannelClientIDWhereInput filter on the ChannelClientIDQuery builder.
+func (i *ChannelClientIDWhereInput) Filter(q *ChannelClientIDQuery) (*ChannelClientIDQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyChannelClientIDWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyChannelClientIDWhereInput is returned in case the ChannelClientIDWhereInput is empty.
+var ErrEmptyChannelClientIDWhereInput = errors.New("ent: empty predicate ChannelClientIDWhereInput")
+
+// P returns a predicate for filtering channelclientids.
+// An error is returned if the input is empty or invalid.
+func (i *ChannelClientIDWhereInput) P() (predicate.ChannelClientID, error) {
+	var predicates []predicate.ChannelClientID
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, channelclientid.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.ChannelClientID, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, channelclientid.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.ChannelClientID, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, channelclientid.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, channelclientid.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, channelclientid.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, channelclientid.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, channelclientid.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, channelclientid.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, channelclientid.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, channelclientid.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, channelclientid.IDLTE(*i.IDLTE))
+	}
+	if i.ChannelID != nil {
+		predicates = append(predicates, channelclientid.ChannelIDEQ(*i.ChannelID))
+	}
+	if i.ChannelIDNEQ != nil {
+		predicates = append(predicates, channelclientid.ChannelIDNEQ(*i.ChannelIDNEQ))
+	}
+	if len(i.ChannelIDIn) > 0 {
+		predicates = append(predicates, channelclientid.ChannelIDIn(i.ChannelIDIn...))
+	}
+	if len(i.ChannelIDNotIn) > 0 {
+		predicates = append(predicates, channelclientid.ChannelIDNotIn(i.ChannelIDNotIn...))
+	}
+	if i.ChannelIDGT != nil {
+		predicates = append(predicates, channelclientid.ChannelIDGT(*i.ChannelIDGT))
+	}
+	if i.ChannelIDGTE != nil {
+		predicates = append(predicates, channelclientid.ChannelIDGTE(*i.ChannelIDGTE))
+	}
+	if i.ChannelIDLT != nil {
+		predicates = append(predicates, channelclientid.ChannelIDLT(*i.ChannelIDLT))
+	}
+	if i.ChannelIDLTE != nil {
+		predicates = append(predicates, channelclientid.ChannelIDLTE(*i.ChannelIDLTE))
+	}
+	if i.PrincipalKind != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindEQ(*i.PrincipalKind))
+	}
+	if i.PrincipalKindNEQ != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindNEQ(*i.PrincipalKindNEQ))
+	}
+	if len(i.PrincipalKindIn) > 0 {
+		predicates = append(predicates, channelclientid.PrincipalKindIn(i.PrincipalKindIn...))
+	}
+	if len(i.PrincipalKindNotIn) > 0 {
+		predicates = append(predicates, channelclientid.PrincipalKindNotIn(i.PrincipalKindNotIn...))
+	}
+	if i.PrincipalKindGT != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindGT(*i.PrincipalKindGT))
+	}
+	if i.PrincipalKindGTE != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindGTE(*i.PrincipalKindGTE))
+	}
+	if i.PrincipalKindLT != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindLT(*i.PrincipalKindLT))
+	}
+	if i.PrincipalKindLTE != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindLTE(*i.PrincipalKindLTE))
+	}
+	if i.PrincipalKindContains != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindContains(*i.PrincipalKindContains))
+	}
+	if i.PrincipalKindHasPrefix != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindHasPrefix(*i.PrincipalKindHasPrefix))
+	}
+	if i.PrincipalKindHasSuffix != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindHasSuffix(*i.PrincipalKindHasSuffix))
+	}
+	if i.PrincipalKindEqualFold != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindEqualFold(*i.PrincipalKindEqualFold))
+	}
+	if i.PrincipalKindContainsFold != nil {
+		predicates = append(predicates, channelclientid.PrincipalKindContainsFold(*i.PrincipalKindContainsFold))
+	}
+	if i.PrincipalHash != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashEQ(*i.PrincipalHash))
+	}
+	if i.PrincipalHashNEQ != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashNEQ(*i.PrincipalHashNEQ))
+	}
+	if len(i.PrincipalHashIn) > 0 {
+		predicates = append(predicates, channelclientid.PrincipalHashIn(i.PrincipalHashIn...))
+	}
+	if len(i.PrincipalHashNotIn) > 0 {
+		predicates = append(predicates, channelclientid.PrincipalHashNotIn(i.PrincipalHashNotIn...))
+	}
+	if i.PrincipalHashGT != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashGT(*i.PrincipalHashGT))
+	}
+	if i.PrincipalHashGTE != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashGTE(*i.PrincipalHashGTE))
+	}
+	if i.PrincipalHashLT != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashLT(*i.PrincipalHashLT))
+	}
+	if i.PrincipalHashLTE != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashLTE(*i.PrincipalHashLTE))
+	}
+	if i.PrincipalHashContains != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashContains(*i.PrincipalHashContains))
+	}
+	if i.PrincipalHashHasPrefix != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashHasPrefix(*i.PrincipalHashHasPrefix))
+	}
+	if i.PrincipalHashHasSuffix != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashHasSuffix(*i.PrincipalHashHasSuffix))
+	}
+	if i.PrincipalHashEqualFold != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashEqualFold(*i.PrincipalHashEqualFold))
+	}
+	if i.PrincipalHashContainsFold != nil {
+		predicates = append(predicates, channelclientid.PrincipalHashContainsFold(*i.PrincipalHashContainsFold))
+	}
+	if i.ClientIDHex != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexEQ(*i.ClientIDHex))
+	}
+	if i.ClientIDHexNEQ != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexNEQ(*i.ClientIDHexNEQ))
+	}
+	if len(i.ClientIDHexIn) > 0 {
+		predicates = append(predicates, channelclientid.ClientIDHexIn(i.ClientIDHexIn...))
+	}
+	if len(i.ClientIDHexNotIn) > 0 {
+		predicates = append(predicates, channelclientid.ClientIDHexNotIn(i.ClientIDHexNotIn...))
+	}
+	if i.ClientIDHexGT != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexGT(*i.ClientIDHexGT))
+	}
+	if i.ClientIDHexGTE != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexGTE(*i.ClientIDHexGTE))
+	}
+	if i.ClientIDHexLT != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexLT(*i.ClientIDHexLT))
+	}
+	if i.ClientIDHexLTE != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexLTE(*i.ClientIDHexLTE))
+	}
+	if i.ClientIDHexContains != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexContains(*i.ClientIDHexContains))
+	}
+	if i.ClientIDHexHasPrefix != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexHasPrefix(*i.ClientIDHexHasPrefix))
+	}
+	if i.ClientIDHexHasSuffix != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexHasSuffix(*i.ClientIDHexHasSuffix))
+	}
+	if i.ClientIDHexEqualFold != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexEqualFold(*i.ClientIDHexEqualFold))
+	}
+	if i.ClientIDHexContainsFold != nil {
+		predicates = append(predicates, channelclientid.ClientIDHexContainsFold(*i.ClientIDHexContainsFold))
+	}
+	if i.CreatedAt != nil {
+		predicates = append(predicates, channelclientid.CreatedAtEQ(*i.CreatedAt))
+	}
+	if i.CreatedAtNEQ != nil {
+		predicates = append(predicates, channelclientid.CreatedAtNEQ(*i.CreatedAtNEQ))
+	}
+	if len(i.CreatedAtIn) > 0 {
+		predicates = append(predicates, channelclientid.CreatedAtIn(i.CreatedAtIn...))
+	}
+	if len(i.CreatedAtNotIn) > 0 {
+		predicates = append(predicates, channelclientid.CreatedAtNotIn(i.CreatedAtNotIn...))
+	}
+	if i.CreatedAtGT != nil {
+		predicates = append(predicates, channelclientid.CreatedAtGT(*i.CreatedAtGT))
+	}
+	if i.CreatedAtGTE != nil {
+		predicates = append(predicates, channelclientid.CreatedAtGTE(*i.CreatedAtGTE))
+	}
+	if i.CreatedAtLT != nil {
+		predicates = append(predicates, channelclientid.CreatedAtLT(*i.CreatedAtLT))
+	}
+	if i.CreatedAtLTE != nil {
+		predicates = append(predicates, channelclientid.CreatedAtLTE(*i.CreatedAtLTE))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyChannelClientIDWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return channelclientid.And(predicates...), nil
 	}
 }
 
