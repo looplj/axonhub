@@ -356,6 +356,9 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		req := &llm.Request{
 			Model:     "claude-3-sonnet-20240229",
 			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+			TransformerMetadata: map[string]any{
+				llm.TransformerMetadataKeyCloakingCacheControlAutoInject: true,
+			},
 			Messages: []llm.Message{
 				{
 					Role: "system",
@@ -409,6 +412,9 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		req := &llm.Request{
 			Model:     "claude-3-sonnet-20240229",
 			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+			TransformerMetadata: map[string]any{
+				llm.TransformerMetadataKeyCloakingCacheControlAutoInject: true,
+			},
 			Messages: []llm.Message{
 				{
 					Role: "user",
@@ -448,6 +454,9 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		req := &llm.Request{
 			Model:     "claude-3-sonnet-20240229",
 			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+			TransformerMetadata: map[string]any{
+				llm.TransformerMetadataKeyCloakingCacheControlAutoInject: true,
+			},
 			Messages: []llm.Message{
 				{
 					Role: "user",
@@ -491,6 +500,9 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		req := &llm.Request{
 			Model:     "claude-3-sonnet-20240229",
 			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+			TransformerMetadata: map[string]any{
+				llm.TransformerMetadataKeyCloakingCacheControlAutoInject: true,
+			},
 			Messages: []llm.Message{
 				{
 					Role:       "tool",
@@ -527,6 +539,9 @@ func TestOutboundTransformer_CacheControl(t *testing.T) {
 		req := &llm.Request{
 			Model:     "claude-3-sonnet-20240229",
 			MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+			TransformerMetadata: map[string]any{
+				llm.TransformerMetadataKeyCloakingCacheControlAutoInject: true,
+			},
 			Messages: []llm.Message{
 				{
 					Role: "user",

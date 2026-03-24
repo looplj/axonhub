@@ -2,6 +2,8 @@ package claudecode
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -14,17 +16,30 @@ import (
 const claudeCodeBillingCCHMetadataKey = "claudecode_billing_cch"
 
 // injectFakeUserIDStructured generates and injects a fake user ID into the request metadata.
-func injectFakeUserIDStructured(ctx context.Context, llmReq llm.Request) llm.Request {
+func injectFakeUserIDStructured(ctx context.Context, llmReq llm.Request, clientIDHex string) llm.Request {
 	if llmReq.Metadata == nil {
 		llmReq.Metadata = make(map[string]string)
 	}
 
 	existingUserID := llmReq.Metadata["user_id"]
 	if existingUserID == "" || ParseUserID(existingUserID) == nil {
-		llmReq.Metadata["user_id"] = GenerateUserID(ctx)
+		if strings.TrimSpace(clientIDHex) == "" {
+			clientIDBytes := make([]byte, 32)
+			rand.Read(clientIDBytes)
+			clientIDHex = hex.EncodeToString(clientIDBytes)
+		}
+		llmReq.Metadata["user_id"] = GenerateUserID(ctx, clientIDHex)
 	}
 
 	return llmReq
+}
+
+func InjectFakeUserIDStructuredWithClientID(ctx context.Context, llmReq llm.Request, clientIDHex string) llm.Request {
+	return injectFakeUserIDStructured(ctx, llmReq, clientIDHex)
+}
+
+func InjectFakeUserIDStructured(ctx context.Context, llmReq llm.Request) llm.Request {
+	return injectFakeUserIDStructured(ctx, llmReq, "")
 }
 
 // extractAndRemoveBetas extracts the "betas" array from the body and removes it.
@@ -172,6 +187,40 @@ func mergeBetasIntoHeader(baseBetas string, extraBetas []string) string {
 // billingHeaderPrefix is the prefix used to identify billing header system messages.
 const billingHeaderPrefix = "x-anthropic-billing-header:"
 
+// generateCCVersion extracts CLI version from UserAgent and appends a 3-char random hex build hash.
+func generateCCVersion() string {
+	// Extract version from "claude-cli/2.1.78 (external, cli)"
+	version := "2.1.78"
+	if idx := strings.Index(UserAgent, "/"); idx != -1 {
+		rest := UserAgent[idx+1:]
+		if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
+			version = rest[:spaceIdx]
+		}
+	}
+
+	// Generate 3-char random hex hash
+	var buf [2]byte
+	rand.Read(buf[:])
+	hash := hex.EncodeToString(buf[:])[:3]
+
+	return version + "." + hash
+}
+
+// generateBillingHeaderText creates the billing header text with optional cch parameter.
+func generateBillingHeaderText(cch string) string {
+	ccVersion := generateCCVersion()
+	header := fmt.Sprintf("x-anthropic-billing-header: cc_version=%s; cc_entrypoint=cli;", ccVersion)
+	if cch != "" {
+		header += fmt.Sprintf(" cch=%s;", cch)
+	}
+	return header
+}
+
+// isBillingHeaderText checks if the text starts with the billing header prefix.
+func isBillingHeaderText(text string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(text)), billingHeaderPrefix)
+}
+
 // removeBillingSystemMessages removes system messages that contain the
 // x-anthropic-billing-header pattern. These messages are injected by the
 // Claude Code CLI to report billing metadata. For non-official (non-OAuth)
@@ -202,6 +251,7 @@ func ensureBillingSystemMessageCCH(llmReq *llm.Request) *llm.Request {
 		return llmReq
 	}
 
+	// Extract cch from metadata
 	cch := ""
 	if llmReq.TransformerMetadata != nil {
 		if v, ok := llmReq.TransformerMetadata[claudeCodeBillingCCHMetadataKey]; ok {
@@ -210,21 +260,26 @@ func ensureBillingSystemMessageCCH(llmReq *llm.Request) *llm.Request {
 			}
 		}
 	}
-	if cch == "" {
-		return llmReq
-	}
 
+	// Check if billing header already exists in any system message
+	hasBillingHeader := false
 	for i := range llmReq.Messages {
 		msg := &llmReq.Messages[i]
 		if msg.Role != "system" {
 			continue
 		}
 
-		if msg.Content.Content != nil {
-			updated, changed := ensureBillingHeaderCCHInText(*msg.Content.Content, cch)
-			if changed {
-				*msg.Content.Content = updated
+		if msg.Content.Content != nil && isBillingHeaderText(*msg.Content.Content) {
+			hasBillingHeader = true
+			// Restore cch if present
+			if cch != "" {
+				updated, changed := ensureBillingHeaderCCHInText(*msg.Content.Content, cch)
+				if changed {
+					*msg.Content.Content = updated
+				}
 			}
+			// Remove cache_control from billing header message
+			msg.CacheControl = nil
 		}
 
 		if len(msg.Content.MultipleContent) > 0 {
@@ -233,16 +288,67 @@ func ensureBillingSystemMessageCCH(llmReq *llm.Request) *llm.Request {
 				if part.Type != "text" || part.Text == nil {
 					continue
 				}
-
-				updated, changed := ensureBillingHeaderCCHInText(*part.Text, cch)
-				if changed {
-					*part.Text = updated
+				if isBillingHeaderText(*part.Text) {
+					hasBillingHeader = true
+					if cch != "" {
+						updated, changed := ensureBillingHeaderCCHInText(*part.Text, cch)
+						if changed {
+							*part.Text = updated
+						}
+					}
+					msg.CacheControl = nil
 				}
 			}
 		}
 	}
 
+	// If no billing header exists, generate and inject one
+	if !hasBillingHeader {
+		billingText := generateBillingHeaderText(cch)
+		billingMsg := llm.Message{
+			Role: "system",
+			Content: llm.MessageContent{
+				Content: &billingText,
+			},
+			// No cache_control for billing header
+		}
+		llmReq.Messages = append([]llm.Message{billingMsg}, llmReq.Messages...)
+	}
+
+	// Remove cache_control from agent system message (Claude Code system message)
+	for i := range llmReq.Messages {
+		msg := &llmReq.Messages[i]
+		if msg.Role != "system" {
+			continue
+		}
+		if msg.Content.Content != nil && *msg.Content.Content == claudeCodeSystemMessage {
+			msg.CacheControl = nil
+		}
+	}
+
+	// Ensure user system blocks have ephemeral cache_control
+	for i := range llmReq.Messages {
+		msg := &llmReq.Messages[i]
+		if msg.Role != "system" {
+			continue
+		}
+		// Skip billing header and agent message
+		if msg.Content.Content != nil {
+			if isBillingHeaderText(*msg.Content.Content) || *msg.Content.Content == claudeCodeSystemMessage {
+				continue
+			}
+		}
+		// Set ephemeral cache_control for user system blocks
+		if msg.CacheControl == nil {
+			msg.CacheControl = &llm.CacheControl{Type: "ephemeral"}
+		}
+	}
+
 	return llmReq
+}
+
+func EnsureBillingSystemMessageCCH(llmReq *llm.Request) *llm.Request {
+	return ensureBillingSystemMessageCCH(llmReq)
 }
 
 func ensureBillingHeaderCCHInText(text string, cch string) (string, bool) {
@@ -293,9 +399,31 @@ func injectClaudeCodeSystemMessageStructured(llmReq *llm.Request) *llm.Request {
 		CacheControl: &llm.CacheControl{Type: "ephemeral"},
 	}
 
-	if len(llmReq.Messages) > 0 && llmReq.Messages[0].Role == "system" {
-		if llmReq.Messages[0].Content.Content != nil &&
-			*llmReq.Messages[0].Content.Content == claudeCodeSystemMessage {
+	if len(llmReq.Messages) > 0 {
+		first := llmReq.Messages[0]
+		if first.Role == "system" && first.Content.Content != nil && *first.Content.Content == claudeCodeSystemMessage {
+			return llmReq
+		}
+
+		if first.Role == "system" && first.Content.Content != nil && isBillingHeaderText(*first.Content.Content) {
+			if len(llmReq.Messages) > 1 {
+				second := llmReq.Messages[1]
+				if second.Role == "system" && second.Content.Content != nil && *second.Content.Content == claudeCodeSystemMessage {
+					return llmReq
+				}
+			}
+
+			messages := make([]llm.Message, 0, len(llmReq.Messages)+1)
+			messages = append(messages, llmReq.Messages[0])
+			messages = append(messages, claudeCodeMsg)
+			messages = append(messages, llmReq.Messages[1:]...)
+			llmReq.Messages = messages
+
+			if llmReq.TransformOptions.ArrayInstructions == nil {
+				arrayInstructions := true
+				llmReq.TransformOptions.ArrayInstructions = &arrayInstructions
+			}
+
 			return llmReq
 		}
 	}
@@ -309,4 +437,8 @@ func injectClaudeCodeSystemMessageStructured(llmReq *llm.Request) *llm.Request {
 	}
 
 	return llmReq
+}
+
+func InjectClaudeCodeSystemMessageStructured(llmReq *llm.Request) *llm.Request {
+	return injectClaudeCodeSystemMessageStructured(llmReq)
 }

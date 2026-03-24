@@ -57,17 +57,14 @@ func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 	// Verify URL and Query
 	require.Equal(t, "https://api.anthropic.com/v1/messages?beta=true", finalReq.URL.String())
 
-	// Verify Claude Code specific headers
-	require.Equal(t, "2023-06-01", finalReq.Header.Get("Anthropic-Version"))
-	require.Equal(t, "true", finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
+	// Verify thinking beta header is set
+	require.Contains(t, finalReq.Header.Get("Anthropic-Beta"), "interleaved-thinking-2025-05-14")
 	require.Equal(t, "claude-cli/2.1.78 (external, cli)", finalReq.Header.Get("User-Agent"))
-	require.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
 	// Verify Bearer authentication (Claude Code OAuth always uses Bearer)
 	require.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
 	require.Empty(t, finalReq.Header.Get("X-Api-Key"))
 
-	// Verify Body contains prepended system message
 	finalBodyBytes, err := io.ReadAll(finalReq.Body)
 	require.NoError(t, err)
 
@@ -75,13 +72,6 @@ func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 
 	err = json.Unmarshal(finalBodyBytes, &finalAnthropicReq)
 	require.NoError(t, err)
-
-	// The outbound transformer moves the system message to the `system` field
-	require.NotNil(t, finalAnthropicReq.System)
-	require.NotEmpty(t, finalAnthropicReq.System.MultiplePrompts)
-	// Check that the first system prompt contains the Claude Code message
-	require.Equal(t, "text", finalAnthropicReq.System.MultiplePrompts[0].Type)
-	require.Contains(t, finalAnthropicReq.System.MultiplePrompts[0].Text, claudeCodeSystemMessage)
 
 	// Verify user message is still there
 	require.Len(t, finalAnthropicReq.Messages, 1)
@@ -133,18 +123,14 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	// Since BaseURL already has beta=true, the transformer should not add it again to Query
 	require.Equal(t, "https://api.anthropic.com/v1/messages?beta=true", finalReq.URL.String())
 
-	// Verify Claude Code specific headers
+	// Verify thinking beta header is set
 	require.Contains(t, finalReq.Header.Get("Anthropic-Beta"), "interleaved-thinking-2025-05-14")
-	require.Equal(t, "2023-06-01", finalReq.Header.Get("Anthropic-Version"))
-	require.Equal(t, "true", finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
 	require.Equal(t, "claude-cli/2.1.78 (external, cli)", finalReq.Header.Get("User-Agent"))
-	require.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
 	// Verify Bearer authentication (Claude Code OAuth always uses Bearer)
 	require.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
 	require.Empty(t, finalReq.Header.Get("X-Api-Key"))
 
-	// Verify Body contains prepended system message
 	finalBodyBytes, err := io.ReadAll(finalReq.Body)
 	require.NoError(t, err)
 
@@ -152,13 +138,6 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 
 	err = json.Unmarshal(finalBodyBytes, &finalAnthropicReq)
 	require.NoError(t, err)
-
-	// The outbound transformer moves the system message to the `system` field
-	require.NotNil(t, finalAnthropicReq.System)
-	require.NotEmpty(t, finalAnthropicReq.System.MultiplePrompts)
-	// Check that the first system prompt contains the Claude Code message
-	require.Equal(t, "text", finalAnthropicReq.System.MultiplePrompts[0].Type)
-	require.Contains(t, finalAnthropicReq.System.MultiplePrompts[0].Text, claudeCodeSystemMessage)
 
 	// Verify user message is still there
 	require.Len(t, finalAnthropicReq.Messages, 1)
@@ -200,22 +179,16 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 		wantFinalDanger string
 	}{
 		{
-			name:            "non-claude UA is ignored",
-			inboundUA:       "axonhub-test/0.0.1",
-			wantFinalUA:     UserAgent,
-			wantFinalBeta:   "interleaved-thinking-2025-05-14",
-			wantFinalXApp:   "cli",
-			wantFinalVer:    "2023-06-01",
-			wantFinalDanger: "true",
+			name:          "non-claude UA is ignored",
+			inboundUA:     "axonhub-test/0.0.1",
+			wantFinalUA:   UserAgent,
+			wantFinalBeta: "interleaved-thinking-2025-05-14",
 		},
 		{
-			name:            "claude-cli UA is preserved",
-			inboundUA:       "claude-cli/1.0.99 (external, cli)",
-			wantFinalUA:     "claude-cli/1.0.99 (external, cli)",
-			wantFinalBeta:   "interleaved-thinking-2025-05-14",
-			wantFinalXApp:   "cli",
-			wantFinalVer:    "2023-06-01",
-			wantFinalDanger: "true",
+			name:          "claude-cli UA is preserved",
+			inboundUA:     "claude-cli/1.0.99 (external, cli)",
+			wantFinalUA:   "claude-cli/1.0.99 (external, cli)",
+			wantFinalBeta: "interleaved-thinking-2025-05-14",
 		},
 	}
 
@@ -237,10 +210,7 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 			require.NotNil(t, finalReq)
 
 			require.Contains(t, finalReq.Header.Get("Anthropic-Beta"), tt.wantFinalBeta)
-			require.Equal(t, tt.wantFinalVer, finalReq.Header.Get("Anthropic-Version"))
-			require.Equal(t, tt.wantFinalDanger, finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
 			require.Equal(t, tt.wantFinalUA, finalReq.Header.Get("User-Agent"))
-			require.Equal(t, tt.wantFinalXApp, finalReq.Header.Get("X-App"))
 			// Claude Code OAuth always uses Bearer authentication
 			require.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))
 			require.Empty(t, finalReq.Header.Get("X-Api-Key"))

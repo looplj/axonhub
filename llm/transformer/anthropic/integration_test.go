@@ -362,7 +362,8 @@ func TestTransformRequest_Integration(t *testing.T) {
 	}
 
 	// 单独测试 cache_control 超限的 fixture：该文件包含 6 个 cache_control 断点。
-	// strict mode 下会重建为结构锚点 + 受预算约束的消息锚点（此场景为 3 个）。
+	// 在未显式设置 cloaking auto-inject metadata 时，outbound 不应自动重建这些断点，
+	// 因此 round-trip 后仍保持 6 个。具体的优化路径行为已在 ensure_cache_control_test.go 中覆盖。
 	t.Run("cache control exceeds limit", func(t *testing.T) {
 		var wantReq MessageRequest
 
@@ -390,7 +391,7 @@ func TestTransformRequest_Integration(t *testing.T) {
 
 		err = json.Unmarshal(outboundReq.Body, &gotReq)
 		require.NoError(t, err)
-		require.Equal(t, 3, countCacheControls(&gotReq))
+		require.Equal(t, 6, countCacheControls(&gotReq))
 	})
 }
 

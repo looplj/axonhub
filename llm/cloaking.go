@@ -1,0 +1,3 @@
+package llm
+
+const TransformerMetadataKeyCloakingCacheControlAutoInject = "cloaking_cache_control_auto_inject"

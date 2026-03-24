@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/looplj/axonhub/llm/httpclient/tlsfingerprint"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -28,12 +29,20 @@ type ClientOption func(*clientOptions)
 
 type clientOptions struct {
 	insecureSkipVerify bool
+	tlsFingerprint     bool
 }
 
 // WithInsecureSkipVerify disables TLS certificate verification.
 func WithInsecureSkipVerify(skip bool) ClientOption {
 	return func(o *clientOptions) {
 		o.insecureSkipVerify = skip
+	}
+}
+
+// WithTLSFingerprint enables TLS fingerprinting using Node.js 20.x signature.
+func WithTLSFingerprint(enable bool) ClientOption {
+	return func(o *clientOptions) {
+		o.tlsFingerprint = enable
 	}
 }
 
@@ -44,22 +53,57 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 		opt(&options)
 	}
 
-	transport := &http.Transport{
-		Proxy: getProxyFunc(proxyConfig),
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
+	var transport *http.Transport
 
-	if options.insecureSkipVerify {
-		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // User-configured option for self-signed certificates
+	if options.tlsFingerprint {
+		// TLS fingerprint mode: disable HTTP/2 and use custom dialer
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: options.insecureSkipVerify,
+		}
+
+
+		transport = &http.Transport{
+			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				// Establish connection through proxy if configured
+				conn, err := dialThroughProxy(ctx, proxyConfig, network, addr)
+				if err != nil {
+					return nil, err
+				}
+
+				// Apply TLS fingerprint handshake
+				host, _, err := net.SplitHostPort(addr)
+				if err != nil {
+					conn.Close()
+					return nil, err
+				}
+
+				return tlsfingerprint.PerformHandshake(conn, host, tlsConfig)
+			},
+			ForceAttemptHTTP2:     false,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+	} else {
+		// Standard mode
+		transport = &http.Transport{
+			Proxy: getProxyFunc(proxyConfig),
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		if options.insecureSkipVerify {
+			transport.TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true, //nolint:gosec // User-configured option for self-signed certificates
+			}
 		}
 	}
 

@@ -2,9 +2,8 @@ package claudecode
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -15,9 +14,9 @@ import (
 
 // UserID represents parsed Claude Code user_id fields.
 type UserID struct {
-	DeviceID    string `json:"device_id"`
+	ClientIDHex string `json:"client_id_hex"`
 	AccountUUID string `json:"account_uuid"`
-	SessionID   string `json:"session_id"`
+	SessionUUID string `json:"session_uuid"`
 }
 
 // legacyPattern matches the old Claude Code user_id format:
@@ -26,12 +25,19 @@ var legacyPattern = regexp.MustCompile(
 	`^user_([a-fA-F0-9]{64})_account__session_([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$`,
 )
 
-// ParseUserID parses a Claude Code user_id string, supporting both legacy and v2 JSON formats.
+// newPattern matches the new format:
+// user_<hex>_account_<uuid>_session_<uuid>
+var newPattern = regexp.MustCompile(
+	`^user_([a-fA-F0-9]+)_account_([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})_session_([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$`,
+)
+
+// ParseUserID parses a Claude Code user_id string, supporting legacy, new, and v2 JSON formats.
 //
 // Legacy format: "user_<64hex>_account__session_<uuid>"
-// V2 format (>=2.1.78): '{"device_id":"...","account_uuid":"...","session_id":"..."}'
+// New format: "user_<hex>_account_<uuid>_session_<uuid>"
+// V2 format (>=2.1.78): '{"client_id_hex":"...","account_uuid":"...","session_uuid":"..."}'
 //
-// Returns nil if the input doesn't match either format.
+// Returns nil if the input doesn't match any format.
 func ParseUserID(raw string) *UserID {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -45,45 +51,59 @@ func ParseUserID(raw string) *UserID {
 			return nil
 		}
 
-		if uid.SessionID == "" {
+		if uid.SessionUUID == "" {
 			return nil
 		}
 
 		return &uid
 	}
 
+	// Try new format
+	matches := newPattern.FindStringSubmatch(raw)
+	if matches != nil {
+		return &UserID{
+			ClientIDHex: matches[1],
+			AccountUUID: matches[2],
+			SessionUUID: matches[3],
+		}
+	}
+
 	// Try legacy format
-	matches := legacyPattern.FindStringSubmatch(raw)
+	matches = legacyPattern.FindStringSubmatch(raw)
 	if matches == nil {
 		return nil
 	}
 
 	return &UserID{
-		DeviceID:    matches[1],
+		ClientIDHex: matches[1],
 		AccountUUID: "",
-		SessionID:   matches[2],
+		SessionUUID: matches[2],
 	}
 }
 
-// BuildUserID generates a new user_id in v2 JSON format.
+// BuildUserID generates a user_id in the new format.
 func BuildUserID(uid UserID) string {
-	data, _ := json.Marshal(uid)
-	return string(data)
+	return fmt.Sprintf("user_%s_account_%s_session_%s", uid.ClientIDHex, uid.AccountUUID, uid.SessionUUID)
 }
 
-// GenerateUserID creates a random user_id in v2 JSON format.
-func GenerateUserID(ctx context.Context) string {
-	hexBytes := make([]byte, 32)
-	_, _ = rand.Read(hexBytes)
-
+// GenerateUserID creates a user_id in the new format.
+// Account UUID is deterministic based on channel ID (from context).
+// Session UUID is deterministic based on session context hash.
+func GenerateUserID(ctx context.Context, clientIDHex string) string {
 	sessionID, ok := shared.GetSessionID(ctx)
 	if !ok || strings.TrimSpace(sessionID) == "" {
 		sessionID = uuid.New().String()
 	}
 
+	accountSeed := "axonhub_channel_account"
+	if channelID, ok := shared.GetChannelID(ctx); ok {
+		accountSeed = fmt.Sprintf("axonhub_channel_account:%d", channelID)
+	}
+	accountUUID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(accountSeed)).String()
+
 	return BuildUserID(UserID{
-		DeviceID:    hex.EncodeToString(hexBytes),
-		AccountUUID: "",
-		SessionID:   sessionID,
+		ClientIDHex: clientIDHex,
+		AccountUUID: accountUUID,
+		SessionUUID: sessionID,
 	})
 }

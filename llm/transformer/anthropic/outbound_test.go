@@ -290,6 +290,76 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformRequest_CacheControlAutoInjectModeGate(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	baseRequest := &llm.Request{
+		Model: "claude-3-sonnet-20240229",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+			{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("follow up")}},
+		},
+		Tools: []llm.Tool{{
+			Type: "function",
+			Function: llm.Function{
+				Name:        "calculator",
+				Description: "Perform calculations",
+				Parameters:  json.RawMessage(`{"type":"object"}`),
+			},
+		}},
+	}
+
+	tests := []struct {
+		name              string
+		metadata          map[string]any
+		expectBreakpoints bool
+	}{
+		{
+			name:              "metadata absent disables auto inject",
+			metadata:          nil,
+			expectBreakpoints: false,
+		},
+		{
+			name: "metadata true enables auto inject",
+			metadata: map[string]any{
+				llm.TransformerMetadataKeyCloakingCacheControlAutoInject: true,
+			},
+			expectBreakpoints: true,
+		},
+		{
+			name: "metadata false disables auto inject",
+			metadata: map[string]any{
+				llm.TransformerMetadataKeyCloakingCacheControlAutoInject: false,
+			},
+			expectBreakpoints: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := *baseRequest
+			if tt.metadata != nil {
+				req.TransformerMetadata = tt.metadata
+			}
+
+			httpReq, transformErr := transformer.TransformRequest(t.Context(), &req)
+			require.NoError(t, transformErr)
+
+			var anthropicReq MessageRequest
+			require.NoError(t, json.Unmarshal(httpReq.Body, &anthropicReq))
+
+			if tt.expectBreakpoints {
+				require.Greater(t, countCacheControls(&anthropicReq), 0)
+				return
+			}
+
+			require.Equal(t, 0, countCacheControls(&anthropicReq))
+		})
+	}
+}
+
 func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testing.T) {
 	outbound, err := NewOutboundTransformerWithConfig(&Config{
 		Type:            PlatformDirect,

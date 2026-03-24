@@ -51,8 +51,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
 			MaxTokens: int64Ptr(1024),
 		}
+		processedReq := applyStructuredCloakingForTest(ctx, req, false)
 
-		httpReq, err := transformer.TransformRequest(ctx, req)
+		httpReq, err := transformer.TransformRequest(ctx, processedReq)
 		require.NoError(t, err)
 
 		// Check system message is injected with cache_control
@@ -66,7 +67,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		assert.Equal(t, "ephemeral", firstMsg.Get("cache_control.type").String())
 	})
 
-	t.Run("sets all Claude Code headers", func(t *testing.T) {
+	t.Run("sets required Claude Code headers", func(t *testing.T) {
 
 		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("test-api-key")})
 		require.NoError(t, err)
@@ -80,12 +81,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
 
-		// Verify all Claude Code headers
+		// Verify thinking beta header is set
 		assert.Contains(t, httpReq.Headers.Get("Anthropic-Beta"), "interleaved-thinking-2025-05-14")
-		assert.Equal(t, "2023-06-01", httpReq.Headers.Get("Anthropic-Version"))
-		assert.Equal(t, "true", httpReq.Headers.Get("Anthropic-Dangerous-Direct-Browser-Access"))
-		assert.Equal(t, "cli", httpReq.Headers.Get("X-App"))
-		assert.Equal(t, "stream", httpReq.Headers.Get("X-Stainless-Helper-Method"))
 		assert.Equal(t, UserAgent, httpReq.Headers.Get("User-Agent"))
 	})
 
@@ -178,8 +175,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
 			MaxTokens: int64Ptr(1024),
 		}
+		processedReq := applyStructuredCloakingForTest(ctx, req, false)
 
-		httpReq, err := transformer.TransformRequest(ctx, req)
+		httpReq, err := transformer.TransformRequest(ctx, processedReq)
 		require.NoError(t, err)
 
 		// Should have generated user ID
@@ -240,8 +238,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 				"claudecode_billing_cch": "38a80",
 			},
 		}
+		processedReq := applyStructuredCloakingForTest(ctx, req, true)
 
-		httpReq, err := transformer.TransformRequest(ctx, req)
+		httpReq, err := transformer.TransformRequest(ctx, processedReq)
 		require.NoError(t, err)
 
 		// The billing system message should include the restored cch.
@@ -486,6 +485,19 @@ func strPtr(s string) *string {
 	return &s
 }
 
+func applyStructuredCloakingForTest(ctx context.Context, req *llm.Request, isOfficial bool) *llm.Request {
+	if req == nil {
+		return nil
+	}
+	processed := *req
+	if isOfficial {
+		processed = *EnsureBillingSystemMessageCCH(&processed)
+	}
+	processed = *InjectClaudeCodeSystemMessageStructured(&processed)
+	processed = InjectFakeUserIDStructured(ctx, processed)
+	return &processed
+}
+
 func int64Ptr(i int64) *int64 {
 	return &i
 }
@@ -581,4 +593,152 @@ func (m *mockHTTPStream) Err() error {
 
 func (m *mockHTTPStream) Close() error {
 	return nil
+}
+
+func TestEnsureBillingSystemMessageCCH(t *testing.T) {
+	t.Run("generates billing header from scratch when none exists", func(t *testing.T) {
+		req := &llm.Request{
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
+			},
+			TransformerMetadata: map[string]interface{}{
+				claudeCodeBillingCCHMetadataKey: "38a80",
+			},
+		}
+
+		result := ensureBillingSystemMessageCCH(req)
+
+		require.NotNil(t, result)
+		require.GreaterOrEqual(t, len(result.Messages), 2)
+		assert.Equal(t, "system", result.Messages[0].Role)
+		assert.NotNil(t, result.Messages[0].Content.Content)
+		assert.True(t, strings.HasPrefix(*result.Messages[0].Content.Content, "x-anthropic-billing-header:"))
+		assert.Contains(t, *result.Messages[0].Content.Content, "cc_version=")
+		assert.Contains(t, *result.Messages[0].Content.Content, "cc_entrypoint=cli")
+		assert.Contains(t, *result.Messages[0].Content.Content, "cch=38a80")
+		assert.Nil(t, result.Messages[0].CacheControl)
+	})
+
+	t.Run("skips duplicate when billing header already exists", func(t *testing.T) {
+		existingBilling := "x-anthropic-billing-header: cc_version=2.1.78.abc; cc_entrypoint=cli;"
+		req := &llm.Request{
+			Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: &existingBilling}},
+				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
+			},
+			TransformerMetadata: map[string]interface{}{
+				claudeCodeBillingCCHMetadataKey: "38a80",
+			},
+		}
+
+		result := ensureBillingSystemMessageCCH(req)
+
+		require.NotNil(t, result)
+		assert.Equal(t, 2, len(result.Messages))
+		assert.Contains(t, *result.Messages[0].Content.Content, "cch=38a80")
+		assert.Nil(t, result.Messages[0].CacheControl)
+	})
+
+	t.Run("cache_control only on user system block", func(t *testing.T) {
+		userSystemMsg := "Custom system instructions"
+		req := &llm.Request{
+			Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: func() *string { s := claudeCodeSystemMessage; return &s }()}},
+				{Role: "system", Content: llm.MessageContent{Content: &userSystemMsg}},
+				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
+			},
+			TransformerMetadata: map[string]interface{}{
+				claudeCodeBillingCCHMetadataKey: "38a80",
+			},
+		}
+
+		result := ensureBillingSystemMessageCCH(req)
+
+		require.NotNil(t, result)
+		for i, msg := range result.Messages {
+			if msg.Role != "system" {
+				continue
+			}
+			if msg.Content.Content != nil {
+				if strings.HasPrefix(*msg.Content.Content, "x-anthropic-billing-header:") {
+					assert.Nil(t, msg.CacheControl, "billing header should not have cache_control at index %d", i)
+				} else if *msg.Content.Content == claudeCodeSystemMessage {
+					assert.Nil(t, msg.CacheControl, "agent message should not have cache_control at index %d", i)
+				} else {
+					assert.NotNil(t, msg.CacheControl, "user system block should have cache_control at index %d", i)
+					assert.Equal(t, "ephemeral", msg.CacheControl.Type)
+				}
+			}
+		}
+	})
+
+	t.Run("cc_version format matches CLI version plus 3-char hex", func(t *testing.T) {
+		req := &llm.Request{
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
+			},
+			TransformerMetadata: map[string]interface{}{
+				claudeCodeBillingCCHMetadataKey: "38a80",
+			},
+		}
+
+		result := ensureBillingSystemMessageCCH(req)
+
+		require.NotNil(t, result)
+		require.GreaterOrEqual(t, len(result.Messages), 1)
+		billingText := *result.Messages[0].Content.Content
+		assert.Regexp(t, `cc_version=2\.1\.78\.[a-f0-9]{3}`, billingText)
+	})
+}
+
+func TestClaudeCodeLegacyCloakingGolden(t *testing.T) {
+	ctx := context.Background()
+
+	transformer, err := NewOutboundTransformer(Params{
+		TokenProvider: newMockTokenProvider("test-api-key"),
+		IsOfficial:    true,
+	})
+	require.NoError(t, err)
+
+	billing := "x-anthropic-billing-header: cc_version=2.1.78.abc; cc_entrypoint=cli;"
+	userText := "hello from opencode"
+	baseReq := &llm.Request{
+		Model: "claude-sonnet-4-5",
+		Messages: []llm.Message{
+			{Role: "system", Content: llm.MessageContent{Content: &billing}},
+			{Role: "user", Content: llm.MessageContent{Content: &userText}},
+		},
+		MaxTokens: int64Ptr(1024),
+		TransformerMetadata: map[string]any{
+			claudeCodeBillingCCHMetadataKey: "38a80",
+		},
+	}
+
+	processedReq := applyStructuredCloakingForTest(ctx, baseReq, true)
+	httpReq, err := transformer.TransformRequest(ctx, processedReq)
+	require.NoError(t, err)
+
+	system := gjson.GetBytes(httpReq.Body, "system")
+	require.True(t, system.Exists())
+	require.True(t, system.IsArray())
+	require.GreaterOrEqual(t, len(system.Array()), 2)
+
+	billingCount := 0
+	systemCount := 0
+	for _, item := range system.Array() {
+		text := item.Get("text").String()
+		if strings.HasPrefix(text, "x-anthropic-billing-header:") {
+			billingCount++
+			require.Contains(t, text, "cch=38a80")
+			require.Equal(t, "", item.Get("cache_control.type").String())
+		}
+		if text == claudeCodeSystemMessage {
+			systemCount++
+			require.Equal(t, "ephemeral", item.Get("cache_control.type").String())
+		}
+	}
+
+	require.Equal(t, 1, billingCount)
+	require.Equal(t, 1, systemCount)
+	require.NotEmpty(t, gjson.GetBytes(httpReq.Body, "metadata.user_id").String())
 }

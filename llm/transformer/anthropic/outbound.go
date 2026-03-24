@@ -154,14 +154,19 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert to Anthropic request format
-		scope := shared.TransportScope{
-			BaseURL:         t.config.BaseURL,
-			AccountIdentity: t.config.AccountIdentity,
-		}
-		anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config, scope)
+	scope := shared.TransportScope{
+		BaseURL:         t.config.BaseURL,
+		AccountIdentity: t.config.AccountIdentity,
+	}
+	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config, scope)
 
-	// Apply cache_control breakpoint policy to optimize cache control if client requests with cache_control.
-	if countCacheControls(anthropicReq) > 0 {
+	cacheControlAutoInject := false
+	if llmReq.TransformerMetadata != nil {
+		if v, ok := llmReq.TransformerMetadata[llm.TransformerMetadataKeyCloakingCacheControlAutoInject].(bool); ok {
+			cacheControlAutoInject = v
+		}
+	}
+	if cacheControlAutoInject {
 		optimizeCacheControl(anthropicReq)
 	}
 

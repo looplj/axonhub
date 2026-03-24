@@ -20,26 +20,6 @@ const (
 	toolPrefix              = "proxy_"
 )
 
-// claudeCodeHeaders contains all headers to set for Claude Code requests.
-// Each entry is a [name, value] pair.
-var claudeCodeHeaders = [][]string{
-	{"Anthropic-Beta", ClaudeCodeBetaHeader},
-	{"Anthropic-Version", ClaudeCodeVersionHeader},
-	{"Anthropic-Dangerous-Direct-Browser-Access", ClaudeCodeBrowserAccessHeader},
-	{"X-App", ClaudeCodeAppHeader},
-	{"X-Stainless-Helper-Method", "stream"},
-	{"X-Stainless-Retry-Count", "0"},
-	{"X-Stainless-Runtime-Version", "v24.3.0"},
-	{"X-Stainless-Package-Version", "0.74.0"},
-	{"X-Stainless-Runtime", "node"},
-	{"X-Stainless-Lang", "js"},
-	{"X-Stainless-Arch", "arm64"},
-	{"X-Stainless-Os", "MacOS"},
-	{"X-Stainless-Timeout", "60"},
-	{"Connection", "keep-alive"},
-	{"Accept-Encoding", "gzip, deflate, br, zstd"},
-}
-
 // Params contains parameters for creating a ClaudeCodeTransformer.
 type Params struct {
 	TokenProvider   oauth.TokenGetter // OAuth token provider (required)
@@ -100,10 +80,6 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		rawUA = llmReq.RawRequest.Headers.Get("User-Agent")
 		keepClientUA = isClaudeCLIUserAgent(rawUA)
 
-		for _, header := range claudeCodeHeaders {
-			llmReq.RawRequest.Headers.Del(header[0])
-		}
-
 		if !keepClientUA {
 			llmReq.RawRequest.Headers.Del("User-Agent")
 		}
@@ -121,11 +97,6 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 
 	// Apply structured transformations before serialization
 	reqCopy = *disableThinkingIfToolChoiceForcedStructured(&reqCopy)
-	reqCopy = *injectClaudeCodeSystemMessageStructured(&reqCopy)
-	if t.isOfficial {
-		reqCopy = *ensureBillingSystemMessageCCH(&reqCopy)
-	}
-	reqCopy = injectFakeUserIDStructured(ctx, reqCopy)
 	if t.isOfficial && !keepClientUA {
 		reqCopy = *applyClaudeToolPrefixStructured(&reqCopy, toolPrefix)
 	}
@@ -149,12 +120,13 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		// Merge extra betas into Anthropic-Beta header
 		if len(extraBetas) > 0 {
 			baseBetas := httpReq.Headers.Get("Anthropic-Beta")
-			if baseBetas == "" {
-				baseBetas = claudeCodeHeaders[0][1] // Use default
-			}
-
 			httpReq.Headers.Set("Anthropic-Beta", mergeBetasIntoHeader(baseBetas, extraBetas))
 		}
+	}
+
+	// Ensure thinking beta header is set for Claude Code
+	if httpReq.Headers.Get("Anthropic-Beta") == "" {
+		httpReq.Headers.Set("Anthropic-Beta", ClaudeCodeBetaHeader)
 	}
 
 	// Add beta=true query parameter if not present
@@ -173,11 +145,6 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 
 	if t.isOfficial && !keepClientUA {
 		httpReq.Metadata["strip_tool_prefix"] = "true"
-	}
-
-	// Add/overwrite Claude Code specific headers
-	for _, header := range claudeCodeHeaders {
-		httpReq.Headers.Set(header[0], header[1])
 	}
 
 	// Set Accept header based on streaming
