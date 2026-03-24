@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -43,6 +44,7 @@ type Runner struct {
 	TaskScheduler *task.Scheduler
 	processMu     sync.Mutex
 	processing    atomic.Bool
+	processCancel context.CancelFunc
 	mcpManager    *mcp.Manager
 	toolSource    subagent.ToolSource
 	slashCommands *SlashCommandRegistry
@@ -181,6 +183,18 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		case msg := <-msgCh:
 			if r.processing.Load() {
+				if strings.TrimSpace(msg.Text) == "/stop" {
+					r.Logger.Info("received /stop, canceling current processing")
+
+					if r.processCancel != nil {
+						r.processCancel()
+					}
+
+					r.Agent.ClearQueues()
+					r.sendSlashCommandResult(ctx, "Agent stopped.", msg.Id)
+
+					continue
+				}
 				r.Logger.Info("agent busy, delivering as steering", "text_len", len(msg.Text))
 				t := r.formatMessageForLLM(msg)
 				r.Agent.Steer(agent.Message{
@@ -292,8 +306,16 @@ func (r *Runner) processMessage(ctx context.Context, msg IncomingMessage) error 
 	r.processMu.Lock()
 	defer r.processMu.Unlock()
 
+	processCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	r.processCancel = cancel
 	r.processing.Store(true)
-	defer r.processing.Store(false)
+
+	defer func() {
+		r.processing.Store(false)
+		r.processCancel = nil
+	}()
 
 	if cmd, args, ok := r.slashCommands.Match(msg.Text); ok {
 		result, err := cmd.Execute(ctx, r, args)
@@ -308,10 +330,10 @@ func (r *Runner) processMessage(ctx context.Context, msg IncomingMessage) error 
 	}
 
 	traceID := uuid.New().String()
-	ctx = axoncontext.WithThreadID(ctx, r.ThreadID)
-	ctx = axoncontext.WithTraceID(ctx, traceID)
+	processCtx = axoncontext.WithThreadID(processCtx, r.ThreadID)
+	processCtx = axoncontext.WithTraceID(processCtx, traceID)
 	formatted := r.formatMessageForLLM(msg)
-	_, err := r.Agent.Process(ctx, agent.Content{Text: &formatted})
+	_, err := r.Agent.Process(processCtx, agent.Content{Text: &formatted})
 
 	return err
 }
