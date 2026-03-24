@@ -64,6 +64,7 @@ type Config struct {
 type ResolverRoot interface {
 	APIKey() APIKeyResolver
 	Channel() ChannelResolver
+	ChannelClientID() ChannelClientIDResolver
 	ChannelModelPrice() ChannelModelPriceResolver
 	ChannelModelPriceVersion() ChannelModelPriceVersionResolver
 	ChannelOverrideTemplate() ChannelOverrideTemplateResolver
@@ -71,6 +72,7 @@ type ResolverRoot interface {
 	ChannelProbeData() ChannelProbeDataResolver
 	ChannelSettings() ChannelSettingsResolver
 	DataStorage() DataStorageResolver
+	GlobalCloakingConfig() GlobalCloakingConfigResolver
 	Model() ModelResolver
 	Mutation() MutationResolver
 	Project() ProjectResolver
@@ -89,6 +91,7 @@ type ResolverRoot interface {
 	User() UserResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
+	ChannelSettingsInput() ChannelSettingsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -286,6 +289,15 @@ type ComplexityRoot struct {
 		UsageLogs               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
 	}
 
+	ChannelClientID struct {
+		ChannelID     func(childComplexity int) int
+		ClientIDHex   func(childComplexity int) int
+		CreatedAt     func(childComplexity int) int
+		ID            func(childComplexity int) int
+		PrincipalHash func(childComplexity int) int
+		PrincipalKind func(childComplexity int) int
+	}
+
 	ChannelConnection struct {
 		Edges      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
@@ -439,6 +451,7 @@ type ComplexityRoot struct {
 	ChannelSettings struct {
 		AutoTrimedModelPrefixes  func(childComplexity int) int
 		BodyOverrideOperations   func(childComplexity int) int
+		CloakingMode             func(childComplexity int) int
 		ExtraModelPrefix         func(childComplexity int) int
 		HeaderOverrideOperations func(childComplexity int) int
 		HideMappedModels         func(childComplexity int) int
@@ -601,6 +614,17 @@ type ComplexityRoot struct {
 
 	GCS struct {
 		BucketName func(childComplexity int) int
+	}
+
+	GlobalCloakingConfig struct {
+		BodyCloak              func(childComplexity int) int
+		CacheControlAutoInject func(childComplexity int) int
+		CacheUserID            func(childComplexity int) int
+		HeaderAutoFill         func(childComplexity int) int
+		Mode                   func(childComplexity int) int
+		SensitiveWords         func(childComplexity int) int
+		SensitiveWordsMode     func(childComplexity int) int
+		TLSFingerprint         func(childComplexity int) int
 	}
 
 	HeaderEntry struct {
@@ -820,6 +844,7 @@ type ComplexityRoot struct {
 		UpdateChannelStatus                  func(childComplexity int, id objects.GUID, status channel.Status) int
 		UpdateDataStorage                    func(childComplexity int, id objects.GUID, input ent.UpdateDataStorageInput) int
 		UpdateDefaultDataStorage             func(childComplexity int, input UpdateDefaultDataStorageInput) int
+		UpdateGlobalCloakingConfig           func(childComplexity int, input UpdateGlobalCloakingConfigInput) int
 		UpdateMe                             func(childComplexity int, input UpdateMeInput) int
 		UpdateModel                          func(childComplexity int, id objects.GUID, input ent.UpdateModelInput) int
 		UpdateModelStatus                    func(childComplexity int, id objects.GUID, status model.Status) int
@@ -1044,6 +1069,7 @@ type ComplexityRoot struct {
 		FastestChannels              func(childComplexity int, input FastestChannelsInput) int
 		FastestModels                func(childComplexity int, input FastestChannelsInput) int
 		FetchModels                  func(childComplexity int, input biz.FetchModelsInput) int
+		GlobalCloakingConfig         func(childComplexity int) int
 		Me                           func(childComplexity int) int
 		ModelPerformanceStats        func(childComplexity int) int
 		Models                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
@@ -1693,6 +1719,9 @@ type ChannelResolver interface {
 	Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error)
 	DisabledAPIKeys(ctx context.Context, obj *ent.Channel) ([]*objects.DisabledAPIKey, error)
 }
+type ChannelClientIDResolver interface {
+	ID(ctx context.Context, obj *ent.ChannelClientID) (*objects.GUID, error)
+}
 type ChannelModelPriceResolver interface {
 	ID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error)
 
@@ -1719,11 +1748,18 @@ type ChannelProbeDataResolver interface {
 	ChannelID(ctx context.Context, obj *biz.ChannelProbeData) (*objects.GUID, error)
 }
 type ChannelSettingsResolver interface {
+	CloakingMode(ctx context.Context, obj *objects.ChannelSettings) (*CloakingMode, error)
 	HeaderOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error)
 	BodyOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error)
 }
 type DataStorageResolver interface {
 	ID(ctx context.Context, obj *ent.DataStorage) (*objects.GUID, error)
+}
+type GlobalCloakingConfigResolver interface {
+	Mode(ctx context.Context, obj *biz.GlobalCloakingConfig) (*GlobalCloakingMode, error)
+
+	SensitiveWordsMode(ctx context.Context, obj *biz.GlobalCloakingConfig) (*SensitiveWordsMode, error)
+	SensitiveWords(ctx context.Context, obj *biz.GlobalCloakingConfig) ([]string, error)
 }
 type ModelResolver interface {
 	ID(ctx context.Context, obj *ent.Model) (*objects.GUID, error)
@@ -1791,6 +1827,7 @@ type MutationResolver interface {
 	TriggerGcCleanup(ctx context.Context) (bool, error)
 	SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error)
 	DeleteProxyPreset(ctx context.Context, url string) (bool, error)
+	UpdateGlobalCloakingConfig(ctx context.Context, input UpdateGlobalCloakingConfigInput) (bool, error)
 	CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error)
 	BulkCreateModels(ctx context.Context, inputs []*ent.CreateModelInput) ([]*ent.Model, error)
 	UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput) (*ent.Model, error)
@@ -1894,6 +1931,7 @@ type QueryResolver interface {
 	SystemGeneralSettings(ctx context.Context) (*biz.SystemGeneralSettings, error)
 	VideoStorageSettings(ctx context.Context) (*biz.VideoStorageSettings, error)
 	ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, error)
+	GlobalCloakingConfig(ctx context.Context) (*biz.GlobalCloakingConfig, error)
 	FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error)
 	QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error)
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
@@ -1990,6 +2028,10 @@ type UserRoleResolver interface {
 	ID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
+}
+
+type ChannelSettingsInputResolver interface {
+	CloakingMode(ctx context.Context, obj *objects.ChannelSettings, data *CloakingMode) error
 }
 
 type executableSchema struct {
@@ -2752,6 +2794,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Channel.UsageLogs(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.UsageLogOrder), args["where"].(*ent.UsageLogWhereInput)), true
 
+	case "ChannelClientID.channelID":
+		if e.complexity.ChannelClientID.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelClientID.ChannelID(childComplexity), true
+	case "ChannelClientID.clientIDHex":
+		if e.complexity.ChannelClientID.ClientIDHex == nil {
+			break
+		}
+
+		return e.complexity.ChannelClientID.ClientIDHex(childComplexity), true
+	case "ChannelClientID.createdAt":
+		if e.complexity.ChannelClientID.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelClientID.CreatedAt(childComplexity), true
+	case "ChannelClientID.id":
+		if e.complexity.ChannelClientID.ID == nil {
+			break
+		}
+
+		return e.complexity.ChannelClientID.ID(childComplexity), true
+	case "ChannelClientID.principalHash":
+		if e.complexity.ChannelClientID.PrincipalHash == nil {
+			break
+		}
+
+		return e.complexity.ChannelClientID.PrincipalHash(childComplexity), true
+	case "ChannelClientID.principalKind":
+		if e.complexity.ChannelClientID.PrincipalKind == nil {
+			break
+		}
+
+		return e.complexity.ChannelClientID.PrincipalKind(childComplexity), true
+
 	case "ChannelConnection.edges":
 		if e.complexity.ChannelConnection.Edges == nil {
 			break
@@ -3307,6 +3386,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.BodyOverrideOperations(childComplexity), true
+	case "ChannelSettings.cloakingMode":
+		if e.complexity.ChannelSettings.CloakingMode == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.CloakingMode(childComplexity), true
 	case "ChannelSettings.extraModelPrefix":
 		if e.complexity.ChannelSettings.ExtraModelPrefix == nil {
 			break
@@ -3898,6 +3983,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GCS.BucketName(childComplexity), true
+
+	case "GlobalCloakingConfig.bodyCloak":
+		if e.complexity.GlobalCloakingConfig.BodyCloak == nil {
+			break
+		}
+
+		return e.complexity.GlobalCloakingConfig.BodyCloak(childComplexity), true
+	case "GlobalCloakingConfig.cacheControlAutoInject":
+		if e.complexity.GlobalCloakingConfig.CacheControlAutoInject == nil {
+			break
+		}
+
+		return e.complexity.GlobalCloakingConfig.CacheControlAutoInject(childComplexity), true
+	case "GlobalCloakingConfig.cacheUserID":
+		if e.complexity.GlobalCloakingConfig.CacheUserID == nil {
+			break
+		}
+
+		return e.complexity.GlobalCloakingConfig.CacheUserID(childComplexity), true
+	case "GlobalCloakingConfig.headerAutoFill":
+		if e.complexity.GlobalCloakingConfig.HeaderAutoFill == nil {
+			break
+		}
+
+		return e.complexity.GlobalCloakingConfig.HeaderAutoFill(childComplexity), true
+	case "GlobalCloakingConfig.mode":
+		if e.complexity.GlobalCloakingConfig.Mode == nil {
+			break
+		}
+
+		return e.complexity.GlobalCloakingConfig.Mode(childComplexity), true
+	case "GlobalCloakingConfig.sensitiveWords":
+		if e.complexity.GlobalCloakingConfig.SensitiveWords == nil {
+			break
+		}
+
+		return e.complexity.GlobalCloakingConfig.SensitiveWords(childComplexity), true
+	case "GlobalCloakingConfig.sensitiveWordsMode":
+		if e.complexity.GlobalCloakingConfig.SensitiveWordsMode == nil {
+			break
+		}
+
+		return e.complexity.GlobalCloakingConfig.SensitiveWordsMode(childComplexity), true
+	case "GlobalCloakingConfig.tlsFingerprint":
+		if e.complexity.GlobalCloakingConfig.TLSFingerprint == nil {
+			break
+		}
+
+		return e.complexity.GlobalCloakingConfig.TLSFingerprint(childComplexity), true
 
 	case "HeaderEntry.key":
 		if e.complexity.HeaderEntry.Key == nil {
@@ -5151,6 +5285,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateDefaultDataStorage(childComplexity, args["input"].(UpdateDefaultDataStorageInput)), true
+	case "Mutation.updateGlobalCloakingConfig":
+		if e.complexity.Mutation.UpdateGlobalCloakingConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateGlobalCloakingConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateGlobalCloakingConfig(childComplexity, args["input"].(UpdateGlobalCloakingConfigInput)), true
 	case "Mutation.updateMe":
 		if e.complexity.Mutation.UpdateMe == nil {
 			break
@@ -6285,6 +6430,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.FetchModels(childComplexity, args["input"].(biz.FetchModelsInput)), true
+	case "Query.globalCloakingConfig":
+		if e.complexity.Query.GlobalCloakingConfig == nil {
+			break
+		}
+
+		return e.complexity.Query.GlobalCloakingConfig(childComplexity), true
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
 			break
@@ -8988,6 +9139,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBulkImportChannelItem,
 		ec.unmarshalInputBulkImportChannelsInput,
 		ec.unmarshalInputBulkUpdateChannelOrderingInput,
+		ec.unmarshalInputChannelClientIDWhereInput,
 		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelModelAssociationInput,
 		ec.unmarshalInputChannelModelPriceOrder,
@@ -9104,6 +9256,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateChannelProbeSettingInput,
 		ec.unmarshalInputUpdateDataStorageInput,
 		ec.unmarshalInputUpdateDefaultDataStorageInput,
+		ec.unmarshalInputUpdateGlobalCloakingConfigInput,
 		ec.unmarshalInputUpdateMeInput,
 		ec.unmarshalInputUpdateModelInput,
 		ec.unmarshalInputUpdateProjectInput,
@@ -10265,6 +10418,17 @@ func (ec *executionContext) field_Mutation_updateDefaultDataStorage_args(ctx con
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateDefaultDataStorageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateDefaultDataStorageInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateGlobalCloakingConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateGlobalCloakingConfigInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateGlobalCloakingConfigInput)
 	if err != nil {
 		return nil, err
 	}
@@ -15464,6 +15628,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_proxy(ctx, field)
 			case "transformOptions":
 				return ec.fieldContext_ChannelSettings_transformOptions(ctx, field)
+			case "cloakingMode":
+				return ec.fieldContext_ChannelSettings_cloakingMode(ctx, field)
 			case "headerOverrideOperations":
 				return ec.fieldContext_ChannelSettings_headerOverrideOperations(ctx, field)
 			case "bodyOverrideOperations":
@@ -15968,6 +16134,180 @@ func (ec *executionContext) fieldContext_Channel_disabledAPIKeys(_ context.Conte
 				return ec.fieldContext_DisabledAPIKey_reason(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DisabledAPIKey", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelClientID_id(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelClientID) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelClientID_id,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelClientID().ID(ctx, obj)
+		},
+		nil,
+		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelClientID_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelClientID",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelClientID_channelID(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelClientID) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelClientID_channelID,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelID, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelClientID_channelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelClientID",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelClientID_principalKind(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelClientID) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelClientID_principalKind,
+		func(ctx context.Context) (any, error) {
+			return obj.PrincipalKind, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelClientID_principalKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelClientID",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelClientID_principalHash(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelClientID) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelClientID_principalHash,
+		func(ctx context.Context) (any, error) {
+			return obj.PrincipalHash, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelClientID_principalHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelClientID",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelClientID_clientIDHex(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelClientID) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelClientID_clientIDHex,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientIDHex, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelClientID_clientIDHex(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelClientID",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelClientID_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelClientID) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelClientID_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelClientID_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelClientID",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -19183,6 +19523,35 @@ func (ec *executionContext) fieldContext_ChannelSettings_transformOptions(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelSettings_cloakingMode(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_cloakingMode,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.ChannelSettings().CloakingMode(ctx, obj)
+		},
+		nil,
+		ec.marshalOCloakingMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCloakingMode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_cloakingMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type CloakingMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelSettings_headerOverrideOperations(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -21898,6 +22267,238 @@ func (ec *executionContext) fieldContext_GCS_bucketName(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GlobalCloakingConfig_mode(ctx context.Context, field graphql.CollectedField, obj *biz.GlobalCloakingConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GlobalCloakingConfig_mode,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.GlobalCloakingConfig().Mode(ctx, obj)
+		},
+		nil,
+		ec.marshalOGlobalCloakingMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGlobalCloakingMode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GlobalCloakingConfig_mode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalCloakingConfig",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type GlobalCloakingMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GlobalCloakingConfig_tlsFingerprint(ctx context.Context, field graphql.CollectedField, obj *biz.GlobalCloakingConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GlobalCloakingConfig_tlsFingerprint,
+		func(ctx context.Context) (any, error) {
+			return obj.TLSFingerprint, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GlobalCloakingConfig_tlsFingerprint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalCloakingConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GlobalCloakingConfig_headerAutoFill(ctx context.Context, field graphql.CollectedField, obj *biz.GlobalCloakingConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GlobalCloakingConfig_headerAutoFill,
+		func(ctx context.Context) (any, error) {
+			return obj.HeaderAutoFill, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GlobalCloakingConfig_headerAutoFill(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalCloakingConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GlobalCloakingConfig_bodyCloak(ctx context.Context, field graphql.CollectedField, obj *biz.GlobalCloakingConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GlobalCloakingConfig_bodyCloak,
+		func(ctx context.Context) (any, error) {
+			return obj.BodyCloak, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GlobalCloakingConfig_bodyCloak(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalCloakingConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GlobalCloakingConfig_cacheUserID(ctx context.Context, field graphql.CollectedField, obj *biz.GlobalCloakingConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GlobalCloakingConfig_cacheUserID,
+		func(ctx context.Context) (any, error) {
+			return obj.CacheUserID, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GlobalCloakingConfig_cacheUserID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalCloakingConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GlobalCloakingConfig_sensitiveWordsMode(ctx context.Context, field graphql.CollectedField, obj *biz.GlobalCloakingConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GlobalCloakingConfig_sensitiveWordsMode,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.GlobalCloakingConfig().SensitiveWordsMode(ctx, obj)
+		},
+		nil,
+		ec.marshalOSensitiveWordsMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSensitiveWordsMode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GlobalCloakingConfig_sensitiveWordsMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalCloakingConfig",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type SensitiveWordsMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GlobalCloakingConfig_sensitiveWords(ctx context.Context, field graphql.CollectedField, obj *biz.GlobalCloakingConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GlobalCloakingConfig_sensitiveWords,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.GlobalCloakingConfig().SensitiveWords(ctx, obj)
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GlobalCloakingConfig_sensitiveWords(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalCloakingConfig",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GlobalCloakingConfig_cacheControlAutoInject(ctx context.Context, field graphql.CollectedField, obj *biz.GlobalCloakingConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GlobalCloakingConfig_cacheControlAutoInject,
+		func(ctx context.Context) (any, error) {
+			return obj.CacheControlAutoInject, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_GlobalCloakingConfig_cacheControlAutoInject(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalCloakingConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -27784,6 +28385,47 @@ func (ec *executionContext) fieldContext_Mutation_deleteProxyPreset(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteProxyPreset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateGlobalCloakingConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateGlobalCloakingConfig,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateGlobalCloakingConfig(ctx, fc.Args["input"].(UpdateGlobalCloakingConfigInput))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateGlobalCloakingConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateGlobalCloakingConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -35248,6 +35890,53 @@ func (ec *executionContext) fieldContext_Query_proxyPresets(_ context.Context, f
 				return ec.fieldContext_ProxyPreset_password(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProxyPreset", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_globalCloakingConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_globalCloakingConfig,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().GlobalCloakingConfig(ctx)
+		},
+		nil,
+		ec.marshalNGlobalCloakingConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐGlobalCloakingConfig,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_globalCloakingConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mode":
+				return ec.fieldContext_GlobalCloakingConfig_mode(ctx, field)
+			case "tlsFingerprint":
+				return ec.fieldContext_GlobalCloakingConfig_tlsFingerprint(ctx, field)
+			case "headerAutoFill":
+				return ec.fieldContext_GlobalCloakingConfig_headerAutoFill(ctx, field)
+			case "bodyCloak":
+				return ec.fieldContext_GlobalCloakingConfig_bodyCloak(ctx, field)
+			case "cacheUserID":
+				return ec.fieldContext_GlobalCloakingConfig_cacheUserID(ctx, field)
+			case "sensitiveWordsMode":
+				return ec.fieldContext_GlobalCloakingConfig_sensitiveWordsMode(ctx, field)
+			case "sensitiveWords":
+				return ec.fieldContext_GlobalCloakingConfig_sensitiveWords(ctx, field)
+			case "cacheControlAutoInject":
+				return ec.fieldContext_GlobalCloakingConfig_cacheControlAutoInject(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GlobalCloakingConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -50813,6 +51502,520 @@ func (ec *executionContext) unmarshalInputBulkUpdateChannelOrderingInput(ctx con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelClientIDWhereInput(ctx context.Context, obj any) (ent.ChannelClientIDWhereInput, error) {
+	var it ent.ChannelClientIDWhereInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "principalKind", "principalKindNEQ", "principalKindIn", "principalKindNotIn", "principalKindGT", "principalKindGTE", "principalKindLT", "principalKindLTE", "principalKindContains", "principalKindHasPrefix", "principalKindHasSuffix", "principalKindEqualFold", "principalKindContainsFold", "principalHash", "principalHashNEQ", "principalHashIn", "principalHashNotIn", "principalHashGT", "principalHashGTE", "principalHashLT", "principalHashLTE", "principalHashContains", "principalHashHasPrefix", "principalHashHasSuffix", "principalHashEqualFold", "principalHashContainsFold", "clientIDHex", "clientIDHexNEQ", "clientIDHexIn", "clientIDHexNotIn", "clientIDHexGT", "clientIDHexGTE", "clientIDHexLT", "clientIDHexLTE", "clientIDHexContains", "clientIDHexHasPrefix", "clientIDHexHasSuffix", "clientIDHexEqualFold", "clientIDHexContainsFold", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "not":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
+			data, err := ec.unmarshalOChannelClientIDWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelClientIDWhereInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Not = data
+		case "and":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
+			data, err := ec.unmarshalOChannelClientIDWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelClientIDWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.And = data
+		case "or":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			data, err := ec.unmarshalOChannelClientIDWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelClientIDWhereInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Or = data
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ID = converted
+		case "idNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDNEQ = converted
+		case "idIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDIn = converted
+		case "idNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
+			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDNotIn = converted
+		case "idGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDGT = converted
+		case "idGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDGTE = converted
+		case "idLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDLT = converted
+		case "idLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.IDLTE = converted
+		case "channelID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelID"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelID = data
+		case "channelIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDNEQ = data
+		case "channelIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDIn = data
+		case "channelIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDNotIn"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDNotIn = data
+		case "channelIDGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDGT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDGT = data
+		case "channelIDGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDGTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDGTE = data
+		case "channelIDLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDLT"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDLT = data
+		case "channelIDLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDLTE"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelIDLTE = data
+		case "principalKind":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKind"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKind = data
+		case "principalKindNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindNEQ = data
+		case "principalKindIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindIn = data
+		case "principalKindNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindNotIn = data
+		case "principalKindGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindGT = data
+		case "principalKindGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindGTE = data
+		case "principalKindLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindLT = data
+		case "principalKindLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindLTE = data
+		case "principalKindContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindContains = data
+		case "principalKindHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindHasPrefix = data
+		case "principalKindHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindHasSuffix = data
+		case "principalKindEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindEqualFold = data
+		case "principalKindContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalKindContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalKindContainsFold = data
+		case "principalHash":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHash"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHash = data
+		case "principalHashNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashNEQ = data
+		case "principalHashIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashIn = data
+		case "principalHashNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashNotIn = data
+		case "principalHashGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashGT = data
+		case "principalHashGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashGTE = data
+		case "principalHashLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashLT = data
+		case "principalHashLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashLTE = data
+		case "principalHashContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashContains = data
+		case "principalHashHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashHasPrefix = data
+		case "principalHashHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashHasSuffix = data
+		case "principalHashEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashEqualFold = data
+		case "principalHashContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("principalHashContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PrincipalHashContainsFold = data
+		case "clientIDHex":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHex"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHex = data
+		case "clientIDHexNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexNEQ = data
+		case "clientIDHexIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexIn = data
+		case "clientIDHexNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexNotIn = data
+		case "clientIDHexGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexGT = data
+		case "clientIDHexGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexGTE = data
+		case "clientIDHexLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexLT = data
+		case "clientIDHexLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexLTE = data
+		case "clientIDHexContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexContains = data
+		case "clientIDHexHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexHasPrefix = data
+		case "clientIDHexHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexHasSuffix = data
+		case "clientIDHexEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexEqualFold = data
+		case "clientIDHexContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientIDHexContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientIDHexContainsFold = data
+		case "createdAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAt = data
+		case "createdAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtNEQ = data
+		case "createdAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtIn = data
+		case "createdAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtNotIn = data
+		case "createdAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtGT = data
+		case "createdAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtGTE = data
+		case "createdAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtLT = data
+		case "createdAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAtLTE = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Context, obj any) (objects.ChannelCredentials, error) {
 	var it objects.ChannelCredentials
 	asMap := map[string]any{}
@@ -53420,7 +54623,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "proxy", "transformOptions", "cloakingMode", "headerOverrideOperations", "bodyOverrideOperations"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -53476,6 +54679,15 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.TransformOptions = data
+		case "cloakingMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cloakingMode"))
+			data, err := ec.unmarshalOCloakingMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCloakingMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.ChannelSettingsInput().CloakingMode(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "headerOverrideOperations":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerOverrideOperations"))
 			data, err := ec.unmarshalOOverrideOperationInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOverrideOperationᚄ(ctx, v)
@@ -67132,6 +68344,82 @@ func (ec *executionContext) unmarshalInputUpdateDefaultDataStorageInput(ctx cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateGlobalCloakingConfigInput(ctx context.Context, obj any) (UpdateGlobalCloakingConfigInput, error) {
+	var it UpdateGlobalCloakingConfigInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"mode", "tlsFingerprint", "headerAutoFill", "bodyCloak", "cacheUserID", "sensitiveWordsMode", "sensitiveWords", "cacheControlAutoInject"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "mode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mode"))
+			data, err := ec.unmarshalOGlobalCloakingMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGlobalCloakingMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Mode = data
+		case "tlsFingerprint":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tlsFingerprint"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TLSFingerprint = data
+		case "headerAutoFill":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headerAutoFill"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HeaderAutoFill = data
+		case "bodyCloak":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bodyCloak"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BodyCloak = data
+		case "cacheUserID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheUserID"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CacheUserID = data
+		case "sensitiveWordsMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sensitiveWordsMode"))
+			data, err := ec.unmarshalOSensitiveWordsMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSensitiveWordsMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SensitiveWordsMode = data
+		case "sensitiveWords":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sensitiveWords"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SensitiveWords = data
+		case "cacheControlAutoInject":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cacheControlAutoInject"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CacheControlAutoInject = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateMeInput(ctx context.Context, obj any) (UpdateMeInput, error) {
 	var it UpdateMeInput
 	asMap := map[string]any{}
@@ -71932,6 +73220,11 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._ChannelModelPrice(ctx, sel, obj)
+	case *ent.ChannelClientID:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._ChannelClientID(ctx, sel, obj)
 	case *ent.Channel:
 		if obj == nil {
 			return graphql.Null
@@ -73791,6 +75084,101 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var channelClientIDImplementors = []string{"ChannelClientID", "Node"}
+
+func (ec *executionContext) _ChannelClientID(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelClientID) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelClientIDImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelClientID")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelClientID_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "channelID":
+			out.Values[i] = ec._ChannelClientID_channelID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "principalKind":
+			out.Values[i] = ec._ChannelClientID_principalKind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "principalHash":
+			out.Values[i] = ec._ChannelClientID_principalHash(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "clientIDHex":
+			out.Values[i] = ec._ChannelClientID_clientIDHex(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "createdAt":
+			out.Values[i] = ec._ChannelClientID_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelConnectionImplementors = []string{"ChannelConnection"}
 
 func (ec *executionContext) _ChannelConnection(ctx context.Context, sel ast.SelectionSet, obj *ent.ChannelConnection) graphql.Marshaler {
@@ -75389,6 +76777,39 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_proxy(ctx, field, obj)
 		case "transformOptions":
 			out.Values[i] = ec._ChannelSettings_transformOptions(ctx, field, obj)
+		case "cloakingMode":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChannelSettings_cloakingMode(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "headerOverrideOperations":
 			field := field
 
@@ -76721,6 +78142,149 @@ func (ec *executionContext) _GCS(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var globalCloakingConfigImplementors = []string{"GlobalCloakingConfig"}
+
+func (ec *executionContext) _GlobalCloakingConfig(ctx context.Context, sel ast.SelectionSet, obj *biz.GlobalCloakingConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, globalCloakingConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GlobalCloakingConfig")
+		case "mode":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._GlobalCloakingConfig_mode(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "tlsFingerprint":
+			out.Values[i] = ec._GlobalCloakingConfig_tlsFingerprint(ctx, field, obj)
+		case "headerAutoFill":
+			out.Values[i] = ec._GlobalCloakingConfig_headerAutoFill(ctx, field, obj)
+		case "bodyCloak":
+			out.Values[i] = ec._GlobalCloakingConfig_bodyCloak(ctx, field, obj)
+		case "cacheUserID":
+			out.Values[i] = ec._GlobalCloakingConfig_cacheUserID(ctx, field, obj)
+		case "sensitiveWordsMode":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._GlobalCloakingConfig_sensitiveWordsMode(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "sensitiveWords":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._GlobalCloakingConfig_sensitiveWords(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "cacheControlAutoInject":
+			out.Values[i] = ec._GlobalCloakingConfig_cacheControlAutoInject(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -78337,6 +79901,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteProxyPreset":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteProxyPreset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateGlobalCloakingConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateGlobalCloakingConfig(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -81540,6 +83111,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_proxyPresets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "globalCloakingConfig":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_globalCloakingConfig(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -88996,6 +90589,11 @@ func (ec *executionContext) marshalNChannel2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 	return ec._Channel(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNChannelClientIDWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelClientIDWhereInput(ctx context.Context, v any) (*ent.ChannelClientIDWhereInput, error) {
+	res, err := ec.unmarshalInputChannelClientIDWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNChannelConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelConnection(ctx context.Context, sel ast.SelectionSet, v ent.ChannelConnection) graphql.Marshaler {
 	return ec._ChannelConnection(ctx, sel, &v)
 }
@@ -90320,6 +91918,20 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 func (ec *executionContext) unmarshalNGetChannelProbeDataInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐGetChannelProbeDataInput(ctx context.Context, v any) (biz.GetChannelProbeDataInput, error) {
 	res, err := ec.unmarshalInputGetChannelProbeDataInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNGlobalCloakingConfig2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐGlobalCloakingConfig(ctx context.Context, sel ast.SelectionSet, v biz.GlobalCloakingConfig) graphql.Marshaler {
+	return ec._GlobalCloakingConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGlobalCloakingConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐGlobalCloakingConfig(ctx context.Context, sel ast.SelectionSet, v *biz.GlobalCloakingConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GlobalCloakingConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNHeaderEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐHeaderEntry(ctx context.Context, sel ast.SelectionSet, v objects.HeaderEntry) graphql.Marshaler {
@@ -93031,6 +94643,11 @@ func (ec *executionContext) unmarshalNUpdateDefaultDataStorageInput2githubᚗcom
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateGlobalCloakingConfigInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateGlobalCloakingConfigInput(ctx context.Context, v any) (UpdateGlobalCloakingConfigInput, error) {
+	res, err := ec.unmarshalInputUpdateGlobalCloakingConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdateMeInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateMeInput(ctx context.Context, v any) (UpdateMeInput, error) {
 	res, err := ec.unmarshalInputUpdateMeInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -94105,6 +95722,32 @@ func (ec *executionContext) marshalOChannel2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 	return ec._Channel(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOChannelClientIDWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelClientIDWhereInputᚄ(ctx context.Context, v any) ([]*ent.ChannelClientIDWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*ent.ChannelClientIDWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNChannelClientIDWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelClientIDWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOChannelClientIDWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelClientIDWhereInput(ctx context.Context, v any) (*ent.ChannelClientIDWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelClientIDWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOChannelCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelCredentials) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -94971,6 +96614,22 @@ func (ec *executionContext) unmarshalOCleanupOptionInput2ᚕgithubᚗcomᚋloopl
 	return res, nil
 }
 
+func (ec *executionContext) unmarshalOCloakingMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCloakingMode(ctx context.Context, v any) (*CloakingMode, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(CloakingMode)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCloakingMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCloakingMode(ctx context.Context, sel ast.SelectionSet, v *CloakingMode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) marshalOCostItem2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.CostItem) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -95553,6 +97212,22 @@ func (ec *executionContext) unmarshalOGCSInput2ᚖgithubᚗcomᚋloopljᚋaxonhu
 	}
 	res, err := ec.unmarshalInputGCSInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOGlobalCloakingMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGlobalCloakingMode(ctx context.Context, v any) (*GlobalCloakingMode, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(GlobalCloakingMode)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOGlobalCloakingMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐGlobalCloakingMode(ctx context.Context, sel ast.SelectionSet, v *GlobalCloakingMode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx context.Context, v any) ([]*objects.GUID, error) {
@@ -97996,6 +99671,22 @@ func (ec *executionContext) marshalOSegment2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 		return graphql.Null
 	}
 	return ec._Segment(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOSensitiveWordsMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSensitiveWordsMode(ctx context.Context, v any) (*SensitiveWordsMode, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(SensitiveWordsMode)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSensitiveWordsMode2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSensitiveWordsMode(ctx context.Context, sel ast.SelectionSet, v *SensitiveWordsMode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOSpan2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanᚄ(ctx context.Context, sel ast.SelectionSet, v []biz.Span) graphql.Marshaler {

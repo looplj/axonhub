@@ -206,6 +206,47 @@ input SaveProxyPresetInput {
   password: String
 }
 
+enum GlobalCloakingMode {
+  AUTO
+  ALWAYS
+  NEVER
+}
+
+enum CloakingMode {
+  FOLLOW_GLOBAL
+  AUTO
+  ALWAYS
+  NEVER
+}
+
+enum SensitiveWordsMode {
+  EXTEND
+  REPLACE
+  DISABLE
+}
+
+type GlobalCloakingConfig {
+  mode: GlobalCloakingMode
+  tlsFingerprint: Boolean
+  headerAutoFill: Boolean
+  bodyCloak: Boolean
+  cacheUserID: Boolean
+  sensitiveWordsMode: SensitiveWordsMode
+  sensitiveWords: [String!] @goField(forceResolver: true)
+  cacheControlAutoInject: Boolean
+}
+
+input UpdateGlobalCloakingConfigInput {
+  mode: GlobalCloakingMode
+  tlsFingerprint: Boolean
+  headerAutoFill: Boolean
+  bodyCloak: Boolean
+  cacheUserID: Boolean
+  sensitiveWordsMode: SensitiveWordsMode
+  sensitiveWords: [String!]
+  cacheControlAutoInject: Boolean
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
@@ -222,6 +263,7 @@ extend type Mutation {
   triggerGcCleanup: Boolean!
   saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
   deleteProxyPreset(url: String!): Boolean!
+  updateGlobalCloakingConfig(input: UpdateGlobalCloakingConfigInput!): Boolean!
 }
 
 type SystemVersion {
@@ -254,4 +296,5 @@ extend type Query {
   systemGeneralSettings: SystemGeneralSettings!
   videoStorageSettings: VideoStorageSettings!
   proxyPresets: [ProxyPreset!]!
+  globalCloakingConfig: GlobalCloakingConfig!
 }

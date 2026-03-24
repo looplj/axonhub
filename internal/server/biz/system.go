@@ -84,6 +84,10 @@ const (
 	// SystemKeyVideoStorageSettings is the key used to store video storage settings.
 	// The value is JSON-encoded VideoStorageSettings struct.
 	SystemKeyVideoStorageSettings = "system_video_storage_settings"
+
+	// SystemKeyCloakingConfig is the key used to store global cloaking configuration.
+	// The value is JSON-encoded GlobalCloakingConfig struct.
+	SystemKeyCloakingConfig = "system_cloaking_config"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -104,6 +108,26 @@ type VideoStorageSettings struct {
 	ScanIntervalMinutes int `json:"scan_interval_minutes"`
 	// ScanLimit is the max number of requests processed per scan.
 	ScanLimit int `json:"scan_limit"`
+}
+
+// GlobalCloakingConfig represents global cloaking configuration.
+type GlobalCloakingConfig struct {
+	// Mode controls the global cloaking behavior: "auto", "always", or "never".
+	Mode *string `json:"mode,omitempty"`
+	// HeaderAutoFill controls whether to auto-fill headers for cloaking.
+	HeaderAutoFill *bool `json:"header_auto_fill,omitempty"`
+	// TLSFingerprint controls whether to use TLS fingerprinting.
+	TLSFingerprint *bool `json:"tls_fingerprint,omitempty"`
+	// BodyCloak controls whether to cloak request body.
+	BodyCloak *bool `json:"body_cloak,omitempty"`
+	// CacheUserID controls whether to cache/fake user ID.
+	CacheUserID *bool `json:"cache_user_id,omitempty"`
+	// CacheControlAutoInject controls whether to auto-inject cache control.
+	CacheControlAutoInject *bool `json:"cache_control_auto_inject,omitempty"`
+	// SensitiveWordsMode controls sensitive word filtering: "extend", "replace", or "disable".
+	SensitiveWordsMode *string `json:"sensitive_words_mode,omitempty"`
+	// SensitiveWords is the list of custom sensitive words.
+	SensitiveWords *[]string `json:"sensitive_words,omitempty"`
 }
 
 // BackupFrequency represents how often automatic backups should run.
@@ -690,6 +714,56 @@ func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy)
 	}
 
 	return s.setSystemValue(ctx, SystemKeyRetryPolicy, string(jsonBytes))
+}
+
+// GlobalCloakingConfig retrieves the global cloaking configuration.
+func (s *SystemService) GlobalCloakingConfig(ctx context.Context) (*GlobalCloakingConfig, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyCloakingConfig)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return &GlobalCloakingConfig{}, nil
+		}
+		return nil, fmt.Errorf("failed to get cloaking config: %w", err)
+	}
+
+	var config GlobalCloakingConfig
+	if err := json.Unmarshal([]byte(value), &config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal cloaking config: %w", err)
+	}
+	return &config, nil
+}
+
+// GlobalCloakingConfigOrDefault retrieves the global cloaking config or returns an empty config if not available.
+func (s *SystemService) GlobalCloakingConfigOrDefault(ctx context.Context) *GlobalCloakingConfig {
+	config, err := s.GlobalCloakingConfig(ctx)
+	if err != nil {
+		return &GlobalCloakingConfig{}
+	}
+	return config
+}
+
+// SetGlobalCloakingConfig sets the global cloaking configuration.
+func (s *SystemService) SetGlobalCloakingConfig(ctx context.Context, config *GlobalCloakingConfig) error {
+	// Validate mode values
+	if config.Mode != nil {
+		mode := *config.Mode
+		if mode != "auto" && mode != "always" && mode != "never" {
+			return fmt.Errorf("invalid cloaking mode: %s (must be auto, always, or never)", mode)
+		}
+	}
+	if config.SensitiveWordsMode != nil {
+		mode := *config.SensitiveWordsMode
+		if mode != "extend" && mode != "replace" && mode != "disable" {
+			return fmt.Errorf("invalid sensitive words mode: %s (must be extend, replace, or disable)", mode)
+		}
+	}
+
+	jsonBytes, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal cloaking config: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyCloakingConfig, string(jsonBytes))
 }
 
 // ModelSettings retrieves the model settings configuration.

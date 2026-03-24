@@ -81,6 +81,7 @@ type ChannelSettings {
   hideMappedModels: Boolean
   proxy: ProxyConfig
   transformOptions: TransformOptions
+  cloakingMode: CloakingMode
   headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
   bodyOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
 }
@@ -112,6 +113,7 @@ input ChannelSettingsInput {
   hideMappedModels: Boolean
   proxy: ProxyConfigInput
   transformOptions: TransformOptionsInput
+  cloakingMode: CloakingMode
   headerOverrideOperations: [OverrideOperationInput!]
   bodyOverrideOperations: [OverrideOperationInput!]
 }

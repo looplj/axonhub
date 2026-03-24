@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -68,6 +69,18 @@ func (r *channelResolver) DisabledAPIKeys(ctx context.Context, obj *ent.Channel)
 	}
 
 	return lo.ToSlicePtr(obj.DisabledAPIKeys), nil
+}
+
+// CloakingMode is the resolver for the cloakingMode field.
+func (r *channelSettingsResolver) CloakingMode(ctx context.Context, obj *objects.ChannelSettings) (*CloakingMode, error) {
+	if obj == nil || obj.CloakingMode == nil {
+		return nil, nil
+	}
+
+	mode := strings.ToUpper(*obj.CloakingMode)
+	gqlMode := CloakingMode(mode)
+
+	return &gqlMode, nil
 }
 
 // HeaderOverrideOperations is the resolver for the headerOverrideOperations field.
@@ -645,6 +658,19 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
+// CloakingMode is the resolver for the cloakingMode field.
+func (r *channelSettingsInputResolver) CloakingMode(ctx context.Context, obj *objects.ChannelSettings, data *CloakingMode) error {
+	if data == nil {
+		obj.CloakingMode = nil
+		return nil
+	}
+
+	mode := strings.ToLower(data.String())
+	obj.CloakingMode = &mode
+
+	return nil
+}
+
 // ChannelSettings returns ChannelSettingsResolver implementation.
 func (r *Resolver) ChannelSettings() ChannelSettingsResolver { return &channelSettingsResolver{r} }
 
@@ -654,6 +680,12 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
+// ChannelSettingsInput returns ChannelSettingsInputResolver implementation.
+func (r *Resolver) ChannelSettingsInput() ChannelSettingsInputResolver {
+	return &channelSettingsInputResolver{r}
+}
+
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+type channelSettingsInputResolver struct{ *Resolver }

@@ -8,6 +8,7 @@ package gql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
@@ -16,6 +17,34 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/samber/lo"
 )
+
+// Mode is the resolver for the mode field.
+func (r *globalCloakingConfigResolver) Mode(ctx context.Context, obj *biz.GlobalCloakingConfig) (*GlobalCloakingMode, error) {
+	if obj.Mode == nil {
+		return nil, nil
+	}
+	mode := strings.ToUpper(*obj.Mode)
+	gqlMode := GlobalCloakingMode(mode)
+	return &gqlMode, nil
+}
+
+// SensitiveWordsMode is the resolver for the sensitiveWordsMode field.
+func (r *globalCloakingConfigResolver) SensitiveWordsMode(ctx context.Context, obj *biz.GlobalCloakingConfig) (*SensitiveWordsMode, error) {
+	if obj.SensitiveWordsMode == nil {
+		return nil, nil
+	}
+	mode := strings.ToUpper(*obj.SensitiveWordsMode)
+	gqlMode := SensitiveWordsMode(mode)
+	return &gqlMode, nil
+}
+
+// SensitiveWords is the resolver for the sensitiveWords field.
+func (r *globalCloakingConfigResolver) SensitiveWords(ctx context.Context, obj *biz.GlobalCloakingConfig) ([]string, error) {
+	if obj.SensitiveWords == nil {
+		return nil, nil
+	}
+	return append([]string{}, (*obj.SensitiveWords)...), nil
+}
 
 // UpdateBrandSettings is the resolver for the updateBrandSettings field.
 func (r *mutationResolver) UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error) {
@@ -189,6 +218,33 @@ func (r *mutationResolver) DeleteProxyPreset(ctx context.Context, url string) (b
 	return true, nil
 }
 
+// UpdateGlobalCloakingConfig is the resolver for the updateGlobalCloakingConfig field.
+func (r *mutationResolver) UpdateGlobalCloakingConfig(ctx context.Context, input UpdateGlobalCloakingConfigInput) (bool, error) {
+	config := &biz.GlobalCloakingConfig{}
+	if input.Mode != nil {
+		mode := strings.ToLower(string(*input.Mode))
+		config.Mode = &mode
+	}
+	config.TLSFingerprint = input.TLSFingerprint
+	config.HeaderAutoFill = input.HeaderAutoFill
+	config.BodyCloak = input.BodyCloak
+	config.CacheUserID = input.CacheUserID
+	if input.SensitiveWordsMode != nil {
+		mode := strings.ToLower(string(*input.SensitiveWordsMode))
+		config.SensitiveWordsMode = &mode
+	}
+	if input.SensitiveWords != nil {
+		sensitiveWords := append([]string{}, input.SensitiveWords...)
+		config.SensitiveWords = &sensitiveWords
+	}
+	config.CacheControlAutoInject = input.CacheControlAutoInject
+	err := r.systemService.SetGlobalCloakingConfig(ctx, config)
+	if err != nil {
+		return false, fmt.Errorf("failed to update global cloaking config: %w", err)
+	}
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -338,3 +394,15 @@ func (r *queryResolver) ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, e
 
 	return lo.ToSlicePtr(presets), nil
 }
+
+// GlobalCloakingConfig is the resolver for the globalCloakingConfig field.
+func (r *queryResolver) GlobalCloakingConfig(ctx context.Context) (*biz.GlobalCloakingConfig, error) {
+	return r.systemService.GlobalCloakingConfig(ctx)
+}
+
+// GlobalCloakingConfig returns GlobalCloakingConfigResolver implementation.
+func (r *Resolver) GlobalCloakingConfig() GlobalCloakingConfigResolver {
+	return &globalCloakingConfigResolver{r}
+}
+
+type globalCloakingConfigResolver struct{ *Resolver }

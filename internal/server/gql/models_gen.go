@@ -425,6 +425,17 @@ type UpdateDefaultDataStorageInput struct {
 	DataStorageID objects.GUID `json:"dataStorageID"`
 }
 
+type UpdateGlobalCloakingConfigInput struct {
+	Mode                   *GlobalCloakingMode `json:"mode,omitempty"`
+	TLSFingerprint         *bool               `json:"tlsFingerprint,omitempty"`
+	HeaderAutoFill         *bool               `json:"headerAutoFill,omitempty"`
+	BodyCloak              *bool               `json:"bodyCloak,omitempty"`
+	CacheUserID            *bool               `json:"cacheUserID,omitempty"`
+	SensitiveWordsMode     *SensitiveWordsMode `json:"sensitiveWordsMode,omitempty"`
+	SensitiveWords         []string            `json:"sensitiveWords,omitempty"`
+	CacheControlAutoInject *bool               `json:"cacheControlAutoInject,omitempty"`
+}
+
 type UpdateMeInput struct {
 	FirstName      *string `json:"firstName,omitempty"`
 	LastName       *string `json:"lastName,omitempty"`
@@ -446,6 +457,122 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type CloakingMode string
+
+const (
+	CloakingModeFollowGlobal CloakingMode = "FOLLOW_GLOBAL"
+	CloakingModeAuto         CloakingMode = "AUTO"
+	CloakingModeAlways       CloakingMode = "ALWAYS"
+	CloakingModeNever        CloakingMode = "NEVER"
+)
+
+var AllCloakingMode = []CloakingMode{
+	CloakingModeFollowGlobal,
+	CloakingModeAuto,
+	CloakingModeAlways,
+	CloakingModeNever,
+}
+
+func (e CloakingMode) IsValid() bool {
+	switch e {
+	case CloakingModeFollowGlobal, CloakingModeAuto, CloakingModeAlways, CloakingModeNever:
+		return true
+	}
+	return false
+}
+
+func (e CloakingMode) String() string {
+	return string(e)
+}
+
+func (e *CloakingMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CloakingMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CloakingMode", str)
+	}
+	return nil
+}
+
+func (e CloakingMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CloakingMode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CloakingMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type GlobalCloakingMode string
+
+const (
+	GlobalCloakingModeAuto   GlobalCloakingMode = "AUTO"
+	GlobalCloakingModeAlways GlobalCloakingMode = "ALWAYS"
+	GlobalCloakingModeNever  GlobalCloakingMode = "NEVER"
+)
+
+var AllGlobalCloakingMode = []GlobalCloakingMode{
+	GlobalCloakingModeAuto,
+	GlobalCloakingModeAlways,
+	GlobalCloakingModeNever,
+}
+
+func (e GlobalCloakingMode) IsValid() bool {
+	switch e {
+	case GlobalCloakingModeAuto, GlobalCloakingModeAlways, GlobalCloakingModeNever:
+		return true
+	}
+	return false
+}
+
+func (e GlobalCloakingMode) String() string {
+	return string(e)
+}
+
+func (e *GlobalCloakingMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = GlobalCloakingMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid GlobalCloakingMode", str)
+	}
+	return nil
+}
+
+func (e GlobalCloakingMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *GlobalCloakingMode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e GlobalCloakingMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type OverrideApplyMode string
@@ -496,6 +623,63 @@ func (e *OverrideApplyMode) UnmarshalJSON(b []byte) error {
 }
 
 func (e OverrideApplyMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type SensitiveWordsMode string
+
+const (
+	SensitiveWordsModeExtend  SensitiveWordsMode = "EXTEND"
+	SensitiveWordsModeReplace SensitiveWordsMode = "REPLACE"
+	SensitiveWordsModeDisable SensitiveWordsMode = "DISABLE"
+)
+
+var AllSensitiveWordsMode = []SensitiveWordsMode{
+	SensitiveWordsModeExtend,
+	SensitiveWordsModeReplace,
+	SensitiveWordsModeDisable,
+}
+
+func (e SensitiveWordsMode) IsValid() bool {
+	switch e {
+	case SensitiveWordsModeExtend, SensitiveWordsModeReplace, SensitiveWordsModeDisable:
+		return true
+	}
+	return false
+}
+
+func (e SensitiveWordsMode) String() string {
+	return string(e)
+}
+
+func (e *SensitiveWordsMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SensitiveWordsMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SensitiveWordsMode", str)
+	}
+	return nil
+}
+
+func (e SensitiveWordsMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SensitiveWordsMode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SensitiveWordsMode) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

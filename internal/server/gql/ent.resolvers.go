@@ -70,6 +70,11 @@ func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Chan
 }
 
 // ID is the resolver for the id field.
+func (r *channelClientIDResolver) ID(ctx context.Context, obj *ent.ChannelClientID) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ID is the resolver for the id field.
 func (r *channelModelPriceResolver) ID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeChannelModelPrice,
@@ -838,6 +843,9 @@ func (r *Resolver) APIKey() APIKeyResolver { return &aPIKeyResolver{r} }
 // Channel returns ChannelResolver implementation.
 func (r *Resolver) Channel() ChannelResolver { return &channelResolver{r} }
 
+// ChannelClientID returns ChannelClientIDResolver implementation.
+func (r *Resolver) ChannelClientID() ChannelClientIDResolver { return &channelClientIDResolver{r} }
+
 // ChannelModelPrice returns ChannelModelPriceResolver implementation.
 func (r *Resolver) ChannelModelPrice() ChannelModelPriceResolver {
 	return &channelModelPriceResolver{r}
@@ -913,6 +921,7 @@ func (r *Resolver) UserRole() UserRoleResolver { return &userRoleResolver{r} }
 
 type aPIKeyResolver struct{ *Resolver }
 type channelResolver struct{ *Resolver }
+type channelClientIDResolver struct{ *Resolver }
 type channelModelPriceResolver struct{ *Resolver }
 type channelModelPriceVersionResolver struct{ *Resolver }
 type channelOverrideTemplateResolver struct{ *Resolver }

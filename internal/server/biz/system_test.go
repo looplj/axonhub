@@ -747,3 +747,112 @@ func TestSystemService_Initialize_TransactionRollback(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, dsCount)
 }
+
+func TestGlobalCloakingConfig(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Test getting empty config
+	config, err := service.GlobalCloakingConfig(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, config)
+	require.Nil(t, config.Mode)
+	require.Nil(t, config.SensitiveWordsMode)
+
+	// Test setting valid config
+	mode := "always"
+	tlsFingerprint := true
+	headerAutoFill := true
+	bodyCloak := false
+	cacheUserID := true
+	sensitiveMode := "extend"
+	sensitiveWords := []string{"opencode", "cursor"}
+	cacheControlAutoInject := false
+	err = service.SetGlobalCloakingConfig(ctx, &GlobalCloakingConfig{
+		Mode:                   &mode,
+		TLSFingerprint:         &tlsFingerprint,
+		HeaderAutoFill:         &headerAutoFill,
+		BodyCloak:              &bodyCloak,
+		CacheUserID:            &cacheUserID,
+		SensitiveWordsMode:     &sensitiveMode,
+		SensitiveWords:         &sensitiveWords,
+		CacheControlAutoInject: &cacheControlAutoInject,
+	})
+	require.NoError(t, err)
+
+	// Test getting config back
+	config, err = service.GlobalCloakingConfig(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, config)
+	require.NotNil(t, config.Mode)
+	require.Equal(t, "always", *config.Mode)
+	require.NotNil(t, config.TLSFingerprint)
+	require.True(t, *config.TLSFingerprint)
+	require.NotNil(t, config.HeaderAutoFill)
+	require.True(t, *config.HeaderAutoFill)
+	require.NotNil(t, config.BodyCloak)
+	require.False(t, *config.BodyCloak)
+	require.NotNil(t, config.CacheUserID)
+	require.True(t, *config.CacheUserID)
+	require.NotNil(t, config.SensitiveWordsMode)
+	require.Equal(t, "extend", *config.SensitiveWordsMode)
+	require.NotNil(t, config.SensitiveWords)
+	require.Equal(t, []string{"opencode", "cursor"}, *config.SensitiveWords)
+	require.NotNil(t, config.CacheControlAutoInject)
+	require.False(t, *config.CacheControlAutoInject)
+}
+
+func TestInvalidCloakingMode(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Test invalid mode
+	invalidMode := "invalid_mode"
+	err := service.SetGlobalCloakingConfig(ctx, &GlobalCloakingConfig{
+		Mode: &invalidMode,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid cloaking mode")
+
+	// Test invalid sensitive words mode
+	validMode := "always"
+	invalidSensitiveMode := "bad_mode"
+	err = service.SetGlobalCloakingConfig(ctx, &GlobalCloakingConfig{
+		Mode:               &validMode,
+		SensitiveWordsMode: &invalidSensitiveMode,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid sensitive words mode")
+	// Test old follow_channel is rejected for Mode
+	followChannelMode := "follow_channel"
+	err = service.SetGlobalCloakingConfig(ctx, &GlobalCloakingConfig{
+		Mode: &followChannelMode,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid cloaking mode")
+
+	// Test old follow_channel is rejected for SensitiveWordsMode
+	err = service.SetGlobalCloakingConfig(ctx, &GlobalCloakingConfig{
+		Mode:               &validMode,
+		SensitiveWordsMode: &followChannelMode,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid sensitive words mode")
+
+	// Test valid auto mode
+	autoMode := "auto"
+	err = service.SetGlobalCloakingConfig(ctx, &GlobalCloakingConfig{
+		Mode: &autoMode,
+	})
+	require.NoError(t, err)
+}
