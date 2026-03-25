@@ -249,6 +249,70 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformRequest(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://nano-gpt.com/api/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		request     *llm.Request
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name: "chat completions model is accepted",
+			request: &llm.Request{
+				Model: "gpt-4o",
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: stringPtr("hello")}},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "responses endpoint model is rejected",
+			request: &llm.Request{
+				Model: "gpt-5.4",
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: stringPtr("hello")}},
+				},
+			},
+			wantErr:     true,
+			errContains: "endpoint mismatch: resolver returned \"responses\"",
+		},
+		{
+			name: "messages endpoint model is rejected",
+			request: &llm.Request{
+				Model: "claude-3-5-sonnet",
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: stringPtr("hello")}},
+				},
+			},
+			wantErr:     true,
+			errContains: "endpoint mismatch: resolver returned \"messages\"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpReq, err := transformer.TransformRequest(context.Background(), tt.request)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+				assert.Nil(t, httpReq)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, httpReq)
+			assert.Contains(t, httpReq.URL, "/chat/completions")
+		})
+	}
+}
+
 func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
 		BaseURL:        "https://nano-gpt.com/api/v1",
