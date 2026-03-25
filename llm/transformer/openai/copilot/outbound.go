@@ -634,6 +634,11 @@ func (t *OutboundTransformer) transformMessagesRequest(ctx context.Context, llmR
 	// Add Copilot-specific headers
 	setCopilotHeaders(messagesReq.Headers)
 
+	// Add vision header if request contains image content.
+	if hasVisionContent(llmReq) {
+		messagesReq.Headers.Set(CopilotVisionRequestHeader, "true")
+	}
+
 	return messagesReq, nil
 }
 
