@@ -6,15 +6,24 @@ import (
 	"fmt"
 
 	"github.com/anthropics/anthropic-sdk-go"
+
+	"github.com/looplj/axonhub/axon/agent"
 )
 
 func wrapAPIError(err error) error {
 	var apiErr *anthropic.Error
 	if errors.As(err, &apiErr) {
-		if msg := extractErrorMessage(apiErr); msg != "" {
-			return fmt.Errorf("anthropic: %s (status %d)", msg, apiErr.StatusCode)
+		msg := extractErrorMessage(apiErr)
+		if msg == "" {
+			msg = "anthropic: request failed"
+		} else {
+			msg = fmt.Sprintf("anthropic: %s", msg)
 		}
-		return fmt.Errorf("anthropic: request failed (status %d)", apiErr.StatusCode)
+
+		return &agent.ProviderError{
+			StatusCode: apiErr.StatusCode,
+			Message:    msg,
+		}
 	}
 	return fmt.Errorf("anthropic: %w", err)
 }

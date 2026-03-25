@@ -106,7 +106,7 @@ func (t *Tool) Execute(ctx context.Context, input toolInput) agent.ToolResult {
 		model = t.model
 	}
 
-	allowedTools, deniedTools := buildToolFiltersFromDefinition(def.Tools)
+	allowedTools, deniedTools := BuildToolFiltersFromDefinition(def.Tools)
 
 	t.logger.Info("spawn agent starting",
 		"agent_type", input.AgentType,
@@ -145,7 +145,7 @@ func (t *Tool) Execute(ctx context.Context, input toolInput) agent.ToolResult {
 	return tools.TextResult(result.Output)
 }
 
-func buildToolFiltersFromDefinition(toolsConfig map[string]bool) (allowed []string, denied []string) {
+func BuildToolFiltersFromDefinition(toolsConfig map[string]bool) (allowed []string, denied []string) {
 	// Nil toolsConfig means "no configuration provided" => no filtering
 	// (allow all tools, except SpawnAgent which is always excluded).
 	if toolsConfig == nil {

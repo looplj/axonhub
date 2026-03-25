@@ -3,6 +3,7 @@ package subagent
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,8 +28,9 @@ type definitionFrontMatter struct {
 }
 
 type Manager struct {
-	fsys   fs.FS
-	agents map[string]*Definition
+	fsys    fs.FS
+	agents  map[string]*Definition
+	bundled map[string]*Definition
 }
 
 func NewManager(fsys fs.FS) *Manager {
@@ -49,7 +51,22 @@ func NewManagerFromPath(agentDir string) *Manager {
 	return NewManager(os.DirFS(agentDir))
 }
 
+// RegisterBundled registers a built-in Definition that can be overridden by
+// user-provided .md files. Bundled definitions are stored separately and
+// merged into the final agent map during Load — user definitions take
+// precedence over bundled ones with the same name.
+func (m *Manager) RegisterBundled(def *Definition) {
+	if m.bundled == nil {
+		m.bundled = make(map[string]*Definition)
+	}
+
+	m.bundled[def.Name] = def
+}
+
 func (m *Manager) Load() error {
+	// Seed with bundled definitions first; user files override them.
+	maps.Copy(m.agents, m.bundled)
+
 	if m.fsys == nil {
 		return nil
 	}
@@ -100,8 +117,15 @@ func (m *Manager) parseAgentFile(name string) (*Definition, error) {
 }
 
 func (m *Manager) Get(name string) (*Definition, bool) {
-	def, ok := m.agents[name]
-	return def, ok
+	if def, ok := m.agents[name]; ok {
+		return def, true
+	}
+
+	if def, ok := m.bundled[name]; ok {
+		return def, true
+	}
+
+	return nil, false
 }
 
 func (m *Manager) List() []*Definition {

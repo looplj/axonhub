@@ -22,7 +22,7 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/skills"
 )
 
-func newSkillManager(workspace string, boot *bootstrap.Result, logger *slog.Logger) *tools.SkillManager {
+func NewSkillManager(workspace string, boot *bootstrap.Result, logger *slog.Logger) *tools.SkillManager {
 	opts := tools.SkillManagerOptions{
 		Dirs: []string{
 			filepath.Join(workspace, conf.DefaultDir, "skills"),

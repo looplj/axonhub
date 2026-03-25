@@ -64,6 +64,7 @@ var SkipDirs = map[string]bool{
 type Options struct {
 	Pattern    string
 	Path       string
+	PathPrefix string
 	Glob       string
 	OutputMode string
 	Before     *int
@@ -234,9 +235,9 @@ func (s *Searcher) searchFile(path string, re *regexp.Regexp, opts Options, outp
 
 	switch outputMode {
 	case "files_with_matches":
-		return []string{path}
+		return []string{displayPath(path, opts.PathPrefix)}
 	case "count":
-		return []string{fmt.Sprintf("%s:%d", path, len(matchIdxs))}
+		return []string{fmt.Sprintf("%s:%d", displayPath(path, opts.PathPrefix), len(matchIdxs))}
 	default:
 		return s.formatContentMatches(path, lines, matchIdxs, opts)
 	}
@@ -262,9 +263,9 @@ func (s *Searcher) searchFileMultiline(path string, re *regexp.Regexp, opts Opti
 
 	switch outputMode {
 	case "files_with_matches":
-		return []string{path}
+		return []string{displayPath(path, opts.PathPrefix)}
 	case "count":
-		return []string{fmt.Sprintf("%s:%d", path, len(matches))}
+		return []string{fmt.Sprintf("%s:%d", displayPath(path, opts.PathPrefix), len(matches))}
 	default:
 		maxLineLen := opts.MaxLineLen
 		if maxLineLen == 0 {
@@ -274,13 +275,14 @@ func (s *Searcher) searchFileMultiline(path string, re *regexp.Regexp, opts Opti
 		for _, loc := range matches {
 			snippet := content[loc[0]:loc[1]]
 			line := truncateLine(snippet, maxLineLen)
-			results = append(results, fmt.Sprintf("%s: %s", path, line))
+			results = append(results, fmt.Sprintf("%s: %s", displayPath(path, opts.PathPrefix), line))
 		}
 		return results
 	}
 }
 
 func (s *Searcher) formatContentMatches(path string, lines []string, matchIdxs []int, opts Options) []string {
+	path = displayPath(path, opts.PathPrefix)
 	showLineNum := lo.FromPtrOr(opts.LineNumber, true)
 
 	beforeN, afterN := 0, 0
@@ -442,6 +444,14 @@ func truncateLine(s string, maxLen int) string {
 		return s[:maxLen] + "..."
 	}
 	return s
+}
+
+func displayPath(path, prefix string) string {
+	if prefix == "" {
+		return path
+	}
+
+	return filepath.Clean(filepath.Join(prefix, path))
 }
 
 func expandGlob(pattern string) ([]string, error) {

@@ -2,7 +2,9 @@ package anthropic
 
 import (
 	"context"
+	"errors"
 	"strings"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -45,18 +47,54 @@ func (p *Provider) ChatStream(ctx context.Context, model string, tools []agent.T
 		reqOpts = append(reqOpts, option.WithHeader(p.traceHeader, traceID))
 	}
 
-	stream := p.client.Messages.NewStreaming(ctx, params, reqOpts...)
-
 	events := make(chan agent.StreamEvent, 256)
 
 	go func() {
 		defer close(events)
 
-		streamProcessor := newStreamProcessor(stream, events)
-		streamProcessor.process()
+		var lastErr error
+
+		for attempt := 0; attempt <= p.maxRetries; attempt++ {
+			if attempt > 0 {
+				select {
+				case <-ctx.Done():
+					emitError(events, ctx.Err())
+					return
+				case <-time.After(time.Second * time.Duration(attempt)):
+				}
+			}
+
+			stream := p.client.Messages.NewStreaming(ctx, params, reqOpts...)
+
+			streamProcessor := newStreamProcessor(stream, events)
+			if err := streamProcessor.processWithRetry(); err != nil {
+				lastErr = err
+
+				providerErr := &agent.ProviderError{}
+				if errors.As(err, &providerErr) {
+					if providerErr.IsClientError() || providerErr.StatusCode < 500 {
+						emitError(events, err)
+						return
+					}
+				}
+
+				continue
+			}
+
+			return
+		}
+
+		emitError(events, lastErr)
 	}()
 
 	return events, nil
+}
+
+func emitError(events chan<- agent.StreamEvent, err error) {
+	events <- agent.StreamEvent{
+		Type:  agent.StreamEventError,
+		Error: err,
+	}
 }
 
 type streamProcessor struct {
@@ -77,22 +115,22 @@ func newStreamProcessor(stream *ssestream.Stream[anthropic.MessageStreamEventUni
 	}
 }
 
-func (p *streamProcessor) process() {
+func (p *streamProcessor) processWithRetry() error {
 	for p.stream.Next() {
 		event := p.stream.Current()
 
 		if err := p.handleEvent(event); err != nil {
-			p.emitError(err)
-			return
+			return err
 		}
 	}
 
 	if err := p.stream.Err(); err != nil {
-		p.emitError(wrapAPIError(err))
-		return
+		return wrapAPIError(err)
 	}
 
 	p.emitDone()
+
+	return nil
 }
 
 func (p *streamProcessor) handleEvent(event anthropic.MessageStreamEventUnion) error {

@@ -36,11 +36,11 @@ type ContextManagerState struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
-func emptyContextState() ContextManagerState {
+func EmptyContextState() ContextManagerState {
 	return ContextManagerState{}
 }
 
-func copyContextState(state ContextManagerState) ContextManagerState {
+func CopyContextState(state ContextManagerState) ContextManagerState {
 	out := ContextManagerState{
 		Summary:         state.Summary,
 		CompactionCount: state.CompactionCount,

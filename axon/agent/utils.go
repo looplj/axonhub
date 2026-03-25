@@ -1,5 +1,12 @@
 package agent
 
+func newTextMessage(role Role, text string) Message {
+	return Message{
+		Role:    role,
+		Content: &Content{Text: &text},
+	}
+}
+
 func cloneMessages(in []Message) []Message {
 	if in == nil {
 		return nil

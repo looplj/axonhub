@@ -3,9 +3,9 @@ package claw
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -63,6 +63,8 @@ type NewOptions struct {
 	PermEvaluator  *permission.Evaluator
 	Bus            bus.EventBus
 	TaskScheduler  *task.Scheduler
+	SubagentMgr    *subagent.Manager
+	SkillMgr       *tools.SkillManager
 }
 
 func New(opts NewOptions) *Runner {
@@ -87,14 +89,8 @@ func New(opts NewOptions) *Runner {
 		ConfigDir: opts.Boot.ConfigDir,
 	})
 
-	agentDir := filepath.Join(opts.Workspace, ".agent", "subagents")
-
-	subagentMgr := subagent.NewManagerFromPath(agentDir)
-	if err := subagentMgr.Load(); err != nil {
-		opts.Logger.Warn("failed to load subagent definitions", "error", err, "path", agentDir)
-	}
-
-	skillMgr := newSkillManager(opts.Workspace, opts.Boot, opts.Logger)
+	subagentMgr := opts.SubagentMgr
+	skillMgr := opts.SkillMgr
 
 	toolSource := &agentToolSource{agent: a}
 	registerTools(a, opts.Workspace, opts.Boot, opts.Logger, opts.Client, opts.Provider, opts.Bus, mcpMgr, subagentMgr, skillMgr)
@@ -323,8 +319,23 @@ func (r *Runner) processMessage(ctx context.Context, msg IncomingMessage) error 
 	processCtx = axoncontext.WithTraceID(processCtx, traceID)
 	formatted := r.formatMessageForLLM(msg)
 	_, err := r.Agent.Process(processCtx, agent.Content{Text: &formatted})
+	if err != nil {
+		var providerErr *agent.ProviderError
+		if errors.As(err, &providerErr) {
+			r.Logger.Warn("provider error",
+				"status", providerErr.StatusCode, "error", providerErr.Message)
+			r.replyError(ctx, fmt.Sprintf("⚠️ Provider error (HTTP %d): %s", providerErr.StatusCode, providerErr.Message))
 
-	return err
+			return nil
+		}
+
+		r.Logger.Warn("agent process failed", "error", err)
+		r.replyError(ctx, fmt.Sprintf("⚠️ Agent error: %v", err))
+
+		return nil
+	}
+
+	return nil
 }
 
 // stopProcessing cancels the active agent processing if running.
@@ -419,6 +430,15 @@ func newIsolatedContext(ctx context.Context) context.Context {
 	ctx = axoncontext.WithTraceID(ctx, traceID)
 
 	return ctx
+}
+
+func (r *Runner) replyError(ctx context.Context, text string) {
+	_, err := api.ReplyMessage(ctx, r.Client, &api.ReplyMessageInput{
+		Text: text,
+	})
+	if err != nil {
+		r.Logger.Warn("failed to send error reply", "error", err)
+	}
 }
 
 func (r *Runner) Close() error {

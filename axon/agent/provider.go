@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 )
 
 // StreamEvent represents a streaming event from the LLM.
@@ -87,6 +88,21 @@ type Response struct {
 	Messages   []Message
 	StopReason StopReason
 	Usage      Usage
+}
+
+// ProviderError represents an error returned by an LLM provider with an HTTP status code.
+type ProviderError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *ProviderError) Error() string {
+	return fmt.Sprintf("%s (status %d)", e.Message, e.StatusCode)
+}
+
+// IsClientError returns true if the status code is in the 4xx range.
+func (e *ProviderError) IsClientError() bool {
+	return e.StatusCode >= 400 && e.StatusCode < 500
 }
 
 // Provider defines the LLM provider interface.

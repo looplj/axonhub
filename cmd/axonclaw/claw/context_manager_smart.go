@@ -1,4 +1,4 @@
-package agent
+package claw
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/looplj/axonhub/axon/agent"
 )
 
 const (
@@ -14,12 +16,11 @@ const (
 	defaultContextSoftTokenLimit    = 160_000
 )
 
-// ContextManagerConfig controls context compaction behavior.
 type ContextManagerConfig struct {
 	Enabled           bool
-	MaxRecentMessages int // MaxRecentMessages is the maximum number of recent rounds to keep.
+	MaxRecentMessages int
 	SoftTokenLimit    int
-	Summarizer        Summarizer
+	Summarizer        *SmartSummarizer
 	Logger            *slog.Logger
 }
 
@@ -31,23 +32,17 @@ func DefaultContextManagerConfig() ContextManagerConfig {
 	}
 }
 
-// compactionCooldown prevents back-to-back summarization calls.
-// After a successful compaction, the next BuildMessages call skips
-// compaction to avoid an infinite summarize loop when retained
-// messages still exceed the soft token limit.
 const compactionCooldown = 30 * time.Second
 
-// SmartContextManager is a decorator strategy that adds compaction
-// and persisted summary state.
 type SmartContextManager struct {
-	ContextManager
+	agent.ContextManager
 
 	config ContextManagerConfig
 	store  ContextManagerStore
 	logger *slog.Logger
 
 	mu              sync.RWMutex
-	state           ContextManagerState
+	state           agent.ContextManagerState
 	lastCompactedAt time.Time
 	onCompaction    func()
 }
@@ -56,13 +51,14 @@ func NewSmartContextManager(config ContextManagerConfig, store ContextManagerSto
 	return NewSmartContextManagerWithNext(nil, config, store)
 }
 
-func NewSmartContextManagerWithNext(next ContextManager, config ContextManagerConfig, store ContextManagerStore) (*SmartContextManager, error) {
+func NewSmartContextManagerWithNext(next agent.ContextManager, config ContextManagerConfig, store ContextManagerStore) (*SmartContextManager, error) {
 	cfg := mergeDefaultContextManagerConfig(config)
 	if cfg.Summarizer == nil {
 		return nil, fmt.Errorf("context manager summarizer is required")
 	}
+
 	if next == nil {
-		next = NewSimpleContextManager(nil)
+		next = agent.NewSimpleContextManager(nil)
 	}
 
 	cm := &SmartContextManager{
@@ -70,7 +66,7 @@ func NewSmartContextManagerWithNext(next ContextManager, config ContextManagerCo
 		config:         cfg,
 		store:          store,
 		logger:         cfg.Logger,
-		state:          emptyContextState(),
+		state:          agent.EmptyContextState(),
 	}
 
 	if store == nil {
@@ -81,21 +77,55 @@ func NewSmartContextManagerWithNext(next ContextManager, config ContextManagerCo
 	if err != nil {
 		return nil, err
 	}
+
+	cfg.Logger.Info("context manager: store loaded",
+		"loaded_messages", len(messages),
+		"loaded_tokens", agent.EstimateMessagesTokens(messages),
+		"compaction_count", loaded.CompactionCount,
+		"round_index", loaded.RoundIndex,
+	)
+
 	cm.state = loaded
 	if len(messages) > 0 {
 		cm.ContextManager.SetMessages(context.Background(), messages)
 	}
+
 	return cm, nil
 }
 
-func (m *SmartContextManager) Messages(ctx context.Context) []Message {
-	messages := m.ContextManager.Messages(ctx)
-	if m.logger.Enabled(ctx, slog.LevelDebug) {
-		m.logger.Debug("agent: messages updated",
-			"total_messages", len(messages),
-			"total_tokens", EstimateMessagesTokens(messages),
-		)
+func (m *SmartContextManager) AddMessages(ctx context.Context, msgs ...agent.Message) {
+	roles := make([]string, len(msgs))
+	for i, msg := range msgs {
+		roles[i] = string(msg.Role)
 	}
+
+	beforeCount := len(m.ContextManager.Messages(ctx))
+	m.ContextManager.AddMessages(ctx, msgs...)
+	afterCount := len(m.ContextManager.Messages(ctx))
+	m.logger.Info("context manager: AddMessages",
+		"added_count", len(msgs),
+		"added_roles", roles,
+		"before_count", beforeCount,
+		"after_count", afterCount,
+	)
+}
+
+func (m *SmartContextManager) SetMessages(ctx context.Context, msgs []agent.Message) {
+	beforeCount := len(m.ContextManager.Messages(ctx))
+	m.ContextManager.SetMessages(ctx, msgs)
+	m.logger.Info("context manager: SetMessages",
+		"before_count", beforeCount,
+		"new_count", len(msgs),
+	)
+}
+
+func (m *SmartContextManager) Messages(ctx context.Context) []agent.Message {
+	messages := m.ContextManager.Messages(ctx)
+	m.logger.Info("context manager: Messages read",
+		"total_messages", len(messages),
+		"total_tokens", agent.EstimateMessagesTokens(messages),
+	)
+
 	return messages
 }
 
@@ -106,18 +136,19 @@ func (m *SmartContextManager) ClearMessages(ctx context.Context) {
 	defer m.mu.Unlock()
 
 	now := time.Now().UTC()
-	m.state = ContextManagerState{UpdatedAt: now}
+	m.state = agent.ContextManagerState{UpdatedAt: now}
 	m.lastCompactedAt = time.Time{}
 	m.saveLocked(ctx, nil)
 }
 
-func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
+func (m *SmartContextManager) BuildMessages(ctx context.Context) []agent.Message {
 	working := cloneMessages(m.ContextManager.BuildMessages(ctx))
 
 	if !m.config.Enabled {
 		m.logger.Debug("context manager: compaction disabled",
 			"messages", len(working),
 		)
+
 		return working
 	}
 
@@ -131,8 +162,9 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
 
 	totalTokens := 0
 	tokenLimitExceeded := false
+
 	if m.config.SoftTokenLimit > 0 {
-		totalTokens = EstimateMessagesTokens(working)
+		totalTokens = agent.EstimateMessagesTokens(working)
 		tokenLimitExceeded = totalTokens > m.config.SoftTokenLimit
 	}
 
@@ -156,25 +188,48 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
 	}
 
 	if shouldCompact {
-		cut := findCutIndexForRounds(working, keepRounds)
-		cut = adjustCompactionCut(working, cut)
+		lastAssistantIdx := findLastAssistantMessageIndex(working)
+
+		// Keep only the last assistant message and everything after it.
+		cut := lastAssistantIdx
+		if cut <= 0 {
+			cut = len(working) - 1
+		}
+
+		m.logger.Info("context manager: compaction cut",
+			"cut", cut,
+			"last_assistant_idx", lastAssistantIdx,
+			"total_messages", len(working),
+		)
 
 		overflow := cloneMessages(working[:cut])
+		retained := cloneMessages(working[cut:])
+
+		m.logger.Info("context manager: compaction split",
+			"overflow_messages", len(overflow),
+			"overflow_rounds", countUniqueRounds(overflow),
+			"overflow_tokens", agent.EstimateMessagesTokens(overflow),
+			"retained_messages", len(retained),
+			"retained_rounds", countUniqueRounds(retained),
+			"retained_tokens", agent.EstimateMessagesTokens(retained),
+		)
+
 		if len(overflow) > 0 {
-			m.logger.Debug("context manager: summarize start",
+			m.logger.Info("context manager: summarize start",
 				"overflow_messages", len(overflow),
 				"overflow_rounds", countUniqueRounds(overflow),
-				"overflow_tokens", EstimateMessagesTokens(overflow),
+				"overflow_tokens", agent.EstimateMessagesTokens(overflow),
+				"last_assistant_idx", lastAssistantIdx,
 			)
 			summary, err := m.config.Summarizer.Summarize(ctx, overflow)
+
 			summary = strings.TrimSpace(summary)
 			if err == nil && summary != "" {
-				summaryMsg := Message{
-					Role:    RoleUser,
-					Content: &Content{Text: &summary},
+				summaryMsg := agent.Message{
+					Role:    agent.RoleUser,
+					Content: &agent.Content{Text: &summary},
 				}
-				retained := cloneMessages(working[cut:])
-				working = append([]Message{summaryMsg}, retained...)
+				working = append([]agent.Message{summaryMsg}, retained...)
 
 				now := time.Now().UTC()
 				m.state.Summary = ""
@@ -182,44 +237,57 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []Message {
 				m.state.UpdatedAt = now
 				m.lastCompactedAt = now
 
-				m.logger.Debug("context manager: summarize complete",
+				m.logger.Info("context manager: summarize complete",
 					"overflow_messages", len(overflow),
 					"overflow_rounds", countUniqueRounds(overflow),
 					"retained_messages", len(retained),
 					"retained_rounds", countUniqueRounds(retained),
 					"summary_chars", len(summary),
 					"compaction_count", m.state.CompactionCount,
+					"new_total_messages", len(working),
+					"new_total_tokens", agent.EstimateMessagesTokens(working),
 				)
 
 				m.ContextManager.SetMessages(ctx, working)
+
+				m.logger.Info("context manager: SetMessages after compaction",
+					"set_messages_count", len(working),
+				)
 
 				if m.onCompaction != nil {
 					m.onCompaction()
 				}
 			} else {
-				m.logger.Debug("context manager: summarize skipped",
+				m.logger.Warn("context manager: summarize failed or empty",
 					"error", err,
 					"summary_empty", summary == "",
 					"overflow_messages", len(overflow),
 				)
 			}
 		} else {
-			m.logger.Debug("context manager: summarize skipped",
-				"reason", "empty_overflow_after_adjust",
+			m.logger.Warn("context manager: compaction skipped, empty overflow",
+				"cut", cut,
+				"last_assistant_idx", lastAssistantIdx,
 			)
 		}
 	}
+
+	m.logger.Info("context manager: BuildMessages returning",
+		"returning_messages", len(working),
+		"returning_tokens", agent.EstimateMessagesTokens(working),
+		"compacted", shouldCompact,
+	)
 
 	m.saveLocked(ctx, working)
 
 	return cloneMessages(working)
 }
 
-func (m *SmartContextManager) Snapshot() ContextManagerState {
+func (m *SmartContextManager) Snapshot() agent.ContextManagerState {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return copyContextState(m.state)
+	return agent.CopyContextState(m.state)
 }
 
 func (m *SmartContextManager) OnCompaction(fn func()) {
@@ -229,11 +297,11 @@ func (m *SmartContextManager) OnCompaction(fn func()) {
 	m.onCompaction = fn
 }
 
-func (m *SmartContextManager) saveLocked(ctx context.Context, messages []Message) {
+func (m *SmartContextManager) saveLocked(ctx context.Context, messages []agent.Message) {
 	if m.store == nil {
 		return
 	}
-	// Derive max RoundIndex from current messages so it survives restarts.
+
 	var maxRI int64
 	for i := range messages {
 		if ri := int64(messages[i].RoundIndex); ri > maxRI {
@@ -242,64 +310,51 @@ func (m *SmartContextManager) saveLocked(ctx context.Context, messages []Message
 	}
 
 	m.state.RoundIndex = maxRI
+	m.logger.Info("context manager: saving to store",
+		"messages_count", len(messages),
+		"round_index", maxRI,
+		"compaction_count", m.state.CompactionCount,
+	)
+
 	if err := m.store.Save(ctx, m.state, messages); err != nil {
-		m.logger.Debug("context manager: save failed", "error", err)
+		m.logger.Warn("context manager: save failed", "error", err)
 	}
 }
 
-func adjustCompactionCut(messages []Message, cut int) int {
-	if cut <= 0 || cut >= len(messages) {
-		return cut
-	}
+func countUniqueRounds(messages []agent.Message) int {
+	seen := make(map[int]struct{})
 
-	overflowRoundIndexes := map[int]struct{}{}
-	overflowToolUseIDs := map[string]struct{}{}
-	for i := 0; i < cut; i++ {
-		msg := messages[i]
+	for _, msg := range messages {
 		if msg.RoundIndex != 0 {
-			overflowRoundIndexes[msg.RoundIndex] = struct{}{}
-		}
-
-		if msg.ToolCall != nil && msg.ToolCall.ID != "" {
-			overflowToolUseIDs[msg.ToolCall.ID] = struct{}{}
+			seen[msg.RoundIndex] = struct{}{}
 		}
 	}
 
-	for cut < len(messages) {
-		msg := messages[cut]
+	return len(seen)
+}
 
-		if msg.RoundIndex != 0 {
-			if _, ok := overflowRoundIndexes[msg.RoundIndex]; ok {
-				if msg.ToolCall != nil && msg.ToolCall.ID != "" {
-					overflowToolUseIDs[msg.ToolCall.ID] = struct{}{}
-				}
-				cut++
-				continue
-			}
+func findLastAssistantMessageIndex(messages []agent.Message) int {
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == agent.RoleAssistant {
+			return i
 		}
-
-		if msg.Role == RoleTool && msg.ToolUseID != nil {
-			if _, ok := overflowToolUseIDs[*msg.ToolUseID]; ok {
-				cut++
-				continue
-			}
-		}
-
-		break
 	}
 
-	return cut
+	return -1
 }
 
 func mergeDefaultContextManagerConfig(cfg ContextManagerConfig) ContextManagerConfig {
 	if cfg.MaxRecentMessages <= 0 {
 		cfg.MaxRecentMessages = defaultContextMaxRecentMessages
 	}
+
 	if cfg.SoftTokenLimit <= 0 {
 		cfg.SoftTokenLimit = defaultContextSoftTokenLimit
 	}
+
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
 	}
+
 	return cfg
 }

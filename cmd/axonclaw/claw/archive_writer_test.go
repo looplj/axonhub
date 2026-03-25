@@ -43,7 +43,7 @@ func TestAppendArchiveMessage_AppendsToDailyThreadFile(t *testing.T) {
 	require.Equal(t, 2, strings.Count(content, "\n"))
 }
 
-func TestRenderArchiveMessage_ToolUse(t *testing.T) {
+func TestRenderMessage_ToolUse(t *testing.T) {
 	msg := agent.Message{
 		Role: agent.RoleAssistant,
 		ToolCall: &agent.ToolCall{
@@ -53,13 +53,13 @@ func TestRenderArchiveMessage_ToolUse(t *testing.T) {
 		},
 	}
 
-	result := renderArchiveMessage(time.Now(), msg)
+	result := RenderMessage(time.Now(), msg, MessageRenderOptions{TimePrefix: true})
 	require.Contains(t, result, "tool:read_file")
 	require.Contains(t, result, "id:tool_123")
 	require.Contains(t, result, `"path": "/src/main.go"`)
 }
 
-func TestRenderArchiveMessage_ToolResult(t *testing.T) {
+func TestRenderMessage_ToolResult(t *testing.T) {
 	toolID := "tool_123"
 	msg := agent.Message{
 		Role:      agent.RoleTool,
@@ -67,12 +67,12 @@ func TestRenderArchiveMessage_ToolResult(t *testing.T) {
 		Content:   &agent.Content{Text: new("file content here")},
 	}
 
-	result := renderArchiveMessage(time.Now(), msg)
+	result := RenderMessage(time.Now(), msg, MessageRenderOptions{TimePrefix: true})
 	require.Contains(t, result, "tool_result(tool_123)")
 	require.Contains(t, result, "file content here")
 }
 
-func TestRenderArchiveMessage_ToolError(t *testing.T) {
+func TestRenderMessage_ToolError(t *testing.T) {
 	toolID := "tool_123"
 	isError := true
 	msg := agent.Message{
@@ -82,12 +82,12 @@ func TestRenderArchiveMessage_ToolError(t *testing.T) {
 		Content:   &agent.Content{Text: new("error: file not found")},
 	}
 
-	result := renderArchiveMessage(time.Now(), msg)
+	result := RenderMessage(time.Now(), msg, MessageRenderOptions{TimePrefix: true})
 	require.Contains(t, result, "tool_error(tool_123)")
 	require.Contains(t, result, "error: file not found")
 }
 
-func TestRenderArchiveMessage_WithThinking(t *testing.T) {
+func TestRenderMessage_WithThinking(t *testing.T) {
 	msg := agent.Message{
 		Role: agent.RoleAssistant,
 		Content: &agent.Content{Parts: []agent.ContentPart{
@@ -96,7 +96,7 @@ func TestRenderArchiveMessage_WithThinking(t *testing.T) {
 		}},
 	}
 
-	result := renderArchiveMessage(time.Now(), msg)
+	result := RenderMessage(time.Now(), msg, MessageRenderOptions{TimePrefix: true})
 	require.Contains(t, result, "[thinking]")
 	require.Contains(t, result, "Let me think...")
 	require.Contains(t, result, "Here is the answer")

@@ -1,4 +1,4 @@
-package agent
+package claw
 
 import (
 	"context"
@@ -8,36 +8,39 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/looplj/axonhub/axon/agent"
 )
 
 type ContextManagerStore interface {
-	Load(ctx context.Context) (ContextManagerState, []Message, error)
-	Save(ctx context.Context, state ContextManagerState, messages []Message) error
+	Load(ctx context.Context) (agent.ContextManagerState, []agent.Message, error)
+	Save(ctx context.Context, state agent.ContextManagerState, messages []agent.Message) error
 }
 
 type ContextManagerMemoryStore struct {
 	mu    sync.RWMutex
-	state ContextManagerState
-	msgs  []Message
+	state agent.ContextManagerState
+	msgs  []agent.Message
 }
 
 func NewContextManagerMemoryStore() *ContextManagerMemoryStore {
-	return &ContextManagerMemoryStore{state: emptyContextState()}
+	return &ContextManagerMemoryStore{state: agent.EmptyContextState()}
 }
 
-func (s *ContextManagerMemoryStore) Load(_ context.Context) (ContextManagerState, []Message, error) {
+func (s *ContextManagerMemoryStore) Load(_ context.Context) (agent.ContextManagerState, []agent.Message, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return copyContextState(s.state), cloneMessages(s.msgs), nil
+	return agent.CopyContextState(s.state), cloneMessages(s.msgs), nil
 }
 
-func (s *ContextManagerMemoryStore) Save(_ context.Context, state ContextManagerState, messages []Message) error {
+func (s *ContextManagerMemoryStore) Save(_ context.Context, state agent.ContextManagerState, messages []agent.Message) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.state = copyContextState(state)
+	s.state = agent.CopyContextState(state)
 	s.msgs = cloneMessages(messages)
+
 	return nil
 }
 
@@ -47,8 +50,8 @@ type ContextManagerFileStore struct {
 }
 
 type contextManagerMessagesFile struct {
-	State    ContextManagerState `json:"state"`
-	Messages []Message           `json:"messages"`
+	State    agent.ContextManagerState `json:"state"`
+	Messages []agent.Message           `json:"messages"`
 }
 
 type contextManagerIndexFile struct {
@@ -59,27 +62,28 @@ func NewContextManagerFileStore(dir string) *ContextManagerFileStore {
 	return &ContextManagerFileStore{dir: dir}
 }
 
-func (s *ContextManagerFileStore) Load(_ context.Context) (ContextManagerState, []Message, error) {
+func (s *ContextManagerFileStore) Load(_ context.Context) (agent.ContextManagerState, []agent.Message, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	data, err := os.ReadFile(s.messagesPath())
 	if err != nil {
 		if os.IsNotExist(err) {
-			return emptyContextState(), nil, nil
+			return agent.EmptyContextState(), nil, nil
 		}
-		return ContextManagerState{}, nil, fmt.Errorf("read context manager messages: %w", err)
+
+		return agent.ContextManagerState{}, nil, fmt.Errorf("read context manager messages: %w", err)
 	}
 
 	var persisted contextManagerMessagesFile
 	if err := json.Unmarshal(data, &persisted); err != nil {
-		return ContextManagerState{}, nil, fmt.Errorf("unmarshal context manager messages: %w", err)
+		return agent.ContextManagerState{}, nil, fmt.Errorf("unmarshal context manager messages: %w", err)
 	}
 
-	return copyContextState(persisted.State), cloneMessages(persisted.Messages), nil
+	return agent.CopyContextState(persisted.State), cloneMessages(persisted.Messages), nil
 }
 
-func (s *ContextManagerFileStore) Save(_ context.Context, state ContextManagerState, messages []Message) error {
+func (s *ContextManagerFileStore) Save(_ context.Context, state agent.ContextManagerState, messages []agent.Message) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -100,7 +104,7 @@ func (s *ContextManagerFileStore) Save(_ context.Context, state ContextManagerSt
 	}
 
 	persisted := contextManagerMessagesFile{
-		State:    copyContextState(state),
+		State:    agent.CopyContextState(state),
 		Messages: cloneMessages(messages),
 	}
 	if err := s.writeJSONAtomic(s.messagesPath(), persisted); err != nil {
@@ -120,27 +124,33 @@ func (s *ContextManagerFileStore) indexPath() string {
 
 func (s *ContextManagerFileStore) readIndex() (contextManagerIndexFile, error) {
 	var index contextManagerIndexFile
+
 	data, err := os.ReadFile(s.indexPath())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return contextManagerIndexFile{}, nil
 		}
+
 		return contextManagerIndexFile{}, fmt.Errorf("read context manager index: %w", err)
 	}
+
 	if err := json.Unmarshal(data, &index); err != nil {
 		return contextManagerIndexFile{}, fmt.Errorf("unmarshal context manager index: %w", err)
 	}
+
 	return index, nil
 }
 
 func (s *ContextManagerFileStore) writeFileAtomic(path string, data []byte) error {
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return fmt.Errorf("write temp file: %w", err)
 	}
+
 	if err := os.Rename(tmp, path); err != nil {
 		return fmt.Errorf("rename temp file: %w", err)
 	}
+
 	return nil
 }
 
@@ -151,4 +161,57 @@ func (s *ContextManagerFileStore) writeJSONAtomic(path string, v any) error {
 	}
 
 	return s.writeFileAtomic(path, data)
+}
+
+func cloneMessages(in []agent.Message) []agent.Message {
+	if in == nil {
+		return nil
+	}
+
+	out := make([]agent.Message, len(in))
+	for i, msg := range in {
+		out[i] = cloneMessage(msg)
+	}
+
+	return out
+}
+
+func cloneMessage(in agent.Message) agent.Message {
+	out := agent.Message{
+		Role:       in.Role,
+		RoundIndex: in.RoundIndex,
+	}
+
+	if in.Content != nil {
+		c := &agent.Content{}
+
+		if in.Content.Text != nil {
+			s := *in.Content.Text
+			c.Text = &s
+		}
+
+		if len(in.Content.Parts) > 0 {
+			c.Parts = make([]agent.ContentPart, len(in.Content.Parts))
+			copy(c.Parts, in.Content.Parts)
+		}
+
+		out.Content = c
+	}
+
+	if in.ToolUseID != nil {
+		s := *in.ToolUseID
+		out.ToolUseID = &s
+	}
+
+	if in.IsError != nil {
+		b := *in.IsError
+		out.IsError = &b
+	}
+
+	if in.ToolCall != nil {
+		tu := *in.ToolCall
+		out.ToolCall = &tu
+	}
+
+	return out
 }

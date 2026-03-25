@@ -117,10 +117,9 @@ func Run(ctx context.Context, cfg Config, prompt string, tools ToolSource) (*age
 		SystemPrompts: cfg.SystemPrompts,
 	}, cfg.Provider, opts...)
 
-	// Register tools, filtering by AllowedTools whitelist.
+	// Register tools, filtering by allowed/denied lists.
 	if tools != nil {
-		allowed := buildToolSet(cfg.AllowedTools)
-		denied := buildToolSet(cfg.DeniedTools)
+		filter := newToolFilter(cfg.AllowedTools, cfg.DeniedTools)
 
 		for _, tool := range tools.AvailableTools() {
 			name := tool.Definition().Name
@@ -129,16 +128,8 @@ func Run(ctx context.Context, cfg Config, prompt string, tools ToolSource) (*age
 				continue
 			}
 
-			if allowed != nil {
-				if _, ok := allowed[name]; !ok {
-					continue
-				}
-			}
-
-			if denied != nil {
-				if _, ok := denied[name]; ok {
-					continue
-				}
+			if !filter.isAllowed(name) {
+				continue
 			}
 
 			a.RegisterTool(tool)
@@ -168,12 +159,45 @@ func validateSystemPrompts(prompts []string) error {
 	return fmt.Errorf("subagent: at least one non-empty system prompt is required")
 }
 
-// buildToolSet converts a slice of tool names to a set for O(1) lookup.
-func buildToolSet(names []string) map[string]struct{} {
-	set := make(map[string]struct{}, len(names))
-	for _, n := range names {
-		set[n] = struct{}{}
+// toolFilter encapsulates tool allow/deny logic, eliminating the fragile
+// nil-vs-empty slice semantics that previously caused all tools to be
+// silently dropped.
+type toolFilter struct {
+	allowAll bool
+	allowed  map[string]struct{}
+	denied   map[string]struct{}
+}
+
+func newToolFilter(allowedNames, deniedNames []string) toolFilter {
+	f := toolFilter{
+		allowAll: allowedNames == nil,
+		denied:   make(map[string]struct{}, len(deniedNames)),
 	}
 
-	return set
+	if !f.allowAll {
+		f.allowed = make(map[string]struct{}, len(allowedNames))
+		for _, n := range allowedNames {
+			f.allowed[n] = struct{}{}
+		}
+	}
+
+	for _, n := range deniedNames {
+		f.denied[n] = struct{}{}
+	}
+
+	return f
+}
+
+func (f *toolFilter) isAllowed(name string) bool {
+	if _, ok := f.denied[name]; ok {
+		return false
+	}
+
+	if f.allowAll {
+		return true
+	}
+
+	_, ok := f.allowed[name]
+
+	return ok
 }

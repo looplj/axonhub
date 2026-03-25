@@ -163,4 +163,5 @@ locales_backup
 *.db-wal
 deploy_dev.sh
 redeploy_dev.sh
+deploy_honey.sh
 .snow/
