@@ -108,24 +108,60 @@ func TestResolveEndpoint_CaseInsensitive(t *testing.T) {
 	}
 }
 
+func TestResolveEndpoint_WithProviderPrefix(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		model    string
+		expected EndpointType
+	}{
+		{model: "openai/gpt-5.4", expected: EndpointResponses},
+		{model: "openai/gpt-5.4-mini", expected: EndpointResponses},
+		{model: "anthropic/claude-3-opus", expected: EndpointMessages},
+		{model: "google/gemini-2.5-pro", expected: EndpointChatCompletions},
+		{model: "openai/gpt-4o", expected: EndpointChatCompletions},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.model, func(t *testing.T) {
+			t.Parallel()
+			endpoint, err := ResolveEndpoint(tt.model)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, endpoint)
+		})
+	}
+}
+
 func TestUnknownModel(t *testing.T) {
 	t.Parallel()
 
-	unknownModels := []string{
-		"",
-		"   ",
-		"not-a-real-model",
-		"my-enterprise-alias",
-	}
+	t.Run("invalid input returns error", func(t *testing.T) {
+		t.Parallel()
+		invalidModels := []string{"", "   "}
+		for _, model := range invalidModels {
+			model := model
+			t.Run(model, func(t *testing.T) {
+				t.Parallel()
+				endpoint, err := ResolveEndpoint(model)
+				require.Error(t, err)
+				require.Empty(t, endpoint)
+				require.ErrorContains(t, err, "unknown model")
+			})
+		}
+	})
 
-	for _, model := range unknownModels {
-		model := model
-		t.Run(model, func(t *testing.T) {
-			t.Parallel()
-			endpoint, err := ResolveEndpoint(model)
-			require.Error(t, err)
-			require.Empty(t, endpoint)
-			require.ErrorContains(t, err, "unknown model")
-		})
-	}
+	t.Run("unknown models default to chat completions", func(t *testing.T) {
+		t.Parallel()
+		unknownModels := []string{"not-a-real-model", "my-enterprise-alias"}
+		for _, model := range unknownModels {
+			model := model
+			t.Run(model, func(t *testing.T) {
+				t.Parallel()
+				endpoint, err := ResolveEndpoint(model)
+				require.NoError(t, err)
+				require.Equal(t, EndpointChatCompletions, endpoint)
+			})
+		}
+	})
 }

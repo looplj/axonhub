@@ -50,6 +50,18 @@ var miscModelFamilyKeywords = []string{
 	"o3",
 	"gpt-4",
 	"gpt-3",
+	"gpt-oss",
+	"azure",
+}
+
+func stripProviderPrefix(modelID string) string {
+	prefixes := []string{"openai/", "anthropic/", "google/", "gemini/", "azure/", "aws/", "bedrock/"}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(modelID, prefix) {
+			return strings.TrimPrefix(modelID, prefix)
+		}
+	}
+	return modelID
 }
 
 func ResolveEndpoint(modelID string) (EndpointType, error) {
@@ -57,6 +69,9 @@ func ResolveEndpoint(modelID string) (EndpointType, error) {
 	if normalized == "" {
 		return "", fmt.Errorf("unknown model: %q", modelID)
 	}
+
+	// Strip provider prefix if present (e.g., "openai/gpt-5.4" -> "gpt-5.4")
+	normalized = stripProviderPrefix(normalized)
 
 	if strings.Contains(normalized, "codex") || isGPT54OrLater(normalized) {
 		return EndpointResponses, nil
@@ -70,7 +85,7 @@ func ResolveEndpoint(modelID string) (EndpointType, error) {
 		return EndpointChatCompletions, nil
 	}
 
-	return "", fmt.Errorf("unknown model: %q", modelID)
+	return EndpointChatCompletions, nil
 }
 
 func isKnownMiscFamily(model string) bool {

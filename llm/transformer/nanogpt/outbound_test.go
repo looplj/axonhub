@@ -273,26 +273,24 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "responses endpoint model is rejected",
+			name: "responses endpoint model is accepted",
 			request: &llm.Request{
 				Model: "gpt-5.4",
 				Messages: []llm.Message{
 					{Role: "user", Content: llm.MessageContent{Content: stringPtr("hello")}},
 				},
 			},
-			wantErr:     true,
-			errContains: "endpoint mismatch: resolver returned \"responses\"",
+			wantErr: false,
 		},
 		{
-			name: "messages endpoint model is rejected",
+			name: "messages endpoint model is accepted",
 			request: &llm.Request{
 				Model: "claude-3-5-sonnet",
 				Messages: []llm.Message{
 					{Role: "user", Content: llm.MessageContent{Content: stringPtr("hello")}},
 				},
 			},
-			wantErr:     true,
-			errContains: "endpoint mismatch: resolver returned \"messages\"",
+			wantErr: false,
 		},
 	}
 

@@ -466,6 +466,8 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 				event["item_id"] = callID
 				event["call_id"] = callID
 				if fixedData, err := json.Marshal(event); err == nil {
+					slog.DebugContext(ctx, "convertCopilotStreamEvent: done output",
+						slog.String("output", string(fixedData)))
 					return fixedData
 				}
 			}
@@ -481,6 +483,8 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 					item["id"] = callID
 					event["item"] = item
 					if fixedData, err := json.Marshal(event); err == nil {
+						slog.DebugContext(ctx, "convertCopilotStreamEvent: output_item.done output",
+							slog.String("output", string(fixedData)))
 						return fixedData
 					}
 				}
@@ -488,6 +492,9 @@ func convertCopilotStreamEvent(ctx context.Context, data []byte, itemIDToCallID 
 		}
 	}
 
+	slog.DebugContext(ctx, "convertCopilotStreamEvent: passthrough output",
+		slog.String("event_type", eventType),
+		slog.String("output", string(data)))
 	return data
 }
 

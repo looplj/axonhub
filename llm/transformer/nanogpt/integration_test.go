@@ -752,7 +752,8 @@ func TestIntegration_NanoGPTEmbeddingRequest(t *testing.T) {
 
 	// Create embedding request (will use embedded OpenAI transformer)
 	llmReq := &llm.Request{
-		Model: "text-embedding-3-small",
+		Model:       "text-embedding-3-small",
+		RequestType: llm.RequestTypeEmbedding,
 		Embedding: &llm.EmbeddingRequest{
 			Input: llm.EmbeddingInput{
 				String: "Hello world",

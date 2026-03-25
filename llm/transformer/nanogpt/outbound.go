@@ -11,7 +11,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/resolver"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -70,23 +69,18 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if len(llmReq.Messages) == 0 {
+	// Skip messages check for embedding requests
+	if len(llmReq.Messages) == 0 && llmReq.Embedding == nil {
 		return nil, fmt.Errorf("messages are required")
 	}
 
-	endpointType, err := resolver.ResolveEndpoint(llmReq.Model)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve endpoint: %w", err)
+	// Skip endpoint resolution for embedding requests - they use a different API
+	if llmReq.Embedding != nil {
+		return t.Outbound.TransformRequest(ctx, llmReq)
 	}
 
-	if endpointType != resolver.EndpointChatCompletions {
-		return nil, fmt.Errorf(
-			"endpoint mismatch: resolver returned %q for model %q, but NanoGPT only supports %q",
-			endpointType,
-			llmReq.Model,
-			resolver.EndpointChatCompletions,
-		)
-	}
+	// NanoGPT supports all endpoint types (Responses, Messages, Chat Completions)
+	// No endpoint restriction needed - delegate to embedded OpenAI transformer
 
 	return t.Outbound.TransformRequest(ctx, llmReq)
 }
