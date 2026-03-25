@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/resolver"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -55,6 +56,39 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	return &OutboundTransformer{
 		Outbound: t,
 	}, nil
+}
+
+func (t *OutboundTransformer) TransformRequest(
+	ctx context.Context,
+	llmReq *llm.Request,
+) (*httpclient.Request, error) {
+	if llmReq == nil {
+		return nil, fmt.Errorf("request is nil")
+	}
+
+	if llmReq.Model == "" {
+		return nil, fmt.Errorf("model is required")
+	}
+
+	if len(llmReq.Messages) == 0 {
+		return nil, fmt.Errorf("messages are required")
+	}
+
+	endpointType, err := resolver.ResolveEndpoint(llmReq.Model)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve endpoint: %w", err)
+	}
+
+	if endpointType != resolver.EndpointChatCompletions {
+		return nil, fmt.Errorf(
+			"endpoint mismatch: resolver returned %q for model %q, but NanoGPT only supports %q",
+			endpointType,
+			llmReq.Model,
+			resolver.EndpointChatCompletions,
+		)
+	}
+
+	return t.Outbound.TransformRequest(ctx, llmReq)
 }
 
 // TransformResponse transforms the HTTP response to llm.Response.
