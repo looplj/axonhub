@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/resolver"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/tidwall/gjson"
@@ -57,6 +58,7 @@ type OutboundTransformer struct {
 	tokenProvider     TokenProvider
 	baseURL           string
 	responses         *responses.OutboundTransformer
+	messages          transformer.Outbound
 	openAITransformer transformer.Outbound
 }
 
@@ -95,10 +97,20 @@ func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransfor
 		return nil, fmt.Errorf("failed to create responses transformer: %w", err)
 	}
 
+	// Create messages transformer for Claude models
+	messagesTransformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider(""),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create messages transformer: %w", err)
+	}
+
 	return &OutboundTransformer{
 		tokenProvider: params.TokenProvider,
 		baseURL:       baseURL,
 		responses:     responsesTransformer,
+		messages:      messagesTransformer,
 	}, nil
 }
 
@@ -131,13 +143,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	case resolver.EndpointResponses:
 		return t.transformResponsesRequest(ctx, llmReq)
 	case resolver.EndpointMessages:
-		return nil, fmt.Errorf(
-			"endpoint mismatch: resolver returned %q for model %q, but Copilot only supports %q and %q",
-			endpointType,
-			llmReq.Model,
-			resolver.EndpointResponses,
-			resolver.EndpointChatCompletions,
-		)
+		return t.transformMessagesRequest(ctx, llmReq)
 	case resolver.EndpointChatCompletions:
 		// Continue with Chat Completions handling below
 	}
@@ -599,6 +605,36 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 	}
 
 	return responsesReq, nil
+}
+
+// transformMessagesRequest transforms a request for models that use the Messages API (Claude models).
+func (t *OutboundTransformer) transformMessagesRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+	// Use the anthropic transformer to convert to Messages API format
+	messagesReq, err := t.messages.TransformRequest(ctx, llmReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transform request for Messages API: %w", err)
+	}
+
+	slog.DebugContext(ctx, "Claude Messages API request prepared",
+		slog.String("url", messagesReq.URL),
+		slog.String("model", llmReq.Model))
+
+	// Get Copilot token from token provider.
+	token, err := t.tokenProvider.GetToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get copilot token: %w", err)
+	}
+
+	// Override auth with Copilot token
+	messagesReq.Auth = &httpclient.AuthConfig{
+		Type:   httpclient.AuthTypeBearer,
+		APIKey: token,
+	}
+
+	// Add Copilot-specific headers
+	setCopilotHeaders(messagesReq.Headers)
+
+	return messagesReq, nil
 }
 
 // prependedStream is a stream that yields a first event before forwarding to the upstream stream.

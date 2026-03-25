@@ -240,7 +240,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "claude model returns error - messages API not supported",
+			name: "claude model uses messages API endpoint",
 			params: OutboundTransformerParams{
 				TokenProvider: &mockTokenProvider{token: mockToken},
 			},
@@ -253,8 +253,10 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					},
 				},
 			},
-			wantErr:     true,
-			errContains: "endpoint mismatch: resolver returned \"messages\"",
+			wantErr: false,
+			validate: func(t *testing.T, req *httpclient.Request) {
+				assert.Contains(t, req.URL, "/messages")
+			},
 		},
 		{
 			name: "unknown model defaults to chat completions",
