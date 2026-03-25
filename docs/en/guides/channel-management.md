@@ -337,6 +337,7 @@ base_url: "https://gateway.example.com/proxy##"
 
 ## Related Documentation
 
+- [Request Processing Guide](request-processing.md) - The full path from request entry to upstream execution
 - [Request Override Guide](request-override.md) - Advanced request modification with templates
 - [Model Management Guide](model-management.md) - Managing models across channels
 - [Load Balancing Guide](load-balance.md) - Distributing requests across channels

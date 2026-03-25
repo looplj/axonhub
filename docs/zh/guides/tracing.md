@@ -180,3 +180,7 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 - **未生成追踪** – 确认请求已通过认证且项目 ID 正确解析（API Key 必须隶属于某个项目）。
 - **缺少线程关联** – 在请求中提供 `AH-Thread-Id`，或先通过 API 创建线程。
 - **追踪 ID 异常** – 检查上游代理是否覆盖了相关请求头。
+
+### 相关文档
+- [请求处理流程指南](request-processing.md)
+- [负载均衡指南](load-balance.md)
