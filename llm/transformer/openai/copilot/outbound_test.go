@@ -257,7 +257,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			errContains: "endpoint mismatch: resolver returned \"messages\"",
 		},
 		{
-			name: "unknown model returns error",
+			name: "unknown model defaults to chat completions",
 			params: OutboundTransformerParams{
 				TokenProvider: &mockTokenProvider{token: mockToken},
 			},
@@ -270,8 +270,11 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					},
 				},
 			},
-			wantErr:     true,
-			errContains: "failed to resolve endpoint",
+			wantErr: false,
+			validate: func(t *testing.T, httpReq *httpclient.Request) {
+				// Unknown models should default to chat completions endpoint
+				assert.Contains(t, httpReq.URL, "/chat/completions")
+			},
 		},
 	}
 
