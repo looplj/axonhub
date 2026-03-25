@@ -15,24 +15,6 @@ const (
 	EndpointChatCompletions EndpointType = "chat_completions"
 )
 
-var miscModelFamilyKeywords = []string{
-	"gemini",
-	"deepseek",
-	"qwen",
-	"llama",
-	"mistral",
-	"grok",
-	"kimi",
-	"doubao",
-	"glm",
-	"o1",
-	"o3",
-	"gpt-4",
-	"gpt-3",
-	"gpt-oss",
-	"azure",
-}
-
 func stripProviderPrefix(modelID string) string {
 	prefixes := []string{"openai/", "anthropic/", "google/", "gemini/", "azure/", "aws/", "bedrock/"}
 	for _, prefix := range prefixes {
@@ -60,20 +42,7 @@ func ResolveEndpoint(modelID string) (EndpointType, error) {
 		return EndpointMessages, nil
 	}
 
-	if isKnownMiscFamily(normalized) {
-		return EndpointChatCompletions, nil
-	}
-
 	return EndpointChatCompletions, nil
-}
-
-func isKnownMiscFamily(model string) bool {
-	for _, keyword := range miscModelFamilyKeywords {
-		if strings.Contains(model, keyword) {
-			return true
-		}
-	}
-	return false
 }
 
 func isGPT54OrLater(model string) bool {

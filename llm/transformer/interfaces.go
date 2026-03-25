@@ -67,3 +67,9 @@ type VideoTaskOutbound interface {
 
 	BuildDeleteVideoTaskRequest(ctx context.Context, providerTaskID string) (*httpclient.Request, error)
 }
+
+// DummyAPIKey is a placeholder API key used when the actual authentication
+// will be provided later (e.g., via OAuth tokens). This is commonly used
+// when integrating with providers like GitHub Copilot where the auth token
+// is obtained dynamically and overrides any static API key.
+const DummyAPIKey = "dummy-api-key"

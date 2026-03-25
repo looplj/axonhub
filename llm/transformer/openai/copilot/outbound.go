@@ -91,7 +91,7 @@ func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransfor
 	// Create responses transformer for Codex models
 	responsesTransformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 		BaseURL:        baseURL,
-		APIKeyProvider: auth.NewStaticKeyProvider(""),
+		APIKeyProvider: auth.NewStaticKeyProvider(transformer.DummyAPIKey),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create responses transformer: %w", err)
@@ -100,7 +100,7 @@ func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransfor
 	// Create messages transformer for Claude models
 	messagesTransformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 		BaseURL:        baseURL,
-		APIKeyProvider: auth.NewStaticKeyProvider(""),
+		APIKeyProvider: auth.NewStaticKeyProvider(transformer.DummyAPIKey),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create messages transformer: %w", err)
