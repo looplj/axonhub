@@ -6,6 +6,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test fixtures for model endpoint resolution.
+// These are example models that fall into each endpoint category.
+var (
+	ResponsesModelFixtures = []string{
+		"gpt-5.4",
+		"gpt-5.4-mini-20250514",
+		"codex-mini-latest",
+	}
+
+	MessagesModelFixtures = []string{
+		"claude-3-opus-20240229",
+		"claude-3-7-sonnet-20250219",
+	}
+
+	ChatCompletionsModelFixtures = []string{
+		"gpt-4o",
+		"gpt-4.1-mini-20250101",
+		"gemini-2.5-pro",
+		"deepseek-chat",
+		"qwen-plus",
+	}
+)
+
 func TestResolveEndpoint_FixtureFamilies(t *testing.T) {
 	t.Parallel()
 

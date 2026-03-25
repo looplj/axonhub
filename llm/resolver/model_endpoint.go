@@ -15,27 +15,6 @@ const (
 	EndpointChatCompletions EndpointType = "chat_completions"
 )
 
-var (
-	ResponsesModelFixtures = []string{
-		"gpt-5.4",
-		"gpt-5.4-mini-20250514",
-		"codex-mini-latest",
-	}
-
-	MessagesModelFixtures = []string{
-		"claude-3-opus-20240229",
-		"claude-3-7-sonnet-20250219",
-	}
-
-	ChatCompletionsModelFixtures = []string{
-		"gpt-4o",
-		"gpt-4.1-mini-20250101",
-		"gemini-2.5-pro",
-		"deepseek-chat",
-		"qwen-plus",
-	}
-)
-
 var miscModelFamilyKeywords = []string{
 	"gemini",
 	"deepseek",
