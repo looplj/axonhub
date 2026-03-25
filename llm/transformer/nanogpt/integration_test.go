@@ -98,8 +98,8 @@ func TestIntegration_NanoGPTTerminalPropagation(t *testing.T) {
 
 	// Verify usage extraction
 	require.NotNil(t, llmResp.Usage)
-	assert.Equal(t, 10, llmResp.Usage.PromptTokens)
-	assert.Equal(t, 5, llmResp.Usage.CompletionTokens)
+	assert.Equal(t, int64(10), llmResp.Usage.PromptTokens)
+	assert.Equal(t, int64(5), llmResp.Usage.CompletionTokens)
 
 	t.Logf("✓ NanoGPT terminal propagation test passed")
 }
@@ -174,8 +174,8 @@ func TestIntegration_NanoGPTOpus46Flow(t *testing.T) {
 
 	// Verify usage extraction
 	require.NotNil(t, llmResp.Usage)
-	assert.Equal(t, 50, llmResp.Usage.PromptTokens)
-	assert.Equal(t, 25, llmResp.Usage.CompletionTokens)
+	assert.Equal(t, int64(50), llmResp.Usage.PromptTokens)
+	assert.Equal(t, int64(25), llmResp.Usage.CompletionTokens)
 
 	t.Logf("✓ NanoGPT Opus 4.6 flow test passed")
 }
@@ -249,8 +249,8 @@ func TestIntegration_NanoGPTCodex52Flow(t *testing.T) {
 
 	// Verify usage extraction
 	require.NotNil(t, llmResp.Usage)
-	assert.Equal(t, 30, llmResp.Usage.PromptTokens)
-	assert.Equal(t, 20, llmResp.Usage.CompletionTokens)
+	assert.Equal(t, int64(30), llmResp.Usage.PromptTokens)
+	assert.Equal(t, int64(20), llmResp.Usage.CompletionTokens)
 
 	t.Logf("✓ NanoGPT Codex 5.2 flow test passed")
 }
@@ -446,14 +446,14 @@ func TestIntegration_NanoGPTStatusTransitions(t *testing.T) {
 			statusCode:     http.StatusUnauthorized,
 			responseBody:   []byte(`{"error": "unauthorized"}`),
 			expectErr:      true,
-			validateErrMsg: "HTTP error 401",
+			validateErrMsg: "401 Unauthorized",
 		},
 		{
 			name:           "rate limit",
 			statusCode:     http.StatusTooManyRequests,
 			responseBody:   []byte(`{"error": "rate limit exceeded"}`),
 			expectErr:      true,
-			validateErrMsg: "HTTP error 429",
+			validateErrMsg: "429 Too Many Requests",
 		},
 		{
 			name:           "empty body error",
@@ -506,6 +506,15 @@ func TestIntegration_NanoGPTStatusTransitions(t *testing.T) {
 			// Execute request
 			httpClient := httpclient.NewHttpClient()
 			httpResp, err := httpClient.Do(ctx, httpReq)
+
+			// For error status codes, httpClient.Do returns an error
+			if tt.expectErr && err != nil {
+				if tt.validateErrMsg != "" {
+					assert.Contains(t, err.Error(), tt.validateErrMsg)
+				}
+				return
+			}
+
 			require.NoError(t, err)
 
 			// Transform response
@@ -980,9 +989,9 @@ func TestIntegration_NanoGPTEndToEndComplete(t *testing.T) {
 
 	// Verify usage
 	require.NotNil(t, llmResp.Usage)
-	assert.Equal(t, 100, llmResp.Usage.PromptTokens)
-	assert.Equal(t, 50, llmResp.Usage.CompletionTokens)
-	assert.Equal(t, 150, llmResp.Usage.TotalTokens)
+	assert.Equal(t, int64(100), llmResp.Usage.PromptTokens)
+	assert.Equal(t, int64(50), llmResp.Usage.CompletionTokens)
+	assert.Equal(t, int64(150), llmResp.Usage.TotalTokens)
 
 	t.Logf("✓ NanoGPT complete end-to-end test passed")
 }

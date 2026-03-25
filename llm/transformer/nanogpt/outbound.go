@@ -147,6 +147,12 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 
 // TransformStreamChunk transforms a single stream event to llm.Response.
 func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
+	// Handle [DONE] marker for direct calls to TransformStreamChunk.
+	// TransformStream filters these upstream, but this protects direct usage.
+	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
+		return llm.DoneResponse, nil
+	}
+
 	ep := gjson.GetBytes(event.Data, "error")
 	if ep.Exists() {
 		return nil, &llm.ResponseError{
