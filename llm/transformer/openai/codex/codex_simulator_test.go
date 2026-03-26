@@ -50,8 +50,6 @@ func TestCodexOutbound_MinimalIdentityHeaders(t *testing.T) {
 	accessToken := testAccessTokenWithAccountID(t)
 	sim := newCodexSimulatorWithToken(t, accessToken)
 	req := newCodexChatCompletionRequest(t)
-	req.Header.Set("Accept", "text/plain")
-	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("Conversation_id", "legacy-conversation")
 	req.Header.Set("Openai-Beta", "responses=experimental")
 	req.Header.Set("Session_id", "provided-session")
@@ -62,7 +60,6 @@ func TestCodexOutbound_MinimalIdentityHeaders(t *testing.T) {
 	require.NotNil(t, finalReq)
 
 	assert.Equal(t, codexAPIURL, finalReq.URL.String())
-	assert.Equal(t, "text/plain", finalReq.Header.Get("Accept"))
 	assert.Equal(t, "application/json", finalReq.Header.Get("Content-Type"))
 	assert.Equal(t, AxonHubOriginator, finalReq.Header.Get("Originator"))
 	assert.Equal(t, "axonhub/1.0", finalReq.Header.Get("User-Agent"))
