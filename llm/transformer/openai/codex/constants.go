@@ -16,7 +16,9 @@ func DefaultModels() []string {
 		"gpt-5.2",
 		"gpt-5.2-codex",
 		"gpt-5.3-codex",
+		"gpt-5.3-codex-spark",
 		"gpt-5.4",
+		"gpt-5.4-mini",
 	}
 }
 
