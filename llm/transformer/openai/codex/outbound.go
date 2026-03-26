@@ -109,11 +109,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	reqCopy := *llmReq
 
 	// Codex expects Responses API payload with some strict rules.
-	reqCopy.Store = lo.ToPtr(false)
+	// Always enable stream and disable store.
 	reqCopy.Stream = lo.ToPtr(true)
-	if reqCopy.ParallelToolCalls == nil {
-		reqCopy.ParallelToolCalls = lo.ToPtr(true)
-	}
+	reqCopy.Store = lo.ToPtr(false)
+
+	// Codex recommends parallel tool calls.
+	reqCopy.ParallelToolCalls = lo.ToPtr(true)
+
+	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
 	if reqCopy.TransformerMetadata == nil {
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
@@ -121,6 +124,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
 	}
 	if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
+		// Enable reasoning summary for Codex CLI requests.
 		reqCopy.ReasoningSummary = lo.ToPtr("auto")
 	}
 

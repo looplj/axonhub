@@ -233,7 +233,7 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 	assert.Equal(t, false, body["store"])
 	assert.Equal(t, true, body["stream"])
 	assert.NotContains(t, body, "max_output_tokens")
-	assert.Equal(t, false, body["parallel_tool_calls"])
+	assert.Equal(t, true, body["parallel_tool_calls"])
 	assert.Equal(t, topP, body["top_p"])
 	assert.Equal(t, serviceTier, body["service_tier"])
 	assert.NotContains(t, body, "metadata")
