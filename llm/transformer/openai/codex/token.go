@@ -24,7 +24,6 @@ func NewTokenProvider(params TokenProviderParams) *oauth.TokenProvider {
 		Credentials: params.Credentials,
 		HTTPClient:  params.HTTPClient,
 		OAuthUrls:   DefaultTokenURLs,
-		UserAgent:   UserAgent,
 		OnRefreshed: params.OnRefreshed,
 	})
 }
