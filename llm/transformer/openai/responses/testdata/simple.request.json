@@ -13,7 +13,6 @@
     {
       "content": [
         {
-          "annotations": [],
           "text": "Hello Alice. How can I help you today?",
           "type": "output_text"
         }
@@ -35,7 +34,6 @@
     {
       "content": [
         {
-          "annotations": [],
           "text": "That's a lovely combination! Paris is a wonderful city.",
           "type": "output_text"
         }
@@ -57,7 +55,6 @@
     {
       "content": [
         {
-          "annotations": [],
           "text": "Your name is Alice.",
           "type": "output_text"
         }
@@ -65,6 +62,10 @@
       "status": "completed",
       "role": "assistant",
       "type": "message"
+    },
+    {
+      "type": "compaction",
+      "encrypted_content": "gAAAAABpxygtxqpBeKM2Wvlv2Owja3cpZk2rbpgr8iXCl9Zhl7JAJCVy7nIP==="
     },
     {
       "content": [

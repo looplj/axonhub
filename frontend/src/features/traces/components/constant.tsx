@@ -15,6 +15,9 @@ export function getSpanIcon(spanType: string): LucideIcon {
     case 'thinking':
     case 'llm':
       return Sparkles;
+    case 'compaction':
+    case 'compaction_summary':
+      return Sparkles;
     case 'tool_use':
     case 'function_call':
       return Wrench;

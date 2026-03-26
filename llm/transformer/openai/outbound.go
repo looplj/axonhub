@@ -131,6 +131,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeVideo:
 		return t.buildVideoGenerationAPIRequest(ctx, llmReq)
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	case llm.RequestTypeRerank:
 		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
 	}

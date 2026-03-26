@@ -109,8 +109,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	reqCopy := *llmReq
 
 	// Codex expects Responses API payload with some strict rules.
-	// Always enable stream and disable store.
-	reqCopy.Stream = lo.ToPtr(true)
+	// Always enable stream except for compact requests and disable store.
+	//nolint: exhaustive // We only care about compact requests.
+	switch reqCopy.RequestType {
+	case llm.RequestTypeCompact:
+		reqCopy.Stream = lo.ToPtr(false)
+	default:
+		reqCopy.Stream = lo.ToPtr(true)
+	}
 	reqCopy.Store = lo.ToPtr(false)
 
 	// Codex recommends parallel tool calls.
@@ -141,7 +147,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Overwrite auth.
 	hreq.Auth = &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: creds.AccessToken}
-	hreq.Headers.Set("Accept", "text/event-stream")
+	// Compact requests expect JSON response, others expect SSE stream.
+	if llmReq.RequestType == llm.RequestTypeCompact {
+		hreq.Headers.Set("Accept", "application/json")
+	} else {
+		hreq.Headers.Set("Accept", "text/event-stream")
+	}
 	hreq.Headers.Del("User-Agent")
 	if rawOriginator != "" {
 		hreq.Headers.Set("Originator", rawOriginator)
@@ -194,6 +205,9 @@ type codexExecutor struct {
 }
 
 func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
+	if request.RequestType == string(llm.RequestTypeCompact) {
+		return e.inner.Do(ctx, request)
+	}
 	stream, err := e.inner.DoStream(ctx, request)
 	if err != nil {
 		return nil, err

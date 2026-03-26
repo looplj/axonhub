@@ -135,6 +135,8 @@ func (t *OutboundTransformer) TransformRequest(
 	switch llmReq.RequestType {
 	case llm.RequestTypeChat, "":
 		// continue
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
@@ -154,11 +156,11 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert to Anthropic request format
-		scope := shared.TransportScope{
-			BaseURL:         t.config.BaseURL,
-			AccountIdentity: t.config.AccountIdentity,
-		}
-		anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config, scope)
+	scope := shared.TransportScope{
+		BaseURL:         t.config.BaseURL,
+		AccountIdentity: t.config.AccountIdentity,
+	}
+	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config, scope)
 
 	// Apply cache_control breakpoint policy to optimize cache control if client requests with cache_control.
 	if countCacheControls(anthropicReq) > 0 {

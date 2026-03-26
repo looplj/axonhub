@@ -84,6 +84,8 @@
   "traces.timeline.spanTypes.videoUrl": "视频",
   "traces.timeline.spanTypes.audio": "音频",
   "traces.timeline.spanTypes.systemInstruction": "系统指令",
+  "traces.timeline.spanTypes.compaction": "压缩",
+  "traces.timeline.spanTypes.compactionSummary": "压缩摘要",
   "traces.timeline.summary.duration": "持续时间 {{value}}",
   "traces.timeline.summary.tokenCount": "词元数：{{value}}",
   "traces.timeline.collapseAll": "全部收起",

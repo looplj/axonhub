@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -276,6 +277,7 @@ type SpanValue struct {
 	Audio             *SpanAudio             `json:"audio,omitempty"`
 	ToolUse           *SpanToolUse           `json:"toolUse,omitempty"`
 	ToolResult        *SpanToolResult        `json:"toolResult,omitempty"`
+	Compaction        *SpanCompaction        `json:"compaction,omitempty"`
 }
 
 type SpanSystemInstruction struct {
@@ -335,6 +337,10 @@ type SpanToolResult struct {
 	// Text or image_url
 	// Type string  `json:"type,omitempty"`
 	Text *string `json:"text,omitempty"`
+}
+
+type SpanCompaction struct {
+	Summary string `json:"summary,omitempty"`
 }
 
 // RequestMetadata contains additional metadata for a segment.
@@ -462,7 +468,9 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 	if len(req.RequestBody) > 0 {
 		apiFormat := llm.APIFormat(req.Format)
 
-		if isImageFormat(apiFormat) {
+		if apiFormat == llm.APIFormatOpenAIResponseCompact {
+			requestSpans = append(requestSpans, extractSpansFromCompactRequestBody(req.RequestBody, fmt.Sprintf("request-%d", req.ID))...)
+		} else if isImageFormat(apiFormat) {
 			requestSpans = append(requestSpans, extractSpansFromImageRequestBody(req.RequestBody, fmt.Sprintf("request-%d", req.ID))...)
 		} else {
 			httpReq := &httpclient.Request{
@@ -491,28 +499,43 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 	}
 
 	if len(req.ResponseBody) > 0 {
-		outbound, err := getOutboundTransformer(llm.APIFormat(req.Format))
-		if err != nil {
-			return nil, fmt.Errorf("failed to get outbound transformer: %w", err)
-		}
+		if llm.APIFormat(req.Format) == llm.APIFormatOpenAIResponseCompact {
+			var (
+				usage *llm.Usage
+				err   error
+			)
 
-		httpResp := &httpclient.Response{
-			Body:       req.ResponseBody,
-			StatusCode: http.StatusOK,
-			Headers: http.Header{
-				"Content-Type": {"application/json"},
-			},
-		}
+			responseSpans, usage, err = extractSpansFromCompactResponseBody(req.ResponseBody, fmt.Sprintf("response-%d", req.ID))
+			if err != nil {
+				log.Warn(ctx, "Failed to transform compact response body", log.Cause(err), log.Int("request_id", req.ID))
+				return segment, nil
+			}
 
-		unifiedResp, err := outbound.TransformResponse(ctx, httpResp)
-		if err != nil {
-			log.Warn(ctx, "Failed to transform response body", log.Cause(err), log.Int("request_id", req.ID))
-			return segment, nil
-		}
+			segment.Metadata = extractMetadataFromUsage(usage)
+		} else {
+			outbound, err := getOutboundTransformer(llm.APIFormat(req.Format))
+			if err != nil {
+				return nil, fmt.Errorf("failed to get outbound transformer: %w", err)
+			}
 
-		segment.Metadata = extractMetadataFromResponse(unifiedResp)
-		if len(unifiedResp.Choices) > 0 && unifiedResp.Choices[0].Message != nil {
-			responseSpans = append(responseSpans, extractSpansFromMessage(unifiedResp.Choices[0].Message, fmt.Sprintf("response-%d", req.ID))...)
+			httpResp := &httpclient.Response{
+				Body:       req.ResponseBody,
+				StatusCode: http.StatusOK,
+				Headers: http.Header{
+					"Content-Type": {"application/json"},
+				},
+			}
+
+			unifiedResp, err := outbound.TransformResponse(ctx, httpResp)
+			if err != nil {
+				log.Warn(ctx, "Failed to transform response body", log.Cause(err), log.Int("request_id", req.ID))
+				return segment, nil
+			}
+
+			segment.Metadata = extractMetadataFromResponse(unifiedResp)
+			if len(unifiedResp.Choices) > 0 && unifiedResp.Choices[0].Message != nil {
+				responseSpans = append(responseSpans, extractSpansFromMessage(unifiedResp.Choices[0].Message, fmt.Sprintf("response-%d", req.ID))...)
+			}
 		}
 	}
 
@@ -588,6 +611,174 @@ func extractSpansFromImageRequestBody(body []byte, idPrefix string) []Span {
 	}
 
 	return spans
+}
+
+func extractSpansFromCompactRequestBody(body []byte, idPrefix string) []Span {
+	var req responses.CompactAPIRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		return nil
+	}
+
+	now := time.Now()
+
+	var spans []Span
+
+	if summary := compactInputSummary(req.Input); summary != "" {
+		spans = append(spans, Span{
+			ID:        fmt.Sprintf("%s-compact-input", idPrefix),
+			Type:      "user_query",
+			StartTime: now,
+			EndTime:   now,
+			Value: &SpanValue{
+				UserQuery:  &SpanUserQuery{Text: summary},
+				Compaction: &SpanCompaction{Summary: summary},
+			},
+		})
+	}
+
+	if req.Instructions != "" {
+		spans = append(spans, Span{
+			ID:        fmt.Sprintf("%s-compact-instructions", idPrefix),
+			Type:      "system_instruction",
+			StartTime: now,
+			EndTime:   now,
+			Value: &SpanValue{
+				SystemInstruction: &SpanSystemInstruction{Instruction: req.Instructions},
+				Compaction:        &SpanCompaction{Summary: compactTextSummary(req.Instructions)},
+			},
+		})
+	}
+
+	return spans
+}
+
+func extractSpansFromCompactResponseBody(body []byte, idPrefix string) ([]Span, *llm.Usage, error) {
+	var resp responses.CompactAPIResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, nil, err
+	}
+
+	now := time.Now()
+
+	summary := compactOutputSummary(resp.Output)
+	if summary == "" {
+		summary = "Compaction completed"
+	}
+
+	var usage *llm.Usage
+	if resp.Usage != nil {
+		usage = resp.Usage.ToUsage()
+	}
+
+	return []Span{{
+		ID:        fmt.Sprintf("%s-compact-output", idPrefix),
+		Type:      "text",
+		StartTime: now,
+		EndTime:   now,
+		Value: &SpanValue{
+			Text:       &SpanText{Text: summary},
+			Compaction: &SpanCompaction{Summary: summary},
+		},
+	}}, usage, nil
+}
+
+func compactInputSummary(input responses.Input) string {
+	if input.Text != nil {
+		return compactTextSummary(*input.Text)
+	}
+
+	if len(input.Items) == 0 {
+		return ""
+	}
+
+	items := input.Items
+
+	texts := make([]string, 0, len(items))
+	for _, item := range items {
+		itemType := item.Type
+		switch itemType {
+		case "message":
+			for _, part := range item.GetContentItems() {
+				if part.Type == "input_text" || part.Type == "output_text" || part.Type == "text" {
+					if part.Text != "" {
+						texts = append(texts, part.Text)
+					}
+				}
+			}
+		case "function_call":
+			if item.Name != "" {
+				texts = append(texts, "Function call: "+item.Name)
+			}
+		case "function_call_output", "custom_tool_call_output":
+			if item.Output != nil && item.Output.Text != nil && *item.Output.Text != "" {
+				texts = append(texts, *item.Output.Text)
+			}
+		}
+	}
+
+	return compactJoinSummary(texts, len(items))
+}
+
+func compactOutputSummary(items []responses.Item) string {
+	if len(items) == 0 {
+		return ""
+	}
+
+	texts := make([]string, 0, len(items))
+	for _, item := range items {
+		itemType := item.Type
+		switch itemType {
+		case "message":
+			for _, part := range item.GetContentItems() {
+				if (part.Type == "output_text" || part.Type == "text") && part.Text != "" {
+					texts = append(texts, part.Text)
+				}
+			}
+		case "output_text", "summary_text":
+			if item.Text != nil && *item.Text != "" {
+				texts = append(texts, *item.Text)
+			}
+		}
+	}
+
+	return compactJoinSummary(texts, len(items))
+}
+
+func compactJoinSummary(texts []string, itemCount int) string {
+	trimmed := lo.FilterMap(texts, func(text string, _ int) (string, bool) {
+		summary := compactTextSummary(text)
+		return summary, summary != ""
+	})
+
+	if len(trimmed) == 0 {
+		if itemCount > 0 {
+			return fmt.Sprintf("%d compact items", itemCount)
+		}
+
+		return ""
+	}
+
+	if len(trimmed) == 1 {
+		return trimmed[0]
+	}
+
+	return fmt.Sprintf("%s (+%d more)", trimmed[0], len(trimmed)-1)
+}
+
+func compactTextSummary(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+
+	text = strings.Join(strings.Fields(text), " ")
+
+	runes := []rune(text)
+	if len(runes) <= 120 {
+		return text
+	}
+
+	return string(runes[:117]) + "..."
 }
 
 func extractSpansFromMessages(messages []llm.Message, idPrefix string) []Span {
@@ -750,6 +941,53 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 					},
 				})
 			}
+		case "compaction_summary":
+			summary := ""
+			if part.Compact != nil {
+				summary = compactTextSummary(part.Compact.EncryptedContent)
+				if summary == "" {
+					summary = compactTextSummary(part.Compact.ID)
+				}
+			}
+
+			if summary == "" {
+				continue
+			}
+
+			spans = append(spans, Span{
+				ID:        fmt.Sprintf("%s-compaction_summary-%d", idPrefix, len(spans)),
+				Type:      "compaction_summary",
+				StartTime: now,
+				EndTime:   now,
+				Value: &SpanValue{
+					Text:       &SpanText{Text: summary},
+					Compaction: &SpanCompaction{Summary: summary},
+				},
+			})
+		case "compaction":
+			if part.Compact == nil {
+				continue
+			}
+
+			summary := compactTextSummary(part.Compact.EncryptedContent)
+			if summary == "" {
+				summary = compactTextSummary(part.Compact.ID)
+			}
+
+			if summary == "" {
+				summary = "Compaction item"
+			}
+
+			spans = append(spans, Span{
+				ID:        fmt.Sprintf("%s-compaction-%d", idPrefix, len(spans)),
+				Type:      "compaction",
+				StartTime: now,
+				EndTime:   now,
+				Value: &SpanValue{
+					Text:       &SpanText{Text: summary},
+					Compaction: &SpanCompaction{Summary: summary},
+				},
+			})
 		case "image_url":
 			if part.ImageURL == nil {
 				continue
@@ -976,11 +1214,18 @@ func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) 
 
 // extractMetadataFromResponse extracts metadata from the unified response.
 func extractMetadataFromResponse(resp *llm.Response) *RequestMetadata {
-	if resp == nil || resp.Usage == nil {
+	if resp == nil {
 		return nil
 	}
 
-	usage := resp.Usage
+	return extractMetadataFromUsage(resp.Usage)
+}
+
+func extractMetadataFromUsage(usage *llm.Usage) *RequestMetadata {
+	if usage == nil {
+		return nil
+	}
+
 	metadata := &RequestMetadata{
 		TotalTokens: &usage.TotalTokens,
 	}
@@ -1076,6 +1321,10 @@ func spanToKey(span Span) string {
 	case "audio":
 		if span.Value.Audio != nil {
 			return fmt.Sprintf("%s:%s:%s:%s", span.Type, span.Value.Audio.ID, span.Value.Audio.Format, span.Value.Audio.Transcript)
+		}
+	case "compaction", "compaction_summary":
+		if span.Value.Compaction != nil {
+			return fmt.Sprintf("%s:%s", span.Type, span.Value.Compaction.Summary)
 		}
 	case "tool_use":
 		if span.Value.ToolUse != nil {
