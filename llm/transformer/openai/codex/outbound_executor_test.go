@@ -209,6 +209,13 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 			Role:    "user",
 			Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
 		}},
+		Tools: []llm.Tool{{
+			Type: "function",
+			Function: llm.Function{
+				Name:       "shell",
+				Parameters: []byte(`{"type":"object","properties":{}}`),
+			},
+		}},
 		Store:               &store,
 		ParallelToolCalls:   &parallelToolCalls,
 		MaxTokens:           &maxTokens,
@@ -226,18 +233,48 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 	assert.Equal(t, false, body["store"])
 	assert.Equal(t, true, body["stream"])
 	assert.NotContains(t, body, "max_output_tokens")
-	assert.NotEqual(t, true, body["parallel_tool_calls"])
+	assert.Equal(t, false, body["parallel_tool_calls"])
 	assert.Equal(t, topP, body["top_p"])
 	assert.Equal(t, serviceTier, body["service_tier"])
 	assert.NotContains(t, body, "metadata")
+	assert.Equal(t, []any{"reasoning.encrypted_content"}, body["include"])
 
 	reasoning, ok := body["reasoning"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, reasoningSummary, reasoning["summary"])
-	assert.NotContains(t, body, "include")
 
 	assert.NotContains(t, string(hreq.Body), "You are a coding agent running in the Codex CLI")
 	assert.NotContains(t, string(hreq.Body), "You are Codex")
+}
+
+func TestCodexOutbound_AppliesReasoningDefaultsWhenMissing(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+
+	hreq, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model: "gpt-5-codex",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+		}},
+		Tools: []llm.Tool{{
+			Type: "function",
+			Function: llm.Function{
+				Name:       "shell",
+				Parameters: []byte(`{"type":"object","properties":{}}`),
+			},
+		}},
+	})
+	require.NoError(t, err)
+
+	body := decodeCodexRequestBody(t, hreq)
+	reasoning, ok := body["reasoning"].(map[string]any)
+	require.True(t, ok)
+
+	assert.Equal(t, true, body["parallel_tool_calls"])
+	assert.Equal(t, []any{"reasoning.encrypted_content"}, body["include"])
+	assert.Equal(t, "auto", reasoning["summary"])
+	assert.NotContains(t, body, "metadata")
 }
 
 func newTestCodexOutbound(t *testing.T) *OutboundTransformer {

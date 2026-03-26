@@ -111,6 +111,18 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Codex expects Responses API payload with some strict rules.
 	reqCopy.Store = lo.ToPtr(false)
 	reqCopy.Stream = lo.ToPtr(true)
+	if reqCopy.ParallelToolCalls == nil {
+		reqCopy.ParallelToolCalls = lo.ToPtr(true)
+	}
+	if reqCopy.TransformerMetadata == nil {
+		reqCopy.TransformerMetadata = map[string]any{}
+	}
+	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
+		reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
+	}
+	if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
+		reqCopy.ReasoningSummary = lo.ToPtr("auto")
+	}
 
 	// Codex Responses rejects token limit fields, so strip them out.
 	reqCopy.MaxCompletionTokens = nil
