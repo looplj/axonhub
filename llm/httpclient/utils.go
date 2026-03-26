@@ -83,16 +83,16 @@ var libManagedHeaders = map[string]bool{
 }
 
 var blockedHeaders = map[string]bool{
-	"Content-Type":        true,
-	"Connection":          true,
-	"X-Channel-Id":        true,
-	"X-Project-Id":        true,
-	"X-Real-Ip":           true,
-	"X-Forwarded-For":     true,
-	"X-Forwarded-Proto":   true,
-	"X-Forwarded-Host":    true,
-	"X-Forwarded-Port":    true,
-	"X-Forwarded-Server":  true,
+	"Content-Type":       true,
+	"Connection":         true,
+	"X-Channel-Id":       true,
+	"X-Project-Id":       true,
+	"X-Real-Ip":          true,
+	"X-Forwarded-For":    true,
+	"X-Forwarded-Proto":  true,
+	"X-Forwarded-Host":   true,
+	"X-Forwarded-Port":   true,
+	"X-Forwarded-Server": true,
 
 	// Browser-only / hop-by-hop-ish headers that should not be forwarded to upstream.
 	"Accept-Language":    true,

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -46,6 +47,42 @@ func TestCodexHandlers_StartOAuth_InvalidJSON(t *testing.T) {
 	router.ServeHTTP(w, req)
 	require.Equal(t, http.StatusBadRequest, w.Code)
 	require.Contains(t, w.Body.String(), "invalid request format")
+}
+
+func TestCodexHandlers_StartOAuth_DoesNotIncludeOriginatorParam(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewCodexHandlers(CodexHandlersParams{
+		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
+		HttpClient:  httpclient.NewHttpClient(),
+	})
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Request = c.Request.WithContext(contexts.WithProjectID(c.Request.Context(), 123))
+		c.Next()
+	})
+	router.POST("/admin/codex/oauth/start", h.StartOAuth)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/codex/oauth/start", bytes.NewBufferString("{}"))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp StartCodexOAuthResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.NotEmpty(t, resp.SessionID)
+
+	parsed, err := url.Parse(resp.AuthURL)
+	require.NoError(t, err)
+	query := parsed.Query()
+	require.Empty(t, query.Get("originator"))
+	require.Equal(t, codex.ClientID, query.Get("client_id"))
+	require.Equal(t, codex.RedirectURI, query.Get("redirect_uri"))
+	require.Equal(t, "true", query.Get("codex_cli_simplified_flow"))
+	require.Equal(t, resp.SessionID, query.Get("state"))
 }
 
 func TestCodexHandlers_Exchange_StateDeletedOnTokenExchangeFailure(t *testing.T) {

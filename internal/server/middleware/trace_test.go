@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func setupTestTraceMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.TraceService) {
@@ -408,12 +409,17 @@ func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
 	router.Use(WithTrace(config, traceService))
 
 	var capturedTraceID string
+	var capturedSessionID string
 
 	router.POST("/v1/chat/completions", func(c *gin.Context) {
 		trace, ok := contexts.GetTrace(c.Request.Context())
 		require.True(t, ok)
 
 		capturedTraceID = trace.TraceID
+
+		sessionID, ok := shared.GetSessionID(c.Request.Context())
+		require.True(t, ok)
+		capturedSessionID = sessionID
 
 		c.Status(http.StatusOK)
 	})
@@ -427,6 +433,56 @@ func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "codex-session-123", capturedTraceID)
+	require.Equal(t, "codex-session-123", capturedSessionID)
+}
+
+func TestWithTrace_CodexSessionMissingDoesNotSetTrace(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:       "AH-Trace-Id",
+		CodexTraceEnabled: true,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	ctx = ent.NewContext(ctx, client)
+
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var hasTrace bool
+	var hasSession bool
+
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		_, hasTrace = contexts.GetTrace(c.Request.Context())
+		_, hasSession = shared.GetSessionID(c.Request.Context())
+
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader([]byte("{}")))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.False(t, hasTrace)
+	require.False(t, hasSession)
 }
 
 func TestWithTraceID_Success(t *testing.T) {
