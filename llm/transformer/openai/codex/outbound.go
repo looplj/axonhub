@@ -116,6 +116,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	reqCopy.MaxCompletionTokens = nil
 	reqCopy.MaxTokens = nil
 
+	reqCopy.Metadata = nil
+
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err

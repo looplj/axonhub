@@ -202,7 +202,6 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 	topP := 0.8
 	serviceTier := "flex"
 	reasoningSummary := "detailed"
-	metadata := map[string]string{"source": "caller"}
 
 	hreq, err := outbound.TransformRequest(ctx, &llm.Request{
 		Model: "gpt-5-codex",
@@ -217,7 +216,7 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 		TopP:                &topP,
 		ServiceTier:         &serviceTier,
 		ReasoningSummary:    &reasoningSummary,
-		Metadata:            metadata,
+		Metadata:            map[string]string{"source": "caller"},
 		TransformerMetadata: map[string]any{},
 	})
 	require.NoError(t, err)
@@ -230,7 +229,7 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 	assert.NotEqual(t, true, body["parallel_tool_calls"])
 	assert.Equal(t, topP, body["top_p"])
 	assert.Equal(t, serviceTier, body["service_tier"])
-	assert.Equal(t, map[string]any{"source": "caller"}, body["metadata"])
+	assert.NotContains(t, body, "metadata")
 
 	reasoning, ok := body["reasoning"].(map[string]any)
 	require.True(t, ok)
