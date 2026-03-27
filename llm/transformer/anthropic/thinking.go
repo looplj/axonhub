@@ -31,6 +31,7 @@ var defaultReasoningEffortMapping = map[string]int64{
 	"low":    5000,
 	"medium": 15000,
 	"high":   30000,
+	"xhigh":  30000,
 	"max":    30000,
 }
 

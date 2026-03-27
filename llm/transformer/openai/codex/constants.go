@@ -16,7 +16,9 @@ func DefaultModels() []string {
 		"gpt-5.2",
 		"gpt-5.2-codex",
 		"gpt-5.3-codex",
+		"gpt-5.3-codex-spark",
 		"gpt-5.4",
+		"gpt-5.4-mini",
 	}
 }
 
@@ -28,8 +30,8 @@ const (
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
 	// UserAgent keep consistent with Codex CLI.
-	UserAgent           = "codex_cli_rs/0.98.0 (Mac OS 15.6.1; arm64) iTerm.app/3.6.6"
-	codexDefaultVersion = "0.98.0"
+	UserAgent           = "codex_cli_rs/0.116.0 (Mac OS 15.6.1; arm64) iTerm.app/3.6.6"
+	codexDefaultVersion = "0.116.0"
 )
 
 // CodexInstructions is the default system prompt for Codex CLI.

@@ -249,7 +249,6 @@ export function RetrySettings() {
                               min='400'
                               max='599'
                             />
-                            <span className='text-muted-foreground text-sm'>{t('system.retry.autoDisableChannel.statuses.times')}</span>
                             <Input
                               type='number'
                               placeholder={t('system.retry.autoDisableChannel.statuses.timesPlaceholder')}
@@ -259,6 +258,7 @@ export function RetrySettings() {
                               min='1'
                               max='100'
                             />
+                            <span className='text-muted-foreground text-sm'>{t('system.retry.autoDisableChannel.statuses.times')}</span>
                             <Button type='button' variant='ghost' size='icon' onClick={() => removeStatus(index)}>
                               <Trash2 className='h-4 w-4' />
                             </Button>
