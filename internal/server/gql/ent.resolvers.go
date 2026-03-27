@@ -8,6 +8,7 @@ package gql
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"entgo.io/contrib/entgql"
 	"github.com/looplj/axonhub/internal/ent"
@@ -934,3 +935,25 @@ type usageLogResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type userProjectResolver struct{ *Resolver }
 type userRoleResolver struct{ *Resolver }
+
+// parseTimeWindow parses a time window string and returns the cutoff time and whether to apply filtering.
+// Supported values: "day", "week", "month", "allTime".
+// Returns (zero time, false) when timeWindow is nil, empty, or "allTime".
+func (r *queryResolver) parseTimeWindow(ctx context.Context, timeWindow *string) (time.Time, bool) {
+	if timeWindow == nil || *timeWindow == "" || *timeWindow == "allTime" {
+		return time.Time{}, false
+	}
+
+	now := time.Now()
+
+	switch *timeWindow {
+	case "day":
+		return now.AddDate(0, 0, -1), true
+	case "week":
+		return now.AddDate(0, 0, -7), true
+	case "month":
+		return now.AddDate(0, -1, 0), true
+	default:
+		return time.Time{}, false
+	}
+}

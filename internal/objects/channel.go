@@ -126,6 +126,10 @@ type ChannelSettings struct {
 	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
 	Proxy *httpclient.ProxyConfig `json:"proxy,omitempty"`
 
+	// PassThroughUserAgent allows passing through the User-Agent header from the client request.
+	// If not set, defaults to the global setting.
+	PassThroughUserAgent bool `json:"pass_through_user_agent"`
+
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`
 }

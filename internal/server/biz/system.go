@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -48,6 +49,11 @@ const (
 	// If set to true, the system will store chunks in the database.
 	// Default value is false.
 	SystemKeyStoreChunks = "requests_store_chunks"
+
+	// SystemKeyUserAgentPassThrough is the key used to store the user_agent_pass_through flag in the system table.
+	// If set to true, the system will pass through the User-Agent header to the upstream channel.
+	// Default value is false.
+	SystemKeyUserAgentPassThrough = "user_agent_pass_through"
 
 	// SystemKeyStoragePolicy is the key used to store the storage policy configuration.
 	// The value is JSON-encoded StoragePolicy struct.
@@ -556,6 +562,29 @@ func (s *SystemService) BrandLogo(ctx context.Context) (string, error) {
 // SetBrandLogo sets the brand logo (base64 encoded).
 func (s *SystemService) SetBrandLogo(ctx context.Context, brandLogo string) error {
 	return s.setSystemValue(ctx, SystemKeyBrandLogo, brandLogo)
+}
+
+// UserAgentPassThrough retrieves the user_agent_pass_through flag.
+// Returns false when the setting is not found (default).
+func (s *SystemService) UserAgentPassThrough(ctx context.Context) (bool, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyUserAgentPassThrough)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get user agent pass through: %w", err)
+	}
+
+	if value == "" {
+		return false, nil
+	}
+
+	return strconv.ParseBool(value)
+}
+
+// SetUserAgentPassThrough sets the user_agent_pass_through flag.
+func (s *SystemService) SetUserAgentPassThrough(ctx context.Context, enabled bool) error {
+	return s.setSystemValue(ctx, SystemKeyUserAgentPassThrough, strconv.FormatBool(enabled))
 }
 
 func (s *SystemService) getSystemValue(ctx context.Context, key string) (string, error) {

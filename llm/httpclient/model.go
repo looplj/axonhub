@@ -55,6 +55,10 @@ type Request struct {
 	// SkipInboundQueryMerge when set to true, prevents query parameters from the original
 	// inbound request from being merged into this request during MergeInboundRequest.
 	SkipInboundQueryMerge bool `json:"-"`
+
+	// PassThroughUserAgent when set to true, passes through the original User-Agent header
+	// from the inbound request to the outbound request instead of using the default.
+	PassThroughUserAgent *bool `json:"pass_through_user_agent,omitempty"`
 }
 
 // AuthConfig represents authentication configuration.

@@ -747,3 +747,159 @@ func TestSystemService_Initialize_TransactionRollback(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, dsCount)
 }
+
+func TestSystemService_UserAgentPassThrough_DefaultValue(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Test that default value is false when not set
+	uaPassThrough, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.False(t, uaPassThrough, "default value should be false when not set")
+}
+
+func TestSystemService_UserAgentPassThrough_SetTrue(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Set UserAgentPassThrough to true
+	err := service.SetUserAgentPassThrough(ctx, true)
+	require.NoError(t, err)
+
+	// Verify it returns true
+	uaPassThrough, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.True(t, uaPassThrough, "should return true after setting to true")
+}
+
+func TestSystemService_UserAgentPassThrough_SetFalse(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// First set to true
+	err := service.SetUserAgentPassThrough(ctx, true)
+	require.NoError(t, err)
+
+	// Then set to false
+	err = service.SetUserAgentPassThrough(ctx, false)
+	require.NoError(t, err)
+
+	// Verify it returns false
+	uaPassThrough, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.False(t, uaPassThrough, "should return false after setting to false")
+}
+
+func TestSystemService_UserAgentPassThrough_RoundTrip(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Test round-trip: set true, get returns true
+	err := service.SetUserAgentPassThrough(ctx, true)
+	require.NoError(t, err)
+
+	result1, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.True(t, result1)
+
+	// Update to false
+	err = service.SetUserAgentPassThrough(ctx, false)
+	require.NoError(t, err)
+
+	result2, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.False(t, result2)
+
+	// Update back to true
+	err = service.SetUserAgentPassThrough(ctx, true)
+	require.NoError(t, err)
+
+	result3, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.True(t, result3)
+}
+
+func TestSystemService_UserAgentPassThrough_WithCache(t *testing.T) {
+	mr := miniredis.RunT(t)
+	defer mr.Close()
+
+	cacheConfig := xcache.Config{
+		Mode: xcache.ModeRedis,
+		Redis: xredis.Config{
+			Addr: mr.Addr(),
+		},
+	}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Set UserAgentPassThrough to true
+	err := service.SetUserAgentPassThrough(ctx, true)
+	require.NoError(t, err)
+
+	// First call should hit database and cache the result
+	uaPassThrough1, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.True(t, uaPassThrough1)
+
+	// Second call should hit cache
+	uaPassThrough2, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.True(t, uaPassThrough2)
+
+	// Update value should invalidate cache
+	err = service.SetUserAgentPassThrough(ctx, false)
+	require.NoError(t, err)
+
+	// Should get updated value
+	uaPassThrough3, err := service.UserAgentPassThrough(ctx)
+	require.NoError(t, err)
+	require.False(t, uaPassThrough3)
+}
+
+func TestSystemService_UserAgentPassThrough_DatabaseError(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Close the client to simulate database error
+	client.Close()
+
+	// Try to get UserAgentPassThrough - should fail
+	_, err := service.UserAgentPassThrough(ctx)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to get system value")
+}

@@ -66,6 +66,18 @@ const UPDATE_STORAGE_POLICY_MUTATION = `
   }
 `;
 
+const USER_AGENT_PASS_THROUGH_QUERY = `
+  query UserAgentPassThrough {
+    userAgentPassThrough
+  }
+`;
+
+const UPDATE_USER_AGENT_PASS_THROUGH_MUTATION = `
+  mutation UpdateUserAgentPassThrough($input: Boolean!) {
+    updateUserAgentPassThrough(input: $input)
+  }
+`;
+
 const RETRY_POLICY_QUERY = `
   query RetryPolicy {
     retryPolicy {
@@ -355,6 +367,41 @@ export function useUpdateStoragePolicy() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['storagePolicy'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+export function useUserAgentPassThrough() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['userAgentPassThrough'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ userAgentPassThrough: boolean }>(USER_AGENT_PASS_THROUGH_QUERY);
+        return data.userAgentPassThrough;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateUserAgentPassThrough() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ input }: { input: boolean }) => {
+      const data = await graphqlRequest<{ updateUserAgentPassThrough: boolean }>(UPDATE_USER_AGENT_PASS_THROUGH_MUTATION, { input });
+      return data.updateUserAgentPassThrough;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userAgentPassThrough'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: () => {

@@ -189,6 +189,16 @@ func (r *mutationResolver) DeleteProxyPreset(ctx context.Context, url string) (b
 	return true, nil
 }
 
+// UpdateUserAgentPassThrough is the resolver for the updateUserAgentPassThrough field.
+func (r *mutationResolver) UpdateUserAgentPassThrough(ctx context.Context, input bool) (bool, error) {
+	err := r.systemService.SetUserAgentPassThrough(ctx, input)
+	if err != nil {
+		return false, fmt.Errorf("failed to update user agent pass through: %w", err)
+	}
+
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -338,3 +348,20 @@ func (r *queryResolver) ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, e
 
 	return lo.ToSlicePtr(presets), nil
 }
+
+// UserAgentPassThrough is the resolver for the userAgentPassThrough field.
+func (r *queryResolver) UserAgentPassThrough(ctx context.Context) (bool, error) {
+	return r.systemService.UserAgentPassThrough(ctx)
+}
+
+// UserAgentPassThrough is the resolver for the userAgentPassThrough field.
+func (r *systemChannelSettingsResolver) UserAgentPassThrough(ctx context.Context, obj *biz.SystemChannelSettings) (*bool, error) {
+	panic(fmt.Errorf("not implemented: UserAgentPassThrough - userAgentPassThrough"))
+}
+
+// SystemChannelSettings returns SystemChannelSettingsResolver implementation.
+func (r *Resolver) SystemChannelSettings() SystemChannelSettingsResolver {
+	return &systemChannelSettingsResolver{r}
+}
+
+type systemChannelSettingsResolver struct{ *Resolver }

@@ -159,6 +159,7 @@ type ChannelProbeSetting {
 
 type SystemChannelSettings {
   probe: ChannelProbeSetting!
+  userAgentPassThrough: Boolean
 }
 
 input UpdateChannelProbeSettingInput {
@@ -222,6 +223,7 @@ extend type Mutation {
   triggerGcCleanup: Boolean!
   saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
   deleteProxyPreset(url: String!): Boolean!
+  updateUserAgentPassThrough(input: Boolean!): Boolean!
 }
 
 type SystemVersion {

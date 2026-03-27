@@ -340,8 +340,19 @@ func BuildHttpRequest(
 		httpReq.Header = make(http.Header)
 	}
 
-	if httpReq.Header.Get("User-Agent") == "" {
-		httpReq.Header.Set("User-Agent", "axonhub/1.0")
+	if request.PassThroughUserAgent != nil && *request.PassThroughUserAgent {
+		// Pass-through enabled - check if client User-Agent exists
+		clientUA := request.Headers.Get("User-Agent")
+		if clientUA == "" {
+			// No client User-Agent, use default
+			httpReq.Header.Set("User-Agent", "axonhub/1.0")
+		}
+		// else: User-Agent already in headers from request.Headers copy
+	} else {
+		// Pass-through disabled - set default
+		if httpReq.Header.Get("User-Agent") == "" {
+			httpReq.Header.Set("User-Agent", "axonhub/1.0")
+		}
 	}
 
 	for k := range libManagedHeaders {

@@ -278,6 +278,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [proxyUrl, setProxyUrl] = useState(() => initialRow?.settings?.proxy?.url || '');
   const [proxyUsername, setProxyUsername] = useState(() => initialRow?.settings?.proxy?.username || '');
   const [proxyPassword, setProxyPassword] = useState(() => initialRow?.settings?.proxy?.password || '');
+  const [userAgentPassthrough, setUserAgentPassthrough] = useState<boolean | null>(() => {
+    if (initialRow?.settings?.userAgentPassthrough !== undefined) {
+      return initialRow.settings.userAgentPassthrough;
+    }
+    return null;
+  });
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -508,6 +514,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 jsonData: currentRow.credentials?.gcp?.jsonData || '',
               },
             },
+            settings: {
+              userAgentPassthrough: currentRow.settings?.userAgentPassthrough ?? null,
+            },
           }
         : duplicateFromRow
           ? {
@@ -550,7 +559,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               defaultTestModel: '',
               tags: [],
               remark: '',
-              settings: undefined,
+              settings: {
+                userAgentPassthrough: null,
+              },
             },
   });
 
@@ -1338,6 +1349,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setProxyUrl(initialRow?.settings?.proxy?.url || '');
             setProxyUsername(initialRow?.settings?.proxy?.username || '');
             setProxyPassword(initialRow?.settings?.proxy?.password || '');
+            // Reset userAgentPassthrough state
+            setUserAgentPassthrough(initialRow?.settings?.userAgentPassthrough ?? null);
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -2209,6 +2222,48 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               />
                               <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.remark.description')}</p>
                               <FormMessage />
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='settings.userAgentPassthrough'
+                        render={({ field }) => (
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                              {t('channels.dialogs.fields.userAgentPassthrough.label')}
+                            </FormLabel>
+                            <div className='space-y-3 md:col-span-6'>
+                              <RadioGroup
+                                value={userAgentPassthrough === null ? 'inherit' : userAgentPassthrough ? 'enable' : 'disable'}
+                                onValueChange={(value) => {
+                                  const newValue = value === 'inherit' ? null : value === 'enable' ? true : false;
+                                  setUserAgentPassthrough(newValue);
+                                  field.onChange(newValue);
+                                }}
+                              >
+                                <div className='flex items-center space-x-2'>
+                                  <RadioGroupItem value='inherit' id='useragent-inherit' />
+                                  <label htmlFor='useragent-inherit' className='cursor-pointer text-sm'>
+                                    {t('channels.dialogs.fields.userAgentPassthrough.inherit')}
+                                  </label>
+                                </div>
+                                <div className='flex items-center space-x-2'>
+                                  <RadioGroupItem value='enable' id='useragent-enable' />
+                                  <label htmlFor='useragent-enable' className='cursor-pointer text-sm'>
+                                    {t('channels.dialogs.fields.userAgentPassthrough.enable')}
+                                  </label>
+                                </div>
+                                <div className='flex items-center space-x-2'>
+                                  <RadioGroupItem value='disable' id='useragent-disable' />
+                                  <label htmlFor='useragent-disable' className='cursor-pointer text-sm'>
+                                    {t('channels.dialogs.fields.userAgentPassthrough.disable')}
+                                  </label>
+                                </div>
+                              </RadioGroup>
+                              <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.userAgentPassthrough.description')}</p>
                             </div>
                           </FormItem>
                         )}
