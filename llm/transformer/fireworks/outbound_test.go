@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -304,7 +305,7 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 					t.Errorf("TransformRequest() expected error but got none")
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformRequest() error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
@@ -481,7 +482,7 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 					t.Errorf("TransformResponse() expected error but got none")
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("TransformResponse() error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
@@ -535,21 +536,6 @@ func TestOutboundTransformer_SetBaseURL(t *testing.T) {
 	if transformer.BaseURL != newURL {
 		t.Errorf("SetBaseURL() failed, got %v, want %v", transformer.BaseURL, newURL)
 	}
-}
-
-// Helper functions
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func mustMarshal(v any) []byte {

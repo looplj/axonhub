@@ -228,7 +228,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   fireworks: {
     provider: 'fireworks',
     icon: Fireworks,
-    color: 'bg-red-100 text-red-800 border-red-200',
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
     channelTypes: ['fireworks'],
   },
 };

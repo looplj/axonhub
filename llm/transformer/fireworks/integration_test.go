@@ -846,17 +846,11 @@ func TestIntegration_ServerError(t *testing.T) {
 	httpReq, err := transformer.TransformRequest(t.Context(), llmReq)
 	require.NoError(t, err)
 
-	bodyJSON, err := json.Marshal(map[string]any{
-		"model":    httpReq.Body,
-		"messages": []map[string]any{},
-	})
-	require.NoError(t, err)
-
 	httpClientReq := &httpclient.Request{
 		Method:  http.MethodPost,
 		URL:     server.URL + "/chat/completions",
 		Headers: httpReq.Headers,
-		Body:    bodyJSON,
+		Body:    httpReq.Body,
 		Auth:    httpReq.Auth,
 	}
 
