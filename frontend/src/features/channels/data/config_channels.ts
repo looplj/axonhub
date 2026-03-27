@@ -507,10 +507,9 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     channelType: 'fireworks',
     baseURL: 'https://api.fireworks.ai/inference/v1',
     defaultModels: [
-      'accounts/fireworks/models/llama-v3-8b-instruct',
-      'accounts/fireworks/models/llama-v3-70b-instruct',
-      'accounts/fireworks/models/mixtral-8x22b-instruct',
-      'accounts/fireworks/models/llama-v3-405b-instruct',
+      'accounts/fireworks/models/minimax-m2p5',
+      'accounts/fireworks/models/glm-5',
+      'accounts/fireworks/models/kimi-k2p5',
     ],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
