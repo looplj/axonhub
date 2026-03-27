@@ -29,11 +29,14 @@ import (
 )
 
 type ProviderInfo struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	JITEnabled  bool   `json:"jit_enabled"`
-	IconURL     string `json:"icon_url"`
-	ButtonColor string `json:"button_color"`
+	Name             string `json:"name"`
+	DisplayName      string `json:"display_name"`
+	JITEnabled       bool   `json:"jit_enabled"`
+	IconURL          string `json:"icon_url"`
+	ButtonColor      string `json:"button_color"`
+	IsLinked         bool   `json:"is_linked"`
+	LinkedIdentityID string `json:"linked_identity_id,omitempty"`
+	LinkedEmail      string `json:"linked_email,omitempty"`
 }
 
 type OIDCProvider struct {
@@ -42,7 +45,7 @@ type OIDCProvider struct {
 	IssuerURL             string            `conf:"issuer_url" yaml:"issuer_url" json:"issuer_url"`
 	ClientID              string            `conf:"client_id" yaml:"client_id" json:"client_id"`
 	ClientSecret          string            `conf:"client_secret" yaml:"client_secret" json:"client_secret"`
-	Scopes                []string          `conf:"scopes" yaml:"scopes" json:"scopes"`
+	ExtraScopes           []string          `conf:"extra_scopes" yaml:"extra_scopes" json:"extra_scopes"`
 	JITEnabled            bool              `conf:"jit_enabled" yaml:"jit_enabled" json:"jit_enabled"`
 	AutoLinkByEmail       bool              `conf:"auto_link_by_email" yaml:"auto_link_by_email" json:"auto_link_by_email"`
 	RequireEmailVerified  bool              `conf:"require_email_verified" yaml:"require_email_verified" json:"require_email_verified"`
@@ -115,7 +118,7 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 			redirectURL = fmt.Sprintf("/oauth/oidc/callback/%s", p.Name)
 		}
 
-		scopes := p.Scopes
+		scopes := p.ExtraScopes
 		if len(scopes) == 0 {
 			scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 		}
@@ -171,18 +174,38 @@ func (s *OIDCService) CountProviders() int {
 
 func (s *OIDCService) GetProviders(ctx context.Context) []ProviderInfo {
 	var providers []ProviderInfo
+
+	// Get linked issuers for the current user
+	linkedIdentities := make(map[string]*ent.OIDCIdentity)
+	if u, ok := contexts.GetUser(ctx); ok {
+		identities, err := s.db.OIDCIdentity.Query().
+			Where(oidcidentity.UserID(u.ID)).
+			All(ctx)
+		if err == nil {
+			for _, id := range identities {
+				linkedIdentities[id.Issuer] = id
+			}
+		}
+	}
+
 	for _, p := range s.cfg.Providers {
 		displayName := p.DisplayName
 		if displayName == "" {
 			displayName = p.Name
 		}
-		providers = append(providers, ProviderInfo{
+		info := ProviderInfo{
 			Name:        p.Name,
 			DisplayName: displayName,
 			JITEnabled:  p.JITEnabled,
 			IconURL:     p.IconURL,
 			ButtonColor: p.ButtonColor,
-		})
+		}
+		if id, ok := linkedIdentities[p.IssuerURL]; ok {
+			info.IsLinked = true
+			info.LinkedIdentityID = fmt.Sprintf("gid://axonhub/OIDCIdentity/%d", id.ID)
+			info.LinkedEmail = id.Email
+		}
+		providers = append(providers, info)
 	}
 	return providers
 }
@@ -254,6 +277,9 @@ func (s *OIDCService) GetLinkAuthorizeURL(ctx context.Context, providerName stri
 }
 
 func (s *OIDCService) Callback(ctx context.Context, providerName, code, state string) (string, string, error) {
+	// Elevate privileges for database operations as this is an unauthenticated flow
+	ctx = contexts.WithUser(ctx, &ent.User{IsOwner: true})
+
 	p, ok := s.providers[providerName]
 	if !ok {
 		// Try case-insensitive and space-flexible matching
@@ -348,9 +374,6 @@ func (s *OIDCService) Callback(ctx context.Context, providerName, code, state st
 }
 
 func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject, email string, emailVerified bool, name, givenName, familyName, picture string) (*ent.User, error) {
-	// Elevate privileges for OIDC user resolution as this is an unauthenticated flow
-	ctx = contexts.WithUser(ctx, &ent.User{IsOwner: true})
-
 	// 1. Try to find existing OIDC identity by issuer and subject
 	identity, err := s.db.OIDCIdentity.Query().
 		Where(
@@ -365,13 +388,17 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 		_, _ = identity.Update().SetLastLoginAt(time.Now()).Save(ctx)
 
 		// Sync user info if enabled
-		if p.config.SyncUserInfo {
+		if p.config.SyncUserInfo && identity.Edges.User != nil {
 			updatedUser, err := s.syncUserInfo(ctx, identity.Edges.User, name, givenName, familyName, picture)
 			if err != nil {
 				log.Warn(ctx, "Failed to sync user info during OIDC login", zap.Error(err), log.Int("user_id", identity.UserID))
 			} else {
 				return updatedUser, nil
 			}
+		}
+
+		if identity.Edges.User == nil {
+			return nil, fmt.Errorf("OIDC identity linked to missing or deleted user")
 		}
 
 		return identity.Edges.User, nil
@@ -422,7 +449,7 @@ func (s *OIDCService) resolveUser(ctx context.Context, p *oidcProvider, subject,
 	}
 
 	// Set a magic password indicating this user must login via OIDC only.
-	randPassword := hex.EncodeToString([]byte("!OIDC_SSO_ONLY"))
+	randPassword := OIDC_ONLY_PLACEHOLDER
 
 	firstName := givenName
 	lastName := familyName

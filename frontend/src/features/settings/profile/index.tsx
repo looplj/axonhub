@@ -1,4 +1,8 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearch } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import ContentSection from '../components/content-section';
 import ProfileForm from './profile-form';
 import SecurityForm from '../security/security-form';
@@ -9,6 +13,16 @@ import { useOIDCProviders } from '@/features/auth/data/auth';
 export default function SettingsProfile() {
   const { t } = useTranslation();
   const { data: providers = [] } = useOIDCProviders();
+  const search = useSearch({ from: '/_authenticated/settings/profile' });
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if ((search as any).oidc_link === 'success') {
+      toast.success(t('security.oidc.linkSuccess', 'Successfully linked provider!'));
+      queryClient.invalidateQueries({ queryKey: ['oidc-providers'] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    }
+  }, [search, queryClient, t]);
 
   return (
     <ContentSection title={t('profile.title')} desc={t('profile.description')}>

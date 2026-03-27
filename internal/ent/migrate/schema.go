@@ -312,9 +312,9 @@ var (
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "oidc_identities_by_issuer_subject",
+				Name:    "oidc_identities_by_issuer_subject_deleted_at",
 				Unique:  true,
-				Columns: []*schema.Column{OidcIdentitiesColumns[4], OidcIdentitiesColumns[5]},
+				Columns: []*schema.Column{OidcIdentitiesColumns[4], OidcIdentitiesColumns[5], OidcIdentitiesColumns[3]},
 			},
 			{
 				Name:    "oidc_identities_by_user_id",

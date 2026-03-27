@@ -7,7 +7,6 @@ package gql
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -43,7 +42,7 @@ func (r *mutationResolver) UpdateMyPassword(ctx context.Context, input UpdateMyP
 		return false, fmt.Errorf("user not found in context")
 	}
 
-	if user.Password == hex.EncodeToString([]byte("!OIDC_SSO_ONLY")) {
+	if user.Password == biz.OIDC_ONLY_PLACEHOLDER {
 		// OIDC-only user setting their password for the first time, no old password required
 	} else {
 		if input.OldPassword == nil {
@@ -81,6 +80,12 @@ func (r *mutationResolver) UnlinkOIDCIdentity(ctx context.Context, id objects.GU
 
 	if identity.UserID != user.ID {
 		return false, fmt.Errorf("permission denied: this identity does not belong to you")
+	}
+
+	// Double check the password. If it is OIDC_ONLY_PLACEHOLDER, we should not allow unlink,
+	// because user will be locked out.
+	if user.Password == biz.OIDC_ONLY_PLACEHOLDER {
+		return false, fmt.Errorf("please set a local password before unlinking your OIDC identity")
 	}
 
 	// Delete

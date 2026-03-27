@@ -144,8 +144,18 @@ export const authApi = {
       body: data,
     }),
 
-  getOIDCProviders: (): Promise<{ data: { name: string; display_name: string; jit_enabled: boolean; icon_url: string; button_color: string }[] }> =>
-    apiRequest('/oauth/oidc/providers'),
+  getOIDCProviders: (): Promise<{
+    data: {
+      name: string;
+      display_name: string;
+      jit_enabled: boolean;
+      icon_url: string;
+      button_color: string;
+      is_linked: boolean;
+      linked_identity_id?: number;
+      linked_email?: string;
+    }[];
+  }> => apiRequest('/oauth/oidc/providers', { requireAuth: true }),
 
   getOIDCAuthorizeURL: (provider: string): Promise<{ data: { url: string; state: string } }> =>
     apiRequest(`/oauth/oidc/authorize/${provider}`),

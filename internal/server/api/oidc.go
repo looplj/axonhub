@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
-	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
@@ -43,8 +43,19 @@ func (h *OIDCHandlers) RegisterRoutes(r gin.IRouter) {
 }
 
 func (h *OIDCHandlers) GetProviders(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Try to extract user from Authorization header if present for is_linked check
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if u, err := h.auth.AuthenticateJWTToken(ctx, token); err == nil {
+			ctx = contexts.WithUser(ctx, u)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"data": h.oidc.GetProviders(c.Request.Context()),
+		"data": h.oidc.GetProviders(ctx),
 	})
 }
 
@@ -80,12 +91,12 @@ func (h *OIDCHandlers) GetLinkAuthorizeURL(c *gin.Context) {
 	}
 
 	// This assumes the route is protected by AuthMiddleware so contexts.GetUser should succeed.
-	user, _ := c.Get("user")
-	if user == nil {
+	user, ok := contexts.GetUser(c.Request.Context())
+	if !ok || user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-	userID := user.(*ent.User).ID
+	userID := user.ID
 
 	// Get the base URL (priority: config public URL > request host)
 	baseURL := h.getBaseURL(c)

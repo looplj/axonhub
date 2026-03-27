@@ -64,8 +64,8 @@ func (OIDCIdentity) Edges() []ent.Edge {
 // Indexes of the OIDCIdentity.
 func (OIDCIdentity) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("issuer", "subject").
-			StorageKey("oidc_identities_by_issuer_subject").
+		index.Fields("issuer", "subject", "deleted_at").
+			StorageKey("oidc_identities_by_issuer_subject_deleted_at").
 			Unique(),
 		index.Fields("user_id").
 			StorageKey("oidc_identities_by_user_id"),
@@ -85,10 +85,12 @@ func (OIDCIdentity) Policy() ent.Policy {
 		Query: scopes.QueryPolicy{
 			scopes.OwnerRule(),
 			scopes.UserReadScopeRule(scopes.ScopeReadUsers),
+			scopes.UserOwnedQueryRule(),
 		},
 		Mutation: scopes.MutationPolicy{
 			scopes.OwnerRule(),
 			scopes.UserWriteScopeRule(scopes.ScopeWriteUsers),
+			scopes.UserOwnedMutationRule(),
 		},
 	}
 }

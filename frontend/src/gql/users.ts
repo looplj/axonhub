@@ -9,6 +9,14 @@ export const ME_QUERY = `
       scopes
       preferLanguage
       avatar
+      hasPassword
+      oidcIdentities {
+        id
+        idpName
+        issuer
+        subject
+        email
+      }
       roles {
         name
       }
