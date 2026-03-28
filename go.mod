@@ -9,7 +9,7 @@ require (
 	go.uber.org/fx v1.24.0
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 )
@@ -17,8 +17,8 @@ require (
 require (
 	cloud.google.com/go/storage v1.58.0
 	dario.cat/mergo v1.0.2
-	entgo.io/contrib v0.7.0
-	entgo.io/ent v0.14.5
+	entgo.io/contrib v0.7.1-0.20260306055004-3625dcc2e035
+	entgo.io/ent v0.14.6
 	github.com/99designs/gqlgen v0.17.86
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/alicebob/miniredis/v2 v2.35.0
