@@ -50,6 +50,8 @@
   "system.general.timezone.label": "时区",
   "system.general.timezone.placeholder": "选择时区",
   "system.general.timezone.description": "系统时区",
+  "system.general.userAgentPassThrough.label": "透传 User-Agent",
+  "system.general.userAgentPassThrough.description": "启用后，客户端请求中的原始 User-Agent 请求头将被透传给上游 AI 提供商，而不是使用默认的 AxonHub User-Agent。",
   "system.brand.title": "品牌设置",
   "system.brand.description": "配置系统的基本信息和品牌设置",
   "system.brand.brandName.label": "品牌名称",

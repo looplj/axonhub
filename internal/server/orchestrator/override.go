@@ -13,6 +13,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -290,6 +291,30 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 			applyOverrideOperationToHeaders(ctx, request.Headers, op, renderCtx)
 		}
 
+		return request, nil
+	})
+}
+
+// applyUserAgentPassThrough creates a middleware that applies the User-Agent pass-through setting.
+func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+	return pipeline.OnRawRequest("user-agent-pass-through", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		channel := outbound.GetCurrentChannel()
+		if channel == nil {
+			return request, nil
+		}
+
+		if channel.Settings != nil && channel.Settings.PassThroughUserAgent != nil {
+			request.PassThroughUserAgent = channel.Settings.PassThroughUserAgent
+			return request, nil
+		}
+
+		globalPassThrough, err := systemService.UserAgentPassThrough(ctx)
+		if err != nil {
+			log.Warn(ctx, "failed to get global user agent pass through setting", log.Cause(err))
+			return request, nil
+		}
+
+		request.PassThroughUserAgent = &globalPassThrough
 		return request, nil
 	})
 }

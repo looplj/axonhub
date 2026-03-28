@@ -127,8 +127,8 @@ type ChannelSettings struct {
 	Proxy *httpclient.ProxyConfig `json:"proxy,omitempty"`
 
 	// PassThroughUserAgent allows passing through the User-Agent header from the client request.
-	// If not set, defaults to the global setting.
-	PassThroughUserAgent bool `json:"pass_through_user_agent"`
+	// nil = inherit from global, true/false = explicit override
+	PassThroughUserAgent *bool `json:"pass_through_user_agent,omitempty"`
 
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`

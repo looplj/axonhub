@@ -68,7 +68,9 @@ const UPDATE_STORAGE_POLICY_MUTATION = `
 
 const USER_AGENT_PASS_THROUGH_QUERY = `
   query UserAgentPassThrough {
-    userAgentPassThrough
+    systemChannelSettings {
+      userAgentPassThrough
+    }
   }
 `;
 
@@ -382,8 +384,8 @@ export function useUserAgentPassThrough() {
     queryKey: ['userAgentPassThrough'],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ userAgentPassThrough: boolean }>(USER_AGENT_PASS_THROUGH_QUERY);
-        return data.userAgentPassThrough;
+        const data = await graphqlRequest<{ systemChannelSettings: { userAgentPassThrough: boolean } }>(USER_AGENT_PASS_THROUGH_QUERY);
+        return data.systemChannelSettings.userAgentPassThrough;
       } catch (error) {
         handleError(error, i18n.t('common.errors.internalServerError'));
         throw error;

@@ -6,20 +6,24 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useSystemContext } from '../context/system-context';
 import { currencyCodes } from '../data/currencies';
-import { useGeneralSettings, useUpdateGeneralSettings } from '../data/system';
+import { useGeneralSettings, useUpdateGeneralSettings, useUserAgentPassThrough, useUpdateUserAgentPassThrough } from '../data/system';
 import { GMTTimeZoneOptions } from '../data/timezones';
 
 export function GeneralSettings() {
   const { t } = useTranslation();
   const { data: settings, isLoading: isLoadingSettings } = useGeneralSettings();
+  const { data: userAgentPassThrough, isLoading: isLoadingUserAgentPassThrough } = useUserAgentPassThrough();
   const updateSettings = useUpdateGeneralSettings();
+  const updateUserAgentPassThrough = useUpdateUserAgentPassThrough();
   const { isLoading, setIsLoading } = useSystemContext();
 
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [timezone, setTimezone] = useState('UTC');
+  const [userAgentPassThroughEnabled, setUserAgentPassThroughEnabled] = useState(false);
 
   const currencyItems = React.useMemo(
     () =>
@@ -32,13 +36,18 @@ export function GeneralSettings() {
 
   const timezoneItems = React.useMemo(() => GMTTimeZoneOptions, []);
 
-  // Update local state when settings are loaded
   React.useEffect(() => {
     if (settings) {
       setCurrencyCode(settings.currencyCode || 'USD');
       setTimezone(settings.timezone || 'UTC');
     }
   }, [settings]);
+
+  React.useEffect(() => {
+    if (userAgentPassThrough !== undefined) {
+      setUserAgentPassThroughEnabled(userAgentPassThrough);
+    }
+  }, [userAgentPassThrough]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -50,6 +59,11 @@ export function GeneralSettings() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleUserAgentPassThroughChange = async (enabled: boolean) => {
+    setUserAgentPassThroughEnabled(enabled);
+    await updateUserAgentPassThrough.mutateAsync({ input: enabled });
   };
 
   const hasChanges = settings ? settings.currencyCode !== currencyCode || settings.timezone !== timezone : false;
@@ -97,6 +111,23 @@ export function GeneralSettings() {
               />
             </div>
             <div className='text-muted-foreground text-sm'>{t('system.general.timezone.description')}</div>
+          </div>
+
+          <div className='flex items-center justify-between rounded-lg border p-4'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='user-agent-pass-through' className='text-base'>
+                {t('system.general.userAgentPassThrough.label')}
+              </Label>
+              <div className='text-muted-foreground text-sm'>
+                {t('system.general.userAgentPassThrough.description')}
+              </div>
+            </div>
+            <Switch
+              id='user-agent-pass-through'
+              checked={userAgentPassThroughEnabled}
+              onCheckedChange={handleUserAgentPassThroughChange}
+              disabled={isLoadingUserAgentPassThrough || updateUserAgentPassThrough.isPending}
+            />
           </div>
         </CardContent>
       </Card>

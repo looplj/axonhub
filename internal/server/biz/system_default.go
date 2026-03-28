@@ -36,6 +36,7 @@ var defaultChannelSetting = SystemChannelSettings{
 		Enabled:   true,
 		Frequency: ProbeFrequency5Min,
 	},
+	PassThroughUserAgent: nil,
 }
 
 var defaultGeneralSettings = SystemGeneralSettings{

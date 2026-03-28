@@ -221,7 +221,8 @@ type SystemModelSettings struct {
 }
 
 type SystemChannelSettings struct {
-	Probe ChannelProbeSetting `json:"probe"`
+	Probe                ChannelProbeSetting `json:"probe"`
+	PassThroughUserAgent *bool               `json:"pass_through_user_agent,omitempty"`
 }
 
 // ProbeFrequency represents the frequency of channel probing.

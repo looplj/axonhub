@@ -50,6 +50,8 @@
   "system.general.timezone.label": "Timezone",
   "system.general.timezone.placeholder": "Select timezone",
   "system.general.timezone.description": "System timezone.",
+  "system.general.userAgentPassThrough.label": "Pass Through User-Agent",
+  "system.general.userAgentPassThrough.description": "When enabled, the original User-Agent header from client requests will be passed through to upstream AI providers instead of using the default AxonHub User-Agent.",
   "system.brand.title": "Brand Settings",
   "system.brand.description": "Configure basic system information and branding settings",
   "system.brand.brandName.label": "Brand Name",
