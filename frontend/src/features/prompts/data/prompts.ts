@@ -36,6 +36,7 @@ const PROMPTS_QUERY = `
                 type
                 modelId
                 modelPattern
+                apiKeyId
               }
             }
           }
@@ -75,6 +76,7 @@ const CREATE_PROMPT_MUTATION = `
             type
             modelId
             modelPattern
+            apiKeyId
           }
         }
       }
@@ -104,6 +106,7 @@ const UPDATE_PROMPT_MUTATION = `
             type
             modelId
             modelPattern
+            apiKeyId
           }
         }
       }
