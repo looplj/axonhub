@@ -97,6 +97,8 @@ func (t *OutboundTransformer) TransformRequest(
 		// continue
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}

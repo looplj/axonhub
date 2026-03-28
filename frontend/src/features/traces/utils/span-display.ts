@@ -36,6 +36,9 @@ const spanTypeTranslationKeyMap: Record<string, string> = {
   llm: 'llm',
   system_instruction: 'systemInstruction',
   systeminstruction: 'systemInstruction',
+  compaction: 'compaction',
+  compaction_summary: 'compactionSummary',
+  compactionsummary: 'compactionSummary',
 };
 
 function createFallbackLabel(type?: string | null): string {
@@ -92,5 +95,10 @@ export function getSpanDisplayLabels(span: Span, t: TFunction): { primary: strin
       return { primary: resultId, secondary: typeLabel };
     }
   }
+
+  if (span.value?.compaction?.summary) {
+    return { primary: typeLabel, secondary: span.value.compaction.summary };
+  }
+
   return { primary: typeLabel };
 }

@@ -140,6 +140,45 @@ func TestStop_MarshalUnmarshalJSON(t *testing.T) {
 	}
 }
 
+func TestMessageContent_UnmarshalJSON_ClearsConflictingRepresentation(t *testing.T) {
+	content := MessageContent{
+		Content: lo.ToPtr("stale"),
+		MultipleContent: []MessageContentPart{
+			{Type: "text", Text: lo.ToPtr("old")},
+		},
+	}
+
+	err := json.Unmarshal([]byte(`"fresh"`), &content)
+	require.NoError(t, err)
+	require.NotNil(t, content.Content)
+	require.Equal(t, "fresh", *content.Content)
+	require.Nil(t, content.MultipleContent)
+
+	err = json.Unmarshal([]byte(`[{"type":"text","text":"part"}]`), &content)
+	require.NoError(t, err)
+	require.Nil(t, content.Content)
+	require.Len(t, content.MultipleContent, 1)
+	require.Equal(t, "part", *content.MultipleContent[0].Text)
+}
+
+func TestStop_UnmarshalJSON_ClearsConflictingRepresentation(t *testing.T) {
+	stop := Stop{
+		Stop:         lo.ToPtr("stale"),
+		MultipleStop: []string{"old"},
+	}
+
+	err := json.Unmarshal([]byte(`"fresh"`), &stop)
+	require.NoError(t, err)
+	require.NotNil(t, stop.Stop)
+	require.Equal(t, "fresh", *stop.Stop)
+	require.Nil(t, stop.MultipleStop)
+
+	err = json.Unmarshal([]byte(`["a","b"]`), &stop)
+	require.NoError(t, err)
+	require.Nil(t, stop.Stop)
+	require.Equal(t, []string{"a", "b"}, stop.MultipleStop)
+}
+
 func TestToolChoice_MarshalUnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string

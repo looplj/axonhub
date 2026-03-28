@@ -104,6 +104,8 @@ type StreamOptions struct {
 
 // Stop represents stop sequences.
 type Stop struct {
+	// Stop and MultipleStop are mutually exclusive representations of the same field.
+	// If both are populated, Stop takes precedence during marshaling.
 	Stop         *string
 	MultipleStop []string
 }
@@ -126,6 +128,7 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 	err := json.Unmarshal(data, &str)
 	if err == nil {
 		s.Stop = &str
+		s.MultipleStop = nil
 		return nil
 	}
 
@@ -133,6 +136,7 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 
 	err = json.Unmarshal(data, &strs)
 	if err == nil {
+		s.Stop = nil
 		s.MultipleStop = strs
 		return nil
 	}
@@ -189,6 +193,8 @@ type URLCitation struct {
 
 // MessageContent represents message content (string or array of parts).
 type MessageContent struct {
+	// Content and MultipleContent are mutually exclusive representations of the same payload.
+	// If both are populated, MultipleContent takes precedence during marshaling.
 	Content         *string              `json:"content,omitempty"`
 	MultipleContent []MessageContentPart `json:"multiple_content,omitempty"`
 }
@@ -218,6 +224,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	err := json.Unmarshal(data, &str)
 	if err == nil {
 		c.Content = &str
+		c.MultipleContent = nil
 		return nil
 	}
 
@@ -225,6 +232,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 
 	err = json.Unmarshal(data, &parts)
 	if err == nil {
+		c.Content = nil
 		c.MultipleContent = parts
 		return nil
 	}

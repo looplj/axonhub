@@ -116,8 +116,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("chat request is nil")
 	}
 
+	scope := shared.TransportScope{
+		BaseURL:         t.config.BaseURL,
+		AccountIdentity: t.config.AccountIdentity,
+	}
+
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
+	case llm.RequestTypeCompact:
+		return t.transformCompactRequest(ctx, llmReq, scope)
 	case llm.RequestTypeChat, "":
 		// continue
 	default:
@@ -130,10 +137,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	apiKey := t.config.APIKeyProvider.Get(ctx)
-	scope := shared.TransportScope{
-		BaseURL:         t.config.BaseURL,
-		AccountIdentity: t.config.AccountIdentity,
-	}
 
 	var tools []Tool
 	// Convert tools to Responses API format
@@ -240,6 +243,22 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("http response is nil")
 	}
 
+	// Route compact responses to specialized handler
+	if httpResp.Request != nil && httpResp.Request.RequestType == string(llm.RequestTypeCompact) {
+		return t.transformCompactResponse(ctx, httpResp)
+	}
+
+	return t.transformStandardResponse(ctx, httpResp)
+}
+
+func (t *OutboundTransformer) transformStandardResponse(
+	ctx context.Context,
+	httpResp *httpclient.Response,
+) (*llm.Response, error) {
+	if httpResp == nil {
+		return nil, fmt.Errorf("http response is nil")
+	}
+
 	scope, _ := shared.GetTransportScope(ctx)
 
 	if httpResp.StatusCode >= 400 {
@@ -273,144 +292,19 @@ func (t *OutboundTransformer) TransformResponse(
 		llmResp.Usage = resp.Usage.ToUsage()
 	}
 
-	// Process output items - aggregate all into a single choice (Chat Completions format)
-	var (
-		contentParts       []llm.MessageContentPart
-		textContent        strings.Builder
-		reasoningContent   strings.Builder
-		reasoningSignature *string
-		toolCalls          []llm.ToolCall
-	)
-
-	for _, outputItem := range resp.Output {
-		switch outputItem.Type {
-		case "message":
-			// Extract text content from message content array
-			for _, contentItem := range outputItem.GetContentItems() {
-				if contentItem.Type == "output_text" {
-					textContent.WriteString(contentItem.Text)
-				}
-			}
-		case "output_text":
-			// Direct text output
-			if outputItem.Text != nil {
-				textContent.WriteString(*outputItem.Text)
-			}
-		case "function_call":
-			// Function call output - aggregate all tool calls
-			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: "function",
-				Function: llm.FunctionCall{
-					Name:      outputItem.Name,
-					Arguments: outputItem.Arguments,
-				},
-			})
-		case "custom_tool_call":
-			// Custom tool call output
-			inputStr := ""
-			if outputItem.Input != nil {
-				inputStr = *outputItem.Input
-			}
-			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
-				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: outputItem.CallID,
-					Name:   outputItem.Name,
-					Input:  inputStr,
-				},
-			})
-		case "reasoning":
-			// Handle reasoning output - convert to ReasoningContent
-			for _, summary := range outputItem.Summary {
-				reasoningContent.WriteString(summary.Text)
-			}
-			// Preserve encrypted reasoning content in ReasoningSignature.
-			if outputItem.EncryptedContent != nil && *outputItem.EncryptedContent != "" {
-				reasoningSignature = shared.EncodeOpenAIEncryptedContentInScope(outputItem.EncryptedContent, scope)
-			}
-		case "image_generation_call":
-			imageOutputFormat := "png"
-
-			if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-				if fmt, ok := httpResp.Request.TransformerMetadata["image_output_format"].(string); ok && fmt != "" {
-					imageOutputFormat = fmt
-				}
-			}
-			// Image generation result
-			if outputItem.Result != nil && *outputItem.Result != "" {
-				contentParts = append(contentParts, llm.MessageContentPart{
-					Type: "image_url",
-					ImageURL: &llm.ImageURL{
-						URL: `data:image/` + imageOutputFormat + `;base64,` + *outputItem.Result,
-					},
-					TransformerMetadata: map[string]any{
-						"background":    outputItem.Background,
-						"output_format": outputItem.OutputFormat,
-						"quality":       outputItem.Quality,
-						"size":          outputItem.Size,
-					},
-				})
-			}
-		case "input_image":
-			// Input image (for reference)
-			if outputItem.ImageURL != nil && *outputItem.ImageURL != "" {
-				contentParts = append(contentParts, llm.MessageContentPart{
-					Type: "image_url",
-					ImageURL: &llm.ImageURL{
-						URL: *outputItem.ImageURL,
-					},
-				})
-			}
-		}
+	var transformerMetadata map[string]any
+	if httpResp.Request != nil {
+		transformerMetadata = httpResp.Request.TransformerMetadata
 	}
 
-	// Build the single choice
+	msg := convertOutputToMessage(resp.Output, scope, transformerMetadata)
+
 	choice := llm.Choice{
-		Index: 0,
-		Message: &llm.Message{
-			Role:      "assistant",
-			ToolCalls: toolCalls,
-		},
+		Index:   0,
+		Message: &msg,
 	}
 
-	// Set reasoning content if present
-	if reasoningContent.Len() > 0 {
-		choice.Message.ReasoningContent = lo.ToPtr(reasoningContent.String())
-	}
-
-	if reasoningSignature != nil {
-		choice.Message.ReasoningSignature = reasoningSignature
-	}
-
-	// Set message content
-	if textContent.Len() > 0 {
-		if len(contentParts) > 0 {
-			// Mixed content: text + images
-			textPart := llm.MessageContentPart{
-				Type: "text",
-				Text: lo.ToPtr(textContent.String()),
-			}
-			contentParts = append([]llm.MessageContentPart{textPart}, contentParts...)
-			choice.Message.Content = llm.MessageContent{
-				MultipleContent: contentParts,
-			}
-		} else {
-			// Text only
-			choice.Message.Content = llm.MessageContent{
-				Content: lo.ToPtr(textContent.String()),
-			}
-		}
-	} else if len(contentParts) > 0 {
-		// Images only
-		choice.Message.Content = llm.MessageContent{
-			MultipleContent: contentParts,
-		}
-	}
-
-	// Set finish reason based on status and content
-	if len(toolCalls) > 0 {
+	if len(msg.ToolCalls) > 0 {
 		choice.FinishReason = lo.ToPtr("tool_calls")
 	} else if resp.Status != nil {
 		switch *resp.Status {
