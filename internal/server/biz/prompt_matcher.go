@@ -19,25 +19,25 @@ func NewPromptMatcher() *PromptMatcher {
 	return &PromptMatcher{}
 }
 
-// MatchPrompt checks if a prompt's conditions are satisfied for the given model.
+// MatchPrompt checks if a prompt's conditions are satisfied for the given model and API key ID.
 // Returns true if no conditions are defined (always match) or all conditions are met.
-func (m *PromptMatcher) MatchPrompt(prompt *ent.Prompt, model string) bool {
+func (m *PromptMatcher) MatchPrompt(prompt *ent.Prompt, model string, apiKeyID int) bool {
 	if prompt == nil {
 		return false
 	}
 
-	return m.MatchConditions(prompt.Settings.Conditions, model)
+	return m.MatchConditions(prompt.Settings.Conditions, model, apiKeyID)
 }
 
 // MatchConditions checks if all composite conditions are satisfied.
 // Returns true if no conditions are defined (always match) or all conditions are met.
-func (m *PromptMatcher) MatchConditions(conditions []objects.PromptActivationConditionComposite, model string) bool {
+func (m *PromptMatcher) MatchConditions(conditions []objects.PromptActivationConditionComposite, model string, apiKeyID int) bool {
 	if len(conditions) == 0 {
 		return true
 	}
 
 	for _, composite := range conditions {
-		if !m.matchCompositeCondition(composite, model) {
+		if !m.matchCompositeCondition(composite, model, apiKeyID) {
 			return false
 		}
 	}
@@ -47,13 +47,13 @@ func (m *PromptMatcher) MatchConditions(conditions []objects.PromptActivationCon
 
 // matchCompositeCondition checks if at least one condition in the composite is satisfied.
 // Returns true if conditions list is empty or at least one condition matches.
-func (m *PromptMatcher) matchCompositeCondition(composite objects.PromptActivationConditionComposite, model string) bool {
+func (m *PromptMatcher) matchCompositeCondition(composite objects.PromptActivationConditionComposite, model string, apiKeyID int) bool {
 	if len(composite.Conditions) == 0 {
 		return true
 	}
 
 	for _, condition := range composite.Conditions {
-		if m.matchCondition(condition, model) {
+		if m.matchCondition(condition, model, apiKeyID) {
 			return true
 		}
 	}
@@ -62,12 +62,14 @@ func (m *PromptMatcher) matchCompositeCondition(composite objects.PromptActivati
 }
 
 // matchCondition checks if a single condition is satisfied.
-func (m *PromptMatcher) matchCondition(condition objects.PromptActivationCondition, model string) bool {
+func (m *PromptMatcher) matchCondition(condition objects.PromptActivationCondition, model string, apiKeyID int) bool {
 	switch condition.Type {
 	case objects.PromptActivationConditionTypeModelID:
 		return m.matchModelID(condition, model)
 	case objects.PromptActivationConditionTypeModelPattern:
 		return m.matchModelPattern(condition, model)
+	case objects.PromptActivationConditionTypeAPIKey:
+		return m.matchAPIKeyID(condition, apiKeyID)
 	default:
 		return false
 	}
@@ -91,10 +93,19 @@ func (m *PromptMatcher) matchModelPattern(condition objects.PromptActivationCond
 	return xregexp.MatchString(*condition.ModelPattern, model)
 }
 
-// FilterMatchingPrompts filters prompts that match the given model.
-func (m *PromptMatcher) FilterMatchingPrompts(prompts []*ent.Prompt, model string) []*ent.Prompt {
+// matchAPIKeyID checks if the API key ID matches.
+func (m *PromptMatcher) matchAPIKeyID(condition objects.PromptActivationCondition, apiKeyID int) bool {
+	if condition.APIKeyID == nil {
+		return false
+	}
+
+	return *condition.APIKeyID == apiKeyID
+}
+
+// FilterMatchingPrompts filters prompts that match the given model and API key ID.
+func (m *PromptMatcher) FilterMatchingPrompts(prompts []*ent.Prompt, model string, apiKeyID int) []*ent.Prompt {
 	return lo.Filter(prompts, func(p *ent.Prompt, _ int) bool {
-		return m.MatchPrompt(p, model)
+		return m.MatchPrompt(p, model, apiKeyID)
 	})
 }
 

@@ -934,6 +934,7 @@ type ComplexityRoot struct {
 	}
 
 	PromptActivationCondition struct {
+		APIKeyID     func(childComplexity int) int
 		ModelID      func(childComplexity int) int
 		ModelPattern func(childComplexity int) int
 		Type         func(childComplexity int) int
@@ -5771,6 +5772,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PromptAction.Type(childComplexity), true
 
+	case "PromptActivationCondition.apiKeyId":
+		if e.complexity.PromptActivationCondition.APIKeyID == nil {
+			break
+		}
+
+		return e.complexity.PromptActivationCondition.APIKeyID(childComplexity), true
 	case "PromptActivationCondition.modelId":
 		if e.complexity.PromptActivationCondition.ModelID == nil {
 			break
@@ -31212,6 +31219,35 @@ func (ec *executionContext) fieldContext_PromptActivationCondition_modelPattern(
 	return fc, nil
 }
 
+func (ec *executionContext) _PromptActivationCondition_apiKeyId(ctx context.Context, field graphql.CollectedField, obj *objects.PromptActivationCondition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PromptActivationCondition_apiKeyId,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyID, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PromptActivationCondition_apiKeyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PromptActivationCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PromptActivationConditionComposite_conditions(ctx context.Context, field graphql.CollectedField, obj *objects.PromptActivationConditionComposite) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -31242,6 +31278,8 @@ func (ec *executionContext) fieldContext_PromptActivationConditionComposite_cond
 				return ec.fieldContext_PromptActivationCondition_modelId(ctx, field)
 			case "modelPattern":
 				return ec.fieldContext_PromptActivationCondition_modelPattern(ctx, field)
+			case "apiKeyId":
+				return ec.fieldContext_PromptActivationCondition_apiKeyId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PromptActivationCondition", field.Name)
 		},
@@ -59222,7 +59260,7 @@ func (ec *executionContext) unmarshalInputPromptActivationConditionInput(ctx con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "modelId", "modelPattern"}
+	fieldsInOrder := [...]string{"type", "modelId", "modelPattern", "apiKeyId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59250,6 +59288,13 @@ func (ec *executionContext) unmarshalInputPromptActivationConditionInput(ctx con
 				return it, err
 			}
 			it.ModelPattern = data
+		case "apiKeyId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyId"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyID = data
 		}
 	}
 
@@ -79552,6 +79597,8 @@ func (ec *executionContext) _PromptActivationCondition(ctx context.Context, sel 
 			out.Values[i] = ec._PromptActivationCondition_modelId(ctx, field, obj)
 		case "modelPattern":
 			out.Values[i] = ec._PromptActivationCondition_modelPattern(ctx, field, obj)
+		case "apiKeyId":
+			out.Values[i] = ec._PromptActivationCondition_apiKeyId(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

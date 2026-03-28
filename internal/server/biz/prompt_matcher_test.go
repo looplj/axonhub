@@ -19,18 +19,21 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 		name       string
 		conditions []objects.PromptActivationConditionComposite
 		model      string
+		apiKeyID   int
 		expected   bool
 	}{
 		{
 			name:       "empty conditions should always match",
 			conditions: nil,
 			model:      "gpt-4",
+			apiKeyID:   0,
 			expected:   true,
 		},
 		{
 			name:       "empty composite list should match",
 			conditions: []objects.PromptActivationConditionComposite{},
 			model:      "gpt-4",
+			apiKeyID:   0,
 			expected:   true,
 		},
 		{
@@ -43,6 +46,7 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: true,
 		},
 		{
@@ -55,6 +59,7 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-3.5-turbo",
+			apiKeyID: 0,
 			expected: false,
 		},
 		{
@@ -67,6 +72,7 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-4-turbo",
+			apiKeyID: 0,
 			expected: true,
 		},
 		{
@@ -79,6 +85,33 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "claude-3-opus",
+			apiKeyID: 0,
+			expected: false,
+		},
+		{
+			name: "api_key_id match",
+			conditions: []objects.PromptActivationConditionComposite{
+				{
+					Conditions: []objects.PromptActivationCondition{
+						{Type: objects.PromptActivationConditionTypeAPIKey, APIKeyID: new(1)},
+					},
+				},
+			},
+			model:    "gpt-4",
+			apiKeyID: 1,
+			expected: true,
+		},
+		{
+			name: "api_key_id mismatch",
+			conditions: []objects.PromptActivationConditionComposite{
+				{
+					Conditions: []objects.PromptActivationCondition{
+						{Type: objects.PromptActivationConditionTypeAPIKey, APIKeyID: new(1)},
+					},
+				},
+			},
+			model:    "gpt-4",
+			apiKeyID: 2,
 			expected: false,
 		},
 		{
@@ -92,6 +125,7 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-3.5-turbo",
+			apiKeyID: 0,
 			expected: true,
 		},
 		{
@@ -105,6 +139,7 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "claude-3-opus",
+			apiKeyID: 0,
 			expected: false,
 		},
 		{
@@ -122,6 +157,7 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: true,
 		},
 		{
@@ -139,6 +175,7 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: false,
 		},
 		{
@@ -151,6 +188,7 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: false,
 		},
 		{
@@ -163,6 +201,20 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
+			expected: false,
+		},
+		{
+			name: "nil api_key_id should not match",
+			conditions: []objects.PromptActivationConditionComposite{
+				{
+					Conditions: []objects.PromptActivationCondition{
+						{Type: objects.PromptActivationConditionTypeAPIKey, APIKeyID: nil},
+					},
+				},
+			},
+			model:    "gpt-4",
+			apiKeyID: 1,
 			expected: false,
 		},
 		{
@@ -175,13 +227,14 @@ func TestPromptMatcher_MatchConditions(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := matcher.MatchConditions(tt.conditions, tt.model)
+			result := matcher.MatchConditions(tt.conditions, tt.model, tt.apiKeyID)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -194,12 +247,14 @@ func TestPromptMatcher_MatchPrompt(t *testing.T) {
 		name     string
 		prompt   *ent.Prompt
 		model    string
+		apiKeyID int
 		expected bool
 	}{
 		{
 			name:     "nil prompt should not match",
 			prompt:   nil,
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: false,
 		},
 		{
@@ -214,6 +269,7 @@ func TestPromptMatcher_MatchPrompt(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: true,
 		},
 		{
@@ -234,6 +290,7 @@ func TestPromptMatcher_MatchPrompt(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: true,
 		},
 		{
@@ -254,13 +311,14 @@ func TestPromptMatcher_MatchPrompt(t *testing.T) {
 				},
 			},
 			model:    "gpt-4",
+			apiKeyID: 0,
 			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := matcher.MatchPrompt(tt.prompt, tt.model)
+			result := matcher.MatchPrompt(tt.prompt, tt.model, tt.apiKeyID)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -312,21 +370,21 @@ func TestPromptMatcher_FilterMatchingPrompts(t *testing.T) {
 	}
 
 	t.Run("filter for gpt-4", func(t *testing.T) {
-		result := matcher.FilterMatchingPrompts(prompts, "gpt-4")
+		result := matcher.FilterMatchingPrompts(prompts, "gpt-4", 0)
 		require.Len(t, result, 2)
 		assert.Equal(t, 1, result[0].ID)
 		assert.Equal(t, 2, result[1].ID)
 	})
 
 	t.Run("filter for claude-3-opus", func(t *testing.T) {
-		result := matcher.FilterMatchingPrompts(prompts, "claude-3-opus")
+		result := matcher.FilterMatchingPrompts(prompts, "claude-3-opus", 0)
 		require.Len(t, result, 2)
 		assert.Equal(t, 1, result[0].ID)
 		assert.Equal(t, 3, result[1].ID)
 	})
 
 	t.Run("filter for unknown model", func(t *testing.T) {
-		result := matcher.FilterMatchingPrompts(prompts, "unknown-model")
+		result := matcher.FilterMatchingPrompts(prompts, "unknown-model", 0)
 		require.Len(t, result, 1)
 		assert.Equal(t, 1, result[0].ID)
 	})

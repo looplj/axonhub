@@ -6,6 +6,7 @@ enum PromptActionType {
 enum PromptActivationConditionType {
   model_id
   model_pattern
+  api_key
 }
 
 type PromptAction {
@@ -16,6 +17,7 @@ type PromptActivationCondition {
   type: PromptActivationConditionType!
   modelId: String
   modelPattern: String
+  apiKeyId: Int
 }
 
 type PromptActivationConditionComposite {
@@ -35,6 +37,7 @@ input PromptActivationConditionInput {
   type: PromptActivationConditionType!
   modelId: String
   modelPattern: String
+  apiKeyId: Int
 }
 
 input PromptActivationConditionCompositeInput {

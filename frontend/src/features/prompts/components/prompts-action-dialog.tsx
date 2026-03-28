@@ -12,13 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { AutoComplete } from '@/components/auto-complete';
 import { useQueryModels } from '@/gql/models';
+import { useApiKeys } from '@/features/apikeys/data/apikeys';
 import { usePrompts } from '../context/prompts-context';
 import { useCreatePrompt, useUpdatePrompt } from '../data/prompts';
 import { CreatePromptInput, UpdatePromptInput } from '../data/schema';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { extractNumberIDAsNumber, buildGUID } from '@/lib/utils';
 
 const conditionSchema = z.object({
-  type: z.enum(['model_id', 'model_pattern']),
+  type: z.enum(['model_id', 'model_pattern', 'api_key']),
   value: z.string().min(1, 'Condition value is required'),
 });
 
@@ -83,10 +85,11 @@ interface ConditionGroupProps {
   onRemoveGroup: () => void;
   t: any;
   modelOptions: Array<{ value: string; label: string }>;
+  apiKeyOptions: Array<{ value: string; label: string }>;
   dialogContentRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, dialogContentRef }: ConditionGroupProps) {
+function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, apiKeyOptions, dialogContentRef }: ConditionGroupProps) {
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: `conditionGroups.${groupIndex}.conditions`,
@@ -150,7 +153,10 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, dial
                  name={`conditionGroups.${groupIndex}.conditions.${conditionIndex}.type`}
                  render={({ field }) => (
                    <FormItem className='space-y-0'>
-                     <Select onValueChange={field.onChange} value={field.value}>
+                     <Select onValueChange={(value) => {
+                       field.onChange(value);
+                       form.setValue(`conditionGroups.${groupIndex}.conditions.${conditionIndex}.value`, '');
+                     }} value={field.value}>
                        <FormControl>
                          <SelectTrigger className='h-10 w-full text-xs'>
                            <SelectValue />
@@ -159,6 +165,7 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, dial
                        <SelectContent>
                          <SelectItem value='model_id'>{t('prompts.conditionTypes.model_id')}</SelectItem>
                          <SelectItem value='model_pattern'>{t('prompts.conditionTypes.model_pattern')}</SelectItem>
+                         <SelectItem value='api_key'>{t('prompts.conditionTypes.api_key')}</SelectItem>
                        </SelectContent>
                      </Select>
                    </FormItem>
@@ -176,6 +183,19 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, dial
                            modelOptions={modelOptions}
                            portalContainer={dialogContentRef.current}
                          />
+                       ) : conditions?.[conditionIndex]?.type === 'api_key' ? (
+                         <Select onValueChange={field.onChange} value={field.value}>
+                           <SelectTrigger className='h-10 w-full text-xs'>
+                             <SelectValue placeholder={t('prompts.fields.apiKeyPlaceholder')} />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {apiKeyOptions.map((option) => (
+                               <SelectItem key={option.value} value={option.value}>
+                                 {option.label}
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
                        ) : (
                          <Input
                            {...field}
@@ -211,6 +231,7 @@ export function PromptsActionDialog() {
   const updatePrompt = useUpdatePrompt();
   const selectedProjectId = useSelectedProjectId();
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
+  const { data: apiKeysData } = useApiKeys({ first: 100 });
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
   const isEdit = open === 'edit';
@@ -223,6 +244,14 @@ export function PromptsActionDialog() {
       label: model.id,
     }));
   }, [availableModels]);
+
+  const apiKeyOptions = useMemo(() => {
+    if (!apiKeysData?.edges) return [];
+    return apiKeysData.edges.map((edge) => ({
+      value: String(edge.node.id),
+      label: edge.node.name || `API Key #${edge.node.id}`,
+    }));
+  }, [apiKeysData]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(isEdit ? updatePromptSchema : createPromptSchema) as any,
@@ -255,10 +284,21 @@ export function PromptsActionDialog() {
   useEffect(() => {
     if (isEdit && currentRow) {
       const conditionGroups = currentRow.settings?.conditions?.map((composite: any) => ({
-        conditions: composite.conditions?.map((condition: any) => ({
-          type: condition.type,
-          value: condition.modelId || condition.modelPattern || '',
-        })) || []
+        conditions: composite.conditions?.map((condition: any) => {
+          let value = '';
+          if (condition.type === 'model_id' && condition.modelId) {
+            value = condition.modelId;
+          } else if (condition.type === 'model_pattern' && condition.modelPattern) {
+            value = condition.modelPattern;
+          } else if (condition.type === 'api_key' && condition.apiKeyId != null) {
+            // apiKeyId 是数字，需要转换为完整的 GUID 格式以匹配下拉选项
+            value = buildGUID('APIKey', String(condition.apiKeyId));
+          }
+          return {
+            type: condition.type,
+            value,
+          };
+        }) || []
       })) || [];
       form.reset({
         name: currentRow.name,
@@ -287,10 +327,16 @@ export function PromptsActionDialog() {
       if (!selectedProjectId) return;
 
       const conditions = data.conditionGroups?.map(group => ({
-        conditions: group.conditions.map((condition) => ({
-          type: condition.type,
-          ...(condition.type === 'model_id' ? { modelId: condition.value } : { modelPattern: condition.value }),
-        }))
+        conditions: group.conditions.map((condition) => {
+          if (condition.type === 'model_id') {
+            return { type: condition.type, modelId: condition.value };
+          } else if (condition.type === 'model_pattern') {
+            return { type: condition.type, modelPattern: condition.value };
+          } else {
+            const apiKeyId = extractNumberIDAsNumber(condition.value);
+            return { type: condition.type, apiKeyId };
+          }
+        })
       })) || [];
 
       if (isEdit && currentRow) {
@@ -505,6 +551,7 @@ export function PromptsActionDialog() {
                               onRemoveGroup={() => removeGroup(groupIndex)}
                               t={t}
                               modelOptions={modelOptions}
+                              apiKeyOptions={apiKeyOptions}
                               dialogContentRef={dialogContentRef}
                             />
                           </div>
