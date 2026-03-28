@@ -483,7 +483,7 @@ func TestAuthService_AuthenticateNoAuth_DisabledByConfig(t *testing.T) {
 
 	_, err := authService.AuthenticateNoAuth(ctx)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "noauth api key is only available when api auth is disabled")
+	require.Contains(t, err.Error(), "API key required")
 }
 
 func TestAuthService_WithDifferentCacheConfigs(t *testing.T) {

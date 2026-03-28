@@ -216,7 +216,7 @@ func (s *AuthService) AuthenticateAPIKey(ctx context.Context, key string) (*ent.
 
 func (s *AuthService) AuthenticateNoAuth(ctx context.Context) (*ent.APIKey, error) {
 	if !s.AllowNoAuth {
-		return nil, fmt.Errorf("noauth api key is only available when api auth is disabled: %w", ErrInvalidAPIKey)
+		return nil, fmt.Errorf("%w: API key required", ErrInvalidAPIKey)
 	}
 
 	apiKey, err := authz.RunWithSystemBypass(ctx, "auth-noauth", func(bypassCtx context.Context) (*ent.APIKey, error) {
