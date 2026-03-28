@@ -90,7 +90,6 @@ type ResolverRoot interface {
 	User() UserResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
-	UpdateSystemChannelSettingsInput() UpdateSystemChannelSettingsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -1999,10 +1998,6 @@ type UserRoleResolver interface {
 	ID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
-}
-
-type UpdateSystemChannelSettingsInputResolver interface {
-	UserAgentPassThrough(ctx context.Context, obj *biz.SystemChannelSettings, data *bool) error
 }
 
 type executableSchema struct {
@@ -68123,7 +68118,7 @@ func (ec *executionContext) unmarshalInputUpdateSystemChannelSettingsInput(ctx c
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"probe", "userAgentPassThrough"}
+	fieldsInOrder := [...]string{"probe"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68137,15 +68132,6 @@ func (ec *executionContext) unmarshalInputUpdateSystemChannelSettingsInput(ctx c
 				return it, err
 			}
 			it.Probe = data
-		case "userAgentPassThrough":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userAgentPassThrough"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			if err = ec.resolvers.UpdateSystemChannelSettingsInput().UserAgentPassThrough(ctx, &it, data); err != nil {
-				return it, err
-			}
 		}
 	}
 
