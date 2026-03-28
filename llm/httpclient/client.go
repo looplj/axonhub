@@ -349,10 +349,8 @@ func BuildHttpRequest(
 		}
 		// else: User-Agent already in headers from request.Headers copy
 	} else {
-		// Pass-through disabled - set default
-		if httpReq.Header.Get("User-Agent") == "" {
-			httpReq.Header.Set("User-Agent", "axonhub/1.0")
-		}
+		// Pass-through disabled - ALWAYS set default to override any client User-Agent
+		httpReq.Header.Set("User-Agent", "axonhub/1.0")
 	}
 
 	for k := range libManagedHeaders {
