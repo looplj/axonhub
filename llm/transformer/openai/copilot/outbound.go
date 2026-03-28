@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/resolver"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -122,24 +122,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, errors.New("messages are required")
 	}
 
-	endpointType, err := resolver.ResolveEndpoint(llmReq.Model)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve endpoint: %w", err)
-	}
-
-	switch endpointType {
-	case resolver.EndpointResponses:
+	// Check if this model requires the Responses API.
+	if usesResponsesAPI(llmReq.Model) {
 		return t.transformResponsesRequest(ctx, llmReq)
-	case resolver.EndpointMessages:
-		return nil, fmt.Errorf(
-			"endpoint mismatch: resolver returned %q for model %q, but Copilot only supports %q and %q",
-			endpointType,
-			llmReq.Model,
-			resolver.EndpointResponses,
-			resolver.EndpointChatCompletions,
-		)
-	case resolver.EndpointChatCompletions:
-		// Continue with Chat Completions handling below
 	}
 
 	// Get Copilot token from token provider.
@@ -592,6 +577,51 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 	}
 
 	return responsesReq, nil
+}
+
+// usesResponsesAPI checks if the model uses the responses API.
+func usesResponsesAPI(model string) bool {
+	normalizedModel := strings.ToLower(model)
+
+	if strings.Contains(normalizedModel, "codex") {
+		return true
+	}
+
+	if !strings.HasPrefix(normalizedModel, "gpt-") {
+		return false
+	}
+
+	version, _, _ := strings.Cut(strings.TrimPrefix(normalizedModel, "gpt-"), "-")
+	major, minor, ok := parseModelVersion(version)
+	if !ok {
+		return false
+	}
+
+	return major > 5 || (major == 5 && minor >= 4)
+}
+
+// parseModelVersion parses a model version string into major and minor components.
+func parseModelVersion(version string) (major int, minor int, ok bool) {
+	parts := strings.Split(version, ".")
+	if len(parts) == 0 || parts[0] == "" {
+		return 0, 0, false
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, false
+	}
+
+	if len(parts) == 1 || parts[1] == "" {
+		return major, 0, true
+	}
+
+	minor, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, false
+	}
+
+	return major, minor, true
 }
 
 // prependedStream is a stream that yields a first event before forwarding to the upstream stream.

@@ -303,18 +303,30 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 			return request, nil
 		}
 
+		var passThroughEnabled bool
 		if channel.Settings != nil && channel.Settings.PassThroughUserAgent != nil {
-			request.PassThroughUserAgent = channel.Settings.PassThroughUserAgent
-			return request, nil
+			passThroughEnabled = *channel.Settings.PassThroughUserAgent
+		} else {
+			globalPassThrough, err := systemService.UserAgentPassThrough(ctx)
+			if err != nil {
+				log.Warn(ctx, "failed to get global user agent pass through setting", log.Cause(err))
+				passThroughEnabled = false
+			} else {
+				passThroughEnabled = globalPassThrough
+			}
 		}
 
-		globalPassThrough, err := systemService.UserAgentPassThrough(ctx)
-		if err != nil {
-			log.Warn(ctx, "failed to get global user agent pass through setting", log.Cause(err))
-			return request, nil
+		request.PassThroughUserAgent = &passThroughEnabled
+
+		if passThroughEnabled && outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
+			if clientUA := outbound.state.LlmRequest.RawRequest.Headers.Get("User-Agent"); clientUA != "" {
+				if request.Headers == nil {
+					request.Headers = make(http.Header)
+				}
+				request.Headers.Set("User-Agent", clientUA)
+			}
 		}
 
-		request.PassThroughUserAgent = &globalPassThrough
 		return request, nil
 	})
 }

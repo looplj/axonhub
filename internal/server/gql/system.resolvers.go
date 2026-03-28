@@ -354,21 +354,9 @@ func (r *systemChannelSettingsResolver) UserAgentPassThrough(ctx context.Context
 	return obj.PassThroughUserAgent, nil
 }
 
-// UserAgentPassThrough is the resolver for the userAgentPassThrough field.
-func (r *updateSystemChannelSettingsInputResolver) UserAgentPassThrough(ctx context.Context, obj *biz.SystemChannelSettings, data *bool) error {
-	obj.PassThroughUserAgent = data
-	return nil
-}
-
 // SystemChannelSettings returns SystemChannelSettingsResolver implementation.
 func (r *Resolver) SystemChannelSettings() SystemChannelSettingsResolver {
 	return &systemChannelSettingsResolver{r}
 }
 
-// UpdateSystemChannelSettingsInput returns UpdateSystemChannelSettingsInputResolver implementation.
-func (r *Resolver) UpdateSystemChannelSettingsInput() UpdateSystemChannelSettingsInputResolver {
-	return &updateSystemChannelSettingsInputResolver{r}
-}
-
 type systemChannelSettingsResolver struct{ *Resolver }
-type updateSystemChannelSettingsInputResolver struct{ *Resolver }

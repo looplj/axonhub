@@ -68118,7 +68118,7 @@ func (ec *executionContext) unmarshalInputUpdateSystemChannelSettingsInput(ctx c
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"probe"}
+	fieldsInOrder := [...]string{"probe", "userAgentPassThrough"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68132,6 +68132,13 @@ func (ec *executionContext) unmarshalInputUpdateSystemChannelSettingsInput(ctx c
 				return it, err
 			}
 			it.Probe = data
+		case "userAgentPassThrough":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userAgentPassThrough"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PassThroughUserAgent = data
 		}
 	}
 

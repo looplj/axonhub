@@ -169,6 +169,7 @@ input UpdateChannelProbeSettingInput {
 
 input UpdateSystemChannelSettingsInput {
   probe: UpdateChannelProbeSettingInput
+  userAgentPassThrough: Boolean
 }
 
 type SystemGeneralSettings {
