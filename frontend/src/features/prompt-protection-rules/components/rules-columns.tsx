@@ -95,7 +95,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       </Tooltip>
     ),
     meta: {
-      className: 'min-w-64',
+      className: 'min-w-48 max-w-80',
     },
     enableSorting: false,
   },
@@ -146,7 +146,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     header: t('common.columns.actions'),
     cell: DataTableRowActions,
     meta: {
-      className: 'w-[56px] min-w-[56px] pr-3 pl-0',
+      className: 'w-[56px] min-w-[56px] pr-3 pl-0 sticky right-0 bg-inherit',
     },
     enableSorting: false,
     enableHiding: false,
