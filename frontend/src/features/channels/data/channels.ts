@@ -98,152 +98,9 @@ const CREATE_CHANNEL_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          passThroughUserAgent
         }
-      orderingWeight
-      remark
-    }
-  }
-`;
-
-const BULK_CREATE_CHANNELS_MUTATION = `
-  mutation BulkCreateChannels($input: BulkCreateChannelsInput!) {
-    bulkCreateChannels(input: $input) {
-      id
-      type
-      createdAt
-      updatedAt
-      baseURL
-      name
-      status
-      policies {
-        stream
       }
-      supportedModels
-      autoSyncSupportedModels
-      autoSyncModelPattern
-      manualModels
-      tags
-      defaultTestModel
-        settings {
-          extraModelPrefix
-          modelMappings {
-            from
-            to
-          }
-          autoTrimedModelPrefixes
-          hideOriginalModels
-          hideMappedModels
-          proxy {
-            type
-            url
-            username
-            password
-          }
-          transformOptions {
-            forceArrayInstructions
-            forceArrayInputs
-            replaceDeveloperRoleWithSystem
-          }
-        }
-      orderingWeight
-      remark
-    }
-  }
-`;
-
-const UPDATE_CHANNEL_MUTATION = `
-  mutation UpdateChannel($id: ID!, $input: UpdateChannelInput!) {
-    updateChannel(id: $id, input: $input) {
-      id
-      type
-      createdAt
-      updatedAt
-      baseURL
-      name
-      status
-      policies {
-        stream
-      }
-      supportedModels
-      autoSyncSupportedModels
-      autoSyncModelPattern
-      manualModels
-      tags
-      defaultTestModel
-        settings {
-          extraModelPrefix
-          modelMappings {
-            from
-            to
-          }
-          autoTrimedModelPrefixes
-          hideOriginalModels
-          hideMappedModels
-          proxy {
-            type
-            url
-            username
-            password
-          }
-          transformOptions {
-            forceArrayInstructions
-            forceArrayInputs
-            replaceDeveloperRoleWithSystem
-          }
-        }
-      orderingWeight
-      errorMessage
-      remark
-    }
-  }
-`;
-
-const UPDATE_CHANNEL_STATUS_MUTATION = `
-  mutation UpdateChannelStatus($id: ID!, $status: ChannelStatus!) {
-    updateChannelStatus(id: $id, status: $status) {
-      id
-      status
-    }
-  }
-`;
-
-const BULK_ARCHIVE_CHANNELS_MUTATION = `
-  mutation BulkArchiveChannels($ids: [ID!]!) {
-    bulkArchiveChannels(ids: $ids)
-  }
-`;
-
-const BULK_DISABLE_CHANNELS_MUTATION = `
-  mutation BulkDisableChannels($ids: [ID!]!) {
-    bulkDisableChannels(ids: $ids)
-  }
-`;
-
-const BULK_ENABLE_CHANNELS_MUTATION = `
-  mutation BulkEnableChannels($ids: [ID!]!) {
-    bulkEnableChannels(ids: $ids)
-  }
-`;
-
-const DELETE_CHANNEL_MUTATION = `
-  mutation DeleteChannel($id: ID!) {
-    deleteChannel(id: $id)
-  }
-`;
-
-const BULK_DELETE_CHANNELS_MUTATION = `
-  mutation BulkDeleteChannels($ids: [ID!]!) {
-    bulkDeleteChannels(ids: $ids)
-  }
-`;
-
-const TEST_CHANNEL_MUTATION = `
-  mutation TestChannel($input: TestChannelInput!) {
-    testChannel(input: $input) {
-      latency
-      success
-      error
-      message
     }
   }
 `;
@@ -283,6 +140,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          passThroughUserAgent
         }
       }
     }
@@ -443,13 +301,23 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
-          transformOptions {
-            forceArrayInstructions
-            forceArrayInputs
-            replaceDeveloperRoleWithSystem
+            transformOptions {
+              forceArrayInstructions
+              forceArrayInputs
+              replaceDeveloperRoleWithSystem
+            }
+            passThroughUserAgent
           }
         }
+        cursor
       }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+      totalCount
     }
   }
 `;
