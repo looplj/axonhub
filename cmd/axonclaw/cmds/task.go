@@ -25,7 +25,6 @@ func NewTaskCommand(opts StdioOptions) *cobra.Command {
 		stderr = os.Stderr
 	}
 
-	taskDir := filepath.Join(conf.DefaultDir, "tasks")
 	var store *task.Store
 
 	root := &cobra.Command{
@@ -92,6 +91,12 @@ Examples:
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			runtimeDir, err := conf.RuntimeDir()
+			if err != nil {
+				return fmt.Errorf("resolve runtime directory: %w", err)
+			}
+
+			taskDir := filepath.Join(runtimeDir, "tasks")
 			s, err := task.NewStore(taskDir)
 			if err != nil {
 				return err

@@ -10,7 +10,6 @@ const defaultMaxTokens = 8192
 const (
 	defaultThreadHeader = "AH-Thread-Id"
 	defaultTraceHeader  = "AH-Trace-Id"
-	defaultMaxRetries   = 3
 )
 
 type Provider struct {
@@ -18,7 +17,6 @@ type Provider struct {
 	threadHeader    string
 	traceHeader     string
 	reasoningEffort string
-	maxRetries      int
 }
 
 type Option func(*Provider)
@@ -41,14 +39,6 @@ func WithReasoningEffort(effort string) Option {
 	}
 }
 
-func WithMaxRetries(retries int) Option {
-	return func(p *Provider) {
-		if retries > 0 {
-			p.maxRetries = retries
-		}
-	}
-}
-
 func New(baseURL, apiKey string, opts ...Option) *Provider {
 	p := &Provider{
 		client: anthropic.NewClient(
@@ -56,7 +46,6 @@ func New(baseURL, apiKey string, opts ...Option) *Provider {
 			option.WithAPIKey(apiKey)),
 		threadHeader: defaultThreadHeader,
 		traceHeader:  defaultTraceHeader,
-		maxRetries:   defaultMaxRetries,
 	}
 	for _, opt := range opts {
 		opt(p)

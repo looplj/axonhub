@@ -33,7 +33,7 @@ Keys:
 
 Notes:
   - api_key is always masked in output.
-  - MCP servers are managed via "axonclaw mcp ..." and saved in .axonclaw/mcp_servers.json.
+  - MCP servers are managed via "axonclaw mcp ..." and saved in the runtime data directory.
   - Config storage location is managed internally and is not exposed through this command.`,
 	}
 	root.SetOut(stdout)

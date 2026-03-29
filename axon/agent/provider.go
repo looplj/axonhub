@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"net/http"
 )
 
 // StreamEvent represents a streaming event from the LLM.
@@ -103,6 +104,14 @@ func (e *ProviderError) Error() string {
 // IsClientError returns true if the status code is in the 4xx range.
 func (e *ProviderError) IsClientError() bool {
 	return e.StatusCode >= 400 && e.StatusCode < 500
+}
+
+func (e *ProviderError) IsRetryable() bool {
+	if e.StatusCode == http.StatusTooManyRequests {
+		return true
+	}
+
+	return e.StatusCode >= 500
 }
 
 // Provider defines the LLM provider interface.

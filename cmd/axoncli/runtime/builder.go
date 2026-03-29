@@ -5,6 +5,8 @@ import (
 
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/provider/anthropic"
+	"github.com/looplj/axonhub/axon/provider/retry"
+
 	cliconf "github.com/looplj/axonhub/cmd/axoncli/conf"
 )
 
@@ -20,5 +22,6 @@ func BuildProvider(cfg cliconf.Config) agent.Provider {
 	if cfg.ReasoningEffort != "" {
 		providerOpts = append(providerOpts, anthropic.WithReasoningEffort(cfg.ReasoningEffort))
 	}
-	return anthropic.New(baseURL+"/anthropic", cfg.APIKey, providerOpts...)
+
+	return retry.New(anthropic.New(baseURL+"/anthropic", cfg.APIKey, providerOpts...))
 }

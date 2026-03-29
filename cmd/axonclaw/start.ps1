@@ -93,16 +93,6 @@ if(Test-Path $PidFile){
 }
 
 $args = @()
-if($env:AXONCLAW_BASE_URL){
-  $args += "--base-url"
-  $args += $env:AXONCLAW_BASE_URL
-}
-
-if($env:AXONCLAW_API_KEY){
-  $args += "--api-key"
-  $args += $env:AXONCLAW_API_KEY
-}
-
 if($env:AXONCLAW_AUTO_SYNC_CONFIG){
   $args += "--auto-sync-config"
 }

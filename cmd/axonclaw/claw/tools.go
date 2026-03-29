@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/google/jsonschema-go/jsonschema"
@@ -18,15 +17,12 @@ import (
 	"github.com/looplj/axonhub/axon/tools"
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
-	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 	"github.com/looplj/axonhub/cmd/axonclaw/skills"
 )
 
-func NewSkillManager(workspace string, boot *bootstrap.Result, logger *slog.Logger) *tools.SkillManager {
+func NewSkillManager(skillsDir string, boot *bootstrap.Bootstrap, logger *slog.Logger) *tools.SkillManager {
 	opts := tools.SkillManagerOptions{
-		Dirs: []string{
-			filepath.Join(workspace, conf.DefaultDir, "skills"),
-		},
+		Dirs: []string{skillsDir},
 	}
 
 	bundled, err := skills.BundledSkills(toBuiltinSkillConfigs(boot.BuiltinSkills))
@@ -42,7 +38,7 @@ func NewSkillManager(workspace string, boot *bootstrap.Result, logger *slog.Logg
 func registerTools(
 	a *agent.Agent,
 	workspace string,
-	boot *bootstrap.Result,
+	boot *bootstrap.Bootstrap,
 	logger *slog.Logger,
 	client graphql.Client,
 	provider agent.Provider,

@@ -17,6 +17,11 @@ import (
 //go:embed read.md
 var readDescription string
 
+const (
+	defaultReadMaxLines     = 500
+	defaultReadMaxLineChars = 2000
+)
+
 type ReadTool struct {
 	workspace string
 	restrict  bool
@@ -115,13 +120,14 @@ func (t *ReadTool) readFile(path string, readRange []int) agent.ToolResult {
 
 	start := 1
 	end := len(lines)
-	defaultMax := 500
+	truncated := false
 
 	if len(readRange) == 2 {
 		start = readRange[0]
 		end = readRange[1]
-	} else if end > defaultMax {
-		end = defaultMax
+	} else if end > defaultReadMaxLines {
+		end = defaultReadMaxLines
+		truncated = true
 	}
 
 	if start < 1 {
@@ -136,12 +142,25 @@ func (t *ReadTool) readFile(path string, readRange []int) agent.ToolResult {
 
 	ext := filepath.Ext(path)
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%s (%d lines%s)\n", path, len(lines), extInfo(ext)))
+	fmt.Fprintf(&sb, "%s (%d lines%s)\n", path, len(lines), extInfo(ext))
 	for i := start; i <= end; i++ {
-		sb.WriteString(fmt.Sprintf("%d: %s\n", i, lines[i-1]))
+		fmt.Fprintf(&sb, "%d: %s\n", i, truncateReadLine(lines[i-1]))
+	}
+
+	if truncated {
+		fmt.Fprintf(&sb, "... (truncated, showing lines %d-%d of %d; use read_range to read more)\n", start, end, len(lines))
 	}
 
 	return TextResult(sb.String())
+}
+
+func truncateReadLine(line string) string {
+	runes := []rune(line)
+	if len(runes) <= defaultReadMaxLineChars {
+		return line
+	}
+
+	return string(runes[:defaultReadMaxLineChars]) + "... (truncated)"
 }
 
 func extInfo(ext string) string {

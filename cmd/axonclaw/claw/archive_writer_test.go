@@ -14,21 +14,21 @@ import (
 )
 
 func TestAppendArchiveMessage_AppendsToDailyThreadFile(t *testing.T) {
-	t.Parallel()
-
 	workspace := t.TempDir()
+	archiveDir := filepath.Join(workspace, "messages", "archives")
+	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	t.Setenv("HOME", t.TempDir())
 	ctx := bus.ContextWithMetadata(context.Background(), bus.Metadata{ThreadID: "th/test:1"})
 
-	require.NoError(t, AppendArchiveMessage(ctx, workspace, agent.Message{
+	require.NoError(t, AppendArchiveMessage(ctx, archiveDir, agent.Message{
 		Role:    agent.RoleUser,
 		Content: &agent.Content{Text: new("hello")},
 	}))
-	require.NoError(t, AppendArchiveMessage(ctx, workspace, agent.Message{
+	require.NoError(t, AppendArchiveMessage(ctx, archiveDir, agent.Message{
 		Role:    agent.RoleAssistant,
 		Content: &agent.Content{Text: new("world")},
 	}))
 
-	archiveDir := filepath.Join(workspace, ".axonclaw", "messages", "archives")
 	entries, err := os.ReadDir(archiveDir)
 	require.NoError(t, err)
 	require.Len(t, entries, 1)

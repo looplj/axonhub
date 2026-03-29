@@ -12,19 +12,30 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
+func setupHeartbeatTaskStore(t *testing.T) *task.Store {
+	t.Helper()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	runtimeDir, err := conf.RuntimeDir()
+	if err != nil {
+		t.Fatalf("RuntimeDir() error = %v", err)
+	}
+
+	store, err := task.NewStore(filepath.Join(runtimeDir, "tasks"))
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+
+	return store
+}
+
 func TestHeartbeatEnableDisablesTask(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 
-	err := os.MkdirAll(filepath.Join(conf.DefaultDir, "tasks"), 0o755)
-	if err != nil {
-		t.Fatalf("MkdirAll() error = %v", err)
-	}
-
-	store, err := task.NewStore(filepath.Join(conf.DefaultDir, "tasks"))
-	if err != nil {
-		t.Fatalf("NewStore() error = %v", err)
-	}
+	store := setupHeartbeatTaskStore(t)
 
 	if err := store.Save([]task.Task{{
 		ID:      claw.SystemTaskHeartbeatID,
@@ -62,15 +73,7 @@ func TestHeartbeatStatusReadsTaskState(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 
-	err := os.MkdirAll(filepath.Join(conf.DefaultDir, "tasks"), 0o755)
-	if err != nil {
-		t.Fatalf("MkdirAll() error = %v", err)
-	}
-
-	store, err := task.NewStore(filepath.Join(conf.DefaultDir, "tasks"))
-	if err != nil {
-		t.Fatalf("NewStore() error = %v", err)
-	}
+	store := setupHeartbeatTaskStore(t)
 
 	if err := store.Save([]task.Task{{
 		ID:      claw.SystemTaskHeartbeatID,
@@ -114,15 +117,7 @@ func TestHeartbeatIntervalUpdatesTaskTrigger(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 
-	err := os.MkdirAll(filepath.Join(conf.DefaultDir, "tasks"), 0o755)
-	if err != nil {
-		t.Fatalf("MkdirAll() error = %v", err)
-	}
-
-	store, err := task.NewStore(filepath.Join(conf.DefaultDir, "tasks"))
-	if err != nil {
-		t.Fatalf("NewStore() error = %v", err)
-	}
+	store := setupHeartbeatTaskStore(t)
 
 	if err := store.Save([]task.Task{{
 		ID:      claw.SystemTaskHeartbeatID,
@@ -155,15 +150,7 @@ func TestHeartbeatIntervalReadsTaskTrigger(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 
-	err := os.MkdirAll(filepath.Join(conf.DefaultDir, "tasks"), 0o755)
-	if err != nil {
-		t.Fatalf("MkdirAll() error = %v", err)
-	}
-
-	store, err := task.NewStore(filepath.Join(conf.DefaultDir, "tasks"))
-	if err != nil {
-		t.Fatalf("NewStore() error = %v", err)
-	}
+	store := setupHeartbeatTaskStore(t)
 
 	if err := store.Save([]task.Task{{
 		ID:      claw.SystemTaskHeartbeatID,

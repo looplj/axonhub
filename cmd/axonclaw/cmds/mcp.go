@@ -15,6 +15,15 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
+func newMCPManager() (*mcp.Manager, error) {
+	runtimeDir, err := conf.RuntimeDir()
+	if err != nil {
+		return nil, fmt.Errorf("resolve runtime directory: %w", err)
+	}
+
+	return mcp.NewManager(mcp.ManagerOptions{ConfigDir: runtimeDir}), nil
+}
+
 func NewMCPCommand(opts StdioOptions) *cobra.Command {
 	out := opts.Stdout
 	if out == nil {
@@ -49,7 +58,12 @@ MCP config file:
 }
 
 func mcpConfigPath() string {
-	return mcp.NewManager(mcp.ManagerOptions{ConfigDir: conf.DefaultDir}).ConfigPath()
+	mgr, err := newMCPManager()
+	if err != nil {
+		return fmt.Sprintf("(unavailable: %v)", err)
+	}
+
+	return mgr.ConfigPath()
 }
 
 func newConfMCPPathCmd(out *os.File) *cobra.Command {
@@ -70,7 +84,10 @@ func newConfMCPListCmd(out *os.File) *cobra.Command {
 		Short: "List MCP servers",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			mgr := mcp.NewManager(mcp.ManagerOptions{ConfigDir: conf.DefaultDir})
+			mgr, err := newMCPManager()
+			if err != nil {
+				return err
+			}
 
 			servers, err := mgr.LoadServers()
 			if err != nil {
@@ -107,7 +124,11 @@ func newConfMCPGetCmd(out *os.File) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := strings.TrimSpace(args[0])
-			mgr := mcp.NewManager(mcp.ManagerOptions{ConfigDir: conf.DefaultDir})
+
+			mgr, err := newMCPManager()
+			if err != nil {
+				return err
+			}
 
 			servers, err := mgr.LoadServers()
 			if err != nil {
@@ -164,7 +185,7 @@ func newConfMCPSetCmd(out *os.File, errOut *os.File) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set <name>",
 		Short: "Create or update an MCP server",
-		Long: `Create or update one MCP server in .axonclaw/mcp_servers.json.
+		Long: `Create or update one MCP server in the runtime data directory.
 
 Examples:
   # Stdio transport (local process)
@@ -183,7 +204,10 @@ Examples:
 				return fmt.Errorf("name is required")
 			}
 
-			mgr := mcp.NewManager(mcp.ManagerOptions{ConfigDir: conf.DefaultDir})
+			mgr, err := newMCPManager()
+			if err != nil {
+				return err
+			}
 
 			servers, err := mgr.LoadServers()
 			if err != nil {
@@ -333,7 +357,11 @@ func newConfMCPDeleteCmd(out *os.File, errOut *os.File) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := strings.TrimSpace(args[0])
-			mgr := mcp.NewManager(mcp.ManagerOptions{ConfigDir: conf.DefaultDir})
+
+			mgr, err := newMCPManager()
+			if err != nil {
+				return err
+			}
 
 			servers, err := mgr.LoadServers()
 			if err != nil {
@@ -373,7 +401,11 @@ func newConfMCPEnableCmd(out *os.File, errOut *os.File, enable bool) *cobra.Comm
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := strings.TrimSpace(args[0])
-			mgr := mcp.NewManager(mcp.ManagerOptions{ConfigDir: conf.DefaultDir})
+
+			mgr, err := newMCPManager()
+			if err != nil {
+				return err
+			}
 
 			servers, err := mgr.LoadServers()
 			if err != nil {

@@ -24,7 +24,6 @@ import (
 	axoncontext "github.com/looplj/axonhub/axon/context"
 
 	"github.com/looplj/axonhub/cmd/axonclaw/bootstrap"
-	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 	"github.com/looplj/axonhub/cmd/axonclaw/prompts"
 )
 
@@ -36,9 +35,9 @@ type Runner struct {
 	Provider      agent.Provider
 	Logger        *slog.Logger
 	Workspace     string
-	Config        conf.Config
+	Config        Config
 	ThreadID      string
-	Boot          *bootstrap.Result
+	Boot          *bootstrap.Bootstrap
 	lastSequence  int
 	TaskScheduler *task.Scheduler
 	processMu     sync.Mutex
@@ -57,9 +56,9 @@ type NewOptions struct {
 	Client         graphql.Client
 	Provider       agent.Provider
 	ContextManager agent.ContextManager
-	Config         conf.Config
+	Config         Config
 	Workspace      string
-	Boot           *bootstrap.Result
+	Boot           *bootstrap.Bootstrap
 	PermEvaluator  *permission.Evaluator
 	Bus            bus.EventBus
 	TaskScheduler  *task.Scheduler
@@ -86,7 +85,7 @@ func New(opts NewOptions) *Runner {
 
 	mcpMgr := mcp.NewManager(mcp.ManagerOptions{
 		Logger:    opts.Logger,
-		ConfigDir: opts.Boot.ConfigDir,
+		ConfigDir: opts.Boot.RuntimeDir,
 	})
 
 	subagentMgr := opts.SubagentMgr
@@ -116,7 +115,7 @@ func New(opts NewOptions) *Runner {
 	return r
 }
 
-func buildPromptEnv(boot *bootstrap.Result, workspace string) prompts.PromptEnv {
+func buildPromptEnv(boot *bootstrap.Bootstrap, workspace string) prompts.PromptEnv {
 	return prompts.PromptEnv{
 		Date:         boot.Date,
 		Timezone:     boot.Timezone,
@@ -361,7 +360,8 @@ func (r *Runner) autoUpdateConfig(ctx context.Context) {
 	newBoot, err := bootstrap.Do(ctx, r.Client, bootstrap.Params{
 		Workspace:  r.Workspace,
 		SkillsRoot: r.Boot.SkillsRoot,
-		ConfigDir:  r.Boot.ConfigDir,
+		PromptDir:  r.Boot.PromptDir,
+		RuntimeDir: r.Boot.RuntimeDir,
 	})
 	if err != nil {
 		r.Logger.Warn("auto-update config failed", "error", err)

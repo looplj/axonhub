@@ -2,9 +2,7 @@ package anthropic
 
 import (
 	"context"
-	"errors"
 	"strings"
-	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -30,7 +28,6 @@ func (p *Provider) ChatStream(ctx context.Context, model string, tools []agent.T
 		params.Tools = toolParams
 	}
 
-	// Apply reasoning effort configuration
 	if budget := reasoningEffortToBudget(p.reasoningEffort); budget > 0 {
 		params.Thinking = anthropic.ThinkingConfigParamUnion{
 			OfEnabled: &anthropic.ThinkingConfigEnabledParam{
@@ -52,39 +49,12 @@ func (p *Provider) ChatStream(ctx context.Context, model string, tools []agent.T
 	go func() {
 		defer close(events)
 
-		var lastErr error
+		stream := p.client.Messages.NewStreaming(ctx, params, reqOpts...)
 
-		for attempt := 0; attempt <= p.maxRetries; attempt++ {
-			if attempt > 0 {
-				select {
-				case <-ctx.Done():
-					emitError(events, ctx.Err())
-					return
-				case <-time.After(time.Second * time.Duration(attempt)):
-				}
-			}
-
-			stream := p.client.Messages.NewStreaming(ctx, params, reqOpts...)
-
-			streamProcessor := newStreamProcessor(stream, events)
-			if err := streamProcessor.processWithRetry(); err != nil {
-				lastErr = err
-
-				providerErr := &agent.ProviderError{}
-				if errors.As(err, &providerErr) {
-					if providerErr.IsClientError() || providerErr.StatusCode < 500 {
-						emitError(events, err)
-						return
-					}
-				}
-
-				continue
-			}
-
-			return
+		streamProcessor := newStreamProcessor(stream, events)
+		if err := streamProcessor.process(); err != nil {
+			emitError(events, err)
 		}
-
-		emitError(events, lastErr)
 	}()
 
 	return events, nil
@@ -115,7 +85,7 @@ func newStreamProcessor(stream *ssestream.Stream[anthropic.MessageStreamEventUni
 	}
 }
 
-func (p *streamProcessor) processWithRetry() error {
+func (p *streamProcessor) process() error {
 	for p.stream.Next() {
 		event := p.stream.Current()
 

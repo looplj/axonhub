@@ -2,8 +2,6 @@ package anthropic
 
 import (
 	"context"
-	"errors"
-	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -44,31 +42,10 @@ func (p *Provider) Chat(ctx context.Context, model string, tools []agent.ToolDef
 		reqOpts = append(reqOpts, option.WithHeader(p.traceHeader, traceID))
 	}
 
-	var lastErr error
-
-	for attempt := 0; attempt <= p.maxRetries; attempt++ {
-		if attempt > 0 {
-			select {
-			case <-ctx.Done():
-				return agent.Response{}, ctx.Err()
-			case <-time.After(time.Second * time.Duration(attempt)):
-			}
-		}
-
-		resp, err := p.client.Messages.New(ctx, params, reqOpts...)
-		if err == nil {
-			return convertResponse(resp), nil
-		}
-
-		lastErr = wrapAPIError(err)
-
-		providerErr := &agent.ProviderError{}
-		if errors.As(lastErr, &providerErr) {
-			if providerErr.IsClientError() || providerErr.StatusCode < 500 {
-				break
-			}
-		}
+	resp, err := p.client.Messages.New(ctx, params, reqOpts...)
+	if err != nil {
+		return agent.Response{}, wrapAPIError(err)
 	}
 
-	return agent.Response{}, lastErr
+	return convertResponse(resp), nil
 }

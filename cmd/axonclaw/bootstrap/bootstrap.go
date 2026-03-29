@@ -17,7 +17,7 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/prompts"
 )
 
-type Result struct {
+type Bootstrap struct {
 	AgentID           string
 	AgentName         string
 	CreatedByUserName string
@@ -31,7 +31,8 @@ type Result struct {
 	Prompts           *prompts.Bootstrap
 	AxonClawPath      string
 	SkillsRoot        string
-	ConfigDir         string
+	PromptDir         string
+	RuntimeDir        string
 	Date              string
 	Timezone          string
 	OS                string
@@ -40,16 +41,17 @@ type Result struct {
 type Params struct {
 	Workspace  string
 	SkillsRoot string
-	ConfigDir  string
+	PromptDir  string
+	RuntimeDir string
 }
 
 type BuiltinSkill struct {
-	Name    string
-	Enabled bool
-	Order   int
+	Name    string `yaml:"name"`
+	Enabled bool   `yaml:"enabled"`
+	Order   int    `yaml:"order"`
 }
 
-func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error) {
+func Do(ctx context.Context, client graphql.Client, data Params) (*Bootstrap, error) {
 	resp, err := api.AgentBootstrap(ctx, client)
 	if err != nil {
 		return nil, fmt.Errorf("agent bootstrap failed: %w", err)
@@ -87,7 +89,7 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 		CreatedByUserName: bootstrap.CreatedByUserName,
 	}
 
-	prompt, err := prompts.Load(data.ConfigDir, &prompts.InitParams{
+	prompt, err := prompts.Load(data.PromptDir, &prompts.InitParams{
 		Env:                tmplData,
 		ServerSystemPrompt: bootstrap.SystemPrompt,
 	})
@@ -95,7 +97,7 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 		return nil, fmt.Errorf("load bootstrap prompts: %w", err)
 	}
 
-	return &Result{
+	return &Bootstrap{
 		AgentID:           bootstrap.AgentID,
 		AgentName:         bootstrap.AgentName,
 		CreatedByUserName: bootstrap.CreatedByUserName,
@@ -109,7 +111,8 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 		Prompts:           prompt,
 		AxonClawPath:      axonClawPath,
 		SkillsRoot:        data.SkillsRoot,
-		ConfigDir:         data.ConfigDir,
+		PromptDir:         data.PromptDir,
+		RuntimeDir:        data.RuntimeDir,
 		Date:              now.Format("2006-01-02"),
 		Timezone:          timezone,
 		OS:                osName,

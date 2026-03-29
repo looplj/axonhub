@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/axon/permission/grant"
 	"github.com/looplj/axonhub/axon/permission/policy"
 	"github.com/looplj/axonhub/axon/provider/anthropic"
+	"github.com/looplj/axonhub/axon/provider/retry"
 	"github.com/looplj/axonhub/axon/subagent"
 	"github.com/looplj/axonhub/axon/task"
 	"github.com/samber/lo"
@@ -54,13 +55,11 @@ func main() {
 
 type newRootCommandOptions struct {
 	WorkspaceDir string
-	RunAgent     func(cfg conf.Config, wd string, debug bool) error
+	RunAgent     func(cfg claw.Config, wd string, debug bool) error
 }
 
 func newRootCommand(opts newRootCommandOptions) *cobra.Command {
 	var (
-		baseURL        string
-		apiKey         string
 		autoSyncConfig bool
 		debug          bool
 	)
@@ -76,7 +75,7 @@ Build Time: %s
 Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit()),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := conf.LoadOrSaveConfig(baseURL, apiKey)
+			cfg, err := conf.LoadOrSaveConfig()
 			if err != nil {
 				return err
 			}
@@ -85,22 +84,32 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 			if autoSyncConfig {
 				cfg.AutoSyncConfig = true
 			}
-			// CLI flag overrides config file, but config can still enable debug by default.
 			runDebug := debug || cfg.Debug
 			return opts.RunAgent(cfg, wd, runDebug)
 		},
 	}
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
-	rootCmd.Flags().StringVar(&baseURL, "base-url", "", "AxonHub base URL")
-	rootCmd.Flags().StringVar(&apiKey, "api-key", "", "Agent API key")
 	rootCmd.Flags().BoolVar(&autoSyncConfig, "auto-sync-config", false, "Automatically sync agent configuration from server")
 	rootCmd.Flags().BoolVar(&debug, "debug", false, "Enable debug logging")
 
 	rootCmd.SetHelpCommand(cmds.NewHelpCommand(rootCmd))
 
 	workspaceDir := opts.WorkspaceDir
-	rootCmd.AddCommand(skills.NewCommand(workspaceDir))
+	rootCmd.AddCommand(skills.NewCommand(workspaceDir, func() ([]skills.BuiltinSkillConfig, error) {
+		items, err := conf.LoadBuiltinSkills()
+		if err != nil {
+			return nil, err
+		}
+
+		return lo.Map(items, func(item claw.BuiltinSkill, _ int) skills.BuiltinSkillConfig {
+			return skills.BuiltinSkillConfig{
+				Name:    item.Name,
+				Enabled: item.Enabled,
+				Order:   item.Order,
+			}
+		}), nil
+	}))
 	rootCmd.AddCommand(cmds.NewConfCommand(cmds.StdioOptions{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
@@ -137,31 +146,32 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 	return rootCmd
 }
 
-func runAgent(cfg conf.Config, wd string, debug bool) error {
+//nolint:maintidx // Init agent.
+func runAgent(cfg claw.Config, wd string, debug bool) error {
 	logger, closeLogger := mustInitLogger(wd, debug)
 	defer closeLogger()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	runtimeDir, err := conf.RuntimeDirForWorkspace(wd)
+	if err != nil {
+		return fmt.Errorf("resolve runtime directory: %w", err)
+	}
+
 	gqlClient := api.NewClient(cfg.BaseURL, cfg.APIKey)
 
 	boot, err := bootstrap.Do(ctx, gqlClient, bootstrap.Params{
 		Workspace:  wd,
 		SkillsRoot: filepath.Join(wd, conf.DefaultDir, "skills"),
-		ConfigDir:  filepath.Join(wd, conf.DefaultDir),
+		PromptDir:  filepath.Join(wd, conf.DefaultDir),
+		RuntimeDir: runtimeDir,
 	})
 	if err != nil {
 		return fmt.Errorf("bootstrap: %w", err)
 	}
 
-	if err := conf.SaveBuiltinSkills(lo.Map(boot.BuiltinSkills, func(s bootstrap.BuiltinSkill, _ int) conf.BuiltinSkill {
-		return conf.BuiltinSkill{
-			Name:    s.Name,
-			Enabled: s.Enabled,
-			Order:   s.Order,
-		}
-	})); err != nil {
+	if err := conf.SaveBuiltinSkills(boot.BuiltinSkills); err != nil {
 		logger.Warn("save builtin skills config failed", "error", err)
 	}
 
@@ -176,9 +186,9 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		"user", boot.Prompts != nil && !boot.Prompts.User.IsEmpty(),
 	)
 
-	provider := anthropic.New(strings.TrimRight(cfg.BaseURL, "/")+"/anthropic", cfg.APIKey,
+	provider := retry.New(anthropic.New(strings.TrimRight(cfg.BaseURL, "/")+"/anthropic", cfg.APIKey,
 		anthropic.WithReasoningEffort(boot.ReasoningEffort),
-	)
+	))
 
 	platform := runtime.GOOS
 
@@ -188,8 +198,6 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 	}); err != nil {
 		return fmt.Errorf("register instance: %w", err)
 	}
-
-	axonclawDir := filepath.Join(wd, conf.DefaultDir)
 
 	var contextMgr agent.ContextManager
 
@@ -217,7 +225,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		switch ev.Type {
 		case agent.EventMessageAdded:
 			if ev.Message != nil {
-				if err := claw.AppendArchiveMessage(ctx, wd, *ev.Message); err != nil {
+				if err := claw.AppendArchiveMessage(ctx, filepath.Join(wd, "messages"), *ev.Message); err != nil {
 					logger.Warn("archive append failed", "error", err)
 				}
 			}
@@ -233,7 +241,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		return nil
 	}))
 
-	skillMgr := claw.NewSkillManager(wd, boot, logger)
+	skillMgr := claw.NewSkillManager(filepath.Join(wd, conf.DefaultDir, "skills"), boot, logger)
 
 	contextCfg.Summarizer = claw.NewSmartSummarizer(claw.SmartSummarizerOptions{
 		Manager:   subagentMgr,
@@ -245,7 +253,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		Logger:    logger,
 	})
 
-	contextStore := claw.NewContextManagerFileStore(filepath.Join(axonclawDir, "messages"))
+	contextStore := claw.NewContextManagerFileStore(filepath.Join(runtimeDir, "messages"))
 
 	cm, err := claw.NewSmartContextManager(contextCfg, contextStore)
 	if err != nil {
@@ -308,7 +316,7 @@ func runAgent(cfg conf.Config, wd string, debug bool) error {
 		}
 	}()
 
-	taskStore, err := task.NewStore(filepath.Join(axonclawDir, "tasks"))
+	taskStore, err := task.NewStore(filepath.Join(runtimeDir, "tasks"))
 	if err != nil {
 		return fmt.Errorf("init task store: %w", err)
 	}

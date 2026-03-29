@@ -10,13 +10,19 @@ import (
 	"github.com/spf13/cobra"
 
 	skilllib "github.com/looplj/skills"
-
-	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
 const defaultSkillWorkspaceDir = ".axonclaw"
 
-func NewCommand(workspaceDir string) *cobra.Command {
+type BuiltinSkillConfig struct {
+	Name    string
+	Enabled bool
+	Order   int
+}
+
+type LoadBuiltinSkillsFunc func() ([]BuiltinSkillConfig, error)
+
+func NewCommand(workspaceDir string, loadBuiltinSkills LoadBuiltinSkillsFunc) *cobra.Command {
 	return skillscmd.NewRootCommand(skillscmd.RootOptions{
 		Use:          "skills",
 		Stdout:       os.Stdout,
@@ -25,19 +31,21 @@ func NewCommand(workspaceDir string) *cobra.Command {
 		BundledSkillsFunc: func(ctx context.Context) []skilllib.Skill {
 			var configs []Config
 
-			items, err := conf.LoadBuiltinSkills()
-			if err != nil {
-				configs = DefaultConfigs()
-			} else {
-				configs = lo.Map(items, func(item conf.BuiltinSkill, _ int) Config {
-					return Config{
-						Name:    item.Name,
-						Enabled: item.Enabled,
-						Order:   item.Order,
+			if loadBuiltinSkills != nil {
+				items, err := loadBuiltinSkills()
+				if err == nil {
+					configs = lo.Map(items, func(item BuiltinSkillConfig, _ int) Config {
+						return Config(item)
+					})
+
+					bundled, err := BundledSkills(configs)
+					if err == nil {
+						return bundled
 					}
-				})
+				}
 			}
 
+			configs = DefaultConfigs()
 			bundled, err := BundledSkills(configs)
 			if err != nil {
 				return nil

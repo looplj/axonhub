@@ -114,7 +114,8 @@ func executeReset(ctx context.Context, r *Runner, _ []string) (string, error) {
 	newBoot, err := bootstrap.Do(ctx, r.Client, bootstrap.Params{
 		Workspace:  r.Workspace,
 		SkillsRoot: r.Boot.SkillsRoot,
-		ConfigDir:  r.Boot.ConfigDir,
+		PromptDir:  r.Boot.PromptDir,
+		RuntimeDir: r.Boot.RuntimeDir,
 	})
 	if err != nil {
 		return "", fmt.Errorf("reset bootstrap failed: %w", err)

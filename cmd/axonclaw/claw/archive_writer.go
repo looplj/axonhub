@@ -12,27 +12,23 @@ import (
 	"github.com/looplj/axonhub/axon/bus"
 
 	axoncontext "github.com/looplj/axonhub/axon/context"
-
-	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
-func AppendArchiveMessage(ctx context.Context, workspace string, msg agent.Message) error {
+func AppendArchiveMessage(ctx context.Context, dir string, msg agent.Message) error {
 	threadID := resolveArchiveThreadID(ctx)
 	if threadID == "" {
 		threadID = "unknown-thread"
 	}
 
+	archiveDir := filepath.Join(dir, "archives")
+	if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+		return fmt.Errorf("create archives directory: %w", err)
+	}
+
 	path := filepath.Join(
-		workspace,
-		conf.DefaultDir,
-		"messages",
-		"archives",
+		archiveDir,
 		fmt.Sprintf("%s_%s.md", time.Now().Format("2006-01-02"), sanitizeArchiveThreadID(threadID)),
 	)
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create archive directory: %w", err)
-	}
 
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -65,4 +61,3 @@ func sanitizeArchiveThreadID(threadID string) string {
 
 	return cleaned
 }
-

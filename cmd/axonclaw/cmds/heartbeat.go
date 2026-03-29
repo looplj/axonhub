@@ -14,6 +14,15 @@ import (
 	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
+func newHeartbeatTaskStore() (*task.Store, error) {
+	runtimeDir, err := conf.RuntimeDir()
+	if err != nil {
+		return nil, fmt.Errorf("resolve runtime directory: %w", err)
+	}
+
+	return task.NewStore(filepath.Join(runtimeDir, "tasks"))
+}
+
 func NewHeartbeatCommand(opts StdioOptions) *cobra.Command {
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -57,7 +66,7 @@ func newHeartbeatStatusCmd(out *os.File) *cobra.Command {
 		Use:   "status",
 		Short: "Show heartbeat status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := task.NewStore(filepath.Join(conf.DefaultDir, "tasks"))
+			store, err := newHeartbeatTaskStore()
 			if err != nil {
 				return err
 			}
@@ -109,7 +118,7 @@ func newHeartbeatEnableCmd(out *os.File, enable bool) *cobra.Command {
 		Use:   use,
 		Short: short,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := task.NewStore(filepath.Join(conf.DefaultDir, "tasks"))
+			store, err := newHeartbeatTaskStore()
 			if err != nil {
 				return err
 			}
@@ -144,7 +153,7 @@ Examples:
   axonclaw heartbeat interval 1h`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := task.NewStore(filepath.Join(conf.DefaultDir, "tasks"))
+			store, err := newHeartbeatTaskStore()
 			if err != nil {
 				return err
 			}

@@ -7,61 +7,35 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
-	"time"
 
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
 	axonconf "github.com/looplj/axonhub/axon/conf"
+
+	"github.com/looplj/axonhub/cmd/axonclaw/claw"
 )
 
 const (
-	FileName   = "config.yaml"
-	DefaultDir = ".axonclaw"
-	SecureDir  = ".axonclaw"
+	FileName              = "config.yaml"
+	builtinSkillsFileName = "builtin_skills.yaml"
+	DefaultDir            = ".axonclaw"
+	runtimeDirName        = "axonclaw"
 )
 
-type BuiltinSkill struct {
-	Name    string `yaml:"name"`
-	Enabled bool   `yaml:"enabled"`
-	Order   int    `yaml:"order"`
-}
+type BuiltinSkill = claw.BuiltinSkill
 
-type Config struct {
-	BaseURL string `yaml:"base_url"`
-	//nolint:gosec // Checked.
-	APIKey                 string         `yaml:"api_key"`
-	PollInterval           time.Duration  `yaml:"poll_interval"`
-	HeartbeatInterval      time.Duration  `yaml:"heartbeat_interval"`
-	AutoSyncConfig         bool           `yaml:"auto_sync_config"`
-	AutoSyncConfigInterval time.Duration  `yaml:"auto_sync_config_interval"`
-	ContextRecentMessages  int            `yaml:"context_recent_messages"`
-	ContextSoftTokenLimit  int            `yaml:"context_soft_token_limit"`
-	ContextSummaryMaxChars int            `yaml:"context_summary_max_chars"`
-	Debug                  bool           `yaml:"debug"`
-	BuiltinSkills          []BuiltinSkill `yaml:"builtin_skills"`
-}
-
-func DefaultConfig() Config {
-	return Config{
-		PollInterval:           5 * time.Second,
-		HeartbeatInterval:      1 * time.Minute,
-		AutoSyncConfigInterval: 5 * time.Minute,
-		ContextRecentMessages:  80,
-		ContextSoftTokenLimit:  120000,
-		ContextSummaryMaxChars: 16000,
-	}
-}
-
-func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
-	cfg := DefaultConfig()
+func LoadOrSaveConfig() (claw.Config, error) {
+	cfg := claw.DefaultConfig()
 
 	searchPath, err := ConfigDir()
 	if err != nil {
-		return Config{}, fmt.Errorf("resolve config directory: %w", err)
+		return claw.Config{}, fmt.Errorf("resolve config directory: %w", err)
 	}
-	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
+
+	loader := axonconf.NewViperLoader[claw.Config](axonconf.ViperLoaderOptions{
 		ConfigName:     "config",
 		ConfigType:     "yaml",
 		SearchPaths:    []string{searchPath},
@@ -84,7 +58,7 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 	})
 	res, err := loader.Load(context.Background())
 	if err != nil {
-		return Config{}, err
+		return claw.Config{}, err
 	}
 	if res.Value.BaseURL != "" {
 		cfg.BaseURL = res.Value.BaseURL
@@ -118,27 +92,8 @@ func LoadOrSaveConfig(baseURL, apiKey string) (Config, error) {
 		cfg.Debug = res.Value.Debug
 	}
 
-	finalBaseURL := strings.TrimSpace(baseURL)
-	finalAPIKey := strings.TrimSpace(apiKey)
-
-	needSave := false
-	if finalBaseURL != "" {
-		cfg.BaseURL = finalBaseURL
-		needSave = true
-	}
-	if finalAPIKey != "" {
-		cfg.APIKey = finalAPIKey
-		needSave = true
-	}
-
-	if needSave {
-		if err := SaveConfig(cfg); err != nil {
-			return Config{}, fmt.Errorf("save config: %w", err)
-		}
-	}
-
 	if strings.TrimSpace(cfg.BaseURL) == "" || strings.TrimSpace(cfg.APIKey) == "" {
-		return Config{}, newMissingConfigError(cfg.BaseURL, cfg.APIKey)
+		return claw.Config{}, newMissingConfigError(cfg.BaseURL, cfg.APIKey)
 	}
 
 	return cfg, nil
@@ -161,16 +116,16 @@ api_key: your-agent-api-key
 
 	if _, err := os.Stat(path); err != nil && os.IsNotExist(err) {
 		return fmt.Errorf(
-			"missing required settings: %s (set them with 'axonclaw conf set', or pass flags -base-url/-api-key)\n\n%s",
+			"missing required settings: %s (set them with 'axonclaw conf set', or use environment variables AXONCLAW_BASE_URL/AXONCLAW_API_KEY)\n\n%s",
 			strings.Join(missing, ", "),
 			example,
 		)
 	}
 
-	return fmt.Errorf("missing required settings: %s (update them with 'axonclaw conf set' or flags -base-url/-api-key)", strings.Join(missing, ", "))
+	return fmt.Errorf("missing required settings: %s (update them with 'axonclaw conf set' or use environment variables AXONCLAW_BASE_URL/AXONCLAW_API_KEY)", strings.Join(missing, ", "))
 }
 
-func SaveConfig(cfg Config) error {
+func SaveConfig(cfg claw.Config) error {
 	dir, err := ConfigDir()
 	if err != nil {
 		return fmt.Errorf("resolve config directory: %w", err)
@@ -202,58 +157,71 @@ func SaveConfig(cfg Config) error {
 	return os.WriteFile(path, data, 0o600)
 }
 
-func SaveBuiltinSkills(skills []BuiltinSkill) error {
-	dir, err := ConfigDir()
+func SaveBuiltinSkills(skills []claw.BuiltinSkill) error {
+	dir, err := RuntimeDir()
 	if err != nil {
-		return fmt.Errorf("resolve config directory: %w", err)
+		return fmt.Errorf("resolve runtime directory: %w", err)
 	}
 
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("create config directory: %w", err)
+		return fmt.Errorf("create runtime directory: %w", err)
 	}
 
-	existing, err := LoadConfig()
+	data, err := yaml.Marshal(skills)
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
+		return fmt.Errorf("marshal builtin skills: %w", err)
 	}
 
-	existing.BuiltinSkills = skills
-
-	//nolint:gosec // Cheked.
-	data, err := yaml.Marshal(&existing)
-	if err != nil {
-		return fmt.Errorf("marshal config: %w", err)
-	}
-
-	path := filepath.Join(dir, FileName)
+	path := filepath.Join(dir, builtinSkillsFileName)
 
 	return os.WriteFile(path, data, 0o600)
 }
 
-func LoadBuiltinSkills() ([]BuiltinSkill, error) {
-	cfg, err := LoadConfig()
+func LoadBuiltinSkills() ([]claw.BuiltinSkill, error) {
+	dir, err := RuntimeDir()
 	if err != nil {
-		return nil, fmt.Errorf("load config: %w", err)
+		return nil, fmt.Errorf("resolve runtime directory: %w", err)
 	}
 
-	return cfg.BuiltinSkills, nil
+	path := filepath.Join(dir, builtinSkillsFileName)
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("read builtin skills file: %w", err)
+	}
+
+	var skills []claw.BuiltinSkill
+	if err := yaml.Unmarshal(data, &skills); err != nil {
+		return nil, fmt.Errorf("unmarshal builtin skills: %w", err)
+	}
+
+	return skills, nil
 }
 
 func DefaultPath() string {
 	dir, err := ConfigDir()
 	if err != nil {
+		if base, baseErr := runtimeBaseDir(); baseErr == nil {
+			return filepath.Join(base, FileName)
+		}
+
 		return filepath.Join(DefaultDir, FileName)
 	}
 
 	return filepath.Join(dir, FileName)
 }
 
-func LoadConfig() (Config, error) {
+func LoadConfig() (claw.Config, error) {
 	searchPath, err := ConfigDir()
 	if err != nil {
-		return Config{}, fmt.Errorf("resolve config directory: %w", err)
+		return claw.Config{}, fmt.Errorf("resolve config directory: %w", err)
 	}
-	loader := axonconf.NewViperLoader[Config](axonconf.ViperLoaderOptions{
+
+	loader := axonconf.NewViperLoader[claw.Config](axonconf.ViperLoaderOptions{
 		ConfigName:     "config",
 		ConfigType:     "yaml",
 		SearchPaths:    []string{searchPath},
@@ -277,7 +245,7 @@ func LoadConfig() (Config, error) {
 	})
 	res, err := loader.Load(context.Background())
 	if err != nil {
-		return Config{}, err
+		return claw.Config{}, err
 	}
 	return res.Value, nil
 }
@@ -291,21 +259,43 @@ func SetYAMLKey(key string, value string) error {
 }
 
 func ConfigDir() (string, error) {
-	return secureWorkspaceDir()
+	return RuntimeDir()
 }
 
 func PolicyDir() (string, error) {
-	return secureWorkspaceDir()
+	return RuntimeDir()
 }
 
 func PermissionDir() (string, error) {
-	return mustSecureDirFallback(), nil
+	return RuntimeDir()
 }
 
-func secureWorkspaceDir() (string, error) {
+func RuntimeDir() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("get working directory: %w", err)
+	}
+
+	return RuntimeDirForWorkspace(wd)
+}
+
+func RuntimeDirForWorkspace(workspace string) (string, error) {
+	base, err := runtimeBaseDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(base, workspaceHash(workspace)), nil
+}
+
+func runtimeBaseDir() (string, error) {
+	if runtime.GOOS == "windows" {
+		dir, err := os.UserConfigDir()
+		if err != nil {
+			return "", fmt.Errorf("get user config directory: %w", err)
+		}
+
+		return filepath.Join(dir, runtimeDirName), nil
 	}
 
 	home, err := os.UserHomeDir()
@@ -313,16 +303,7 @@ func secureWorkspaceDir() (string, error) {
 		return "", fmt.Errorf("get home directory: %w", err)
 	}
 
-	return filepath.Join(home, SecureDir, workspaceHash(wd)), nil
-}
-
-func mustSecureDirFallback() string {
-	dir, err := secureWorkspaceDir()
-	if err != nil {
-		return filepath.Join(DefaultDir)
-	}
-
-	return dir
+	return filepath.Join(home, ".config", runtimeDirName), nil
 }
 
 func workspaceHash(wd string) string {

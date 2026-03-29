@@ -71,14 +71,6 @@ start_axonclaw() {
     
     local args=()
     
-    if [[ -n "$AXONCLAW_BASE_URL" ]]; then
-        args+=("--base-url" "$AXONCLAW_BASE_URL")
-    fi
-    
-    if [[ -n "$AXONCLAW_API_KEY" ]]; then
-        args+=("--api-key" "$AXONCLAW_API_KEY")
-    fi
-    
     if [[ -n "$AXONCLAW_AUTO_SYNC_CONFIG" ]]; then
         args+=("--auto-sync-config")
     fi
