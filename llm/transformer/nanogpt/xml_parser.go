@@ -5,24 +5,36 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
+// Maximum content length to prevent ReDoS attacks
+const maxXMLParseLength = 100000 // 100KB
+
 // toolCallPattern matches XML-like tool calls with content: <Tag>content</Tag>
 // Uses [\s\S] to match any character including newlines
-var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)>([\s\S]*?)</[a-zA-Z_][a-zA-Z0-9_-]*>`)
+var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]+([^>]*)>([\s\S]*?)</([a-zA-Z_][a-zA-Z0-9_-]*)>`)
 
 // selfClosingPattern matches self-closing XML tags: <Tag attr="val" />
-var selfClosingPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)/>`)
+var selfClosingPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]+([^>]*)/>`)
 
 // attrPattern matches attributes like name="value" or name='value'
 var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([^"']+)["']`)
 
+// normalizeTagPattern matches tags without space before />
+var normalizeTagPattern = regexp.MustCompile(`([^\s])/>`)
+
 // MaybeHasXMLToolCalls is a fast pre-check to determine if content likely contains XML tool calls.
 func MaybeHasXMLToolCalls(content string) bool {
+	// Limit content length to prevent ReDoS
+	if len(content) > maxXMLParseLength {
+		content = content[:maxXMLParseLength]
+	}
+
 	// Check for common tool-related patterns
 	return strings.Contains(content, "<") && strings.Contains(content, ">") &&
 		(toolCallPattern.MatchString(content) ||
@@ -54,25 +66,32 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 
 	// Find all matches from both patterns
 	type matchInfo struct {
-		start       int
-		end         int
-		tagName     string
-		attrs       string
+		start        int
+		end          int
+		tagName      string
+		attrs        string
 		innerContent string
+		closingTag   string // for validation
 	}
 
 	var matches []matchInfo
 
 	// Find opening/closing tag patterns
 	for _, m := range toolCallPattern.FindAllStringSubmatchIndex(content, -1) {
-		if len(m) >= 8 {
-			matches = append(matches, matchInfo{
-				start:        m[0],
-				end:          m[1],
-				tagName:      content[m[2]:m[3]],
-				attrs:        content[m[4]:m[5]],
-				innerContent: content[m[6]:m[7]],
-			})
+		if len(m) >= 10 {
+			openingTag := content[m[2]:m[3]]
+			closingTag := content[m[8]:m[9]]
+			// Only accept if opening and closing tags match
+			if strings.EqualFold(openingTag, closingTag) {
+				matches = append(matches, matchInfo{
+					start:        m[0],
+					end:          m[1],
+					tagName:      openingTag,
+					attrs:        content[m[4]:m[5]],
+					innerContent: content[m[6]:m[7]],
+					closingTag:   closingTag,
+				})
+			}
 		}
 	}
 
@@ -88,14 +107,10 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 		}
 	}
 
-	// Sort matches by start position
-	for i := 0; i < len(matches); i++ {
-		for j := i + 1; j < len(matches); j++ {
-			if matches[j].start < matches[i].start {
-				matches[i], matches[j] = matches[j], matches[i]
-			}
-		}
-	}
+	// Sort matches by start position using efficient O(n log n) sort
+	sort.Slice(matches, func(i, j int) bool {
+		return matches[i].start < matches[j].start
+	})
 
 	for _, match := range matches {
 		// Skip if not a valid tool tag
@@ -153,7 +168,7 @@ func normalizeXML(content string) string {
 	content = strings.ReplaceAll(content, "</Read_file>", "</Read>")
 
 	// Normalize self-closing tags without space before />
-	content = regexp.MustCompile(`([^\s])/>`).ReplaceAllString(content, "$1 />")
+	content = normalizeTagPattern.ReplaceAllString(content, "$1 />")
 
 	return content
 }
