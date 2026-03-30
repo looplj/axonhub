@@ -4,31 +4,40 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/xml"
+	"regexp"
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
-// UseToolCall represents a <use_tool> XML element.
-type UseToolCall struct {
-	XMLName xml.Name `xml:"use_tool"`
-	Name    string   `xml:"name,attr"`
-	Arg     string   `xml:"arg"`
-	Content string   `xml:",innerxml"`
-}
+// toolCallPattern matches XML-like tool calls with content: <Tag>content</Tag>
+// Uses [\s\S] to match any character including newlines
+var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)>([\s\S]*?)</[a-zA-Z_][a-zA-Z0-9_-]*>`)
+
+// selfClosingPattern matches self-closing XML tags: <Tag attr="val" />
+var selfClosingPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)/>`)
+
+// attrPattern matches attributes like name="value" or name='value'
+var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([^"']+)["']`)
 
 // MaybeHasXMLToolCalls is a fast pre-check to determine if content likely contains XML tool calls.
-// This avoids the overhead of full XML parsing for content that doesn't contain tool calls.
 func MaybeHasXMLToolCalls(content string) bool {
-	return strings.Contains(content, "<use_tool") ||
-		strings.Contains(content, "</use_tool>") ||
-		strings.Contains(content, "</use_use>")
+	// Check for common tool-related patterns
+	return strings.Contains(content, "<") && strings.Contains(content, ">") &&
+		(toolCallPattern.MatchString(content) ||
+			selfClosingPattern.MatchString(content) ||
+			strings.Contains(content, "use_tool") ||
+			strings.Contains(content, "Write") ||
+			strings.Contains(content, "Bash") ||
+			strings.Contains(content, "Read"))
 }
 
-// ParseXMLToolCalls extracts tool calls from XML content.
-// It parses the <use_tool name="X"><arg>value</arg></use_tool> format.
+// ParseXMLToolCalls extracts tool calls from XML content using regex-based parsing.
+// Handles various XML formats including:
+// - <use_tool name="X"><arg>value</arg></use_tool>
+// - <Write file_path="X" content="Y"/>
+// - <Write file_path="X">content</Write>
 // Returns the parsed tool calls, any remaining content after tool calls, and any error encountered.
 func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 	// Fast check - if no XML tool tags, return as-is
@@ -36,94 +45,192 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 		return nil, content, nil
 	}
 
-	// Try to parse as XML containing use_tool elements
-	decoder := xml.NewDecoder(strings.NewReader(content))
+	// Normalize common malformed variations
+	content = normalizeXML(content)
 
 	var toolCalls []llm.ToolCall
 	var remainingContent strings.Builder
-	var hasToolCalls bool
+	lastEnd := 0
 
-	for {
-		token, err := decoder.Token()
-		if err != nil {
-			break
+	// Find all matches from both patterns
+	type matchInfo struct {
+		start       int
+		end         int
+		tagName     string
+		attrs       string
+		innerContent string
+	}
+
+	var matches []matchInfo
+
+	// Find opening/closing tag patterns
+	for _, m := range toolCallPattern.FindAllStringSubmatchIndex(content, -1) {
+		if len(m) >= 8 {
+			matches = append(matches, matchInfo{
+				start:        m[0],
+				end:          m[1],
+				tagName:      content[m[2]:m[3]],
+				attrs:        content[m[4]:m[5]],
+				innerContent: content[m[6]:m[7]],
+			})
 		}
+	}
 
-		switch t := token.(type) {
-		case xml.StartElement:
-			if t.Name.Local == "use_tool" {
-				hasToolCalls = true
-				var tool UseToolCall
-				if err := decoder.DecodeElement(&tool, &t); err != nil {
-					// If we can't parse, treat the original content as remaining
-					if !hasToolCalls {
-						return nil, content, nil
-					}
-					continue
-				}
+	// Find self-closing patterns
+	for _, m := range selfClosingPattern.FindAllStringSubmatchIndex(content, -1) {
+		if len(m) >= 6 {
+			matches = append(matches, matchInfo{
+				start:   m[0],
+				end:     m[1],
+				tagName: content[m[2]:m[3]],
+				attrs:   content[m[4]:m[5]],
+			})
+		}
+	}
 
-				if tool.Name != "" {
-					// Generate deterministic ID from tool name and arguments
-					id := generateToolCallID(tool.Name, tool.Arg)
-
-					// Parse arguments - try JSON first, then treat as plain string
-					var args string
-					trimmedArg := strings.TrimSpace(tool.Arg)
-					if trimmedArg != "" {
-						// Check if it looks like JSON
-						if (strings.HasPrefix(trimmedArg, "{") && strings.HasSuffix(trimmedArg, "}")) ||
-							(strings.HasPrefix(trimmedArg, "[") && strings.HasSuffix(trimmedArg, "]")) {
-							args = trimmedArg
-						} else {
-							// Wrap single value in JSON object with "value" key
-							args = `{"value":` + jsonStringify(tool.Arg) + `}`
-						}
-					} else {
-						args = "{}"
-					}
-
-					toolCalls = append(toolCalls, llm.ToolCall{
-						Index: len(toolCalls),
-						ID:    id,
-						Type:  "function",
-						Function: llm.FunctionCall{
-							Name:      tool.Name,
-							Arguments: args,
-						},
-					})
-				}
-			} else {
-				// For other elements, include them in remaining content
-				remainingContent.WriteString(token.(xml.StartElement).Name.Local)
-			}
-
-		case xml.CharData:
-			text := strings.TrimSpace(string(t))
-			if text != "" && !hasToolCalls {
-				remainingContent.WriteString(text)
-			}
-
-		case xml.EndElement:
-			if t.Name.Local != "use_tool" {
-				remainingContent.WriteString("</")
-				remainingContent.WriteString(t.Name.Local)
-				remainingContent.WriteString(">")
+	// Sort matches by start position
+	for i := 0; i < len(matches); i++ {
+		for j := i + 1; j < len(matches); j++ {
+			if matches[j].start < matches[i].start {
+				matches[i], matches[j] = matches[j], matches[i]
 			}
 		}
+	}
+
+	for _, match := range matches {
+		// Skip if not a valid tool tag
+		toolName := extractToolName(match.tagName, match.attrs)
+		if toolName == "" {
+			// Not a recognized tool pattern, keep in remaining content
+			if lastEnd < match.start {
+				remainingContent.WriteString(content[lastEnd:match.start])
+			}
+			lastEnd = match.end
+			continue
+		}
+
+		// Extract tool arguments
+		args := extractToolArguments(toolName, match.attrs, match.innerContent)
+
+		// Generate deterministic ID
+		id := generateToolCallID(toolName, args)
+
+		toolCalls = append(toolCalls, llm.ToolCall{
+			Index: len(toolCalls),
+			ID:    id,
+			Type:  "function",
+			Function: llm.FunctionCall{
+				Name:      toolName,
+				Arguments: args,
+			},
+		})
+
+		// Add any text before this tool call to remaining content
+		if lastEnd < match.start {
+			remainingContent.WriteString(content[lastEnd:match.start])
+		}
+		lastEnd = match.end
+	}
+
+	// Add any remaining content after the last tool call
+	if lastEnd < len(content) {
+		remainingContent.WriteString(content[lastEnd:])
 	}
 
 	if len(toolCalls) == 0 {
-		// No valid tool calls found, return original content
 		return nil, content, nil
 	}
 
-	// Return tool calls and remaining content
-	remaining := remainingContent.String()
-	if remaining == "" {
-		return toolCalls, "", nil
+	remaining := strings.TrimSpace(remainingContent.String())
+	return toolCalls, remaining, nil
+}
+
+// normalizeXML fixes common XML malformations from NanoGPT
+func normalizeXML(content string) string {
+	// Fix mismatched closing tags
+	content = strings.ReplaceAll(content, "</use_use>", "</use_tool>")
+	content = strings.ReplaceAll(content, "</Write_file>", "</Write>")
+	content = strings.ReplaceAll(content, "</Read_file>", "</Read>")
+
+	// Normalize self-closing tags without space before />
+	content = regexp.MustCompile(`([^\s])/>`).ReplaceAllString(content, "$1 />")
+
+	return content
+}
+
+// extractToolName determines the tool name from tag name and attributes
+func extractToolName(tagName, attrs string) string {
+	tagName = strings.TrimSpace(strings.ToLower(tagName))
+
+	// Direct tool name tags
+	switch tagName {
+	case "write", "read", "bash", "python", "search", "glob":
+		return tagName
+	case "use_tool":
+		// Extract from name attribute
+		if matches := attrPattern.FindAllStringSubmatch(attrs, -1); matches != nil {
+			for _, match := range matches {
+				if len(match) >= 3 && strings.ToLower(match[1]) == "name" {
+					return match[2]
+				}
+			}
+		}
 	}
 
-	return toolCalls, remaining, nil
+	return ""
+}
+
+// extractToolArguments extracts arguments from attributes and/or inner content
+func extractToolArguments(toolName, attrs, innerContent string) string {
+	args := make(map[string]interface{})
+
+	// Extract attributes
+	attrMatches := attrPattern.FindAllStringSubmatch(attrs, -1)
+	for _, match := range attrMatches {
+		if len(match) >= 3 {
+			key := match[1]
+			value := match[2]
+			// Skip the "name" attribute for use_tool tags
+			if strings.ToLower(key) == "name" && toolName != "" {
+				continue
+			}
+			args[key] = value
+		}
+	}
+
+	// Handle inner content
+	innerContent = strings.TrimSpace(innerContent)
+	if innerContent != "" {
+		// Try to parse as JSON first
+		var jsonContent interface{}
+		if err := json.Unmarshal([]byte(innerContent), &jsonContent); err == nil {
+			// If valid JSON, merge with args
+			if jsonMap, ok := jsonContent.(map[string]interface{}); ok {
+				for k, v := range jsonMap {
+					if _, exists := args[k]; !exists {
+						args[k] = v
+					}
+				}
+			} else {
+				args["content"] = jsonContent
+			}
+		} else {
+			// Not valid JSON, add as content or arg
+			if _, hasContent := args["content"]; !hasContent {
+				args["content"] = innerContent
+			} else {
+				args["arg"] = innerContent
+			}
+		}
+	}
+
+	// Serialize to JSON
+	result, err := json.Marshal(args)
+	if err != nil || len(args) == 0 {
+		return "{}"
+	}
+
+	return string(result)
 }
 
 // generateToolCallID generates a deterministic ID from the tool name and arguments.
@@ -133,12 +240,6 @@ func generateToolCallID(name, args string) string {
 	hasher.Write([]byte(args))
 	hash := hasher.Sum(nil)
 	return "nanogpt_" + hex.EncodeToString(hash)[:16]
-}
-
-// jsonStringify properly escapes a string for JSON.
-func jsonStringify(s string) string {
-	b, _ := json.Marshal(s)
-	return string(b)
 }
 
 // ToOpenAIToolCalls converts llm.ToolCall slice to openai.ToolCall slice.
