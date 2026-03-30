@@ -16,19 +16,22 @@ import (
 const maxXMLParseLength = 100000 // 100KB
 
 // toolCallPattern matches XML-like tool calls with content: <Tag>content</Tag>
-// Uses [\s\S] to match any character including newlines
-var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]+([^>]*)>([\s\S]*?)</([a-zA-Z_][a-zA-Z0-9_-]*)>`)
+// Uses [^<] to match content safely without ReDoS backtracking
+var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]+([^>]*)>([^<]*)</([a-zA-Z_][a-zA-Z0-9_-]*)>`)
 
 // selfClosingPattern matches self-closing XML tags: <Tag attr="val" />
-var selfClosingPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]+([^>]*)/>`)
+// Allows optional space between tag name and attributes
+var selfClosingPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)/>`)
 
 // attrPattern matches attributes like name="value" or name='value'
-var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([^"']+)["']`)
+// Allows empty attribute values with [^"']*
+var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([^"]*)["']`)
 
 // normalizeTagPattern matches tags without space before />
 var normalizeTagPattern = regexp.MustCompile(`([^\s])/>`)
 // mismatchTagPattern matches <Write>content</use_tool> type patterns
-var mismatchTagPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)>([\s\S]*?)</use_tool>`)
+// Uses [^<] to match content safely without ReDoS backtracking
+var mismatchTagPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)>([^<]*)</use_tool>`)
 
 // MaybeHasXMLToolCalls is a fast pre-check to determine if content likely contains XML tool calls.
 func MaybeHasXMLToolCalls(content string) bool {
