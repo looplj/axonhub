@@ -26,7 +26,7 @@ export const animationConfig: AnimationConfig = {
   maxStepsPerFrame: 5,
 };
 
-interface FormBounds {
+export interface FormBounds {
   formCenterX: number;
   formCenterY: number;
   formLeft: number;
@@ -35,7 +35,49 @@ interface FormBounds {
   formBottom: number;
 }
 
-type DrawNode = Particle | MouseArea;
+const LEFT_PARTICLE_FILL_STYLE = 'rgba(148, 163, 184, 0.4)';
+const RIGHT_PARTICLE_FILL_STYLE = 'rgba(100, 116, 139, 0.3)';
+
+function getLineIntersectsForm(startX: number, startY: number, endX: number, endY: number, bounds: FormBounds): boolean {
+  return (
+    (startX < bounds.formLeft && endX > bounds.formRight) ||
+    (startX > bounds.formRight && endX < bounds.formLeft) ||
+    (startY < bounds.formTop && endY > bounds.formBottom) ||
+    (startY > bounds.formBottom && endY < bounds.formTop) ||
+    isInFormArea(startX, startY, bounds) ||
+    isInFormArea(endX, endY, bounds)
+  );
+}
+
+function drawConnection(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  bounds: FormBounds,
+  dot: Particle,
+  targetX: number,
+  targetY: number,
+  targetMax: number
+): void {
+  const xc = dot.x - targetX;
+  const yc = dot.y - targetY;
+  const dis = xc * xc + yc * yc;
+
+  if (dis >= targetMax || getLineIntersectsForm(dot.x, dot.y, targetX, targetY, bounds)) {
+    return;
+  }
+
+  const ratio = (targetMax - dis) / targetMax;
+  const avgX = (dot.x + targetX) / 2;
+  const isLeftSide = avgX < canvasWidth / 2;
+  const lineColor = isLeftSide ? `rgba(148, 163, 184, ${ratio * 0.4 + 0.1})` : `rgba(100, 116, 139, ${ratio * 0.3 + 0.1})`;
+
+  ctx.beginPath();
+  ctx.lineWidth = ratio / 2 + 0.5;
+  ctx.strokeStyle = lineColor;
+  ctx.moveTo(dot.x, dot.y);
+  ctx.lineTo(targetX, targetY);
+  ctx.stroke();
+}
 
 export function getFormBounds(canvasWidth: number, canvasHeight: number): FormBounds {
   const rightSideStart = canvasWidth / 2;
@@ -58,10 +100,9 @@ export function isInFormArea(x: number, y: number, bounds: FormBounds): boolean 
   return x >= bounds.formLeft && x <= bounds.formRight && y >= bounds.formTop && y <= bounds.formBottom;
 }
 
-export function initParticles(canvasWidth: number, canvasHeight: number): Particle[] {
+export function initParticles(canvasWidth: number, canvasHeight: number, bounds: FormBounds = getFormBounds(canvasWidth, canvasHeight)): Particle[] {
   const particles: Particle[] = [];
   const particleCount = 120;
-  const bounds = getFormBounds(canvasWidth, canvasHeight);
   const leftSideCount = Math.floor(particleCount * 0.6);
   const rightSideCount = particleCount - leftSideCount;
 
@@ -117,10 +158,15 @@ export function initParticles(canvasWidth: number, canvasHeight: number): Partic
   return particles;
 }
 
-export function updateParticles(canvasWidth: number, canvasHeight: number, particles: Particle[], mouseArea: MouseArea): void {
-  const bounds = getFormBounds(canvasWidth, canvasHeight);
-
-  particles.forEach((dot) => {
+export function updateParticles(
+  canvasWidth: number,
+  canvasHeight: number,
+  particles: Particle[],
+  mouseArea: MouseArea,
+  bounds: FormBounds = getFormBounds(canvasWidth, canvasHeight)
+): void {
+  for (let index = 0; index < particles.length; index += 1) {
+    const dot = particles[index];
     dot.x += dot.xa;
     dot.y += dot.ya;
 
@@ -151,7 +197,7 @@ export function updateParticles(canvasWidth: number, canvasHeight: number, parti
         dot.y -= yc * 0.015;
       }
     }
-  });
+  }
 }
 
 export function renderParticles(
@@ -159,57 +205,52 @@ export function renderParticles(
   canvasWidth: number,
   canvasHeight: number,
   particles: Particle[],
-  mouseArea: MouseArea
+  mouseArea: MouseArea,
+  bounds: FormBounds = getFormBounds(canvasWidth, canvasHeight)
 ): void {
-  const bounds = getFormBounds(canvasWidth, canvasHeight);
-
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  const ndots: DrawNode[] = [mouseArea, ...particles];
+  let hasLeftParticles = false;
+  ctx.beginPath();
+  for (let index = 0; index < particles.length; index += 1) {
+    const dot = particles[index];
+    if (!isInFormArea(dot.x, dot.y, bounds) && dot.x < canvasWidth / 2) {
+      ctx.rect(dot.x - 1.5, dot.y - 1.5, 3, 3);
+      hasLeftParticles = true;
+    }
+  }
+  if (hasLeftParticles) {
+    ctx.fillStyle = LEFT_PARTICLE_FILL_STYLE;
+    ctx.fill();
+  }
 
-  particles.forEach((dot) => {
-    if (!isInFormArea(dot.x, dot.y, bounds)) {
-      const isLeftSide = dot.x < canvasWidth / 2;
-      ctx.fillStyle = isLeftSide ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.3)';
-      ctx.fillRect(dot.x - 1.5, dot.y - 1.5, 3, 3);
+  let hasRightParticles = false;
+  ctx.beginPath();
+  for (let index = 0; index < particles.length; index += 1) {
+    const dot = particles[index];
+    if (!isInFormArea(dot.x, dot.y, bounds) && dot.x >= canvasWidth / 2) {
+      ctx.rect(dot.x - 1.5, dot.y - 1.5, 3, 3);
+      hasRightParticles = true;
+    }
+  }
+  if (hasRightParticles) {
+    ctx.fillStyle = RIGHT_PARTICLE_FILL_STYLE;
+    ctx.fill();
+  }
+
+  const hasMouseArea = mouseArea.x !== null && mouseArea.y !== null;
+  for (let index = 0; index < particles.length; index += 1) {
+    const dot = particles[index];
+
+    if (hasMouseArea) {
+      drawConnection(ctx, canvasWidth, bounds, dot, mouseArea.x, mouseArea.y, mouseArea.max);
     }
 
-    for (let i = 0; i < ndots.length; i++) {
-      const d2 = ndots[i];
-      if (dot === d2 || d2.x === null || d2.y === null) continue;
-
-      const xc = dot.x - d2.x;
-      const yc = dot.y - d2.y;
-      const dis = xc * xc + yc * yc;
-
-      if (dis < d2.max) {
-        const ratio = (d2.max - dis) / d2.max;
-        const lineIntersectsForm =
-          (dot.x < bounds.formLeft && d2.x > bounds.formRight) ||
-          (dot.x > bounds.formRight && d2.x < bounds.formLeft) ||
-          (dot.y < bounds.formTop && d2.y > bounds.formBottom) ||
-          (dot.y > bounds.formBottom && d2.y < bounds.formTop) ||
-          isInFormArea(dot.x, dot.y, bounds) ||
-          isInFormArea(d2.x, d2.y, bounds);
-
-        if (!lineIntersectsForm) {
-          ctx.beginPath();
-          ctx.lineWidth = ratio / 2 + 0.5;
-
-          const avgX = (dot.x + d2.x) / 2;
-          const isLeftSide = avgX < canvasWidth / 2;
-          const lineColor = isLeftSide ? `rgba(148, 163, 184, ${ratio * 0.4 + 0.1})` : `rgba(100, 116, 139, ${ratio * 0.3 + 0.1})`;
-
-          ctx.strokeStyle = lineColor;
-          ctx.moveTo(dot.x, dot.y);
-          ctx.lineTo(d2.x, d2.y);
-          ctx.stroke();
-        }
-      }
+    for (let nextIndex = index + 1; nextIndex < particles.length; nextIndex += 1) {
+      const nextDot = particles[nextIndex];
+      drawConnection(ctx, canvasWidth, bounds, dot, nextDot.x, nextDot.y, nextDot.max);
     }
-
-    ndots.splice(ndots.indexOf(dot), 1);
-  });
+  }
 }
 
 export function stepAnimation(
@@ -217,8 +258,9 @@ export function stepAnimation(
   canvasWidth: number,
   canvasHeight: number,
   particles: Particle[],
-  mouseArea: MouseArea
+  mouseArea: MouseArea,
+  bounds: FormBounds = getFormBounds(canvasWidth, canvasHeight)
 ): void {
-  updateParticles(canvasWidth, canvasHeight, particles, mouseArea);
-  renderParticles(ctx, canvasWidth, canvasHeight, particles, mouseArea);
+  updateParticles(canvasWidth, canvasHeight, particles, mouseArea, bounds);
+  renderParticles(ctx, canvasWidth, canvasHeight, particles, mouseArea, bounds);
 }

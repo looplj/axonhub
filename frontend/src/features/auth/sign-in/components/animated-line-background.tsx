@@ -1,8 +1,8 @@
 import { type FC, useCallback, useEffect, useRef } from 'react';
+import type { FormBounds, MouseArea, Particle } from './animated-line-background.engine';
 import {
-  type MouseArea,
-  type Particle,
   animationConfig,
+  getFormBounds,
   initParticles,
   renderParticles,
   updateParticles,
@@ -64,10 +64,12 @@ const shouldExposeAnimationDiagnostics = (): boolean => {
 
 const AnimatedLineBackground: FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const animationRef = useRef<number | null>(null);
   const particlesRef = useRef<Particle[]>([]);
   const diagnosticsInitialParticlesRef = useRef<Particle[] | null>(null);
   const diagnosticsCanvasSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const formBoundsRef = useRef<FormBounds | null>(null);
   const mouseAreaRef = useRef<MouseArea>(createMouseArea());
   const frameCountRef = useRef(0);
   const simulationStepCountRef = useRef(0);
@@ -86,32 +88,51 @@ const AnimatedLineBackground: FC = () => {
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+
+    ctxRef.current = ctxRef.current ?? canvas.getContext('2d');
+    formBoundsRef.current = getFormBounds(canvas.width, canvas.height);
   }, []);
 
   const initializeParticles = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    particlesRef.current = initParticles(canvas.width, canvas.height);
+    const formBounds = formBoundsRef.current ?? getFormBounds(canvas.width, canvas.height);
+    formBoundsRef.current = formBounds;
+    particlesRef.current = initParticles(canvas.width, canvas.height, formBounds);
+  }, []);
+
+  const handleResize = useCallback(() => {
+    resize();
+    initializeParticles();
+  }, [resize, initializeParticles]);
+
+  const resetFrameTimingState = useCallback(() => {
+    accumulatorRef.current = 0;
+    lastTimestampRef.current = null;
+    lastFrameDeltaMsRef.current = 0;
+    lastClampedDeltaMsRef.current = 0;
+    lastFrameStepCountRef.current = 0;
+    lastAppliedDeltaMsRef.current = 0;
   }, []);
 
   const renderFrame = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const ctx = ctxRef.current;
+    const formBounds = formBoundsRef.current;
+    if (!canvas || !ctx || !formBounds) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    renderParticles(ctx, canvas.width, canvas.height, particlesRef.current, mouseAreaRef.current);
+    renderParticles(ctx, canvas.width, canvas.height, particlesRef.current, mouseAreaRef.current, formBounds);
 
     renderCountRef.current += 1;
   }, []);
 
   const applyAnimationStep = useCallback((deltaMs: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const formBounds = formBoundsRef.current;
+    if (!canvas || !formBounds) return;
 
-    updateParticles(canvas.width, canvas.height, particlesRef.current, mouseAreaRef.current);
+    updateParticles(canvas.width, canvas.height, particlesRef.current, mouseAreaRef.current, formBounds);
 
     simulationStepCountRef.current += 1;
     simulatedMsRef.current += deltaMs;
@@ -152,12 +173,7 @@ const AnimatedLineBackground: FC = () => {
     simulationStepCountRef.current = 0;
     renderCountRef.current = 0;
     simulatedMsRef.current = 0;
-    accumulatorRef.current = 0;
-    lastTimestampRef.current = null;
-    lastFrameDeltaMsRef.current = 0;
-    lastClampedDeltaMsRef.current = 0;
-    lastFrameStepCountRef.current = 0;
-    lastAppliedDeltaMsRef.current = 0;
+    resetFrameTimingState();
     mouseAreaRef.current = createMouseArea();
 
     resize();
@@ -169,14 +185,16 @@ const AnimatedLineBackground: FC = () => {
       diagnosticsCanvasSizeRef.current?.height !== nextCanvasSize.height;
 
     if (needsNewInitialParticles) {
-      diagnosticsInitialParticlesRef.current = initParticles(nextCanvasSize.width, nextCanvasSize.height);
+      const formBounds = formBoundsRef.current ?? getFormBounds(nextCanvasSize.width, nextCanvasSize.height);
+      formBoundsRef.current = formBounds;
+      diagnosticsInitialParticlesRef.current = initParticles(nextCanvasSize.width, nextCanvasSize.height, formBounds);
       diagnosticsCanvasSizeRef.current = nextCanvasSize;
     }
 
     particlesRef.current = cloneParticles(diagnosticsInitialParticlesRef.current);
     renderFrame();
     renderCountRef.current = 0;
-  }, [renderFrame, resize]);
+  }, [renderFrame, resize, resetFrameTimingState]);
 
   const snapshotDiagnostics = useCallback<() => AnimationDiagnosticsSnapshot>(() => {
     return {
@@ -222,6 +240,11 @@ const AnimatedLineBackground: FC = () => {
 
   const animate = useCallback(
     (timestamp: number) => {
+      if (document.visibilityState !== 'visible') {
+        animationRef.current = null;
+        return;
+      }
+
       frameCountRef.current += 1;
 
       if (lastTimestampRef.current === null) {
@@ -236,6 +259,23 @@ const AnimatedLineBackground: FC = () => {
     [processAnimationFrame]
   );
 
+  const stopAnimation = useCallback(() => {
+    if (animationRef.current === null) {
+      return;
+    }
+
+    cancelAnimationFrame(animationRef.current);
+    animationRef.current = null;
+  }, []);
+
+  const startAnimation = useCallback(() => {
+    if (animationRef.current !== null || document.visibilityState !== 'visible') {
+      return;
+    }
+
+    animationRef.current = requestAnimationFrame(animate);
+  }, [animate]);
+
   const handleMouseMove = useCallback((e: MouseEvent) => {
     mouseAreaRef.current.x = e.clientX;
     mouseAreaRef.current.y = e.clientY;
@@ -247,42 +287,36 @@ const AnimatedLineBackground: FC = () => {
   }, []);
 
   useEffect(() => {
-    resize();
-    // 强制重新初始化粒子
-    const initTimer = setTimeout(() => {
-      initializeParticles();
-    }, 50);
+    handleResize();
 
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', handleResize);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseout', handleMouseOut);
 
-    // 延迟200ms开始动画，确保粒子初始化完成
-    const timer = setTimeout(() => {
-      animationRef.current = requestAnimationFrame(animate);
-    }, 200);
+    startAnimation();
 
     return () => {
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseout', handleMouseOut);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      clearTimeout(initTimer);
-      clearTimeout(timer);
+      stopAnimation();
     };
-  }, [resize, initializeParticles, animate, handleMouseMove, handleMouseOut]);
+  }, [handleResize, handleMouseMove, handleMouseOut, startAnimation, stopAnimation]);
 
   useEffect(() => {
-    const handleResize = () => {
-      resize();
-      initializeParticles();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        stopAnimation();
+        return;
+      }
+
+      resetFrameTimingState();
+      startAnimation();
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [resize, initializeParticles]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [resetFrameTimingState, startAnimation, stopAnimation]);
 
   useEffect(() => {
     if (!shouldExposeAnimationDiagnostics()) {
