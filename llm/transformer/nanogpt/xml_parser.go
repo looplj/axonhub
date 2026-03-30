@@ -27,7 +27,6 @@ var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([
 
 // normalizeTagPattern matches tags without space before />
 var normalizeTagPattern = regexp.MustCompile(`([^\s])/>`)
-
 // mismatchTagPattern matches <Write>content</use_tool> type patterns
 var mismatchTagPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)>([\s\S]*?)</use_tool>`)
 
@@ -308,3 +307,4 @@ func ToOpenAIMessageContent(content string) openai.MessageContent {
 		Content: &content,
 	}
 }
+
