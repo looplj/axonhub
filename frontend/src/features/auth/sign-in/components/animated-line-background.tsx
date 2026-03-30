@@ -81,31 +81,66 @@ const AnimatedLineBackground: FC = () => {
   const lastClampedDeltaMsRef = useRef(0);
   const lastFrameStepCountRef = useRef(0);
   const lastAppliedDeltaMsRef = useRef(0);
+  const lastRenderedMouseAreaRef = useRef<MouseArea>(createMouseArea());
+  const lastRenderedFormBoundsRef = useRef<FormBounds | null>(null);
+
+  const getMeasuredFormBounds = useCallback((): FormBounds | null => {
+    const el = document.getElementById('auth-card-wrapper');
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return {
+      formCenterX: rect.left + rect.width / 2,
+      formCenterY: rect.top + rect.height / 2,
+      formLeft: rect.left,
+      formRight: rect.right,
+      formTop: rect.top,
+      formBottom: rect.bottom,
+    };
+  }, []);
+
+  const updateFormBounds = useCallback((canvasWidth: number, canvasHeight: number) => {
+    const newBounds = getMeasuredFormBounds() ?? getFormBounds(canvasWidth, canvasHeight);
+    const prev = formBoundsRef.current;
+    
+    if (!prev || 
+        prev.formLeft !== newBounds.formLeft || 
+        prev.formRight !== newBounds.formRight || 
+        prev.formTop !== newBounds.formTop || 
+        prev.formBottom !== newBounds.formBottom) {
+      formBoundsRef.current = newBounds;
+      return true;
+    }
+    return false;
+  }, [getMeasuredFormBounds]);
 
   const resize = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return { sizeChanged: false, boundsChanged: false };
+
+    const prevWidth = canvas.width;
+    const prevHeight = canvas.height;
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
     ctxRef.current = ctxRef.current ?? canvas.getContext('2d');
-    formBoundsRef.current = getFormBounds(canvas.width, canvas.height);
-  }, []);
+    const boundsChanged = updateFormBounds(canvas.width, canvas.height);
+    const sizeChanged = prevWidth !== canvas.width || prevHeight !== canvas.height;
 
-  const initializeParticles = useCallback(() => {
+    return { sizeChanged, boundsChanged };
+  }, [updateFormBounds]);
+
+  const handleResize = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const formBounds = formBoundsRef.current ?? getFormBounds(canvas.width, canvas.height);
-    formBoundsRef.current = formBounds;
-    particlesRef.current = initParticles(canvas.width, canvas.height, formBounds);
-  }, []);
+    const { sizeChanged } = resize();
 
-  const handleResize = useCallback(() => {
-    resize();
-    initializeParticles();
-  }, [resize, initializeParticles]);
+    if (sizeChanged || particlesRef.current.length === 0) {
+      const formBounds = formBoundsRef.current ?? getFormBounds(canvas.width, canvas.height);
+      particlesRef.current = initParticles(canvas.width, canvas.height, formBounds);
+    }
+  }, [resize]);
 
   const resetFrameTimingState = useCallback(() => {
     accumulatorRef.current = 0;
@@ -160,7 +195,17 @@ const AnimatedLineBackground: FC = () => {
         lastAppliedDeltaMsRef.current = 0;
       }
 
-      renderFrame();
+      const mouseMoved =
+        lastRenderedMouseAreaRef.current.x !== mouseAreaRef.current.x ||
+        lastRenderedMouseAreaRef.current.y !== mouseAreaRef.current.y;
+      const formBoundsChanged = lastRenderedFormBoundsRef.current !== formBoundsRef.current;
+
+      if (steps > 0 || mouseMoved || formBoundsChanged) {
+        renderFrame();
+        lastRenderedMouseAreaRef.current.x = mouseAreaRef.current.x;
+        lastRenderedMouseAreaRef.current.y = mouseAreaRef.current.y;
+        lastRenderedFormBoundsRef.current = formBoundsRef.current;
+      }
     },
     [applyAnimationStep, renderFrame]
   );
@@ -176,17 +221,18 @@ const AnimatedLineBackground: FC = () => {
     resetFrameTimingState();
     mouseAreaRef.current = createMouseArea();
 
-    resize();
+    const { sizeChanged, boundsChanged } = resize();
 
     const nextCanvasSize = { width: canvas.width, height: canvas.height };
     const needsNewInitialParticles =
+      sizeChanged ||
+      boundsChanged ||
       diagnosticsInitialParticlesRef.current === null ||
       diagnosticsCanvasSizeRef.current?.width !== nextCanvasSize.width ||
       diagnosticsCanvasSizeRef.current?.height !== nextCanvasSize.height;
 
     if (needsNewInitialParticles) {
       const formBounds = formBoundsRef.current ?? getFormBounds(nextCanvasSize.width, nextCanvasSize.height);
-      formBoundsRef.current = formBounds;
       diagnosticsInitialParticlesRef.current = initParticles(nextCanvasSize.width, nextCanvasSize.height, formBounds);
       diagnosticsCanvasSizeRef.current = nextCanvasSize;
     }
@@ -293,12 +339,24 @@ const AnimatedLineBackground: FC = () => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseout', handleMouseOut);
 
+    const el = document.getElementById('auth-card-wrapper');
+    let observer: ResizeObserver | null = null;
+    if (el) {
+      observer = new ResizeObserver(() => {
+        handleResize();
+      });
+      observer.observe(el);
+    }
+
     startAnimation();
 
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseout', handleMouseOut);
+      if (observer) {
+        observer.disconnect();
+      }
       stopAnimation();
     };
   }, [handleResize, handleMouseMove, handleMouseOut, startAnimation, stopAnimation]);
