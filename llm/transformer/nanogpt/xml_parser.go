@@ -28,6 +28,9 @@ var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([
 // normalizeTagPattern matches tags without space before />
 var normalizeTagPattern = regexp.MustCompile(`([^\s])/>`)
 
+// mismatchTagPattern matches <Write>content</use_tool> type patterns
+var mismatchTagPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)>([\s\S]*?)</use_tool>`)
+
 // MaybeHasXMLToolCalls is a fast pre-check to determine if content likely contains XML tool calls.
 func MaybeHasXMLToolCalls(content string) bool {
 	// Limit content length to prevent ReDoS
@@ -50,6 +53,7 @@ func MaybeHasXMLToolCalls(content string) bool {
 // - <use_tool name="X"><arg>value</arg></use_tool>
 // - <Write file_path="X" content="Y"/>
 // - <Write file_path="X">content</Write>
+// - <Write> {"file_path": "X", "content": "Y"}</use_tool>
 // Returns the parsed tool calls, any remaining content after tool calls, and any error encountered.
 func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 	// Fast check - if no XML tool tags, return as-is
@@ -162,10 +166,26 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 
 // normalizeXML fixes common XML malformations from NanoGPT
 func normalizeXML(content string) string {
-	// Fix mismatched closing tags
+	// Fix mismatched closing tags - handle variations like </use_tool>, </use_use>, etc.
 	content = strings.ReplaceAll(content, "</use_use>", "</use_tool>")
 	content = strings.ReplaceAll(content, "</Write_file>", "</Write>")
+	content = strings.ReplaceAll(content, "</Write_FILE>", "</Write>")
 	content = strings.ReplaceAll(content, "</Read_file>", "</Read>")
+	content = strings.ReplaceAll(content, "</Read_FILE>", "</Read>")
+
+	// Fix weird patterns like <Write>content</use_tool> -> <Write>content</Write>
+	// Use ReplaceAllFunc to preserve the opening tag name
+	content = mismatchTagPattern.ReplaceAllStringFunc(content, func(match string) string {
+		// Extract parts from the match
+		parts := mismatchTagPattern.FindStringSubmatch(match)
+		if len(parts) >= 4 {
+			tagName := parts[1]
+			attrs := parts[2]
+			innerContent := parts[3]
+			return "<" + tagName + attrs + ">" + innerContent + "</" + tagName + ">"
+		}
+		return match
+	})
 
 	// Normalize self-closing tags without space before />
 	content = normalizeTagPattern.ReplaceAllString(content, "$1 />")
@@ -177,11 +197,15 @@ func normalizeXML(content string) string {
 func extractToolName(tagName, attrs string) string {
 	tagName = strings.TrimSpace(strings.ToLower(tagName))
 
-	// Direct tool name tags
-	switch tagName {
-	case "write", "read", "bash", "python", "search", "glob":
+	// Direct tool name tags (handle variations like Write_FILE, Write_file, etc.)
+	switch {
+	case strings.HasPrefix(tagName, "write"):
+		return "write"
+	case strings.HasPrefix(tagName, "read"):
+		return "read"
+	case tagName == "bash", tagName == "python", tagName == "search", tagName == "glob":
 		return tagName
-	case "use_tool":
+	case tagName == "use_tool":
 		// Extract from name attribute
 		if matches := attrPattern.FindAllStringSubmatch(attrs, -1); matches != nil {
 			for _, match := range matches {
