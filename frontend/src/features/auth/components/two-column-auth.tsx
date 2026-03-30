@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AutoRouterDiagram from '../sign-in/components/auto-router-diagram';
@@ -64,14 +64,16 @@ export default function TwoColumnAuth({
           <div className='absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(148,163,184,0.1)_0%,transparent_70%)]'></div>
         </div>
 
-        <div className={`relative z-10 w-full ${rightMaxWidthClassName} px-6 py-8 sm:px-8 sm:py-12`}>
+        <div id='auth-card-wrapper' data-testid='auth-card-wrapper' className={`relative z-10 w-full ${rightMaxWidthClassName} px-6 py-8 sm:px-8 sm:py-12`}>
           <Card
             className='animate-fade-in-up border-slate-200/60 bg-white/90 text-slate-800 shadow-xl shadow-slate-900/10 backdrop-blur-sm transition-all duration-500 hover:shadow-2xl hover:shadow-slate-900/15'
-            style={{
-              // Ensure shadcn variable-based components render with dark-on-light colors inside the white card
-              ['--foreground' as any]: '#1e293b', // slate-800
-              ['--muted-foreground' as any]: '#94a3b8', // slate-400 (for placeholders, help texts)
-            }}
+            style={
+              {
+                // Ensure shadcn variable-based components render with dark-on-light colors inside the white card
+                '--foreground': '#1e293b', // slate-800
+                '--muted-foreground': '#94a3b8', // slate-400 (for placeholders, help texts)
+              } as React.CSSProperties
+            }
           >
             <CardHeader className='px-6 pt-8 pb-6 text-center sm:px-8 sm:pb-8'>
               <CardTitle className='mb-3 text-2xl font-light text-slate-800 sm:text-3xl'>{title}</CardTitle>
