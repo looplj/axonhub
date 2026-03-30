@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/jsonschema-go/jsonschema"
 
@@ -13,6 +14,11 @@ import (
 
 //go:embed grep.md
 var grepDescription string
+
+const (
+	grepTruncationHint = "Use path, glob, head_limit, or a more specific pattern to narrow matches."
+	grepOutputMaxLines = 500
+)
 
 type GrepTool struct {
 	workspace string
@@ -166,5 +172,12 @@ func (t *GrepTool) Execute(ctx context.Context, input grepInput) agent.ToolResul
 		return ErrorResult(err)
 	}
 
-	return TextResult(result.Text)
+	text := result.Text
+	if result.Truncated {
+		text += fmt.Sprintf("Results were also capped by grep at %d matches before tool-level truncation.\n", grep.MaxMatches)
+	}
+
+	text = truncateToolOutputLines(text, grepOutputMaxLines, grepTruncationHint)
+
+	return TextResult(truncateToolOutput(text, 0, grepTruncationHint))
 }

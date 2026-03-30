@@ -22,6 +22,8 @@ const (
 	defaultReadMaxLineChars = 2000
 )
 
+const readTruncationHint = "Use read_range or a narrower path to inspect a smaller section."
+
 type ReadTool struct {
 	workspace string
 	restrict  bool
@@ -104,7 +106,7 @@ func (t *ReadTool) listDirectory(path string) agent.ToolResult {
 		sb.WriteString("\n")
 	}
 
-	return TextResult(sb.String())
+	return TextResult(truncateToolOutput(sb.String(), 0, readTruncationHint))
 }
 
 func (t *ReadTool) readFile(path string, readRange []int) agent.ToolResult {
@@ -151,7 +153,7 @@ func (t *ReadTool) readFile(path string, readRange []int) agent.ToolResult {
 		fmt.Fprintf(&sb, "... (truncated, showing lines %d-%d of %d; use read_range to read more)\n", start, end, len(lines))
 	}
 
-	return TextResult(sb.String())
+	return TextResult(truncateToolOutput(sb.String(), 0, readTruncationHint))
 }
 
 func truncateReadLine(line string) string {

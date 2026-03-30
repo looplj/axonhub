@@ -90,12 +90,16 @@ var rtkRewritablePrefixes = []string{
 }
 
 const (
-	bashTimeout       = 60 * time.Second
-	maxOutputLen      = 10000
-	rtkMinMajor       = 0
-	rtkMinMinor       = 23
-	rtkRewriteTimeout = 3 * time.Second
+	bashTimeout         = 60 * time.Second
+	bashSectionMaxLen   = 10000
+	bashSectionMaxLines = 250
+	bashOutputMaxLines  = 500
+	rtkMinMajor         = 0
+	rtkMinMinor         = 23
+	rtkRewriteTimeout   = 3 * time.Second
 )
+
+const bashTruncationHint = "Rerun the command with narrower filters or pipe through head for a smaller result."
 
 type BashTool struct {
 	workingDir string
@@ -254,14 +258,17 @@ func (t *BashTool) Execute(ctx context.Context, input bashInput) agent.ToolResul
 
 	var sb strings.Builder
 	if stdout.Len() > 0 {
-		sb.WriteString(truncate(stdout.String(), maxOutputLen))
+		section := truncateToolOutputLines(stdout.String(), bashSectionMaxLines, bashTruncationHint)
+		sb.WriteString(truncateToolOutput(section, bashSectionMaxLen, bashTruncationHint))
 	}
 	if stderr.Len() > 0 {
 		if sb.Len() > 0 {
 			sb.WriteString("\n")
 		}
 		sb.WriteString("STDERR:\n")
-		sb.WriteString(truncate(stderr.String(), maxOutputLen))
+
+		section := truncateToolOutputLines(stderr.String(), bashSectionMaxLines, bashTruncationHint)
+		sb.WriteString(truncateToolOutput(section, bashSectionMaxLen, bashTruncationHint))
 	}
 
 	if err != nil {
@@ -278,12 +285,7 @@ func (t *BashTool) Execute(ctx context.Context, input bashInput) agent.ToolResul
 		return TextResult("(no output)")
 	}
 
-	return TextResult(sb.String())
-}
+	output := truncateToolOutputLines(sb.String(), bashOutputMaxLines, bashTruncationHint)
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "\n... (truncated)"
+	return TextResult(truncateToolOutput(output, 0, bashTruncationHint))
 }

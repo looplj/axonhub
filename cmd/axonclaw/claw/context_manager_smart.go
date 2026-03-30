@@ -7,32 +7,31 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/looplj/axonhub/axon/agent"
 )
 
 const (
-	defaultContextMaxRecentMessages = 120
-	defaultContextSoftTokenLimit    = 160_000
+	defaultContextTokenLimit      = 180_000
+	defaultContextSummaryMaxChars = 16_000
 )
 
 type ContextManagerConfig struct {
-	Enabled           bool
-	MaxRecentMessages int
-	SoftTokenLimit    int
-	Summarizer        *SmartSummarizer
-	Logger            *slog.Logger
+	Enabled         bool
+	TokenLimit      int
+	SummaryMaxChars int
+	Summarizer      *SmartSummarizer
+	Logger          *slog.Logger
 }
 
 func DefaultContextManagerConfig() ContextManagerConfig {
 	return ContextManagerConfig{
-		Enabled:           true,
-		MaxRecentMessages: defaultContextMaxRecentMessages,
-		SoftTokenLimit:    defaultContextSoftTokenLimit,
+		Enabled:         true,
+		TokenLimit:      defaultContextTokenLimit,
+		SummaryMaxChars: defaultContextSummaryMaxChars,
 	}
 }
-
-const compactionCooldown = 30 * time.Second
 
 type SmartContextManager struct {
 	agent.ContextManager
@@ -41,10 +40,9 @@ type SmartContextManager struct {
 	store  ContextManagerStore
 	logger *slog.Logger
 
-	mu              sync.RWMutex
-	state           agent.ContextManagerState
-	lastCompactedAt time.Time
-	onCompaction    func()
+	mu           sync.RWMutex
+	state        agent.ContextManagerState
+	onCompaction func()
 }
 
 func NewSmartContextManager(config ContextManagerConfig, store ContextManagerStore) (*SmartContextManager, error) {
@@ -137,7 +135,6 @@ func (m *SmartContextManager) ClearMessages(ctx context.Context) {
 
 	now := time.Now().UTC()
 	m.state = agent.ContextManagerState{UpdatedAt: now}
-	m.lastCompactedAt = time.Time{}
 	m.saveLocked(ctx, nil)
 }
 
@@ -155,34 +152,21 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []agent.Message
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	keepRounds := m.config.MaxRecentMessages
-	if keepRounds <= 0 {
-		keepRounds = defaultContextMaxRecentMessages
-	}
-
 	totalTokens := 0
 	tokenLimitExceeded := false
 
-	if m.config.SoftTokenLimit > 0 {
+	if m.config.TokenLimit > 0 {
 		totalTokens = agent.EstimateMessagesTokens(working)
-		tokenLimitExceeded = totalTokens > m.config.SoftTokenLimit
+		tokenLimitExceeded = totalTokens > m.config.TokenLimit
 	}
 
-	totalRounds := countUniqueRounds(working)
-	roundOverflow := totalRounds > keepRounds
-	inCooldown := !m.lastCompactedAt.IsZero() && time.Since(m.lastCompactedAt) < compactionCooldown
-
-	shouldCompact := (roundOverflow || (tokenLimitExceeded && totalRounds > keepRounds/2)) && !inCooldown
+	shouldCompact := tokenLimitExceeded
 	if m.logger.Enabled(ctx, slog.LevelDebug) {
 		m.logger.Debug("context manager: build messages",
 			"messages", len(working),
-			"rounds", totalRounds,
 			"tokens", totalTokens,
-			"max_recent_rounds", keepRounds,
-			"soft_token_limit", m.config.SoftTokenLimit,
-			"round_overflow", roundOverflow,
+			"token_limit", m.config.TokenLimit,
 			"token_limit_exceeded", tokenLimitExceeded,
-			"in_cooldown", inCooldown,
 			"should_compact", shouldCompact,
 		)
 	}
@@ -222,8 +206,9 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []agent.Message
 				"last_assistant_idx", lastAssistantIdx,
 			)
 			summary, err := m.config.Summarizer.Summarize(ctx, overflow)
-
-			summary = strings.TrimSpace(summary)
+			if err == nil {
+				summary = truncatePlainText(strings.TrimSpace(summary), m.config.SummaryMaxChars)
+			}
 			if err == nil && summary != "" {
 				summaryMsg := agent.Message{
 					Role:    agent.RoleUser,
@@ -235,7 +220,6 @@ func (m *SmartContextManager) BuildMessages(ctx context.Context) []agent.Message
 				m.state.Summary = ""
 				m.state.CompactionCount++
 				m.state.UpdatedAt = now
-				m.lastCompactedAt = now
 
 				m.logger.Info("context manager: summarize complete",
 					"overflow_messages", len(overflow),
@@ -344,12 +328,12 @@ func findLastAssistantMessageIndex(messages []agent.Message) int {
 }
 
 func mergeDefaultContextManagerConfig(cfg ContextManagerConfig) ContextManagerConfig {
-	if cfg.MaxRecentMessages <= 0 {
-		cfg.MaxRecentMessages = defaultContextMaxRecentMessages
+	if cfg.TokenLimit <= 0 {
+		cfg.TokenLimit = defaultContextTokenLimit
 	}
 
-	if cfg.SoftTokenLimit <= 0 {
-		cfg.SoftTokenLimit = defaultContextSoftTokenLimit
+	if cfg.SummaryMaxChars <= 0 {
+		cfg.SummaryMaxChars = defaultContextSummaryMaxChars
 	}
 
 	if cfg.Logger == nil {
@@ -357,4 +341,36 @@ func mergeDefaultContextManagerConfig(cfg ContextManagerConfig) ContextManagerCo
 	}
 
 	return cfg
+}
+
+func truncatePlainText(text string, maxChars int) string {
+	if maxChars <= 0 || utf8.RuneCountInString(text) <= maxChars {
+		return text
+	}
+
+	const suffix = "\n... (truncated)"
+
+	budget := maxChars - utf8.RuneCountInString(suffix)
+	if budget <= 0 {
+		return truncateRunes(text, maxChars)
+	}
+
+	return truncateRunes(text, budget) + suffix
+}
+
+func truncateRunes(text string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+
+	runeCount := 0
+	for i := range text {
+		if runeCount == limit {
+			return text[:i]
+		}
+
+		runeCount++
+	}
+
+	return text
 }

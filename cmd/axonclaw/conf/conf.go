@@ -50,8 +50,7 @@ func LoadOrSaveConfig() (claw.Config, error) {
 			v.SetDefault("heartbeat_interval", "1m")
 			v.SetDefault("auto_sync_config", false)
 			v.SetDefault("auto_sync_config_interval", "5m")
-			v.SetDefault("context_recent_messages", 80)
-			v.SetDefault("context_soft_token_limit", 120000)
+			v.SetDefault("context_token_limit", 120000)
 			v.SetDefault("context_summary_max_chars", 16000)
 			v.SetDefault("debug", false)
 		},
@@ -79,11 +78,8 @@ func LoadOrSaveConfig() (claw.Config, error) {
 		cfg.AutoSyncConfigInterval = res.Value.AutoSyncConfigInterval
 	}
 
-	if res.Value.ContextRecentMessages > 0 {
-		cfg.ContextRecentMessages = res.Value.ContextRecentMessages
-	}
-	if res.Value.ContextSoftTokenLimit > 0 {
-		cfg.ContextSoftTokenLimit = res.Value.ContextSoftTokenLimit
+	if res.Value.ContextTokenLimit > 0 {
+		cfg.ContextTokenLimit = res.Value.ContextTokenLimit
 	}
 	if res.Value.ContextSummaryMaxChars > 0 {
 		cfg.ContextSummaryMaxChars = res.Value.ContextSummaryMaxChars
@@ -237,8 +233,7 @@ func LoadConfig() (claw.Config, error) {
 			v.SetDefault("auto_sync_config", false)
 			v.SetDefault("auto_sync_config_interval", "5m")
 			v.SetDefault("enable_context_manager", false)
-			v.SetDefault("context_recent_messages", 80)
-			v.SetDefault("context_soft_token_limit", 120000)
+			v.SetDefault("context_token_limit", 120000)
 			v.SetDefault("context_summary_max_chars", 16000)
 			v.SetDefault("debug", false)
 		},
@@ -266,8 +261,12 @@ func PolicyDir() (string, error) {
 	return RuntimeDir()
 }
 
-func PermissionDir() (string, error) {
-	return RuntimeDir()
+func PolicyDirForWorkspace(workspace string) (string, error) {
+	return RuntimeDirForWorkspace(workspace)
+}
+
+func PermissionDirForWorkspace(workspace string) (string, error) {
+	return RuntimeDirForWorkspace(workspace)
 }
 
 func RuntimeDir() (string, error) {

@@ -13,20 +13,6 @@ const PolicyFileName = "policy.yml"
 
 var DefaultPolicy = defaultPolicyDocument()
 
-func LoadOrCreatePolicy() (policy.Document, error) {
-	defaultPath := GetPolicyFilePath()
-	if _, err := os.Stat(defaultPath); err == nil {
-		return policy.LoadFiles(defaultPath)
-	}
-
-	DefaultPolicy = defaultPolicyDocument()
-	if err := createDefaultPolicyFile(defaultPath); err != nil {
-		return policy.Document{}, fmt.Errorf("policy: create default file: %w", err)
-	}
-
-	return DefaultPolicy, nil
-}
-
 func createDefaultPolicyFile(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create dir: %w", err)
@@ -44,13 +30,28 @@ func createDefaultPolicyFile(path string) error {
 	return nil
 }
 
-func GetPolicyFilePath() string {
-	dir, err := PolicyDir()
+func GetPolicyFilePath(workspace string) string {
+	dir, err := PolicyDirForWorkspace(workspace)
 	if err != nil {
 		return filepath.Join(DefaultDir, PolicyFileName)
 	}
 
 	return filepath.Join(dir, PolicyFileName)
+}
+
+func LoadOrCreatePolicy(workspace string) (policy.Document, error) {
+	defaultPath := GetPolicyFilePath(workspace)
+	if _, err := os.Stat(defaultPath); err == nil {
+		return policy.LoadFiles(defaultPath)
+	}
+
+	DefaultPolicy = defaultPolicyDocument()
+
+	if err := createDefaultPolicyFile(defaultPath); err != nil {
+		return policy.Document{}, fmt.Errorf("policy: create default file: %w", err)
+	}
+
+	return DefaultPolicy, nil
 }
 
 func defaultPolicyDocument() policy.Document {

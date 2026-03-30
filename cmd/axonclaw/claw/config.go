@@ -16,8 +16,7 @@ type Config struct {
 	HeartbeatInterval      time.Duration `yaml:"heartbeat_interval"`
 	AutoSyncConfig         bool          `yaml:"auto_sync_config"`
 	AutoSyncConfigInterval time.Duration `yaml:"auto_sync_config_interval"`
-	ContextRecentMessages  int           `yaml:"context_recent_messages"`
-	ContextSoftTokenLimit  int           `yaml:"context_soft_token_limit"`
+	ContextTokenLimit      int           `yaml:"context_token_limit"`
 	ContextSummaryMaxChars int           `yaml:"context_summary_max_chars"`
 	Debug                  bool          `yaml:"debug"`
 }
@@ -27,8 +26,7 @@ func DefaultConfig() Config {
 		PollInterval:           5 * time.Second,
 		HeartbeatInterval:      1 * time.Minute,
 		AutoSyncConfigInterval: 5 * time.Minute,
-		ContextRecentMessages:  80,
-		ContextSoftTokenLimit:  120000,
+		ContextTokenLimit:      120000,
 		ContextSummaryMaxChars: 16000,
 	}
 }

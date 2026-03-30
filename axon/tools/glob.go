@@ -16,6 +16,11 @@ import (
 //go:embed glob.md
 var globDescription string
 
+const (
+	globTruncationHint = "Use a narrower path or a more specific glob pattern to reduce matches."
+	globOutputMaxLines = glob.MaxResults + 1
+)
+
 type GlobTool struct {
 	workspace string
 	restrict  bool
@@ -100,5 +105,7 @@ func (t *GlobTool) Execute(ctx context.Context, input globInput) agent.ToolResul
 		fmt.Fprintf(&sb, "... (showing first %d results)\n", glob.MaxResults)
 	}
 
-	return TextResult(sb.String())
+	output := truncateToolOutputLines(sb.String(), globOutputMaxLines, globTruncationHint)
+
+	return TextResult(truncateToolOutput(output, 0, globTruncationHint))
 }

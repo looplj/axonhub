@@ -204,11 +204,12 @@ func runAgent(cfg claw.Config, wd string, debug bool) error {
 	contextCfg := claw.DefaultContextManagerConfig()
 	contextCfg.Enabled = true
 	contextCfg.Logger = logger
-	if cfg.ContextRecentMessages > 0 {
-		contextCfg.MaxRecentMessages = cfg.ContextRecentMessages
+	if cfg.ContextTokenLimit > 0 {
+		contextCfg.TokenLimit = cfg.ContextTokenLimit
 	}
-	if cfg.ContextSoftTokenLimit > 0 {
-		contextCfg.SoftTokenLimit = cfg.ContextSoftTokenLimit
+
+	if cfg.ContextSummaryMaxChars > 0 {
+		contextCfg.SummaryMaxChars = cfg.ContextSummaryMaxChars
 	}
 
 	subagentMgr := subagent.NewManagerFromPath(filepath.Join(wd, "subagents"))
@@ -262,7 +263,7 @@ func runAgent(cfg claw.Config, wd string, debug bool) error {
 
 	contextMgr = cm
 
-	permissionDir, err := conf.PermissionDir()
+	permissionDir, err := conf.PermissionDirForWorkspace(wd)
 	if err != nil {
 		return fmt.Errorf("resolve permission directory: %w", err)
 	}
@@ -275,7 +276,7 @@ func runAgent(cfg claw.Config, wd string, debug bool) error {
 		return fmt.Errorf("load workspace grants: %w", err)
 	}
 
-	pdoc, err := conf.LoadOrCreatePolicy()
+	pdoc, err := conf.LoadOrCreatePolicy(wd)
 	if err != nil {
 		return fmt.Errorf("load policy: %w", err)
 	}
