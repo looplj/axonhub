@@ -12,6 +12,20 @@ export interface MouseArea {
   max: number;
 }
 
+export interface AnimationConfig {
+  targetFps: number;
+  frameIntervalMs: number;
+  maxCatchUpMs: number;
+  maxStepsPerFrame: number;
+}
+
+export const animationConfig: AnimationConfig = {
+  targetFps: 60,
+  frameIntervalMs: 1000 / 60,
+  maxCatchUpMs: 100,
+  maxStepsPerFrame: 5,
+};
+
 interface FormBounds {
   formCenterX: number;
   formCenterY: number;
@@ -103,18 +117,8 @@ export function initParticles(canvasWidth: number, canvasHeight: number): Partic
   return particles;
 }
 
-export function stepAnimation(
-  ctx: CanvasRenderingContext2D,
-  canvasWidth: number,
-  canvasHeight: number,
-  particles: Particle[],
-  mouseArea: MouseArea,
-): void {
+export function updateParticles(canvasWidth: number, canvasHeight: number, particles: Particle[], mouseArea: MouseArea): void {
   const bounds = getFormBounds(canvasWidth, canvasHeight);
-
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-  const ndots: DrawNode[] = [mouseArea, ...particles];
 
   particles.forEach((dot) => {
     dot.x += dot.xa;
@@ -137,6 +141,33 @@ export function stepAnimation(
       }
     }
 
+    if (mouseArea.x !== null && mouseArea.y !== null) {
+      const xc = dot.x - mouseArea.x;
+      const yc = dot.y - mouseArea.y;
+      const dis = xc * xc + yc * yc;
+
+      if (dis < mouseArea.max && dis > mouseArea.max / 2) {
+        dot.x -= xc * 0.015;
+        dot.y -= yc * 0.015;
+      }
+    }
+  });
+}
+
+export function renderParticles(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  particles: Particle[],
+  mouseArea: MouseArea
+): void {
+  const bounds = getFormBounds(canvasWidth, canvasHeight);
+
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  const ndots: DrawNode[] = [mouseArea, ...particles];
+
+  particles.forEach((dot) => {
     if (!isInFormArea(dot.x, dot.y, bounds)) {
       const isLeftSide = dot.x < canvasWidth / 2;
       ctx.fillStyle = isLeftSide ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.3)';
@@ -152,11 +183,6 @@ export function stepAnimation(
       const dis = xc * xc + yc * yc;
 
       if (dis < d2.max) {
-        if (d2 === mouseArea && dis > d2.max / 2) {
-          dot.x -= xc * 0.015;
-          dot.y -= yc * 0.015;
-        }
-
         const ratio = (d2.max - dis) / d2.max;
         const lineIntersectsForm =
           (dot.x < bounds.formLeft && d2.x > bounds.formRight) ||
@@ -184,4 +210,15 @@ export function stepAnimation(
 
     ndots.splice(ndots.indexOf(dot), 1);
   });
+}
+
+export function stepAnimation(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  particles: Particle[],
+  mouseArea: MouseArea
+): void {
+  updateParticles(canvasWidth, canvasHeight, particles, mouseArea);
+  renderParticles(ctx, canvasWidth, canvasHeight, particles, mouseArea);
 }
