@@ -49,5 +49,11 @@
   "promptProtectionRules.messages.bulkDisableSuccess": "Selected rules disabled",
   "promptProtectionRules.messages.bulkDisableError": "Failed to disable selected rules: {{error}}",
   "promptProtectionRules.messages.bulkDeleteSuccess": "Selected rules deleted",
-  "promptProtectionRules.messages.bulkDeleteError": "Failed to delete selected rules: {{error}}"
+  "promptProtectionRules.messages.bulkDeleteError": "Failed to delete selected rules: {{error}}",
+  "promptProtectionRules.test.title": "Test Preview",
+  "promptProtectionRules.test.testInput": "Test Input",
+  "promptProtectionRules.test.previewResult": "Preview Result",
+  "promptProtectionRules.test.noMatch": "No match",
+  "promptProtectionRules.test.invalidPattern": "Invalid regex pattern",
+  "promptProtectionRules.test.placeholder": "Enter test text to preview regex replacement"
 }
