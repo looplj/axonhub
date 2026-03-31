@@ -1813,7 +1813,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			globalUAEnabled:  true,
 			clientUA:         "Client/1.0",
 			wantPassThrough:  boolPtr(false),
-			wantUAHeader:     "",
+			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: should use AxonHub default
 		},
 		{
 			name:             "channel_enabled_ignores_global",
@@ -1829,7 +1829,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			globalUAEnabled:  false,
 			clientUA:         "Client/1.0",
 			wantPassThrough:  boolPtr(false),
-			wantUAHeader:     "",
+			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: should use AxonHub default
 		},
 		{
 			name:             "channel_nil_inherits_global_enabled",
@@ -1912,9 +1912,12 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			// Verify PassThroughUserAgent flag
 			require.Equal(t, tt.wantPassThrough, processedRequest.PassThroughUserAgent)
 
-			// Verify User-Agent header when pass-through is enabled
+			// Verify User-Agent header is set correctly
 			if tt.wantUAHeader != "" {
 				require.Equal(t, tt.wantUAHeader, processedRequest.Headers.Get("User-Agent"))
+			} else {
+				// When no User-Agent expected, header should be empty
+				require.Empty(t, processedRequest.Headers.Get("User-Agent"))
 			}
 		})
 	}
