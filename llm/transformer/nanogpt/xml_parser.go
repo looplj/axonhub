@@ -168,6 +168,16 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 
 // normalizeXML fixes common XML malformations from NanoGPT
 func normalizeXML(content string) string {
+	// Fix unclosed opening tags: <Write attr="..."\ncontent</use_tool> -> <Write attr="...">\ncontent</use_tool>
+	// NanoGPT sometimes omits the closing > on the opening tag
+	unclosedPattern := regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)\n([\s\S]*?)</use_tool>`)
+	content = unclosedPattern.ReplaceAllStringFunc(content, func(match string) string {
+		parts := unclosedPattern.FindStringSubmatch(match)
+		if len(parts) >= 4 {
+			return "<" + parts[1] + parts[2] + ">\n" + parts[3] + "</use_tool>"
+		}
+		return match
+	})
 	// Fix mismatched closing tags - handle variations like </use_tool>, </use_use>, etc.
 	content = strings.ReplaceAll(content, "</use_use>", "</use_tool>")
 	content = strings.ReplaceAll(content, "</Write_file>", "</Write>")
