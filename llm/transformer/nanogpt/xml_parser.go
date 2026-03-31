@@ -255,7 +255,7 @@ func extractToolName(tagName, attrs string) string {
 		if matches := attrPattern.FindAllStringSubmatch(attrs, -1); matches != nil {
 			for _, match := range matches {
 				if len(match) >= 3 && strings.ToLower(match[1]) == "name" {
-					return match[2]
+					return strings.ToLower(match[2])
 				}
 			}
 		}
