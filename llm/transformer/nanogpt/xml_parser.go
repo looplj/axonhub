@@ -17,7 +17,8 @@ const maxXMLParseLength = 100000 // 100KB
 
 // toolCallPattern matches XML-like tool calls with content: <Tag>content</Tag>
 // Uses [^<] to match content safely without ReDoS backtracking
-var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]+([^>]*)>([^<]*)</([a-zA-Z_][a-zA-Z0-9_-]*)>`)
+// Allows optional whitespace after tag name for formats like <Write_File>{...}</Write_File>
+var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)>([^<]*)</([a-zA-Z_][a-zA-Z0-9_-]*)>`)
 
 // selfClosingPattern matches self-closing XML tags: <Tag attr="val" />
 // Allows optional space between tag name and attributes
