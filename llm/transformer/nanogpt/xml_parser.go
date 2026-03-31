@@ -103,8 +103,10 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 
 			// Only process if opening and closing tags match
 			if strings.EqualFold(tagName, closingTag) {
-				// Create synthetic attributes
-				attrs := fmt.Sprintf(`file_path="%s" content="%s"`, filePath, innerContent)
+				// Create synthetic attributes - escape quotes to prevent XML injection
+				filePathEscaped := strings.ReplaceAll(filePath, `"`, `\"`)
+				innerContentEscaped := strings.ReplaceAll(innerContent, `"`, `\"`)
+				attrs := fmt.Sprintf(`file_path="%s" content="%s"`, filePathEscaped, innerContentEscaped)
 				matches = append(matches, matchInfo{
 					start:        m[0],
 					end:          m[1],
