@@ -511,6 +511,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 jsonData: currentRow.credentials?.gcp?.jsonData || '',
               },
             },
+            settings: currentRow.settings ?? undefined,
           }
         : duplicateFromRow
           ? {
@@ -904,17 +905,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
-        const proxyConfig = {
-          type: proxyType as 'disabled' | 'environment' | 'url',
-          ...(proxyType === ProxyType.URL && {
-            url: proxyUrl,
-            username: proxyUsername || undefined,
-            password: proxyPassword || undefined,
-          }),
-        };
-
         const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
-          proxy: proxyConfig,
           passThroughUserAgent,
         });
 
