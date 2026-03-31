@@ -134,7 +134,7 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 	return createdChannels, nil
 }
 
-func (svc *ChannelService) bulkUpdateChannelStatus(ctx context.Context, ids []int, status channel.Status, action string) error {
+func (svc *ChannelService) bulkUpdateChannelStatus(ctx context.Context, ids []int, status channel.Status, action string, clearErrorMessage bool) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -153,11 +153,15 @@ func (svc *ChannelService) bulkUpdateChannelStatus(ctx context.Context, ids []in
 		return fmt.Errorf("expected to find %d channels, but found %d", len(ids), count)
 	}
 
-	// Update status
-	if _, err = client.Channel.Update().
+	updater := client.Channel.Update().
 		Where(channel.IDIn(ids...)).
-		SetStatus(status).
-		Save(ctx); err != nil {
+		SetStatus(status)
+
+	if clearErrorMessage {
+		updater.ClearErrorMessage()
+	}
+
+	if _, err = updater.Save(ctx); err != nil {
 		return fmt.Errorf("failed to %s channels: %w", action, err)
 	}
 
@@ -168,17 +172,22 @@ func (svc *ChannelService) bulkUpdateChannelStatus(ctx context.Context, ids []in
 
 // BulkArchiveChannels updates the status of multiple channels to archived.
 func (svc *ChannelService) BulkArchiveChannels(ctx context.Context, ids []int) error {
-	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusArchived, "archive")
+	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusArchived, "archive", false)
 }
 
 // BulkDisableChannels updates the status of multiple channels to disabled.
 func (svc *ChannelService) BulkDisableChannels(ctx context.Context, ids []int) error {
-	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusDisabled, "disable")
+	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusDisabled, "disable", false)
 }
 
 // BulkEnableChannels updates the status of multiple channels to enabled.
 func (svc *ChannelService) BulkEnableChannels(ctx context.Context, ids []int) error {
-	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusEnabled, "enable")
+	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusEnabled, "enable", false)
+}
+
+// BulkRecoverChannels enables multiple channels and clears their error messages.
+func (svc *ChannelService) BulkRecoverChannels(ctx context.Context, ids []int) error {
+	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusEnabled, "recover", true)
 }
 
 // BulkDeleteChannels deletes multiple channels by their IDs.

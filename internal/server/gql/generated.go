@@ -775,6 +775,7 @@ type ComplexityRoot struct {
 		BulkEnablePromptProtectionRules      func(childComplexity int, ids []*objects.GUID) int
 		BulkEnablePrompts                    func(childComplexity int, ids []*objects.GUID) int
 		BulkImportChannels                   func(childComplexity int, input BulkImportChannelsInput) int
+		BulkRecoverChannels                  func(childComplexity int, ids []*objects.GUID) int
 		BulkUpdateChannelOrdering            func(childComplexity int, input BulkUpdateChannelOrderingInput) int
 		CheckProviderQuotas                  func(childComplexity int) int
 		CompleteAutoDisableChannelOnboarding func(childComplexity int, input CompleteAutoDisableChannelOnboardingInput) int
@@ -1740,6 +1741,7 @@ type MutationResolver interface {
 	BulkArchiveChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDisableChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkEnableChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
+	BulkRecoverChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDeleteChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error)
 	BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*biz.BulkImportChannelsResult, error)
@@ -4672,6 +4674,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BulkImportChannels(childComplexity, args["input"].(BulkImportChannelsInput)), true
+	case "Mutation.bulkRecoverChannels":
+		if e.complexity.Mutation.BulkRecoverChannels == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bulkRecoverChannels_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BulkRecoverChannels(childComplexity, args["ids"].([]*objects.GUID)), true
 	case "Mutation.bulkUpdateChannelOrdering":
 		if e.complexity.Mutation.BulkUpdateChannelOrdering == nil {
 			break
@@ -9744,6 +9757,17 @@ func (ec *executionContext) field_Mutation_bulkImportChannels_args(ctx context.C
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_bulkRecoverChannels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ids", ec.unmarshalNID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["ids"] = arg0
 	return args, nil
 }
 
@@ -25093,6 +25117,47 @@ func (ec *executionContext) fieldContext_Mutation_bulkEnableChannels(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_bulkEnableChannels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_bulkRecoverChannels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_bulkRecoverChannels,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().BulkRecoverChannels(ctx, fc.Args["ids"].([]*objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_bulkRecoverChannels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_bulkRecoverChannels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -78018,6 +78083,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "bulkEnableChannels":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_bulkEnableChannels(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bulkRecoverChannels":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_bulkRecoverChannels(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
