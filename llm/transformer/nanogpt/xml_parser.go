@@ -26,8 +26,8 @@ var toolCallPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)
 var selfClosingPattern = regexp.MustCompile(`<([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*([^>]*)/>`)
 
 // attrPattern matches attributes like name="value" or name='value'
-// Allows empty attribute values with [^"']*
-var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([^"]*)["']`)
+// Handles both single and double quotes, allows empty values
+var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([^"']*)["']`)
 
 // normalizeTagPattern matches tags without space before />
 var normalizeTagPattern = regexp.MustCompile(`([^\s])/>`)
@@ -37,6 +37,8 @@ var nestedXMLPattern = regexp.MustCompile(`<(Write|Read)[^>]*>\s*<file_path>([^<
 // Uses [^<] to match content safely without ReDoS backtracking
 var mismatchTagPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)>([^<]*)</use_tool>`)
 
+// unclosedPattern matches unclosed opening tags like <Write attr="..."\n</use_tool>
+var unclosedPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)\n([\s\S]*?)</use_tool>`)
 // MaybeHasXMLToolCalls is a fast pre-check to determine if content likely contains XML tool calls.
 func MaybeHasXMLToolCalls(content string) bool {
 	// Limit content length to prevent ReDoS
@@ -202,7 +204,6 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 func normalizeXML(content string) string {
 	// Fix unclosed opening tags: <Write attr="..."\ncontent</use_tool> -> <Write attr="...">\ncontent</use_tool>
 	// NanoGPT sometimes omits the closing > on the opening tag
-	unclosedPattern := regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)\n([\s\S]*?)</use_tool>`)
 	content = unclosedPattern.ReplaceAllStringFunc(content, func(match string) string {
 		parts := unclosedPattern.FindStringSubmatch(match)
 		if len(parts) >= 4 {
