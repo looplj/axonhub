@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
@@ -403,9 +404,23 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	}
 
 	// Try to parse as OpenAI error format first
+	// Use flexible types for code field to handle both string and number formats
+	// (e.g., NVIDIA returns {"error":{"code":400}} while OpenAI returns {"error":{"code":"invalid_model"}})
 	var openaiError struct {
-		Error  llm.ErrorDetail `json:"error"`
-		Errors llm.ErrorDetail `json:"errors"`
+		Error struct {
+			Message   string `json:"message"`
+			Type      string `json:"type"`
+			Param     string `json:"param,omitempty"`
+			Code      any    `json:"code"` // Accept both string and number
+			RequestID string `json:"request_id,omitempty"`
+		} `json:"error"`
+		Errors struct {
+			Message   string `json:"message"`
+			Type      string `json:"type"`
+			Param     string `json:"param,omitempty"`
+			Code      any    `json:"code"` // Accept both string and number
+			RequestID string `json:"request_id,omitempty"`
+		} `json:"errors"`
 	}
 
 	err := json.Unmarshal(rawErr.Body, &openaiError)
@@ -417,7 +432,13 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 
 		return &llm.ResponseError{
 			StatusCode: rawErr.StatusCode,
-			Detail:     errDetail,
+			Detail: llm.ErrorDetail{
+				Message:   errDetail.Message,
+				Type:      errDetail.Type,
+				Param:     errDetail.Param,
+				Code:      cast.ToString(errDetail.Code),
+				RequestID: errDetail.RequestID,
+			},
 		}
 	}
 
