@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -30,6 +31,8 @@ var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)[\s]*=[\s]*["']([
 
 // normalizeTagPattern matches tags without space before />
 var normalizeTagPattern = regexp.MustCompile(`([^\s])/>`)
+// nestedXMLPattern matches nested XML like <Write><file_path>X</file_path><content>Y</content></Write>
+var nestedXMLPattern = regexp.MustCompile(`<(Write|Read)[^>]*>\s*<file_path>([^<]*)</file_path>\s*<content>([\s\S]*?)</content>\s*</(Write|Read)>`)
 // mismatchTagPattern matches <Write>content</use_tool> type patterns
 // Uses [^<] to match content safely without ReDoS backtracking
 var mismatchTagPattern = regexp.MustCompile(`<(Write|Read|Write_FILE|Write_file|Read_FILE|Read_file)([^>]*)>([^<]*)</use_tool>`)
@@ -83,6 +86,34 @@ func ParseXMLToolCalls(content string) ([]llm.ToolCall, string, error) {
 
 	var matches []matchInfo
 
+	// Handle nested XML format: <Write><file_path>X</file_path><content>Y</content></Write>
+	// This must be processed before other patterns to avoid matching inner elements
+	for _, m := range nestedXMLPattern.FindAllStringSubmatchIndex(content, -1) {
+		if len(m) >= 10 {
+			// m[2]:m[3] = opening tag (Write/Read)
+			// m[4]:m[5] = file_path value
+			// m[6]:m[7] = content value
+			// m[8]:m[9] = closing tag
+			tagName := content[m[2]:m[3]]
+			filePath := content[m[4]:m[5]]
+			innerContent := content[m[6]:m[7]]
+			closingTag := content[m[8]:m[9]]
+
+			// Only process if opening and closing tags match
+			if strings.EqualFold(tagName, closingTag) {
+				// Create synthetic attributes
+				attrs := fmt.Sprintf(`file_path="%s" content="%s"`, filePath, innerContent)
+				matches = append(matches, matchInfo{
+					start:        m[0],
+					end:          m[1],
+					tagName:      tagName,
+					attrs:        attrs,
+					innerContent: "", // Content is already in attrs
+					closingTag:   closingTag,
+				})
+			}
+		}
+	}
 	// Find opening/closing tag patterns
 	for _, m := range toolCallPattern.FindAllStringSubmatchIndex(content, -1) {
 		if len(m) >= 10 {
