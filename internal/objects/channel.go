@@ -128,6 +128,11 @@ type ChannelSettings struct {
 
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`
+
+	// PassThroughUserAgent controls whether to pass through the original User-Agent header to upstream AI providers.
+	// When set to nil, it inherits from the global system setting.
+	// When set to true/false, it overrides the global setting.
+	PassThroughUserAgent *bool `json:"passThroughUserAgent,omitempty"`
 }
 
 // DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）

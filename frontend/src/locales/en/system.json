@@ -253,6 +253,9 @@
   "system.proxy.deleteConfirm": "Are you sure you want to delete this proxy preset?",
   "system.proxy.deleteSuccess": "Proxy preset deleted",
   "system.proxy.columns.url": "Proxy URL",
-  "system.proxy.columns.username": "Username",
-  "system.proxy.columns.actions": "Actions"
+  "system.proxy.columns.actions": "Actions",
+  "system.userAgentPassThrough.title": "User-Agent Pass-Through",
+  "system.userAgentPassThrough.description": "Control whether to pass through the original User-Agent header from client requests to upstream AI providers.",
+  "system.userAgentPassThrough.label": "Enable User-Agent Pass-Through",
+  "system.userAgentPassThrough.helpText": "When enabled, the original User-Agent header from client requests will be sent to upstream AI providers. When disabled, AxonHub will use its own User-Agent."
 }

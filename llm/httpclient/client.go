@@ -339,8 +339,12 @@ func BuildHttpRequest(
 	if httpReq.Header == nil {
 		httpReq.Header = make(http.Header)
 	}
-
-	if httpReq.Header.Get("User-Agent") == "" {
+	// Handle User-Agent header based on pass-through setting
+	if request.PassThroughUserAgent != nil && !*request.PassThroughUserAgent {
+		// Pass-through is explicitly disabled, always set AxonHub default
+		httpReq.Header.Set("User-Agent", "axonhub/1.0")
+	} else if httpReq.Header.Get("User-Agent") == "" {
+		// No User-Agent set (or pass-through is nil/undefined), use default
 		httpReq.Header.Set("User-Agent", "axonhub/1.0")
 	}
 

@@ -627,3 +627,87 @@ data: [DONE]
 		t.Errorf("Err() should return nil initially")
 	}
 }
+
+
+// TestBuildHttpRequest_UserAgentPassThrough tests the User-Agent handling with pass-through settings.
+func TestBuildHttpRequest_UserAgentPassThrough(t *testing.T) {
+	client := &HttpClient{
+		client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	tests := []struct {
+		name          string
+		request       *Request
+		wantUserAgent string
+	}{
+		{
+			name: "pass_through_disabled_uses_default_ua",
+			request: &Request{
+				Method: http.MethodPost,
+				URL:    "https://api.example.com/test",
+				Headers: http.Header{
+					"User-Agent": []string{"ClientUserAgent/1.0"},
+				},
+				PassThroughUserAgent: boolPtr(false),
+			},
+			wantUserAgent: "axonhub/1.0",
+		},
+		{
+			name: "pass_through_nil_with_existing_ua_uses_existing",
+			request: &Request{
+				Method: http.MethodPost,
+				URL:    "https://api.example.com/test",
+				Headers: http.Header{
+					"User-Agent": []string{"ExistingClient/2.0"},
+				},
+				PassThroughUserAgent: nil,
+			},
+			wantUserAgent: "ExistingClient/2.0",
+		},
+		{
+			name: "no_ua_set_uses_default",
+			request: &Request{
+				Method:               http.MethodPost,
+				URL:                  "https://api.example.com/test",
+				PassThroughUserAgent: nil,
+			},
+			wantUserAgent: "axonhub/1.0",
+		},
+		{
+			name: "pass_through_true_with_existing_ua_uses_existing",
+			request: &Request{
+				Method: http.MethodPost,
+				URL:    "https://api.example.com/test",
+				Headers: http.Header{
+					"User-Agent": []string{"PassedThrough/3.0"},
+				},
+				PassThroughUserAgent: boolPtr(true),
+			},
+			wantUserAgent: "PassedThrough/3.0",
+		},
+		{
+			name: "pass_through_true_with_no_ua_uses_default",
+			request: &Request{
+				Method:               http.MethodPost,
+				URL:                  "https://api.example.com/test",
+				PassThroughUserAgent: boolPtr(true),
+			},
+			wantUserAgent: "axonhub/1.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := client.BuildHttpRequest(t.Context(), tt.request)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+
+			ua := result.Header.Get("User-Agent")
+			require.Equal(t, tt.wantUserAgent, ua)
+		})
+	}
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}

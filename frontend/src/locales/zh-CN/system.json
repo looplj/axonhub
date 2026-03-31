@@ -253,6 +253,9 @@
   "system.proxy.deleteConfirm": "确定要删除此代理预设吗？",
   "system.proxy.deleteSuccess": "代理预设已删除",
   "system.proxy.columns.url": "代理 URL",
-  "system.proxy.columns.username": "用户名",
-  "system.proxy.columns.actions": "操作"
+  "system.proxy.columns.actions": "操作",
+  "system.userAgentPassThrough.title": "User-Agent 透传",
+  "system.userAgentPassThrough.description": "控制是否将客户端请求中的原始 User-Agent 请求头透传给上游 AI 提供商。",
+  "system.userAgentPassThrough.label": "启用 User-Agent 透传",
+  "system.userAgentPassThrough.helpText": "启用后，客户端请求中的原始 User-Agent 请求头将发送给上游 AI 提供商。禁用时，AxonHub 将使用自身的 User-Agent。"
 }
