@@ -904,9 +904,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
+        const proxyConfig = {
+          type: proxyType as 'disabled' | 'environment' | 'url',
+          ...(proxyType === ProxyType.URL && {
+            url: proxyUrl,
+            username: proxyUsername || undefined,
+            password: proxyPassword || undefined,
+          }),
+        };
+
+        const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
+          proxy: proxyConfig,
+          passThroughUserAgent,
+        });
+
         const updateInput = {
           ...dataWithModels,
-          settings: undefined,
+          settings: nextSettings,
           ...(isOAuthChannel ? { type: undefined } : {}),
         } as z.infer<typeof updateChannelInputSchema>;
 
