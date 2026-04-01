@@ -83,6 +83,7 @@ type ChannelSettings {
   transformOptions: TransformOptions
   headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
   bodyOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
+  passThroughUserAgent: Boolean
 }
 
 enum CapabilityPolicy {
@@ -114,6 +115,7 @@ input ChannelSettingsInput {
   transformOptions: TransformOptionsInput
   headerOverrideOperations: [OverrideOperationInput!]
   bodyOverrideOperations: [OverrideOperationInput!]
+  passThroughUserAgent: Boolean
 }
 
 type ChannelCredentials {

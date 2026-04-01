@@ -213,6 +213,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	middlewares = append(middlewares,
 		applyOverrideRequestBody(outbound),
 		applyOverrideRequestHeaders(outbound),
+		// applyUserAgentPassThrough runs after header overrides to ensure that when
+		// pass-through is enabled, the original client's User-Agent takes precedence.
+		applyUserAgentPassThrough(outbound, processor.SystemService),
 
 		// Unified performance tracking middleware.
 		withPerformanceRecording(outbound),

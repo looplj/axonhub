@@ -339,8 +339,9 @@ func BuildHttpRequest(
 	if httpReq.Header == nil {
 		httpReq.Header = make(http.Header)
 	}
-
+	// Handle User-Agent header - only set default if not already present
 	if httpReq.Header.Get("User-Agent") == "" {
+		// No User-Agent set, use default
 		httpReq.Header.Set("User-Agent", "axonhub/1.0")
 	}
 

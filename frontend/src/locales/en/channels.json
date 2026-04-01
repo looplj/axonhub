@@ -640,5 +640,9 @@
   "channels.messages.deleteDisabledAPIKeysPreserved": "API keys deleted, but at least one key was preserved to keep the channel available",
   "channels.messages.deleteDisabledAPIKeysError": "Failed to delete API keys: {{error}}",
   "channels.messages.syncModelsSuccess": "Models synced successfully",
-  "channels.messages.syncModelsError": "Failed to sync models: {{error}}"
+  "channels.messages.syncModelsError": "Failed to sync models: {{error}}",
+  "channels.dialogs.userAgentPassThrough.label": "User-Agent Pass-Through",
+  "channels.dialogs.userAgentPassThrough.inherit": "Inherit from system",
+  "channels.dialogs.userAgentPassThrough.enabled": "Enabled",
+  "channels.dialogs.userAgentPassThrough.disabled": "Disabled"
 }

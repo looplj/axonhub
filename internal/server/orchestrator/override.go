@@ -13,6 +13,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -290,6 +291,49 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 			applyOverrideOperationToHeaders(ctx, request.Headers, op, renderCtx)
 		}
 
+		return request, nil
+	})
+}
+
+// applyUserAgentPassThrough creates a middleware that applies the User-Agent pass-through setting.
+func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+	return pipeline.OnRawRequest("user-agent-pass-through", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		channel := outbound.GetCurrentChannel()
+		if channel == nil {
+			return request, nil
+		}
+
+		var passThroughEnabled bool
+		if channel.Settings != nil && channel.Settings.PassThroughUserAgent != nil {
+			passThroughEnabled = *channel.Settings.PassThroughUserAgent
+		} else {
+			globalPassThrough, err := systemService.UserAgentPassThrough(ctx)
+			if err != nil {
+				log.Warn(ctx, "failed to get global user agent pass through setting", log.Cause(err))
+				passThroughEnabled = false
+			} else {
+				passThroughEnabled = globalPassThrough
+			}
+		}
+
+		// Handle User-Agent header based on pass-through setting
+		// This must be done here (before persistRequestExecution) to ensure
+		// the correct User-Agent is logged in request execution records.
+		if request.Headers == nil {
+			request.Headers = make(http.Header)
+		}
+
+		if passThroughEnabled {
+			// Pass-through enabled: use the original client's User-Agent
+			if outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
+				if clientUA := outbound.state.LlmRequest.RawRequest.Headers.Get("User-Agent"); clientUA != "" {
+					request.Headers.Set("User-Agent", clientUA)
+				}
+			}
+		} else {
+			// Pass-through disabled: use AxonHub's default User-Agent
+			request.Headers.Set("User-Agent", "axonhub/1.0")
+		}
 		return request, nil
 	})
 }

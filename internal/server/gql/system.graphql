@@ -193,6 +193,14 @@ input UpdateVideoStorageSettingsInput {
   scanIntervalMinutes: Int
   scanLimit: Int
 }
+type UserAgentPassThroughSettings {
+  enabled: Boolean!
+}
+
+input UpdateUserAgentPassThroughSettingsInput {
+  enabled: Boolean!
+}
+
 
 type ProxyPreset {
   url: String!
@@ -222,6 +230,7 @@ extend type Mutation {
   triggerGcCleanup: Boolean!
   saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
   deleteProxyPreset(url: String!): Boolean!
+  updateUserAgentPassThroughSettings(input: UpdateUserAgentPassThroughSettingsInput!): Boolean!
 }
 
 type SystemVersion {
@@ -254,4 +263,5 @@ extend type Query {
   systemGeneralSettings: SystemGeneralSettings!
   videoStorageSettings: VideoStorageSettings!
   proxyPresets: [ProxyPreset!]!
+  userAgentPassThroughSettings: UserAgentPassThroughSettings!
 }

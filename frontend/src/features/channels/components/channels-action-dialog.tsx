@@ -278,6 +278,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [proxyUrl, setProxyUrl] = useState(() => initialRow?.settings?.proxy?.url || '');
   const [proxyUsername, setProxyUsername] = useState(() => initialRow?.settings?.proxy?.username || '');
   const [proxyPassword, setProxyPassword] = useState(() => initialRow?.settings?.proxy?.password || '');
+  const [passThroughUserAgent, setPassThroughUserAgent] = useState<boolean | null>(() => {
+    return initialRow?.settings?.passThroughUserAgent ?? null;
+  });
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -508,6 +511,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 jsonData: currentRow.credentials?.gcp?.jsonData || '',
               },
             },
+            settings: currentRow.settings ?? undefined,
           }
         : duplicateFromRow
           ? {
@@ -901,9 +905,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
+        const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
+          passThroughUserAgent,
+        });
+
         const updateInput = {
           ...dataWithModels,
-          settings: undefined,
+          settings: nextSettings,
           ...(isOAuthChannel ? { type: undefined } : {}),
         } as z.infer<typeof updateChannelInputSchema>;
 
@@ -939,6 +947,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
         const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
           proxy: proxyConfig,
+          passThroughUserAgent,
         });
 
         await createChannel.mutateAsync({
@@ -1338,6 +1347,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setProxyUrl(initialRow?.settings?.proxy?.url || '');
             setProxyUsername(initialRow?.settings?.proxy?.username || '');
             setProxyPassword(initialRow?.settings?.proxy?.password || '');
+            setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -1691,6 +1701,27 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </div>
                         </FormItem>
                       )}
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2'>
+                          {t('channels.dialogs.userAgentPassThrough.label')}
+                        </FormLabel>
+                        <div className='space-y-1 md:col-span-6'>
+                          <Select
+                            value={passThroughUserAgent === null ? 'inherit' : passThroughUserAgent ? 'enabled' : 'disabled'}
+                            onValueChange={(value) => setPassThroughUserAgent(value === 'inherit' ? null : value === 'enabled')}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('channels.dialogs.userAgentPassThrough.inherit')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='inherit'>{t('channels.dialogs.userAgentPassThrough.inherit')}</SelectItem>
+                              <SelectItem value='enabled'>{t('channels.dialogs.userAgentPassThrough.enabled')}</SelectItem>
+                              <SelectItem value='disabled'>{t('channels.dialogs.userAgentPassThrough.disabled')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </FormItem>
 
                       {(isCodexType || isClaudeCodeType) && (
                         <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
