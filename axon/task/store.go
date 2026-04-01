@@ -368,3 +368,18 @@ func (s *Store) saveDeletedLocked(deleted []DeletedTask) error {
 	}
 	return nil
 }
+
+func (s *Store) Reset() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := s.saveLocked([]Task{}); err != nil {
+		return fmt.Errorf("reset tasks: %w", err)
+	}
+
+	if err := s.saveDeletedLocked([]DeletedTask{}); err != nil {
+		return fmt.Errorf("reset deleted tasks: %w", err)
+	}
+
+	return nil
+}

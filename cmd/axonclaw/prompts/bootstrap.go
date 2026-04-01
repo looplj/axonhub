@@ -208,6 +208,75 @@ func Path(configDir, name string) string {
 	return filepath.Join(configDir, name)
 }
 
+type ResetOptions struct {
+	Soul      bool
+	Identity  bool
+	User      bool
+	System    bool
+	Memory    bool
+	Heartbeat bool
+}
+
+func ResetToDefaults(configDir string, opts ResetOptions, env PromptEnv, serverSystemPrompt string) error {
+	if opts.Soul {
+		if err := SaveFile(configDir, SoulFileName, DefaultSoulTemplate); err != nil {
+			return fmt.Errorf("reset %s: %w", SoulFileName, err)
+		}
+	}
+
+	if opts.Identity {
+		content, err := RenderTemplate(DefaultIdentityTemplate, env)
+		if err != nil {
+			return fmt.Errorf("render identity template: %w", err)
+		}
+
+		if err := SaveFile(configDir, IdentityFileName, content); err != nil {
+			return fmt.Errorf("reset %s: %w", IdentityFileName, err)
+		}
+	}
+
+	if opts.User {
+		content, err := RenderTemplate(DefaultUserTemplate, env)
+		if err != nil {
+			return fmt.Errorf("render user template: %w", err)
+		}
+
+		if err := SaveFile(configDir, UserFileName, content); err != nil {
+			return fmt.Errorf("reset %s: %w", UserFileName, err)
+		}
+	}
+
+	if opts.System {
+		systemTemplate := serverSystemPrompt
+		if strings.TrimSpace(systemTemplate) == "" {
+			systemTemplate = DefaultSystemTemplate
+		}
+
+		rendered, err := RenderTemplate(systemTemplate, env)
+		if err != nil {
+			return fmt.Errorf("render system prompt: %w", err)
+		}
+
+		if err := SaveFile(configDir, AgentsFileName, rendered); err != nil {
+			return fmt.Errorf("reset %s: %w", AgentsFileName, err)
+		}
+	}
+
+	if opts.Memory {
+		if err := SaveFile(configDir, MemoryFileName, ""); err != nil {
+			return fmt.Errorf("reset %s: %w", MemoryFileName, err)
+		}
+	}
+
+	if opts.Heartbeat {
+		if err := SaveFile(configDir, HeartbeatFileName, DefaultHeartbeatTemplate); err != nil {
+			return fmt.Errorf("reset %s: %w", HeartbeatFileName, err)
+		}
+	}
+
+	return nil
+}
+
 // loadRecentDailyLogs loads today's and yesterday's daily log files.
 func loadRecentDailyLogs(configDir string) []MarkdownFile {
 	memDir := filepath.Join(configDir, MemoryDirName)

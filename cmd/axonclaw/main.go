@@ -326,6 +326,8 @@ func runAgent(cfg claw.Config, wd string, debug bool) error {
 		return fmt.Errorf("ensure system tasks: %w", err)
 	}
 
+	r.TaskStore = taskStore
+
 	taskHandler := claw.NewTaskHandler(logger, wd, r)
 	taskScheduler, err := task.NewScheduler(logger, taskStore, taskHandler, task.SchedulerOptions{
 		TickInterval: time.Minute,

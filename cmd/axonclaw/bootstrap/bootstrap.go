@@ -29,6 +29,7 @@ type Bootstrap struct {
 	BuiltinTools      []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
 	BuiltinSkills     []BuiltinSkill
 	Prompts           *prompts.Bootstrap
+	ServerSystemPrompt string
 	AxonClawPath      string
 	SkillsRoot        string
 	PromptDir         string
@@ -98,24 +99,25 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Bootstrap, er
 	}
 
 	return &Bootstrap{
-		AgentID:           bootstrap.AgentID,
-		AgentName:         bootstrap.AgentName,
-		CreatedByUserName: bootstrap.CreatedByUserName,
-		Model:             model,
-		ReasoningEffort:   bootstrap.ReasoningEffort,
-		ThreadID:          threadID,
-		Tools:             bootstrap.Tools,
-		Skills:            bootstrap.Skills,
-		BuiltinTools:      bootstrap.BuiltinTools,
-		BuiltinSkills:     convertBuiltinSkills(bootstrap.BuiltinSkills),
-		Prompts:           prompt,
-		AxonClawPath:      axonClawPath,
-		SkillsRoot:        data.SkillsRoot,
-		PromptDir:         data.PromptDir,
-		RuntimeDir:        data.RuntimeDir,
-		Date:              now.Format("2006-01-02"),
-		Timezone:          timezone,
-		OS:                osName,
+		AgentID:            bootstrap.AgentID,
+		AgentName:          bootstrap.AgentName,
+		CreatedByUserName:  bootstrap.CreatedByUserName,
+		Model:              model,
+		ReasoningEffort:    bootstrap.ReasoningEffort,
+		ThreadID:           threadID,
+		Tools:              bootstrap.Tools,
+		Skills:             bootstrap.Skills,
+		BuiltinTools:       bootstrap.BuiltinTools,
+		BuiltinSkills:      convertBuiltinSkills(bootstrap.BuiltinSkills),
+		Prompts:            prompt,
+		ServerSystemPrompt: bootstrap.SystemPrompt,
+		AxonClawPath:       axonClawPath,
+		SkillsRoot:         data.SkillsRoot,
+		PromptDir:          data.PromptDir,
+		RuntimeDir:         data.RuntimeDir,
+		Date:               now.Format("2006-01-02"),
+		Timezone:           timezone,
+		OS:                 osName,
 	}, nil
 }
 

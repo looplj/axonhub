@@ -76,7 +76,7 @@ func NewDefaultSlashCommands(client graphql.Client) *SlashCommandRegistry {
 
 	registry.Register(&SlashCommand{
 		Name:        "/reset",
-		Description: "Refresh agent configuration and reset context",
+		Description: "Reset agent state: /reset [all|prompts|tasks|soul|identity|user|system|memory|heartbeat]",
 		Execute:     executeReset,
 	})
 
@@ -107,10 +107,47 @@ func NewDefaultSlashCommands(client graphql.Client) *SlashCommandRegistry {
 	return registry
 }
 
-func executeReset(ctx context.Context, r *Runner, _ []string) (string, error) {
+func executeReset(ctx context.Context, r *Runner, args []string) (string, error) {
 	r.stopProcessing()
 	r.Agent.ClearMessages()
 
+	resetType := "all"
+	if len(args) > 0 {
+		resetType = strings.ToLower(strings.TrimSpace(args[0]))
+	}
+
+	switch resetType {
+	case "all", "":
+		return executeResetAll(ctx, r)
+	case "prompts":
+		return executeResetPrompts(ctx, r, prompts.ResetOptions{
+			Soul:      true,
+			Identity:  true,
+			User:      true,
+			System:    true,
+			Memory:    true,
+			Heartbeat: true,
+		})
+	case "tasks":
+		return executeResetTasks(ctx, r)
+	case "soul":
+		return executeResetPrompts(ctx, r, prompts.ResetOptions{Soul: true})
+	case "identity":
+		return executeResetPrompts(ctx, r, prompts.ResetOptions{Identity: true})
+	case "user":
+		return executeResetPrompts(ctx, r, prompts.ResetOptions{User: true})
+	case "system", "agents":
+		return executeResetPrompts(ctx, r, prompts.ResetOptions{System: true})
+	case "memory":
+		return executeResetPrompts(ctx, r, prompts.ResetOptions{Memory: true})
+	case "heartbeat":
+		return executeResetPrompts(ctx, r, prompts.ResetOptions{Heartbeat: true})
+	default:
+		return "", fmt.Errorf("unknown reset target: %q. Available: all, prompts, tasks, soul, identity, user, system, memory, heartbeat", resetType)
+	}
+}
+
+func executeResetAll(ctx context.Context, r *Runner) (string, error) {
 	newBoot, err := bootstrap.Do(ctx, r.Client, bootstrap.Params{
 		Workspace:  r.Workspace,
 		SkillsRoot: r.Boot.SkillsRoot,
@@ -121,11 +158,32 @@ func executeReset(ctx context.Context, r *Runner, _ []string) (string, error) {
 		return "", fmt.Errorf("reset bootstrap failed: %w", err)
 	}
 
+	env := buildPromptEnv(newBoot, r.Workspace)
+
+	if err := prompts.ResetToDefaults(newBoot.PromptDir, prompts.ResetOptions{
+		Soul:      true,
+		Identity:  true,
+		User:      true,
+		System:    true,
+		Memory:    true,
+		Heartbeat: true,
+	}, env, newBoot.ServerSystemPrompt); err != nil {
+		return "", fmt.Errorf("reset prompt files: %w", err)
+	}
+
+	if r.TaskStore != nil {
+		if err := r.TaskStore.Reset(); err != nil {
+			return "", fmt.Errorf("reset tasks: %w", err)
+		}
+
+		if err := EnsureDefaultTasks(r.TaskStore); err != nil {
+			return "", fmt.Errorf("reinit default tasks: %w", err)
+		}
+	}
+
 	threadID := r.Boot.ThreadID
 	*r.Boot = *newBoot
 	r.Boot.ThreadID = threadID
-
-	env := buildPromptEnv(newBoot, r.Workspace)
 
 	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts)
 
@@ -136,8 +194,83 @@ func executeReset(ctx context.Context, r *Runner, _ []string) (string, error) {
 		return cfg
 	})
 
-	return fmt.Sprintf("Reset completed successfully.\n- Agent: %s (%s)\n- Model: %s",
+	return fmt.Sprintf("Reset completed successfully.\n- Agent: %s (%s)\n- Model: %s\n- Prompts: reset to defaults\n- Tasks: reset to defaults",
 		r.Boot.AgentName, r.Boot.AgentID, r.Boot.Model), nil
+}
+
+func executeResetPrompts(ctx context.Context, r *Runner, opts prompts.ResetOptions) (string, error) {
+	newBoot, err := bootstrap.Do(ctx, r.Client, bootstrap.Params{
+		Workspace:  r.Workspace,
+		SkillsRoot: r.Boot.SkillsRoot,
+		PromptDir:  r.Boot.PromptDir,
+		RuntimeDir: r.Boot.RuntimeDir,
+	})
+	if err != nil {
+		return "", fmt.Errorf("reset bootstrap failed: %w", err)
+	}
+
+	env := buildPromptEnv(newBoot, r.Workspace)
+
+	if err := prompts.ResetToDefaults(newBoot.PromptDir, opts, env, newBoot.ServerSystemPrompt); err != nil {
+		return "", fmt.Errorf("reset prompt files: %w", err)
+	}
+
+	threadID := r.Boot.ThreadID
+	*r.Boot = *newBoot
+	r.Boot.ThreadID = threadID
+
+	systemPrompts := prompts.BuildSystemPrompts(env, newBoot.Prompts)
+
+	r.Agent.UpdateConfig(func(cfg agent.Config) agent.Config {
+		cfg.Model = newBoot.Model
+		cfg.SystemPrompts = systemPrompts
+
+		return cfg
+	})
+
+	resetItems := []string{}
+	if opts.Soul {
+		resetItems = append(resetItems, "soul")
+	}
+
+	if opts.Identity {
+		resetItems = append(resetItems, "identity")
+	}
+
+	if opts.User {
+		resetItems = append(resetItems, "user")
+	}
+
+	if opts.System {
+		resetItems = append(resetItems, "system")
+	}
+
+	if opts.Memory {
+		resetItems = append(resetItems, "memory")
+	}
+
+	if opts.Heartbeat {
+		resetItems = append(resetItems, "heartbeat")
+	}
+
+	return fmt.Sprintf("Reset completed successfully.\n- Agent: %s (%s)\n- Model: %s\n- Prompts reset: %s",
+		r.Boot.AgentName, r.Boot.AgentID, r.Boot.Model, strings.Join(resetItems, ", ")), nil
+}
+
+func executeResetTasks(ctx context.Context, r *Runner) (string, error) {
+	if r.TaskStore == nil {
+		return "", fmt.Errorf("task store not available")
+	}
+
+	if err := r.TaskStore.Reset(); err != nil {
+		return "", fmt.Errorf("reset tasks: %w", err)
+	}
+
+	if err := EnsureDefaultTasks(r.TaskStore); err != nil {
+		return "", fmt.Errorf("reinit default tasks: %w", err)
+	}
+
+	return "Tasks reset completed successfully.", nil
 }
 
 func executeHelp(_ context.Context, r *Runner, _ []string) (string, error) {

@@ -40,6 +40,7 @@ type Runner struct {
 	Boot          *bootstrap.Bootstrap
 	lastSequence  int
 	TaskScheduler *task.Scheduler
+	TaskStore     *task.Store
 	processMu     sync.Mutex
 	processing    atomic.Bool
 	processCancel context.CancelFunc
@@ -62,6 +63,7 @@ type NewOptions struct {
 	PermEvaluator  *permission.Evaluator
 	Bus            bus.EventBus
 	TaskScheduler  *task.Scheduler
+	TaskStore      *task.Store
 	SubagentMgr    *subagent.Manager
 	SkillMgr       *tools.SkillManager
 }
@@ -104,6 +106,7 @@ func New(opts NewOptions) *Runner {
 		ThreadID:      opts.Boot.ThreadID,
 		Boot:          opts.Boot,
 		TaskScheduler: opts.TaskScheduler,
+		TaskStore:     opts.TaskStore,
 		mcpManager:    mcpMgr,
 		toolSource:    toolSource,
 		slashCommands: NewDefaultSlashCommands(opts.Client),
