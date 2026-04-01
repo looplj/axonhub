@@ -56,10 +56,6 @@ type Request struct {
 	// inbound request from being merged into this request during MergeInboundRequest.
 	SkipInboundQueryMerge bool `json:"-"`
 
-	// PassThroughUserAgent controls whether to pass through the original User-Agent header.
-	// When set to true, the original User-Agent from the client request will be used for upstream requests.
-	// When set to false, the User-Agent will be set to the AxonHub default.
-	PassThroughUserAgent *bool `json:"-"`
 }
 
 

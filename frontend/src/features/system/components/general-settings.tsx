@@ -77,9 +77,9 @@ export function GeneralSettings() {
       await updateUASettings.mutateAsync({ enabled });
     } catch {
       // Revert state on error
-    setUaPassThroughEnabled(previousValue);
-  }
-};
+      setUaPassThroughEnabled(previousValue);
+    }
+  };
 
   const hasChanges = settings
     ? settings.currencyCode !== currencyCode || settings.timezone !== timezone

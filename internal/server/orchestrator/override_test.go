@@ -1804,39 +1804,34 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 		channelUASetting *bool // Channel-level override
 		globalUAEnabled  bool  // System-level setting
 		clientUA         string
-		wantPassThrough  *bool // Expected PassThroughUserAgent on request
 		wantUAHeader     string
 	}{
 		{
-			name:             "channel_disabled_ignores_global",
-			channelUASetting: boolPtr(false),
-			globalUAEnabled:  true,
-			clientUA:         "Client/1.0",
-			wantPassThrough:  boolPtr(false),
-			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: should use AxonHub default
-		},
-		{
-			name:             "channel_enabled_ignores_global",
-			channelUASetting: boolPtr(true),
-			globalUAEnabled:  false,
-			clientUA:         "Client/1.0",
-			wantPassThrough:  boolPtr(true),
-			wantUAHeader:     "Client/1.0",
-		},
-		{
-			name:             "channel_nil_inherits_global_disabled",
-			channelUASetting: nil,
-			globalUAEnabled:  false,
-			clientUA:         "Client/1.0",
-			wantPassThrough:  boolPtr(false),
-			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: should use AxonHub default
-		},
+		name:             "channel_disabled_ignores_global",
+		channelUASetting: boolPtr(false),
+		globalUAEnabled:  true,
+		clientUA:         "Client/1.0",
+		wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
+	},
+	{
+		name:             "channel_enabled_ignores_global",
+		channelUASetting: boolPtr(true),
+		globalUAEnabled:  false,
+		clientUA:         "Client/1.0",
+		wantUAHeader:     "Client/1.0",
+	},
+	{
+		name:             "channel_nil_inherits_global_disabled",
+		channelUASetting: nil,
+		globalUAEnabled:  false,
+		clientUA:         "Client/1.0",
+		wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
+	},
 		{
 			name:             "channel_nil_inherits_global_enabled",
 			channelUASetting: nil,
 			globalUAEnabled:  true,
 			clientUA:         "Client/1.0",
-			wantPassThrough:  boolPtr(true),
 			wantUAHeader:     "Client/1.0",
 		},
 		{
@@ -1844,7 +1839,6 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			channelUASetting: boolPtr(true),
 			globalUAEnabled:  true,
 			clientUA:         "",
-			wantPassThrough:  boolPtr(true),
 			wantUAHeader:     "",
 		},
 	}
@@ -1909,9 +1903,6 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, processedRequest)
 
-			// Verify PassThroughUserAgent flag
-			require.Equal(t, tt.wantPassThrough, processedRequest.PassThroughUserAgent)
-
 			// Verify User-Agent header is set correctly
 			if tt.wantUAHeader != "" {
 				require.Equal(t, tt.wantUAHeader, processedRequest.Headers.Get("User-Agent"))
@@ -1946,5 +1937,4 @@ func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
 	processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
 	require.NoError(t, err)
 	require.NotNil(t, processedRequest)
-	require.Nil(t, processedRequest.PassThroughUserAgent) // Should remain unset
 }
