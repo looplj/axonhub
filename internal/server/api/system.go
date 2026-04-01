@@ -54,6 +54,7 @@ type InitializeSystemRequest struct {
 	OwnerFirstName string `json:"ownerFirstName" binding:"required"`
 	OwnerLastName  string `json:"ownerLastName"  binding:"required"`
 	BrandName      string `json:"brandName"      binding:"required"`
+	PreferLanguage string `json:"preferLanguage,omitempty"`
 }
 
 // InitializeSystemResponse 系统初始化响应.
@@ -125,6 +126,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 		OwnerFirstName: req.OwnerFirstName,
 		OwnerLastName:  req.OwnerLastName,
 		BrandName:      req.BrandName,
+		PreferLanguage: req.PreferLanguage,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, InitializeSystemResponse{
