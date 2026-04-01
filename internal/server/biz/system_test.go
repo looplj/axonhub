@@ -749,7 +749,6 @@ func TestSystemService_Initialize_TransactionRollback(t *testing.T) {
 	require.Equal(t, 0, dsCount)
 }
 
-
 // TestSystemService_UserAgentPassThrough tests the User-Agent pass-through setting.
 // This table-driven test covers: default value, set true/false, round-trip, cache behavior, and database errors.
 func TestSystemService_UserAgentPassThrough(t *testing.T) {
@@ -810,9 +809,9 @@ func TestSystemService_UserAgentPassThrough(t *testing.T) {
 			},
 			want: true,
 		},
-}
+	}
 
-for _, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			service, client := setupTestSystemService(t, tt.setupCache)
 			defer client.Close()
@@ -831,6 +830,7 @@ for _, tt := range tests {
 
 			if tt.wantErr {
 				require.Error(t, err)
+
 				if tt.errContains != "" {
 					require.Contains(t, err.Error(), tt.errContains)
 				}

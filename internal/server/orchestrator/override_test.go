@@ -1797,6 +1797,7 @@ func TestIssue632Override(t *testing.T) {
 		})
 	}
 }
+
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
 func TestApplyUserAgentPassThrough(t *testing.T) {
 	tests := []struct {
@@ -1807,26 +1808,26 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 		wantUAHeader     string
 	}{
 		{
-		name:             "channel_disabled_ignores_global",
-		channelUASetting: boolPtr(false),
-		globalUAEnabled:  true,
-		clientUA:         "Client/1.0",
-		wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
-	},
-	{
-		name:             "channel_enabled_ignores_global",
-		channelUASetting: boolPtr(true),
-		globalUAEnabled:  false,
-		clientUA:         "Client/1.0",
-		wantUAHeader:     "Client/1.0",
-	},
-	{
-		name:             "channel_nil_inherits_global_disabled",
-		channelUASetting: nil,
-		globalUAEnabled:  false,
-		clientUA:         "Client/1.0",
-		wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
-	},
+			name:             "channel_disabled_ignores_global",
+			channelUASetting: new(false),
+			globalUAEnabled:  true,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
+		},
+		{
+			name:             "channel_enabled_ignores_global",
+			channelUASetting: new(true),
+			globalUAEnabled:  false,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "Client/1.0",
+		},
+		{
+			name:             "channel_nil_inherits_global_disabled",
+			channelUASetting: nil,
+			globalUAEnabled:  false,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
+		},
 		{
 			name:             "channel_nil_inherits_global_enabled",
 			channelUASetting: nil,
@@ -1836,7 +1837,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 		},
 		{
 			name:             "enabled_but_no_client_ua",
-			channelUASetting: boolPtr(true),
+			channelUASetting: new(true),
 			globalUAEnabled:  true,
 			clientUA:         "",
 			wantUAHeader:     "",
