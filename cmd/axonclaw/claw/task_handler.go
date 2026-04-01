@@ -12,10 +12,8 @@ import (
 type TaskType string
 
 const (
-	TaskTypePrompt      TaskType = "prompt"
-	TaskTypeHeartbeat   TaskType = "heartbeat"
-	TaskTypeSelfReflect TaskType = "self-reflect"
-	TaskTypeSelfEvolve  TaskType = "self-evolve"
+	TaskTypePrompt    TaskType = "prompt"
+	TaskTypeHeartbeat TaskType = "heartbeat"
 )
 
 type Handler func(ctx context.Context, t task.Task) error
@@ -36,8 +34,6 @@ func NewTaskHandler(logger *slog.Logger, workspace string, runner *Runner) *Task
 	}
 	h.Register(string(TaskTypePrompt), h.handlePrompt)
 	h.Register(string(TaskTypeHeartbeat), h.handleHeartbeat)
-	h.Register(string(TaskTypeSelfReflect), h.handleSelfReflect)
-	h.Register(string(TaskTypeSelfEvolve), h.handleSelfEvolve)
 
 	return h
 }

@@ -1,3 +1,3 @@
-import defaultSystemPrompt from './AGENTS.md?raw';
+import defaultSystemPrompt from './SYSTEM.md?raw';
 
 export { defaultSystemPrompt };

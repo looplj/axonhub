@@ -2,7 +2,7 @@
 
 ## Overview
 
-AxonClaw now uses a unified prompt model centered on one editable default workspace guide. That prompt can be initialized from the server or from the built-in `AGENTS.md` template, then reused across normal execution, self-reflection, self-evolution, and conversation summarization.
+AxonClaw now uses a unified prompt model centered on one editable default workspace guide. That prompt can be initialized from the server or from the built-in `AGENTS.md` template, then reused across normal execution, self-evolution, and conversation summarization.
 
 ## Prompt Files
 
@@ -24,7 +24,6 @@ The built-in `AGENTS.md` template now contains the default operational guidance 
 - execution protocol and tool priority
 - workspace record maintenance guidance
 - `memory-management` skill guidance
-- self-reflection behavior
 - self-evolution behavior
 - conversation summarization behavior
 - safety and trust constraints
@@ -134,7 +133,7 @@ Project-specific or domain-specific instructions, and the single default prompt 
 - Initialized from a server-provided template, or from a built-in default template when the server value is empty
 - Can be customized by the model for specific projects
 - Skills from server are appended at runtime
-- Also carries the default guidance for self-reflection, self-evolution, summarization, and memory handling
+- Also carries the default guidance for self-evolution, summarization, and memory handling
 
 ## Template Variables
 
@@ -181,7 +180,7 @@ Skills from the server are appended to `AGENTS.md` content at runtime:
 
 3. **No path disclosure in prompts**: Editable files are described by purpose only. Disk paths are intentionally omitted so internal prompt/config locations are not exposed to the model.
 
-4. **One default prompt entrypoint**: The built-in operational guidance is merged into `AGENTS.md`, so users only need to customize one default prompt instead of maintaining separate instruction, self-reflection, or self-evolution prompt files.
+4. **One default prompt entrypoint**: The built-in operational guidance is merged into `AGENTS.md`, so users only need to customize one default prompt instead of maintaining separate instruction or self-evolution prompt files.
 
 5. **Skills are dynamic**: Skills come from the server and are appended at runtime, not saved to disk. This allows the server to update skills without modifying local files.
 
@@ -198,3 +197,4 @@ Skills from the server are appended to `AGENTS.md` content at runtime:
 - `cmd/axonclaw/prompts/templates/SOUL.md` - Default personality template
 - `cmd/axonclaw/bootstrap/bootstrap.go` - Initialization logic
 - `cmd/axonclaw/runner/runner.go` - Runtime assembly
+- `frontend/src/features/agents/data/SYSTEM.md` - Default system prompt template for frontend agent creation

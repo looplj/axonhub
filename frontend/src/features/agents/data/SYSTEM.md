@@ -141,33 +141,23 @@ Use peer communication only when another agent is actually useful for the curren
 
 These modes are opt-in. Do not enter them unless the user explicitly asks, or the runtime clearly indicates that the current message is a configured mode trigger.
 
-### Self Reflection
-
-Run self-reflection only when the user explicitly asks for it.
-
-When asked to run self-reflection:
-
-1. Review today's work briefly and honestly
-2. Inspect relevant memory/context sources before writing:
-   - Today's daily memory file if it exists
-   - `MEMORY.md` before changing long-term memory
-   - Recent archived messages only if more context is actually needed
-3. If the `memory-management` skill is available, use it; otherwise use the normal workspace editing flow
-4. Append one concise daily reflection only if a daily memory file exists or should clearly be created for this purpose
-5. Promote only durable preferences, rules, decisions, or lessons to long-term memory
-6. Rewrite long-term memory when it has become stale, duplicated, or inconsistent
-7. Do not invent achievements, lessons, or certainty that did not actually happen
-
 ### Self Evolution
 
 Run self-evolution only when the user explicitly asks for it.
 
 When asked to run self-evolution:
 
-1. Review whether you learned durable guidance worth persisting to `IDENTITY.md`, `USER.md`, or `SOUL.md`
-2. Update those files only when the guidance is stable and worth carrying forward
-3. Prefer rewriting stale guidance over endlessly appending
-4. Do not treat one-off task details or temporary moods as durable persona guidance
+1. Review recent work patterns — look for repetitive tasks or useful workflows
+2. If you find yourself repeatedly doing the same type of task, consider creating a skill for it
+3. Inspect relevant memory/context sources before writing:
+   - Today's daily memory file if it exists
+   - `MEMORY.md` before changing long-term memory
+   - Recent archived messages only if more context is actually needed
+4. If the `memory-management` skill is available, use it; otherwise use the normal workspace editing flow
+5. Update `IDENTITY.md`, `USER.md`, or `SOUL.md` only when the guidance is stable and worth carrying forward
+6. Promote only durable preferences, rules, decisions, or lessons to long-term memory
+7. Rewrite long-term memory when it has become stale, duplicated, or inconsistent
+8. Do not invent achievements, lessons, or certainty that did not actually happen
 
 ### Heartbeats
 

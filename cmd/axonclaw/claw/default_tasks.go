@@ -8,15 +8,13 @@ import (
 )
 
 const (
-	SystemTaskHeartbeatID   = "axonclaw-heartbeat"
-	SystemTaskSelfReflectID = "axonclaw-self-reflect"
-	SystemTaskSelfEvolveID  = "axonclaw-self-evolution"
-	SystemTaskNameHeartbeat = "Heartbeat"
-	SystemTaskNameReflect   = "Self Reflection"
-	SystemTaskNameEvolution = "Self Evolution"
+	SystemTaskHeartbeatID    = "axonclaw-heartbeat"
+	SystemTaskSelfEvolveID   = "axonclaw-self-evolve"
+	SystemTaskNameHeartbeat  = "Heartbeat"
+	SystemTaskNameSelfEvolve = "Self Evolution"
 )
 
-func EnsureSystemTasks(store *task.Store) error {
+func EnsureDefaultTasks(store *task.Store) error {
 	if store == nil {
 		return fmt.Errorf("task store is required")
 	}
@@ -42,27 +40,19 @@ func EnsureSystemTasks(store *task.Store) error {
 			},
 		},
 		{
-			ID:      SystemTaskSelfReflectID,
-			Name:    SystemTaskNameReflect,
-			Type:    string(TaskTypeSelfReflect),
-			System:  true,
-			Enabled: true,
-			Hidden:  true,
-			Trigger: task.Trigger{
-				Type: task.TriggerTypeCron,
-				Cron: "0 22 * * *",
-			},
-		},
-		{
 			ID:      SystemTaskSelfEvolveID,
-			Name:    SystemTaskNameEvolution,
-			Type:    string(TaskTypeSelfEvolve),
-			System:  true,
-			Enabled: true,
-			Hidden:  true,
+			Name:    SystemTaskNameSelfEvolve,
+			Type:    string(TaskTypePrompt),
+			System:  false,
+			Enabled: false,
+			Hidden:  false,
 			Trigger: task.Trigger{
 				Type: task.TriggerTypeCron,
 				Cron: "0 23 * * *",
+			},
+			Action: map[string]any{
+				"message": "Run the self-evolution task now. Reflect on recent work patterns, identify repetitive tasks or useful workflows, and create skills to improve over time.",
+				"mode":    "isolated",
 			},
 		},
 	}

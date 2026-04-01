@@ -322,7 +322,7 @@ func runAgent(cfg claw.Config, wd string, debug bool) error {
 		return fmt.Errorf("init task store: %w", err)
 	}
 
-	if err := claw.EnsureSystemTasks(taskStore); err != nil {
+	if err := claw.EnsureDefaultTasks(taskStore); err != nil {
 		return fmt.Errorf("ensure system tasks: %w", err)
 	}
 

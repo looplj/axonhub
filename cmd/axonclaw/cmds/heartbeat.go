@@ -40,13 +40,7 @@ func NewHeartbeatCommand(opts StdioOptions) *cobra.Command {
 		Long: `Manage the agentic heartbeat system.
 
 The heartbeat periodically wakes the agent to check a HEARTBEAT.md checklist
-and handle anything that needs proactive attention.
-
-Available Commands:
-  status     Show heartbeat status and configuration
-  enable     Enable heartbeat
-  disable    Disable heartbeat
-  interval   Show or set heartbeat interval`,
+and handle anything that needs proactive attention.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
