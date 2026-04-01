@@ -32,15 +32,11 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 		}
 
 		var apiKey *ent.APIKey
-		if err != nil {
-			if !errors.Is(err, ErrAPIKeyRequired) {
-				AbortWithError(c, http.StatusUnauthorized, err)
-				return
-			}
-
-			apiKey, err = auth.AuthenticateNoAuth(c.Request.Context())
-		} else {
+		if err == nil {
 			apiKey, err = auth.AuthenticateAPIKey(c.Request.Context(), key)
+		}
+		if err != nil {
+			apiKey, err = auth.AuthenticateNoAuth(c.Request.Context())
 		}
 		if err != nil {
 			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {

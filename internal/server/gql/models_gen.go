@@ -454,6 +454,14 @@ type UpdateProjectUserInput struct {
 	RemoveRoleIDs []*objects.GUID `json:"removeRoleIDs,omitempty"`
 }
 
+type UpdateUserAgentPassThroughSettingsInput struct {
+	Enabled bool `json:"enabled"`
+}
+
+type UserAgentPassThroughSettings struct {
+	Enabled bool `json:"enabled"`
+}
+
 type VersionCheck struct {
 	CurrentVersion string `json:"currentVersion"`
 	LatestVersion  string `json:"latestVersion"`

@@ -168,6 +168,17 @@ func (r *mutationResolver) BulkEnableChannels(ctx context.Context, ids []*object
 	return true, nil
 }
 
+// BulkRecoverChannels is the resolver for the bulkRecoverChannels field.
+func (r *mutationResolver) BulkRecoverChannels(ctx context.Context, ids []*objects.GUID) (bool, error) {
+	channelIDs := objects.IntGuids(ids)
+
+	if err := r.channelService.BulkRecoverChannels(ctx, channelIDs); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // BulkDeleteChannels is the resolver for the bulkDeleteChannels field.
 func (r *mutationResolver) BulkDeleteChannels(ctx context.Context, ids []*objects.GUID) (bool, error) {
 	channelIDs := objects.IntGuids(ids)

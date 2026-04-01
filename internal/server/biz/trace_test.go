@@ -573,6 +573,63 @@ func TestTraceService_GetRequestTrace_WithReasoningContent(t *testing.T) {
 	require.Contains(t, thinkingSpan.Value.Thinking.Thinking, "Let me think")
 }
 
+func TestDeduplicateSpansWithParent_CompactSummaryUsesContentKey(t *testing.T) {
+	parent := []Span{{
+		ID:   "parent-compact",
+		Type: "compaction",
+		Value: &SpanValue{
+			Compaction: &SpanCompaction{Summary: "summary-a"},
+		},
+	}}
+
+	current := []Span{{
+		ID:   "child-compact",
+		Type: "compaction",
+		Value: &SpanValue{
+			Compaction: &SpanCompaction{Summary: "summary-b"},
+		},
+	}}
+
+	result := deduplicateSpansWithParent(current, parent)
+	require.Len(t, result, 1)
+	require.Equal(t, "summary-b", result[0].Value.Compaction.Summary)
+}
+
+func TestSpanToKey_CompactTypesIncludeSummary(t *testing.T) {
+	tests := []struct {
+		name string
+		span Span
+		want string
+	}{
+		{
+			name: "compaction",
+			span: Span{
+				Type: "compaction",
+				Value: &SpanValue{
+					Compaction: &SpanCompaction{Summary: "compact-a"},
+				},
+			},
+			want: "compaction:compact-a",
+		},
+		{
+			name: "compaction_summary",
+			span: Span{
+				Type: "compaction_summary",
+				Value: &SpanValue{
+					Compaction: &SpanCompaction{Summary: "compact-b"},
+				},
+			},
+			want: "compaction_summary:compact-b",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, spanToKey(tt.span))
+		})
+	}
+}
+
 func TestTraceService_GetRequestTrace_EmptyTrace(t *testing.T) {
 	traceService, client := setupTestTraceService(t, nil)
 	defer client.Close()

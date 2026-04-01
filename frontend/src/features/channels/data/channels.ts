@@ -98,6 +98,7 @@ const CREATE_CHANNEL_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          passThroughUserAgent
         }
       orderingWeight
       remark
@@ -144,6 +145,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          passThroughUserAgent
         }
       orderingWeight
       remark
@@ -190,6 +192,7 @@ const UPDATE_CHANNEL_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          passThroughUserAgent
         }
       orderingWeight
       errorMessage
@@ -222,6 +225,12 @@ const BULK_DISABLE_CHANNELS_MUTATION = `
 const BULK_ENABLE_CHANNELS_MUTATION = `
   mutation BulkEnableChannels($ids: [ID!]!) {
     bulkEnableChannels(ids: $ids)
+  }
+`;
+
+const BULK_RECOVER_CHANNELS_MUTATION = `
+  mutation BulkRecoverChannels($ids: [ID!]!) {
+    bulkRecoverChannels(ids: $ids)
   }
 `;
 
@@ -283,6 +292,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          passThroughUserAgent
         }
       }
     }
@@ -448,6 +458,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             forceArrayInputs
             replaceDeveloperRoleWithSystem
           }
+          passThroughUserAgent
         }
       }
     }
@@ -580,6 +591,7 @@ const QUERY_CHANNELS_QUERY = `
               forceArrayInputs
               replaceDeveloperRoleWithSystem
             }
+            passThroughUserAgent
           }
           orderingWeight
           errorMessage
@@ -928,6 +940,26 @@ export function useBulkEnableChannels() {
   });
 }
 
+export function useBulkRecoverChannels() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const data = await graphqlRequest<{ bulkRecoverChannels: boolean }>(BULK_RECOVER_CHANNELS_MUTATION, { ids });
+      return data.bulkRecoverChannels;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      queryClient.invalidateQueries({ queryKey: ['errorChannelsCount'] });
+      toast.success(t('channels.messages.bulkRecoverSuccess', { count: variables.length }));
+    },
+    onError: (error) => {
+      toast.error(t('channels.messages.bulkRecoverError', { error: error.message }));
+    },
+  });
+}
+
 export function useDeleteChannel() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -966,8 +998,9 @@ export function useBulkDeleteChannels() {
   });
 }
 
-export function useTestChannel() {
+export function useTestChannel(options?: { silent?: boolean }) {
   const { t } = useTranslation();
+  const silent = options?.silent ?? false;
 
   return useMutation({
     mutationFn: async ({
@@ -990,6 +1023,10 @@ export function useTestChannel() {
       return data.testChannel;
     },
     onSuccess: (data) => {
+      if (silent) {
+        return;
+      }
+
       if (data.success) {
         toast.success(t('channels.messages.testSuccess', { latency: data.latency.toFixed(2) }));
       } else {
@@ -999,6 +1036,10 @@ export function useTestChannel() {
       }
     },
     onError: (error) => {
+      if (silent) {
+        return;
+      }
+
       // Handle GraphQL/network errors
       toast.error(t('channels.messages.testError', { error: error.message }));
     },

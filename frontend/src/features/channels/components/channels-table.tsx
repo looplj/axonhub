@@ -15,7 +15,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IconArchive, IconBan, IconCheck, IconTrash, IconTemplate, IconX } from '@tabler/icons-react';
+import { IconArchive, IconBan, IconCheck, IconFlask, IconTrash, IconTemplate, IconX } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -400,6 +400,15 @@ export function ChannelsTable({
               title={t('channels.templates.bulk.applyButton')}
             >
               <IconTemplate className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-sky-600 hover:bg-sky-100 hover:text-sky-700'
+              onClick={() => setOpen('bulkTest')}
+              title={t('channels.actions.bulkTest')}
+            >
+              <IconFlask className='h-4 w-4' />
             </Button>
             <Button
               variant='ghost'

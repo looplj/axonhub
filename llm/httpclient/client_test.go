@@ -627,3 +627,82 @@ data: [DONE]
 		t.Errorf("Err() should return nil initially")
 	}
 }
+
+
+// TestBuildHttpRequest_UserAgentPassThrough tests the User-Agent handling with pass-through settings.
+func TestBuildHttpRequest_UserAgentPassThrough(t *testing.T) {
+	client := &HttpClient{
+		client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	tests := []struct {
+		name          string
+		request       *Request
+		wantUserAgent string
+	}{
+	{
+		name: "existing_ua_is_preserved",
+		request: &Request{
+			Method: http.MethodPost,
+			URL:    "https://api.example.com/test",
+			Headers: http.Header{
+				"User-Agent": []string{"ClientUserAgent/1.0"},
+			},
+		},
+		wantUserAgent: "ClientUserAgent/1.0",
+	},
+	{
+		name: "another_existing_ua_is_preserved",
+		request: &Request{
+			Method: http.MethodPost,
+			URL:    "https://api.example.com/test",
+			Headers: http.Header{
+				"User-Agent": []string{"ExistingClient/2.0"},
+			},
+		},
+		wantUserAgent: "ExistingClient/2.0",
+	},
+	{
+		name: "no_ua_set_uses_default",
+		request: &Request{
+			Method: http.MethodPost,
+			URL:    "https://api.example.com/test",
+		},
+		wantUserAgent: "axonhub/1.0",
+	},
+	{
+		name: "third_existing_ua_is_preserved",
+		request: &Request{
+			Method: http.MethodPost,
+			URL:    "https://api.example.com/test",
+			Headers: http.Header{
+				"User-Agent": []string{"PassedThrough/3.0"},
+			},
+		},
+		wantUserAgent: "PassedThrough/3.0",
+	},
+	{
+		name: "empty_ua_uses_default",
+		request: &Request{
+			Method: http.MethodPost,
+			URL:    "https://api.example.com/test",
+		},
+		wantUserAgent: "axonhub/1.0",
+	},
+}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := client.BuildHttpRequest(t.Context(), tt.request)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+
+			ua := result.Header.Get("User-Agent")
+			require.Equal(t, tt.wantUserAgent, ua)
+		})
+	}
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}

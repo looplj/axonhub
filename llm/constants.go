@@ -8,6 +8,7 @@ const (
 	RequestTypeRerank    RequestType = "rerank"
 	RequestTypeImage     RequestType = "image"
 	RequestTypeVideo     RequestType = "video"
+	RequestTypeCompact   RequestType = "compact"
 )
 
 func (r RequestType) String() string {
@@ -19,6 +20,7 @@ type APIFormat string
 const (
 	APIFormatOpenAIChatCompletion  APIFormat = "openai/chat_completions"
 	APIFormatOpenAIResponse        APIFormat = "openai/responses"
+	APIFormatOpenAIResponseCompact APIFormat = "openai/responses_compact"
 	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"
 	APIFormatOpenAIImageEdit       APIFormat = "openai/image_edit"
 	APIFormatOpenAIImageVariation  APIFormat = "openai/image_variation"

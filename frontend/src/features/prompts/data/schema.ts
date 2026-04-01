@@ -5,9 +5,10 @@ export const promptActionSchema = z.object({
 });
 
 export const promptActivationConditionSchema = z.object({
-  type: z.enum(['model_id', 'model_pattern']),
+  type: z.enum(['model_id', 'model_pattern', 'api_key']),
   modelId: z.string().nullable().optional(),
   modelPattern: z.string().nullable().optional(),
+  apiKeyId: z.number().nullable().optional(),
 });
 
 export const promptActivationConditionCompositeSchema = z.object({
@@ -73,9 +74,10 @@ export interface CreatePromptInput {
     };
     conditions: Array<{
       conditions: Array<{
-        type: 'model_id' | 'model_pattern';
+        type: 'model_id' | 'model_pattern' | 'api_key';
         modelId?: string;
         modelPattern?: string;
+        apiKeyId?: number;
       }>;
     }>;
   };
@@ -94,9 +96,10 @@ export interface UpdatePromptInput {
     };
     conditions: Array<{
       conditions: Array<{
-        type: 'model_id' | 'model_pattern';
+        type: 'model_id' | 'model_pattern' | 'api_key';
         modelId?: string;
         modelPattern?: string;
+        apiKeyId?: number;
       }>;
     }>;
   };

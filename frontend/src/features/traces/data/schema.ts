@@ -135,6 +135,13 @@ const spanToolResultSchema = z
   .nullable()
   .optional();
 
+const spanCompactionSchema = z
+  .object({
+    summary: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
 const spanValueSchema = z
   .object({
     systemInstruction: spanSystemInstructionSchema,
@@ -149,6 +156,7 @@ const spanValueSchema = z
     audio: spanAudioSchema,
     toolUse: spanToolUseSchema,
     toolResult: spanToolResultSchema,
+    compaction: spanCompactionSchema,
   })
   .nullable()
   .optional();

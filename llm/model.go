@@ -218,6 +218,9 @@ type Request struct {
 	// Video is the video request, will be set if the request is video request.
 	Video *VideoRequest `json:"video,omitempty"`
 
+	// Compact is the compact request, will be set if the request is compact request.
+	Compact *CompactRequest `json:"compact,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -255,6 +258,8 @@ type StreamOptions struct {
 }
 
 type Stop struct {
+	// Stop and MultipleStop are mutually exclusive representations of the same field.
+	// If both are populated, Stop takes precedence during marshaling.
 	Stop         *string
 	MultipleStop []string
 }
@@ -277,6 +282,7 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 	err := json.Unmarshal(data, &str)
 	if err == nil {
 		s.Stop = &str
+		s.MultipleStop = nil
 		return nil
 	}
 
@@ -284,6 +290,7 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 
 	err = json.Unmarshal(data, &strs)
 	if err == nil {
+		s.Stop = nil
 		s.MultipleStop = strs
 		return nil
 	}
@@ -293,6 +300,9 @@ func (s *Stop) UnmarshalJSON(data []byte) error {
 
 // Message represents a message in the conversation.
 type Message struct {
+	// ID is the upstream message/item identifier when the provider exposes one.
+	ID string `json:"id,omitempty"`
+
 	// user, assistant, system, tool, developer
 	Role string `json:"role,omitempty"`
 	// Content of the message.
@@ -365,6 +375,8 @@ type URLCitation struct {
 }
 
 type MessageContent struct {
+	// Content and MultipleContent are mutually exclusive representations of the same payload.
+	// If both are populated, MultipleContent takes precedence during marshaling.
 	Content         *string              `json:"content,omitempty"`
 	MultipleContent []MessageContentPart `json:"multiple_content,omitempty"`
 }
@@ -387,6 +399,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 	err := json.Unmarshal(data, &str)
 	if err == nil {
 		c.Content = &str
+		c.MultipleContent = nil
 		return nil
 	}
 
@@ -394,6 +407,7 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 
 	err = json.Unmarshal(data, &parts)
 	if err == nil {
+		c.Content = nil
 		c.MultipleContent = parts
 		return nil
 	}
@@ -403,8 +417,11 @@ func (c *MessageContent) UnmarshalJSON(data []byte) error {
 
 // MessageContentPart represents different types of content (text, image, video, etc.)
 type MessageContentPart struct {
+	// ID is the upstream content/item identifier when the provider exposes one.
+	ID string `json:"id,omitempty"`
+
 	// Type is the type of the content part.
-	// e.g. "text", "image_url", "video_url", "document", "input_audio"
+	// e.g. "text", "image_url", "video_url", "document", "input_audio", "compaction", "compaction_summary"
 	Type string `json:"type"`
 	// Text is the text content, required when type is "text"
 	Text *string `json:"text,omitempty"`
@@ -421,6 +438,10 @@ type MessageContentPart struct {
 
 	// InputAudio is the input audio content, required when type is "input_audio"
 	InputAudio *InputAudio `json:"input_audio,omitempty"`
+
+	// Compact is the compact content, required when type is "compaction" or "compaction_summary"
+	// This is used for OpenAI Responses API compaction-related items.
+	Compact *CompactContent `json:"compact,omitempty"`
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
@@ -467,6 +488,16 @@ type InputAudio struct {
 
 	// Base64 encoded audio data.
 	Data string `json:"data"`
+}
+
+// CompactContent represents compact content from OpenAI Responses API compaction.
+type CompactContent struct {
+	// ID is the unique ID of the compaction item.
+	ID string `json:"id,omitempty"`
+	// EncryptedContent is the encrypted content produced by compaction.
+	EncryptedContent string `json:"encrypted_content,omitempty"`
+	// CreatedBy is the identifier of the actor that created the item.
+	CreatedBy *string `json:"created_by,omitempty"`
 }
 
 type OutputAudio struct {
@@ -540,6 +571,9 @@ type Response struct {
 
 	// Video is the video response, will present if the request is video request.
 	Video *VideoResponse `json:"video,omitempty"`
+
+	// Compact is the compact response, will present if the request is compact request.
+	Compact *CompactResponse `json:"compact,omitempty"`
 
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.

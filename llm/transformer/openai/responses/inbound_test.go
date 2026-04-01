@@ -638,6 +638,343 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
+func TestConvertItemToMessage_Compaction(t *testing.T) {
+	tests := []struct {
+		name     string
+		item     *Item
+		validate func(t *testing.T, result *llm.Message, err error)
+	}{
+		{
+			name: "compaction item with all fields",
+			item: &Item{
+				ID:               "compaction_123",
+				Type:             "compaction",
+				EncryptedContent: lo.ToPtr("encrypted_data_here"),
+				CreatedBy:        lo.ToPtr("assistant"),
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "assistant", result.Role)
+				require.Len(t, result.Content.MultipleContent, 1)
+				require.Equal(t, "compaction", result.Content.MultipleContent[0].Type)
+				require.NotNil(t, result.Content.MultipleContent[0].Compact)
+				require.Equal(t, "compaction_123", result.Content.MultipleContent[0].Compact.ID)
+				require.Equal(t, "encrypted_data_here", result.Content.MultipleContent[0].Compact.EncryptedContent)
+				require.NotNil(t, result.Content.MultipleContent[0].Compact.CreatedBy)
+				require.Equal(t, "assistant", *result.Content.MultipleContent[0].Compact.CreatedBy)
+			},
+		},
+		{
+			name: "compaction item without created_by",
+			item: &Item{
+				ID:               "compaction_456",
+				Type:             "compaction",
+				EncryptedContent: lo.ToPtr("encrypted_only"),
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "assistant", result.Role)
+				require.Len(t, result.Content.MultipleContent, 1)
+				require.Equal(t, "compaction", result.Content.MultipleContent[0].Type)
+				require.NotNil(t, result.Content.MultipleContent[0].Compact)
+				require.Equal(t, "compaction_456", result.Content.MultipleContent[0].Compact.ID)
+				require.Equal(t, "encrypted_only", result.Content.MultipleContent[0].Compact.EncryptedContent)
+				require.Nil(t, result.Content.MultipleContent[0].Compact.CreatedBy)
+			},
+		},
+		{
+			name: "compaction item with empty encrypted_content",
+			item: &Item{
+				ID:               "compaction_789",
+				Type:             "compaction",
+				EncryptedContent: lo.ToPtr(""),
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "assistant", result.Role)
+				require.Len(t, result.Content.MultipleContent, 1)
+				require.Equal(t, "compaction", result.Content.MultipleContent[0].Type)
+				require.NotNil(t, result.Content.MultipleContent[0].Compact)
+				require.Equal(t, "", result.Content.MultipleContent[0].Compact.EncryptedContent)
+			},
+		},
+		{
+			name: "compaction item with nil encrypted_content",
+			item: &Item{
+				ID:               "compaction_nil",
+				Type:             "compaction",
+				EncryptedContent: nil,
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "assistant", result.Role)
+				require.Len(t, result.Content.MultipleContent, 1)
+				require.Equal(t, "compaction", result.Content.MultipleContent[0].Type)
+				require.NotNil(t, result.Content.MultipleContent[0].Compact)
+				require.Equal(t, "", result.Content.MultipleContent[0].Compact.EncryptedContent)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertItemToMessage(tt.item)
+			tt.validate(t, result, err)
+		})
+	}
+}
+
+func TestConvertContentItemToPart_Compaction(t *testing.T) {
+	tests := []struct {
+		name     string
+		item     *Item
+		validate func(t *testing.T, result *llm.MessageContentPart, err error)
+	}{
+		{
+			name: "compaction item to compaction part",
+			item: &Item{
+				ID:               "compaction_part_123",
+				Type:             "compaction",
+				EncryptedContent: lo.ToPtr("encrypted_content"),
+				CreatedBy:        lo.ToPtr("user"),
+			},
+			validate: func(t *testing.T, result *llm.MessageContentPart, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "compaction", result.Type)
+				require.NotNil(t, result.Compact)
+				require.Equal(t, "compaction_part_123", result.Compact.ID)
+				require.Equal(t, "encrypted_content", result.Compact.EncryptedContent)
+				require.NotNil(t, result.Compact.CreatedBy)
+				require.Equal(t, "user", *result.Compact.CreatedBy)
+			},
+		},
+		{
+			name: "compaction item without created_by to compaction part",
+			item: &Item{
+				ID:               "compaction_part_456",
+				Type:             "compaction",
+				EncryptedContent: lo.ToPtr("data"),
+			},
+			validate: func(t *testing.T, result *llm.MessageContentPart, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "compaction", result.Type)
+				require.NotNil(t, result.Compact)
+				require.Equal(t, "compaction_part_456", result.Compact.ID)
+				require.Equal(t, "data", result.Compact.EncryptedContent)
+				require.Nil(t, result.Compact.CreatedBy)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertContentItemToPart(tt.item)
+			tt.validate(t, result, err)
+		})
+	}
+}
+
+func TestInboundTransformer_TransformRequest_WithCompactionInput(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	tests := []struct {
+		name        string
+		httpReq     *httpclient.Request
+		expectError bool
+		validate    func(t *testing.T, result *llm.Request)
+	}{
+		{
+			name: "request with compaction input item",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "gpt-4o",
+					"input": [
+						{
+							"type": "message",
+							"role": "user",
+							"content": "Hello"
+						},
+						{
+							"type": "compaction",
+							"id": "compaction_abc",
+							"encrypted_content": "base64encoded",
+							"created_by": "assistant"
+						}
+					]
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Equal(t, "gpt-4o", result.Model)
+				require.Len(t, result.Messages, 2)
+
+				require.Equal(t, "user", result.Messages[0].Role)
+				require.Equal(t, "Hello", *result.Messages[0].Content.Content)
+
+				require.Equal(t, "assistant", result.Messages[1].Role)
+				require.Len(t, result.Messages[1].Content.MultipleContent, 1)
+				require.Equal(t, "compaction", result.Messages[1].Content.MultipleContent[0].Type)
+				require.NotNil(t, result.Messages[1].Content.MultipleContent[0].Compact)
+				require.Equal(t, "compaction_abc", result.Messages[1].Content.MultipleContent[0].Compact.ID)
+				require.Equal(t, "base64encoded", result.Messages[1].Content.MultipleContent[0].Compact.EncryptedContent)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := trans.TransformRequest(context.Background(), tt.httpReq)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+
+				if tt.validate != nil {
+					tt.validate(t, result)
+				}
+			}
+		})
+	}
+}
+
+func TestInboundTransformer_TransformResponse_WithCompactionContent(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	tests := []struct {
+		name        string
+		chatResp    *llm.Response
+		expectError bool
+		validate    func(t *testing.T, result *httpclient.Response)
+	}{
+		{
+			name: "response with compaction content part",
+			chatResp: &llm.Response{
+				ID:      "chatcmpl-compact",
+				Object:  "chat.completion",
+				Created: 1677652288,
+				Model:   "gpt-4o",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "compaction",
+										Compact: &llm.CompactContent{
+											ID:               "compaction_xyz",
+											EncryptedContent: "encrypted_response_data",
+											CreatedBy:        lo.ToPtr("model"),
+										},
+									},
+								},
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Response) {
+				require.Equal(t, http.StatusOK, result.StatusCode)
+
+				var resp Response
+				err := json.Unmarshal(result.Body, &resp)
+				require.NoError(t, err)
+				require.Equal(t, "response", resp.Object)
+
+				require.Len(t, resp.Output, 1)
+				compactionOutput := resp.Output[0]
+				require.Equal(t, "compaction", compactionOutput.Type)
+				require.Equal(t, "compaction_xyz", compactionOutput.ID)
+				require.NotNil(t, compactionOutput.EncryptedContent)
+				require.Equal(t, "encrypted_response_data", *compactionOutput.EncryptedContent)
+				require.NotNil(t, compactionOutput.CreatedBy)
+				require.Equal(t, "model", *compactionOutput.CreatedBy)
+			},
+		},
+		{
+			name: "response with mixed text and compaction content",
+			chatResp: &llm.Response{
+				ID:      "chatcmpl-mixed",
+				Object:  "chat.completion",
+				Created: 1677652288,
+				Model:   "gpt-4o",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Message: &llm.Message{
+							Role: "assistant",
+							Content: llm.MessageContent{
+								MultipleContent: []llm.MessageContentPart{
+									{
+										Type: "text",
+										Text: lo.ToPtr("Here is the response"),
+									},
+									{
+										Type: "compaction",
+										Compact: &llm.CompactContent{
+											ID:               "compaction_mixed",
+											EncryptedContent: "mixed_encrypted",
+										},
+									},
+								},
+							},
+						},
+						FinishReason: lo.ToPtr("stop"),
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Response) {
+				require.Equal(t, http.StatusOK, result.StatusCode)
+
+				var resp Response
+				err := json.Unmarshal(result.Body, &resp)
+				require.NoError(t, err)
+
+				require.Len(t, resp.Output, 2)
+
+				require.Equal(t, "compaction", resp.Output[0].Type)
+				require.Equal(t, "compaction_mixed", resp.Output[0].ID)
+				require.NotNil(t, resp.Output[0].EncryptedContent)
+				require.Equal(t, "mixed_encrypted", *resp.Output[0].EncryptedContent)
+
+				require.Equal(t, "message", resp.Output[1].Type)
+				require.Equal(t, "assistant", resp.Output[1].Role)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := trans.TransformResponse(context.Background(), tt.chatResp)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+
+				if tt.validate != nil {
+					tt.validate(t, result)
+				}
+			}
+		})
+	}
+}
+
 func TestInboundTransformer_TransformError(t *testing.T) {
 	trans := NewInboundTransformer()
 

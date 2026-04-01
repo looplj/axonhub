@@ -371,8 +371,8 @@ func TestPrepareModelsEndpoint(t *testing.T) {
 		{
 			name:        "Doubao Anthropic",
 			channelType: channel.TypeDoubaoAnthropic,
-			baseURL:     "https://ark.cn-beijing.volces.com/anthropic",
-			expectedURL: "https://ark.cn-beijing.volces.com/v1/models",
+			baseURL:     "https://ark.cn-beijing.volces.com/api/compatible",
+			expectedURL: "https://ark.cn-beijing.volces.com/api/v3/models",
 		},
 	}
 
@@ -555,7 +555,6 @@ func TestProviderConfFetcher_Caching(t *testing.T) {
 		t.Fatalf("expected 2 server calls after cache expiry, got %d", thirdCallCount)
 	}
 }
-
 
 func TestFetchModelsGeminiVertex(t *testing.T) {
 	var callCount atomic.Int32

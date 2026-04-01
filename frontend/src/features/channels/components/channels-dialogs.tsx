@@ -8,6 +8,7 @@ import { ChannelsBulkDisableDialog } from './channels-bulk-disable-dialog';
 import { ChannelsBulkEnableDialog } from './channels-bulk-enable-dialog';
 import { ChannelsBulkImportDialog } from './channels-bulk-import-dialog';
 import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog';
+import { ChannelsBulkTestDialog } from './channels-bulk-test-dialog';
 import { ChannelsDeleteDialog } from './channels-delete-dialog';
 import { ChannelsDisabledAPIKeysDialog } from './channels-disabled-api-keys-dialog';
 import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog';
@@ -33,6 +34,8 @@ export function ChannelsDialogs() {
       <ChannelsBulkDisableDialog />
 
       <ChannelsBulkEnableDialog />
+
+      <ChannelsBulkTestDialog />
 
       <ChannelsBulkDeleteDialog />
 
