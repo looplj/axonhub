@@ -109,6 +109,54 @@ func TestChannelService_BulkEnableChannels(t *testing.T) {
 	}
 }
 
+func TestChannelService_BulkRecoverChannels(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	errorMessage := "Unauthorized"
+
+	ch1, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Recover Channel 1").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusDisabled).
+		SetErrorMessage(errorMessage).
+		Save(ctx)
+	require.NoError(t, err)
+
+	ch2, err := client.Channel.Create().
+		SetType(channel.TypeAnthropic).
+		SetName("Recover Channel 2").
+		SetBaseURL("https://api.anthropic.com").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key2"}).
+		SetSupportedModels([]string{"claude-3-opus-20240229"}).
+		SetDefaultTestModel("claude-3-opus-20240229").
+		SetStatus(channel.StatusDisabled).
+		SetErrorMessage(errorMessage).
+		Save(ctx)
+	require.NoError(t, err)
+
+	err = svc.BulkRecoverChannels(ctx, []int{ch1.ID, ch2.ID})
+	require.NoError(t, err)
+
+	recovered1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusEnabled, recovered1.Status)
+	require.Nil(t, recovered1.ErrorMessage)
+
+	recovered2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusEnabled, recovered2.Status)
+	require.Nil(t, recovered2.ErrorMessage)
+}
+
 func TestChannelService_BulkDisableChannels(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()

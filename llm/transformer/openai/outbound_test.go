@@ -316,6 +316,15 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 			expectedErrType:    "invalid_request_error",
 		},
 		{
+			name: "nvidia error with numeric code",
+			httpErr: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+				Body:       []byte(`{"error":{"message":"You passed 194561 input tokens","type":"BadRequestError","param":"input_tokens","code":400}}`),
+			},
+			expectedErrMessage: "You passed 194561 input tokens",
+			expectedErrType:    "BadRequestError",
+		},
+		{
 			name: "http error with non-json body",
 			httpErr: &httpclient.Error{
 				StatusCode: http.StatusInternalServerError,

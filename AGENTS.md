@@ -51,8 +51,23 @@ AxonHub is an all-in-one AI development platform that serves as a unified API ga
 - `internal/scopes/` — Permission system with role-based access control
 - `llm/` — LLM utilities, transformers, and pipeline processing (separate Go module)
 - `llm/pipeline/` — Pipeline processing architecture
-- `axon/` — Agent framework with LLM providers, tools, memory (separate Go module)
 - `conf/conf.go` — Configuration loading and validation
+
+## Go Modules
+
+- The repository root (`/`) is the main Go module: `github.com/looplj/axonhub`.
+- `llm/` is a separate Go module: `github.com/looplj/axonhub/llm`.
+
+### `llm/` Module Notes
+
+- Do not assume root-level Go commands can see packages under `llm/...`.
+- When working on files under `llm/`, run Go commands from the `llm/` directory unless you explicitly know a workspace-level command is appropriate.
+- Typical examples:
+  - `cd llm && go test ./...`
+  - `cd llm && go test ./transformer/openai/responses -run TestName`
+  - `cd llm && go list ./...`
+- If you run `go test ./llm/...` or similar from the repo root, you may hit module boundary errors like `main module does not contain package ...`.
+- Apply the same rule to any other nested Go module: use the module root that owns the package you are testing or inspecting.
 
 ## Frontend Structure
 

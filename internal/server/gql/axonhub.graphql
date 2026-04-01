@@ -612,6 +612,7 @@ type Mutation {
   bulkArchiveChannels(ids: [ID!]!): Boolean!
   bulkDisableChannels(ids: [ID!]!): Boolean!
   bulkEnableChannels(ids: [ID!]!): Boolean!
+  bulkRecoverChannels(ids: [ID!]!): Boolean!
   bulkDeleteChannels(ids: [ID!]!): Boolean!
   testChannel(input: TestChannelInput!): TestChannelPayload!
   bulkImportChannels(input: BulkImportChannelsInput!): BulkImportChannelsResult!

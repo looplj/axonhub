@@ -97,6 +97,76 @@ func TestMessageContentPartAudioRoundTrip(t *testing.T) {
 	require.Equal(t, "audio-base64", roundTrip.InputAudio.Data)
 }
 
+func TestMessageContentFromLLM_IgnoresCompactionParts(t *testing.T) {
+	content := MessageContentFromLLM(llm.MessageContent{
+		MultipleContent: []llm.MessageContentPart{
+			{
+				Type: "compaction",
+				Compact: &llm.CompactContent{
+					ID:               "cmp_123",
+					EncryptedContent: "secret",
+				},
+			},
+			{
+				Type: "compaction_summary",
+				Compact: &llm.CompactContent{
+					ID:               "cmp_456",
+					EncryptedContent: "summary",
+				},
+			},
+			{
+				Type: "text",
+				Text: lo.ToPtr("visible"),
+			},
+		},
+	})
+
+	require.Len(t, content.MultipleContent, 1)
+	require.Equal(t, "text", content.MultipleContent[0].Type)
+	require.NotNil(t, content.MultipleContent[0].Text)
+	require.Equal(t, "visible", *content.MultipleContent[0].Text)
+}
+
+func TestRequestFromLLM_IgnoresCompactionPartsInMessages(t *testing.T) {
+	req := RequestFromLLM(&llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "compaction",
+							Compact: &llm.CompactContent{
+								ID:               "cmp_123",
+								EncryptedContent: "secret",
+							},
+						},
+						{
+							Type: "compaction_summary",
+							Compact: &llm.CompactContent{
+								ID:               "cmp_456",
+								EncryptedContent: "summary",
+							},
+						},
+						{
+							Type: "text",
+							Text: lo.ToPtr("hello"),
+						},
+					},
+				},
+			},
+		},
+	})
+
+	require.NotNil(t, req)
+	require.Len(t, req.Messages, 1)
+	require.Len(t, req.Messages[0].Content.MultipleContent, 1)
+	require.Equal(t, "text", req.Messages[0].Content.MultipleContent[0].Type)
+	require.NotNil(t, req.Messages[0].Content.MultipleContent[0].Text)
+	require.Equal(t, "hello", *req.Messages[0].Content.MultipleContent[0].Text)
+}
+
 func TestMessageAudioRoundTrip(t *testing.T) {
 	msg := llm.Message{
 		Role: "assistant",

@@ -439,6 +439,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		case "message", "input_text", "":
 			// If we encounter a text message with assistant role, merge its content
 			if nextItem.Role == "assistant" {
+				msg.ID = nextItem.ID
 				if nextItem.Content != nil && len(nextItem.Content.Items) > 0 && nextItem.isOutputMessageContent() {
 					msg.Content = convertContentItemsToMessageContent(nextItem.GetContentItems())
 				} else if nextItem.Content != nil {
@@ -471,6 +472,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 	switch item.Type {
 	case "message", "input_text", "":
 		msg := &llm.Message{
+			ID:   item.ID,
 			Role: item.Role,
 		}
 
@@ -580,6 +582,9 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		// This case should not be reached in normal flow, but return nil to skip if it does
 		return nil, nil
 
+	case "compaction", "compaction_summary":
+		return compactionMessageFromItem(item, item.Type), nil
+
 	default:
 		// Skip unknown types
 		return nil, nil
@@ -661,6 +666,7 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 	case "input_text", "text", "output_text":
 		if item.Text != nil {
 			return &llm.MessageContentPart{
+				ID:   item.ID,
 				Type: "text",
 				Text: item.Text,
 			}, nil
@@ -671,6 +677,7 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 	case "input_image":
 		if item.ImageURL != nil {
 			return &llm.MessageContentPart{
+				ID:   item.ID,
 				Type: "image_url",
 				ImageURL: &llm.ImageURL{
 					URL:    *item.ImageURL,
@@ -680,6 +687,9 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 		}
 
 		return nil, nil
+
+	case "compaction", "compaction_summary":
+		return compactionContentPartFromItem(item, item.Type), nil
 
 	default:
 		return nil, nil
@@ -776,25 +786,14 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			continue
 		}
 
-		// Handle reasoning content
-		if (message.ReasoningContent != nil && *message.ReasoningContent != "") || message.ReasoningSignature != nil {
-			summary := []ReasoningSummary{}
-			if message.ReasoningContent != nil && *message.ReasoningContent != "" {
-				summary = append(summary, ReasoningSummary{
-					Type: "summary_text",
-					Text: *message.ReasoningContent,
-				})
-			}
+		messageItemID := message.ID
+		if messageItemID == "" {
+			messageItemID = generateItemID()
+		}
 
-			resp.Output = append(resp.Output, Item{
-				ID:      generateItemID(),
-				Type:    "reasoning",
-				Status:  lo.ToPtr("completed"),
-				Summary: summary,
-				// Preserve the internal signature representation (with prefix) so clients can
-				// round-trip it back in the next request without losing provider identity.
-				EncryptedContent: message.ReasoningSignature,
-			})
+		// Handle reasoning content
+		if reasoningItem, ok := buildReasoningItem(*message); ok {
+			resp.Output = append(resp.Output, reasoningItem)
 		}
 
 		// Handle tool calls (function calls and custom tool calls)
@@ -826,7 +825,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		if message.Content.Content != nil && *message.Content.Content != "" {
 			text := *message.Content.Content
 			resp.Output = append(resp.Output, Item{
-				ID:   generateItemID(),
+				ID:   messageItemID,
 				Type: "message",
 				Role: "assistant",
 				Content: &Input{
@@ -861,7 +860,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 							ID:           generateItemID(),
 							Type:         "image_generation_call",
 							Role:         "assistant",
-							Result:       lo.ToPtr(extractBase64FromDataURL(part.ImageURL.URL)),
+							Result:       lo.ToPtr(xurl.ExtractBase64FromDataURL(part.ImageURL.URL)),
 							Status:       lo.ToPtr("completed"),
 							Background:   xmap.GetStringPtr(part.TransformerMetadata, "background"),
 							OutputFormat: xmap.GetStringPtr(part.TransformerMetadata, "output_format"),
@@ -870,12 +869,16 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						}
 						resp.Output = append(resp.Output, imageItem)
 					}
+				case "compaction", "compaction_summary":
+					if part.Compact != nil {
+						resp.Output = append(resp.Output, compactionItemFromPart(part, part.Type))
+					}
 				}
 			}
 
 			if len(contentItems) > 0 {
 				resp.Output = append(resp.Output, Item{
-					ID:      generateItemID(),
+					ID:      messageItemID,
 					Type:    "message",
 					Role:    "assistant",
 					Content: &Input{Items: contentItems},
@@ -929,7 +932,29 @@ func generateItemID() string {
 	return fmt.Sprintf("item_%s", lo.RandomString(16, lo.AlphanumericCharset))
 }
 
-// extractBase64FromDataURL extracts base64 data from a data URL.
-func extractBase64FromDataURL(url string) string {
-	return xurl.ExtractBase64FromDataURL(url)
+// buildReasoningItem creates a reasoning Item from a message's reasoning content and signature.
+// Returns the item and true if the message has reasoning data, otherwise returns zero value and false.
+func buildReasoningItem(msg llm.Message) (Item, bool) {
+	hasContent := msg.ReasoningContent != nil && *msg.ReasoningContent != ""
+	hasSignature := msg.ReasoningSignature != nil && *msg.ReasoningSignature != ""
+
+	if !hasContent && !hasSignature {
+		return Item{}, false
+	}
+
+	summary := []ReasoningSummary{}
+	if hasContent {
+		summary = append(summary, ReasoningSummary{
+			Type: "summary_text",
+			Text: *msg.ReasoningContent,
+		})
+	}
+
+	return Item{
+		ID:               generateItemID(),
+		Type:             "reasoning",
+		Status:           lo.ToPtr("completed"),
+		Summary:          summary,
+		EncryptedContent: msg.ReasoningSignature,
+	}, true
 }

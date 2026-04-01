@@ -32,32 +32,6 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-// parseTimeWindow parses a time window string and returns the start time and a flag indicating
-// if a filter should be applied. It returns the since time (zero if no filter) and applyFilter.
-// Supported timeWindow values: "day", "week", "month", "allTime", or empty string.
-// Defaults to "allTime" behavior (no filtering) for unknown or empty values.
-func (r *queryResolver) parseTimeWindow(ctx context.Context, timeWindow *string) (since time.Time, applyFilter bool) {
-	loc := r.systemService.TimeLocation(ctx)
-	period := xtime.GetCalendarPeriods(loc)
-
-	if timeWindow != nil && *timeWindow != "" && *timeWindow != "allTime" {
-		applyFilter = true
-		switch *timeWindow {
-		case "day":
-			since = period.Today.Start
-		case "week":
-			since = period.ThisWeek.Start
-		case "month":
-			since = period.ThisMonth.Start
-		default:
-			// Unknown value - default to allTime behavior (no filtering)
-			applyFilter = false
-		}
-	}
-
-	return since, applyFilter
-}
-
 // DashboardOverview is the resolver for the dashboardOverview field.
 // Note: This resolver provides high-level dashboard metrics.
 // For detailed request statistics, see RequestStats resolver documentation.

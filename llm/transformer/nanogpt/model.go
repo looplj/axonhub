@@ -57,10 +57,27 @@ type Message struct {
 
 // ToOpenAIMessage converts the NanoGPT Message to an OpenAI Message.
 // It maps the Reasoning field to ReasoningContent for compatibility.
+// It also parses XML tool calls from content if present.
 func (m *Message) ToOpenAIMessage() openai.Message {
 	// Map reasoning to reasoning_content if present
 	if m.Reasoning != nil {
 		m.ReasoningContent = m.Reasoning
+	}
+
+	// Parse XML tool calls from content if present
+	if m.Content.Content != nil && *m.Content.Content != "" {
+		content := *m.Content.Content
+		if MaybeHasXMLToolCalls(content) {
+			tools, remaining, err := ParseXMLToolCalls(content)
+			if err == nil && len(tools) > 0 {
+				m.ToolCalls = ToOpenAIToolCalls(tools)
+				if remaining != "" {
+					m.Content = ToOpenAIMessageContent(remaining)
+				} else {
+					m.Content = openai.MessageContent{Content: nil}
+				}
+			}
+		}
 	}
 
 	return m.Message

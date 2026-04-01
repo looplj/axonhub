@@ -49,5 +49,11 @@
   "promptProtectionRules.messages.bulkDisableSuccess": "已禁用所选规则",
   "promptProtectionRules.messages.bulkDisableError": "批量禁用规则失败：{{error}}",
   "promptProtectionRules.messages.bulkDeleteSuccess": "已删除所选规则",
-  "promptProtectionRules.messages.bulkDeleteError": "批量删除规则失败：{{error}}"
+  "promptProtectionRules.messages.bulkDeleteError": "批量删除规则失败：{{error}}",
+  "promptProtectionRules.test.title": "测试预览",
+  "promptProtectionRules.test.testInput": "测试文本",
+  "promptProtectionRules.test.previewResult": "预览结果",
+  "promptProtectionRules.test.noMatch": "无匹配",
+  "promptProtectionRules.test.invalidPattern": "无效的正则表达式",
+  "promptProtectionRules.test.placeholder": "输入测试文本以预览正则替换效果"
 }

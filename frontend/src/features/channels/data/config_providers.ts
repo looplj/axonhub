@@ -25,7 +25,8 @@ import {
   AiHubMix,
   Cerebras,
   Claude,
-  XiaomiMiMo
+  XiaomiMiMo,
+  Fireworks
 } from '@lobehub/icons';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
@@ -223,6 +224,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: NanoGPTIcon,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['nanogpt'],
+  },
+  fireworks: {
+    provider: 'fireworks',
+    icon: Fireworks,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    channelTypes: ['fireworks'],
   },
 };
 

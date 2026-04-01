@@ -158,6 +158,7 @@ Here are some screenshots of AxonHub in action:
 | **DeepSeek**           | ✅ Done    | DeepSeek-V3.1, etc.          | OpenAI, Anthropic, Gemini |
 | **ByteDance Doubao**   | ✅ Done    | doubao-1.6, etc.             | OpenAI, Anthropic, Gemini, Image Generation |
 | **Gemini**             | ✅ Done    | Gemini 2.5, etc.             | OpenAI, Anthropic, Gemini, Image Generation |
+| **Fireworks**          | ✅ Done    | MiniMax-M2.5, GLM-5, Kimi K2.5, etc. | OpenAI |
 | **Jina AI**            | ✅ Done    | Embeddings, Reranker, etc.   | Jina Embedding, Jina Rerank |
 | **OpenRouter**         | ✅ Done    | Various models               | OpenAI, Anthropic, Gemini, Image Generation |
 | **ZAI**                | ✅ Done    | -                            | Image Generation |

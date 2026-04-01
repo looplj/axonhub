@@ -35,6 +35,7 @@ const (
 	RequestIDHeader                = "x-request-id"
 	VSCodeUserAgentLibHeader       = "x-vscode-user-agent-library-version"
 	CopilotVisionRequestHeader     = "Copilot-Vision-Request"
+	InitiatorHeader                = "X-Initiator"
 	// Default editor header values (VSCode pattern) - from LiteLLM
 	DefaultEditorVersion        = "vscode/1.95.0"
 	DefaultEditorPluginVersion  = "copilot-chat/0.26.7"
@@ -177,6 +178,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Add vision header if request contains image content.
 	if hasVisionContent(llmReq) {
 		headers.Set(CopilotVisionRequestHeader, "true")
+	}
+
+	// Forward X-Initiator from inbound request for Copilot billing control.
+	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
+		if initiator := llmReq.RawRequest.Headers.Get(InitiatorHeader); initiator != "" {
+			headers.Set(InitiatorHeader, initiator)
+		}
 	}
 
 	// Build authentication config.
@@ -602,6 +610,13 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 	// Add vision header if request contains image content.
 	if hasVisionContent(llmReq) {
 		responsesReq.Headers.Set(CopilotVisionRequestHeader, "true")
+	}
+
+	// Forward X-Initiator from inbound request for Copilot billing control.
+	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
+		if initiator := llmReq.RawRequest.Headers.Get(InitiatorHeader); initiator != "" {
+			responsesReq.Headers.Set(InitiatorHeader, initiator)
+		}
 	}
 
 	return responsesReq, nil

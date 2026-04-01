@@ -175,8 +175,13 @@ func MessageContentFromLLM(c llm.MessageContent) MessageContent {
 	}
 
 	if c.MultipleContent != nil {
-		content.MultipleContent = lo.Map(c.MultipleContent, func(p llm.MessageContentPart, _ int) MessageContentPart {
-			return MessageContentPartFromLLM(p)
+		content.MultipleContent = lo.FilterMap(c.MultipleContent, func(p llm.MessageContentPart, _ int) (MessageContentPart, bool) {
+			switch p.Type {
+			case "compaction", "compaction_summary":
+				return MessageContentPart{}, false
+			default:
+				return MessageContentPartFromLLM(p), true
+			}
 		})
 	}
 
