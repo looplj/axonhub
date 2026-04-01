@@ -365,6 +365,7 @@ type InitializeSystemParams struct {
 	OwnerFirstName string
 	OwnerLastName  string
 	BrandName      string
+	PreferLanguage string
 }
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
@@ -407,11 +408,16 @@ func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystem
 	}
 
 	// Create owner user.
+	preferLanguage := params.PreferLanguage
+	if preferLanguage == "" {
+		preferLanguage = "en" // Default to English if not specified
+	}
 	user, err := tx.User.Create().
 		SetEmail(params.OwnerEmail).
 		SetPassword(hashedPassword).
 		SetFirstName(params.OwnerFirstName).
 		SetLastName(params.OwnerLastName).
+		SetPreferLanguage(preferLanguage).
 		SetIsOwner(true).
 		SetScopes([]string{"*"}). // Give owner all scopes
 		Save(ctx)
