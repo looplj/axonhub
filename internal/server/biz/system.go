@@ -1015,8 +1015,10 @@ func (s *SystemService) UserAgentPassThrough(ctx context.Context) (bool, error) 
 		if ent.IsNotFound(err) {
 			return false, nil
 		}
+
 		return false, fmt.Errorf("failed to get user-agent pass-through: %w", err)
 	}
+
 	return value == "true", nil
 }
 
@@ -1026,6 +1028,7 @@ func (s *SystemService) SetUserAgentPassThrough(ctx context.Context, enabled boo
 	if enabled {
 		strValue = "true"
 	}
+
 	return s.setSystemValue(ctx, SystemKeyUserAgentPassThrough, strValue)
 }
 
