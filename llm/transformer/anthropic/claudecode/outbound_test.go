@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -29,8 +30,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -48,8 +49,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -73,8 +74,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -96,8 +97,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -116,8 +117,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 			Tools: []llm.Tool{
 				{
 					Type:     "function",
@@ -144,8 +145,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 			Tools: []llm.Tool{
 				{
 					Type:     "function",
@@ -175,8 +176,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -201,9 +202,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 			Model: "claude-sonnet-4-5",
 			Messages: []llm.Message{
 				{Role: "system", Content: llm.MessageContent{Content: &billingMsg}},
-				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
 			},
-			MaxTokens: int64Ptr(1024),
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -233,9 +234,9 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 			Model: "claude-sonnet-4-5",
 			Messages: []llm.Message{
 				{Role: "system", Content: llm.MessageContent{Content: &billingMsg}},
-				{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
 			},
-			MaxTokens: int64Ptr(1024),
+			MaxTokens: lo.ToPtr(int64(1024)),
 			TransformerMetadata: map[string]any{
 				"claudecode_billing_cch": "38a80",
 			},
@@ -266,8 +267,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		toolChoiceAny := "any"
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 			Tools: []llm.Tool{
 				{
 					Type:     "function",
@@ -478,16 +479,6 @@ func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, llm.APIFormatAnthropicMessage, transformer.APIFormat())
-}
-
-// Helper functions
-
-func strPtr(s string) *string {
-	return &s
-}
-
-func int64Ptr(i int64) *int64 {
-	return &i
 }
 
 func mustMarshal(v any) []byte {
