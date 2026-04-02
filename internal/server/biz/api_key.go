@@ -350,6 +350,10 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 		return nil, err
 	}
 
+	if err := validateProfileFilters(profiles.Profiles); err != nil {
+		return nil, err
+	}
+
 	// Validate quota configuration (if present)
 	if err := validateProfileQuota(profiles.Profiles); err != nil {
 		return nil, err
@@ -397,6 +401,16 @@ func validateActiveProfile(activeProfile string, profiles []objects.APIKeyProfil
 	}
 
 	return fmt.Errorf("active profile '%s' does not exist in the profiles list", activeProfile)
+}
+
+func validateProfileFilters(profiles []objects.APIKeyProfile) error {
+	for _, profile := range profiles {
+		if !profile.ChannelTagsMatchMode.IsValid() {
+			return fmt.Errorf("profile '%s' channelTagsMatchMode is invalid", profile.Name)
+		}
+	}
+
+	return nil
 }
 
 func validateProfileQuota(profiles []objects.APIKeyProfile) error {

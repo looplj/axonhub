@@ -437,6 +437,23 @@ func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 		require.Contains(t, err.Error(), "does not exist in the profiles list")
 	})
 
+	t.Run("Invalid channel tags match mode", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "production",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name:                 "production",
+					ChannelTags:          []string{"official"},
+					ChannelTagsMatchMode: objects.APIKeyMatchMode("invalid"),
+				},
+			},
+		}
+
+		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "channelTagsMatchMode is invalid")
+	})
+
 	t.Run("Multiple profiles with unique names", func(t *testing.T) {
 		profiles := objects.APIKeyProfiles{
 			ActiveProfile: "staging",

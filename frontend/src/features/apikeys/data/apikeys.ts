@@ -86,6 +86,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
             modelMappings { from to }
             channelIDs
             channelTags
+            channelTagsMatchMode
             modelIDs
             loadBalanceStrategy
             quota {
@@ -183,6 +184,7 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
           }
           channelIDs
           channelTags
+          channelTagsMatchMode
           modelIDs
           loadBalanceStrategy
           quota {
