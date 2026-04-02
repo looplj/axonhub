@@ -56,9 +56,54 @@ extend type Mutation {
   createMessageChannel(input: CreateMessageChannelInput!): MessageChannel!
   updateMessageChannel(id: ID!, input: UpdateMessageChannelInput!): MessageChannel!
   deleteMessageChannel(id: ID!): Boolean!
+
+  """
+  Batch save message channel bindings for agent instances.
+
+  This mutation performs a diff-based update on the bindings between a message channel
+  and agent instances. It compares the provided bindings with existing ones and performs
+  create, update, or delete operations accordingly. Bindings that haven't changed are skipped.
+
+  Args:
+    - messageChannelID: The ID of the message channel to configure
+    - bindings: List of binding configurations, each containing:
+        - agentInstanceID: The ID of the agent instance to bind
+        - enabled: Whether this binding is active
+        - config: Binding configuration including chat type, chat ID, allowed senders,
+                  excluded keywords, and whether to allow responses without mention
+
+  Returns:
+    - The updated MessageChannel object
+
+  Note:
+    - Duplicate agentInstanceID values in the bindings list will result in an error
+    - The operation is performed within a database transaction
+  """
   batchSaveMessageChannelBindings(
     messageChannelID: ID!
     bindings: [BatchMessageChannelAgentInstanceBindingInput!]!
   ): MessageChannel!
+
+  """
+  Create a binding request for pairing a chat with an agent instance.
+
+  This mutation generates a pairing code (format: XXXX-XXXX) that can be used to bind
+  an external messaging platform chat (e.g., Feishu/Lark group or DM) to a specific
+  agent instance within a message channel. The pairing code expires after 1 hour.
+
+  Args:
+    - input: The binding request input containing:
+        - messageChannelID: The ID of the message channel
+        - agentInstanceID: The ID of the agent instance to bind
+        - type: Optional type of binding request (defaults to 'pair')
+
+  Returns:
+    - A 9-character pairing code in the format XXXX-XXXX (e.g., "A1B2-C3D4")
+
+  Note:
+    - The pairing code is stored in MessageChannelBindingRequest with status 'pending'
+    - The code expires 1 hour after creation
+    - Only one binding request can be active per message channel and agent instance
+  """
   createBindingRequest(input: CreateMessageChannelBindingRequestInput!): String!
 }

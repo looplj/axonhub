@@ -254,7 +254,7 @@ func (r *MessageRouting) createAgentMessage(ctx context.Context, agentInstanceID
 }
 
 func (r *MessageRouting) tryMatchPairCode(ctx context.Context, msg InboundMessage) bool {
-	if !msg.Mentioned {
+	if msg.ChatType != objects.MessageChatTypeDM && !msg.Mentioned {
 		return false
 	}
 	content := strings.TrimSpace(msg.Content)
@@ -337,12 +337,12 @@ func (r *MessageRouting) tryMatchPairCode(ctx context.Context, msg InboundMessag
 		log.String("chat_id", msg.ChatID),
 		log.String("target_type", string(msg.ChatType)))
 
-	r.sendPairingNotificationToAgent(ctx, req.AgentInstanceID, msg)
+	r.sendPairingNotification(ctx, req.AgentInstanceID, msg)
 
 	return true
 }
 
-func (r *MessageRouting) sendPairingNotificationToAgent(ctx context.Context, agentInstanceID int, msg InboundMessage) {
+func (r *MessageRouting) sendPairingNotification(ctx context.Context, agentInstanceID int, msg InboundMessage) {
 	agent, err := r.db.AgentInstance.Query().
 		Where(agentinstance.IDEQ(agentInstanceID)).
 		QueryAgent().
@@ -355,6 +355,11 @@ func (r *MessageRouting) sendPairingNotificationToAgent(ctx context.Context, age
 		return
 	}
 
+	r.sendPairingNotificationToAgent(ctx, agent, agentInstanceID, msg)
+	r.sendPairingSuccessToUser(ctx, agent, agentInstanceID, msg)
+}
+
+func (r *MessageRouting) sendPairingNotificationToAgent(ctx context.Context, agent *ent.Agent, agentInstanceID int, msg InboundMessage) {
 	msgContent := MarshalPairingSuccessContent(msg.ChatID, string(msg.ChatType), msg.MessageID, r.channel.ID)
 
 	input := CreateAgentMessageParams{
@@ -367,7 +372,7 @@ func (r *MessageRouting) sendPairingNotificationToAgent(ctx context.Context, age
 		Content:         msgContent,
 	}
 
-	_, err = CreateAgentMessage(ctx, r.db, input)
+	_, err := CreateAgentMessage(ctx, r.db, input)
 	if err != nil {
 		log.Error(ctx, "failed to create pairing notification message",
 			log.Int("agent_instance_id", agentInstanceID),
@@ -379,6 +384,33 @@ func (r *MessageRouting) sendPairingNotificationToAgent(ctx context.Context, age
 	log.Info(ctx, "pairing notification sent to agent",
 		log.Int("agent_instance_id", agentInstanceID),
 		log.Int("agent_id", agent.ID))
+}
+
+func (r *MessageRouting) sendPairingSuccessToUser(ctx context.Context, agent *ent.Agent, agentInstanceID int, msg InboundMessage) {
+	content := MarshalTextContent("✅ Pairing successful! You can now chat with the Agent.")
+
+	input := CreateAgentMessageParams{
+		ProjectID:       agent.ProjectID,
+		AgentID:         agent.ID,
+		AgentInstanceID: agentInstanceID,
+		Direction:       agentmessage.DirectionToUser,
+		SenderType:      agentmessage.SenderTypeSystem,
+		Type:            agentmessage.TypeChat,
+		Content:         content,
+	}
+
+	_, err := CreateAgentMessage(ctx, r.db, input)
+	if err != nil {
+		log.Error(ctx, "failed to create pairing success message for user",
+			log.Int("agent_instance_id", agentInstanceID),
+			log.Cause(err))
+
+		return
+	}
+
+	log.Info(ctx, "pairing success message created for user",
+		log.Int("agent_instance_id", agentInstanceID),
+		log.String("chat_id", msg.ChatID))
 }
 
 func isBindingSenderAllowed(binding *ent.MessageChannelAgentInstance, senderID string) bool {
