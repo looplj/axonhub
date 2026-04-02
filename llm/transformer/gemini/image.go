@@ -75,14 +75,12 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 	// Prepare authentication
 	var auth *httpclient.AuthConfig
 
-	if t.config.APIKeyProvider != nil {
-		apiKey := t.config.APIKeyProvider.Get(ctx)
-		if apiKey != "" {
-			auth = &httpclient.AuthConfig{
-				Type:      "api_key",
-				APIKey:    apiKey,
-				HeaderKey: "x-goog-api-key",
-			}
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+	if apiKey != "" {
+		auth = &httpclient.AuthConfig{
+			Type:      "api_key",
+			APIKey:    apiKey,
+			HeaderKey: "x-goog-api-key",
 		}
 	}
 

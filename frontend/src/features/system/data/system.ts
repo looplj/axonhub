@@ -724,6 +724,7 @@ export function useGeneralSettings() {
         throw error;
       }
     },
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -1098,6 +1099,65 @@ export function useDeleteProxyPreset() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proxyPresets'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+
+// User-Agent Pass-Through Settings
+const USER_AGENT_PASS_THROUGH_SETTINGS_QUERY = `
+  query UserAgentPassThroughSettings {
+    userAgentPassThroughSettings {
+      enabled
+    }
+  }
+`;
+
+const UPDATE_USER_AGENT_PASS_THROUGH_SETTINGS_MUTATION = `
+  mutation UpdateUserAgentPassThroughSettings($input: UpdateUserAgentPassThroughSettingsInput!) {
+    updateUserAgentPassThroughSettings(input: $input)
+  }
+`;
+
+export interface UserAgentPassThroughSettings {
+  enabled: boolean;
+}
+
+export interface UpdateUserAgentPassThroughSettingsInput {
+  enabled: boolean;
+}
+
+export function useUserAgentPassThroughSettings() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['userAgentPassThroughSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ userAgentPassThroughSettings: UserAgentPassThroughSettings }>(USER_AGENT_PASS_THROUGH_SETTINGS_QUERY);
+        return data.userAgentPassThroughSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateUserAgentPassThroughSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateUserAgentPassThroughSettingsInput) => {
+      const data = await graphqlRequest<{ updateUserAgentPassThroughSettings: boolean }>(UPDATE_USER_AGENT_PASS_THROUGH_SETTINGS_MUTATION, { input });
+      return data.updateUserAgentPassThroughSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userAgentPassThroughSettings'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: () => {

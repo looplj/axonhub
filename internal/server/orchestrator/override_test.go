@@ -1797,3 +1797,145 @@ func TestIssue632Override(t *testing.T) {
 		})
 	}
 }
+
+// TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
+func TestApplyUserAgentPassThrough(t *testing.T) {
+	tests := []struct {
+		name             string
+		channelUASetting *bool // Channel-level override
+		globalUAEnabled  bool  // System-level setting
+		clientUA         string
+		wantUAHeader     string
+	}{
+		{
+			name:             "channel_disabled_ignores_global",
+			channelUASetting: new(false),
+			globalUAEnabled:  true,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
+		},
+		{
+			name:             "channel_enabled_ignores_global",
+			channelUASetting: new(true),
+			globalUAEnabled:  false,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "Client/1.0",
+		},
+		{
+			name:             "channel_nil_inherits_global_disabled",
+			channelUASetting: nil,
+			globalUAEnabled:  false,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
+		},
+		{
+			name:             "channel_nil_inherits_global_enabled",
+			channelUASetting: nil,
+			globalUAEnabled:  true,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "Client/1.0",
+		},
+		{
+			name:             "enabled_but_no_client_ua",
+			channelUASetting: new(true),
+			globalUAEnabled:  true,
+			clientUA:         "",
+			wantUAHeader:     "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, client := setupTest(t)
+
+			// Create real system service with test database
+			systemService := newTestSystemService(client)
+
+			// Set global User-Agent pass-through setting
+			err := systemService.SetUserAgentPassThrough(ctx, tt.globalUAEnabled)
+			require.NoError(t, err)
+
+			// Create mock channel with optional pass-through setting
+			channelSettings := &objects.ChannelSettings{}
+			if tt.channelUASetting != nil {
+				channelSettings.PassThroughUserAgent = tt.channelUASetting
+			}
+
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:       1,
+					Name:     "test-channel",
+					Settings: channelSettings,
+				},
+				Outbound: &mockTransformer{},
+			}
+
+			// Create raw request with client UA - RawRequest is *httpclient.Request in llm.Request
+			rawHeaders := make(http.Header)
+			if tt.clientUA != "" {
+				rawHeaders.Set("User-Agent", tt.clientUA)
+			}
+
+			llmRequest := &llm.Request{
+				Model: "gpt-4",
+				RawRequest: &httpclient.Request{
+					Headers: rawHeaders,
+				},
+			}
+
+			// Create outbound transformer
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					LlmRequest:       llmRequest,
+				},
+			}
+
+			// Create middleware
+			middleware := applyUserAgentPassThrough(outbound, systemService)
+
+			// Execute middleware
+			rawRequest := &httpclient.Request{
+				Headers: make(http.Header),
+			}
+			processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+
+			require.NoError(t, err)
+			require.NotNil(t, processedRequest)
+
+			// Verify User-Agent header is set correctly
+			if tt.wantUAHeader != "" {
+				require.Equal(t, tt.wantUAHeader, processedRequest.Headers.Get("User-Agent"))
+			} else {
+				// When no User-Agent expected, header should be empty
+				require.Empty(t, processedRequest.Headers.Get("User-Agent"))
+			}
+		})
+	}
+}
+
+// TestApplyUserAgentPassThrough_NoChannel tests the middleware when no channel is selected.
+func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	// Create real system service with test database
+	systemService := newTestSystemService(client)
+
+	// Create outbound without a channel
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state:   &PersistenceState{},
+	}
+
+	// Create middleware
+	middleware := applyUserAgentPassThrough(outbound, systemService)
+
+	// Execute middleware
+	rawRequest := &httpclient.Request{
+		Headers: make(http.Header),
+	}
+	processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+	require.NotNil(t, processedRequest)
+}

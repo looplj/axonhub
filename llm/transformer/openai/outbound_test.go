@@ -14,7 +14,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -315,6 +314,15 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 			},
 			expectedErrMessage: "Invalid request",
 			expectedErrType:    "invalid_request_error",
+		},
+		{
+			name: "nvidia error with numeric code",
+			httpErr: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+				Body:       []byte(`{"error":{"message":"You passed 194561 input tokens","type":"BadRequestError","param":"input_tokens","code":400}}`),
+			},
+			expectedErrMessage: "You passed 194561 input tokens",
+			expectedErrType:    "BadRequestError",
 		},
 		{
 			name: "http error with non-json body",
@@ -758,12 +766,7 @@ func TestOutboundTransformer_TransformResponse_WithGeminiToolCallThoughtSignatur
 	}
 
 	assert.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-	assert.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature))
-	decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature)
-	assert.NotNil(t, decoded)
-	if decoded != nil {
-		assert.Equal(t, "base64_signature", *decoded)
-	}
+	assert.Equal(t, "base64_signature", *result.Choices[0].Message.ReasoningSignature)
 }
 
 func TestOutboundTransformer_RawURL(t *testing.T) {

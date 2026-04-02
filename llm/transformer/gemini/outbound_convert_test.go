@@ -212,6 +212,35 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 			},
 		},
 		{
+			name: "request with audio input",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type: "input_audio",
+									InputAudio: &llm.InputAudio{
+										Format: "wav",
+										Data:   "UklGRiQAAABXQVZF",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.Len(t, result.Contents, 1)
+				require.Len(t, result.Contents[0].Parts, 1)
+				require.NotNil(t, result.Contents[0].Parts[0].InlineData)
+				require.Equal(t, "audio/wav", result.Contents[0].Parts[0].InlineData.MIMEType)
+				require.Equal(t, "UklGRiQAAABXQVZF", result.Contents[0].Parts[0].InlineData.Data)
+			},
+		},
+		{
 			name: "request with reasoning effort low",
 			input: &llm.Request{
 				ReasoningEffort: "low",
@@ -273,6 +302,29 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 				require.NotNil(t, result.GenerationConfig)
 				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
 				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+				require.Equal(t, "high", result.GenerationConfig.ThinkingConfig.ThinkingLevel)
+				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
+			},
+		},
+		{
+			name: "request with reasoning effort xhigh maps to high ThinkingLevel",
+			input: &llm.Request{
+				ReasoningEffort: "xhigh",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Very complex problem"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.GenerationConfig)
+				require.NotNil(t, result.GenerationConfig.ThinkingConfig)
+				require.True(t, result.GenerationConfig.ThinkingConfig.IncludeThoughts)
+				// "xhigh" (from Anthropic "max") should map to Gemini "high"
 				require.Equal(t, "high", result.GenerationConfig.ThinkingConfig.ThinkingLevel)
 				require.Nil(t, result.GenerationConfig.ThinkingConfig.ThinkingBudget)
 			},
@@ -481,6 +533,33 @@ func TestConvertLLMToGeminiRequest_Basic(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestConvertLLMToGeminiRequest_VideoURL(t *testing.T) {
+	req := &llm.Request{
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "video_url",
+							VideoURL: &llm.VideoURL{
+								URL: "https://example.com/example.mp4",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := convertLLMToGeminiRequest(req)
+	require.Len(t, result.Contents, 1)
+	require.Len(t, result.Contents[0].Parts, 1)
+	require.NotNil(t, result.Contents[0].Parts[0].FileData)
+	require.Equal(t, "https://example.com/example.mp4", result.Contents[0].Parts[0].FileData.FileURI)
+	require.Equal(t, "video/*", result.Contents[0].Parts[0].FileData.MIMEType)
 }
 
 func TestConvertLLMToGeminiRequest_ResponseFormat(t *testing.T) {
@@ -1111,7 +1190,7 @@ func TestConvertLLMMessageToGeminiContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMMessageToGeminiContent(tt.input)
+			result := convertLLMMessageToGeminiContent(tt.input, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}
@@ -1571,7 +1650,7 @@ func TestConvertGeminiToLLMResponse_Basic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertGeminiToLLMResponse(tt.input, false)
+			result := convertGeminiToLLMResponse(tt.input, false, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}
@@ -1613,10 +1692,7 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				require.Len(t, result.Choices, 1)
 				require.NotNil(t, result.Choices[0].Message)
 				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-				require.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature))
-				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature)
-				require.NotNil(t, decoded)
-				require.Equal(t, "signature_A", *decoded)
+				require.Equal(t, "signature_A", *result.Choices[0].Message.ReasoningSignature)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
 				tc := result.Choices[0].Message.ToolCalls[0]
 				require.Equal(t, "call_001", tc.ID)
@@ -1624,7 +1700,7 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, tc.TransformerMetadata)
 				require.Equal(
 					t,
-					shared.GeminiThoughtSignaturePrefix+"signature_A",
+					"signature_A",
 					tc.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
 				)
 			},
@@ -1665,10 +1741,7 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result.Choices[0].Message)
 				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-				require.True(t, shared.IsGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature))
-				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature)
-				require.NotNil(t, decoded)
-				require.Equal(t, "signature_parallel", *decoded)
+				require.Equal(t, "signature_parallel", *result.Choices[0].Message.ReasoningSignature)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 2)
 
 				// First call should have signature
@@ -1677,7 +1750,7 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, tc1.TransformerMetadata)
 				require.Equal(
 					t,
-					shared.GeminiThoughtSignaturePrefix+"signature_parallel",
+					"signature_parallel",
 					tc1.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
 				)
 
@@ -1718,17 +1791,16 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
 				require.Equal(
 					t,
-					shared.GeminiThoughtSignaturePrefix+shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
+					shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
 					*result.Choices[0].Message.ReasoningSignature,
 				)
-				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature)
-				require.NotNil(t, decoded)
-				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_prefixed", *decoded)
+				decoded := shared.DecodeGeminiThoughtSignature(result.Choices[0].Message.ReasoningSignature, "")
+				require.Nil(t, decoded)
 				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
 				require.NotNil(t, result.Choices[0].Message.ToolCalls[0].TransformerMetadata)
 				require.Equal(
 					t,
-					shared.GeminiThoughtSignaturePrefix+shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
+					shared.GeminiThoughtSignaturePrefix+"signature_prefixed",
 					result.Choices[0].Message.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature],
 				)
 			},
@@ -1770,7 +1842,7 @@ func TestConvertGeminiToLLMResponse_ThoughtSignature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertGeminiToLLMResponse(tt.input, false)
+			result := convertGeminiToLLMResponse(tt.input, false, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}
@@ -1786,7 +1858,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 			name: "tool call with thought signature",
 			input: &llm.Message{
 				Role:               "assistant",
-				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A"), ""),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_001",
@@ -1812,7 +1884,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 			name: "multiple tool calls - only first has signature",
 			input: &llm.Message{
 				Role:               "assistant",
-				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A"), ""),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_001",
@@ -1875,7 +1947,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Parts, 2)
 				require.Empty(t, result.Parts[0].ThoughtSignature)
-				require.Equal(t, "signature_tool_2", result.Parts[1].ThoughtSignature)
+				require.Equal(t, shared.GeminiThoughtSignaturePrefix+"signature_tool_2", result.Parts[1].ThoughtSignature)
 			},
 		},
 		{
@@ -1899,7 +1971,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 				require.NotNil(t, result)
 				require.Len(t, result.Parts, 1)
 				require.NotNil(t, result.Parts[0].FunctionCall)
-				require.Equal(t, ContextEngineeringThoughtSignature, result.Parts[0].ThoughtSignature)
+				require.Equal(t, shared.OpenAIEncryptedContentPrefix+"encrypted_data", result.Parts[0].ThoughtSignature)
 			},
 		},
 		{
@@ -1937,7 +2009,7 @@ func TestConvertLLMMessageToGeminiContent_ThoughtSignature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMMessageToGeminiContent(tt.input)
+			result := convertLLMMessageToGeminiContent(tt.input, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}
@@ -1972,7 +2044,7 @@ func TestConvertGeminiToLLMResponse_FinishReasons(t *testing.T) {
 				},
 			}
 
-			result := convertGeminiToLLMResponse(input, false)
+			result := convertGeminiToLLMResponse(input, false, shared.TransportScope{})
 			require.NotNil(t, result.Choices[0].FinishReason)
 			require.Equal(t, expectedLLMReason, *result.Choices[0].FinishReason)
 		})
@@ -1997,7 +2069,7 @@ func TestConvertGeminiToLLMResponse_FinishReasons(t *testing.T) {
 			},
 		}
 
-		result := convertGeminiToLLMResponse(input, false)
+		result := convertGeminiToLLMResponse(input, false, shared.TransportScope{})
 		require.Nil(t, result.Choices[0].FinishReason)
 	})
 }
@@ -2368,7 +2440,7 @@ func TestConvertGeminiToLLMResponse_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertGeminiToLLMResponse(tt.input, false)
+			result := convertGeminiToLLMResponse(tt.input, false, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}
@@ -3031,10 +3103,48 @@ func TestConvertGeminiToLLMResponse_GroundingMetadata(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertGeminiToLLMResponse(tt.input, tt.isStream)
+			result := convertGeminiToLLMResponse(tt.input, tt.isStream, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestConvertGeminiToLLMResponse_ToolCallThoughtSignatureWithFootprint(t *testing.T) {
+	input := &GenerateContentResponse{
+		ResponseID:   "resp_fp_sig",
+		ModelVersion: "gemini-3-pro",
+		Candidates: []*Candidate{
+			{
+				Index: 0,
+				Content: &Content{
+					Role: "model",
+					Parts: []*Part{
+						{
+							FunctionCall: &FunctionCall{
+								ID:   "call_001",
+								Name: "check_flight",
+								Args: map[string]any{"flight": "AA100"},
+							},
+							ThoughtSignature: "signature_A",
+						},
+					},
+				},
+				FinishReason: "STOP",
+			},
+		},
+	}
+
+	scope := shared.TransportScope{BaseURL: "https://generativelanguage.googleapis.com", AccountIdentity: "channel-1"}
+	result := convertGeminiToLLMResponse(input, false, scope)
+	require.Len(t, result.Choices, 1)
+	require.NotNil(t, result.Choices[0].Message)
+	require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+	require.NotNil(t, result.Choices[0].Message.ToolCalls[0].TransformerMetadata)
+	raw, ok := result.Choices[0].Message.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature].(string)
+	require.True(t, ok)
+	decoded := shared.DecodeGeminiThoughtSignatureInScope(&raw, scope)
+	require.NotNil(t, decoded)
+	require.Equal(t, "signature_A", *decoded)
 }
 
 // =============================================================================
@@ -3390,7 +3500,7 @@ func TestConvertLLMToGeminiRequest_ImageConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertLLMToGeminiRequestWithConfig(tt.input, nil)
+			result := convertLLMToGeminiRequestWithConfig(tt.input, nil, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}
@@ -3647,7 +3757,7 @@ func TestConvertGeminiToLLMResponse_GroundingMetadata_Additional(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertGeminiToLLMResponse(tt.input, tt.isStream)
+			result := convertGeminiToLLMResponse(tt.input, tt.isStream, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}

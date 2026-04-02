@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { ApiKey, ApiKeyConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
@@ -39,12 +40,14 @@ interface DataTableProps {
   nameFilter: string;
   statusFilter: string[];
   userFilter: string[];
+  dateRange?: DateTimeRangeValue;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
   onNameFilterChange: (value: string) => void;
   onStatusFilterChange: (value: string[]) => void;
   onUserFilterChange: (value: string[]) => void;
+  onDateRangeChange: (value: DateTimeRangeValue | undefined) => void;
   onResetFilters?: () => void;
   canWrite?: boolean;
 }
@@ -59,12 +62,14 @@ export function ApiKeysTable({
   nameFilter,
   statusFilter,
   userFilter,
+  dateRange,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onNameFilterChange,
   onStatusFilterChange,
   onUserFilterChange,
+  onDateRangeChange,
   onResetFilters,
   canWrite = true,
 }: DataTableProps) {
@@ -173,7 +178,7 @@ export function ApiKeysTable({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <DataTableToolbar table={table} onResetFilters={onResetFilters} />
+      <DataTableToolbar table={table} dateRange={dateRange} onDateRangeChange={onDateRangeChange} onResetFilters={onResetFilters} />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>

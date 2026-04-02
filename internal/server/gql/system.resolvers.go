@@ -9,13 +9,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/samber/lo"
 )
 
 // UpdateBrandSettings is the resolver for the updateBrandSettings field.
@@ -190,6 +189,16 @@ func (r *mutationResolver) DeleteProxyPreset(ctx context.Context, url string) (b
 	return true, nil
 }
 
+// UpdateUserAgentPassThroughSettings is the resolver for the updateUserAgentPassThroughSettings field.
+func (r *mutationResolver) UpdateUserAgentPassThroughSettings(ctx context.Context, input UpdateUserAgentPassThroughSettingsInput) (bool, error) {
+	err := r.systemService.SetUserAgentPassThrough(ctx, input.Enabled)
+	if err != nil {
+		return false, fmt.Errorf("failed to update user-agent pass-through settings: %w", err)
+	}
+
+	return true, nil
+}
+
 // SystemStatus is the resolver for the systemStatus field.
 func (r *queryResolver) SystemStatus(ctx context.Context) (*SystemStatus, error) {
 	isInitialized, err := r.systemService.IsInitialized(ctx)
@@ -338,4 +347,16 @@ func (r *queryResolver) ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, e
 	}
 
 	return lo.ToSlicePtr(presets), nil
+}
+
+// UserAgentPassThroughSettings is the resolver for the userAgentPassThroughSettings field.
+func (r *queryResolver) UserAgentPassThroughSettings(ctx context.Context) (*UserAgentPassThroughSettings, error) {
+	enabled, err := r.systemService.UserAgentPassThrough(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user-agent pass-through settings: %w", err)
+	}
+
+	return &UserAgentPassThroughSettings{
+		Enabled: enabled,
+	}, nil
 }

@@ -140,8 +140,10 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 // RequestStatsByChannel is the resolver for the requestStatsByChannel field.
 // Note: Uses usage_logs table for result-only statistics aggregated by channel.
 // For channel-level process tracking (e.g., success/failure rates), use request_execution table.
-func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestStatsByChannel, error) {
+func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *string) ([]*RequestStatsByChannel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	// Use efficient aggregation query with JOIN to get channel details and filter out deleted channels
 	type channelStats struct {
@@ -162,6 +164,11 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 
 			// Filter: only non-deleted channels
 			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+
+			// Apply time window filter when provided
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
 
 			// Group by channel fields to get names and types directly
 			s.GroupBy(channelTable.C(channel.FieldName))
@@ -192,8 +199,10 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context) ([]*RequestSt
 // RequestStatsByModel is the resolver for the requestStatsByModel field.
 // Note: Uses usage_logs table for result-only statistics aggregated by model.
 // This provides successful request counts per model.
-func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStatsByModel, error) {
+func (r *queryResolver) RequestStatsByModel(ctx context.Context, timeWindow *string) ([]*RequestStatsByModel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type modelStats struct {
 		ModelID string `json:"model_id"`
@@ -202,7 +211,14 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 
 	var results []modelStats
 
-	err := r.client.UsageLog.Query().
+	query := r.client.UsageLog.Query()
+
+	// Apply time window filter when provided
+	if applyFilter {
+		query = query.Where(usagelog.CreatedAtGTE(since))
+	}
+
+	err := query.
 		GroupBy(usagelog.FieldModelID).
 		Aggregate(ent.As(ent.Count(), "request_count")).
 		Scan(ctx, &results)
@@ -232,8 +248,10 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context) ([]*RequestStat
 // RequestStatsByAPIKey is the resolver for the requestStatsByAPIKey field.
 // Note: Uses usage_logs table for result-only statistics aggregated by API key.
 // This provides successful request counts per API key.
-func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestStatsByAPIKey, error) {
+func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*RequestStatsByAPIKey, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type apiKeyStats struct {
 		APIKeyID int `json:"api_key_id"`
@@ -243,8 +261,15 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 	var results []apiKeyStats
 
 	// Database-level aggregation
-	err := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil()).
+	query := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDNotNil())
+
+	// Apply time window filter when provided
+	if applyFilter {
+		query = query.Where(usagelog.CreatedAtGTE(since))
+	}
+
+	err := query.
 		GroupBy(usagelog.FieldAPIKeyID).
 		Aggregate(ent.As(ent.Count(), "request_count")).
 		Scan(ctx, &results)
@@ -302,8 +327,10 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context) ([]*RequestSta
 // TokenStatsByAPIKey is the resolver for the tokenStatsByAPIKey field.
 // Note: Uses usage_logs table for token consumption statistics aggregated by API key.
 // This provides actual token usage (input, output, cached, reasoning) per API key.
-func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsByAPIKey, error) {
+func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*TokenStatsByAPIKey, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type tokenStats struct {
 		APIKeyID        int   `json:"api_key_id"`
@@ -327,6 +354,11 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 
 			// Filter: only requests with non-null api_key_id
 			s.Where(sql.NotNull(requestTable.C(request.FieldAPIKeyID)))
+
+			// Apply time window filter when provided
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
 
 			// Group by api_key_id
 			s.GroupBy(requestTable.C(request.FieldAPIKeyID))
@@ -402,6 +434,80 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context) ([]*TokenStatsBy
 	}
 
 	return response, nil
+}
+
+// APIKeyTokenUsageStats is the resolver for the apiKeyTokenUsageStats field.
+// Aggregates input, output, and cached tokens per API key for the selected time range.
+func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKeyTokenUsageStatsInput) ([]*APIKeyTokenUsageStats, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeReadAPIKeys); err != nil {
+		return nil, err
+	}
+
+	// Require at least one API key ID to prevent unbounded queries
+	if input == nil || len(input.APIKeyIds) == 0 {
+		return nil, fmt.Errorf("apiKeyIds is required and must contain at least one API key")
+	}
+
+	// Limit the number of API keys to prevent performance issues
+	if len(input.APIKeyIds) > 100 {
+		return nil, fmt.Errorf("apiKeyIds cannot exceed 100 items")
+	}
+
+	// Validate all GUIDs are of type APIKey
+	apiKeyIDs := make([]int, 0, len(input.APIKeyIds))
+	for _, guid := range input.APIKeyIds {
+		if guid.Type != ent.TypeAPIKey {
+			return nil, fmt.Errorf("invalid GUID type: expected %s, got %s", ent.TypeAPIKey, guid.Type)
+		}
+		apiKeyIDs = append(apiKeyIDs, guid.ID)
+	}
+
+	query := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDIn(apiKeyIDs...))
+
+	if input.CreatedAtGTE != nil {
+		query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
+	}
+	if input.CreatedAtLTE != nil {
+		query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLTE))
+	}
+
+	type usageStats struct {
+		APIKeyID        int   `json:"api_key_id"`
+		InputTokens     int64 `json:"input_tokens"`
+		OutputTokens    int64 `json:"output_tokens"`
+		CachedTokens    int64 `json:"cached_tokens"`
+		ReasoningTokens int64 `json:"reasoning_tokens"`
+	}
+
+	var results []usageStats
+
+	err := query.Modify(func(s *sql.Selector) {
+		s.Select(
+			s.C(usagelog.FieldAPIKeyID),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+		).GroupBy(s.C(usagelog.FieldAPIKeyID))
+	}).Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API key token usage stats: %w", err)
+	}
+
+	// Get top 3 models for all API keys in a single query
+	topModelsMap := r.getTopModelsForAPIKeys(ctx, apiKeyIDs, input)
+
+	return lo.Map(results, func(item usageStats, _ int) *APIKeyTokenUsageStats {
+		return &APIKeyTokenUsageStats{
+			APIKeyID:        objects.GUID{Type: ent.TypeAPIKey, ID: item.APIKeyID},
+			InputTokens:     safeIntFromInt64(item.InputTokens),
+			OutputTokens:    safeIntFromInt64(item.OutputTokens),
+			CachedTokens:    safeIntFromInt64(item.CachedTokens),
+			ReasoningTokens: safeIntFromInt64(item.ReasoningTokens),
+			TopModels:       topModelsMap[item.APIKeyID],
+		}
+	}), nil
 }
 
 // DailyRequestStats is the resolver for the dailyRequestStats field.
@@ -1335,4 +1441,286 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	channelNames := r.fetchChannelNames(ctx, channelIDs)
 
 	return buildChannelPerformanceResponse(statsMap, channelNames, startDateLocal, daysCount), nil
+}
+
+// TokenStatsByChannel is the resolver for the tokenStatsByChannel field.
+func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *string) ([]*TokenStatsByChannel, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
+
+	type channelTokenStats struct {
+		ChannelName     string `json:"channel_name"`
+		InputTokens     int64  `json:"input_tokens"`
+		OutputTokens    int64  `json:"output_tokens"`
+		CachedTokens    int64  `json:"cached_tokens"`
+		ReasoningTokens int64  `json:"reasoning_tokens"`
+	}
+
+	var results []channelTokenStats
+
+	err := r.client.UsageLog.Query().
+		Modify(func(s *sql.Selector) {
+			channelTable := sql.Table(channel.Table)
+			s.Join(channelTable).On(
+				s.C(usagelog.FieldChannelID),
+				channelTable.C(channel.FieldID),
+			)
+
+			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+
+			// Apply time window filter when provided
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
+
+			s.GroupBy(channelTable.C(channel.FieldName))
+
+			s.Select(
+				sql.As(channelTable.C(channel.FieldName), "channel_name"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+			)
+
+			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens))))
+			s.Limit(10)
+		}).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokens by channel: %w", err)
+	}
+
+	return lo.Map(results, func(item channelTokenStats, _ int) *TokenStatsByChannel {
+		totalTokens := item.InputTokens + item.OutputTokens + item.CachedTokens + item.ReasoningTokens
+
+		return &TokenStatsByChannel{
+			ChannelName:     item.ChannelName,
+			InputTokens:     int(item.InputTokens),
+			OutputTokens:    int(item.OutputTokens),
+			CachedTokens:    int(item.CachedTokens),
+			ReasoningTokens: int(item.ReasoningTokens),
+			TotalTokens:     int(totalTokens),
+		}
+	}), nil
+}
+
+// TokenStatsByModel is the resolver for the tokenStatsByModel field.
+func (r *queryResolver) TokenStatsByModel(ctx context.Context, timeWindow *string) ([]*TokenStatsByModel, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
+
+	type modelTokenStats struct {
+		ModelID         string `json:"model_id"`
+		InputTokens     int64  `json:"input_tokens"`
+		OutputTokens    int64  `json:"output_tokens"`
+		CachedTokens    int64  `json:"cached_tokens"`
+		ReasoningTokens int64  `json:"reasoning_tokens"`
+	}
+
+	var results []modelTokenStats
+
+	err := r.client.UsageLog.Query().
+		Modify(func(s *sql.Selector) {
+			// Apply time window filter when provided
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
+
+			s.GroupBy(s.C(usagelog.FieldModelID))
+
+			s.Select(
+				s.C(usagelog.FieldModelID),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+			)
+
+			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens))))
+			s.Limit(10)
+		}).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tokens by model: %w", err)
+	}
+
+	return lo.Map(results, func(item modelTokenStats, _ int) *TokenStatsByModel {
+		totalTokens := item.InputTokens + item.OutputTokens + item.CachedTokens + item.ReasoningTokens
+
+		return &TokenStatsByModel{
+			ModelID:         item.ModelID,
+			InputTokens:     int(item.InputTokens),
+			OutputTokens:    int(item.OutputTokens),
+			CachedTokens:    int(item.CachedTokens),
+			ReasoningTokens: int(item.ReasoningTokens),
+			TotalTokens:     int(totalTokens),
+		}
+	}), nil
+}
+
+// CostStatsByChannel is the resolver for the costStatsByChannel field.
+func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *string) ([]*CostStatsByChannel, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
+
+	type channelCostStats struct {
+		ChannelName string  `json:"channel_name"`
+		Cost        float64 `json:"total_cost"`
+	}
+
+	var results []channelCostStats
+
+	err := r.client.UsageLog.Query().
+		Modify(func(s *sql.Selector) {
+			channelTable := sql.Table(channel.Table)
+			s.Join(channelTable).On(
+				s.C(usagelog.FieldChannelID),
+				channelTable.C(channel.FieldID),
+			)
+
+			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
+
+			// Apply time window filtering
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
+
+			s.GroupBy(channelTable.C(channel.FieldName))
+
+			s.Select(
+				sql.As(channelTable.C(channel.FieldName), "channel_name"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+			)
+
+			s.OrderBy(sql.Desc("total_cost"))
+			s.Limit(10)
+		}).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cost by channel: %w", err)
+	}
+
+	return lo.Map(results, func(item channelCostStats, _ int) *CostStatsByChannel {
+		return &CostStatsByChannel{
+			ChannelName: item.ChannelName,
+			Cost:        item.Cost,
+		}
+	}), nil
+}
+
+// CostStatsByModel is the resolver for the costStatsByModel field.
+func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string) ([]*CostStatsByModel, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
+
+	type modelCostStats struct {
+		ModelID string  `json:"model_id"`
+		Cost    float64 `json:"total_cost"`
+	}
+
+	var results []modelCostStats
+
+	err := r.client.UsageLog.Query().
+		Modify(func(s *sql.Selector) {
+			// Apply time window filtering
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
+
+			s.GroupBy(s.C(usagelog.FieldModelID))
+
+			s.Select(
+				s.C(usagelog.FieldModelID),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+			)
+
+			s.OrderBy(sql.Desc("total_cost"))
+			s.Limit(10)
+		}).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cost by model: %w", err)
+	}
+
+	return lo.Map(results, func(item modelCostStats, _ int) *CostStatsByModel {
+		return &CostStatsByModel{
+			ModelID: item.ModelID,
+			Cost:    item.Cost,
+		}
+	}), nil
+}
+
+// CostStatsByAPIKey is the resolver for the costStatsByAPIKey field.
+func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *string) ([]*CostStatsByAPIKey, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
+
+	type apiKeyCostStats struct {
+		APIKeyID int     `json:"api_key_id"`
+		Cost     float64 `json:"total_cost"`
+	}
+
+	var results []apiKeyCostStats
+
+	err := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDNotNil()).
+		Modify(func(s *sql.Selector) {
+			// Apply time window filtering
+			if applyFilter {
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+			}
+
+			s.GroupBy(s.C(usagelog.FieldAPIKeyID))
+
+			s.Select(
+				s.C(usagelog.FieldAPIKeyID),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+			)
+
+			s.OrderBy(sql.Desc("total_cost"))
+			s.Limit(10)
+		}).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cost by API key: %w", err)
+	}
+
+	if len(results) == 0 {
+		return []*CostStatsByAPIKey{}, nil
+	}
+
+	apiKeyIDs := lo.Map(results, func(item apiKeyCostStats, _ int) int {
+		return item.APIKeyID
+	})
+
+	apiKeys, err := r.client.APIKey.Query().
+		Where(apikey.IDIn(apiKeyIDs...)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API keys: %w", err)
+	}
+
+	apiKeyMap := lo.SliceToMap(apiKeys, func(ak *ent.APIKey) (int, *ent.APIKey) {
+		return ak.ID, ak
+	})
+
+	var response []*CostStatsByAPIKey
+
+	for _, result := range results {
+		if ak, exists := apiKeyMap[result.APIKeyID]; exists {
+			response = append(response, &CostStatsByAPIKey{
+				APIKeyID:   objects.GUID{Type: "APIKey", ID: result.APIKeyID},
+				APIKeyName: ak.Name,
+				Cost:       result.Cost,
+			})
+		}
+	}
+
+	return response, nil
 }

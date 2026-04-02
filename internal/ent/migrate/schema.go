@@ -16,7 +16,7 @@ var (
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "key", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"user", "service_account"}, Default: "user"},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"user", "service_account", "noauth"}, Default: "user"},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "enabled"},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
 		{Name: "profiles", Type: field.TypeJSON, Nullable: true},
@@ -66,7 +66,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xiaomi", "xai", "ppio", "siliconflow", "volcengine", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "burncloud", "modelscope", "bailian", "jina", "github", "github_copilot", "claudecode", "cerebras", "antigravity", "nanogpt"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "fireworks", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xiaomi", "xai", "ppio", "siliconflow", "volcengine", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "burncloud", "modelscope", "bailian", "jina", "github", "github_copilot", "claudecode", "cerebras", "antigravity", "nanogpt"}},
 		{Name: "base_url", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
@@ -337,6 +337,31 @@ var (
 				Name:    "prompts_by_project_id_name",
 				Unique:  true,
 				Columns: []*schema.Column{PromptsColumns[4], PromptsColumns[5], PromptsColumns[3]},
+			},
+		},
+	}
+	// PromptProtectionRulesColumns holds the columns for the "prompt_protection_rules" table.
+	PromptProtectionRulesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "pattern", Type: field.TypeString},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
+		{Name: "settings", Type: field.TypeJSON},
+	}
+	// PromptProtectionRulesTable holds the schema information for the "prompt_protection_rules" table.
+	PromptProtectionRulesTable = &schema.Table{
+		Name:       "prompt_protection_rules",
+		Columns:    PromptProtectionRulesColumns,
+		PrimaryKey: []*schema.Column{PromptProtectionRulesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "prompt_protection_rules_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{PromptProtectionRulesColumns[4], PromptProtectionRulesColumns[3]},
 			},
 		},
 	}
@@ -893,6 +918,7 @@ var (
 		ModelsTable,
 		ProjectsTable,
 		PromptsTable,
+		PromptProtectionRulesTable,
 		ProviderQuotaStatusTable,
 		RequestsTable,
 		RequestExecutionsTable,

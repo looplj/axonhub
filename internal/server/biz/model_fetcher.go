@@ -503,6 +503,9 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 	case channelType == channel.TypeDoubao || channelType == channel.TypeVolcengine:
 		baseURL = strings.TrimSuffix(baseURL, "/v3")
 		return baseURL + "/v3/models", headers
+	case channelType == channel.TypeDoubaoAnthropic:
+		baseURL = strings.TrimSuffix(baseURL, "/compatible")
+		return baseURL + "/v3/models", headers
 	case channelType.IsAnthropicLike():
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
 		baseURL = strings.TrimSuffix(baseURL, "/claude")

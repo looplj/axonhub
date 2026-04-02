@@ -359,6 +359,8 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
   const isResponsesCustomTool = normalizeSpanType(toolType) === 'responses_custom_tool';
 
   const imageUrl = spanSource.span.value?.userImageUrl?.url || spanSource.span.value?.imageUrl?.url;
+  const videoUrl = spanSource.span.value?.userVideoUrl?.url || spanSource.span.value?.videoUrl?.url;
+  const summaryText = spanDisplay?.secondary;
 
   return (
     <div className='border-border/40 border-b'>
@@ -378,7 +380,7 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
           <SpanIcon className='text-muted-foreground h-4 w-4' />
         </div>
 
-        <div className='flex min-w-0 flex-1 items-center gap-2'>
+        <div className='flex min-w-0 flex-1 items-center gap-3'>
           {imageUrl && (
             <img
               src={imageUrl}
@@ -386,7 +388,15 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
               className='h-8 w-8 flex-shrink-0 rounded border object-cover'
             />
           )}
-          <span className='truncate text-sm font-medium'>{spanDisplay?.primary ?? span.name}</span>
+          {!imageUrl && videoUrl && (
+            <video
+              src={videoUrl}
+              className='h-8 w-8 flex-shrink-0 rounded border object-cover'
+              muted
+              preload='metadata'
+            />
+          )}
+          <span className='truncate text-sm font-medium'>{spanDisplay?.primary || span.name}</span>
           {spanKindLabel && (
             <Badge variant='secondary' className='text-[10px] tracking-wide uppercase'>
               {spanKindLabel}
@@ -397,7 +407,9 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
               {toolType}
             </Badge>
           )}
-          {spanDisplay?.secondary && <span className='text-muted-foreground truncate text-xs'>{spanDisplay.secondary}</span>}
+          <div className='text-muted-foreground ml-auto min-w-0 flex-1 text-right text-xs'>
+            {summaryText && <span className='block truncate'>{summaryText}</span>}
+          </div>
         </div>
 
         <div className='bg-muted/30 relative h-5 w-[180px] min-w-[180px] rounded'>

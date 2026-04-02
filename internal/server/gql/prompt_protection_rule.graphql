@@ -1,0 +1,34 @@
+enum PromptProtectionAction {
+  mask
+  reject
+}
+
+enum PromptProtectionScope {
+  system
+  developer
+  user
+  assistant
+  tool
+}
+
+type PromptProtectionSettings {
+  action: PromptProtectionAction!
+  replacement: String
+  scopes: [PromptProtectionScope!]!
+}
+
+input PromptProtectionSettingsInput {
+  action: PromptProtectionAction!
+  replacement: String
+  scopes: [PromptProtectionScope!]
+}
+
+extend type Mutation {
+  createPromptProtectionRule(input: CreatePromptProtectionRuleInput!): PromptProtectionRule!
+  updatePromptProtectionRule(id: ID!, input: UpdatePromptProtectionRuleInput!): PromptProtectionRule!
+  deletePromptProtectionRule(id: ID!): Boolean!
+  updatePromptProtectionRuleStatus(id: ID!, status: PromptProtectionRuleStatus!): Boolean!
+  bulkDeletePromptProtectionRules(ids: [ID!]!): Boolean!
+  bulkEnablePromptProtectionRules(ids: [ID!]!): Boolean!
+  bulkDisablePromptProtectionRules(ids: [ID!]!): Boolean!
+}

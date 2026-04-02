@@ -38,7 +38,7 @@ func getInboundGeminiToolCallThoughtSignature(toolCall llm.ToolCall) *string {
 	return &raw
 }
 
-func setOutboundToolCallThoughtSignature(toolCall *llm.ToolCall, signature string) {
+func setOutboundToolCallThoughtSignature(toolCall *llm.ToolCall, signature string, scope shared.TransportScope) {
 	if toolCall == nil || signature == "" {
 		return
 	}
@@ -47,10 +47,15 @@ func setOutboundToolCallThoughtSignature(toolCall *llm.ToolCall, signature strin
 		toolCall.TransformerMetadata = map[string]any{}
 	}
 
-	toolCall.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature] = *shared.EncodeGeminiThoughtSignature(&signature)
+	encoded := shared.EncodeGeminiThoughtSignatureInScope(&signature, scope)
+	if encoded == nil {
+		return
+	}
+
+	toolCall.TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature] = *encoded
 }
 
-func getOutbountGeminiToolCallThoughtSignature(toolCall llm.ToolCall) *string {
+func getOutbountGeminiToolCallThoughtSignature(toolCall llm.ToolCall, scope shared.TransportScope) *string {
 	if toolCall.TransformerMetadata == nil {
 		return nil
 	}
@@ -60,5 +65,9 @@ func getOutbountGeminiToolCallThoughtSignature(toolCall llm.ToolCall) *string {
 		return nil
 	}
 
-	return shared.DecodeGeminiThoughtSignature(&raw)
+	if scope.Footprint() == "" {
+		return &raw
+	}
+
+	return shared.DecodeGeminiThoughtSignatureInScope(&raw, scope)
 }

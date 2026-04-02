@@ -33,6 +33,7 @@ type Config struct {
 	Cache            xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
 	ProviderQuota    providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
 	DisableSSLVerify bool                `name:"disable_ssl_verify" yaml:"-" json:"-"`
+	AllowNoAuth      bool                `name:"allow_no_auth" yaml:"-" json:"-"`
 }
 
 type providerQuotaConfig struct {
@@ -88,6 +89,7 @@ func Load() (Config, error) {
 	}
 
 	config.DisableSSLVerify = config.APIServer.DisableSSLVerify
+	config.AllowNoAuth = config.APIServer.API.Auth.AllowNoAuth
 
 	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
 
@@ -157,10 +159,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.cors.exposed_headers", []string{})
 	v.SetDefault("server.cors.allow_credentials", false)
 	v.SetDefault("server.cors.max_age", "30m")
+	v.SetDefault("server.api.auth.allow_no_auth", false)
 
 	// Database defaults
 	v.SetDefault("db.dialect", "sqlite3")
-	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&journal_mode=WAL")
+	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)")
 	v.SetDefault("db.debug", false)
 
 	// Log defaults

@@ -304,15 +304,34 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		case "enabled":
 			chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(anthropicReq.Thinking.BudgetTokens)
 			chatReq.ReasoningBudget = lo.ToPtr(anthropicReq.Thinking.BudgetTokens)
+
+			if anthropicReq.Thinking.Display != "" {
+				chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay] = anthropicReq.Thinking.Display
+			}
 		case "adaptive":
 			// Adaptive thinking doesn't require a budget; preserve the type marker via TransformerMetadata.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "adaptive"
+			// Set a default reasoning effort so other outbound transformers (e.g., OpenAI) can use it.
+			// Anthropic's official default for adaptive thinking is "high".
+			chatReq.ReasoningEffort = "high"
+
+			if anthropicReq.Thinking.Display != "" {
+				chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay] = anthropicReq.Thinking.Display
+			}
 		}
 	}
 
 	// Convert output_config
 	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
 		chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
+		// Map output_config effort to reasoning_effort so other outbound transformers can use it.
+		// Anthropic "max" has no direct equivalent in other providers; map to "xhigh"
+		// so downstream transformers can handle it explicitly.
+		if anthropicReq.OutputConfig.Effort == "max" {
+			chatReq.ReasoningEffort = "xhigh"
+		} else {
+			chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+		}
 	}
 
 	return chatReq, nil
@@ -375,9 +394,13 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 
 			// Handle reasoning content (thinking) first if present
 			if (message.ReasoningContent != nil && *message.ReasoningContent != "") || (message.ReasoningSignature != nil && *message.ReasoningSignature != "") {
+				thinkingContent := message.ReasoningContent
+				if thinkingContent == nil {
+					thinkingContent = lo.ToPtr("")
+				}
 				thinkingBlock := MessageContentBlock{
 					Type:     "thinking",
-					Thinking: message.ReasoningContent,
+					Thinking: thinkingContent,
 				}
 				if message.ReasoningSignature != nil {
 					thinkingBlock.Signature = message.ReasoningSignature

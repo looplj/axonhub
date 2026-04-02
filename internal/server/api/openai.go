@@ -31,6 +31,7 @@ type OpenAIHandlersParams struct {
 	SystemService   *biz.SystemService
 	UsageLogService *biz.UsageLogService
 	PromptService   *biz.PromptService
+	PromptProtectionRuleService *biz.PromptProtectionRuleService
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 	Client          *ent.Client
@@ -43,6 +44,7 @@ type OpenAIHandlers struct {
 	VideoService               *biz.VideoService
 	ChatCompletionHandlers     *ChatCompletionHandlers
 	ResponseCompletionHandlers *ChatCompletionHandlers
+	CompactHandlers            *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
 	ImageGenerationHandlers    *ChatCompletionHandlers
 	ImageEditHandlers          *ChatCompletionHandlers
@@ -67,6 +69,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -80,6 +83,21 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
+			),
+		},
+		CompactHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.ModelService,
+				params.RequestService,
+				params.HttpClient,
+				responses.NewCompactInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -93,6 +111,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -106,6 +125,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -119,6 +139,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -132,6 +153,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -145,6 +167,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.UsageLogService,
 				params.PromptService,
 				params.QuotaService,
+				params.PromptProtectionRuleService,
 			),
 		},
 		VideoInboundTransformer: videoInbound,
@@ -162,6 +185,10 @@ func (handlers *OpenAIHandlers) ChatCompletion(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateResponse(c *gin.Context) {
 	handlers.ResponseCompletionHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) CompactResponse(c *gin.Context) {
+	handlers.CompactHandlers.ChatCompletion(c)
 }
 
 func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {

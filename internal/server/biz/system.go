@@ -84,6 +84,10 @@ const (
 	// SystemKeyVideoStorageSettings is the key used to store video storage settings.
 	// The value is JSON-encoded VideoStorageSettings struct.
 	SystemKeyVideoStorageSettings = "system_video_storage_settings"
+
+	// SystemKeyUserAgentPassThrough is the key used to store the user agent pass-through setting.
+	// When set to true, the system will pass through the original User-Agent header to upstream AI providers.
+	SystemKeyUserAgentPassThrough = "system_user_agent_pass_through"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -361,6 +365,7 @@ type InitializeSystemParams struct {
 	OwnerFirstName string
 	OwnerLastName  string
 	BrandName      string
+	PreferLanguage string
 }
 
 // Initialize initializes the system with a secret key and sets the initialized flag.
@@ -403,11 +408,16 @@ func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystem
 	}
 
 	// Create owner user.
+	preferLanguage := params.PreferLanguage
+	if preferLanguage == "" {
+		preferLanguage = "en" // Default to English if not specified
+	}
 	user, err := tx.User.Create().
 		SetEmail(params.OwnerEmail).
 		SetPassword(hashedPassword).
 		SetFirstName(params.OwnerFirstName).
 		SetLastName(params.OwnerLastName).
+		SetPreferLanguage(preferLanguage).
 		SetIsOwner(true).
 		SetScopes([]string{"*"}). // Give owner all scopes
 		Save(ctx)
@@ -995,6 +1005,31 @@ func (s *SystemService) SetVideoStorageSettings(ctx context.Context, settings Vi
 	}
 
 	return nil
+}
+
+// UserAgentPassThrough retrieves the user agent pass-through setting.
+// When enabled, the original User-Agent header from the client request is passed through to upstream AI providers.
+func (s *SystemService) UserAgentPassThrough(ctx context.Context) (bool, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyUserAgentPassThrough)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("failed to get user-agent pass-through: %w", err)
+	}
+
+	return value == "true", nil
+}
+
+// SetUserAgentPassThrough sets the user agent pass-through setting.
+func (s *SystemService) SetUserAgentPassThrough(ctx context.Context, enabled bool) error {
+	strValue := "false"
+	if enabled {
+		strValue = "true"
+	}
+
+	return s.setSystemValue(ctx, SystemKeyUserAgentPassThrough, strValue)
 }
 
 // UpdateAutoBackupLastRun updates the last backup timestamp and error status.

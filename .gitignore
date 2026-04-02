@@ -156,3 +156,5 @@ locales_backup
 .superset/
 .snow/
 config.schema.json
+*.db-shm
+*.db-wal

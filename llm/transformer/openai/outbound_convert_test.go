@@ -75,6 +75,127 @@ func TestRequestFromLLM(t *testing.T) {
 	}
 }
 
+func TestMessageContentPartAudioRoundTrip(t *testing.T) {
+	part := llm.MessageContentPart{
+		Type: "input_audio",
+		InputAudio: &llm.InputAudio{
+			Format: "mp3",
+			Data:   "audio-base64",
+		},
+	}
+
+	oaiPart := MessageContentPartFromLLM(part)
+	require.Equal(t, "input_audio", oaiPart.Type)
+	require.NotNil(t, oaiPart.InputAudio)
+	require.Equal(t, "mp3", oaiPart.InputAudio.Format)
+	require.Equal(t, "audio-base64", oaiPart.InputAudio.Data)
+
+	roundTrip := oaiPart.ToLLMPart()
+	require.Equal(t, "input_audio", roundTrip.Type)
+	require.NotNil(t, roundTrip.InputAudio)
+	require.Equal(t, "mp3", roundTrip.InputAudio.Format)
+	require.Equal(t, "audio-base64", roundTrip.InputAudio.Data)
+}
+
+func TestMessageContentFromLLM_IgnoresCompactionParts(t *testing.T) {
+	content := MessageContentFromLLM(llm.MessageContent{
+		MultipleContent: []llm.MessageContentPart{
+			{
+				Type: "compaction",
+				Compact: &llm.CompactContent{
+					ID:               "cmp_123",
+					EncryptedContent: "secret",
+				},
+			},
+			{
+				Type: "compaction_summary",
+				Compact: &llm.CompactContent{
+					ID:               "cmp_456",
+					EncryptedContent: "summary",
+				},
+			},
+			{
+				Type: "text",
+				Text: lo.ToPtr("visible"),
+			},
+		},
+	})
+
+	require.Len(t, content.MultipleContent, 1)
+	require.Equal(t, "text", content.MultipleContent[0].Type)
+	require.NotNil(t, content.MultipleContent[0].Text)
+	require.Equal(t, "visible", *content.MultipleContent[0].Text)
+}
+
+func TestRequestFromLLM_IgnoresCompactionPartsInMessages(t *testing.T) {
+	req := RequestFromLLM(&llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "compaction",
+							Compact: &llm.CompactContent{
+								ID:               "cmp_123",
+								EncryptedContent: "secret",
+							},
+						},
+						{
+							Type: "compaction_summary",
+							Compact: &llm.CompactContent{
+								ID:               "cmp_456",
+								EncryptedContent: "summary",
+							},
+						},
+						{
+							Type: "text",
+							Text: lo.ToPtr("hello"),
+						},
+					},
+				},
+			},
+		},
+	})
+
+	require.NotNil(t, req)
+	require.Len(t, req.Messages, 1)
+	require.Len(t, req.Messages[0].Content.MultipleContent, 1)
+	require.Equal(t, "text", req.Messages[0].Content.MultipleContent[0].Type)
+	require.NotNil(t, req.Messages[0].Content.MultipleContent[0].Text)
+	require.Equal(t, "hello", *req.Messages[0].Content.MultipleContent[0].Text)
+}
+
+func TestMessageAudioRoundTrip(t *testing.T) {
+	msg := llm.Message{
+		Role: "assistant",
+		Content: llm.MessageContent{
+			Content: lo.ToPtr("Audio reply"),
+		},
+		Audio: &llm.OutputAudio{
+			ID:         "audio_123",
+			Data:       "base64-audio",
+			ExpiresAt:  1234567890,
+			Transcript: "hello world",
+		},
+	}
+
+	oaiMsg := MessageFromLLM(msg)
+	require.NotNil(t, oaiMsg.Audio)
+	require.Equal(t, "audio_123", oaiMsg.Audio.ID)
+	require.Equal(t, "base64-audio", oaiMsg.Audio.Data)
+	require.Equal(t, int64(1234567890), oaiMsg.Audio.ExpiresAt)
+	require.Equal(t, "hello world", oaiMsg.Audio.Transcript)
+
+	roundTrip := oaiMsg.ToLLMMessage()
+	require.NotNil(t, roundTrip.Audio)
+	require.Equal(t, "audio_123", roundTrip.Audio.ID)
+	require.Equal(t, "base64-audio", roundTrip.Audio.Data)
+	require.Equal(t, int64(1234567890), roundTrip.Audio.ExpiresAt)
+	require.Equal(t, "hello world", roundTrip.Audio.Transcript)
+}
+
 func TestResponse_ToLLMResponse(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -346,7 +467,7 @@ func TestRequestFromLLM_KeepsGoogleThoughtSignatureInRequestModel(t *testing.T) 
 		Messages: []llm.Message{
 			{
 				Role:               "assistant",
-				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_reasoning")),
+				ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_reasoning"), ""),
 				ToolCalls: []llm.ToolCall{
 					{
 						ID:   "call_1",
@@ -376,7 +497,7 @@ func TestRequestFromLLM_KeepsGoogleThoughtSignatureInRequestModel(t *testing.T) 
 func TestMessageFromLLM_DoesNotOverrideFirstToolCallWhenMetadataExists(t *testing.T) {
 	msg := MessageFromLLM(llm.Message{
 		Role:               "assistant",
-		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second_tool_call")),
+		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("sig_from_second_tool_call"), ""),
 		ToolCalls: []llm.ToolCall{
 			{
 				ID:   "call_1",
@@ -412,7 +533,7 @@ func TestMessageFromLLM_DoesNotOverrideFirstToolCallWhenMetadataExists(t *testin
 func TestMessageFromLLM_GeminiReasoningSignatureDoesNotInjectThoughtSignature(t *testing.T) {
 	msg := MessageFromLLM(llm.Message{
 		Role:               "assistant",
-		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("gemini_signature")),
+		ReasoningSignature: shared.EncodeGeminiThoughtSignature(lo.ToPtr("gemini_signature"), ""),
 		ToolCalls: []llm.ToolCall{
 			{
 				ID:   "call_1",

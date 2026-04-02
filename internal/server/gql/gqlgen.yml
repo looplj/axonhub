@@ -12,6 +12,7 @@ schema:
   - backup.graphql
   - channel_probe.graphql
   - prompt.graphql
+  - prompt_protection_rule.graphql
   - price.graphql
   - cost.graphql
 
@@ -544,6 +545,18 @@ models:
   PromptSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptSettings
+  PromptProtectionSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptProtectionSettings
+  PromptProtectionSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptProtectionSettings
+  PromptProtectionAction:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptProtectionAction
+  PromptProtectionScope:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptProtectionScope
   PromptAction:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptAction

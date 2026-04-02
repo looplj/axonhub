@@ -1,4 +1,4 @@
-import { Circle, MessageSquare, Sparkles, Wrench, CheckCircle2, Image, Settings, type LucideIcon } from 'lucide-react';
+import { Circle, MessageSquare, Sparkles, Wrench, CheckCircle2, Image, Settings, Video, AudioLines, type LucideIcon } from 'lucide-react';
 
 /**
  * 根据 span 类型返回对应的图标组件
@@ -15,6 +15,9 @@ export function getSpanIcon(spanType: string): LucideIcon {
     case 'thinking':
     case 'llm':
       return Sparkles;
+    case 'compaction':
+    case 'compaction_summary':
+      return Sparkles;
     case 'tool_use':
     case 'function_call':
       return Wrench;
@@ -24,6 +27,12 @@ export function getSpanIcon(spanType: string): LucideIcon {
     case 'user_image_url':
     case 'image_url':
       return Image;
+    case 'user_video_url':
+    case 'video_url':
+      return Video;
+    case 'user_input_audio':
+    case 'audio':
+      return AudioLines;
     case 'system_instruction':
       return Settings;
     default:

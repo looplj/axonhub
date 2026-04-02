@@ -32,13 +32,21 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				require.Equal(t, llm.APIFormatOpenAIResponse, result.APIFormat)
 
 				// Verify messages
-				require.Len(t, result.Messages, 7)
+				require.Len(t, result.Messages, 8)
 				require.Equal(t, "user", result.Messages[0].Role)
 
 				// For single input_text, content should be a simple string (optimized path)
 				require.NotNil(t, result.Messages[0].Content.Content)
 				require.Equal(t, "My name is Alice.", *result.Messages[0].Content.Content)
 				require.Nil(t, result.Messages[0].Content.MultipleContent)
+
+				// Verify compaction message (index 6, between last assistant and last user)
+				compactionMsg := result.Messages[6]
+				require.Equal(t, "assistant", compactionMsg.Role)
+				require.Len(t, compactionMsg.Content.MultipleContent, 1)
+				require.Equal(t, "compaction", compactionMsg.Content.MultipleContent[0].Type)
+				require.NotNil(t, compactionMsg.Content.MultipleContent[0].Compact)
+				require.Equal(t, "gAAAAABpxygtxqpBeKM2Wvlv2Owja3cpZk2rbpgr8iXCl9Zhl7JAJCVy7nIP===", compactionMsg.Content.MultipleContent[0].Compact.EncryptedContent)
 			},
 		},
 		{

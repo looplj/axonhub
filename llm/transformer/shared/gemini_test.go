@@ -7,83 +7,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsGeminiThoughtSignature(t *testing.T) {
-	tests := []struct {
-		name      string
-		signature *string
-		expected  bool
-	}{
-		{
-			name:      "nil signature",
-			signature: nil,
-			expected:  false,
-		},
-		{
-			name:      "empty string",
-			signature: new(""),
-			expected:  false,
-		},
-		{
-			name:      "valid signature",
-			signature: new(GeminiThoughtSignaturePrefix + "some-signature"),
-			expected:  true,
-		},
-		{
-			name:      "invalid prefix",
-			signature: new("some-signature"),
-			expected:  false,
-		},
-		{
-			name:      "only prefix",
-			signature: new(GeminiThoughtSignaturePrefix),
-			expected:  true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := IsGeminiThoughtSignature(tt.signature)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
+const testGeminiFootprint = "a1b2c3"
 
 func TestDecodeGeminiThoughtSignature(t *testing.T) {
 	tests := []struct {
 		name      string
 		signature *string
+		footprint string
 		expected  *string
 	}{
 		{
 			name:      "nil signature",
 			signature: nil,
+			footprint: "",
 			expected:  nil,
 		},
 		{
 			name:      "empty string",
 			signature: new(""),
+			footprint: "",
 			expected:  nil,
 		},
 		{
-			name:      "valid signature",
-			signature: new(GeminiThoughtSignaturePrefix + "some-signature"),
+			name:      "valid signature with footprint",
+			signature: EncodeGeminiThoughtSignature(new("some-signature"), testGeminiFootprint),
+			footprint: testGeminiFootprint,
 			expected:  new("some-signature"),
 		},
 		{
 			name:      "invalid prefix",
 			signature: new("some-signature"),
+			footprint: "",
 			expected:  nil,
-		},
-		{
-			name:      "only prefix returns empty string",
-			signature: new(GeminiThoughtSignaturePrefix),
-			expected:  new(""),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := DecodeGeminiThoughtSignature(tt.signature)
+			result := DecodeGeminiThoughtSignature(tt.signature, tt.footprint)
 			if tt.expected == nil {
 				require.Nil(t, result)
 			} else {
@@ -106,20 +67,20 @@ func TestEncodeGeminiThoughtSignature(t *testing.T) {
 			expected:  nil,
 		},
 		{
-			name:      "only prefix",
+			name:      "empty signature remains raw",
 			signature: new(""),
-			expected:  new(GeminiThoughtSignaturePrefix),
+			expected:  new(""),
 		},
 		{
-			name:      "valid signature",
+			name:      "valid signature remains raw without footprint",
 			signature: new("some-signature"),
-			expected:  new(GeminiThoughtSignaturePrefix + "some-signature"),
+			expected:  new("some-signature"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := EncodeGeminiThoughtSignature(tt.signature)
+			result := EncodeGeminiThoughtSignature(tt.signature, "")
 			if tt.expected == nil {
 				require.Nil(t, result)
 			} else {
@@ -130,56 +91,41 @@ func TestEncodeGeminiThoughtSignature(t *testing.T) {
 	}
 }
 
-func TestStripGeminiThoughtSignaturePrefix(t *testing.T) {
-	tests := []struct {
-		name      string
-		signature string
-		expected  string
-	}{
-		{
-			name:      "prefixed signature",
-			signature: GeminiThoughtSignaturePrefix + "stripped",
-			expected:  "stripped",
-		},
-		{
-			name:      "plain signature",
-			signature: "plain",
-			expected:  "plain",
-		},
-		{
-			name:      "prefix only",
-			signature: GeminiThoughtSignaturePrefix,
-			expected:  "",
-		},
-	}
+func TestEncodeDecodeGeminiThoughtSignature(t *testing.T) {
+	sig := new("some-random-signature-data")
+	encoded := EncodeGeminiThoughtSignature(sig, testGeminiFootprint)
+	require.NotNil(t, encoded)
+	require.NotNil(t, DecodeGeminiThoughtSignature(encoded, testGeminiFootprint))
+	require.NotNil(t, DecodeGeminiThoughtSignature(encoded, testGeminiFootprint))
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := StripGeminiThoughtSignaturePrefix(tt.signature)
-			require.Equal(t, tt.expected, result)
-		})
-	}
+	decoded := DecodeGeminiThoughtSignature(encoded, testGeminiFootprint)
+	require.NotNil(t, decoded)
+	require.Equal(t, *sig, *decoded)
+	require.Nil(t, DecodeGeminiThoughtSignature(encoded, "ffffff"))
 }
 
 func TestGeminiEncodeDecodeRoundTrip(t *testing.T) {
 	original := new("some-random-signature-data")
 
 	// Encode
-	encoded := EncodeGeminiThoughtSignature(original)
+	encoded := EncodeGeminiThoughtSignature(original, "")
 	require.NotNil(t, encoded)
-	require.True(t, IsGeminiThoughtSignature(encoded))
 
 	// Decode
-	decoded := DecodeGeminiThoughtSignature(encoded)
-	require.NotNil(t, decoded)
-	require.Equal(t, *original, *decoded)
+	decoded := DecodeGeminiThoughtSignature(encoded, "")
+	require.Nil(t, decoded)
 }
 
 func TestGeminiThoughtSignatureWholeValueCanDecodeAsBase64(t *testing.T) {
 	signature := new("YWJjZA==")
 
-	encoded := EncodeGeminiThoughtSignature(signature)
+	encoded := EncodeGeminiThoughtSignature(signature, "")
 	require.NotNil(t, encoded)
 	_, err := base64.StdEncoding.DecodeString(*encoded)
+	require.NoError(t, err)
+
+	encodedWithFootprint := EncodeGeminiThoughtSignature(signature, testGeminiFootprint)
+	require.NotNil(t, encodedWithFootprint)
+	_, err = base64.StdEncoding.DecodeString(*encodedWithFootprint)
 	require.NoError(t, err)
 }

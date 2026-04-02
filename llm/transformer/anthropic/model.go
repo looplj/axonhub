@@ -149,9 +149,14 @@ const TransformerMetadataKeyThinkingType = "thinking_type"
 // TransformerMetadataKeyOutputConfigEffort is the key for storing output config effort in TransformerMetadata.
 const TransformerMetadataKeyOutputConfigEffort = "output_config_effort"
 
+// TransformerMetadataKeyThinkingDisplay is the key for storing thinking display in TransformerMetadata.
+const TransformerMetadataKeyThinkingDisplay = "thinking_display"
+
 type Thinking struct {
 	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
 	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`
+	// Display is an optional display name for the thinking, enum: summarized, omitted.
+	Display string `json:"display,omitempty"`
 }
 
 // OutputConfig represents Anthropic output configuration.

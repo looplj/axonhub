@@ -417,6 +417,8 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 					SetCredentials(credentials).
 					SetSupportedModels(chData.SupportedModels).
 					SetNillableAutoSyncSupportedModels(lo.ToPtr(chData.AutoSyncSupportedModels)).
+					SetAutoSyncModelPattern(chData.AutoSyncModelPattern).
+					SetManualModels(chData.ManualModels).
 					SetTags(chData.Tags).
 					SetDefaultTestModel(chData.DefaultTestModel).
 					SetSettings(chData.Settings).
@@ -445,6 +447,8 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 				SetCredentials(credentials).
 				SetSupportedModels(chData.SupportedModels).
 				SetNillableAutoSyncSupportedModels(lo.ToPtr(chData.AutoSyncSupportedModels)).
+				SetAutoSyncModelPattern(chData.AutoSyncModelPattern).
+				SetManualModels(chData.ManualModels).
 				SetTags(chData.Tags).
 				SetDefaultTestModel(chData.DefaultTestModel).
 				SetSettings(chData.Settings).

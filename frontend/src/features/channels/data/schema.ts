@@ -64,6 +64,7 @@ export const channelTypeSchema = z.enum([
   'antigravity',
   'cerebras',
   'nanogpt',
+  'fireworks',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
@@ -152,7 +153,9 @@ export const channelSettingsSchema = z.object({
   headerOverrideOperations: z.array(overrideOperationSchema).optional(),
   proxy: proxyConfigSchema.optional().nullable(),
   transformOptions: transformOptionsSchema.optional(),
+  passThroughUserAgent: z.boolean().optional().nullable(),
 });
+
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
 
 // Channel Model Entry

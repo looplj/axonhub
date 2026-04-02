@@ -134,7 +134,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 	apiGroup := server.Group("/",
 		middleware.WithTimeout(server.Config.LLMRequestTimeout),
-		middleware.WithAPIKeyAuth(services.AuthService),
+		middleware.WithAPIKeyConfig(services.AuthService, nil),
 		middleware.WithSource(request.SourceAPI),
 		middleware.WithThread(server.Config.Trace, services.ThreadService),
 		middleware.WithTrace(server.Config.Trace, services.TraceService),
@@ -143,6 +143,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	{
 		openaiGroup := apiGroup.Group("/v1")
 		openaiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
+		openaiGroup.POST("/responses/compact", handlers.OpenAI.CompactResponse)
 		openaiGroup.POST("/responses", handlers.OpenAI.CreateResponse)
 		openaiGroup.GET("/models", handlers.OpenAI.ListModels)
 		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)

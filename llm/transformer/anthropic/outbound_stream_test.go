@@ -8,8 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
@@ -41,14 +43,28 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, _ := NewOutboundTransformer("https://example.com", string(tt.platformType))
+			baseURL := "https://example.com"
+			apiKey := string(tt.platformType)
+			accountIdentity := "channel-1"
+			transformer, err := NewOutboundTransformerWithConfig(&Config{
+				Type:            tt.platformType,
+				BaseURL:         baseURL,
+				AccountIdentity: accountIdentity,
+				APIKeyProvider:  auth.NewStaticKeyProvider(apiKey),
+			})
+			require.NoError(t, err)
 
 			streamEvents, err := xtest.LoadStreamChunks(t, tt.streamFile)
 			require.NoError(t, err)
 
 			mockStream := streams.SliceStream(streamEvents)
 
-			transformedStream, err := transformer.TransformStream(t.Context(), mockStream)
+			ot := transformer.(*OutboundTransformer)
+			ctx := shared.ContextWithTransportScope(t.Context(), shared.TransportScope{
+				BaseURL:         ot.config.BaseURL,
+				AccountIdentity: accountIdentity,
+			})
+			transformedStream, err := transformer.TransformStream(ctx, mockStream)
 			require.NoError(t, err)
 
 			var actualResponses []*llm.Response
@@ -94,14 +110,28 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 }
 
 func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
-	transformer, _ := NewOutboundTransformer("https://example.com", string(PlatformDirect))
+	baseURL := "https://example.com"
+	apiKey := string(PlatformDirect)
+	accountIdentity := "channel-1"
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		Type:            PlatformDirect,
+		BaseURL:         baseURL,
+		AccountIdentity: accountIdentity,
+		APIKeyProvider:  auth.NewStaticKeyProvider(apiKey),
+	})
+	require.NoError(t, err)
 
 	streamEvents, err := xtest.LoadStreamChunks(t, "anthropic-error.stream.jsonl")
 	require.NoError(t, err)
 
 	mockStream := streams.SliceStream(streamEvents)
 
-	transformedStream, err := transformer.TransformStream(t.Context(), mockStream)
+	ot := transformer.(*OutboundTransformer)
+	ctx := shared.ContextWithTransportScope(t.Context(), shared.TransportScope{
+		BaseURL:         ot.config.BaseURL,
+		AccountIdentity: accountIdentity,
+	})
+	transformedStream, err := transformer.TransformStream(ctx, mockStream)
 	require.NoError(t, err)
 
 	_, err = streams.All(transformedStream)
