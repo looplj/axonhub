@@ -295,9 +295,14 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 	})
 }
 
-// hasUserAgentOverride returns true if any operation affects the User-Agent header.
-func hasUserAgentOverride(overrideHeaders []objects.OverrideOperation) bool {
+// hasUserAgentOverride returns true if any operation affects the User-Agent header
+// and its condition (if any) evaluates to true.
+func hasUserAgentOverride(ctx context.Context, overrideHeaders []objects.OverrideOperation, renderCtx RenderContext) bool {
 	for _, op := range overrideHeaders {
+		if !evaluateCondition(ctx, op.Condition, renderCtx) {
+			continue
+		}
+
 		switch op.Op {
 		case objects.OverrideOpSet, objects.OverrideOpDelete:
 			if strings.EqualFold(op.Path, "User-Agent") {
@@ -341,7 +346,9 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 		}
 
 		overrideHeaders := channel.GetHeaderOverrideOperations()
-		if hasUserAgentOverride(overrideHeaders) {
+		llmReq := outbound.state.LlmRequest
+		renderCtx := buildRenderContext(llmReq, outbound.state.OriginalModel)
+		if hasUserAgentOverride(ctx, overrideHeaders, renderCtx) {
 			return request, nil
 		}
 
