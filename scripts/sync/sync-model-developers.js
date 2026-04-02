@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 const https = require('https');
+const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { URL } = require('url');
 
 const SOURCE_URL = 'https://raw.githubusercontent.com/ThinkInAIXYZ/PublicProviderConf/refs/heads/dev/dist/all.json';
 const CONSTANTS_PATH = path.join(__dirname, '../../frontend/src/features/models/data/constants.ts');
@@ -11,23 +13,76 @@ const MODELS_JSON_PATH = path.join(__dirname, './models.json');
 
 function fetchJSON(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      let data = '';
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy ||
+                     process.env.HTTP_PROXY || process.env.http_proxy;
+    
+    if (!proxyUrl) {
+      // 无代理，直接请求
+      https.get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error(`Failed to parse JSON: ${e.message}`));
+          }
+        });
+      }).on('error', reject);
+      return;
+    }
+    
+    // 使用代理
+    console.log('Using proxy:', proxyUrl);
+    const targetUrl = new URL(url);
+    const proxy = new URL(proxyUrl);
+    
+    const connectOptions = {
+      method: 'CONNECT',
+      host: proxy.hostname,
+      port: proxy.port || 80,
+      path: `${targetUrl.hostname}:443`,
+      headers: { Host: targetUrl.hostname }
+    };
+    
+    // 添加代理认证（如果有）
+    if (proxy.username || proxy.password) {
+      const auth = Buffer.from(`${proxy.username}:${proxy.password}`).toString('base64');
+      connectOptions.headers['Proxy-Authorization'] = `Basic ${auth}`;
+    }
+    
+    const connectReq = http.request(connectOptions);
+    
+    connectReq.on('connect', (res, socket) => {
+      if (res.statusCode !== 200) {
+        return reject(new Error(`Proxy CONNECT failed: ${res.statusCode}`));
+      }
       
-      res.on('data', (chunk) => {
-        data += chunk;
+      const tlsOptions = {
+        socket: socket,
+        hostname: targetUrl.hostname,
+        path: targetUrl.pathname + targetUrl.search,
+        method: 'GET'
+      };
+      
+      const tlsReq = https.request(tlsOptions, (tlsRes) => {
+        let data = '';
+        tlsRes.on('data', (chunk) => { data += chunk; });
+        tlsRes.on('end', () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error(`Failed to parse JSON: ${e.message}`));
+          }
+        });
       });
       
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error(`Failed to parse JSON: ${e.message}`));
-        }
-      });
-    }).on('error', (err) => {
-      reject(err);
+      tlsReq.on('error', reject);
+      tlsReq.end();
     });
+    
+    connectReq.on('error',reject);
+    connectReq.end();
   });
 }
 
