@@ -270,24 +270,24 @@ func (a *AutoSyncFrequency) UnmarshalGQL(v any) error {
 
 func (a *AutoSyncFrequency) UnmarshalJSON(data []byte) error {
 	var raw string
-	if json.Unmarshal(data, &raw) != nil {
-		*a = AutoSyncFrequencyOneHour
+	if json.Unmarshal(data, &raw) == nil {
+		switch raw {
+		case string(AutoSyncFrequencyOneHour), "ONE_HOUR":
+			*a = AutoSyncFrequencyOneHour
+		case string(AutoSyncFrequencySixHours), "SIX_HOURS":
+			*a = AutoSyncFrequencySixHours
+		case string(AutoSyncFrequencyOneDay), "ONE_DAY":
+			*a = AutoSyncFrequencyOneDay
+		case "1m", "5m", "30m":
+			*a = AutoSyncFrequencyOneHour
+		default:
+			*a = AutoSyncFrequencyOneHour
+		}
+
 		return nil
 	}
 
-	switch raw {
-	case string(AutoSyncFrequencyOneHour), "ONE_HOUR":
-		*a = AutoSyncFrequencyOneHour
-	case string(AutoSyncFrequencySixHours), "SIX_HOURS":
-		*a = AutoSyncFrequencySixHours
-	case string(AutoSyncFrequencyOneDay), "ONE_DAY":
-		*a = AutoSyncFrequencyOneDay
-	case "1m", "5m", "30m":
-		*a = AutoSyncFrequencyOneHour
-	default:
-		*a = AutoSyncFrequencyOneHour
-	}
-
+	*a = AutoSyncFrequencyOneHour
 	return nil
 }
 
