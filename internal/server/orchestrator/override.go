@@ -317,6 +317,7 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 			}
 		}
 
+		// Handle User-Agent header based on pass-through setting
 		// This must be done here (before persistRequestExecution) to ensure
 		// the correct User-Agent is logged in request execution records.
 		if request.Headers == nil {
@@ -324,12 +325,14 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 		}
 
 		if passThroughEnabled {
+			// Pass-through enabled: use the original client's User-Agent
 			if outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
 				if clientUA := outbound.state.LlmRequest.RawRequest.Headers.Get("User-Agent"); clientUA != "" {
 					request.Headers.Set("User-Agent", clientUA)
 				}
 			}
 		} else {
+			// Pass-through disabled: use AxonHub's default User-Agent
 			request.Headers.Set("User-Agent", "axonhub/1.0")
 		}
 
