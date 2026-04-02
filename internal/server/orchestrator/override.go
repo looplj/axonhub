@@ -295,6 +295,23 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 	})
 }
 
+// hasUserAgentOverride returns true if any operation affects the User-Agent header.
+func hasUserAgentOverride(overrideHeaders []objects.OverrideOperation) bool {
+	for _, op := range overrideHeaders {
+		switch op.Op {
+		case objects.OverrideOpSet, objects.OverrideOpDelete:
+			if strings.EqualFold(op.Path, "User-Agent") {
+				return true
+			}
+		case objects.OverrideOpRename, objects.OverrideOpCopy:
+			if strings.EqualFold(op.From, "User-Agent") || strings.EqualFold(op.To, "User-Agent") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // applyUserAgentPassThrough creates a middleware that applies the User-Agent pass-through setting.
 func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawRequest("user-agent-pass-through", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
@@ -317,22 +334,24 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 			}
 		}
 
-		// Handle User-Agent header based on pass-through setting
 		// This must be done here (before persistRequestExecution) to ensure
 		// the correct User-Agent is logged in request execution records.
 		if request.Headers == nil {
 			request.Headers = make(http.Header)
 		}
 
+		overrideHeaders := channel.GetHeaderOverrideOperations()
+		if hasUserAgentOverride(overrideHeaders) {
+			return request, nil
+		}
+
 		if passThroughEnabled {
-			// Pass-through enabled: use the original client's User-Agent
 			if outbound.state.LlmRequest != nil && outbound.state.LlmRequest.RawRequest != nil {
 				if clientUA := outbound.state.LlmRequest.RawRequest.Headers.Get("User-Agent"); clientUA != "" {
 					request.Headers.Set("User-Agent", clientUA)
 				}
 			}
 		} else {
-			// Pass-through disabled: use AxonHub's default User-Agent
 			request.Headers.Set("User-Agent", "axonhub/1.0")
 		}
 
