@@ -295,28 +295,6 @@ func applyOverrideRequestHeaders(outbound *PersistentOutboundTransformer) pipeli
 	})
 }
 
-// hasUserAgentOverride returns true if any operation affects the User-Agent header
-// and its condition (if any) evaluates to true.
-func hasUserAgentOverride(ctx context.Context, overrideHeaders []objects.OverrideOperation, renderCtx RenderContext) bool {
-	for _, op := range overrideHeaders {
-		if !evaluateCondition(ctx, op.Condition, renderCtx) {
-			continue
-		}
-
-		switch op.Op {
-		case objects.OverrideOpSet, objects.OverrideOpDelete:
-			if strings.EqualFold(op.Path, "User-Agent") {
-				return true
-			}
-		case objects.OverrideOpRename, objects.OverrideOpCopy:
-			if strings.EqualFold(op.From, "User-Agent") || strings.EqualFold(op.To, "User-Agent") {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // applyUserAgentPassThrough creates a middleware that applies the User-Agent pass-through setting.
 func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawRequest("user-agent-pass-through", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
@@ -343,13 +321,6 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 		// the correct User-Agent is logged in request execution records.
 		if request.Headers == nil {
 			request.Headers = make(http.Header)
-		}
-
-		overrideHeaders := channel.GetHeaderOverrideOperations()
-		llmReq := outbound.state.LlmRequest
-		renderCtx := buildRenderContext(llmReq, outbound.state.OriginalModel)
-		if hasUserAgentOverride(ctx, overrideHeaders, renderCtx) {
-			return request, nil
 		}
 
 		if passThroughEnabled {
