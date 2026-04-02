@@ -143,7 +143,7 @@ filter-logs:
 # Generate JSON schema for configuration
 generate-schema:
 	@echo "Generating JSON schema for configuration..."
-	@go run cmd/schema/main.go > config.schema.json
+	@cd cmd/schema && go run . > ../../config.schema.json
 	@echo "JSON schema generated at config.schema.json"
 
 # Run all lint checks
