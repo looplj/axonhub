@@ -325,6 +325,15 @@ type OpenAIModel struct {
 	Type            string        `json:"type,omitempty"`
 }
 
+const (
+	openAIModelObjectType         = "model"
+	openAIErrorCodeInternalServer = "internal_server_error"
+	openAIErrorCodeModelNotFound  = "model_not_found"
+	openAIErrorTypeServer         = "server_error"
+	openAIErrorTypeInvalidRequest = "invalid_request_error"
+	openAIErrorParamModel         = "model"
+)
+
 func parseOpenAIModelInclude(includeParam string) (map[string]bool, bool) {
 	var (
 		include      map[string]bool
@@ -362,7 +371,7 @@ func parseOpenAIModelInclude(includeParam string) (map[string]bool, bool) {
 func convertModelFacadeToOpenAIModel(m biz.ModelFacade) OpenAIModel {
 	return OpenAIModel{
 		ID:      m.ID,
-		Object:  "model",
+		Object:  openAIModelObjectType,
 		Created: m.Created,
 		OwnedBy: m.OwnedBy,
 	}
@@ -375,7 +384,7 @@ func convertModelFacadeToOpenAIModel(m biz.ModelFacade) OpenAIModel {
 func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIModel {
 	result := OpenAIModel{
 		ID:      m.ModelID,
-		Object:  "model",
+		Object:  openAIModelObjectType,
 		Created: m.CreatedAt.Unix(),
 		OwnedBy: m.Developer,
 	}
@@ -441,9 +450,27 @@ func (handlers *OpenAIHandlers) writeOpenAIInternalError(c *gin.Context, request
 	c.JSON(http.StatusInternalServerError, openai.OpenAIError{
 		StatusCode: http.StatusInternalServerError,
 		Detail: llm.ErrorDetail{
-			Code:      "internal_server_error",
+			Code:      openAIErrorCodeInternalServer,
 			Message:   err.Error(),
-			Type:      "server_error",
+			Type:      openAIErrorTypeServer,
+			RequestID: requestID,
+		},
+	})
+}
+
+func (handlers *OpenAIHandlers) writeOpenAIModelNotFoundError(c *gin.Context, requestID, modelID string) {
+	message := "The model does not exist or you do not have access to it."
+	if modelID != "" {
+		message = fmt.Sprintf("The model `%s` does not exist or you do not have access to it.", modelID)
+	}
+
+	c.JSON(http.StatusNotFound, openai.OpenAIError{
+		StatusCode: http.StatusNotFound,
+		Detail: llm.ErrorDetail{
+			Code:      openAIErrorCodeModelNotFound,
+			Message:   message,
+			Type:      openAIErrorTypeInvalidRequest,
+			Param:     openAIErrorParamModel,
 			RequestID: requestID,
 		},
 	})
@@ -457,16 +484,7 @@ func (handlers *OpenAIHandlers) RetrieveModel(c *gin.Context) {
 	requestID, _ := contexts.GetRequestID(ctx)
 	modelID := strings.TrimPrefix(c.Param("model"), "/")
 	if modelID == "" {
-		c.JSON(http.StatusNotFound, openai.OpenAIError{
-			StatusCode: http.StatusNotFound,
-			Detail: llm.ErrorDetail{
-				Code:      "model_not_found",
-				Message:   "The model does not exist or you do not have access to it.",
-				Type:      "invalid_request_error",
-				Param:     "model",
-				RequestID: requestID,
-			},
-		})
+		handlers.writeOpenAIModelNotFoundError(c, requestID, "")
 		return
 	}
 
@@ -482,16 +500,7 @@ func (handlers *OpenAIHandlers) RetrieveModel(c *gin.Context) {
 		return m.ID == modelID
 	})
 	if !found {
-		c.JSON(http.StatusNotFound, openai.OpenAIError{
-			StatusCode: http.StatusNotFound,
-			Detail: llm.ErrorDetail{
-				Code:      "model_not_found",
-				Message:   fmt.Sprintf("The model `%s` does not exist or you do not have access to it.", modelID),
-				Type:      "invalid_request_error",
-				Param:     "model",
-				RequestID: requestID,
-			},
-		})
+		handlers.writeOpenAIModelNotFoundError(c, requestID, modelID)
 		return
 	}
 
