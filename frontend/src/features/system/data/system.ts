@@ -567,6 +567,9 @@ const CHANNEL_SETTINGS_QUERY = `
         enabled
         frequency
       }
+      autoSync {
+        frequency
+      }
     }
   }
 `;
@@ -656,13 +659,20 @@ export function useUpdateModelSettings() {
 
 export type ProbeFrequency = 'ONE_MINUTE' | 'FIVE_MINUTES' | 'THIRTY_MINUTES' | 'ONE_HOUR';
 
+export type AutoSyncFrequency = 'ONE_HOUR' | 'SIX_HOURS' | 'ONE_DAY';
+
 export interface ChannelProbeSetting {
   enabled: boolean;
   frequency: ProbeFrequency;
 }
 
+export interface ChannelModelAutoSyncSetting {
+  frequency: AutoSyncFrequency;
+}
+
 export interface ChannelSetting {
   probe: ChannelProbeSetting;
+  autoSync: ChannelModelAutoSyncSetting;
 }
 
 export interface UpdateChannelProbeSettingInput {
@@ -670,8 +680,13 @@ export interface UpdateChannelProbeSettingInput {
   frequency?: ProbeFrequency;
 }
 
+export interface UpdateChannelModelAutoSyncSettingInput {
+  frequency?: AutoSyncFrequency;
+}
+
 export interface UpdateSystemChannelSettingsInput {
   probe?: UpdateChannelProbeSettingInput;
+  autoSync?: UpdateChannelModelAutoSyncSettingInput;
 }
 
 export function useChannelSetting() {

@@ -36,6 +36,9 @@ var defaultChannelSetting = SystemChannelSettings{
 		Enabled:   true,
 		Frequency: ProbeFrequency5Min,
 	},
+	AutoSync: ChannelModelAutoSyncSetting{
+		Frequency: AutoSyncFrequencyOneHour,
+	},
 }
 
 var defaultGeneralSettings = SystemGeneralSettings{

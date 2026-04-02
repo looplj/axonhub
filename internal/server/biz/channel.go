@@ -168,6 +168,10 @@ type ChannelService struct {
 	apiKeyErrorCounts     map[int]map[string]map[int]int
 	apiKeyErrorCountsLock sync.Mutex
 
+	modelSyncMu sync.Mutex
+
+	lastModelSyncExecutionTime time.Time
+
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
 }

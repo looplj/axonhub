@@ -219,7 +219,80 @@ type SystemModelSettings struct {
 }
 
 type SystemChannelSettings struct {
-	Probe ChannelProbeSetting `json:"probe"`
+	Probe    ChannelProbeSetting         `json:"probe"`
+	AutoSync ChannelModelAutoSyncSetting `json:"auto_sync"`
+}
+
+type ChannelModelAutoSyncSetting struct {
+	Frequency AutoSyncFrequency `json:"frequency"`
+}
+
+type AutoSyncFrequency string
+
+const (
+	AutoSyncFrequencyOneHour  AutoSyncFrequency = "1h"
+	AutoSyncFrequencySixHours AutoSyncFrequency = "6h"
+	AutoSyncFrequencyOneDay   AutoSyncFrequency = "1d"
+)
+
+func (a AutoSyncFrequency) MarshalGQL(w io.Writer) {
+	var s string
+
+	switch a {
+	case AutoSyncFrequencyOneHour:
+		s = "ONE_HOUR"
+	case AutoSyncFrequencySixHours:
+		s = "SIX_HOURS"
+	case AutoSyncFrequencyOneDay:
+		s = "ONE_DAY"
+	default:
+		s = "ONE_HOUR"
+	}
+
+	_, _ = io.WriteString(w, `"`+s+`"`)
+}
+
+func (a *AutoSyncFrequency) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("AutoSyncFrequency must be a string")
+	}
+
+	switch str {
+	case "ONE_HOUR":
+		*a = AutoSyncFrequencyOneHour
+	case "SIX_HOURS":
+		*a = AutoSyncFrequencySixHours
+	case "ONE_DAY":
+		*a = AutoSyncFrequencyOneDay
+	default:
+		return fmt.Errorf("invalid AutoSyncFrequency: %s", str)
+	}
+
+	return nil
+}
+
+func (a *AutoSyncFrequency) UnmarshalJSON(data []byte) error {
+	var raw string
+	if json.Unmarshal(data, &raw) == nil {
+		switch raw {
+		case string(AutoSyncFrequencyOneHour), "ONE_HOUR":
+			*a = AutoSyncFrequencyOneHour
+		case string(AutoSyncFrequencySixHours), "SIX_HOURS":
+			*a = AutoSyncFrequencySixHours
+		case string(AutoSyncFrequencyOneDay), "ONE_DAY":
+			*a = AutoSyncFrequencyOneDay
+		case "1m", "5m", "30m":
+			*a = AutoSyncFrequencyOneHour
+		default:
+			*a = AutoSyncFrequencyOneHour
+		}
+
+		return nil
+	}
+
+	*a = AutoSyncFrequencyOneHour
+	return nil
 }
 
 // ProbeFrequency represents the frequency of channel probing.
@@ -763,6 +836,16 @@ func (s *SystemService) ChannelSetting(ctx context.Context) (*SystemChannelSetti
 	var setting SystemChannelSettings
 	if err := json.Unmarshal([]byte(value), &setting); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal channel setting: %w", err)
+	}
+
+	if setting.AutoSync.Frequency == "" {
+		setting.AutoSync.Frequency = defaultChannelSetting.AutoSync.Frequency
+	}
+
+	switch setting.AutoSync.Frequency {
+	case AutoSyncFrequencyOneHour, AutoSyncFrequencySixHours, AutoSyncFrequencyOneDay:
+	default:
+		setting.AutoSync.Frequency = defaultChannelSetting.AutoSync.Frequency
 	}
 
 	return &setting, nil

@@ -310,6 +310,10 @@ type ComplexityRoot struct {
 		ModelID   func(childComplexity int) int
 	}
 
+	ChannelModelAutoSyncSetting struct {
+		Frequency func(childComplexity int) int
+	}
+
 	ChannelModelEntry struct {
 		ActualModel  func(childComplexity int) int
 		RequestModel func(childComplexity int) int
@@ -1359,7 +1363,8 @@ type ComplexityRoot struct {
 	}
 
 	SystemChannelSettings struct {
-		Probe func(childComplexity int) int
+		AutoSync func(childComplexity int) int
+		Probe    func(childComplexity int) int
 	}
 
 	SystemConnection struct {
@@ -2840,6 +2845,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelModelAssociation.ModelID(childComplexity), true
+
+	case "ChannelModelAutoSyncSetting.frequency":
+		if e.complexity.ChannelModelAutoSyncSetting.Frequency == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelAutoSyncSetting.Frequency(childComplexity), true
 
 	case "ChannelModelEntry.actualModel":
 		if e.complexity.ChannelModelEntry.ActualModel == nil {
@@ -7711,6 +7723,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.System.Value(childComplexity), true
 
+	case "SystemChannelSettings.autoSync":
+		if e.complexity.SystemChannelSettings.AutoSync == nil {
+			break
+		}
+
+		return e.complexity.SystemChannelSettings.AutoSync(childComplexity), true
 	case "SystemChannelSettings.probe":
 		if e.complexity.SystemChannelSettings.Probe == nil {
 			break
@@ -9166,6 +9184,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateAutoBackupSettingsInput,
 		ec.unmarshalInputUpdateBrandSettingsInput,
 		ec.unmarshalInputUpdateChannelInput,
+		ec.unmarshalInputUpdateChannelModelAutoSyncSettingInput,
 		ec.unmarshalInputUpdateChannelOverrideTemplateInput,
 		ec.unmarshalInputUpdateChannelProbeSettingInput,
 		ec.unmarshalInputUpdateDataStorageInput,
@@ -16503,6 +16522,35 @@ func (ec *executionContext) fieldContext_ChannelModelAssociation_modelId(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelModelAutoSyncSetting_frequency(ctx context.Context, field graphql.CollectedField, obj *biz.ChannelModelAutoSyncSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelAutoSyncSetting_frequency,
+		func(ctx context.Context) (any, error) {
+			return obj.Frequency, nil
+		},
+		nil,
+		ec.marshalNAutoSyncFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoSyncFrequency,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelAutoSyncSetting_frequency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelAutoSyncSetting",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type AutoSyncFrequency does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35399,6 +35447,8 @@ func (ec *executionContext) fieldContext_Query_systemChannelSettings(_ context.C
 			switch field.Name {
 			case "probe":
 				return ec.fieldContext_SystemChannelSettings_probe(ctx, field)
+			case "autoSync":
+				return ec.fieldContext_SystemChannelSettings_autoSync(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SystemChannelSettings", field.Name)
 		},
@@ -41446,6 +41496,39 @@ func (ec *executionContext) fieldContext_SystemChannelSettings_probe(_ context.C
 				return ec.fieldContext_ChannelProbeSetting_frequency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelProbeSetting", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SystemChannelSettings_autoSync(ctx context.Context, field graphql.CollectedField, obj *biz.SystemChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SystemChannelSettings_autoSync,
+		func(ctx context.Context) (any, error) {
+			return obj.AutoSync, nil
+		},
+		nil,
+		ec.marshalNChannelModelAutoSyncSetting2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelModelAutoSyncSetting,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SystemChannelSettings_autoSync(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SystemChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "frequency":
+				return ec.fieldContext_ChannelModelAutoSyncSetting_frequency(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelAutoSyncSetting", field.Name)
 		},
 	}
 	return fc, nil
@@ -67287,6 +67370,33 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateChannelModelAutoSyncSettingInput(ctx context.Context, obj any) (biz.ChannelModelAutoSyncSetting, error) {
+	var it biz.ChannelModelAutoSyncSetting
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"frequency"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "frequency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("frequency"))
+			data, err := ec.unmarshalNAutoSyncFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoSyncFrequency(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Frequency = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateChannelOverrideTemplateInput(ctx context.Context, obj any) (ent.UpdateChannelOverrideTemplateInput, error) {
 	var it ent.UpdateChannelOverrideTemplateInput
 	asMap := map[string]any{}
@@ -68320,7 +68430,7 @@ func (ec *executionContext) unmarshalInputUpdateSystemChannelSettingsInput(ctx c
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"probe"}
+	fieldsInOrder := [...]string{"probe", "autoSync"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68334,6 +68444,13 @@ func (ec *executionContext) unmarshalInputUpdateSystemChannelSettingsInput(ctx c
 				return it, err
 			}
 			it.Probe = data
+		case "autoSync":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoSync"))
+			data, err := ec.unmarshalOUpdateChannelModelAutoSyncSettingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelModelAutoSyncSetting(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AutoSync = data
 		}
 	}
 
@@ -74314,6 +74431,45 @@ func (ec *executionContext) _ChannelModelAssociation(ctx context.Context, sel as
 			}
 		case "modelId":
 			out.Values[i] = ec._ChannelModelAssociation_modelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelModelAutoSyncSettingImplementors = []string{"ChannelModelAutoSyncSetting"}
+
+func (ec *executionContext) _ChannelModelAutoSyncSetting(ctx context.Context, sel ast.SelectionSet, obj *biz.ChannelModelAutoSyncSetting) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelModelAutoSyncSettingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelModelAutoSyncSetting")
+		case "frequency":
+			out.Values[i] = ec._ChannelModelAutoSyncSetting_frequency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -84988,6 +85144,11 @@ func (ec *executionContext) _SystemChannelSettings(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "autoSync":
+			out.Values[i] = ec._SystemChannelSettings_autoSync(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -89247,6 +89408,16 @@ func (ec *executionContext) unmarshalNAutoDisableChannelStatusInput2githubᚗcom
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNAutoSyncFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoSyncFrequency(ctx context.Context, v any) (biz.AutoSyncFrequency, error) {
+	var res biz.AutoSyncFrequency
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAutoSyncFrequency2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoSyncFrequency(ctx context.Context, sel ast.SelectionSet, v biz.AutoSyncFrequency) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNBackupConflictStrategy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbackupᚐConflictStrategy(ctx context.Context, v any) (backup.ConflictStrategy, error) {
 	tmp, err := graphql.UnmarshalString(v)
 	res := backup.ConflictStrategy(tmp)
@@ -89468,6 +89639,10 @@ func (ec *executionContext) marshalNChannelConnection2ᚖgithubᚗcomᚋlooplj�
 func (ec *executionContext) unmarshalNChannelCredentialsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx context.Context, v any) (objects.ChannelCredentials, error) {
 	res, err := ec.unmarshalInputChannelCredentialsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNChannelModelAutoSyncSetting2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelModelAutoSyncSetting(ctx context.Context, sel ast.SelectionSet, v biz.ChannelModelAutoSyncSetting) graphql.Marshaler {
+	return ec._ChannelModelAutoSyncSetting(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNChannelModelEntry2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelModelEntry(ctx context.Context, sel ast.SelectionSet, v biz.ChannelModelEntry) graphql.Marshaler {
@@ -99087,6 +99262,11 @@ func (ec *executionContext) marshalOTransformOptions2githubᚗcomᚋloopljᚋaxo
 
 func (ec *executionContext) unmarshalOTransformOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTransformOptions(ctx context.Context, v any) (objects.TransformOptions, error) {
 	res, err := ec.unmarshalInputTransformOptionsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOUpdateChannelModelAutoSyncSettingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelModelAutoSyncSetting(ctx context.Context, v any) (biz.ChannelModelAutoSyncSetting, error) {
+	res, err := ec.unmarshalInputUpdateChannelModelAutoSyncSettingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
