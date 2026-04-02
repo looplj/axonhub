@@ -1039,6 +1039,7 @@ export function useTriggerAutoBackup() {
 const PROXY_PRESETS_QUERY = `
   query ProxyPresets {
     proxyPresets {
+      name
       url
       username
       password
@@ -1059,12 +1060,14 @@ const DELETE_PROXY_PRESET_MUTATION = `
 `;
 
 export interface ProxyPreset {
+  name?: string;
   url: string;
   username?: string;
   password?: string;
 }
 
 export interface SaveProxyPresetInput {
+  name?: string;
   url: string;
   username?: string;
   password?: string;

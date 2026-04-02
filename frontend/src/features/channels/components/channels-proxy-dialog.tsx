@@ -111,9 +111,15 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
         },
       });
       toast.success(t('channels.messages.updateSuccess'));
-      // Auto-save to proxy presets
+      // Auto-save to proxy presets (preserve existing name if available)
       if (values.type === ProxyType.URL && values.url) {
-        saveProxyPreset.mutate({ url: values.url, username: values.username || undefined, password: values.password || undefined });
+        const existingPreset = proxyPresets.find((p) => p.url === values.url);
+        saveProxyPreset.mutate({
+          name: existingPreset?.name,
+          url: values.url,
+          username: values.username || undefined,
+          password: values.password || undefined,
+        });
       }
       onOpenChange(false);
     } catch (_error) {
@@ -229,7 +235,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
                         <SelectContent>
                           {proxyPresets.map((preset) => (
                             <SelectItem key={preset.url} value={preset.url}>
-                              {preset.url}
+                              {preset.name || preset.url}
                             </SelectItem>
                           ))}
                         </SelectContent>

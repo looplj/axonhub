@@ -219,12 +219,14 @@ input UpdateUserAgentPassThroughSettingsInput {
 
 
 type ProxyPreset {
+  name: String
   url: String!
   username: String
   password: String
 }
 
 input SaveProxyPresetInput {
+  name: String
   url: String!
   username: String
   password: String

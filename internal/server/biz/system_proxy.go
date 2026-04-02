@@ -16,6 +16,7 @@ const (
 
 // ProxyPreset represents a proxy configuration preset.
 type ProxyPreset struct {
+	Name     string `json:"name,omitempty"`
 	URL      string `json:"url"`
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
