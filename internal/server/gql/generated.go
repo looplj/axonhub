@@ -124,13 +124,14 @@ type ComplexityRoot struct {
 	}
 
 	APIKeyProfile struct {
-		ChannelIDs          func(childComplexity int) int
-		ChannelTags         func(childComplexity int) int
-		LoadBalanceStrategy func(childComplexity int) int
-		ModelIDs            func(childComplexity int) int
-		ModelMappings       func(childComplexity int) int
-		Name                func(childComplexity int) int
-		Quota               func(childComplexity int) int
+		ChannelIDs           func(childComplexity int) int
+		ChannelTags          func(childComplexity int) int
+		ChannelTagsMatchMode func(childComplexity int) int
+		LoadBalanceStrategy  func(childComplexity int) int
+		ModelIDs             func(childComplexity int) int
+		ModelMappings        func(childComplexity int) int
+		Name                 func(childComplexity int) int
+		Quota                func(childComplexity int) int
 	}
 
 	APIKeyProfileQuotaUsage struct {
@@ -2157,6 +2158,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIKeyProfile.ChannelTags(childComplexity), true
+	case "APIKeyProfile.channelTagsMatchMode":
+		if e.complexity.APIKeyProfile.ChannelTagsMatchMode == nil {
+			break
+		}
+
+		return e.complexity.APIKeyProfile.ChannelTagsMatchMode(childComplexity), true
 	case "APIKeyProfile.loadBalanceStrategy":
 		if e.complexity.APIKeyProfile.LoadBalanceStrategy == nil {
 			break
@@ -12924,6 +12931,35 @@ func (ec *executionContext) fieldContext_APIKeyProfile_channelTags(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKeyProfile_channelTagsMatchMode(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyProfile_channelTagsMatchMode,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelTagsMatchMode, nil
+		},
+		nil,
+		ec.marshalOAPIKeyMatchMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyMatchMode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyProfile_channelTagsMatchMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyProfile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type APIKeyMatchMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APIKeyProfile_modelIDs(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyProfile) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13222,6 +13258,8 @@ func (ec *executionContext) fieldContext_APIKeyProfiles_profiles(_ context.Conte
 				return ec.fieldContext_APIKeyProfile_channelIDs(ctx, field)
 			case "channelTags":
 				return ec.fieldContext_APIKeyProfile_channelTags(ctx, field)
+			case "channelTagsMatchMode":
+				return ec.fieldContext_APIKeyProfile_channelTagsMatchMode(ctx, field)
 			case "modelIDs":
 				return ec.fieldContext_APIKeyProfile_modelIDs(ctx, field)
 			case "quota":
@@ -49803,7 +49841,7 @@ func (ec *executionContext) unmarshalInputAPIKeyProfileInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "modelMappings", "channelIDs", "channelTags", "modelIDs", "quota", "loadBalanceStrategy"}
+	fieldsInOrder := [...]string{"name", "modelMappings", "channelIDs", "channelTags", "channelTagsMatchMode", "modelIDs", "quota", "loadBalanceStrategy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -49838,6 +49876,13 @@ func (ec *executionContext) unmarshalInputAPIKeyProfileInput(ctx context.Context
 				return it, err
 			}
 			it.ChannelTags = data
+		case "channelTagsMatchMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelTagsMatchMode"))
+			data, err := ec.unmarshalOAPIKeyMatchMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyMatchMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelTagsMatchMode = data
 		case "modelIDs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIDs"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -72673,6 +72718,8 @@ func (ec *executionContext) _APIKeyProfile(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._APIKeyProfile_channelIDs(ctx, field, obj)
 		case "channelTags":
 			out.Values[i] = ec._APIKeyProfile_channelTags(ctx, field, obj)
+		case "channelTagsMatchMode":
+			out.Values[i] = ec._APIKeyProfile_channelTagsMatchMode(ctx, field, obj)
 		case "modelIDs":
 			out.Values[i] = ec._APIKeyProfile_modelIDs(ctx, field, obj)
 		case "quota":
@@ -94110,6 +94157,19 @@ func (ec *executionContext) marshalOAPIKeyEdge2ᚖgithubᚗcomᚋloopljᚋaxonhu
 		return graphql.Null
 	}
 	return ec._APIKeyEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAPIKeyMatchMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyMatchMode(ctx context.Context, v any) (objects.APIKeyMatchMode, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.APIKeyMatchMode(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAPIKeyMatchMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyMatchMode(ctx context.Context, sel ast.SelectionSet, v objects.APIKeyMatchMode) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(v))
+	return res
 }
 
 func (ec *executionContext) unmarshalOAPIKeyOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyOrder(ctx context.Context, v any) (*ent.APIKeyOrder, error) {

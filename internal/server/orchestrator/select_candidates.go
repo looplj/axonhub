@@ -30,7 +30,7 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 			}
 
 			if len(profile.ChannelTags) > 0 {
-				selector = WithTagsFilterSelector(selector, profile.ChannelTags)
+				selector = WithTagsFilterSelector(selector, profile)
 			}
 		}
 

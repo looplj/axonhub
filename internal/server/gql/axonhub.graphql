@@ -253,6 +253,7 @@ input APIKeyProfileInput {
   modelMappings: [ModelMappingInput!]
   channelIDs: [Int!]
   channelTags: [String!]
+  channelTagsMatchMode: APIKeyMatchMode
   modelIDs: [String!]
   quota: APIKeyQuotaInput
   loadBalanceStrategy: String
@@ -272,9 +273,15 @@ type APIKeyProfile {
   modelMappings: [ModelMapping!]
   channelIDs: [Int!]
   channelTags: [String!]
+  channelTagsMatchMode: APIKeyMatchMode
   modelIDs: [String!]
   quota: APIKeyQuota
   loadBalanceStrategy: String
+}
+
+enum APIKeyMatchMode {
+  any
+  all
 }
 
 input APIKeyQuotaInput {
