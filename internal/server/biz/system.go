@@ -270,7 +270,7 @@ func (a *AutoSyncFrequency) UnmarshalGQL(v any) error {
 
 func (a *AutoSyncFrequency) UnmarshalJSON(data []byte) error {
 	var raw string
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if json.Unmarshal(data, &raw) != nil {
 		*a = AutoSyncFrequencyOneHour
 		return nil
 	}
