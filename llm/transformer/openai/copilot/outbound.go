@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,10 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/tidwall/gjson"
 )
+
+// modelVersionRegex matches GPT model versions (e.g., "gpt-5", "gpt-6")
+// Compiled once at package initialization for efficiency.
+var modelVersionRegex = regexp.MustCompile(`^gpt-(\d+)`)
 
 const (
 	// DefaultCopilotBaseURL is the base URL for GitHub Copilot API.
@@ -36,10 +41,11 @@ const (
 	CopilotVisionRequestHeader     = "Copilot-Vision-Request"
 	InitiatorHeader                = "X-Initiator"
 	// Default editor header values (VSCode pattern) - from LiteLLM
-	DefaultEditorVersion        = "vscode/1.95.0"
-	DefaultEditorPluginVersion  = "copilot-chat/0.26.7"
-	DefaultUserAgent            = "GitHubCopilotChat/0.26.7"
-	DefaultOpenAIIntent         = "conversation-panel"
+	DefaultEditorVersion       = "vscode/1.95.0"
+	DefaultEditorPluginVersion = "copilot-chat/0.26.7"
+	DefaultUserAgent           = "GitHubCopilotChat/0.26.7"
+	// DefaultOpenAIIntent is used for proper quota aggregation (matches OpenCode behavior).
+	DefaultOpenAIIntent         = "conversation-edits"
 	DefaultCopilotIntegrationID = "vscode-chat"
 	DefaultGitHubAPIVersion     = "2025-04-01"
 	DefaultVSCodeUserAgentLib   = "electron-fetch"
@@ -160,11 +166,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// Forward X-Initiator from inbound request for Copilot billing control.
+	// Default to "agent" if not provided to match OpenCode behavior.
+	initiator := "agent"
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		if initiator := llmReq.RawRequest.Headers.Get(InitiatorHeader); initiator != "" {
-			headers.Set(InitiatorHeader, initiator)
+		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
+			initiator = val
 		}
 	}
+	headers.Set(InitiatorHeader, initiator)
 
 	// Build authentication config.
 	authConfig := &httpclient.AuthConfig{
@@ -585,58 +594,36 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 	}
 
 	// Forward X-Initiator from inbound request for Copilot billing control.
+	// Default to "agent" if not provided to match OpenCode behavior.
+	initiator := "agent"
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		if initiator := llmReq.RawRequest.Headers.Get(InitiatorHeader); initiator != "" {
-			responsesReq.Headers.Set(InitiatorHeader, initiator)
+		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
+			initiator = val
 		}
 	}
+	responsesReq.Headers.Set(InitiatorHeader, initiator)
 
 	return responsesReq, nil
 }
 
 // usesResponsesAPI checks if the model uses the responses API.
+// GPT-5+ (except gpt-5-mini) uses /responses, everything else uses /chat/completions.
 func usesResponsesAPI(model string) bool {
 	normalizedModel := strings.ToLower(model)
 
-	if strings.Contains(normalizedModel, "codex") {
-		return true
-	}
-
-	if !strings.HasPrefix(normalizedModel, "gpt-") {
+	// Use package-level compiled regex
+	match := modelVersionRegex.FindStringSubmatch(normalizedModel)
+	if match == nil {
 		return false
 	}
 
-	version, _, _ := strings.Cut(strings.TrimPrefix(normalizedModel, "gpt-"), "-")
-	major, minor, ok := parseModelVersion(version)
-	if !ok {
+	major, err := strconv.Atoi(match[1])
+	if err != nil {
 		return false
 	}
 
-	return major > 5 || (major == 5 && minor >= 4)
-}
-
-// parseModelVersion parses a model version string into major and minor components.
-func parseModelVersion(version string) (major int, minor int, ok bool) {
-	parts := strings.Split(version, ".")
-	if len(parts) == 0 || parts[0] == "" {
-		return 0, 0, false
-	}
-
-	major, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return 0, 0, false
-	}
-
-	if len(parts) == 1 || parts[1] == "" {
-		return major, 0, true
-	}
-
-	minor, err = strconv.Atoi(parts[1])
-	if err != nil {
-		return 0, 0, false
-	}
-
-	return major, minor, true
+	// Match OpenCode's pattern: GPT-5+ uses responses API (except gpt-5-mini)
+	return major >= 5 && !strings.HasPrefix(normalizedModel, "gpt-5-mini")
 }
 
 // prependedStream is a stream that yields a first event before forwarding to the upstream stream.
