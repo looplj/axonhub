@@ -3,7 +3,8 @@
 	e2e-test e2e-backend-start e2e-backend-stop e2e-backend-status e2e-backend-restart e2e-backend-clean \
 	migration-test migration-test-all migration-test-all-dbs \
 	sync-faq sync-models filter-logs \
-	lint lint-privacy
+	lint lint-privacy \
+	generate-schema
 
 # Generate GraphQL and Ent code
 generate:
@@ -138,6 +139,12 @@ filter-logs:
 	@./scripts/utils/filter-load-balance-logs.sh
 
 # --- Linting ---
+
+# Generate JSON schema for configuration
+generate-schema:
+	@echo "Generating JSON schema for configuration..."
+	@cd cmd/schema && go run . > ../../config.schema.json
+	@echo "JSON schema generated at config.schema.json"
 
 # Run all lint checks
 lint: lint-privacy
