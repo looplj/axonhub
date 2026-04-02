@@ -30,7 +30,7 @@ func main() {
 		if t == reflect.TypeOf(time.Duration(0)) {
 			return &jsonschema.Schema{
 				Type:    "string",
-				Pattern: `^[0-9]+(h|m|s|ms|us|ns)$`,
+				Pattern: `^[+-]?(0|([0-9]+(\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$/,
 			}
 		}
 		if t == reflect.TypeOf(zapcore.InfoLevel) {
