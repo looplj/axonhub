@@ -1023,6 +1023,7 @@ type ComplexityRoot struct {
 	}
 
 	ProxyPreset struct {
+		Name     func(childComplexity int) int
 		Password func(childComplexity int) int
 		URL      func(childComplexity int) int
 		Username func(childComplexity int) int
@@ -6112,6 +6113,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ProxyConfig.Username(childComplexity), true
 
+	case "ProxyPreset.name":
+		if e.complexity.ProxyPreset.Name == nil {
+			break
+		}
+
+		return e.complexity.ProxyPreset.Name(childComplexity), true
 	case "ProxyPreset.password":
 		if e.complexity.ProxyPreset.Password == nil {
 			break
@@ -32879,6 +32886,35 @@ func (ec *executionContext) fieldContext_ProxyConfig_password(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _ProxyPreset_name(ctx context.Context, field graphql.CollectedField, obj *biz.ProxyPreset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProxyPreset_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProxyPreset_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProxyPreset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProxyPreset_url(ctx context.Context, field graphql.CollectedField, obj *biz.ProxyPreset) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -35554,6 +35590,8 @@ func (ec *executionContext) fieldContext_Query_proxyPresets(_ context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "name":
+				return ec.fieldContext_ProxyPreset_name(ctx, field)
 			case "url":
 				return ec.fieldContext_ProxyPreset_url(ctx, field)
 			case "username":
@@ -65307,13 +65345,20 @@ func (ec *executionContext) unmarshalInputSaveProxyPresetInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"url", "username", "password"}
+	fieldsInOrder := [...]string{"name", "url", "username", "password"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
 		case "url":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -80806,6 +80851,8 @@ func (ec *executionContext) _ProxyPreset(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ProxyPreset")
+		case "name":
+			out.Values[i] = ec._ProxyPreset_name(ctx, field, obj)
 		case "url":
 			out.Values[i] = ec._ProxyPreset_url(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
