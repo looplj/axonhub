@@ -152,13 +152,24 @@ enum ProbeFrequency {
   ONE_HOUR
 }
 
+enum AutoSyncFrequency {
+  ONE_HOUR
+  SIX_HOURS
+  ONE_DAY
+}
+
 type ChannelProbeSetting {
   enabled: Boolean!
   frequency: ProbeFrequency!
 }
 
+type ChannelModelAutoSyncSetting {
+  frequency: AutoSyncFrequency!
+}
+
 type SystemChannelSettings {
   probe: ChannelProbeSetting!
+  autoSync: ChannelModelAutoSyncSetting!
 }
 
 input UpdateChannelProbeSettingInput {
@@ -166,8 +177,13 @@ input UpdateChannelProbeSettingInput {
   frequency: ProbeFrequency!
 }
 
+input UpdateChannelModelAutoSyncSettingInput {
+  frequency: AutoSyncFrequency!
+}
+
 input UpdateSystemChannelSettingsInput {
   probe: UpdateChannelProbeSettingInput
+  autoSync: UpdateChannelModelAutoSyncSettingInput
 }
 
 type SystemGeneralSettings {
@@ -203,12 +219,14 @@ input UpdateUserAgentPassThroughSettingsInput {
 
 
 type ProxyPreset {
+  name: String
   url: String!
   username: String
   password: String
 }
 
 input SaveProxyPresetInput {
+  name: String
   url: String!
   username: String
   password: String

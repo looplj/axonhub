@@ -413,7 +413,7 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 
 		if profile != nil && len(profile.ChannelTags) > 0 {
 			channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
-				return len(lo.Intersect(profile.ChannelTags, ch.Tags)) > 0
+				return profile.MatchChannelTags(ch.Tags)
 			})
 		}
 	}

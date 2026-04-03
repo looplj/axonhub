@@ -8,6 +8,7 @@ before:
   hooks:
     - /bin/sh -c 'cd deploy && chmod +x *.sh'
     - make build-frontend
+    - make generate-schema
     - go mod tidy
 
 builds:
@@ -55,6 +56,8 @@ builds:
 
 release:
   draft: true
+  extra_files:
+    - glob: ./config.schema.json
 
 archives:
   - id: archive

@@ -3,10 +3,12 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -24,17 +26,17 @@ import (
 type OpenAIHandlersParams struct {
 	fx.In
 
-	VideoService    *biz.VideoService
-	ChannelService  *biz.ChannelService
-	ModelService    *biz.ModelService
-	RequestService  *biz.RequestService
-	SystemService   *biz.SystemService
-	UsageLogService *biz.UsageLogService
-	PromptService   *biz.PromptService
+	VideoService                *biz.VideoService
+	ChannelService              *biz.ChannelService
+	ModelService                *biz.ModelService
+	RequestService              *biz.RequestService
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
-	QuotaService    *biz.QuotaService
-	HttpClient      *httpclient.HttpClient
-	Client          *ent.Client
+	QuotaService                *biz.QuotaService
+	HttpClient                  *httpclient.HttpClient
+	Client                      *ent.Client
 }
 
 type OpenAIHandlers struct {
@@ -323,7 +325,57 @@ type OpenAIModel struct {
 	Type            string        `json:"type,omitempty"`
 }
 
-// ListModels returns all available models.
+const (
+	openAIModelObjectType         = "model"
+	openAIErrorCodeInternalServer = "internal_server_error"
+	openAIErrorCodeModelNotFound  = "model_not_found"
+	openAIErrorTypeServer         = "server_error"
+	openAIErrorTypeInvalidRequest = "invalid_request_error"
+	openAIErrorParamModel         = "model"
+)
+
+func parseOpenAIModelInclude(includeParam string) (map[string]bool, bool) {
+	var (
+		include      map[string]bool
+		needFullData bool
+	)
+
+	if includeParam == "" {
+		return nil, false
+	}
+
+	if includeParam == "all" {
+		return nil, true
+	}
+
+	fields := strings.Split(includeParam, ",")
+	include = make(map[string]bool)
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		if field != "" {
+			include[field] = true
+		}
+	}
+
+	extendedFields := []string{"name", "description", "context_length", "max_output_tokens", "capabilities", "pricing", "icon", "type"}
+	for _, field := range extendedFields {
+		if include[field] {
+			needFullData = true
+			break
+		}
+	}
+
+	return include, needFullData
+}
+
+func convertModelFacadeToOpenAIModel(m biz.ModelFacade) OpenAIModel {
+	return OpenAIModel{
+		ID:      m.ID,
+		Object:  openAIModelObjectType,
+		Created: m.Created,
+		OwnedBy: m.OwnedBy,
+	}
+}
 
 // convertModelToOpenAIExtended transforms an ent.Model to OpenAIModel with extended metadata fields.
 // It safely handles nil ModelCard, Cost, and Limit fields.
@@ -332,7 +384,7 @@ type OpenAIModel struct {
 func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIModel {
 	result := OpenAIModel{
 		ID:      m.ModelID,
-		Object:  "model",
+		Object:  openAIModelObjectType,
 		Created: m.CreatedAt.Unix(),
 		OwnedBy: m.Developer,
 	}
@@ -394,6 +446,88 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 	return result
 }
 
+func (handlers *OpenAIHandlers) writeOpenAIInternalError(c *gin.Context, requestID string, err error) {
+	c.JSON(http.StatusInternalServerError, openai.OpenAIError{
+		StatusCode: http.StatusInternalServerError,
+		Detail: llm.ErrorDetail{
+			Code:      openAIErrorCodeInternalServer,
+			Message:   err.Error(),
+			Type:      openAIErrorTypeServer,
+			RequestID: requestID,
+		},
+	})
+}
+
+func (handlers *OpenAIHandlers) writeOpenAIModelNotFoundError(c *gin.Context, requestID, modelID string) {
+	message := "The model does not exist or you do not have access to it."
+	if modelID != "" {
+		message = fmt.Sprintf("The model `%s` does not exist or you do not have access to it.", modelID)
+	}
+
+	c.JSON(http.StatusNotFound, openai.OpenAIError{
+		StatusCode: http.StatusNotFound,
+		Detail: llm.ErrorDetail{
+			Code:      openAIErrorCodeModelNotFound,
+			Message:   message,
+			Type:      openAIErrorTypeInvalidRequest,
+			Param:     openAIErrorParamModel,
+			RequestID: requestID,
+		},
+	})
+}
+
+// RetrieveModel returns a single available model.
+// This endpoint is compatible with OpenAI's /v1/models/{model} API.
+func (handlers *OpenAIHandlers) RetrieveModel(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	requestID, _ := contexts.GetRequestID(ctx)
+	modelID := strings.TrimPrefix(c.Param("model"), "/")
+	if modelID == "" {
+		handlers.writeOpenAIModelNotFoundError(c, requestID, "")
+		return
+	}
+
+	include, needFullData := parseOpenAIModelInclude(c.Query("include"))
+
+	models, err := handlers.ModelService.ListEnabledModels(ctx)
+	if err != nil {
+		handlers.writeOpenAIInternalError(c, requestID, err)
+		return
+	}
+
+	visibleModel, found := lo.Find(models, func(m biz.ModelFacade) bool {
+		return m.ID == modelID
+	})
+	if !found {
+		handlers.writeOpenAIModelNotFoundError(c, requestID, modelID)
+		return
+	}
+
+	if !needFullData {
+		c.JSON(http.StatusOK, convertModelFacadeToOpenAIModel(visibleModel))
+		return
+	}
+
+	configuredModel, err := handlers.EntClient.Model.Query().
+		Where(
+			model.ModelID(modelID),
+			model.StatusEQ(model.StatusEnabled),
+		).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			c.JSON(http.StatusOK, convertModelFacadeToOpenAIModel(visibleModel))
+			return
+		}
+
+		handlers.writeOpenAIInternalError(c, requestID, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, convertModelToOpenAIExtended(configuredModel, include))
+}
+
 // ListModels returns all available models.
 // This endpoint is compatible with OpenAI's /v1/models API.
 // It uses QueryAllChannelModels setting from system config to determine model source.
@@ -402,37 +536,7 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 
 	requestID, _ := contexts.GetRequestID(ctx)
 
-	// Parse include query parameter (replaces old 'extended' parameter)
-	includeParam := c.Query("include")
-	var include map[string]bool
-	var needFullData bool
-
-	if includeParam == "" {
-		// No include parameter: backward compatible - basic fields only
-		needFullData = false
-	} else if includeParam == "all" {
-		// "all" means include all fields
-		needFullData = true
-		include = nil // nil means all fields in convertModelToOpenAIExtended
-	} else {
-		// Parse comma-separated list of field names
-		fields := strings.Split(includeParam, ",")
-		include = make(map[string]bool)
-		for _, field := range fields {
-			field = strings.TrimSpace(field)
-			if field != "" {
-				include[field] = true
-			}
-		}
-		// Check if any extended fields are requested
-		extendedFields := []string{"name", "description", "context_length", "max_output_tokens", "capabilities", "pricing", "icon", "type"}
-		for _, field := range extendedFields {
-			if include[field] {
-				needFullData = true
-				break
-			}
-		}
-	}
+	include, needFullData := parseOpenAIModelInclude(c.Query("include"))
 
 	var openaiModels []OpenAIModel
 	if needFullData {
@@ -441,15 +545,7 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 			Where(model.StatusEQ(model.StatusEnabled)).
 			All(ctx)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, openai.OpenAIError{
-				StatusCode: http.StatusInternalServerError,
-				Detail: llm.ErrorDetail{
-					Code:      "internal_server_error",
-					Message:   err.Error(),
-					Type:      "server_error",
-					RequestID: requestID,
-				},
-			})
+			handlers.writeOpenAIInternalError(c, requestID, err)
 			return
 		}
 
@@ -461,26 +557,13 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 		// Basic mode: only return basic fields (backward compatible)
 		models, err := handlers.ModelService.ListEnabledModels(ctx)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, openai.OpenAIError{
-				StatusCode: http.StatusInternalServerError,
-				Detail: llm.ErrorDetail{
-					Code:      "internal_server_error",
-					Message:   err.Error(),
-					Type:      "server_error",
-					RequestID: requestID,
-				},
-			})
+			handlers.writeOpenAIInternalError(c, requestID, err)
 			return
 		}
 
 		openaiModels = make([]OpenAIModel, 0, len(models))
 		for _, m := range models {
-			openaiModels = append(openaiModels, OpenAIModel{
-				ID:      m.ID,
-				Object:  "model",
-				Created: m.Created,
-				OwnedBy: m.OwnedBy,
-			})
+			openaiModels = append(openaiModels, convertModelFacadeToOpenAIModel(m))
 		}
 	}
 

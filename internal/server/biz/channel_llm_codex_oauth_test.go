@@ -64,7 +64,7 @@ func TestCodexRefreshPersistsChannelCredentials(t *testing.T) {
 	req := &llm.Request{
 		Model: "gpt-4o-mini",
 		Messages: []llm.Message{
-			{Role: "user", Content: llm.MessageContent{Content: loPtr("hi")}},
+			{Role: "user", Content: llm.MessageContent{Content: new("hi")}},
 		},
 	}
 
@@ -83,10 +83,6 @@ func TestCodexRefreshPersistsChannelCredentials(t *testing.T) {
 	require.Equal(t, "new-refresh", reloaded.Credentials.OAuth.RefreshToken)
 	require.False(t, reloaded.Credentials.OAuth.ExpiresAt.IsZero())
 	require.Equal(t, "new-access", extractAccessTokenFromAPIKeyJSON(t, reloaded.Credentials.APIKey))
-}
-
-func loPtr(s string) *string {
-	return &s
 }
 
 func extractAccessTokenFromAPIKeyJSON(t *testing.T, raw string) string {

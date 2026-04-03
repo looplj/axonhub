@@ -955,9 +955,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           settings: nextSettings,
         } as z.infer<typeof createChannelInputSchema>);
 
-        // Auto-save proxy preset
+        // Auto-save proxy preset (preserve existing name if available)
         if (proxyType === ProxyType.URL && proxyUrl) {
-          saveProxyPreset.mutate({ url: proxyUrl, username: proxyUsername || undefined, password: proxyPassword || undefined });
+          const existingPreset = proxyPresets.find((p) => p.url === proxyUrl);
+          saveProxyPreset.mutate({
+            name: existingPreset?.name,
+            url: proxyUrl,
+            username: proxyUsername || undefined,
+            password: proxyPassword || undefined,
+          });
         }
       }
 
@@ -1659,7 +1665,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   <SelectContent>
                                     {proxyPresets.map((preset) => (
                                       <SelectItem key={preset.url} value={preset.url}>
-                                        {preset.url}
+                                        {preset.name || preset.url}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>

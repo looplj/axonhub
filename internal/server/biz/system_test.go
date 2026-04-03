@@ -245,6 +245,115 @@ func TestSystemService_StoragePolicy(t *testing.T) {
 	require.True(t, storeChunks)
 }
 
+func TestSystemService_ChannelSetting_DefaultModelAutoSyncFrequency(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	setting, err := service.ChannelSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, AutoSyncFrequencyOneHour, setting.AutoSync.Frequency)
+}
+
+func TestSystemService_SetChannelSetting_PersistsModelAutoSyncFrequency(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	setting := SystemChannelSettings{
+		Probe: ChannelProbeSetting{
+			Enabled:   true,
+			Frequency: ProbeFrequency5Min,
+		},
+		AutoSync: ChannelModelAutoSyncSetting{
+			Frequency: AutoSyncFrequencySixHours,
+		},
+	}
+
+	err := service.SetChannelSetting(ctx, setting)
+	require.NoError(t, err)
+
+	retrievedSetting, err := service.ChannelSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, AutoSyncFrequencySixHours, retrievedSetting.AutoSync.Frequency)
+}
+
+func TestSystemService_ChannelSetting_BackfillsLegacyModelAutoSyncFrequency(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	legacySetting := map[string]any{
+		"probe": map[string]any{
+			"enabled":   true,
+			"frequency": ProbeFrequency5Min,
+		},
+	}
+
+	legacyJSON, err := json.Marshal(legacySetting)
+	require.NoError(t, err)
+
+	_, err = client.System.Create().
+		SetKey(SystemKeyChannelSettings).
+		SetValue(string(legacyJSON)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	setting, err := service.ChannelSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, AutoSyncFrequencyOneHour, setting.AutoSync.Frequency)
+	require.Equal(t, ProbeFrequency5Min, setting.Probe.Frequency)
+}
+
+func TestSystemService_ChannelSetting_NormalizesLegacyAutoSyncFrequency(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	legacySetting := map[string]any{
+		"probe": map[string]any{
+			"enabled":   true,
+			"frequency": ProbeFrequency5Min,
+		},
+		"auto_sync": map[string]any{
+			"frequency": "5m",
+		},
+	}
+
+	legacyJSON, err := json.Marshal(legacySetting)
+	require.NoError(t, err)
+
+	_, err = client.System.Create().
+		SetKey(SystemKeyChannelSettings).
+		SetValue(string(legacyJSON)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	setting, err := service.ChannelSetting(ctx)
+	require.NoError(t, err)
+	require.Equal(t, AutoSyncFrequencyOneHour, setting.AutoSync.Frequency)
+}
+
 func TestSystemService_Initialize_WithCache(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()
@@ -749,7 +858,6 @@ func TestSystemService_Initialize_TransactionRollback(t *testing.T) {
 	require.Equal(t, 0, dsCount)
 }
 
-
 // TestSystemService_UserAgentPassThrough tests the User-Agent pass-through setting.
 // This table-driven test covers: default value, set true/false, round-trip, cache behavior, and database errors.
 func TestSystemService_UserAgentPassThrough(t *testing.T) {
@@ -810,9 +918,9 @@ func TestSystemService_UserAgentPassThrough(t *testing.T) {
 			},
 			want: true,
 		},
-}
+	}
 
-for _, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			service, client := setupTestSystemService(t, tt.setupCache)
 			defer client.Close()
@@ -831,6 +939,7 @@ for _, tt := range tests {
 
 			if tt.wantErr {
 				require.Error(t, err)
+
 				if tt.errContains != "" {
 					require.Contains(t, err.Error(), tt.errContains)
 				}

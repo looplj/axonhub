@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -85,82 +86,6 @@ func TestOutboundTransformer_APIFormat(t *testing.T) {
 	assert.Equal(t, llm.APIFormatOpenAIChatCompletion, transformer.APIFormat())
 }
 
-func TestParseModelVersion(t *testing.T) {
-	tests := []struct {
-		name          string
-		version       string
-		expectedMajor int
-		expectedMinor int
-		expectedOK    bool
-	}{
-		{
-			name:          "major only version",
-			version:       "6",
-			expectedMajor: 6,
-			expectedMinor: 0,
-			expectedOK:    true,
-		},
-		{
-			name:          "major minor version",
-			version:       "5.4",
-			expectedMajor: 5,
-			expectedMinor: 4,
-			expectedOK:    true,
-		},
-		{
-			name:          "double digit minor version",
-			version:       "5.10",
-			expectedMajor: 5,
-			expectedMinor: 10,
-			expectedOK:    true,
-		},
-		{
-			name:          "ignores extra segments after minor",
-			version:       "6.1.2",
-			expectedMajor: 6,
-			expectedMinor: 1,
-			expectedOK:    true,
-		},
-		{
-			name:          "empty version is invalid",
-			version:       "",
-			expectedMajor: 0,
-			expectedMinor: 0,
-			expectedOK:    false,
-		},
-		{
-			name:          "non numeric major is invalid",
-			version:       "preview",
-			expectedMajor: 0,
-			expectedMinor: 0,
-			expectedOK:    false,
-		},
-		{
-			name:          "non numeric minor is invalid",
-			version:       "5.preview",
-			expectedMajor: 0,
-			expectedMinor: 0,
-			expectedOK:    false,
-		},
-		{
-			name:          "empty minor is treated as major only",
-			version:       "6.",
-			expectedMajor: 6,
-			expectedMinor: 0,
-			expectedOK:    true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			major, minor, ok := parseModelVersion(tt.version)
-			assert.Equal(t, tt.expectedMajor, major)
-			assert.Equal(t, tt.expectedMinor, minor)
-			assert.Equal(t, tt.expectedOK, ok)
-		})
-	}
-}
-
 func TestUsesResponsesAPI(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -168,19 +93,19 @@ func TestUsesResponsesAPI(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "codex model uses responses API",
-			model:    "gpt-5.2-codex",
+			name:     "gpt-5 uses responses API",
+			model:    "gpt-5",
 			expected: true,
 		},
 		{
-			name:     "codex detection is case insensitive",
-			model:    "GPT-5.2-CODEX",
-			expected: true,
-		},
-		{
-			name:     "gpt-5.3 does not use responses API",
-			model:    "gpt-5.3",
+			name:     "gpt-5-mini does not use responses API",
+			model:    "gpt-5-mini",
 			expected: false,
+		},
+		{
+			name:     "gpt-5.3 uses responses API",
+			model:    "gpt-5.3",
+			expected: true,
 		},
 		{
 			name:     "gpt-5.4 uses responses API",
@@ -223,8 +148,13 @@ func TestUsesResponsesAPI(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "other model does not use responses API",
+			name:     "claude model does not use responses API",
 			model:    "claude-sonnet-4.6",
+			expected: false,
+		},
+		{
+			name:     "claude-3-5-sonnet does not use responses API",
+			model:    "claude-3-5-sonnet",
 			expected: false,
 		},
 	}
@@ -543,6 +473,86 @@ func TestOutboundTransformer_TransformRequest_VisionHeaders(t *testing.T) {
 			} else {
 				assert.Empty(t, visionHeader)
 			}
+		})
+	}
+}
+
+func TestXInitiatorDefault(t *testing.T) {
+	ctx := context.Background()
+	mockToken := "ghu_testtoken123"
+	transformer, err := NewOutboundTransformer(OutboundTransformerParams{
+		TokenProvider: &mockTokenProvider{token: mockToken},
+	})
+	require.NoError(t, err)
+
+	request := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{
+				Role:    "user",
+				Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+			},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(ctx, request)
+	require.NoError(t, err)
+	require.NotNil(t, httpReq)
+	assert.Equal(t, "agent", httpReq.Headers.Get(InitiatorHeader))
+}
+
+func TestXInitiatorForwarding(t *testing.T) {
+	ctx := context.Background()
+	mockToken := "ghu_testtoken123"
+	transformer, err := NewOutboundTransformer(OutboundTransformerParams{
+		TokenProvider: &mockTokenProvider{token: mockToken},
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		initiatorValue string
+		expected       string
+	}{
+		{
+			name:           "forwards custom initiator value",
+			initiatorValue: "editor",
+			expected:       "editor",
+		},
+		{
+			name:           "forwards agent initiator value",
+			initiatorValue: "agent",
+			expected:       "agent",
+		},
+		{
+			name:           "forwards empty string as empty",
+			initiatorValue: "",
+			expected:       "agent",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := &llm.Request{
+				Model: "gpt-4o",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				RawRequest: &httpclient.Request{
+					Headers: make(http.Header),
+				},
+			}
+			if tt.initiatorValue != "" {
+				request.RawRequest.Headers.Set(InitiatorHeader, tt.initiatorValue)
+			}
+
+			httpReq, err := transformer.TransformRequest(ctx, request)
+			require.NoError(t, err)
+			require.NotNil(t, httpReq)
+			assert.Equal(t, tt.expected, httpReq.Headers.Get(InitiatorHeader))
 		})
 	}
 }

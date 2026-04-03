@@ -14,6 +14,7 @@ export interface InitializeSystemInput {
   ownerFirstName: string;
   ownerLastName: string;
   brandName: string;
+  preferLanguage?: string;
 }
 
 export interface InitializeSystemPayload {

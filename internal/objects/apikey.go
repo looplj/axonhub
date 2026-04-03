@@ -1,6 +1,10 @@
 package objects
 
-import "github.com/shopspring/decimal"
+import (
+	"slices"
+
+	"github.com/shopspring/decimal"
+)
 
 type APIKeyProfiles struct {
 	ActiveProfile string          `json:"activeProfile"`
@@ -8,13 +12,61 @@ type APIKeyProfiles struct {
 }
 
 type APIKeyProfile struct {
-	Name                string         `json:"name"`
-	ModelMappings       []ModelMapping `json:"modelMappings"`
-	ChannelIDs          []int          `json:"channelIDs,omitempty"`
-	ChannelTags         []string       `json:"channelTags,omitempty"`
-	ModelIDs            []string       `json:"modelIDs,omitempty"`
-	Quota               *APIKeyQuota   `json:"quota,omitempty"`
-	LoadBalanceStrategy *string        `json:"loadBalanceStrategy,omitempty"`
+	Name                 string          `json:"name"`
+	ModelMappings        []ModelMapping  `json:"modelMappings"`
+	ChannelIDs           []int           `json:"channelIDs,omitempty"`
+	ChannelTags          []string        `json:"channelTags,omitempty"`
+	ChannelTagsMatchMode APIKeyMatchMode `json:"channelTagsMatchMode,omitempty"`
+	ModelIDs             []string        `json:"modelIDs,omitempty"`
+	Quota                *APIKeyQuota    `json:"quota,omitempty"`
+	LoadBalanceStrategy  *string         `json:"loadBalanceStrategy,omitempty"`
+}
+
+type APIKeyMatchMode string
+
+const (
+	APIKeyMatchModeAny APIKeyMatchMode = "any"
+	APIKeyMatchModeAll APIKeyMatchMode = "all"
+)
+
+func (m APIKeyMatchMode) IsValid() bool {
+	return m == "" || m == APIKeyMatchModeAny || m == APIKeyMatchModeAll
+}
+
+func (m APIKeyMatchMode) OrDefault() APIKeyMatchMode {
+	if m == APIKeyMatchModeAll {
+		return APIKeyMatchModeAll
+	}
+
+	return APIKeyMatchModeAny
+}
+
+func (p *APIKeyProfile) MatchChannelTags(tags []string) bool {
+	if p == nil || len(p.ChannelTags) == 0 {
+		return true
+	}
+
+	//nolint:exhaustive // Checked.
+	switch p.ChannelTagsMatchMode.OrDefault() {
+	case APIKeyMatchModeAll:
+		for _, allowedTag := range p.ChannelTags {
+			matched := slices.Contains(tags, allowedTag)
+
+			if !matched {
+				return false
+			}
+		}
+
+		return true
+	default:
+		for _, tag := range tags {
+			if slices.Contains(p.ChannelTags, tag) {
+				return true
+			}
+		}
+
+		return false
+	}
 }
 
 type APIKeyQuota struct {

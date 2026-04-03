@@ -155,5 +155,6 @@ locales_backup
 .chunkhound/
 .superset/
 .snow/
+config.schema.json
 *.db-shm
 *.db-wal

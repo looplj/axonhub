@@ -3,6 +3,7 @@ package nanogpt
 import (
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -38,7 +39,7 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 				Choices: []Choice{
 					{
 						Message: &Message{
-							Reasoning: stringPtr("thinking..."),
+							Reasoning: lo.ToPtr("thinking..."),
 						},
 					},
 				},
@@ -57,9 +58,9 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 					Choices: []openai.Choice{},
 				},
 				Choices: []Choice{
-					{Message: &Message{Reasoning: stringPtr("reason1")}},
-					{Message: &Message{Reasoning: stringPtr("reason2")}},
-					{Message: &Message{Reasoning: stringPtr("reason3")}},
+					{Message: &Message{Reasoning: lo.ToPtr("reason1")}},
+					{Message: &Message{Reasoning: lo.ToPtr("reason2")}},
+					{Message: &Message{Reasoning: lo.ToPtr("reason3")}},
 				},
 			},
 			wantLen: 3,
@@ -87,7 +88,7 @@ func TestChoice_ToOpenAIChoice(t *testing.T) {
 			name: "choice with message containing reasoning",
 			choice: Choice{
 				Message: &Message{
-					Reasoning: stringPtr("reasoning content"),
+					Reasoning: lo.ToPtr("reasoning content"),
 				},
 			},
 			validate: func(t *testing.T, c openai.Choice) {
@@ -99,7 +100,7 @@ func TestChoice_ToOpenAIChoice(t *testing.T) {
 			name: "choice with delta containing reasoning",
 			choice: Choice{
 				Delta: &Message{
-					Reasoning: stringPtr("streaming reasoning"),
+					Reasoning: lo.ToPtr("streaming reasoning"),
 				},
 			},
 			validate: func(t *testing.T, c openai.Choice) {
@@ -111,10 +112,10 @@ func TestChoice_ToOpenAIChoice(t *testing.T) {
 			name: "choice with both message and delta",
 			choice: Choice{
 				Message: &Message{
-					Reasoning: stringPtr("final reasoning"),
+					Reasoning: lo.ToPtr("final reasoning"),
 				},
 				Delta: &Message{
-					Reasoning: stringPtr("partial reasoning"),
+					Reasoning: lo.ToPtr("partial reasoning"),
 				},
 			},
 			validate: func(t *testing.T, c openai.Choice) {
@@ -145,7 +146,7 @@ func TestMessage_ToOpenAIMessage(t *testing.T) {
 		{
 			name: "message with reasoning maps to reasoning_content",
 			message: Message{
-				Reasoning: stringPtr("thinking..."),
+				Reasoning: lo.ToPtr("thinking..."),
 			},
 			validate: func(t *testing.T, msg openai.Message) {
 				assert.NotNil(t, msg.ReasoningContent)
@@ -169,8 +170,4 @@ func TestMessage_ToOpenAIMessage(t *testing.T) {
 			}
 		})
 	}
-}
-
-func stringPtr(s string) *string {
-	return &s
 }

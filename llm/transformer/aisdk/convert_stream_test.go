@@ -5,17 +5,13 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
-
-// Helper functions for tests.
-func stringPtr(s string) *string {
-	return &s
-}
 
 // NewConvertStreamTransformer creates a new DataStreamTransformer for testing convert stream functionality.
 func NewConvertStreamTransformer() *DataStreamTransformer {
@@ -65,7 +61,7 @@ func TestConvertStreamTransformer_TransformStream_TextContent(t *testing.T) {
 				{
 					Delta: &llm.Message{
 						Content: llm.MessageContent{
-							Content: stringPtr("Hello"),
+							Content: lo.ToPtr("Hello"),
 						},
 					},
 				},
@@ -78,7 +74,7 @@ func TestConvertStreamTransformer_TransformStream_TextContent(t *testing.T) {
 				{
 					Delta: &llm.Message{
 						Content: llm.MessageContent{
-							Content: stringPtr(" world!"),
+							Content: lo.ToPtr(" world!"),
 						},
 					},
 				},
@@ -89,7 +85,7 @@ func TestConvertStreamTransformer_TransformStream_TextContent(t *testing.T) {
 			Object: "chat.completion.chunk",
 			Choices: []llm.Choice{
 				{
-					FinishReason: stringPtr("stop"),
+					FinishReason: lo.ToPtr("stop"),
 				},
 			},
 		},
@@ -184,7 +180,7 @@ func TestConvertStreamTransformer_TransformStream_ReasoningContent(t *testing.T)
 			Choices: []llm.Choice{
 				{
 					Delta: &llm.Message{
-						ReasoningContent: stringPtr("Let me think about this..."),
+						ReasoningContent: lo.ToPtr("Let me think about this..."),
 					},
 				},
 			},
@@ -194,7 +190,7 @@ func TestConvertStreamTransformer_TransformStream_ReasoningContent(t *testing.T)
 			Object: "chat.completion.chunk",
 			Choices: []llm.Choice{
 				{
-					FinishReason: stringPtr("stop"),
+					FinishReason: lo.ToPtr("stop"),
 				},
 			},
 		},
@@ -344,7 +340,7 @@ func TestConvertStreamTransformer_TransformStream_ToolCalls(t *testing.T) {
 			Object: "chat.completion.chunk",
 			Choices: []llm.Choice{
 				{
-					FinishReason: stringPtr("tool_calls"),
+					FinishReason: lo.ToPtr("tool_calls"),
 				},
 			},
 		},

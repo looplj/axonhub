@@ -310,6 +310,7 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 			globalPassThrough, err := systemService.UserAgentPassThrough(ctx)
 			if err != nil {
 				log.Warn(ctx, "failed to get global user agent pass through setting", log.Cause(err))
+
 				passThroughEnabled = false
 			} else {
 				passThroughEnabled = globalPassThrough
@@ -334,6 +335,7 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 			// Pass-through disabled: use AxonHub's default User-Agent
 			request.Headers.Set("User-Agent", "axonhub/1.0")
 		}
+
 		return request, nil
 	})
 }
