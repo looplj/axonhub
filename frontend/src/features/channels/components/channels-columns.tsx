@@ -262,6 +262,19 @@ function getChannelWebsiteURL(baseURL: string): string | null {
   }
 }
 
+function getProxyURLSummary(proxyURL: string): { label: string; detail?: string } {
+  try {
+    const url = new URL(proxyURL);
+    const pathname = url.pathname === '/' ? '' : url.pathname;
+    return {
+      label: url.host || proxyURL,
+      detail: `${url.protocol}//${url.host}${pathname}`,
+    };
+  } catch {
+    return { label: proxyURL };
+  }
+}
+
 // Memoized cell components to avoid recreating on every render
 const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
@@ -376,6 +389,56 @@ const TagsCell = memo(({ row }: { row: Row<Channel> }) => {
 });
 
 TagsCell.displayName = 'TagsCell';
+
+const ProxyCell = memo(({ row }: { row: Row<Channel> }) => {
+  const { t } = useTranslation();
+  const proxy = row.original.settings?.proxy;
+
+  if (!proxy || proxy.type === 'disabled') {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  if (proxy.type === 'environment') {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>{t('channels.dialogs.proxy.types.environment')}</span>
+      </div>
+    );
+  }
+
+  const proxyURL = proxy.url?.trim();
+  if (!proxyURL) {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  const { label, detail } = getProxyURLSummary(proxyURL);
+  const content = (
+    <div className='flex justify-center'>
+      <span className='max-w-40 truncate font-mono text-xs'>{label}</span>
+    </div>
+  );
+
+  if (detail && detail !== label) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent>{detail}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+});
+
+ProxyCell.displayName = 'ProxyCell';
 
 const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
@@ -637,6 +700,17 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         className: 'max-w-64 text-center',
       },
       enableSorting: false,
+    },
+    {
+      id: 'proxy',
+      accessorFn: (row) => row.settings?.proxy?.url ?? row.settings?.proxy?.type ?? '',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
+      cell: ProxyCell,
+      meta: {
+        className: 'w-32 min-w-32 text-center',
+      },
+      enableSorting: false,
+      enableHiding: true,
     },
     {
       id: 'health',
