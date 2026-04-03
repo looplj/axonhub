@@ -246,13 +246,15 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		if streamEvent.Usage != nil {
 			usage := convertToLlmUsage(streamEvent.Usage, state.platformType)
 			if state.streamUsage != nil {
-				usage.PromptTokens = state.streamUsage.PromptTokens
+				if usage.PromptTokens == 0 && state.streamUsage.PromptTokens > 0 {
+					usage.PromptTokens = state.streamUsage.PromptTokens
+				}
 				if usage.PromptTokensDetails == nil && state.streamUsage.PromptTokensDetails != nil {
 					usage.PromptTokensDetails = state.streamUsage.PromptTokensDetails
 				}
-				// Recalculate total tokens
-				usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 			}
+			// Recalculate total tokens after merging prompt/completion usage.
+			usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 
 			state.streamUsage = usage
 		}
@@ -306,7 +308,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 	case "message_stop":
 		// Final event - return empty response to indicate completion
 		resp.Choices = []llm.Choice{}
-		// Include final usage information
+		// Include final merged usage information (OpenAI include_usage style).
 		if state.streamUsage != nil {
 			resp.Usage = state.streamUsage
 		}
