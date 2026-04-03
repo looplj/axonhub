@@ -88,7 +88,5 @@
   "traces.timeline.summary.duration": "Duration {{value}}",
   "traces.timeline.summary.tokenCount": "{{value}} tokens",
   "traces.timeline.collapseAll": "Collapse All",
-  "traces.timeline.expandAll": "Expand All",
-  "traces.errors.loadTracesFailed": "Failed to load traces",
-  "traces.errors.loadTraceDetailFailed": "Failed to load trace details"
+  "traces.timeline.expandAll": "Expand All"
 }

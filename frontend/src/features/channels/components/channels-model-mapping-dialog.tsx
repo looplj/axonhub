@@ -301,7 +301,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       toast.success(t('channels.messages.updateSuccess'));
       onOpenChange(false);
     } catch (_error) {
-      toast.error(t('channels.messages.updateError'));
+      toast.error(t('common.errors.internalServerError'));
     }
   };
 

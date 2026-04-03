@@ -654,8 +654,8 @@ export function useSaveChannelModelPrices() {
       queryClient.invalidateQueries({ queryKey: ['channelModelPrices', variables.channelId] });
       toast.success(t('channels.messages.savePricesSuccess'));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.savePricesError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -801,8 +801,8 @@ export function useBulkCreateChannels() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.batchCreateSuccess', { count: channels.length }));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.batchCreateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -845,8 +845,8 @@ export function useClearChannelErrorMessage() {
       queryClient.invalidateQueries({ queryKey: ['errorChannelsCount'] });
       toast.success(t('channels.messages.errorResolvedSuccess'));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.errorResolvedError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -876,9 +876,8 @@ export function useUpdateChannelStatus() {
 
       toast.success(variables.status === 'archived' ? t(messageKey) : t(messageKey, { status: statusText }));
     },
-    onError: (error, variables) => {
-      const errorKey = variables.status === 'archived' ? 'channels.messages.archiveError' : 'channels.messages.statusUpdateError';
-      toast.error(t(errorKey, { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -896,8 +895,8 @@ export function useBulkArchiveChannels() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.bulkArchiveSuccess', { count: variables.length }));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.bulkArchiveError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -954,8 +953,8 @@ export function useBulkRecoverChannels() {
       queryClient.invalidateQueries({ queryKey: ['errorChannelsCount'] });
       toast.success(t('channels.messages.bulkRecoverSuccess', { count: variables.length }));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.bulkRecoverError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -973,8 +972,8 @@ export function useDeleteChannel() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.deleteSuccess'));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.deleteError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -992,8 +991,8 @@ export function useBulkDeleteChannels() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.bulkDeleteSuccess', { count: variables.length }));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.bulkDeleteError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1031,8 +1030,8 @@ export function useTestChannel(options?: { silent?: boolean }) {
         toast.success(t('channels.messages.testSuccess', { latency: data.latency.toFixed(2) }));
       } else {
         // Handle case where GraphQL request succeeds but test fails
-        const errorMsg = data.error || t('channels.messages.testUnknownError');
-        toast.error(t('channels.messages.testError', { error: errorMsg }));
+        const errorMsg = data.error || t('common.errors.internalServerError');
+        toast.error(errorMsg);
       }
     },
     onError: (error) => {
@@ -1041,7 +1040,7 @@ export function useTestChannel(options?: { silent?: boolean }) {
       }
 
       // Handle GraphQL/network errors
-      toast.error(t('channels.messages.testError', { error: error.message }));
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1073,8 +1072,8 @@ export function useBulkImportChannels() {
         );
       }
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.bulkImportError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1119,8 +1118,8 @@ export function useBulkUpdateChannelOrdering() {
         })
       );
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.orderingUpdateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1152,8 +1151,8 @@ export function useSyncChannelModels() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.syncModelsSuccess'));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.syncModelsError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1183,8 +1182,8 @@ export function useFetchModels() {
         }
       }
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.fetchModelsError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1350,8 +1349,8 @@ export function useEnableChannelAPIKey() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.enableAPIKeySuccess'));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.enableAPIKeyError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1372,8 +1371,8 @@ export function useEnableAllChannelAPIKeys() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.enableAllAPIKeysSuccess'));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.enableAllAPIKeysError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1395,8 +1394,8 @@ export function useEnableSelectedChannelAPIKeys() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.enableSelectedAPIKeysSuccess'));
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.enableSelectedAPIKeysError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -1424,8 +1423,8 @@ export function useDeleteDisabledChannelAPIKeys() {
         toast.success(t('channels.messages.deleteDisabledAPIKeysSuccess'));
       }
     },
-    onError: (error) => {
-      toast.error(t('channels.messages.deleteDisabledAPIKeysError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

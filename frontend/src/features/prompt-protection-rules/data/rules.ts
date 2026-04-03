@@ -152,8 +152,8 @@ export function useCreatePromptProtectionRule() {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.createSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('promptProtectionRules.messages.createError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -171,8 +171,8 @@ export function useUpdatePromptProtectionRule() {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.updateSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('promptProtectionRules.messages.updateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -189,8 +189,8 @@ export function useDeletePromptProtectionRule() {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.deleteSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('promptProtectionRules.messages.deleteError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -207,8 +207,8 @@ export function useUpdatePromptProtectionRuleStatus() {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.statusUpdateSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('promptProtectionRules.messages.statusUpdateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -225,8 +225,8 @@ export function useBulkDeletePromptProtectionRules() {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.bulkDeleteSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('promptProtectionRules.messages.bulkDeleteError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -243,8 +243,8 @@ export function useBulkEnablePromptProtectionRules() {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.bulkEnableSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('promptProtectionRules.messages.bulkEnableError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -261,8 +261,8 @@ export function useBulkDisablePromptProtectionRules() {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.bulkDisableSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('promptProtectionRules.messages.bulkDisableError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

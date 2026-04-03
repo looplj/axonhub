@@ -82,18 +82,9 @@
   "users.messages.updateSuccess": "User updated successfully",
   "users.messages.passwordChangeSuccess": "Password changed successfully",
   "users.messages.statusUpdateSuccess": "User status updated to {{status}}",
-  "users.messages.createError": "Failed to save user",
-  "users.messages.updateError": "Failed to save user",
-  "users.messages.passwordChangeError": "Failed to change password",
-  "users.messages.statusUpdateError": "Failed to update status",
   "users.messages.deleteSuccess": "User deleted successfully",
-  "users.messages.deleteError": "Failed to delete user",
-  "users.messages.loadUsersError": "Failed to load users data",
-  "users.messages.loadUserError": "Failed to load user details",
   "users.messages.userNotFound": "User not found",
   "users.messages.addToProjectSuccess": "User added to project successfully",
-  "users.messages.addToProjectError": "Failed to add user to project",
   "users.messages.removeFromProjectSuccess": "User removed from project successfully",
-  "users.messages.removeFromProjectError": "Failed to remove user from project",
   "users.errors.insufficientPermissions": "You don't have sufficient permissions to edit this user"
 }
