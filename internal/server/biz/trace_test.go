@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -23,6 +24,19 @@ func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *en
 
 	if client == nil {
 		client = enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	}
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	_, err := client.DataStorage.Query().
+		Where(datastorage.PrimaryEQ(true)).
+		First(ctx)
+	if ent.IsNotFound(err) {
+		createTestDataStorage(t, client, ctx, "primary-storage", true, datastorage.TypeDatabase)
+	} else {
+		require.NoError(t, err)
 	}
 
 	systemService := NewSystemService(SystemServiceParams{
@@ -67,6 +81,69 @@ func countSpansByType(spans []Span, spanType string) int {
 	}
 
 	return count
+}
+
+func TestRequestService_LoadersReturnEmptyJSONAndSlices(t *testing.T) {
+	traceService, client := setupTestTraceService(t, nil)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	projectEntity, err := client.Project.Create().
+		SetName("request-loader-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	traceEntity, err := client.Trace.Create().
+		SetTraceID("trace-request-loader").
+		SetProjectID(projectEntity.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).
+		SetTraceID(traceEntity.ID).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetRequestBody([]byte(`{"model":"gpt-4","messages":[]}`)).
+		SetStatus("completed").
+		SetStream(false).
+		Save(ctx)
+	require.NoError(t, err)
+
+	responseBody, err := traceService.requestService.LoadResponseBody(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, responseBody)
+	require.JSONEq(t, `{}`, string(responseBody))
+
+	responseChunks, err := traceService.requestService.LoadResponseChunks(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, responseChunks)
+	require.Empty(t, responseChunks)
+
+	exec, err := client.RequestExecution.Create().
+		SetProjectID(projectEntity.ID).
+		SetRequestID(req.ID).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetRequestBody([]byte(`{"messages":[]}`)).
+		SetStatus("completed").
+		SetStream(false).
+		Save(ctx)
+	require.NoError(t, err)
+
+	execResponseBody, err := traceService.requestService.LoadRequestExecutionResponseBody(ctx, exec)
+	require.NoError(t, err)
+	require.NotNil(t, execResponseBody)
+	require.JSONEq(t, `{}`, string(execResponseBody))
+
+	execResponseChunks, err := traceService.requestService.LoadRequestExecutionResponseChunks(ctx, exec)
+	require.NoError(t, err)
+	require.NotNil(t, execResponseChunks)
+	require.Empty(t, execResponseChunks)
 }
 
 func TestTraceService_GetOrCreateTrace(t *testing.T) {
