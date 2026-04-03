@@ -83,6 +83,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const { setOpen, setCurrentRow } = useChannels();
   const { channelPermissions } = usePermissions();
   const testChannel = useTestChannel();
+  const isArchived = channel.status === 'archived';
   const hasError = !!channel.errorMessage;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
 
@@ -211,10 +212,10 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               setCurrentRow(channel);
               setOpen('archive');
             }}
-            className='text-orange-500!'
+            className={isArchived ? 'text-green-600!' : 'text-orange-500!'}
           >
-            <IconArchive size={16} className='mr-2' />
-            {t('common.buttons.archive')}
+            {isArchived ? <IconCheck size={16} className='mr-2' /> : <IconArchive size={16} className='mr-2' />}
+            {t(isArchived ? 'common.buttons.restore' : 'common.buttons.archive')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
