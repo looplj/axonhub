@@ -27,13 +27,13 @@ func main() {
 
 	// Map time.Duration to string with a duration pattern
 	r.Mapper = func(t reflect.Type) *jsonschema.Schema {
-		if t == reflect.TypeOf(time.Duration(0)) {
+		if t == reflect.TypeFor[time.Duration]() {
 			return &jsonschema.Schema{
 				Type:    "string",
-				Pattern: `^[+-]?(0|([0-9]+(\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$/,
+				Pattern: `^[+-]?(0|([0-9]+(\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$`,
 			}
 		}
-		if t == reflect.TypeOf(zapcore.InfoLevel) {
+		if t == reflect.TypeFor[zapcore.Level]() {
 			return &jsonschema.Schema{
 				Type: "string",
 				Enum: []any{"debug", "info", "warn", "warning", "error", "panic", "fatal"},
