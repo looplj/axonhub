@@ -20,7 +20,5 @@
   "threads.detail.tracesSubtitle": "查看该线程的最新追踪与执行记录",
   "threads.detail.noTraces": "暂无追踪记录",
   "threads.detail.traces": "条追踪",
-  "threads.errors.fetchList": "获取线程列表失败",
-  "threads.errors.fetchDetail": "获取线程详情失败",
   "threads.errors.notFound": "未找到线程"
 }

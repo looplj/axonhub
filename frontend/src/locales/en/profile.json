@@ -29,6 +29,5 @@
   "profile.form.validation.lastNameTooLong": "Last name must not be longer than 50 characters.",
   "profile.form.validation.emailInvalid": "Please enter a valid email address.",
   "profile.form.validation.languageRequired": "Please select a preferred language.",
-  "profile.form.messages.updateSuccess": "Profile updated successfully!",
-  "profile.form.messages.updateError": "Failed to update profile: {{error}}"
+  "profile.form.messages.updateSuccess": "Profile updated successfully!"
 }

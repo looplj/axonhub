@@ -89,7 +89,5 @@
   "traces.timeline.summary.duration": "持续时间 {{value}}",
   "traces.timeline.summary.tokenCount": "词元数：{{value}}",
   "traces.timeline.collapseAll": "全部收起",
-  "traces.timeline.expandAll": "全部展开",
-  "traces.errors.loadTracesFailed": "加载追踪失败",
-  "traces.errors.loadTraceDetailFailed": "加载追踪详情失败"
+  "traces.timeline.expandAll": "全部展开"
 }

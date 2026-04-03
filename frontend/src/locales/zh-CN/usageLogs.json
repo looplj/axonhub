@@ -41,7 +41,5 @@
   "usageLogs.dialogs.usageDetail.fields.format": "格式",
   "usageLogs.dialogs.usageDetail.fields.createdAt": "创建时间",
   "usageLogs.dialogs.usageDetail.tokenDetails.basic": "基础词元使用",
-  "usageLogs.dialogs.usageDetail.notFound": "用量日志未找到",
-  "usageLogs.errors.loadUsageLogsFailed": "加载用量日志失败",
-  "usageLogs.errors.loadUsageLogDetailFailed": "加载用量日志详情失败"
+  "usageLogs.dialogs.usageDetail.notFound": "用量日志未找到"
 }

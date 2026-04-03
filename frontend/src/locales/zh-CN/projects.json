@@ -19,12 +19,5 @@
   "projects.dialogs.fields.description.label": "项目描述",
   "projects.dialogs.fields.description.placeholder": "输入项目描述",
   "projects.dialogs.fields.description.description": "项目的详细描述",
-  "projects.validation.nameRequired": "项目名称不能为空",
-  "projects.errors.loadProjectsFailed": "加载项目失败",
-  "projects.errors.loadProjectDetailFailed": "加载项目详情失败",
-  "projects.errors.loadMyProjectsFailed": "获取我的项目失败",
-  "projects.errors.createProjectFailed": "创建项目失败",
-  "projects.errors.updateProjectFailed": "更新项目失败",
-  "projects.errors.archiveProjectFailed": "归档项目失败",
-  "projects.errors.activateProjectFailed": "激活项目失败"
+  "projects.validation.nameRequired": "项目名称不能为空"
 }

@@ -19,12 +19,5 @@
   "projects.dialogs.fields.description.label": "Project Description",
   "projects.dialogs.fields.description.placeholder": "Enter project description",
   "projects.dialogs.fields.description.description": "Detailed description of the project",
-  "projects.validation.nameRequired": "Project name is required",
-  "projects.errors.loadProjectsFailed": "Failed to load projects",
-  "projects.errors.loadProjectDetailFailed": "Failed to load project details",
-  "projects.errors.loadMyProjectsFailed": "Failed to load my projects",
-  "projects.errors.createProjectFailed": "Failed to create project",
-  "projects.errors.updateProjectFailed": "Failed to update project",
-  "projects.errors.archiveProjectFailed": "Failed to archive project",
-  "projects.errors.activateProjectFailed": "Failed to activate project"
+  "projects.validation.nameRequired": "Project name is required"
 }

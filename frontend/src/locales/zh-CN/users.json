@@ -83,18 +83,9 @@
   "users.messages.updateSuccess": "用户更新成功",
   "users.messages.passwordChangeSuccess": "密码修改成功",
   "users.messages.statusUpdateSuccess": "用户状态已更新为{{status}}",
-  "users.messages.createError": "保存用户失败",
-  "users.messages.updateError": "保存用户失败",
-  "users.messages.passwordChangeError": "修改密码失败",
-  "users.messages.statusUpdateError": "状态更新失败",
   "users.messages.deleteSuccess": "用户删除成功",
-  "users.messages.deleteError": "删除用户失败",
-  "users.messages.loadUsersError": "获取用户数据失败",
-  "users.messages.loadUserError": "获取用户详情失败",
   "users.messages.userNotFound": "用户未找到",
   "users.messages.addToProjectSuccess": "用户已成功添加到项目",
-  "users.messages.addToProjectError": "添加用户到项目失败",
   "users.messages.removeFromProjectSuccess": "用户已成功从项目中移除",
-  "users.messages.removeFromProjectError": "从项目中移除用户失败",
   "users.errors.insufficientPermissions": "您没有足够的权限编辑此用户"
 }

@@ -123,7 +123,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
       }
       onOpenChange(false);
     } catch (_error) {
-      toast.error(t('channels.messages.updateError'));
+      toast.error(t('common.errors.internalServerError'));
     }
   };
 
