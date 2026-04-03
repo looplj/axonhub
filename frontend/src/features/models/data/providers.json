@@ -183,6 +183,42 @@
           }
         },
         {
+          "id": "gpt-5.3-chat-latest",
+          "name": "GPT-5.3 Chat (latest)",
+          "family": "gpt",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-08-31",
+          "release_date": "2026-03-03",
+          "last_updated": "2026-03-03",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 1.75,
+            "output": 14,
+            "cache_read": 0.175
+          },
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          },
+          "display_name": "GPT-5.3 Chat (latest)",
+          "type": "chat"
+        },
+        {
           "id": "gpt-5.3-codex",
           "name": "GPT-5.3 Codex",
           "family": "gpt-codex",
@@ -263,6 +299,37 @@
             "output": 32000
           },
           "display_name": "GPT-5.3 Codex Spark",
+          "type": "chat"
+        },
+        {
+          "id": "chatgpt-image-latest",
+          "name": "chatgpt-image-latest",
+          "family": "gpt-image",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2025-12-16",
+          "last_updated": "2025-12-16",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "input": 0,
+            "output": 8192
+          },
+          "display_name": "chatgpt-image-latest",
           "type": "chat"
         },
         {
@@ -430,6 +497,37 @@
               "supported": true
             }
           }
+        },
+        {
+          "id": "gpt-image-1.5",
+          "name": "gpt-image-1.5",
+          "family": "gpt-image",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2025-11-25",
+          "last_updated": "2025-11-25",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "input": 0,
+            "output": 8192
+          },
+          "display_name": "gpt-image-1.5",
+          "type": "image-generation"
         },
         {
           "id": "gpt-5.1-codex-mini",
@@ -776,6 +874,37 @@
               "visibility": "hidden"
             }
           }
+        },
+        {
+          "id": "gpt-image-1-mini",
+          "name": "gpt-image-1-mini",
+          "family": "gpt-image",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2025-09-26",
+          "last_updated": "2025-09-26",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "input": 0,
+            "output": 8192
+          },
+          "display_name": "gpt-image-1-mini",
+          "type": "image-generation"
         },
         {
           "id": "gpt-5-codex",
@@ -1204,6 +1333,36 @@
           },
           "display_name": "Codex Mini",
           "type": "chat"
+        },
+        {
+          "id": "gpt-image-1",
+          "name": "gpt-image-1",
+          "family": "gpt-image",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2025-04-24",
+          "last_updated": "2025-04-24",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "image"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "input": 0,
+            "output": 8192
+          },
+          "display_name": "gpt-image-1",
+          "type": "image-generation"
         },
         {
           "id": "o3",
@@ -2080,132 +2239,6 @@
           },
           "display_name": "text-embedding-ada-002",
           "type": "embedding"
-        },
-        {
-          "id": "gpt-image-1.5",
-          "name": "gpt-image-1.5",
-          "display_name": "gpt-image-1.5",
-          "type": "image-generation",
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ]
-          },
-          "cost": {
-            "input": 5,
-            "output": 10,
-            "cache_read": 5
-          },
-          "limit": {
-            "context": 8192,
-            "output": 8192
-          },
-          "metadata": {
-            "description": "GPT Image 1.5 is a new image generation model powered by OpenAI’s flagship visual capabilities, comprehensively upgraded for high-quality creative and production workflows. It delivers significant improvements in instruction understanding, fine-grained image editing, and detail preservation, while achieving up to 4× faster generation compared to previous versions — reducing latency without compromising quality.\n\nGPT Image 1.5 is well suited for image generation, precise visual editing, and professional content creation, balancing performance with efficiency.",
-            "typeHints": [
-              "image_generation"
-            ],
-            "inputModalities": [
-              "text",
-              "image"
-            ],
-            "pricing": {
-              "cache_read": 5,
-              "input": 5,
-              "output": 10
-            },
-            "source": "public-provider-conf"
-          },
-          "vision": true
-        },
-        {
-          "id": "gpt-image-1",
-          "name": "gpt-image-1",
-          "display_name": "gpt-image-1",
-          "type": "image-generation",
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ]
-          },
-          "cost": {
-            "input": 5,
-            "output": 40,
-            "cache_read": 5
-          },
-          "limit": {
-            "context": 8192,
-            "output": 8192
-          },
-          "metadata": {
-            "description": "Azure OpenAI’s gpt-image-1 image generation API offers both text-to-image generation and image-to-image editing with text guidance capabilities.\nBefore using this API, please ensure you have the latest OpenAI package installed by running pip install -U openai.",
-            "typeHints": [
-              "image_generation"
-            ],
-            "inputModalities": [
-              "text",
-              "image"
-            ],
-            "pricing": {
-              "cache_read": 5,
-              "input": 5,
-              "output": 40
-            },
-            "source": "public-provider-conf"
-          },
-          "vision": true
-        },
-        {
-          "id": "gpt-image-1-mini",
-          "name": "gpt-image-1-mini",
-          "display_name": "gpt-image-1-mini",
-          "type": "image-generation",
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ]
-          },
-          "cost": {
-            "input": 5,
-            "output": 40,
-            "cache_read": 5
-          },
-          "limit": {
-            "context": 8192,
-            "output": 8192
-          },
-          "metadata": {
-            "description": "OpenAI image generation model gpt-image-1-mini\nBefore use, please run pip install -U openai to upgrade to the latest openai package.",
-            "typeHints": [
-              "image_generation"
-            ],
-            "inputModalities": [
-              "text",
-              "image"
-            ],
-            "pricing": {
-              "cache_read": 5,
-              "input": 5,
-              "output": 40
-            },
-            "source": "public-provider-conf"
-          },
-          "vision": true
         },
         {
           "id": "gpt-4o-image",
@@ -3172,64 +3205,6 @@
           }
         },
         {
-          "id": "claude-3-7-sonnet-latest",
-          "name": "Claude Sonnet 3.7 (latest)",
-          "family": "claude-sonnet",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10-31",
-          "release_date": "2025-02-19",
-          "last_updated": "2025-02-19",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 3,
-            "output": 15,
-            "cache_read": 0.3,
-            "cache_write": 3.75
-          },
-          "limit": {
-            "context": 200000,
-            "output": 64000
-          },
-          "display_name": "Claude Sonnet 3.7 (latest)",
-          "type": "chat",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": false,
-              "mode": "budget",
-              "budget": {
-                "min": 1024,
-                "unit": "tokens"
-              },
-              "interleaved": false,
-              "summaries": false,
-              "visibility": "full",
-              "continuation": [
-                "thinking_blocks"
-              ],
-              "notes": [
-                "Anthropic uses thinking budget tokens"
-              ]
-            }
-          }
-        },
-        {
           "id": "claude-3-5-haiku-20241022",
           "name": "Claude Haiku 3.5",
           "family": "claude-haiku",
@@ -3589,6 +3564,58 @@
       "doc": "https://docs.z.ai/guides/overview/pricing",
       "display_name": "Z.AI",
       "models": [
+        {
+          "id": "glm-5v-turbo",
+          "name": "glm-5v-turbo",
+          "family": "glm",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "release_date": "2026-04-01",
+          "last_updated": "2026-04-01",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 1.2,
+            "output": 4,
+            "cache_read": 0.24,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 200000,
+            "output": 131072
+          },
+          "display_name": "glm-5v-turbo",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
+            }
+          }
+        },
         {
           "id": "glm-5-turbo",
           "name": "GLM-5-Turbo",
@@ -5760,6 +5787,39 @@
           "type": "image-generation"
         },
         {
+          "id": "gemma-3n-e2b-it",
+          "name": "Gemma 3n 2B",
+          "family": "gemma",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-07-09",
+          "last_updated": "2025-07-09",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 8192,
+            "output": 2000
+          },
+          "display_name": "Gemma 3n 2B",
+          "type": "chat"
+        },
+        {
           "id": "gemini-2.5-flash-lite",
           "name": "Gemini 2.5 Flash Lite",
           "family": "gemini-flash-lite",
@@ -6039,6 +6099,39 @@
               ]
             }
           },
+          "type": "chat"
+        },
+        {
+          "id": "gemma-3n-e4b-it",
+          "name": "Gemma 3n 4B",
+          "family": "gemma",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-05-20",
+          "last_updated": "2025-05-20",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 8192,
+            "output": 2000
+          },
+          "display_name": "Gemma 3n 4B",
           "type": "chat"
         },
         {
@@ -6407,6 +6500,110 @@
             "supported": true,
             "default": false
           },
+          "type": "chat"
+        },
+        {
+          "id": "gemma-3-4b-it",
+          "name": "Gemma 3 4B",
+          "family": "gemma",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-03-13",
+          "last_updated": "2025-03-13",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          },
+          "display_name": "Gemma 3 4B",
+          "type": "chat"
+        },
+        {
+          "id": "gemma-3-12b-it",
+          "name": "Gemma 3 12B",
+          "family": "gemma",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-03-13",
+          "last_updated": "2025-03-13",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          },
+          "display_name": "Gemma 3 12B",
+          "type": "chat"
+        },
+        {
+          "id": "gemma-3-27b-it",
+          "name": "Gemma 3 27B",
+          "family": "gemma",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2024-10",
+          "release_date": "2025-03-12",
+          "last_updated": "2025-03-12",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Gemma 3 27B",
           "type": "chat"
         },
         {
@@ -9954,6 +10151,76 @@
       "display_name": "Mistral",
       "models": [
         {
+          "id": "mistral-small-2603",
+          "name": "Mistral Small 4",
+          "family": "mistral-small",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-06",
+          "release_date": "2026-03-16",
+          "last_updated": "2026-03-16",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.15,
+            "output": 0.6
+          },
+          "limit": {
+            "context": 256000,
+            "output": 256000
+          },
+          "display_name": "Mistral Small 4",
+          "type": "chat"
+        },
+        {
+          "id": "mistral-small-latest",
+          "name": "Mistral Small (latest)",
+          "family": "mistral-small",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-06",
+          "release_date": "2026-03-16",
+          "last_updated": "2026-03-16",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.15,
+            "output": 0.6
+          },
+          "limit": {
+            "context": 256000,
+            "output": 256000
+          },
+          "display_name": "Mistral Small (latest)",
+          "type": "chat"
+        },
+        {
           "id": "devstral-2512",
           "name": "Devstral 2",
           "family": "devstral",
@@ -10589,40 +10856,6 @@
             "output": 128000
           },
           "display_name": "Pixtral 12B",
-          "type": "chat"
-        },
-        {
-          "id": "mistral-small-latest",
-          "name": "Mistral Small (latest)",
-          "family": "mistral-small",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-03",
-          "release_date": "2024-09-01",
-          "last_updated": "2024-09-04",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "cost": {
-            "input": 0.1,
-            "output": 0.3
-          },
-          "limit": {
-            "context": 128000,
-            "output": 16384
-          },
-          "display_name": "Mistral Small (latest)",
           "type": "chat"
         },
         {
