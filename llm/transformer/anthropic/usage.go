@@ -56,9 +56,8 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 		// Moonshot may return InputTokens as a net billed amount (can be negative with cache discounts),
 		// or as the standard positive count. We handle both formats.
 		if usage.InputTokens < 0 && usage.CacheReadInputTokens > 0 {
-			nonCachedTokens := usage.InputTokens + usage.CacheReadInputTokens
-			promptTokens = nonCachedTokens + usage.CacheReadInputTokens
-		} else if usage.InputTokens > 0 && usage.CacheReadInputTokens > 0 && usage.InputTokens < usage.CacheReadInputTokens {
+			promptTokens = usage.InputTokens + 2*usage.CacheReadInputTokens
+		} else if usage.InputTokens >= 0 && usage.CacheReadInputTokens > 0 && usage.InputTokens < usage.CacheReadInputTokens {
 			promptTokens = usage.InputTokens + usage.CacheReadInputTokens
 		} else {
 			promptTokens = usage.InputTokens
