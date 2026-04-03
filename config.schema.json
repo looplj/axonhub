@@ -1,0 +1,401 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/looplj/axonhub/conf/conf.-config",
+  "$ref": "#/$defs/conf.Config",
+  "$defs": {
+    "conf.Config": {
+      "properties": {
+        "db": {
+          "$ref": "#/$defs/db.Config"
+        },
+        "log": {
+          "$ref": "#/$defs/log.Config"
+        },
+        "server": {
+          "$ref": "#/$defs/server.Config"
+        },
+        "metrics": {
+          "$ref": "#/$defs/metrics.Config"
+        },
+        "gc": {
+          "$ref": "#/$defs/gc.Config"
+        },
+        "cache": {
+          "$ref": "#/$defs/xcache.Config"
+        },
+        "provider_quota": {
+          "$ref": "#/$defs/conf.providerQuotaConfig"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "conf.providerQuotaConfig": {
+      "properties": {
+        "check_interval": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "db.Config": {
+      "properties": {
+        "dialect": {
+          "type": "string"
+        },
+        "dsn": {
+          "type": "string"
+        },
+        "debug": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "gc.Config": {
+      "properties": {
+        "cron": {
+          "type": "string"
+        },
+        "vacuum_enabled": {
+          "type": "boolean"
+        },
+        "vacuum_full": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "log.Config": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "debug": {
+          "type": "boolean"
+        },
+        "skip_level": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "warning",
+            "error",
+            "panic",
+            "fatal"
+          ]
+        },
+        "level_key": {
+          "type": "string"
+        },
+        "time_key": {
+          "type": "string"
+        },
+        "caller_key": {
+          "type": "string"
+        },
+        "function_key": {
+          "type": "string"
+        },
+        "name_key": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "includes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "excludes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "output": {
+          "type": "string"
+        },
+        "file": {
+          "$ref": "#/$defs/log.FileConfig"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "log.FileConfig": {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "max_size": {
+          "type": "integer"
+        },
+        "max_age": {
+          "type": "integer"
+        },
+        "max_backups": {
+          "type": "integer"
+        },
+        "local_time": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "metrics.Config": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "exporter": {
+          "$ref": "#/$defs/metrics.ExporterConfig"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "metrics.ExporterConfig": {
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "insecure": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "server.API": {
+      "properties": {
+        "auth": {
+          "$ref": "#/$defs/server.APIAuth"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "server.APIAuth": {
+      "properties": {
+        "allow_no_auth": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "server.CORS": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "allowed_origins": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "allowed_methods": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "allowed_headers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "exposed_headers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "allow_credentials": {
+          "type": "boolean"
+        },
+        "max_age": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        },
+        "debug": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "server.Config": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "base_path": {
+          "type": "string"
+        },
+        "read_timeout": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        },
+        "request_timeout": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        },
+        "llm_request_timeout": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        },
+        "trace": {
+          "$ref": "#/$defs/tracing.Config"
+        },
+        "dashboard": {
+          "$ref": "#/$defs/server.Dashboard"
+        },
+        "debug": {
+          "type": "boolean"
+        },
+        "disable_ssl_verify": {
+          "type": "boolean"
+        },
+        "cors": {
+          "$ref": "#/$defs/server.CORS"
+        },
+        "api": {
+          "$ref": "#/$defs/server.API"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "server.Dashboard": {
+      "properties": {
+        "all_time_token_stats_soft_ttl": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        },
+        "all_time_token_stats_hard_ttl": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "tracing.Config": {
+      "properties": {
+        "thread_header": {
+          "type": "string"
+        },
+        "trace_header": {
+          "type": "string"
+        },
+        "request_header": {
+          "type": "string"
+        },
+        "extra_trace_headers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "extra_trace_body_fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "claude_code_trace_enabled": {
+          "type": "boolean"
+        },
+        "codex_trace_enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "xcache.Config": {
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "memory": {
+          "$ref": "#/$defs/xcache.MemoryConfig"
+        },
+        "redis": {
+          "$ref": "#/$defs/xredis.Config"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "xcache.MemoryConfig": {
+      "properties": {
+        "expiration": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        },
+        "cleanup_interval": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "xredis.Config": {
+      "properties": {
+        "addr": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "db": {
+          "type": "integer"
+        },
+        "tls": {
+          "type": "boolean"
+        },
+        "tls_insecure_skip_verify": {
+          "type": "boolean"
+        },
+        "expiration": {
+          "type": "string",
+          "pattern": "^[+-]?(0|([0-9]+(\\.[0-9]+)?(ns|us|µs|μs|ms|s|m|h))+)$"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  }
+}
