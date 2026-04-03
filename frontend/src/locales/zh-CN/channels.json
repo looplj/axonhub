@@ -25,6 +25,7 @@
   "channels.columns.tags": "标签",
   "channels.columns.baseURL": "Base URL",
   "channels.columns.supportedModels": "支持的模型",
+  "channels.columns.proxy": "代理 IP",
   "channels.models.manual": "手动",
   "channels.columns.channelPerformance": "性能",
   "channels.columns.firstTokenLatency": "TTFT",

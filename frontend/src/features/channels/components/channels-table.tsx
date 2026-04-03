@@ -66,6 +66,11 @@ interface DataTableProps {
   canWrite?: boolean;
 }
 
+const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
+  tags: false,
+  proxy: false,
+};
+
 export function ChannelsTable({
   columns,
   loading,
@@ -106,12 +111,12 @@ export function ChannelsTable({
     const stored = localStorage.getItem('channels-table-column-visibility');
     if (stored) {
       try {
-        return JSON.parse(stored);
+        return { ...DEFAULT_COLUMN_VISIBILITY, ...JSON.parse(stored) };
       } catch {
-        return { tags: false };
+        return DEFAULT_COLUMN_VISIBILITY;
       }
     }
-    return { tags: false }; // Hide tags column by default but keep it for filtering
+    return DEFAULT_COLUMN_VISIBILITY; // Hide optional columns by default but keep them available in column settings
   });
 
   // Sync server state to local column filters using useMemo instead of useEffect

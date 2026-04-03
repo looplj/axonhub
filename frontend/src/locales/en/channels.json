@@ -24,6 +24,7 @@
   "channels.columns.tags": "Tags",
   "channels.columns.baseURL": "Base URL",
   "channels.columns.supportedModels": "Models",
+  "channels.columns.proxy": "Proxy IP",
   "channels.models.manual": "Manual",
   "channels.columns.channelPerformance": "Performance",
   "channels.columns.firstTokenLatency": "TTFT",
