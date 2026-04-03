@@ -333,20 +333,27 @@ export function useRequestExecutions(
     where?: Record<string, any>;
   }
 ) {
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
     queryKey: ['request-executions', requestID, variables, permissions, selectedProjectId],
     queryFn: async () => {
-      const query = buildRequestExecutionsQuery(permissions);
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const finalVariables = {
-        requestID,
-        ...variables,
-      };
-      const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(query, finalVariables, headers);
-      return requestExecutionConnectionSchema.parse(data?.node?.executions);
+      try {
+        const query = buildRequestExecutionsQuery(permissions);
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const finalVariables = {
+          requestID,
+          ...variables,
+        };
+        const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(query, finalVariables, headers);
+        return requestExecutionConnectionSchema.parse(data?.node?.executions);
+      } catch (error) {
+        handleError(error, t('requests.errors.loadRequestDetailFailed'));
+        throw error;
+      }
     },
     enabled: !!requestID,
   });
