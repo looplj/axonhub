@@ -22,12 +22,12 @@ interface DataTableRowActionsProps {
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation();
   const project = row.original;
-  const { setEditingProject, setArchivingProject, setActivatingProject } = useProjectsContext();
+  const { setEditingProject, setArchivingProject, setActivatingProject, setDeletingProject } = useProjectsContext();
   const { projectPermissions } = usePermissions();
   const [open, setOpen] = React.useState(false);
 
   // Don't show menu if user has no permissions
-  if (!projectPermissions.canWrite) {
+  if (!projectPermissions.canWrite && !projectPermissions.canDelete) {
     return null;
   }
 
@@ -44,6 +44,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const handleActivate = () => {
     setOpen(false);
     setTimeout(() => setActivatingProject(project), 0);
+  };
+
+  const handleDelete = () => {
+    setOpen(false);
+    setTimeout(() => setDeletingProject(project), 0);
   };
 
   return (
@@ -78,6 +83,14 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           <DropdownMenuItem onClick={handleActivate}>
             <IconEdit className='mr-2 h-4 w-4' />
             {t('common.buttons.activate')}
+          </DropdownMenuItem>
+        )}
+
+        {/* Delete - requires owner permission */}
+        {projectPermissions.canDelete && (
+          <DropdownMenuItem onClick={handleDelete} className='text-destructive focus:text-destructive'>
+            <IconTrash className='mr-2 h-4 w-4' />
+            {t('common.actions.delete')}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

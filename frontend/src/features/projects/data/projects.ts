@@ -4,6 +4,7 @@ import { graphqlRequest } from '@/gql/graphql';
 import { toast } from 'sonner';
 import i18n from '@/lib/i18n';
 import { useErrorHandler } from '@/hooks/use-error-handler';
+import { useSelectedProjectId, useProjectStore } from '@/stores/projectStore';
 import { Project, ProjectConnection, CreateProjectInput, UpdateProjectInput, projectConnectionSchema, projectSchema } from './schema';
 
 // GraphQL queries and mutations
@@ -68,6 +69,12 @@ const UPDATE_PROJECT_STATUS_MUTATION = `
       createdAt
       updatedAt
     }
+  }
+`;
+
+const DELETE_PROJECT_MUTATION = `
+  mutation DeleteProject($id: ID!) {
+    deleteProject(id: $id)
   }
 `;
 
@@ -258,6 +265,40 @@ export function useActivateProject() {
       queryClient.invalidateQueries({ queryKey: ['project'] });
       queryClient.invalidateQueries({ queryKey: ['myProjects'] });
       toast.success(i18n.t('common.success.projectActivated'));
+    },
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
+  const { clearSelectedProjectId } = useProjectStore();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        const data = await graphqlRequest<{ deleteProject: boolean }>(DELETE_PROJECT_MUTATION, { id });
+        return data.deleteProject;
+      } catch (error) {
+        handleError(error, i18n.t('projects.errors.deleteProjectFailed'));
+        throw error;
+      }
+    },
+    onSuccess: (_, deletedId) => {
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project'] });
+      queryClient.invalidateQueries({ queryKey: ['myProjects'] });
+      
+      // If the deleted project is the currently selected one, clear the selection
+      // The project-switcher will automatically select the first available project
+      if (selectedProjectId === deletedId) {
+        clearSelectedProjectId();
+        toast.success(i18n.t('common.success.projectDeleted'));
+      } else {
+        toast.success(i18n.t('common.success.projectDeleted'));
+      }
     },
   });
 }

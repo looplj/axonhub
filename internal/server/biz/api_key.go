@@ -495,7 +495,7 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 
 	if err != nil {
 		if errors.Is(err, live.ErrKeyNotFound) {
-			return nil, fmt.Errorf("%w:failed to get api key: %w", ErrInvalidAPIKey, err)
+			return nil, fmt.Errorf("%w: failed to get api key: %w", ErrInvalidAPIKey, err)
 		}
 
 		return nil, fmt.Errorf("failed to get api key: %w", err)
@@ -506,6 +506,11 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 	// DO NOT CACHE PROJECT
 	project, err := s.ProjectService.GetProjectByID(ctx, apiKey.ProjectID)
 	if err != nil {
+		// Check if it's a "not found" error
+		if errors.Is(err, ErrProjectNotFound) {
+			return nil, fmt.Errorf("%w: project not found", ErrInvalidAPIKey)
+		}
+		// Return original error for other cases (database errors, internal errors, etc.)
 		return nil, fmt.Errorf("failed to get api key project: %w", err)
 	}
 

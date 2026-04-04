@@ -26,7 +26,7 @@ func (Project) Mixin() []ent.Mixin {
 
 func (Project) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("name").
+		index.Fields("name", "deleted_at").
 			StorageKey("projects_by_name").
 			Unique(),
 	}
@@ -36,8 +36,7 @@ func (Project) Indexes() []ent.Index {
 func (Project) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").
-			Comment("project name").
-			Unique(),
+			Comment("project name"),
 		field.String("description").
 			Default("").
 			Comment("project description"),

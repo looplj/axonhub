@@ -26,12 +26,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { auth } = useAuthStore();
 
   // Can't delete self, owner users, or if no permission
-  const canDelete = userPermissions.canWrite &&
+  const canDelete = userPermissions.canDelete &&
     !row.original.isOwner &&
     auth?.user?.id !== row.original.id;
 
   // Don't show menu if user has no write permissions
-  if (!userPermissions.canWrite) {
+  if (!userPermissions.canWrite && !userPermissions.canDelete) {
     return null;
   }
 

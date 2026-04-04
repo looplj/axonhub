@@ -8,7 +8,6 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
-	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -465,14 +464,8 @@ func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID i
 // 6. Invalidates user cache.
 func (s *UserService) DeleteUser(ctx context.Context, id int) error {
 	// Validate permissions before deleting
-	if err := s.permissionValidator.CanEditUserPermissions(ctx, id, nil); err != nil {
+	if err := s.permissionValidator.CanDeleteUser(ctx, id); err != nil {
 		return fmt.Errorf("permission denied: %w", err)
-	}
-
-	// Check if trying to delete self
-	currentUser, ok := contexts.GetUser(ctx)
-	if ok && currentUser != nil && currentUser.ID == id {
-		return fmt.Errorf("cannot delete yourself")
 	}
 
 	return s.RunInTransaction(ctx, func(ctx context.Context) error {

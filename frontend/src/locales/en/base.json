@@ -170,6 +170,7 @@
   "common.success.projectUpdated": "Project updated successfully",
   "common.success.projectArchived": "Project archived successfully",
   "common.success.projectActivated": "Project activated successfully",
+  "common.success.projectDeleted": "Project deleted successfully",
   "common.success.signedIn": "Successfully signed in!",
   "common.success.signedOut": "Successfully signed out!",
   "common.success.userDeleted": "User deleted successfully",

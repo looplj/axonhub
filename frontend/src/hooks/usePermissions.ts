@@ -126,9 +126,9 @@ export function usePermissions() {
       canWrite: hasScope('write_users'),
       canCreate: hasScope('write_users'),
       canEdit: hasScope('write_users'),
-      canDelete: hasScope('write_users'),
+      canDelete: isOwner, // Only system owners can delete users
     }),
-    [hasScope]
+    [hasScope, isOwner]
   );
 
   // Common permission checks for role operations
@@ -174,9 +174,9 @@ export function usePermissions() {
       canWrite: hasScope('write_projects'),
       canCreate: hasScope('write_projects'),
       canEdit: hasScope('write_projects'),
-      canDelete: hasScope('write_projects'),
+      canDelete: isOwner, // Only system owners can delete projects
     }),
-    [hasScope]
+    [hasScope, isOwner]
   );
 
   return {

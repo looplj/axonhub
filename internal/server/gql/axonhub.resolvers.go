@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -23,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/samber/lo"
 )
 
 // AllModelEntries is the resolver for the allModelEntries field.
@@ -415,6 +414,15 @@ func (r *mutationResolver) UpdateProjectStatus(ctx context.Context, id objects.G
 	return r.projectService.UpdateProjectStatus(ctx, id.ID, status)
 }
 
+// DeleteProject is the resolver for the deleteProject field.
+func (r *mutationResolver) DeleteProject(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.projectService.DeleteProject(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // AddUserToProject is the resolver for the addUserToProject field.
 func (r *mutationResolver) AddUserToProject(ctx context.Context, input AddUserToProjectInput) (*ent.UserProject, error) {
 	roleIDs := objects.IntGuids(input.RoleIDs)
@@ -675,8 +683,6 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type (
-	channelSettingsResolver struct{ *Resolver }
-	mutationResolver        struct{ *Resolver }
-	segmentResolver         struct{ *Resolver }
-)
+type channelSettingsResolver struct{ *Resolver }
+type mutationResolver struct{ *Resolver }
+type segmentResolver struct{ *Resolver }
