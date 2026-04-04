@@ -3,6 +3,7 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -32,8 +33,11 @@ func WithThread(config tracing.Config, threadService *biz.ThreadService) gin.Han
 			return
 		}
 
+		// Bypass privacy policy so tokens without write_requests scope can still trigger thread tracking.
+		bypassCtx := authz.WithSystemBypass(c.Request.Context(), "thread-middleware")
+
 		// Get or create thread (errors are logged but don't block the request)
-		thread, err := threadService.GetOrCreateThread(c.Request.Context(), projectID, threadID)
+		thread, err := threadService.GetOrCreateThread(bypassCtx, projectID, threadID)
 		if err != nil {
 			log.Warn(c.Request.Context(), "failed to get or create thread", log.String("thread_id", threadID), log.Int("project_id", projectID), log.Cause(err))
 			c.Next()

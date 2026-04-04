@@ -19,6 +19,12 @@ input AgentBuiltinToolInput {
   order: Int! = 0
 }
 
+input AgentBuiltinSkillInput {
+  name: String!
+  enabled: Boolean! = true
+  order: Int! = 0
+}
+
 input CreateAgentInput {
   name: String!
   description: String
@@ -27,6 +33,7 @@ input CreateAgentInput {
   reasoningEffort: ReasoningEffort
   systemPrompt: String!
   builtinTools: [AgentBuiltinToolInput!]
+  builtinSkills: [AgentBuiltinSkillInput!]
   skillsPolicy: AgentSkillsPolicyInput
 }
 
@@ -38,6 +45,7 @@ input UpdateAgentInput {
   reasoningEffort: ReasoningEffort
   systemPrompt: String
   builtinTools: [AgentBuiltinToolInput!]
+  builtinSkills: [AgentBuiltinSkillInput!]
   skillsPolicy: AgentSkillsPolicyInput
 }
 
@@ -138,6 +146,5 @@ extend type Query {
   """
   agentChatMessages(agentID: ID!, agentInstanceID: ID, afterSequence: Int, limit: Int = 200): [AgentChatMessage!]!
 }
-
 
 

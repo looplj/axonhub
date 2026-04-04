@@ -36,6 +36,7 @@ const PROMPTS_QUERY = `
                 type
                 modelId
                 modelPattern
+                apiKeyId
               }
             }
           }
@@ -75,6 +76,7 @@ const CREATE_PROMPT_MUTATION = `
             type
             modelId
             modelPattern
+            apiKeyId
           }
         }
       }
@@ -104,6 +106,7 @@ const UPDATE_PROMPT_MUTATION = `
             type
             modelId
             modelPattern
+            apiKeyId
           }
         }
       }
@@ -182,8 +185,8 @@ export function useCreatePrompt() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.createSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('prompts.messages.createError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -203,8 +206,8 @@ export function useUpdatePrompt() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.updateSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('prompts.messages.updateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -223,8 +226,8 @@ export function useDeletePrompt() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.deleteSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('prompts.messages.deleteError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -243,8 +246,8 @@ export function useUpdatePromptStatus() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.statusUpdateSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('prompts.messages.statusUpdateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -264,8 +267,8 @@ export function useBulkDeletePrompts() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.bulkDeleteSuccess', { count: variables.length }));
     },
-    onError: (error: Error) => {
-      toast.error(t('prompts.messages.bulkDeleteError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -285,8 +288,8 @@ export function useBulkDisablePrompts() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.bulkDisableSuccess', { count: variables.length }));
     },
-    onError: (error: Error) => {
-      toast.error(t('prompts.messages.bulkDisableError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -306,8 +309,8 @@ export function useBulkEnablePrompts() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.bulkEnableSuccess', { count: variables.length }));
     },
-    onError: (error: Error) => {
-      toast.error(t('prompts.messages.bulkEnableError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

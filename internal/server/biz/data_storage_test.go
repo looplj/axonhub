@@ -95,7 +95,6 @@ func setupDataStorageTestWithRedis(t *testing.T) (*ent.Client, *DataStorageServi
 }
 
 func createTestDataStorage(t *testing.T, client *ent.Client, ctx context.Context, name string, primary bool, dsType datastorage.Type) *ent.DataStorage {
-
 	settings := &objects.DataStorageSettings{}
 
 	if dsType == datastorage.TypeFs {
@@ -202,8 +201,8 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		existingGCSCredential := "existing-gcs-cred"
 
 		existingSettings := &objects.DataStorageSettings{
-			Directory: stringPtr(existingDirectory),
-			DSN:       stringPtr(existingDSN),
+			Directory: new(existingDirectory),
+			DSN:       new(existingDSN),
 			S3: &objects.S3{
 				BucketName: "existing-bucket",
 				Endpoint:   "existing-endpoint",
@@ -273,8 +272,8 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		ctx = authz.WithTestBypass(ctx)
 
 		existingSettings := &objects.DataStorageSettings{
-			Directory: stringPtr("/existing/path"),
-			DSN:       stringPtr("existing-dsn"),
+			Directory: new("/existing/path"),
+			DSN:       new("existing-dsn"),
 			S3: &objects.S3{
 				BucketName: "existing-bucket",
 				Endpoint:   "existing-endpoint",
@@ -301,8 +300,8 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 
 		updateInput := ent.UpdateDataStorageInput{
 			Settings: &objects.DataStorageSettings{
-				Directory: stringPtr("/new/path"),
-				DSN:       stringPtr("new-dsn"),
+				Directory: new("/new/path"),
+				DSN:       new("new-dsn"),
 				S3: &objects.S3{
 					BucketName: "new-bucket",
 					Endpoint:   "new-endpoint",

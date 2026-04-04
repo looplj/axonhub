@@ -2,6 +2,8 @@ package datamigrate_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,9 +29,14 @@ func TestV1_0_0_CreateLocalAgentHost(t *testing.T) {
 		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Only(ctx)
 	require.NoError(t, err)
+
+	homeDir, err := os.UserHomeDir()
+	require.NoError(t, err)
+
 	assert.Equal(t, "Local", host.Name)
 	assert.Equal(t, agenthost.TypeLocal, host.Type)
 	assert.Equal(t, agenthost.StatusActive, host.Status)
+	assert.Equal(t, filepath.Join(homeDir, ".axonclaw", "hosts"), host.Directory)
 }
 
 func TestV1_0_0_LocalAgentHostAlreadyExists(t *testing.T) {
@@ -43,6 +50,7 @@ func TestV1_0_0_LocalAgentHostAlreadyExists(t *testing.T) {
 		SetName("existing-local").
 		SetType(agenthost.TypeLocal).
 		SetStatus(agenthost.StatusActive).
+		SetDirectory("/tmp/existing-local").
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -61,6 +69,7 @@ func TestV1_0_0_LocalAgentHostAlreadyExists(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, existingHost.ID, host.ID)
 	assert.Equal(t, "existing-local", host.Name)
+	assert.Equal(t, "/tmp/existing-local", host.Directory)
 }
 
 func TestV1_0_0_Idempotency(t *testing.T) {
@@ -109,12 +118,16 @@ func TestV1_0_0_VerifyAgentHostFields(t *testing.T) {
 		Only(ctx)
 	require.NoError(t, err)
 
+	homeDir, err := os.UserHomeDir()
+	require.NoError(t, err)
+
 	assert.NotZero(t, host.ID)
 	assert.NotZero(t, host.CreatedAt)
 	assert.NotZero(t, host.UpdatedAt)
 	assert.Equal(t, "Local", host.Name)
 	assert.Equal(t, agenthost.TypeLocal, host.Type)
 	assert.Equal(t, agenthost.StatusActive, host.Status)
+	assert.Equal(t, filepath.Join(homeDir, ".axonclaw", "hosts"), host.Directory)
 }
 
 func TestV1_0_0_MultipleNonLocalAgentHosts(t *testing.T) {
@@ -145,7 +158,12 @@ func TestV1_0_0_MultipleNonLocalAgentHosts(t *testing.T) {
 		Where(agenthost.TypeEQ(agenthost.TypeLocal)).
 		Only(ctx)
 	require.NoError(t, err)
+
+	homeDir, err := os.UserHomeDir()
+	require.NoError(t, err)
+
 	assert.Equal(t, "Local", localHost.Name)
+	assert.Equal(t, filepath.Join(homeDir, ".axonclaw", "hosts"), localHost.Directory)
 
 	totalCount, err := client.AgentHost.Query().Count(ctx)
 	require.NoError(t, err)

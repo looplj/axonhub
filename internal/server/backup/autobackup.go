@@ -193,6 +193,10 @@ func (svc *BackupService) cleanupOldBackups(ctx context.Context, ds *ent.DataSto
 
 // RunBackupNow triggers an immediate backup.
 func (svc *BackupService) RunBackupNow(ctx context.Context) error {
+	// Inject a fresh ent client so callers using a transactional context (e.g. HTTP resolvers)
+	// don't break when their transaction is closed before the backup finishes.
+	ctx = ent.NewContext(ctx, svc.db)
+
 	settings, err := svc.systemService.AutoBackupSettings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get auto backup settings: %w", err)

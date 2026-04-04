@@ -172,7 +172,8 @@ func (e DefaultExtractor) Extract(workspace, toolName string, input json.RawMess
 }
 
 func cleanPath(workspace, p string) string {
-	if strings.TrimSpace(p) == "" {
+	p = normalizePathInput(p)
+	if p == "" {
 		return filepath.Clean(workspace)
 	}
 	if !filepath.IsAbs(p) {
@@ -181,8 +182,19 @@ func cleanPath(workspace, p string) string {
 	return filepath.Clean(p)
 }
 
+func normalizePathInput(path string) string {
+	path = strings.TrimSpace(path)
+	if len(path) >= 2 {
+		if (path[0] == '"' && path[len(path)-1] == '"') || (path[0] == '\'' && path[len(path)-1] == '\'') {
+			path = strings.TrimSpace(path[1 : len(path)-1])
+		}
+	}
+
+	return path
+}
+
 func isDirPath(p string) bool {
-	p = strings.TrimSpace(p)
+	p = normalizePathInput(p)
 	if p == "." || p == ".." {
 		return true
 	}

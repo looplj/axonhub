@@ -138,6 +138,12 @@ const COMPLETE_AUTO_DISABLE_CHANNEL_ONBOARDING_MUTATION = `
   }
 `;
 
+const TRIGGER_GC_CLEANUP_MUTATION = `
+  mutation triggerGcCleanup {
+    triggerGcCleanup
+  }
+`;
+
 // Types
 export interface BrandSettings {
   brandName?: string;
@@ -357,6 +363,21 @@ export function useUpdateStoragePolicy() {
   });
 }
 
+export function useTriggerGcCleanup() {
+  return useMutation({
+    mutationFn: async () => {
+      const data = await graphqlRequest<{ triggerGcCleanup: boolean }>(TRIGGER_GC_CLEANUP_MUTATION);
+      return data.triggerGcCleanup;
+    },
+    onSuccess: () => {
+      toast.success(i18n.t('system.storage.policy.runCleanupSuccess'));
+    },
+    onError: () => {
+      toast.error(i18n.t('system.storage.policy.runCleanupError'));
+    },
+  });
+}
+
 export function useRetryPolicy() {
   const { handleError } = useErrorHandler();
 
@@ -546,6 +567,9 @@ const CHANNEL_SETTINGS_QUERY = `
         enabled
         frequency
       }
+      autoSync {
+        frequency
+      }
     }
   }
 `;
@@ -635,13 +659,20 @@ export function useUpdateModelSettings() {
 
 export type ProbeFrequency = 'ONE_MINUTE' | 'FIVE_MINUTES' | 'THIRTY_MINUTES' | 'ONE_HOUR';
 
+export type AutoSyncFrequency = 'ONE_HOUR' | 'SIX_HOURS' | 'ONE_DAY';
+
 export interface ChannelProbeSetting {
   enabled: boolean;
   frequency: ProbeFrequency;
 }
 
+export interface ChannelModelAutoSyncSetting {
+  frequency: AutoSyncFrequency;
+}
+
 export interface ChannelSetting {
   probe: ChannelProbeSetting;
+  autoSync: ChannelModelAutoSyncSetting;
 }
 
 export interface UpdateChannelProbeSettingInput {
@@ -649,8 +680,13 @@ export interface UpdateChannelProbeSettingInput {
   frequency?: ProbeFrequency;
 }
 
+export interface UpdateChannelModelAutoSyncSettingInput {
+  frequency?: AutoSyncFrequency;
+}
+
 export interface UpdateSystemChannelSettingsInput {
   probe?: UpdateChannelProbeSettingInput;
+  autoSync?: UpdateChannelModelAutoSyncSettingInput;
 }
 
 export function useChannelSetting() {
@@ -703,6 +739,7 @@ export function useGeneralSettings() {
         throw error;
       }
     },
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -994,6 +1031,155 @@ export function useTriggerAutoBackup() {
     },
     onError: () => {
       toast.error(i18n.t('system.autoBackup.triggerFailed'));
+    },
+  });
+}
+
+// Proxy Presets
+const PROXY_PRESETS_QUERY = `
+  query ProxyPresets {
+    proxyPresets {
+      name
+      url
+      username
+      password
+    }
+  }
+`;
+
+const SAVE_PROXY_PRESET_MUTATION = `
+  mutation SaveProxyPreset($input: SaveProxyPresetInput!) {
+    saveProxyPreset(input: $input)
+  }
+`;
+
+const DELETE_PROXY_PRESET_MUTATION = `
+  mutation DeleteProxyPreset($url: String!) {
+    deleteProxyPreset(url: $url)
+  }
+`;
+
+export interface ProxyPreset {
+  name?: string;
+  url: string;
+  username?: string;
+  password?: string;
+}
+
+export interface SaveProxyPresetInput {
+  name?: string;
+  url: string;
+  username?: string;
+  password?: string;
+}
+
+export function useProxyPresets() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['proxyPresets'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ proxyPresets: ProxyPreset[] }>(PROXY_PRESETS_QUERY);
+        return data.proxyPresets;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useSaveProxyPreset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: SaveProxyPresetInput) => {
+      const data = await graphqlRequest<{ saveProxyPreset: boolean }>(SAVE_PROXY_PRESET_MUTATION, { input });
+      return data.saveProxyPreset;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proxyPresets'] });
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+export function useDeleteProxyPreset() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (url: string) => {
+      const data = await graphqlRequest<{ deleteProxyPreset: boolean }>(DELETE_PROXY_PRESET_MUTATION, { url });
+      return data.deleteProxyPreset;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proxyPresets'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+
+// User-Agent Pass-Through Settings
+const USER_AGENT_PASS_THROUGH_SETTINGS_QUERY = `
+  query UserAgentPassThroughSettings {
+    userAgentPassThroughSettings {
+      enabled
+    }
+  }
+`;
+
+const UPDATE_USER_AGENT_PASS_THROUGH_SETTINGS_MUTATION = `
+  mutation UpdateUserAgentPassThroughSettings($input: UpdateUserAgentPassThroughSettingsInput!) {
+    updateUserAgentPassThroughSettings(input: $input)
+  }
+`;
+
+export interface UserAgentPassThroughSettings {
+  enabled: boolean;
+}
+
+export interface UpdateUserAgentPassThroughSettingsInput {
+  enabled: boolean;
+}
+
+export function useUserAgentPassThroughSettings() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['userAgentPassThroughSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ userAgentPassThroughSettings: UserAgentPassThroughSettings }>(USER_AGENT_PASS_THROUGH_SETTINGS_QUERY);
+        return data.userAgentPassThroughSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateUserAgentPassThroughSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateUserAgentPassThroughSettingsInput) => {
+      const data = await graphqlRequest<{ updateUserAgentPassThroughSettings: boolean }>(UPDATE_USER_AGENT_PASS_THROUGH_SETTINGS_MUTATION, { input });
+      return data.updateUserAgentPassThroughSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userAgentPassThroughSettings'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
     },
   });
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -23,7 +24,9 @@ func (t *OutboundTransformer) TransformStream(
 	// Append the DONE event to the filtered stream
 	streamWithDone := streams.AppendStream(filteredStream, lo.ToPtr(llm.DoneStreamEvent))
 
-	return streams.NoNil(newOutboundStream(streamWithDone, t.config.Type)), nil
+	scope, _ := shared.GetTransportScope(ctx)
+
+	return streams.NoNil(newOutboundStream(streamWithDone, t.config.Type, scope)), nil
 }
 
 // filterStreamEvent determines if a stream event should be processed
@@ -36,6 +39,8 @@ func filterStreamEvent(event *httpclient.StreamEvent) bool {
 	// Only process events that contribute to the OpenAI response format
 	switch event.Type {
 	case "message_start", "content_block_start", "content_block_delta", "message_delta", "message_stop":
+		return true
+	case "error":
 		return true
 	case "ping", "content_block_stop":
 		return false // Skip these events as they're not needed for OpenAI format
@@ -50,6 +55,7 @@ type streamState struct {
 	streamModel  string
 	streamUsage  *llm.Usage
 	platformType PlatformType
+	scope        shared.TransportScope
 	// Tool call tracking
 	toolIndex int
 	toolCalls map[int]*llm.ToolCall // index -> tool call
@@ -63,13 +69,14 @@ type outboundStream struct {
 	err     error
 }
 
-func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent], platformType PlatformType) *outboundStream {
+func newOutboundStream(stream streams.Stream[*httpclient.StreamEvent], platformType PlatformType, scope shared.TransportScope) *outboundStream {
 	return &outboundStream{
 		stream: stream,
 		state: &streamState{
 			toolCalls:    make(map[int]*llm.ToolCall),
 			toolIndex:    -1,
 			platformType: platformType,
+			scope:        scope,
 		},
 	}
 }
@@ -110,11 +117,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 	}
 
 	if event.Type == "error" {
-		return nil, &llm.ResponseError{
-			Detail: llm.ErrorDetail{
-				Message: fmt.Sprintf("received error while streaming: %s", string(event.Data)),
-			},
-		}
+		return nil, parseAnthropicStreamErrorEvent(event)
 	}
 
 	state := s.state
@@ -232,7 +235,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			case "thinking_delta":
 				choice.Delta.ReasoningContent = streamEvent.Delta.Thinking
 			case "signature_delta":
-				choice.Delta.ReasoningSignature = shared.EncodeAnthropicSignature(streamEvent.Delta.Signature)
+				choice.Delta.ReasoningSignature = shared.EncodeAnthropicSignatureInScope(streamEvent.Delta.Signature, s.state.scope)
 			}
 
 			resp.Choices = []llm.Choice{choice}
@@ -243,13 +246,15 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		if streamEvent.Usage != nil {
 			usage := convertToLlmUsage(streamEvent.Usage, state.platformType)
 			if state.streamUsage != nil {
-				usage.PromptTokens = state.streamUsage.PromptTokens
+				if usage.PromptTokens == 0 && state.streamUsage.PromptTokens > 0 {
+					usage.PromptTokens = state.streamUsage.PromptTokens
+				}
 				if usage.PromptTokensDetails == nil && state.streamUsage.PromptTokensDetails != nil {
 					usage.PromptTokensDetails = state.streamUsage.PromptTokensDetails
 				}
-				// Recalculate total tokens
-				usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 			}
+			// Recalculate total tokens after merging prompt/completion usage.
+			usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 
 			state.streamUsage = usage
 		}
@@ -303,7 +308,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 	case "message_stop":
 		// Final event - return empty response to indicate completion
 		resp.Choices = []llm.Choice{}
-		// Include final usage information
+		// Include final merged usage information (OpenAI include_usage style).
 		if state.streamUsage != nil {
 			resp.Usage = state.streamUsage
 		}
@@ -314,6 +319,64 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 	}
 
 	return resp, nil
+}
+
+func parseAnthropicStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
+	if event == nil {
+		return nil
+	}
+
+	if len(event.Data) == 0 {
+		return &llm.ResponseError{
+			Detail: llm.ErrorDetail{
+				Message: "stream error",
+				Type:    "stream_error",
+			},
+		}
+	}
+
+	root := gjson.ParseBytes(event.Data)
+
+	candidate := root
+	if root.Get("event").String() == "error" {
+		if d := root.Get("data"); d.Exists() {
+			candidate = d
+		}
+	}
+
+	// Common format (e.g. zai anthropic): {"error":{"code":"...","message":"..."},"request_id":"..."}
+	// Anthropic format: {"type":"error","error":{"type":"...","message":"..."},"request_id":"..."}
+	errObj := candidate.Get("error")
+	detail := llm.ErrorDetail{
+		Code:    errObj.Get("code").String(),
+		Message: errObj.Get("message").String(),
+		Type:    errObj.Get("type").String(),
+		Param:   errObj.Get("param").String(),
+	}
+
+	if detail.Message == "" {
+		detail.Message = candidate.Get("message").String()
+	}
+
+	if detail.Message == "" && errObj.Exists() {
+		detail.Message = errObj.String()
+	}
+
+	if detail.Message == "" {
+		detail.Message = "stream error"
+	}
+
+	if rid := candidate.Get("request_id").String(); rid != "" {
+		detail.RequestID = rid
+	} else if rid := errObj.Get("request_id").String(); rid != "" {
+		detail.RequestID = rid
+	}
+
+	if detail.Type == "" && candidate.Get("type").String() == "error" {
+		detail.Type = "stream_error"
+	}
+
+	return &llm.ResponseError{Detail: detail}
 }
 
 func (s *outboundStream) Current() *llm.Response {

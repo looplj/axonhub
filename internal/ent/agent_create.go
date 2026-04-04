@@ -160,6 +160,12 @@ func (_c *AgentCreate) SetAgentBuiltinTools(v []objects.AgentBuiltinTool) *Agent
 	return _c
 }
 
+// SetAgentBuiltinSkills sets the "agent_builtin_skills" field.
+func (_c *AgentCreate) SetAgentBuiltinSkills(v []objects.AgentBuiltinSkill) *AgentCreate {
+	_c.mutation.SetAgentBuiltinSkills(v)
+	return _c
+}
+
 // SetSkillsPolicy sets the "skills_policy" field.
 func (_c *AgentCreate) SetSkillsPolicy(v objects.AgentSkillsPolicy) *AgentCreate {
 	_c.mutation.SetSkillsPolicy(v)
@@ -354,6 +360,10 @@ func (_c *AgentCreate) defaults() error {
 		v := agent.DefaultAgentBuiltinTools
 		_c.mutation.SetAgentBuiltinTools(v)
 	}
+	if _, ok := _c.mutation.AgentBuiltinSkills(); !ok {
+		v := agent.DefaultAgentBuiltinSkills
+		_c.mutation.SetAgentBuiltinSkills(v)
+	}
 	if _, ok := _c.mutation.SkillsPolicy(); !ok {
 		v := agent.DefaultSkillsPolicy
 		_c.mutation.SetSkillsPolicy(v)
@@ -363,12 +373,6 @@ func (_c *AgentCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *AgentCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Agent.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Agent.updated_at"`)}
-	}
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Agent.deleted_at"`)}
 	}
@@ -408,6 +412,9 @@ func (_c *AgentCreate) check() error {
 	}
 	if _, ok := _c.mutation.AgentBuiltinTools(); !ok {
 		return &ValidationError{Name: "agent_builtin_tools", err: errors.New(`ent: missing required field "Agent.agent_builtin_tools"`)}
+	}
+	if _, ok := _c.mutation.AgentBuiltinSkills(); !ok {
+		return &ValidationError{Name: "agent_builtin_skills", err: errors.New(`ent: missing required field "Agent.agent_builtin_skills"`)}
 	}
 	if _, ok := _c.mutation.SkillsPolicy(); !ok {
 		return &ValidationError{Name: "skills_policy", err: errors.New(`ent: missing required field "Agent.skills_policy"`)}
@@ -483,6 +490,10 @@ func (_c *AgentCreate) createSpec() (*Agent, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.AgentBuiltinTools(); ok {
 		_spec.SetField(agent.FieldAgentBuiltinTools, field.TypeJSON, value)
 		_node.AgentBuiltinTools = value
+	}
+	if value, ok := _c.mutation.AgentBuiltinSkills(); ok {
+		_spec.SetField(agent.FieldAgentBuiltinSkills, field.TypeJSON, value)
+		_node.AgentBuiltinSkills = value
 	}
 	if value, ok := _c.mutation.SkillsPolicy(); ok {
 		_spec.SetField(agent.FieldSkillsPolicy, field.TypeJSON, value)
@@ -789,6 +800,18 @@ func (u *AgentUpsert) UpdateAgentBuiltinTools() *AgentUpsert {
 	return u
 }
 
+// SetAgentBuiltinSkills sets the "agent_builtin_skills" field.
+func (u *AgentUpsert) SetAgentBuiltinSkills(v []objects.AgentBuiltinSkill) *AgentUpsert {
+	u.Set(agent.FieldAgentBuiltinSkills, v)
+	return u
+}
+
+// UpdateAgentBuiltinSkills sets the "agent_builtin_skills" field to the value that was provided on create.
+func (u *AgentUpsert) UpdateAgentBuiltinSkills() *AgentUpsert {
+	u.SetExcluded(agent.FieldAgentBuiltinSkills)
+	return u
+}
+
 // SetSkillsPolicy sets the "skills_policy" field.
 func (u *AgentUpsert) SetSkillsPolicy(v objects.AgentSkillsPolicy) *AgentUpsert {
 	u.Set(agent.FieldSkillsPolicy, v)
@@ -971,6 +994,20 @@ func (u *AgentUpsertOne) SetAgentBuiltinTools(v []objects.AgentBuiltinTool) *Age
 func (u *AgentUpsertOne) UpdateAgentBuiltinTools() *AgentUpsertOne {
 	return u.Update(func(s *AgentUpsert) {
 		s.UpdateAgentBuiltinTools()
+	})
+}
+
+// SetAgentBuiltinSkills sets the "agent_builtin_skills" field.
+func (u *AgentUpsertOne) SetAgentBuiltinSkills(v []objects.AgentBuiltinSkill) *AgentUpsertOne {
+	return u.Update(func(s *AgentUpsert) {
+		s.SetAgentBuiltinSkills(v)
+	})
+}
+
+// UpdateAgentBuiltinSkills sets the "agent_builtin_skills" field to the value that was provided on create.
+func (u *AgentUpsertOne) UpdateAgentBuiltinSkills() *AgentUpsertOne {
+	return u.Update(func(s *AgentUpsert) {
+		s.UpdateAgentBuiltinSkills()
 	})
 }
 
@@ -1324,6 +1361,20 @@ func (u *AgentUpsertBulk) SetAgentBuiltinTools(v []objects.AgentBuiltinTool) *Ag
 func (u *AgentUpsertBulk) UpdateAgentBuiltinTools() *AgentUpsertBulk {
 	return u.Update(func(s *AgentUpsert) {
 		s.UpdateAgentBuiltinTools()
+	})
+}
+
+// SetAgentBuiltinSkills sets the "agent_builtin_skills" field.
+func (u *AgentUpsertBulk) SetAgentBuiltinSkills(v []objects.AgentBuiltinSkill) *AgentUpsertBulk {
+	return u.Update(func(s *AgentUpsert) {
+		s.SetAgentBuiltinSkills(v)
+	})
+}
+
+// UpdateAgentBuiltinSkills sets the "agent_builtin_skills" field to the value that was provided on create.
+func (u *AgentUpsertBulk) UpdateAgentBuiltinSkills() *AgentUpsertBulk {
+	return u.Update(func(s *AgentUpsert) {
+		s.UpdateAgentBuiltinSkills()
 	})
 }
 

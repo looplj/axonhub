@@ -14,6 +14,7 @@ schema:
   - agent.graphql
   - agent_host.graphql
   - prompt.graphql
+  - prompt_protection_rule.graphql
   - price.graphql
   - cost.graphql
   - messages.graphql
@@ -198,6 +199,9 @@ models:
   APIKeyProfile:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfile
+  APIKeyMatchMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyMatchMode
   APIKeyQuotaInput:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyQuota
@@ -555,12 +559,24 @@ models:
   UpdateVideoStorageSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.VideoStorageSettings
+  ProxyPreset:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ProxyPreset
+  SaveProxyPresetInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ProxyPreset
   ChannelProbeSetting:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ChannelProbeSetting
   UpdateChannelProbeSettingInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ChannelProbeSetting
+  ChannelModelAutoSyncSetting:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelModelAutoSyncSetting
+  UpdateChannelModelAutoSyncSettingInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ChannelModelAutoSyncSetting
   ChannelProbePoint:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ChannelProbePoint
@@ -573,12 +589,27 @@ models:
   ProbeFrequency:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ProbeFrequency
+  AutoSyncFrequency:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AutoSyncFrequency
   PromptSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptSettings
   PromptSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptSettings
+  PromptProtectionSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptProtectionSettings
+  PromptProtectionSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptProtectionSettings
+  PromptProtectionAction:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptProtectionAction
+  PromptProtectionScope:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PromptProtectionScope
   PromptAction:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptAction

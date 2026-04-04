@@ -551,6 +551,7 @@ func TestInboundTransformer_TransformRequest_ThinkingValidation(t *testing.T) {
 		require.Equal(t, "adaptive", got.TransformerMetadata[TransformerMetadataKeyThinkingType])
 		_, hasEffort := got.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort]
 		require.False(t, hasEffort)
+		require.Equal(t, "high", got.ReasoningEffort)
 	})
 
 	t.Run("thinking adaptive requires valid output_config.effort", func(t *testing.T) {
@@ -583,7 +584,7 @@ func TestInboundTransformer_TransformRequest_ThinkingValidation(t *testing.T) {
 		require.NotNil(t, got.TransformerMetadata)
 		require.Equal(t, "adaptive", got.TransformerMetadata[TransformerMetadataKeyThinkingType])
 		require.Equal(t, "high", got.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
-		require.Empty(t, got.ReasoningEffort)
+		require.Equal(t, "high", got.ReasoningEffort)
 		require.Nil(t, got.ReasoningBudget)
 	})
 

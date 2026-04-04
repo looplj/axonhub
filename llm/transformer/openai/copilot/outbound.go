@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -20,6 +22,10 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
+
+// modelVersionRegex matches GPT model versions (e.g., "gpt-5", "gpt-6")
+// Compiled once at package initialization for efficiency.
+var modelVersionRegex = regexp.MustCompile(`^gpt-(\d+)`)
 
 const (
 	// DefaultCopilotBaseURL is the base URL for GitHub Copilot API.
@@ -34,11 +40,13 @@ const (
 	RequestIDHeader                = "x-request-id"
 	VSCodeUserAgentLibHeader       = "x-vscode-user-agent-library-version"
 	CopilotVisionRequestHeader     = "Copilot-Vision-Request"
+	InitiatorHeader                = "X-Initiator"
 	// Default editor header values (VSCode pattern) - from LiteLLM
-	DefaultEditorVersion        = "vscode/1.95.0"
-	DefaultEditorPluginVersion  = "copilot-chat/0.26.7"
-	DefaultUserAgent            = "GitHubCopilotChat/0.26.7"
-	DefaultOpenAIIntent         = "conversation-panel"
+	DefaultEditorVersion       = "vscode/1.95.0"
+	DefaultEditorPluginVersion = "copilot-chat/0.26.7"
+	DefaultUserAgent           = "GitHubCopilotChat/0.26.7"
+	// DefaultOpenAIIntent is used for proper quota aggregation (matches OpenCode behavior).
+	DefaultOpenAIIntent         = "conversation-edits"
 	DefaultCopilotIntegrationID = "vscode-chat"
 	DefaultGitHubAPIVersion     = "2025-04-01"
 	DefaultVSCodeUserAgentLib   = "electron-fetch"
@@ -56,7 +64,7 @@ type TokenProvider interface {
 type OutboundTransformer struct {
 	tokenProvider     TokenProvider
 	baseURL           string
-	codexResponses    *responses.OutboundTransformer
+	responses         *responses.OutboundTransformer
 	openAITransformer transformer.Outbound
 }
 
@@ -96,9 +104,9 @@ func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransfor
 	}
 
 	return &OutboundTransformer{
-		tokenProvider:  params.TokenProvider,
-		baseURL:        baseURL,
-		codexResponses: responsesTransformer,
+		tokenProvider: params.TokenProvider,
+		baseURL:       baseURL,
+		responses:     responsesTransformer,
 	}, nil
 }
 
@@ -122,9 +130,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, errors.New("messages are required")
 	}
 
-	// Check if this is a Codex model - use Responses API for Codex
-	if isCodexModel(llmReq.Model) {
-		return t.transformCodexResponsesRequest(ctx, llmReq)
+	// Check if this model requires the Responses API.
+	if usesResponsesAPI(llmReq.Model) {
+		return t.transformResponsesRequest(ctx, llmReq)
 	}
 
 	// Get Copilot token from token provider.
@@ -157,6 +165,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if hasVisionContent(llmReq) {
 		headers.Set(CopilotVisionRequestHeader, "true")
 	}
+
+	// Forward X-Initiator from inbound request for Copilot billing control.
+	// Default to "agent" if not provided to match OpenCode behavior.
+	initiator := "agent"
+	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
+		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
+			initiator = val
+		}
+	}
+	headers.Set(InitiatorHeader, initiator)
 
 	// Build authentication config.
 	authConfig := &httpclient.AuthConfig{
@@ -272,9 +290,11 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 				Headers:    httpResp.Headers,
 				Body:       unwrappedBody,
 			}
-			return t.codexResponses.TransformResponse(ctx, wrappedResp)
+
+			return t.responses.TransformResponse(ctx, wrappedResp)
 		}
-		return t.codexResponses.TransformResponse(ctx, httpResp)
+
+		return t.responses.TransformResponse(ctx, httpResp)
 	}
 
 	// Parse into OpenAI Response type (Chat Completions format).
@@ -366,7 +386,7 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, stream stream
 	})
 
 	// Delegate to the responses transformer's stream handling
-	return t.codexResponses.TransformStream(ctx, filteredStream)
+	return t.responses.TransformStream(ctx, filteredStream)
 }
 
 // convertCopilotStreamEvent fixes up Copilot's standard Responses API stream events.
@@ -544,10 +564,10 @@ func isResponsesAPIStream(chunks []*httpclient.StreamEvent) bool {
 	return false
 }
 
-// transformCodexResponsesRequest transforms a request for Codex models using the Responses API.
-func (t *OutboundTransformer) transformCodexResponsesRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+// transformResponsesRequest transforms a request for models that use the Responses API.
+func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	// Use the responses transformer to properly convert to Responses API format
-	responsesReq, err := t.codexResponses.TransformRequest(ctx, llmReq)
+	responsesReq, err := t.responses.TransformRequest(ctx, llmReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform request for Responses API: %w", err)
 	}
@@ -576,12 +596,37 @@ func (t *OutboundTransformer) transformCodexResponsesRequest(ctx context.Context
 		responsesReq.Headers.Set(CopilotVisionRequestHeader, "true")
 	}
 
+	// Forward X-Initiator from inbound request for Copilot billing control.
+	// Default to "agent" if not provided to match OpenCode behavior.
+	initiator := "agent"
+	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
+		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
+			initiator = val
+		}
+	}
+	responsesReq.Headers.Set(InitiatorHeader, initiator)
+
 	return responsesReq, nil
 }
 
-// isCodexModel checks if the model is a Codex model.
-func isCodexModel(model string) bool {
-	return strings.Contains(strings.ToLower(model), "codex")
+// usesResponsesAPI checks if the model uses the responses API.
+// GPT-5+ (except gpt-5-mini) uses /responses, everything else uses /chat/completions.
+func usesResponsesAPI(model string) bool {
+	normalizedModel := strings.ToLower(model)
+
+	// Use package-level compiled regex
+	match := modelVersionRegex.FindStringSubmatch(normalizedModel)
+	if match == nil {
+		return false
+	}
+
+	major, err := strconv.Atoi(match[1])
+	if err != nil {
+		return false
+	}
+
+	// Match OpenCode's pattern: GPT-5+ uses responses API (except gpt-5-mini)
+	return major >= 5 && !strings.HasPrefix(normalizedModel, "gpt-5-mini")
 }
 
 // prependedStream is a stream that yields a first event before forwarding to the upstream stream.

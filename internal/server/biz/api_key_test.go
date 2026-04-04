@@ -234,7 +234,7 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 
 			// Update API key to invalidate cache
 			_, err = apiKeyService.UpdateAPIKey(ctx, apiKey.ID, ent.UpdateAPIKeyInput{
-				Name: stringPtr("Updated API Key"),
+				Name: new("Updated API Key"),
 			})
 			require.NoError(t, err)
 
@@ -246,10 +246,6 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 			require.Equal(t, testProject.ID, retrievedAPIKey3.Edges.Project.ID)
 		})
 	}
-}
-
-func stringPtr(s string) *string {
-	return &s
 }
 
 func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
@@ -439,6 +435,23 @@ func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "does not exist in the profiles list")
+	})
+
+	t.Run("Invalid channel tags match mode", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "production",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name:                 "production",
+					ChannelTags:          []string{"official"},
+					ChannelTagsMatchMode: objects.APIKeyMatchMode("invalid"),
+				},
+			},
+		}
+
+		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "channelTagsMatchMode is invalid")
 	})
 
 	t.Run("Multiple profiles with unique names", func(t *testing.T) {

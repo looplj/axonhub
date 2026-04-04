@@ -19,6 +19,13 @@ type AgentBuiltinTool {
   config: JSONRawMessage
 }
 
+type AgentBuiltinSkill {
+  name: String!
+  enabled: Boolean!
+  order: Int!
+  config: JSONRawMessage
+}
+
 type AgentToolDefinition {
   name: String!
   description: String!
@@ -36,12 +43,15 @@ type AgentSkillDefinition {
 type AgentBootstrap {
   agentID: ID!
   agentName: String!
+  agentInstanceName: String!
+  createdByUserName: String!
   model: String
   reasoningEffort: String!
   systemPrompt: String!
   tools: [AgentToolDefinition!]!
   skills: [AgentSkillDefinition!]!
   builtinTools: [AgentBuiltinTool!]!
+  builtinSkills: [AgentBuiltinSkill!]!
   skillsPolicy: AgentSkillsPolicy!
   memoryPolicy: JSONRawMessage
 }
@@ -52,9 +62,7 @@ enum AgentMessageSenderType { user runtime system }
 enum AgentMessageType { chat approval_request approval_result system_event }
 
 input RegisterAgentInstanceInput {
-  name: String
   platform: String
-  description: String
   threadID: String
 }
 
@@ -141,11 +149,38 @@ type DeployAxonClawResult {
   instance: AgentInstance
 }
 
+type ModelCapabilities {
+  vision: Boolean!
+  toolCall: Boolean!
+  reasoning: Boolean!
+}
+
+type ModelPricing {
+  input: Float!
+  output: Float!
+  cacheRead: Float!
+  cacheWrite: Float!
+}
+
+type AvailableModel {
+  id: String!
+  name: String!
+  ownedBy: String!
+  type: String!
+  icon: String!
+  description: String
+  contextLength: Int!
+  maxOutputTokens: Int!
+  capabilities: ModelCapabilities
+  pricing: ModelPricing
+}
+
 type Query {
   agentBootstrap: AgentBootstrap!
   peerAgents: [PeerAgent!]!
   pullAgentMessages(input: PullAgentMessagesInput!): [AgentMessage!]!
   pullAgentMessagesToUser(afterSequence: Int, limit: Int = 50): [AgentMessage!]!
+  availableModels: [AvailableModel!]!
 }
 
 type Mutation {

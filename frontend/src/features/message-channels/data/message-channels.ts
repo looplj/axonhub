@@ -49,6 +49,7 @@ const MESSAGE_CHANNELS_QUERY = `
                   chatID
                   allowFrom
                   excludeKeywords
+                  allowWithoutMention
                 }
                 agentInstance {
                   id
@@ -117,6 +118,7 @@ const MESSAGE_CHANNEL_QUERY = `
                 chatID
                 allowFrom
                 excludeKeywords
+                allowWithoutMention
               }
               agentInstance {
                 id
@@ -231,6 +233,7 @@ const BATCH_SAVE_MESSAGE_CHANNEL_BINDINGS_MUTATION = `
               chatID
               allowFrom
               excludeKeywords
+              allowWithoutMention
             }
             agentInstance {
               id
@@ -439,6 +442,57 @@ export function useCreateBindingRequest() {
     },
     onError: (error: Error) => {
       toast.error(t('messageChannels.messages.bindingRequestError', { error: error.message }));
+    },
+  });
+}
+
+const BINDING_REQUEST_QUERY = `
+  query GetMessageChannelBindingRequest($pairCode: String!) {
+    messageChannelBindingRequests(where: { pairCode: $pairCode }) {
+      edges {
+        node {
+          id
+          pairCode
+          status
+          agentInstanceID
+          messageChannelID
+        }
+      }
+    }
+  }
+`;
+
+export interface BindingRequestStatus {
+  id: string;
+  pairCode: string;
+  status: 'pending' | 'approved';
+  agentInstanceID: number;
+  messageChannelID: number;
+}
+
+export function useBindingRequestStatus(pairCode: string | null, options?: { enabled?: boolean }) {
+  const selectedProjectId = useSelectedProjectId();
+
+  return useQuery({
+    queryKey: ['bindingRequestStatus', pairCode],
+    queryFn: async () => {
+      if (!pairCode) return null;
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+      const data = await graphqlRequest<{ messageChannelBindingRequests: { edges: { node: BindingRequestStatus }[] } }>(
+        BINDING_REQUEST_QUERY,
+        { pairCode },
+        headers
+      );
+      const edges = data.messageChannelBindingRequests?.edges || [];
+      return edges.length > 0 ? edges[0].node : null;
+    },
+    enabled: !!pairCode && (options?.enabled ?? true),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'approved') {
+        return false;
+      }
+      return 2000;
     },
   });
 }

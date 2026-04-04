@@ -58,9 +58,10 @@ func estimateMessageTokens(msg Message) int {
 	if msg.Content != nil {
 		tokens += EstimateTokens(msg.Content.String())
 	}
-	if msg.ToolUse != nil {
-		tokens += EstimateTokens(msg.ToolUse.Name)
-		tokens += EstimateTokens(msg.ToolUse.Input)
+
+	if msg.ToolCall != nil {
+		tokens += EstimateTokens(msg.ToolCall.Name)
+		tokens += EstimateTokens(msg.ToolCall.Input)
 	}
 	if msg.ToolUseID != nil {
 		tokens += EstimateTokens(*msg.ToolUseID)

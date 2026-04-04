@@ -16,6 +16,11 @@ import (
 //go:embed glob.md
 var globDescription string
 
+const (
+	globTruncationHint = "Use a narrower path or a more specific glob pattern to reduce matches."
+	globOutputMaxLines = glob.MaxResults + 1
+)
+
 type GlobTool struct {
 	workspace string
 	restrict  bool
@@ -59,16 +64,26 @@ func (t *GlobTool) Definition() agent.ToolDefinition {
 }
 
 func (t *GlobTool) Execute(ctx context.Context, input globInput) agent.ToolResult {
-	searchPath := t.workspace
+	searchRoot := normalizeWorkspacePath(t.workspace)
+	searchPath := "."
+	displayPrefix := ""
 	if input.Path != "" {
 		resolved, err := validatePath(input.Path, t.workspace, t.restrict)
 		if err != nil {
 			return ErrorResult(err)
 		}
-		searchPath = resolved
+
+		scope, err := resolveFSScope(resolved, t.workspace)
+		if err != nil {
+			return ErrorResult(err)
+		}
+
+		searchRoot = scope.root
+		searchPath = scope.path
+		displayPrefix = scope.displayPrefix
 	}
 
-	globber := glob.NewGlobber(t.workspace)
+	globber := glob.NewGlobber(searchRoot)
 	result, err := globber.Glob(ctx, glob.Options{
 		Pattern: input.Pattern,
 		Path:    searchPath,
@@ -83,12 +98,14 @@ func (t *GlobTool) Execute(ctx context.Context, input globInput) agent.ToolResul
 
 	var sb strings.Builder
 	for _, path := range result.Matches {
-		sb.WriteString(path)
+		sb.WriteString(displayPath(displayPrefix, path))
 		sb.WriteString("\n")
 	}
 	if result.Truncated {
 		fmt.Fprintf(&sb, "... (showing first %d results)\n", glob.MaxResults)
 	}
 
-	return TextResult(sb.String())
+	output := truncateToolOutputLines(sb.String(), globOutputMaxLines, globTruncationHint)
+
+	return TextResult(truncateToolOutput(output, 0, globTruncationHint))
 }

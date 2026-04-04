@@ -122,11 +122,12 @@ test-results
 .qoder
 .codebuddy
 .factory
+.agent/subagents
+.agent/summary
 dumps
 .builds
 .pnpm-store
 .serena
-.claude
 .gomodcache
 .gocache
 
@@ -143,7 +144,6 @@ scripts/e2e/axonhub-e2e.db
 scripts/e2e/e2e-backend.log
 scripts/e2e/axonhub-e2e
 scripts/e2e/.e2e-backend-db-type
-scripts/migration/migration-test/
 # Migration testing artifacts
 scripts/migration/migration-test/
 llm/tools/*.jsonl
@@ -158,4 +158,11 @@ locales_backup
 .superset/
 .axonclaw/
 .axoncli/
+.snow/
+config.schema.json
 *.zip
+*.db-shm
+*.db-wal
+deploy_dev.sh
+redeploy_dev.sh
+deploy_honey.sh

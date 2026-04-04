@@ -103,6 +103,16 @@ func (svc *PromptService) ValidatePromptSettings(settings objects.PromptSettings
 					return fmt.Errorf("model_id is required when type is model_id")
 				}
 			}
+
+			if condition.Type == objects.PromptActivationConditionTypeAPIKey {
+				if condition.APIKeyID == nil {
+					return fmt.Errorf("api_key_id is required when type is api_key")
+				}
+
+				if *condition.APIKeyID <= 0 {
+					return fmt.Errorf("api_key_id must be greater than 0")
+				}
+			}
 		}
 	}
 

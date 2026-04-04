@@ -337,6 +337,7 @@ base_url: "https://gateway.example.com/proxy##"
 
 ## 相关文档
 
+- [请求处理流程指南](request-processing.md) - 从请求入口到上游执行的完整链路
 - [请求重写指南](request-override.md) - 使用模板进行高级请求修改
 - [模型管理指南](model-management.md) - 跨渠道管理模型
 - [负载均衡指南](load-balance.md) - 在多个渠道间分发请求

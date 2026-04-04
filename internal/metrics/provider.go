@@ -64,6 +64,8 @@ func NewProvider(config Config) (*sdk.MeterProvider, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create otlphttp exporter: %w", err)
 		}
+	default:
+		return nil, fmt.Errorf("unsupported metrics exporter type: %q", config.Exporter.Type)
 	}
 
 	// Create meter provider

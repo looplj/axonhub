@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -52,7 +53,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 							Index: 0,
 							Delta: &llm.Message{
 								Content: llm.MessageContent{
-									Content: stringPtr("Hello"),
+									Content: lo.ToPtr("Hello"),
 								},
 							},
 						},
@@ -70,7 +71,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 							Index: 0,
 							Delta: &llm.Message{
 								Content: llm.MessageContent{
-									Content: stringPtr("Hello"),
+									Content: lo.ToPtr("Hello"),
 								},
 							},
 						},
@@ -127,7 +128,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 						{
 							Index:        0,
 							Delta:        &llm.Message{},
-							FinishReason: stringPtr("stop"),
+							FinishReason: lo.ToPtr("stop"),
 						},
 					},
 				},
@@ -142,7 +143,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 						{
 							Index:        0,
 							Delta:        &llm.Message{},
-							FinishReason: stringPtr("stop"),
+							FinishReason: lo.ToPtr("stop"),
 						},
 					},
 				},
@@ -251,7 +252,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 						{
 							Index: 0,
 							Delta: &llm.Message{
-								ReasoningContent: stringPtr("Let me think about this..."),
+								ReasoningContent: lo.ToPtr("Let me think about this..."),
 							},
 						},
 					},
@@ -267,7 +268,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 						{
 							Index: 0,
 							Delta: &llm.Message{
-								ReasoningContent: stringPtr("Let me think about this..."),
+								ReasoningContent: lo.ToPtr("Let me think about this..."),
 							},
 						},
 					},
@@ -291,7 +292,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 									MultipleContent: []llm.MessageContentPart{
 										{
 											Type: "text",
-											Text: stringPtr("Hello"),
+											Text: lo.ToPtr("Hello"),
 										},
 									},
 								},
@@ -314,7 +315,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 									MultipleContent: []llm.MessageContentPart{
 										{
 											Type: "text",
-											Text: stringPtr("Hello"),
+											Text: lo.ToPtr("Hello"),
 										},
 									},
 								},
@@ -395,7 +396,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 							Index: 0,
 							Delta: &llm.Message{
 								Content: llm.MessageContent{
-									Content: stringPtr("Hello"),
+									Content: lo.ToPtr("Hello"),
 								},
 							},
 						},
@@ -426,7 +427,7 @@ func TestOutboundTransformer_TransformStream_FilterEmptyEvents(t *testing.T) {
 							Index: 0,
 							Delta: &llm.Message{
 								Content: llm.MessageContent{
-									Content: stringPtr("Hello"),
+									Content: lo.ToPtr("Hello"),
 								},
 							},
 						},
@@ -593,9 +594,4 @@ func (t *OutboundTransformer) applyStreamFilter(ctx context.Context, stream stre
 
 		return hasContent
 	}), nil
-}
-
-// Helper function to create string pointers.
-func stringPtr(s string) *string {
-	return &s
 }

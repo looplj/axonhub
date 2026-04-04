@@ -23,9 +23,9 @@ Options:
   --help, -h  Show this help message
 
 Environment variables (passed to start.ps1):
-  AXONCLAW_BASE_URL      Optional. AxonHub server URL (default: http://localhost:8090)
+  AXONCLAW_BASE_URL      Optional. AxonHub server URL
   AXONCLAW_API_KEY       Optional. Agent API key for authentication
-  AXONCLAW_NAME          Optional. Agent instance name
+  AXONCLAW_AUTO_SYNC_CONFIG Optional. Set to 'true' to enable --auto-sync-config
   DEBUG_MODE             Optional. Set to 'true' to enable debug logging
 
 Example:

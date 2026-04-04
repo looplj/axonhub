@@ -2,7 +2,6 @@ package conf
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"reflect"
@@ -198,15 +197,10 @@ func (m *Manager[T]) publish(ctx context.Context, ev ReloadEvent) {
 	if m.bus == nil {
 		return
 	}
-	payload, err := json.Marshal(ev)
-	if err != nil {
-		m.logger.Error("conf: failed to marshal event", "error", err)
-		return
-	}
 	if err := m.bus.Publish(ctx, bus.Event{
 		Topic:   m.topic,
 		Type:    string(ev.Type),
-		Payload: payload,
+		Payload: ev,
 	}); err != nil {
 		m.logger.Error("conf: failed to publish event", "error", err)
 	}

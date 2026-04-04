@@ -6,6 +6,9 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/axon/agent"
 )
 
 func TestWrapAPIError(t *testing.T) {
@@ -15,6 +18,9 @@ func TestWrapAPIError(t *testing.T) {
 
 		assert.Contains(t, wrapped.Error(), "some error")
 		assert.Contains(t, wrapped.Error(), "anthropic:")
+
+		var providerErr *agent.ProviderError
+		assert.False(t, errors.As(wrapped, &providerErr))
 	})
 
 	t.Run("API error with status code", func(t *testing.T) {
@@ -24,7 +30,10 @@ func TestWrapAPIError(t *testing.T) {
 
 		wrapped := wrapAPIError(apiErr)
 
-		assert.Contains(t, wrapped.Error(), "status 500")
+		var providerErr *agent.ProviderError
+		require.True(t, errors.As(wrapped, &providerErr))
+		assert.Equal(t, 500, providerErr.StatusCode)
+		assert.False(t, providerErr.IsClientError())
 	})
 
 	t.Run("API error with 400 status", func(t *testing.T) {
@@ -34,6 +43,10 @@ func TestWrapAPIError(t *testing.T) {
 
 		wrapped := wrapAPIError(apiErr)
 
+		var providerErr *agent.ProviderError
+		require.True(t, errors.As(wrapped, &providerErr))
+		assert.Equal(t, 400, providerErr.StatusCode)
+		assert.True(t, providerErr.IsClientError())
 		assert.Contains(t, wrapped.Error(), "status 400")
 	})
 }

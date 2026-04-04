@@ -44,7 +44,11 @@ export default function RequestDetailPage() {
 
   const { data: settings } = useGeneralSettings();
   const { data: request, isLoading } = useRequest(requestId);
-  const { data: executions } = useRequestExecutions(requestId, {
+  const {
+    data: executions,
+    isLoading: isExecutionsLoading,
+    isError: isExecutionsError,
+  } = useRequestExecutions(requestId, {
     first: 10,
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   });
@@ -595,7 +599,21 @@ export default function RequestDetailPage() {
                 </TabsContent>
 
                 <TabsContent value='executions' className='space-y-6 p-6'>
-                  {executions && executions.edges.length > 0 ? (
+                  {isExecutionsLoading ? (
+                    <div className='py-16 text-center'>
+                      <div className='space-y-4'>
+                        <div className='border-primary mx-auto h-12 w-12 animate-spin rounded-full border-b-2'></div>
+                        <p className='text-muted-foreground text-lg'>{t('common.loading')}</p>
+                      </div>
+                    </div>
+                  ) : isExecutionsError ? (
+                    <div className='py-16 text-center'>
+                      <div className='space-y-4'>
+                        <FileText className='text-muted-foreground mx-auto h-16 w-16' />
+                        <p className='text-muted-foreground text-lg'>{t('requests.errors.loadRequestDetailFailed')}</p>
+                      </div>
+                    </div>
+                  ) : executions && executions.edges.length > 0 ? (
                     <div className='space-y-6'>
                       {executions.edges.map((edge: any, index: number) => {
                         const execution = edge.node;
@@ -673,13 +691,20 @@ export default function RequestDetailPage() {
                                 </div>
                               </div>
 
-                              {execution.errorMessage && (
+                              {(execution.errorMessage || (execution.status === 'failed' && execution.responseStatusCode)) && (
                                 <div className='bg-destructive/5 border-destructive/20 space-y-3 rounded-lg border p-4'>
-                                  <span className='text-destructive flex items-center gap-2 text-sm font-semibold'>
-                                    <FileText className='h-4 w-4' />
-                                    {t('common.messages.errorMessage')}
-                                  </span>
-                                  <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>
+                                  <div className='flex items-center justify-between'>
+                                    <span className='text-destructive flex items-center gap-2 text-sm font-semibold'>
+                                      <FileText className='h-4 w-4' />
+                                      {t('common.messages.errorMessage')}
+                                    </span>
+                                    {execution.status === 'failed' && execution.responseStatusCode && (
+                                      <Badge variant='destructive'>HTTP {execution.responseStatusCode}</Badge>
+                                    )}
+                                  </div>
+                                  {execution.errorMessage && (
+                                    <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>
+                                  )}
                                 </div>
                               )}
 

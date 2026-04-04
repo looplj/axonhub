@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/password-input';
 import { useInitializeSystem } from '@/features/auth/data/initialization';
+import i18n from '@/lib/i18n';
 
 type InitializationFormProps = HTMLAttributes<HTMLFormElement>;
 
@@ -57,6 +58,7 @@ export function InitializationForm({ className, ...props }: InitializationFormPr
       ownerFirstName: data.ownerFirstName,
       ownerLastName: data.ownerLastName,
       brandName: data.brandName,
+      preferLanguage: i18n.language,
     };
     initializeSystemMutation.mutate(input);
   }

@@ -57,6 +57,7 @@ import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { ManualModelBadge } from './manual-model-badge';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ProxyType } from './channels-proxy-dialog';
+import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { matchesModelPattern } from '../utils/pattern';
 
@@ -195,8 +196,24 @@ function getNextDuplicateName(name: string, existingNames: Set<string>) {
   }
 }
 
-// OAuth provider keys that require special auth flow
-const oauthProviderKeys = ['codex', 'claudecode', 'antigravity', 'github_copilot'];
+// Providers that are always OAuth (no third-party API key mode)
+const alwaysOAuthProviderKeys = ['antigravity', 'github_copilot'];
+
+function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string } }): boolean {
+  try {
+    const apiKey = channel.credentials?.apiKey || '';
+    const json = JSON.parse(apiKey);
+    return !!(json.access_token && json.refresh_token);
+  } catch {
+    return false;
+  }
+}
+
+function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string }; baseURL: string }): boolean {
+  const apiKey = channel.credentials?.apiKey || '';
+  const defaultURL = getDefaultBaseURL('claudecode');
+  return apiKey.includes('sk-ant-oat') || apiKey.includes('sk-ant-api03') || channel.baseURL === defaultURL;
+}
 
 export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation();
@@ -210,6 +227,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate });
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
   const selectedProjectId = useSelectedProjectId();
+  const { data: proxyPresets = [] } = useProxyPresets();
+  const saveProxyPreset = useSaveProxyPreset();
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -259,6 +278,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [proxyUrl, setProxyUrl] = useState(() => initialRow?.settings?.proxy?.url || '');
   const [proxyUsername, setProxyUsername] = useState(() => initialRow?.settings?.proxy?.username || '');
   const [proxyPassword, setProxyPassword] = useState(() => initialRow?.settings?.proxy?.password || '');
+  const [passThroughUserAgent, setPassThroughUserAgent] = useState<boolean | null>(() => {
+    return initialRow?.settings?.passThroughUserAgent ?? null;
+  });
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -272,6 +294,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return undefined;
   }, [proxyType, proxyUrl, proxyUsername, proxyPassword]);
+
+  const handleProxyPresetSelect = (presetUrl: string) => {
+    const preset = proxyPresets.find((p) => p.url === presetUrl);
+    if (preset) {
+      setProxyType(ProxyType.URL);
+      setProxyUrl(preset.url);
+      setProxyUsername(preset.username || '');
+      setProxyPassword(preset.password || '');
+    }
+  };
 
   // OAuth flows using the reusable hook
   // OAuth credentials are stored in apiKey field as JSON string, not in apiKeys array
@@ -343,26 +375,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     // Detect authMode for codex and claudecode
     if (initialRow.type === 'codex') {
-      try {
-        const apiKey = initialRow.credentials?.apiKey || '';
-        const json = JSON.parse(apiKey);
-        if (json.access_token && json.refresh_token) {
-          setAuthMode('official');
-        } else {
-          setAuthMode('third-party');
-        }
-      } catch {
-        setAuthMode('third-party');
-      }
+      setAuthMode(isOfficialCodexChannel(initialRow) ? 'official' : 'third-party');
     } else if (initialRow.type === 'claudecode') {
-      const apiKey = initialRow.credentials?.apiKey || '';
-      const defaultURL = getDefaultBaseURL('claudecode');
-      // For Claude Code, it's official if it's an official token (sk-ant-oat or sk-ant-api03) or uses the default base URL
-      if (apiKey.includes('sk-ant-oat') || apiKey.includes('sk-ant-api03') || initialRow.baseURL === defaultURL) {
-        setAuthMode('official');
-      } else {
-        setAuthMode('third-party');
-      }
+      setAuthMode(isOfficialClaudeCodeChannel(initialRow) ? 'official' : 'third-party');
     }
   }, [initialRow]);
 
@@ -499,6 +514,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 jsonData: currentRow.credentials?.gcp?.jsonData || '',
               },
             },
+            settings: currentRow.settings ?? undefined,
           }
         : duplicateFromRow
           ? {
@@ -579,15 +595,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
 
 
-  // OAuth providers cannot have their provider/API format changed during edit
-  const isOAuthChannel = isEdit && currentRow && oauthProviderKeys.includes(currentRow.type);
-
-  useEffect(() => {
-    // Only force stream: 'require' for new Codex channels, not when editing existing ones
-    if (isCodexType && !isEdit) {
-      form.setValue('policies.stream', 'require');
-    }
-  }, [isCodexType, isEdit, form]);
+  // OAuth providers cannot have their provider/API format changed during edit.
+  // Derived from currentRow credentials so it stays stable across re-renders
+  // and is not affected by mutable authMode state.
+  const isOAuthChannel = useMemo(() => {
+    if (!isEdit || !currentRow) return false;
+    if (alwaysOAuthProviderKeys.includes(currentRow.type)) return true;
+    if (currentRow.type === 'codex') return isOfficialCodexChannel(currentRow);
+    if (currentRow.type === 'claudecode') return isOfficialClaudeCodeChannel(currentRow);
+    return false;
+  }, [isEdit, currentRow]);
 
   const wrapUnsupported = useCallback(
     (enabled: boolean, children: React.ReactNode, wrapperClassName: string) => {
@@ -619,9 +636,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const handleProviderChange = useCallback(
     (provider: string) => {
       if (isOAuthChannel) return;
-      if (isEdit && oauthProviderKeys.includes(provider)) return;
+      if (isEdit && alwaysOAuthProviderKeys.includes(provider)) return;
       setSelectedProvider(provider);
-      setAuthMode('official');
+      setAuthMode(isEdit && ['codex', 'claudecode'].includes(provider) ? 'third-party' : 'official');
 
       if (provider !== 'gemini') {
         setUseGeminiVertex(false);
@@ -634,7 +651,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setSelectedApiFormat(OPENAI_RESPONSES);
         form.setValue('type', 'codex');
         if (!isEdit) {
-          form.setValue('policies.stream', 'require');
           setFetchedModels([]);
           setUseFetchedModels(false);
         }
@@ -686,7 +702,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [form, useGeminiVertex, useAnthropicAws, isDuplicate, isEdit, selectedApiFormat]
+    [form, useGeminiVertex, useAnthropicAws, isDuplicate, isEdit, selectedApiFormat, isOAuthChannel]
   );
 
   const handleApiFormatChange = useCallback(
@@ -726,7 +742,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [selectedProvider, form, useGeminiVertex, useAnthropicAws, isDuplicate, isEdit]
+    [selectedProvider, form, useGeminiVertex, useAnthropicAws, isDuplicate, isEdit, isOAuthChannel]
   );
 
   const handleGeminiVertexChange = useCallback(
@@ -749,7 +765,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [selectedApiFormat, form, isDuplicate, isEdit]
+    [selectedApiFormat, form, isDuplicate, isEdit, isOAuthChannel]
   );
 
   const handleAnthropicAwsChange = useCallback(
@@ -772,7 +788,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [selectedApiFormat, form, isDuplicate, isEdit]
+    [selectedApiFormat, form, isDuplicate, isEdit, isOAuthChannel]
   );
 
   useEffect(() => {
@@ -850,6 +866,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             </Button>
           </div>
 
+          <p className='text-amber-600 dark:text-amber-400 mt-2 text-xs'>{t('channels.dialogs.proxy.oauthHint')}</p>
           <p className='text-muted-foreground mt-2 text-xs'>{description}</p>
         </div>
       </div>
@@ -891,9 +908,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
+        const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
+          passThroughUserAgent,
+        });
+
         const updateInput = {
           ...dataWithModels,
-          settings: undefined,
+          settings: nextSettings,
           ...(isOAuthChannel ? { type: undefined } : {}),
         } as z.infer<typeof updateChannelInputSchema>;
 
@@ -929,12 +950,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
         const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
           proxy: proxyConfig,
+          passThroughUserAgent,
         });
 
         await createChannel.mutateAsync({
           ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
           settings: nextSettings,
         } as z.infer<typeof createChannelInputSchema>);
+
+        // Auto-save proxy preset (preserve existing name if available)
+        if (proxyType === ProxyType.URL && proxyUrl) {
+          const existingPreset = proxyPresets.find((p) => p.url === proxyUrl);
+          saveProxyPreset.mutate({
+            name: existingPreset?.name,
+            url: proxyUrl,
+            username: proxyUsername || undefined,
+            password: proxyPassword || undefined,
+          });
+        }
       }
 
       form.reset();
@@ -1323,6 +1356,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setProxyUrl(initialRow?.settings?.proxy?.url || '');
             setProxyUsername(initialRow?.settings?.proxy?.username || '');
             setProxyPassword(initialRow?.settings?.proxy?.password || '');
+            setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -1368,7 +1402,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             {availableProviders.map((provider) => {
                               const Icon = provider.icon;
                               const isSelected = provider.key === selectedProvider;
-                              const isProviderDisabled = isOAuthChannel || (isEdit && !isOAuthChannel && oauthProviderKeys.includes(provider.key));
+                              const isProviderDisabled = isOAuthChannel || (isEdit && !isOAuthChannel && alwaysOAuthProviderKeys.includes(provider.key));
                               return (
                                 <div
                                   key={provider.key}
@@ -1547,6 +1581,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   </Button>
                                 </div>
 
+                                <p className='text-amber-600 dark:text-amber-400 mt-2 text-xs'>
+                                  {t('channels.dialogs.proxy.oauthHint')}
+                                </p>
                                 <p className='text-muted-foreground mt-2 text-xs'>
                                   {t('channels.dialogs.fields.apiFormat.antigravity.description')}
                                 </p>
@@ -1599,6 +1636,101 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormItem>
                         )}
                       />
+
+                      {!isEdit && (
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                            {t('channels.dialogs.proxy.fields.type.label')}
+                          </FormLabel>
+                          <div className='space-y-3 md:col-span-6'>
+                            <Select value={proxyType} onValueChange={(value) => setProxyType(value as ProxyType)}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={t('channels.dialogs.proxy.fields.type.placeholder')} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value={ProxyType.DISABLED}>{t('channels.dialogs.proxy.types.disabled')}</SelectItem>
+                                <SelectItem value={ProxyType.ENVIRONMENT}>{t('channels.dialogs.proxy.types.environment')}</SelectItem>
+                                <SelectItem value={ProxyType.URL}>{t('channels.dialogs.proxy.types.url')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+
+                            {proxyType === ProxyType.URL && proxyPresets.length > 0 && (
+                              <div className='space-y-1'>
+                                <FormLabel className='text-sm'>{t('channels.dialogs.proxy.presets.label')}</FormLabel>
+                                <Select onValueChange={handleProxyPresetSelect}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder={t('channels.dialogs.proxy.presets.placeholder')} />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {proxyPresets.map((preset) => (
+                                      <SelectItem key={preset.url} value={preset.url}>
+                                        {preset.name || preset.url}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            {proxyType === ProxyType.URL && (
+                              <>
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.url.label')}</FormLabel>
+                                  <Input
+                                    placeholder={t('channels.dialogs.proxy.fields.url.placeholder')}
+                                    value={proxyUrl}
+                                    onChange={(e) => setProxyUrl(e.target.value)}
+                                  />
+                                </div>
+
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.username.label')}</FormLabel>
+                                  <Input
+                                    placeholder={t('channels.dialogs.proxy.fields.username.placeholder')}
+                                    value={proxyUsername}
+                                    onChange={(e) => setProxyUsername(e.target.value)}
+                                  />
+                                </div>
+
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.password.label')}</FormLabel>
+                                  <Input
+                                    type='password'
+                                    placeholder={t('channels.dialogs.proxy.fields.password.placeholder')}
+                                    value={proxyPassword}
+                                    onChange={(e) => setProxyPassword(e.target.value)}
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </FormItem>
+                      )}
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2'>
+                          {t('channels.dialogs.userAgentPassThrough.label')}
+                        </FormLabel>
+                        <div className='space-y-1 md:col-span-6'>
+                          <Select
+                            value={passThroughUserAgent === null ? 'inherit' : passThroughUserAgent ? 'enabled' : 'disabled'}
+                            onValueChange={(value) => setPassThroughUserAgent(value === 'inherit' ? null : value === 'enabled')}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('channels.dialogs.userAgentPassThrough.inherit')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='inherit'>{t('channels.dialogs.userAgentPassThrough.inherit')}</SelectItem>
+                              <SelectItem value='enabled'>{t('channels.dialogs.userAgentPassThrough.enabled')}</SelectItem>
+                              <SelectItem value='disabled'>{t('channels.dialogs.userAgentPassThrough.disabled')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </FormItem>
 
                       {(isCodexType || isClaudeCodeType) && (
                         <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
@@ -1802,60 +1934,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           />
                         )}
 
-                      {!isEdit && (
-                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                            {t('channels.dialogs.proxy.fields.type.label')}
-                          </FormLabel>
-                          <div className='space-y-3 md:col-span-6'>
-                            <Select value={proxyType} onValueChange={(value) => setProxyType(value as ProxyType)}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder={t('channels.dialogs.proxy.fields.type.placeholder')} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value={ProxyType.DISABLED}>{t('channels.dialogs.proxy.types.disabled')}</SelectItem>
-                                <SelectItem value={ProxyType.ENVIRONMENT}>{t('channels.dialogs.proxy.types.environment')}</SelectItem>
-                                <SelectItem value={ProxyType.URL}>{t('channels.dialogs.proxy.types.url')}</SelectItem>
-                              </SelectContent>
-                            </Select>
-
-                            {proxyType === ProxyType.URL && (
-                              <>
-                                <div className='space-y-1'>
-                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.url.label')}</FormLabel>
-                                  <Input
-                                    placeholder={t('channels.dialogs.proxy.fields.url.placeholder')}
-                                    value={proxyUrl}
-                                    onChange={(e) => setProxyUrl(e.target.value)}
-                                  />
-                                </div>
-
-                                <div className='space-y-1'>
-                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.username.label')}</FormLabel>
-                                  <Input
-                                    placeholder={t('channels.dialogs.proxy.fields.username.placeholder')}
-                                    value={proxyUsername}
-                                    onChange={(e) => setProxyUsername(e.target.value)}
-                                  />
-                                </div>
-
-                                <div className='space-y-1'>
-                                  <FormLabel className='text-sm'>{t('channels.dialogs.proxy.fields.password.label')}</FormLabel>
-                                  <Input
-                                    type='password'
-                                    placeholder={t('channels.dialogs.proxy.fields.password.placeholder')}
-                                    value={proxyPassword}
-                                    onChange={(e) => setProxyPassword(e.target.value)}
-                                  />
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </FormItem>
-                      )}
-
                       <FormField
                         control={form.control}
                         name='policies.stream'
@@ -1865,23 +1943,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               {t('channels.dialogs.fields.streamPolicy.label')}
                             </FormLabel>
                             <div className='space-y-1 md:col-span-6'>
-                              {wrapUnsupported(
-                                isCodexType,
-                                <SelectDropdown
-                                  defaultValue={(field.value as string) || 'unlimited'}
-                                  onValueChange={(value) => field.onChange(value)}
-                                  placeholder={t('channels.dialogs.fields.streamPolicy.placeholder')}
-                                  data-testid='channel-stream-policy-select'
-                                  isControlled={true}
-                                  disabled={isCodexType}
-                                  items={[
-                                    { value: 'unlimited', label: t('channels.dialogs.fields.streamPolicy.options.unlimited') },
-                                    { value: 'require', label: t('channels.dialogs.fields.streamPolicy.options.require') },
-                                    { value: 'forbid', label: t('channels.dialogs.fields.streamPolicy.options.forbid') },
-                                  ]}
-                                />,
-                                'w-full'
-                              )}
+                              <SelectDropdown
+                                defaultValue={(field.value as string) || 'unlimited'}
+                                onValueChange={(value) => field.onChange(value)}
+                                placeholder={t('channels.dialogs.fields.streamPolicy.placeholder')}
+                                data-testid='channel-stream-policy-select'
+                                isControlled={true}
+                                items={[
+                                  { value: 'unlimited', label: t('channels.dialogs.fields.streamPolicy.options.unlimited') },
+                                  { value: 'require', label: t('channels.dialogs.fields.streamPolicy.options.require') },
+                                  { value: 'forbid', label: t('channels.dialogs.fields.streamPolicy.options.forbid') },
+                                ]}
+                              />
                               <FormMessage />
                             </div>
                           </FormItem>

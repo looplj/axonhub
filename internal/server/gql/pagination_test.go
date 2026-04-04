@@ -119,6 +119,13 @@ func TestQueryResolversRequirePagination(t *testing.T) {
 			},
 		},
 		{
+			name: "PromptProtectionRules",
+			fn: func() error {
+				_, err := r.PromptProtectionRules(t.Context(), nil, nil, nil, nil, nil, nil)
+				return err
+			},
+		},
+		{
 			name: "Threads",
 			fn: func() error {
 				_, err := r.Threads(t.Context(), nil, nil, nil, nil, nil, nil)

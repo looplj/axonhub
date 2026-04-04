@@ -27,6 +27,7 @@ import {
   XiaomiMiMo,
   Tavily,
   Exa,
+  Fireworks,
 } from '@lobehub/icons';
 import { BraveIcon } from '@/assets/brave-icon';
 import { NanoGPTIcon } from '@/assets/nanogpt-icon';
@@ -558,6 +559,18 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-[#4338CA] text-white border-[#4338CA]',
     icon: Exa,
   },
+  fireworks: {
+    channelType: 'fireworks',
+    baseURL: 'https://api.fireworks.ai/inference/v1',
+    defaultModels: [
+      'accounts/fireworks/models/minimax-m2p5',
+      'accounts/fireworks/models/glm-5',
+      'accounts/fireworks/models/kimi-k2p5',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Fireworks,
+  },
 };
 
 /**
@@ -610,7 +623,8 @@ export type Provider =
   | 'nanogpt'
   | 'tavily'
   | 'brave_search'
-  | 'exa';
+  | 'exa'
+  | 'fireworks';
 
 /**
  * Map channel type to provider
@@ -663,6 +677,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   search_tavily: 'tavily',
   search_brave: 'brave_search',
   search_exa: 'exa',
+  fireworks: 'fireworks',
 };
 
 /**

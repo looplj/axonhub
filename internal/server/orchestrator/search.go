@@ -33,6 +33,7 @@ func NewSearchOrchestrator(
 		usageLogService,
 		nil,
 		nil,
+		nil,
 	)
 	o.channelSelector = NewSearchSelector(channelService)
 	return o

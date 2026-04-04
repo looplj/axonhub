@@ -102,7 +102,7 @@ type StreamEvent struct {
 	// For error events
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message,omitempty"`
-	Param   string `json:"param,omitempty"`
+	Param   *string `json:"param,omitempty"`
 }
 
 // StreamEventContentPart represents a content part in streaming events.

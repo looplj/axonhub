@@ -55,9 +55,9 @@ func (APIKey) Fields() []ent.Field {
 			),
 		field.String("name"),
 		field.Enum("type").
-			Values("user", "service_account", "agent").
+			Values("user", "service_account","noauth", "agent").
 			Default("user").
-			Comment("API Key type: user, service_account, or agent").Annotations(
+			Comment("API Key type: user, service_account, noauth, or agent").Annotations(
 			entgql.Skip(entgql.SkipMutationUpdateInput),
 		),
 		field.Enum("status").Values("enabled", "disabled", "archived").Default("enabled").Annotations(

@@ -20,6 +20,12 @@ func (t Type) IsOpenAI() bool {
 	return !t.IsAnthropicLike() && !t.IsAnthropic() && !t.IsGemini()
 }
 
+// UsesAnthropicModelAPI returns true if the channel type should use Anthropic-style
+// /v1/models endpoint with X-Api-Key authentication when fetching models.
+func (t Type) UsesAnthropicModelAPI() bool {
+	return t.IsAnthropic() || t.IsAnthropicLike() || t == TypeClaudecode
+}
+
 func (t Type) IsSearch() bool {
 	return strings.HasPrefix(string(t), "search_")
 }

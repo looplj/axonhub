@@ -17,16 +17,26 @@ type AckAgentMessagesInput struct {
 }
 
 type AgentBootstrap struct {
-	AgentID         objects.GUID            `json:"agentID"`
-	AgentName       string                  `json:"agentName"`
-	Model           *string                 `json:"model,omitempty"`
-	ReasoningEffort string                  `json:"reasoningEffort"`
-	SystemPrompt    string                  `json:"systemPrompt"`
-	Tools           []*AgentToolDefinition  `json:"tools"`
-	Skills          []*AgentSkillDefinition `json:"skills"`
-	BuiltinTools    []*AgentBuiltinTool     `json:"builtinTools"`
-	SkillsPolicy    *AgentSkillsPolicy      `json:"skillsPolicy"`
-	MemoryPolicy    objects.JSONRawMessage  `json:"memoryPolicy,omitempty"`
+	AgentID           objects.GUID            `json:"agentID"`
+	AgentName         string                  `json:"agentName"`
+	AgentInstanceName string                  `json:"agentInstanceName"`
+	CreatedByUserName string                  `json:"createdByUserName"`
+	Model             *string                 `json:"model,omitempty"`
+	ReasoningEffort   string                  `json:"reasoningEffort"`
+	SystemPrompt      string                  `json:"systemPrompt"`
+	Tools             []*AgentToolDefinition  `json:"tools"`
+	Skills            []*AgentSkillDefinition `json:"skills"`
+	BuiltinTools      []*AgentBuiltinTool     `json:"builtinTools"`
+	BuiltinSkills     []*AgentBuiltinSkill    `json:"builtinSkills"`
+	SkillsPolicy      *AgentSkillsPolicy      `json:"skillsPolicy"`
+	MemoryPolicy      objects.JSONRawMessage  `json:"memoryPolicy,omitempty"`
+}
+
+type AgentBuiltinSkill struct {
+	Name    string                 `json:"name"`
+	Enabled bool                   `json:"enabled"`
+	Order   int                    `json:"order"`
+	Config  objects.JSONRawMessage `json:"config,omitempty"`
 }
 
 type AgentBuiltinTool struct {
@@ -76,6 +86,19 @@ type AgentToolDefinition struct {
 	Config      objects.JSONRawMessage `json:"config,omitempty"`
 }
 
+type AvailableModel struct {
+	ID              string             `json:"id"`
+	Name            string             `json:"name"`
+	OwnedBy         string             `json:"ownedBy"`
+	Type            string             `json:"type"`
+	Icon            string             `json:"icon"`
+	Description     *string            `json:"description,omitempty"`
+	ContextLength   int                `json:"contextLength"`
+	MaxOutputTokens int                `json:"maxOutputTokens"`
+	Capabilities    *ModelCapabilities `json:"capabilities,omitempty"`
+	Pricing         *ModelPricing      `json:"pricing,omitempty"`
+}
+
 type DeployAxonClawInput struct {
 	Name string `json:"name"`
 }
@@ -88,6 +111,19 @@ type DeployAxonClawResult struct {
 
 type HeartbeatAgentInstanceInput struct {
 	Dummy *bool `json:"dummy,omitempty"`
+}
+
+type ModelCapabilities struct {
+	Vision    bool `json:"vision"`
+	ToolCall  bool `json:"toolCall"`
+	Reasoning bool `json:"reasoning"`
+}
+
+type ModelPricing struct {
+	Input      float64 `json:"input"`
+	Output     float64 `json:"output"`
+	CacheRead  float64 `json:"cacheRead"`
+	CacheWrite float64 `json:"cacheWrite"`
 }
 
 type Mutation struct {
@@ -109,10 +145,8 @@ type PullAgentMessagesInput struct {
 }
 
 type RegisterAgentInstanceInput struct {
-	Name        *string `json:"name,omitempty"`
-	Platform    *string `json:"platform,omitempty"`
-	Description *string `json:"description,omitempty"`
-	ThreadID    *string `json:"threadID,omitempty"`
+	Platform *string `json:"platform,omitempty"`
+	ThreadID *string `json:"threadID,omitempty"`
 }
 
 type ReplyMessageInput struct {

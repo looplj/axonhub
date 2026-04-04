@@ -28,7 +28,6 @@ func (p *Provider) ChatStream(ctx context.Context, model string, tools []agent.T
 		params.Tools = toolParams
 	}
 
-	// Apply reasoning effort configuration
 	if budget := reasoningEffortToBudget(p.reasoningEffort); budget > 0 {
 		params.Thinking = anthropic.ThinkingConfigParamUnion{
 			OfEnabled: &anthropic.ThinkingConfigEnabledParam{
@@ -45,18 +44,27 @@ func (p *Provider) ChatStream(ctx context.Context, model string, tools []agent.T
 		reqOpts = append(reqOpts, option.WithHeader(p.traceHeader, traceID))
 	}
 
-	stream := p.client.Messages.NewStreaming(ctx, params, reqOpts...)
-
 	events := make(chan agent.StreamEvent, 256)
 
 	go func() {
 		defer close(events)
 
+		stream := p.client.Messages.NewStreaming(ctx, params, reqOpts...)
+
 		streamProcessor := newStreamProcessor(stream, events)
-		streamProcessor.process()
+		if err := streamProcessor.process(); err != nil {
+			emitError(events, err)
+		}
 	}()
 
 	return events, nil
+}
+
+func emitError(events chan<- agent.StreamEvent, err error) {
+	events <- agent.StreamEvent{
+		Type:  agent.StreamEventError,
+		Error: err,
+	}
 }
 
 type streamProcessor struct {
@@ -77,22 +85,22 @@ func newStreamProcessor(stream *ssestream.Stream[anthropic.MessageStreamEventUni
 	}
 }
 
-func (p *streamProcessor) process() {
+func (p *streamProcessor) process() error {
 	for p.stream.Next() {
 		event := p.stream.Current()
 
 		if err := p.handleEvent(event); err != nil {
-			p.emitError(err)
-			return
+			return err
 		}
 	}
 
 	if err := p.stream.Err(); err != nil {
-		p.emitError(wrapAPIError(err))
-		return
+		return wrapAPIError(err)
 	}
 
 	p.emitDone()
+
+	return nil
 }
 
 func (p *streamProcessor) handleEvent(event anthropic.MessageStreamEventUnion) error {
@@ -159,7 +167,7 @@ func (p *streamProcessor) handleContentBlockDelta(e anthropic.MessageStreamEvent
 			p.emit(agent.StreamEvent{
 				Type: agent.StreamEventToolCallDelta,
 				Text: delta.PartialJSON,
-				ToolUse: &agent.ToolUse{
+				ToolCall: &agent.ToolCall{
 					ID:   builder.id,
 					Name: builder.name,
 				},
@@ -209,7 +217,7 @@ func (p *streamProcessor) handleMessageDelta(e anthropic.MessageStreamEventUnion
 		input := builder.buildJSON()
 		p.emit(agent.StreamEvent{
 			Type: agent.StreamEventToolCallComplete,
-			ToolUse: &agent.ToolUse{
+			ToolCall: &agent.ToolCall{
 				ID:    builder.id,
 				Name:  builder.name,
 				Input: input,

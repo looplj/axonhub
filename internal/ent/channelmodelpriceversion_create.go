@@ -169,12 +169,6 @@ func (_c *ChannelModelPriceVersionCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *ChannelModelPriceVersionCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.updated_at"`)}
-	}
 	if _, ok := _c.mutation.ChannelID(); !ok {
 		return &ValidationError{Name: "channel_id", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.channel_id"`)}
 	}

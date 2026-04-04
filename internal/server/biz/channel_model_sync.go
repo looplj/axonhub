@@ -10,7 +10,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
-	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // syncChannelModels syncs supported models for all channels with auto_sync_supported_models enabled.
@@ -59,8 +58,7 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 
 // syncChannelModelsForChannel syncs supported models for a single channel.
 func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *ent.Channel, patternOverride *string) (*ent.Channel, error) {
-	httpClient := httpclient.NewHttpClient()
-	modelFetcher := NewModelFetcher(httpClient, svc)
+	modelFetcher := NewModelFetcher(svc.httpClient, svc)
 
 	result, err := modelFetcher.FetchModels(ctx, FetchModelsInput{
 		ChannelType: ch.Type.String(),

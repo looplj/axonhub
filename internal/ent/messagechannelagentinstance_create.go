@@ -167,12 +167,6 @@ func (_c *MessageChannelAgentInstanceCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *MessageChannelAgentInstanceCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "MessageChannelAgentInstance.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "MessageChannelAgentInstance.updated_at"`)}
-	}
 	if _, ok := _c.mutation.MessageChannelID(); !ok {
 		return &ValidationError{Name: "message_channel_id", err: errors.New(`ent: missing required field "MessageChannelAgentInstance.message_channel_id"`)}
 	}

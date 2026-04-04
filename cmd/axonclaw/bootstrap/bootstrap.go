@@ -13,33 +13,46 @@ import (
 	"github.com/Khan/genqlient/graphql"
 	"github.com/google/uuid"
 	"github.com/looplj/axonhub/axon/api"
+
+	"github.com/looplj/axonhub/cmd/axonclaw/prompts"
 )
 
-type Result struct {
-	AgentID         string
-	AgentName       string
-	Model           string
-	ReasoningEffort string
-	SystemPrompt    string
-	ThreadID        string
-	Tools           []*api.AgentBootstrapAgentBootstrapToolsAgentToolDefinition
-	Skills          []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition
-	BuiltinTools    []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
-	AxonClawPath    string
-	SkillsRoot      string
-	ConfigDir       string
-	Date            string
-	Timezone        string
-	OS              string
+type Bootstrap struct {
+	AgentID           string
+	AgentName         string
+	CreatedByUserName string
+	Model             string
+	ReasoningEffort   string
+	ThreadID          string
+	Tools             []*api.AgentBootstrapAgentBootstrapToolsAgentToolDefinition
+	Skills            []*api.AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition
+	BuiltinTools      []*api.AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool
+	BuiltinSkills     []BuiltinSkill
+	Prompts           *prompts.Bootstrap
+	ServerSystemPrompt string
+	AxonClawPath      string
+	SkillsRoot        string
+	PromptDir         string
+	RuntimeDir        string
+	Date              string
+	Timezone          string
+	OS                string
 }
 
 type Params struct {
 	Workspace  string
 	SkillsRoot string
-	ConfigDir  string
+	PromptDir  string
+	RuntimeDir string
 }
 
-func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error) {
+type BuiltinSkill struct {
+	Name    string `yaml:"name"`
+	Enabled bool   `yaml:"enabled"`
+	Order   int    `yaml:"order"`
+}
+
+func Do(ctx context.Context, client graphql.Client, data Params) (*Bootstrap, error) {
 	resp, err := api.AgentBootstrap(ctx, client)
 	if err != nil {
 		return nil, fmt.Errorf("agent bootstrap failed: %w", err)
@@ -60,23 +73,86 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Result, error
 
 	threadID := fmt.Sprintf("th-%s", uuid.New().String())
 
-	return &Result{
-		AgentID:         bootstrap.AgentID,
-		AgentName:       bootstrap.AgentName,
-		Model:           model,
-		ReasoningEffort: bootstrap.ReasoningEffort,
-		SystemPrompt:    bootstrap.SystemPrompt,
-		ThreadID:        threadID,
-		Tools:           bootstrap.Tools,
-		Skills:          bootstrap.Skills,
-		BuiltinTools:    bootstrap.BuiltinTools,
-		AxonClawPath:    getAxonClawPath(),
-		SkillsRoot:      data.SkillsRoot,
-		ConfigDir:       data.ConfigDir,
-		Date:            now.Format("2006-01-02"),
-		Timezone:        timezone,
-		OS:              runtime.GOOS,
+	axonClawPath := getAxonClawPath()
+	osName := humanReadableOS(runtime.GOOS)
+
+	tmplData := prompts.PromptEnv{
+		Date:              now.Format("2006-01-02"),
+		Timezone:          timezone,
+		OS:                osName,
+		Workspace:         data.Workspace,
+		ThreadID:          threadID,
+		AxonClawPath:      axonClawPath,
+		SkillsRoot:        data.SkillsRoot,
+		AgentID:           bootstrap.AgentID,
+		AgentName:         bootstrap.AgentName,
+		AgentInstanceName: bootstrap.AgentInstanceName,
+		CreatedByUserName: bootstrap.CreatedByUserName,
+	}
+
+	prompt, err := prompts.Load(data.PromptDir, &prompts.InitParams{
+		Env:                tmplData,
+		ServerSystemPrompt: bootstrap.SystemPrompt,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("load bootstrap prompts: %w", err)
+	}
+
+	return &Bootstrap{
+		AgentID:            bootstrap.AgentID,
+		AgentName:          bootstrap.AgentName,
+		CreatedByUserName:  bootstrap.CreatedByUserName,
+		Model:              model,
+		ReasoningEffort:    bootstrap.ReasoningEffort,
+		ThreadID:           threadID,
+		Tools:              bootstrap.Tools,
+		Skills:             bootstrap.Skills,
+		BuiltinTools:       bootstrap.BuiltinTools,
+		BuiltinSkills:      convertBuiltinSkills(bootstrap.BuiltinSkills),
+		Prompts:            prompt,
+		ServerSystemPrompt: bootstrap.SystemPrompt,
+		AxonClawPath:       axonClawPath,
+		SkillsRoot:         data.SkillsRoot,
+		PromptDir:          data.PromptDir,
+		RuntimeDir:         data.RuntimeDir,
+		Date:               now.Format("2006-01-02"),
+		Timezone:           timezone,
+		OS:                 osName,
 	}, nil
+}
+
+func convertBuiltinSkills(items []*api.AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) []BuiltinSkill {
+	out := make([]BuiltinSkill, 0, len(items))
+	for _, item := range items {
+		if item == nil || strings.TrimSpace(item.Name) == "" {
+			continue
+		}
+
+		out = append(out, BuiltinSkill{
+			Name:    item.Name,
+			Enabled: item.Enabled,
+			Order:   item.Order,
+		})
+	}
+
+	return out
+}
+
+func humanReadableOS(goos string) string {
+	switch goos {
+	case "darwin":
+		return "macOS"
+	case "linux":
+		return "Linux"
+	case "windows":
+		return "Windows"
+	default:
+		if goos == "" {
+			return "Unknown"
+		}
+
+		return strings.ToUpper(goos[:1]) + goos[1:]
+	}
 }
 
 func getAxonClawPath() string {

@@ -27,6 +27,7 @@ func NewChatCompletionOrchestrator(
 	usageLogService *biz.UsageLogService,
 	promptService *biz.PromptService,
 	quotaService *biz.QuotaService,
+	promptProtectionRuleService *biz.PromptProtectionRuleService,
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 
@@ -54,6 +55,7 @@ func NewChatCompletionOrchestrator(
 		UsageLogService: usageLogService,
 		QuotaService:    quotaService,
 		PromptProvider:  promptService,
+		PromptProtecter: promptProtectionRuleService,
 		Middlewares: []pipeline.Middleware{
 			cc.StripBillingHeaderCCH(),
 			stream.EnsureUsage(),
@@ -79,7 +81,8 @@ type ChatCompletionOrchestrator struct {
 	UsageLogService *biz.UsageLogService
 	QuotaService    *biz.QuotaService
 	PromptProvider  PromptProvider
-	Middlewares []pipeline.Middleware
+	Middlewares     []pipeline.Middleware
+	PromptProtecter PromptProtecter
 	PipelineFactory *pipeline.Factory
 	ModelMapper     *ModelMapper
 
@@ -168,6 +171,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		UsageLogService:       processor.UsageLogService,
 		ChannelService:        processor.ChannelService,
 		PromptProvider:        processor.PromptProvider,
+		PromptProtecter:       processor.PromptProtecter,
 		RetryPolicyProvider:   processor.SystemService,
 		CandidateSelector:     processor.channelSelector,
 		LoadBalancer:          loadBalancer,
@@ -207,6 +211,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			applyModelMapping(inbound),
 			selectCandidates(inbound),
 			injectPrompts(inbound),
+			protectPrompts(inbound),
 			persistRequest(inbound),
 		)
 	}
@@ -214,6 +219,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Add outbound middlewares (executed after outbound.TransformRequest)
 	middlewares = append(middlewares,
 		applyOverrideRequestBody(outbound),
+		// applyUserAgentPassThrough runs before header overrides to set the initial
+		// User-Agent value (either from client pass-through or default "axonhub/1.0").
+		// This allows override headers to modify the User-Agent if configured.
+		applyUserAgentPassThrough(outbound, processor.SystemService),
 		applyOverrideRequestHeaders(outbound),
 
 		// Unified performance tracking middleware.

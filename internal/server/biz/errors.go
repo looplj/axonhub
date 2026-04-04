@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrInvalidJWT             = errors.New("invalid jwt token")
+	ErrInvalidToken           = errors.New("invalid token")
 	ErrInvalidAPIKey          = errors.New("invalid api key")
 	ErrInvalidPassword        = errors.New("invalid password")
 	ErrInvalidModel           = transformer.ErrInvalidModel

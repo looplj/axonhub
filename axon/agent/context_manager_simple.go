@@ -51,7 +51,7 @@ func (m *SimpleContextManager) BuildMessages(ctx context.Context) []Message {
 }
 
 func (m *SimpleContextManager) Snapshot() ContextManagerState {
-	return emptyContextState()
+	return EmptyContextState()
 }
 
 var _ ContextManager = (*SimpleContextManager)(nil)

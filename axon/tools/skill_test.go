@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/looplj/skills"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +27,8 @@ Follow these instructions.
 `
 	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skillContent), 0644))
 
-	tool := NewSkillTool(tmpDir)
+	mgr := NewSkillManager(SkillManagerOptions{Dirs: []string{tmpDir}})
+	tool := NewSkillTool(mgr)
 
 	t.Run("Definition", func(t *testing.T) {
 		def := tool.Definition()
@@ -95,9 +97,60 @@ description: Second skill
 # Skill Two
 `), 0644))
 
-	tool := NewSkillTool(tmpDir)
+	mgr := NewSkillManager(SkillManagerOptions{Dirs: []string{tmpDir}})
+	tool := NewSkillTool(mgr)
 
 	skills, err := tool.ListSkills()
 	require.NoError(t, err)
 	assert.Len(t, skills, 2)
+}
+
+func TestSkillToolBundledSkillsFallback(t *testing.T) {
+	mgr := NewSkillManager(SkillManagerOptions{
+		Dirs: []string{t.TempDir()},
+		BundledSkills: []skills.Skill{
+			{
+				Name:        "memory-management",
+				Description: "Manage memory",
+				Dir:         "/tmp/bundled/memory-management",
+				Content: `---
+name: memory-management
+description: Manage memory
+---
+# Memory`,
+			},
+		},
+	})
+	tool := NewSkillTool(mgr)
+
+	result := tool.Execute(context.Background(), skillInput{Skill: "memory-management"})
+
+	assert.Nil(t, result.Error)
+	require.NotNil(t, result.Content.Text)
+	assert.Contains(t, *result.Content.Text, `<skill name="memory-management">`)
+}
+
+func TestSkillToolBundledSkillWithoutDirUsesPlaceholder(t *testing.T) {
+	mgr := NewSkillManager(SkillManagerOptions{
+		Dirs: []string{t.TempDir()},
+		BundledSkills: []skills.Skill{
+			{
+				Name:        "builtin-skill",
+				Description: "Built-in skill without reference dir",
+				Content: `---
+name: builtin-skill
+description: Built-in skill without reference dir
+---
+# Builtin`,
+			},
+		},
+	})
+	tool := NewSkillTool(mgr)
+
+	result := tool.Execute(context.Background(), skillInput{Skill: "builtin-skill"})
+
+	assert.Nil(t, result.Error)
+	require.NotNil(t, result.Content.Text)
+	assert.Contains(t, *result.Content.Text, "<skill_dir>BUILTIN_SKILL_NO_REFERENCE</skill_dir>")
+	assert.NotContains(t, *result.Content.Text, "you MUST use absolute paths based on the skill directory above")
 }

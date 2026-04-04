@@ -14,7 +14,10 @@ const (
 type Task struct {
 	ID      string         `json:"id"`
 	Name    string         `json:"name"`
+	Type    string         `json:"type,omitempty"`
+	System  bool           `json:"system,omitempty"`
 	Enabled bool           `json:"enabled"`
+	Hidden  bool           `json:"hidden,omitempty"`
 	Trigger Trigger        `json:"trigger"`
 	Action  map[string]any `json:"action"`
 	Runtime TaskRuntime    `json:"runtime"`
@@ -23,10 +26,10 @@ type Task struct {
 type Trigger struct {
 	Type     TriggerType `json:"type"`
 	Cron     string      `json:"cron,omitempty"`
+	Timezone string      `json:"timezone,omitempty"`
 	Interval string      `json:"interval,omitempty"`
 	At       string      `json:"at,omitempty"`
 	Delay    string      `json:"delay,omitempty"`
-	Timezone string      `json:"timezone,omitempty"`
 }
 
 type TaskRuntime struct {

@@ -69,6 +69,7 @@ server:
     claude_code_trace_enabled: false # Enable Claude Code trace extraction
     codex_trace_enabled: false # Enable Codex trace extraction
   debug: false                  # Enable debug mode
+  disable_ssl_verify: false     # Disable SSL certificate verification for upstream requests (self-signed certificates)
 ```
 
 **Environment Variables:**
@@ -83,6 +84,7 @@ server:
 - `AXONHUB_SERVER_TRACE_CLAUDE_CODE_TRACE_ENABLED`
 - `AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED`
 - `AXONHUB_SERVER_DEBUG`
+- `AXONHUB_SERVER_DISABLE_SSL_VERIFY`
 
 ### Database Configuration
 

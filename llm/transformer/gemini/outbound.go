@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const (
@@ -28,6 +29,8 @@ const (
 type Config struct {
 	// BaseURL is the base URL for the Gemini API.
 	BaseURL string `json:"base_url,omitempty"`
+
+	AccountIdentity string `json:"account_identity,omitempty"`
 
 	// APIKeyProvider provides API keys for authentication.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
@@ -101,12 +104,24 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("request is nil")
 	}
 
+	var apiKey string
+	if t.config.APIKeyProvider != nil {
+		apiKey = t.config.APIKeyProvider.Get(ctx)
+	}
+
+	scope := shared.TransportScope{
+		BaseURL:         t.config.BaseURL,
+		AccountIdentity: t.config.AccountIdentity,
+	}
+
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationRequest(ctx, llmReq)
 	case llm.RequestTypeChat, "":
 		// continue
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
@@ -120,7 +135,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// Convert to Gemini request format with config
-	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
+	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config, scope)
 
 	// Clear function call/response IDs for Vertex AI (not supported)
 	if t.config.PlatformType == PlatformVertex {
@@ -140,14 +155,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Prepare authentication
 	var authConfig *httpclient.AuthConfig
 
-	if t.config.APIKeyProvider != nil {
-		apiKey := t.config.APIKeyProvider.Get(ctx)
-		if apiKey != "" {
-			authConfig = &httpclient.AuthConfig{
-				Type:      "api_key",
-				APIKey:    apiKey,
-				HeaderKey: "x-goog-api-key",
-			}
+	if apiKey != "" {
+		authConfig = &httpclient.AuthConfig{
+			Type:      "api_key",
+			APIKey:    apiKey,
+			HeaderKey: "x-goog-api-key",
 		}
 	}
 
@@ -166,6 +178,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Body:                  body,
 		Auth:                  authConfig,
 		SkipInboundQueryMerge: true,
+		Metadata:              scope.Metadata(),
 	}, nil
 }
 
@@ -235,7 +248,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	}
 
 	// Convert to unified response (non-streaming)
-	return convertGeminiToLLMResponse(&geminiResp, false), nil
+	scope, _ := shared.GetTransportScope(ctx)
+
+	return convertGeminiToLLMResponse(&geminiResp, false, scope), nil
 }
 
 // TransformError transforms HTTP error response to unified error response for Gemini.

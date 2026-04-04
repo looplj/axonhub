@@ -123,6 +123,7 @@ export const systemApi = {
     ownerFirstName: string;
     ownerLastName: string;
     brandName: string;
+    preferLanguage?: string;
   }): Promise<{ success: boolean; message: string }> =>
     apiRequest('/admin/system/initialize', {
       method: 'POST',

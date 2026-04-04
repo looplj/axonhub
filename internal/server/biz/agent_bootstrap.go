@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -60,16 +61,19 @@ type AgentSkillDefinition struct {
 }
 
 type AgentBootstrap struct {
-	AgentID         int
-	AgentName       string
-	Model           *string
-	ReasoningEffort string
-	SystemPrompt    string
+	AgentID           int
+	AgentName         string
+	AgentInstanceName string
+	CreatedByUserName string
+	Model             *string
+	ReasoningEffort   string
+	SystemPrompt      string
 
-	Tools        []AgentToolDefinition
-	Skills       []AgentSkillDefinition
-	BuiltinTools []objects.AgentBuiltinTool
-	SkillsPolicy objects.AgentSkillsPolicy
+	Tools         []AgentToolDefinition
+	Skills        []AgentSkillDefinition
+	BuiltinTools  []objects.AgentBuiltinTool
+	BuiltinSkills []objects.AgentBuiltinSkill
+	SkillsPolicy  objects.AgentSkillsPolicy
 
 	MemoryPolicy *objects.JSONRawMessage
 }
@@ -93,11 +97,9 @@ type AgentMessageView struct {
 }
 
 type RegisterAgentInstanceInput struct {
-	AgentID     int
-	Name        *string
-	Platform    *string
-	Description *string
-	ThreadID    *string
+	AgentID  int
+	Platform *string
+	ThreadID *string
 }
 
 type SendPeerMessageInput struct {
@@ -194,9 +196,20 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 				agent.IDEQ(inst.AgentID),
 				agent.ProjectIDEQ(inst.ProjectID),
 			).
+			WithCreatedByUser().
 			Only(bypassCtx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load agent: %w", err)
+		}
+
+		createdByUserName := ""
+		if a.Edges.CreatedByUser != nil {
+			createdByUserName = a.Edges.CreatedByUser.FirstName + " " + a.Edges.CreatedByUser.LastName
+
+			createdByUserName = strings.TrimSpace(createdByUserName)
+			if createdByUserName == "" {
+				createdByUserName = a.Edges.CreatedByUser.Email
+			}
 		}
 
 		p, err := client.Prompt.Query().
@@ -212,6 +225,11 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 		builtinTools := a.AgentBuiltinTools
 		if builtinTools == nil {
 			builtinTools = []objects.AgentBuiltinTool{}
+		}
+
+		builtinSkills := a.AgentBuiltinSkills
+		if builtinSkills == nil {
+			builtinSkills = []objects.AgentBuiltinSkill{}
 		}
 
 		skillsPolicy := a.SkillsPolicy
@@ -291,16 +309,19 @@ func (s *AgentBootstrapService) AgentBootstrap(ctx context.Context, inst *ent.Ag
 		}
 
 		return &AgentBootstrap{
-			AgentID:         a.ID,
-			AgentName:       a.Name,
-			Model:           model,
-			ReasoningEffort: string(a.ReasoningEffort),
-			SystemPrompt:    p.Content,
-			Tools:           tools,
-			Skills:          skills,
-			BuiltinTools:    builtinTools,
-			SkillsPolicy:    skillsPolicy,
-			MemoryPolicy:    nil,
+			AgentID:           a.ID,
+			AgentName:         a.Name,
+			AgentInstanceName: inst.Name,
+			CreatedByUserName: createdByUserName,
+			Model:             model,
+			ReasoningEffort:   string(a.ReasoningEffort),
+			SystemPrompt:      p.Content,
+			Tools:             tools,
+			Skills:            skills,
+			BuiltinTools:      builtinTools,
+			BuiltinSkills:     builtinSkills,
+			SkillsPolicy:      skillsPolicy,
+			MemoryPolicy:      nil,
 		}, nil
 	})
 }
@@ -349,44 +370,22 @@ func (s *AgentBootstrapService) SendAgentMessageAsUser(ctx context.Context, user
 			}
 		}
 
-		raw, err := marshalMessageContent("text", input.Text, nil)
+		raw := MarshalTextContent(input.Text)
+
+		createInput := CreateAgentMessageParams{
+			ProjectID:       projectID,
+			AgentID:         a.ID,
+			AgentInstanceID: inst.ID,
+			Direction:       agentmessage.DirectionToAgent,
+			SenderType:      agentmessage.SenderTypeUser,
+			SenderID:        &userID,
+			Type:            agentmessage.TypeChat,
+			Content:         raw,
+		}
+
+		msg, err := CreateAgentMessage(bypassCtx, client, createInput)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal message content: %w", err)
-		}
-
-		var msg *ent.AgentMessage
-		for attempt := 0; attempt < 3; attempt++ {
-			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
-			if err != nil {
-				return nil, err
-			}
-
-			created, err := client.AgentMessage.Create().
-				SetProjectID(projectID).
-				SetAgentID(a.ID).
-				SetAgentInstanceID(inst.ID).
-				SetDirection(agentmessage.DirectionToAgent).
-				SetSenderType(agentmessage.SenderTypeUser).
-				SetSenderID(userID).
-				SetType(agentmessage.TypeChat).
-				SetCorrelationID("").
-				SetContent(raw).
-				SetStatus(agentmessage.StatusPending).
-				SetSequence(nextSeq).
-				Save(bypassCtx)
-			if err == nil {
-				msg = created
-				break
-			}
-
-			if ent.IsConstraintError(err) && attempt < 2 {
-				continue
-			}
-
-			return nil, fmt.Errorf("failed to create message: %w", err)
-		}
-		if msg == nil {
-			return nil, fmt.Errorf("failed to create message: no message created")
+			return nil, err
 		}
 
 		return &AgentMessageView{
@@ -461,7 +460,7 @@ func (s *AgentBootstrapService) PullAgentMessagesToUserAsAdmin(ctx context.Conte
 
 		out := make([]*AgentMessageView, 0, len(items))
 		for _, m := range items {
-			text := extractTextFromMessageContent(m.Content)
+			text := ExtractTextFromContent(m.Content)
 
 			out = append(out, &AgentMessageView{
 				ID:                m.ID,
@@ -606,7 +605,7 @@ func (s *AgentBootstrapService) ListAgentMessagesAsAdmin(ctx context.Context, ag
 
 		out := make([]*AgentMessageView, 0, len(items))
 		for _, m := range items {
-			text := extractTextFromMessageContent(m.Content)
+			text := ExtractTextFromContent(m.Content)
 
 			out = append(out, &AgentMessageView{
 				ID:                m.ID,
@@ -713,44 +712,23 @@ func (s *AgentBootstrapService) ResolveApprovalAsUser(ctx context.Context, userI
 			return false, fmt.Errorf("marshal approval result: %w", err)
 		}
 
-		var resultMsg *ent.AgentMessage
-
-		for attempt := range 3 {
-			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
-			if err != nil {
-				return false, err
-			}
-
-			created, err := client.AgentMessage.Create().
-				SetProjectID(projectID).
-				SetAgentID(a.ID).
-				SetAgentInstanceID(approvalReq.AgentInstanceID).
-				SetDirection(agentmessage.DirectionToAgent).
-				SetSenderType(agentmessage.SenderTypeUser).
-				SetSenderID(userID).
-				SetType(agentmessage.TypeApprovalResult).
-				SetCorrelationID(input.RequestID).
-				SetContent(raw).
-				SetStatus(agentmessage.StatusPending).
-				SetSequence(nextSeq).
-				Save(bypassCtx)
-			if err == nil {
-				resultMsg = created
-				break
-			}
-
-			if ent.IsConstraintError(err) && attempt < 2 {
-				continue
-			}
-
-			return false, fmt.Errorf("create approval result: %w", err)
+		createInput := CreateAgentMessageParams{
+			ProjectID:       projectID,
+			AgentID:         a.ID,
+			AgentInstanceID: approvalReq.AgentInstanceID,
+			Direction:       agentmessage.DirectionToAgent,
+			SenderType:      agentmessage.SenderTypeUser,
+			SenderID:        &userID,
+			Type:            agentmessage.TypeApprovalResult,
+			CorrelationID:   input.RequestID,
+			Content:         raw,
 		}
 
-		if resultMsg == nil {
-			return false, fmt.Errorf("create approval result: no message created")
+		_, err = CreateAgentMessage(bypassCtx, client, createInput)
+		if err != nil {
+			return false, err
 		}
 
-		// Mark request as resolved to avoid repeated approvals.
 		_, _ = client.AgentMessage.Update().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
@@ -803,15 +781,8 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 			upd := client.AgentInstance.UpdateOneID(existing.ID).
 				SetLastHeartbeatAt(now)
 
-			if input.Name != nil {
-				upd.SetName(*input.Name)
-			}
 			if input.Platform != nil {
 				upd.SetPlatform(*input.Platform)
-			}
-
-			if input.Description != nil {
-				upd.SetDescription(*input.Description)
 			}
 
 			inst, err := upd.Save(bypassCtx)
@@ -837,15 +808,8 @@ func (s *AgentBootstrapService) RegisterAgentInstance(ctx context.Context, input
 			SetAPIKeyID(apiKey.ID).
 			SetLastHeartbeatAt(now)
 
-		if input.Name != nil {
-			create.SetName(*input.Name)
-		}
 		if input.Platform != nil {
 			create.SetPlatform(*input.Platform)
-		}
-
-		if input.Description != nil {
-			create.SetDescription(*input.Description)
 		}
 
 		created, err := create.Save(bypassCtx)
@@ -968,50 +932,6 @@ func (s *AgentBootstrapService) HeartbeatAgentInstance(ctx context.Context, inst
 	return err
 }
 
-type agentTextMessageContent struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
-}
-
-func marshalMessageContent(typ string, text string, payload any) (objects.JSONRawMessage, error) {
-	type base struct {
-		Type string `json:"type"`
-		Text string `json:"text,omitempty"`
-	}
-
-	if typ == "" {
-		typ = "text"
-	}
-
-	if typ == "text" {
-		raw, err := json.Marshal(agentTextMessageContent{Type: typ, Text: text})
-		return objects.JSONRawMessage(raw), err
-	}
-	// For non-text messages, allow payload to carry structured fields.
-	// The caller must ensure payload is JSON-safe and redacted.
-	if payload == nil {
-		raw, err := json.Marshal(base{Type: typ, Text: text})
-		return objects.JSONRawMessage(raw), err
-	}
-
-	raw, err := json.Marshal(payload)
-
-	return objects.JSONRawMessage(raw), err
-}
-
-func extractTextFromMessageContent(raw objects.JSONRawMessage) string {
-	if len(raw) == 0 || string(raw) == "null" {
-		return ""
-	}
-
-	var content agentTextMessageContent
-	if err := json.Unmarshal(raw, &content); err != nil {
-		return ""
-	}
-
-	return content.Text
-}
-
 func (s *AgentBootstrapService) ListPeerAgents(ctx context.Context, inst *ent.AgentInstance) ([]*PeerAgentView, error) {
 	return authz.RunWithSystemBypass(ctx, "agent-runtime-list-peer-agents", func(bypassCtx context.Context) ([]*PeerAgentView, error) {
 		client := s.entFromContext(bypassCtx)
@@ -1043,43 +963,25 @@ func (s *AgentBootstrapService) ListPeerAgents(ctx context.Context, inst *ent.Ag
 	})
 }
 
-// sendPeerMessageToInstance sends a peer message to a specific agent instance with retry logic.
+// sendPeerMessageToInstance sends a peer message to a specific agent instance.
 func (s *AgentBootstrapService) sendPeerMessageToInstance(
 	bypassCtx context.Context,
 	senderInst *ent.AgentInstance,
 	targetInst *ent.AgentInstance,
 	raw objects.JSONRawMessage,
 ) (*ent.AgentMessage, error) {
-	for attempt := range 3 {
-		nextSeq, err := s.nextSequence(bypassCtx, targetInst.AgentID)
-		if err != nil {
-			return nil, err
-		}
-
-		created, err := s.entFromContext(bypassCtx).AgentMessage.Create().
-			SetProjectID(targetInst.ProjectID).
-			SetAgentID(targetInst.AgentID).
-			SetAgentInstanceID(targetInst.ID).
-			SetDirection(agentmessage.DirectionToAgent).
-			SetSenderType(agentmessage.SenderTypeAgent).
-			SetSenderID(senderInst.AgentID).
-			SetType(agentmessage.TypeChat).
-			SetContent(raw).
-			SetStatus(agentmessage.StatusPending).
-			SetSequence(nextSeq).
-			Save(bypassCtx)
-		if err == nil {
-			return created, nil
-		}
-
-		if ent.IsConstraintError(err) && attempt < 2 {
-			continue
-		}
-
-		return nil, fmt.Errorf("failed to create peer message: %w", err)
+	input := CreateAgentMessageParams{
+		ProjectID:       targetInst.ProjectID,
+		AgentID:         targetInst.AgentID,
+		AgentInstanceID: targetInst.ID,
+		Direction:       agentmessage.DirectionToAgent,
+		SenderType:      agentmessage.SenderTypeAgent,
+		SenderID:        &senderInst.ID,
+		Type:            agentmessage.TypeChat,
+		Content:         raw,
 	}
 
-	return nil, fmt.Errorf("failed to create peer message: max retries exceeded")
+	return CreateAgentMessage(bypassCtx, s.entFromContext(bypassCtx), input)
 }
 
 func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendPeerMessageInput) (*AgentMessageView, error) {
@@ -1139,12 +1041,7 @@ func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendP
 		if input.Content != nil && len(*input.Content) > 0 && string(*input.Content) != "null" {
 			raw = *input.Content
 		} else {
-			b, err := marshalMessageContent("text", input.Text, nil)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal message content: %w", err)
-			}
-
-			raw = b
+			raw = MarshalTextContent(input.Text)
 		}
 
 		var msgs []*ent.AgentMessage
@@ -1165,7 +1062,7 @@ func (s *AgentBootstrapService) SendPeerMessage(ctx context.Context, input SendP
 		// Return the first message as the representative
 		msg := msgs[0]
 
-		viewText := extractTextFromMessageContent(msg.Content)
+		viewText := ExtractTextFromContent(msg.Content)
 		if viewText == "" {
 			viewText = input.Text
 		}
@@ -1227,57 +1124,34 @@ func (s *AgentBootstrapService) createMessage(
 			return nil, fmt.Errorf("failed to load agent: %w", err)
 		}
 
-		senderID := &inst.ID
+		senderID := inst.ID
 
 		raw := objects.JSONRawMessage(nil)
 		if content != nil && len(*content) > 0 && string(*content) != "null" {
 			raw = *content
 		} else {
-			b, err := marshalMessageContent("text", text, nil)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal message content: %w", err)
-			}
-
-			raw = b
+			raw = MarshalTextContent(text)
 		}
 
-		var msg *ent.AgentMessage
-		for attempt := 0; attempt < 3; attempt++ {
-			nextSeq, err := s.nextSequence(bypassCtx, a.ID)
-			if err != nil {
-				return nil, err
-			}
-
-			created, err := client.AgentMessage.Create().
-				SetProjectID(inst.ProjectID).
-				SetAgentID(a.ID).
-				SetAgentInstanceID(*senderID).
-				SetDirection(direction).
-				SetSenderType(senderType).
-				SetNillableSenderID(senderID).
-				SetType(msgType).
-				SetCorrelationID(correlationID).
-				SetContent(raw).
-				SetStatus(agentmessage.StatusPending).
-				SetSequence(nextSeq).
-				SetNillableReplyToMessageID(replyToMessageID).
-				Save(bypassCtx)
-			if err == nil {
-				msg = created
-				break
-			}
-
-			if ent.IsConstraintError(err) && attempt < 2 {
-				continue
-			}
-
-			return nil, fmt.Errorf("failed to create message: %w", err)
-		}
-		if msg == nil {
-			return nil, fmt.Errorf("failed to create message: no message created")
+		createInput := CreateAgentMessageParams{
+			ProjectID:        inst.ProjectID,
+			AgentID:          a.ID,
+			AgentInstanceID:  inst.ID,
+			Direction:        direction,
+			SenderType:       senderType,
+			SenderID:         &senderID,
+			Type:             msgType,
+			CorrelationID:    correlationID,
+			Content:          raw,
+			ReplyToMessageID: replyToMessageID,
 		}
 
-		viewText := extractTextFromMessageContent(msg.Content)
+		msg, err := CreateAgentMessage(bypassCtx, client, createInput)
+		if err != nil {
+			return nil, err
+		}
+
+		viewText := ExtractTextFromContent(msg.Content)
 		if viewText == "" {
 			viewText = text
 		}
@@ -1287,7 +1161,7 @@ func (s *AgentBootstrapService) createMessage(
 			AgentID:           a.ID,
 			Direction:         msg.Direction,
 			SenderType:        msg.SenderType,
-			SenderID:          senderID,
+			SenderID:          &senderID,
 			Type:              msg.Type,
 			CorrelationID:     msg.CorrelationID,
 			Content:           msg.Content,
@@ -1299,25 +1173,6 @@ func (s *AgentBootstrapService) createMessage(
 			ReplyToMessageID:  msg.ReplyToMessageID,
 		}, nil
 	})
-}
-
-func (s *AgentBootstrapService) nextSequence(ctx context.Context, agentID int) (int64, error) {
-	client := s.entFromContext(ctx)
-
-	last, err := client.AgentMessage.Query().
-		Where(
-			agentmessage.AgentIDEQ(agentID),
-		).
-		Order(agentmessage.BySequence(sql.OrderDesc())).
-		First(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return 1, nil
-		}
-		return 0, fmt.Errorf("failed to query last sequence: %w", err)
-	}
-
-	return last.Sequence + 1, nil
 }
 
 func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent.AgentInstance, input PullAgentMessagesInput) ([]*AgentMessageView, error) {
@@ -1346,6 +1201,7 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.AgentInstanceIDEQ(inst.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToAgent),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 			).
@@ -1371,7 +1227,7 @@ func (s *AgentBootstrapService) PullAgentMessages(ctx context.Context, inst *ent
 
 		out := make([]*AgentMessageView, 0, len(items))
 		for _, m := range items {
-			text := extractTextFromMessageContent(m.Content)
+			text := ExtractTextFromContent(m.Content)
 
 			out = append(out, &AgentMessageView{
 				ID:                m.ID,
@@ -1420,6 +1276,7 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, ins
 		q := client.AgentMessage.Query().
 			Where(
 				agentmessage.AgentIDEQ(a.ID),
+				agentmessage.AgentInstanceIDEQ(inst.ID),
 				agentmessage.DirectionEQ(agentmessage.DirectionToUser),
 				agentmessage.TypeEQ(agentmessage.TypeChat),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
@@ -1438,7 +1295,7 @@ func (s *AgentBootstrapService) PullAgentMessagesToUser(ctx context.Context, ins
 
 		out := make([]*AgentMessageView, 0, len(items))
 		for _, m := range items {
-			text := extractTextFromMessageContent(m.Content)
+			text := ExtractTextFromContent(m.Content)
 
 			out = append(out, &AgentMessageView{
 				ID:                m.ID,
@@ -1473,6 +1330,7 @@ func (s *AgentBootstrapService) AckAgentMessages(ctx context.Context, inst *ent.
 			Where(
 				agentmessage.IDIn(messageIDs...),
 				agentmessage.AgentIDEQ(inst.AgentID),
+				agentmessage.AgentInstanceIDEQ(inst.ID),
 				agentmessage.ProjectIDEQ(inst.ProjectID),
 				agentmessage.StatusEQ(agentmessage.StatusPending),
 			).

@@ -40,8 +40,9 @@ type CreateAgentInput struct {
 	ReasoningEffort *agent.ReasoningEffort
 	SystemPrompt    string
 
-	BuiltinTools []objects.AgentBuiltinTool
-	SkillsPolicy *objects.AgentSkillsPolicy
+	BuiltinTools  []objects.AgentBuiltinTool
+	BuiltinSkills []objects.AgentBuiltinSkill
+	SkillsPolicy  *objects.AgentSkillsPolicy
 }
 
 func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput) (*ent.Agent, error) {
@@ -91,6 +92,7 @@ func (svc *AgentService) CreateAgent(ctx context.Context, input CreateAgentInput
 			SetNillableReasoningEffort(input.ReasoningEffort).
 			SetNillableStatus(input.Status).
 			SetNillableSkillsPolicy(input.SkillsPolicy).
+			SetAgentBuiltinSkills(input.BuiltinSkills).
 			SetAgentBuiltinTools(input.BuiltinTools).Save(txCtx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create agent: %w", err)
@@ -108,8 +110,9 @@ type UpdateAgentInput struct {
 	ReasoningEffort *agent.ReasoningEffort
 	SystemPrompt    *string
 
-	BuiltinTools []objects.AgentBuiltinTool
-	SkillsPolicy *objects.AgentSkillsPolicy
+	BuiltinTools  []objects.AgentBuiltinTool
+	BuiltinSkills []objects.AgentBuiltinSkill
+	SkillsPolicy  *objects.AgentSkillsPolicy
 }
 
 func (svc *AgentService) UpdateAgent(ctx context.Context, id int, input UpdateAgentInput) (*ent.Agent, error) {
@@ -154,6 +157,10 @@ func (svc *AgentService) UpdateAgent(ctx context.Context, id int, input UpdateAg
 
 		if input.BuiltinTools != nil {
 			update.SetAgentBuiltinTools(input.BuiltinTools)
+		}
+
+		if input.BuiltinSkills != nil {
+			update.SetAgentBuiltinSkills(input.BuiltinSkills)
 		}
 
 		if input.SkillsPolicy != nil && input.SkillsPolicy.Add != "" {

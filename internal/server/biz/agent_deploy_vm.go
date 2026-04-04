@@ -240,6 +240,26 @@ func (svc *AgentDeployService) vmInstallLatest(ctx context.Context, runtime *ent
 	isLocalhost := runtime.Addr == "localhost" || runtime.Addr == "127.0.0.1"
 
 	if isLocalhost {
+		if debugLocalPath != "" {
+			if _, err := os.Stat(debugLocalPath); os.IsNotExist(err) {
+				return fmt.Errorf("debug package not found at %s", debugLocalPath)
+			}
+
+			//nolint:gosec
+			unzipCmd := fmt.Sprintf(
+				"unzip -o %s -d %s && chmod +x %s/start.sh %s/stop.sh",
+				shellQuote(debugLocalPath),
+				shellQuote(directory),
+				shellQuote(directory),
+				shellQuote(directory),
+			)
+			if err := exec.CommandContext(ctx, "sh", "-c", unzipCmd).Run(); err != nil {
+				return fmt.Errorf("failed to unzip debug package: %w", err)
+			}
+
+			return nil
+		}
+
 		cmd := exec.CommandContext(ctx, "bash", "-c", "curl -sSL https://raw.githubusercontent.com/looplj/axonhub/unstable/cmd/axonclaw/install.sh | bash") //nolint:gosec
 		cmd.Dir = directory
 

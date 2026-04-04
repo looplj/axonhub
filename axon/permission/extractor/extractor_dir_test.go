@@ -107,6 +107,21 @@ func TestExtract_Read_OutsideWorkspace_Dir(t *testing.T) {
 	assert.True(t, resources[0].OutsideWorkspace)
 }
 
+func TestExtract_Read_QuotedPathWithSpaces(t *testing.T) {
+	ext := DefaultExtractor{}
+	input := json.RawMessage(`{"path":"\"/workspace/Claw 001/no01/IDENTITY.md\""}`)
+
+	resources, err := ext.Extract("/workspace", "Read", input)
+
+	require.NoError(t, err)
+	require.Len(t, resources, 2)
+	assert.Equal(t, policy.ResourcePath, resources[0].Type)
+	assert.Equal(t, "/workspace/Claw 001/no01/IDENTITY.md", resources[0].Path)
+	assert.Equal(t, filepath.ToSlash("Claw 001/no01/IDENTITY.md"), filepath.ToSlash(resources[0].WorkspaceRel))
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
+	assert.Equal(t, "/workspace/Claw 001/no01", resources[1].Path)
+}
+
 func TestExtract_Read_OutsideWorkspace_ExtensionlessFile(t *testing.T) {
 	ext := DefaultExtractor{}
 	input := json.RawMessage(`{"path":"/etc/passwd"}`)
@@ -219,6 +234,19 @@ func TestExtract_Glob_OutsideWorkspace(t *testing.T) {
 	assert.True(t, resources[0].OutsideWorkspace)
 }
 
+func TestExtract_Glob_QuotedPathWithSpaces(t *testing.T) {
+	ext := DefaultExtractor{}
+	input := json.RawMessage(`{"path":"\"/workspace/Claw 001/no01\""}`)
+
+	resources, err := ext.Extract("/workspace", "Glob", input)
+
+	require.NoError(t, err)
+	require.Len(t, resources, 1)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
+	assert.Equal(t, "/workspace/Claw 001/no01", resources[0].Path)
+	assert.Equal(t, filepath.ToSlash("Claw 001/no01"), filepath.ToSlash(resources[0].WorkspaceRel))
+}
+
 func TestExtract_Glob_InvalidJSON(t *testing.T) {
 	ext := DefaultExtractor{}
 	input := json.RawMessage(`{invalid}`)
@@ -262,6 +290,19 @@ func TestExtract_Grep_OutsideWorkspace(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resources, 1)
 	assert.True(t, resources[0].OutsideWorkspace)
+}
+
+func TestExtract_Grep_QuotedPathWithSpaces(t *testing.T) {
+	ext := DefaultExtractor{}
+	input := json.RawMessage(`{"path":"\"/workspace/Claw 001/no01\""}`)
+
+	resources, err := ext.Extract("/workspace", "Grep", input)
+
+	require.NoError(t, err)
+	require.Len(t, resources, 1)
+	assert.Equal(t, policy.ResourceDir, resources[0].Type)
+	assert.Equal(t, "/workspace/Claw 001/no01", resources[0].Path)
+	assert.Equal(t, filepath.ToSlash("Claw 001/no01"), filepath.ToSlash(resources[0].WorkspaceRel))
 }
 
 func TestExtract_Grep_InvalidJSON(t *testing.T) {
@@ -372,6 +413,21 @@ func TestExtract_Read_PathNormalization(t *testing.T) {
 	assert.Equal(t, "/workspace/src/main.go", resources[0].Path)
 	assert.Equal(t, policy.ResourceDir, resources[1].Type)
 	assert.Equal(t, "/workspace/src", resources[1].Path)
+}
+
+func TestExtract_Bash_QuotedCwdWithSpaces(t *testing.T) {
+	ext := DefaultExtractor{}
+	input := json.RawMessage(`{"command":"pwd","cwd":"\"/workspace/Claw 001/no01\""}`)
+
+	resources, err := ext.Extract("/workspace", "Bash", input)
+
+	require.NoError(t, err)
+	require.Len(t, resources, 2)
+	assert.Equal(t, policy.ResourceCommand, resources[0].Type)
+	assert.Equal(t, "/workspace/Claw 001/no01", resources[0].Cwd)
+	assert.Equal(t, policy.ResourceDir, resources[1].Type)
+	assert.Equal(t, "/workspace/Claw 001/no01", resources[1].Path)
+	assert.Equal(t, filepath.ToSlash("Claw 001/no01"), filepath.ToSlash(resources[1].WorkspaceRel))
 }
 
 func TestExtract_WebFetch(t *testing.T) {

@@ -152,13 +152,24 @@ enum ProbeFrequency {
   ONE_HOUR
 }
 
+enum AutoSyncFrequency {
+  ONE_HOUR
+  SIX_HOURS
+  ONE_DAY
+}
+
 type ChannelProbeSetting {
   enabled: Boolean!
   frequency: ProbeFrequency!
 }
 
+type ChannelModelAutoSyncSetting {
+  frequency: AutoSyncFrequency!
+}
+
 type SystemChannelSettings {
   probe: ChannelProbeSetting!
+  autoSync: ChannelModelAutoSyncSetting!
 }
 
 input UpdateChannelProbeSettingInput {
@@ -166,8 +177,13 @@ input UpdateChannelProbeSettingInput {
   frequency: ProbeFrequency!
 }
 
+input UpdateChannelModelAutoSyncSettingInput {
+  frequency: AutoSyncFrequency!
+}
+
 input UpdateSystemChannelSettingsInput {
   probe: UpdateChannelProbeSettingInput
+  autoSync: UpdateChannelModelAutoSyncSettingInput
 }
 
 type SystemGeneralSettings {
@@ -193,6 +209,28 @@ input UpdateVideoStorageSettingsInput {
   scanIntervalMinutes: Int
   scanLimit: Int
 }
+type UserAgentPassThroughSettings {
+  enabled: Boolean!
+}
+
+input UpdateUserAgentPassThroughSettingsInput {
+  enabled: Boolean!
+}
+
+
+type ProxyPreset {
+  name: String
+  url: String!
+  username: String
+  password: String
+}
+
+input SaveProxyPresetInput {
+  name: String
+  url: String!
+  username: String
+  password: String
+}
 
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
@@ -207,6 +245,10 @@ extend type Mutation {
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
   updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
+  triggerGcCleanup: Boolean!
+  saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
+  deleteProxyPreset(url: String!): Boolean!
+  updateUserAgentPassThroughSettings(input: UpdateUserAgentPassThroughSettingsInput!): Boolean!
 }
 
 type SystemVersion {
@@ -238,4 +280,6 @@ extend type Query {
   systemChannelSettings: SystemChannelSettings!
   systemGeneralSettings: SystemGeneralSettings!
   videoStorageSettings: VideoStorageSettings!
+  proxyPresets: [ProxyPreset!]!
+  userAgentPassThroughSettings: UserAgentPassThroughSettings!
 }

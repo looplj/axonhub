@@ -69,6 +69,9 @@ type Project func(*sql.Selector)
 // Prompt is the predicate function for prompt builders.
 type Prompt func(*sql.Selector)
 
+// PromptProtectionRule is the predicate function for promptprotectionrule builders.
+type PromptProtectionRule func(*sql.Selector)
+
 // PromptVersion is the predicate function for promptversion builders.
 type PromptVersion func(*sql.Selector)
 

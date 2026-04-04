@@ -52,6 +52,11 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/prompt-protection-rules',
+        requiredScopes: ['read_channels'],
+        mode: 'hidden',
+      },
+      {
         path: '/data-storages',
         requiredScopes: ['read_data_storages'],
         mode: 'hidden',

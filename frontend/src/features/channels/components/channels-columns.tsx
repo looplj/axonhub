@@ -83,6 +83,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const { setOpen, setCurrentRow } = useChannels();
   const { channelPermissions } = usePermissions();
   const testChannel = useTestChannel();
+  const isArchived = channel.status === 'archived';
   const hasError = !!channel.errorMessage;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
   const isSearch = channel.type.startsWith('search_');
@@ -231,10 +232,10 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               setCurrentRow(channel);
               setOpen('archive');
             }}
-            className='text-orange-500!'
+            className={isArchived ? 'text-green-600!' : 'text-orange-500!'}
           >
-            <IconArchive size={16} className='mr-2' />
-            {t('common.buttons.archive')}
+            {isArchived ? <IconCheck size={16} className='mr-2' /> : <IconArchive size={16} className='mr-2' />}
+            {t(isArchived ? 'common.buttons.restore' : 'common.buttons.archive')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -272,6 +273,28 @@ const ExpandCell = ({ row }: { row: any }) => (
 
 // ExpandCell.displayName = 'ExpandCell'; // Removed since it's not memoized now, but can keep if desired
 
+function getChannelWebsiteURL(baseURL: string): string | null {
+  try {
+    const url = new URL(baseURL);
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function getProxyURLSummary(proxyURL: string): { label: string; detail?: string } {
+  try {
+    const url = new URL(proxyURL);
+    const pathname = url.pathname === '/' ? '' : url.pathname;
+    return {
+      label: url.host || proxyURL,
+      detail: `${url.protocol}//${url.host}${pathname}`,
+    };
+  } catch {
+    return { label: proxyURL };
+  }
+}
+
 // Memoized cell components to avoid recreating on every render
 const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
@@ -279,13 +302,28 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const hasError = !!channel.errorMessage;
   const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
   const hasDisabledKeys = disabledKeysCount > 0;
+  const websiteURL = getChannelWebsiteURL(channel.baseURL);
+
+  const nameElement = websiteURL ? (
+    <a
+      href={websiteURL}
+      target='_blank'
+      rel='noopener noreferrer'
+      className={cn('truncate font-medium hover:underline', hasError ? 'text-destructive' : '')}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {row.getValue('name')}
+    </a>
+  ) : (
+    <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+  );
 
   const content = (
     <div className='flex justify-center'>
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
         {!hasError && hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
-        <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+        {nameElement}
       </div>
     </div>
   );
@@ -298,7 +336,7 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
           <div className='space-y-1'>
             <p className='text-destructive text-sm'>
               {t(`channels.messages.${channel.errorMessage}`, {
-                fallback: channel.errorMessage,
+                defaultValue: channel.errorMessage,
               })}
             </p>
           </div>
@@ -369,6 +407,56 @@ const TagsCell = memo(({ row }: { row: Row<Channel> }) => {
 });
 
 TagsCell.displayName = 'TagsCell';
+
+const ProxyCell = memo(({ row }: { row: Row<Channel> }) => {
+  const { t } = useTranslation();
+  const proxy = row.original.settings?.proxy;
+
+  if (!proxy || proxy.type === 'disabled') {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  if (proxy.type === 'environment') {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>{t('channels.dialogs.proxy.types.environment')}</span>
+      </div>
+    );
+  }
+
+  const proxyURL = proxy.url?.trim();
+  if (!proxyURL) {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  const { label, detail } = getProxyURLSummary(proxyURL);
+  const content = (
+    <div className='flex justify-center'>
+      <span className='max-w-40 truncate font-mono text-xs'>{label}</span>
+    </div>
+  );
+
+  if (detail && detail !== label) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent>{detail}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+});
+
+ProxyCell.displayName = 'ProxyCell';
 
 const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
@@ -628,6 +716,17 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         className: 'max-w-64 text-center',
       },
       enableSorting: false,
+    },
+    {
+      id: 'proxy',
+      accessorFn: (row) => row.settings?.proxy?.url ?? row.settings?.proxy?.type ?? '',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
+      cell: ProxyCell,
+      meta: {
+        className: 'w-32 min-w-32 text-center',
+      },
+      enableSorting: false,
+      enableHiding: true,
     },
     {
       id: 'health',

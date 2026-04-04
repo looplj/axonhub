@@ -567,7 +567,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
       toast.success(t('channels.messages.updateSuccess'));
       onOpenChange(false);
     } catch (_error) {
-      toast.error(t('channels.messages.updateError'));
+      toast.error(t('common.errors.internalServerError'));
     }
   };
 
@@ -595,7 +595,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
 
         toast.success(t('channels.templates.messages.applied'));
       } catch (error) {
-        toast.error(t('channels.templates.messages.applyError'));
+        toast.error(t('common.errors.internalServerError'));
       } finally {
         setIsApplyingTemplate(false);
       }

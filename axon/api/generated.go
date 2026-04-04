@@ -27,14 +27,17 @@ func (v *AckAgentMessagesResponse) GetAckAgentMessages() bool { return v.AckAgen
 
 // AgentBootstrapAgentBootstrap includes the requested fields of the GraphQL type AgentBootstrap.
 type AgentBootstrapAgentBootstrap struct {
-	AgentID         string                                                      `json:"agentID"`
-	AgentName       string                                                      `json:"agentName"`
-	Model           *string                                                     `json:"model"`
-	ReasoningEffort string                                                      `json:"reasoningEffort"`
-	SystemPrompt    string                                                      `json:"systemPrompt"`
-	Tools           []*AgentBootstrapAgentBootstrapToolsAgentToolDefinition     `json:"tools"`
-	Skills          []*AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition   `json:"skills"`
-	BuiltinTools    []*AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool `json:"builtinTools"`
+	AgentID           string                                                        `json:"agentID"`
+	AgentName         string                                                        `json:"agentName"`
+	AgentInstanceName string                                                        `json:"agentInstanceName"`
+	CreatedByUserName string                                                        `json:"createdByUserName"`
+	Model             *string                                                       `json:"model"`
+	ReasoningEffort   string                                                        `json:"reasoningEffort"`
+	SystemPrompt      string                                                        `json:"systemPrompt"`
+	Tools             []*AgentBootstrapAgentBootstrapToolsAgentToolDefinition       `json:"tools"`
+	Skills            []*AgentBootstrapAgentBootstrapSkillsAgentSkillDefinition     `json:"skills"`
+	BuiltinTools      []*AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool   `json:"builtinTools"`
+	BuiltinSkills     []*AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill `json:"builtinSkills"`
 }
 
 // GetAgentID returns AgentBootstrapAgentBootstrap.AgentID, and is useful for accessing the field via an interface.
@@ -42,6 +45,12 @@ func (v *AgentBootstrapAgentBootstrap) GetAgentID() string { return v.AgentID }
 
 // GetAgentName returns AgentBootstrapAgentBootstrap.AgentName, and is useful for accessing the field via an interface.
 func (v *AgentBootstrapAgentBootstrap) GetAgentName() string { return v.AgentName }
+
+// GetAgentInstanceName returns AgentBootstrapAgentBootstrap.AgentInstanceName, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrap) GetAgentInstanceName() string { return v.AgentInstanceName }
+
+// GetCreatedByUserName returns AgentBootstrapAgentBootstrap.CreatedByUserName, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrap) GetCreatedByUserName() string { return v.CreatedByUserName }
 
 // GetModel returns AgentBootstrapAgentBootstrap.Model, and is useful for accessing the field via an interface.
 func (v *AgentBootstrapAgentBootstrap) GetModel() *string { return v.Model }
@@ -65,6 +74,35 @@ func (v *AgentBootstrapAgentBootstrap) GetSkills() []*AgentBootstrapAgentBootstr
 // GetBuiltinTools returns AgentBootstrapAgentBootstrap.BuiltinTools, and is useful for accessing the field via an interface.
 func (v *AgentBootstrapAgentBootstrap) GetBuiltinTools() []*AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool {
 	return v.BuiltinTools
+}
+
+// GetBuiltinSkills returns AgentBootstrapAgentBootstrap.BuiltinSkills, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrap) GetBuiltinSkills() []*AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill {
+	return v.BuiltinSkills
+}
+
+// AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill includes the requested fields of the GraphQL type AgentBuiltinSkill.
+type AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill struct {
+	Name    string           `json:"name"`
+	Enabled bool             `json:"enabled"`
+	Order   int              `json:"order"`
+	Config  *json.RawMessage `json:"config"`
+}
+
+// GetName returns AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill.Name, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) GetName() string { return v.Name }
+
+// GetEnabled returns AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill.Enabled, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) GetEnabled() bool {
+	return v.Enabled
+}
+
+// GetOrder returns AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill.Order, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) GetOrder() int { return v.Order }
+
+// GetConfig returns AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill.Config, and is useful for accessing the field via an interface.
+func (v *AgentBootstrapAgentBootstrapBuiltinSkillsAgentBuiltinSkill) GetConfig() *json.RawMessage {
+	return v.Config
 }
 
 // AgentBootstrapAgentBootstrapBuiltinToolsAgentBuiltinTool includes the requested fields of the GraphQL type AgentBuiltinTool.
@@ -165,6 +203,110 @@ var AllAgentMessageType = []AgentMessageType{
 	AgentMessageTypeApprovalRequest,
 	AgentMessageTypeApprovalResult,
 	AgentMessageTypeSystemEvent,
+}
+
+// AvailableModelsAvailableModelsAvailableModel includes the requested fields of the GraphQL type AvailableModel.
+type AvailableModelsAvailableModelsAvailableModel struct {
+	Id              string                                                    `json:"id"`
+	Name            string                                                    `json:"name"`
+	OwnedBy         string                                                    `json:"ownedBy"`
+	Type            string                                                    `json:"type"`
+	Icon            string                                                    `json:"icon"`
+	Description     *string                                                   `json:"description"`
+	ContextLength   int                                                       `json:"contextLength"`
+	MaxOutputTokens int                                                       `json:"maxOutputTokens"`
+	Capabilities    *AvailableModelsAvailableModelsAvailableModelCapabilities `json:"capabilities"`
+	Pricing         *AvailableModelsAvailableModelsAvailableModelPricing      `json:"pricing"`
+}
+
+// GetId returns AvailableModelsAvailableModelsAvailableModel.Id, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetId() string { return v.Id }
+
+// GetName returns AvailableModelsAvailableModelsAvailableModel.Name, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetName() string { return v.Name }
+
+// GetOwnedBy returns AvailableModelsAvailableModelsAvailableModel.OwnedBy, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetOwnedBy() string { return v.OwnedBy }
+
+// GetType returns AvailableModelsAvailableModelsAvailableModel.Type, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetType() string { return v.Type }
+
+// GetIcon returns AvailableModelsAvailableModelsAvailableModel.Icon, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetIcon() string { return v.Icon }
+
+// GetDescription returns AvailableModelsAvailableModelsAvailableModel.Description, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetDescription() *string { return v.Description }
+
+// GetContextLength returns AvailableModelsAvailableModelsAvailableModel.ContextLength, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetContextLength() int { return v.ContextLength }
+
+// GetMaxOutputTokens returns AvailableModelsAvailableModelsAvailableModel.MaxOutputTokens, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetMaxOutputTokens() int {
+	return v.MaxOutputTokens
+}
+
+// GetCapabilities returns AvailableModelsAvailableModelsAvailableModel.Capabilities, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetCapabilities() *AvailableModelsAvailableModelsAvailableModelCapabilities {
+	return v.Capabilities
+}
+
+// GetPricing returns AvailableModelsAvailableModelsAvailableModel.Pricing, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModel) GetPricing() *AvailableModelsAvailableModelsAvailableModelPricing {
+	return v.Pricing
+}
+
+// AvailableModelsAvailableModelsAvailableModelCapabilities includes the requested fields of the GraphQL type ModelCapabilities.
+type AvailableModelsAvailableModelsAvailableModelCapabilities struct {
+	Vision    bool `json:"vision"`
+	ToolCall  bool `json:"toolCall"`
+	Reasoning bool `json:"reasoning"`
+}
+
+// GetVision returns AvailableModelsAvailableModelsAvailableModelCapabilities.Vision, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelCapabilities) GetVision() bool { return v.Vision }
+
+// GetToolCall returns AvailableModelsAvailableModelsAvailableModelCapabilities.ToolCall, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelCapabilities) GetToolCall() bool {
+	return v.ToolCall
+}
+
+// GetReasoning returns AvailableModelsAvailableModelsAvailableModelCapabilities.Reasoning, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelCapabilities) GetReasoning() bool {
+	return v.Reasoning
+}
+
+// AvailableModelsAvailableModelsAvailableModelPricing includes the requested fields of the GraphQL type ModelPricing.
+type AvailableModelsAvailableModelsAvailableModelPricing struct {
+	Input      float64 `json:"input"`
+	Output     float64 `json:"output"`
+	CacheRead  float64 `json:"cacheRead"`
+	CacheWrite float64 `json:"cacheWrite"`
+}
+
+// GetInput returns AvailableModelsAvailableModelsAvailableModelPricing.Input, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelPricing) GetInput() float64 { return v.Input }
+
+// GetOutput returns AvailableModelsAvailableModelsAvailableModelPricing.Output, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelPricing) GetOutput() float64 { return v.Output }
+
+// GetCacheRead returns AvailableModelsAvailableModelsAvailableModelPricing.CacheRead, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelPricing) GetCacheRead() float64 {
+	return v.CacheRead
+}
+
+// GetCacheWrite returns AvailableModelsAvailableModelsAvailableModelPricing.CacheWrite, and is useful for accessing the field via an interface.
+func (v *AvailableModelsAvailableModelsAvailableModelPricing) GetCacheWrite() float64 {
+	return v.CacheWrite
+}
+
+// AvailableModelsResponse is returned by AvailableModels on success.
+type AvailableModelsResponse struct {
+	AvailableModels []*AvailableModelsAvailableModelsAvailableModel `json:"availableModels"`
+}
+
+// GetAvailableModels returns AvailableModelsResponse.AvailableModels, and is useful for accessing the field via an interface.
+func (v *AvailableModelsResponse) GetAvailableModels() []*AvailableModelsAvailableModelsAvailableModel {
+	return v.AvailableModels
 }
 
 // DeployAxonClawDeployAxonClawDeployAxonClawResult includes the requested fields of the GraphQL type DeployAxonClawResult.
@@ -341,20 +483,12 @@ func (v *PullAgentMessagesResponse) GetPullAgentMessages() []*PullAgentMessagesP
 }
 
 type RegisterAgentInstanceInput struct {
-	Name        *string `json:"name"`
-	Platform    *string `json:"platform"`
-	Description *string `json:"description"`
-	ThreadID    *string `json:"threadID"`
+	Platform *string `json:"platform"`
+	ThreadID *string `json:"threadID"`
 }
-
-// GetName returns RegisterAgentInstanceInput.Name, and is useful for accessing the field via an interface.
-func (v *RegisterAgentInstanceInput) GetName() *string { return v.Name }
 
 // GetPlatform returns RegisterAgentInstanceInput.Platform, and is useful for accessing the field via an interface.
 func (v *RegisterAgentInstanceInput) GetPlatform() *string { return v.Platform }
-
-// GetDescription returns RegisterAgentInstanceInput.Description, and is useful for accessing the field via an interface.
-func (v *RegisterAgentInstanceInput) GetDescription() *string { return v.Description }
 
 // GetThreadID returns RegisterAgentInstanceInput.ThreadID, and is useful for accessing the field via an interface.
 func (v *RegisterAgentInstanceInput) GetThreadID() *string { return v.ThreadID }
@@ -549,6 +683,8 @@ query AgentBootstrap {
 	agentBootstrap {
 		agentID
 		agentName
+		agentInstanceName
+		createdByUserName
 		model
 		reasoningEffort
 		systemPrompt
@@ -570,6 +706,12 @@ query AgentBootstrap {
 			order
 			config
 		}
+		builtinSkills {
+			name
+			enabled
+			order
+			config
+		}
 	}
 }
 `
@@ -584,6 +726,54 @@ func AgentBootstrap(
 	}
 
 	data_ = &AgentBootstrapResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by AvailableModels.
+const AvailableModels_Operation = `
+query AvailableModels {
+	availableModels {
+		id
+		name
+		ownedBy
+		type
+		icon
+		description
+		contextLength
+		maxOutputTokens
+		capabilities {
+			vision
+			toolCall
+			reasoning
+		}
+		pricing {
+			input
+			output
+			cacheRead
+			cacheWrite
+		}
+	}
+}
+`
+
+func AvailableModels(
+	ctx_ context.Context,
+	client_ graphql.Client,
+) (data_ *AvailableModelsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "AvailableModels",
+		Query:  AvailableModels_Operation,
+	}
+
+	data_ = &AvailableModelsResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

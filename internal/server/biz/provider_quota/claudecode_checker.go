@@ -15,10 +15,12 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 )
 
-type ClaudeCodeQuotaChecker struct{}
+type ClaudeCodeQuotaChecker struct {
+	httpClient *httpclient.HttpClient
+}
 
-func NewClaudeCodeQuotaChecker() *ClaudeCodeQuotaChecker {
-	return &ClaudeCodeQuotaChecker{}
+func NewClaudeCodeQuotaChecker(httpClient *httpclient.HttpClient) *ClaudeCodeQuotaChecker {
+	return &ClaudeCodeQuotaChecker{httpClient: httpClient}
 }
 
 func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
@@ -70,11 +72,9 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 		Build()
 
 	// Use proxy-configured HTTP client if available
-	var httpClient *httpclient.HttpClient
+	httpClient := c.httpClient
 	if ch.Settings != nil && ch.Settings.Proxy != nil {
-		httpClient = httpclient.NewHttpClientWithProxy(ch.Settings.Proxy)
-	} else {
-		httpClient = httpclient.NewHttpClient()
+		httpClient = c.httpClient.WithProxy(ch.Settings.Proxy)
 	}
 
 	httpResponse, err := httpClient.Do(ctx, httpRequest)

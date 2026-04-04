@@ -190,9 +190,9 @@ export function DataTableToolbar<TData>({
     <div className='flex items-center justify-between'>
       <div className='flex flex-1 items-center space-x-2'>
         <Input
-          placeholder={t('requests.filters.filterId')}
-          value={(table.getColumn('id')?.getFilterValue() as string) ?? ''}
-          onChange={(event) => table.getColumn('id')?.setFilterValue(event.target.value)}
+          placeholder={t('requests.filters.filterModelId')}
+          value={(table.getColumn('modelID')?.getFilterValue() as string) ?? ''}
+          onChange={(event) => table.getColumn('modelID')?.setFilterValue(event.target.value)}
           className='h-8 w-[150px] lg:w-[250px]'
         />
         {table.getColumn('status') && (

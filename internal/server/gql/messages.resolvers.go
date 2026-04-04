@@ -38,18 +38,10 @@ func (r *mutationResolver) DeleteMessageChannel(ctx context.Context, id objects.
 func (r *mutationResolver) BatchSaveMessageChannelBindings(ctx context.Context, messageChannelID objects.GUID, bindings []*BatchMessageChannelAgentInstanceBindingInput) (*ent.MessageChannel, error) {
 	inputs := make([]*biz.BatchSaveBindingInput, len(bindings))
 	for i, b := range bindings {
-		var config objects.MessageChannelAgentInstanceBinding
-		if b.Config != nil {
-			config.ChatType = b.Config.ChatType
-			config.ChatID = b.Config.ChatID
-			config.AllowFrom = b.Config.AllowFrom
-			config.ExcludeKeywords = b.Config.ExcludeKeywords
-		}
-
 		inputs[i] = &biz.BatchSaveBindingInput{
 			AgentInstanceID: b.AgentInstanceID.ID,
 			Enabled:         b.Enabled,
-			Config:          config,
+			Config:          *b.Config,
 		}
 	}
 

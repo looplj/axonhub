@@ -119,3 +119,46 @@ func TestScheduler_UpdatesStatusAfterRun(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+func TestScheduler_SkipsDisabledTask(t *testing.T) {
+	now := time.Date(2025, 1, 10, 12, 0, 0, 0, time.UTC)
+	handler := &testHandler{done: make(chan struct{}, 1)}
+	store := newTestStore(t, []Task{
+		{
+			ID:      "i1",
+			Enabled: true,
+			Trigger: Trigger{Type: TriggerTypeInterval, Interval: "1m"},
+			Runtime: TaskRuntime{NextRunAt: now.Format(time.RFC3339)},
+		},
+	})
+
+	s, err := NewScheduler(slog.Default(), store, handler, SchedulerOptions{})
+	if err != nil {
+		t.Fatalf("new scheduler: %v", err)
+	}
+
+	s.nowFunc = func() time.Time { return now }
+
+	if err := s.tick(context.Background()); err != nil {
+		t.Fatalf("tick: %v", err)
+	}
+
+	if err := store.SetEnabled("i1", false); err != nil {
+		t.Fatalf("disable task: %v", err)
+	}
+
+	select {
+	case <-handler.done:
+		t.Fatal("task should not have been executed after being disabled")
+	case <-time.After(500 * time.Millisecond):
+	}
+
+	tasks, err := store.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	if tasks[0].Runtime.LastStatus == "success" {
+		t.Fatal("task should not have succeeded after being disabled")
+	}
+}

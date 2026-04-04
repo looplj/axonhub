@@ -60,9 +60,9 @@ case "${1:-}" in
         echo "Restart AxonClaw by stopping and starting the service."
         echo
         echo "Environment variables (passed to start.sh):"
-        echo "  AXONCLAW_BASE_URL      Optional. AxonHub server URL (default: http://localhost:8090)"
+        echo "  AXONCLAW_BASE_URL      Optional. AxonHub server URL"
         echo "  AXONCLAW_API_KEY       Optional. Agent API key for authentication"
-        echo "  AXONCLAW_NAME          Optional. Agent instance name"
+        echo "  AXONCLAW_AUTO_SYNC_CONFIG Optional. Set to 'true' to enable --auto-sync-config"
         echo "  DEBUG_MODE             Optional. Set to 'true' to enable debug logging"
         echo
         echo "Example:"

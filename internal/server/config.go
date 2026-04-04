@@ -22,8 +22,10 @@ type Config struct {
 	Trace     tracing.Config `conf:"trace" yaml:"trace" json:"trace"`
 	Dashboard Dashboard      `conf:"dashboard" yaml:"dashboard" json:"dashboard"`
 
-	Debug bool `conf:"debug" yaml:"debug" json:"debug"`
-	CORS  CORS `conf:"cors" yaml:"cors" json:"cors"`
+	Debug            bool `conf:"debug" yaml:"debug" json:"debug"`
+	DisableSSLVerify bool `conf:"disable_ssl_verify" yaml:"disable_ssl_verify" json:"disable_ssl_verify"`
+	CORS             CORS `conf:"cors" yaml:"cors" json:"cors"`
+	API              API  `conf:"api" yaml:"api" json:"api"`
 }
 
 // Dashboard holds configuration for the dashboard cache settings.
@@ -47,4 +49,12 @@ type CORS struct {
 	ExposedHeaders   []string      `conf:"exposed_headers" yaml:"exposed_headers" json:"exposed_headers"`
 	AllowCredentials bool          `conf:"allow_credentials" yaml:"allow_credentials" json:"allow_credentials"`
 	MaxAge           time.Duration `conf:"max_age" yaml:"max_age" json:"max_age"`
+}
+
+type API struct {
+	Auth APIAuth `conf:"auth" yaml:"auth" json:"auth"`
+}
+
+type APIAuth struct {
+	AllowNoAuth bool `conf:"allow_no_auth" yaml:"allow_no_auth" json:"allow_no_auth"`
 }

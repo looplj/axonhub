@@ -8,10 +8,17 @@ const spanTypeTranslationKeyMap: Record<string, string> = {
   userquery: 'userQuery',
   user_image_url: 'userImageUrl',
   userimageurl: 'userImageUrl',
+  user_video_url: 'userVideoUrl',
+  uservideourl: 'userVideoUrl',
+  user_input_audio: 'userInputAudio',
+  userinputaudio: 'userInputAudio',
   text: 'text',
   thinking: 'thinking',
   image_url: 'imageUrl',
   imageurl: 'imageUrl',
+  video_url: 'videoUrl',
+  videourl: 'videoUrl',
+  audio: 'audio',
   function_call: 'functionCall',
   functioncall: 'functionCall',
   function_result: 'functionResult',
@@ -29,6 +36,9 @@ const spanTypeTranslationKeyMap: Record<string, string> = {
   llm: 'llm',
   system_instruction: 'systemInstruction',
   systeminstruction: 'systemInstruction',
+  compaction: 'compaction',
+  compaction_summary: 'compactionSummary',
+  compactionsummary: 'compactionSummary',
 };
 
 function createFallbackLabel(type?: string | null): string {
@@ -85,5 +95,10 @@ export function getSpanDisplayLabels(span: Span, t: TFunction): { primary: strin
       return { primary: resultId, secondary: typeLabel };
     }
   }
+
+  if (span.value?.compaction?.summary) {
+    return { primary: typeLabel, secondary: span.value.compaction.summary };
+  }
+
   return { primary: typeLabel };
 }

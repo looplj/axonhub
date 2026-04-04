@@ -22,6 +22,7 @@ import {
   Play,
   Square,
   RefreshCw,
+  Key,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from '@tanstack/react-router';
@@ -421,6 +422,42 @@ export function AgentDetailPage() {
                               <p>
                                 {tool.enabled ? t('common.status.enabled') : t('common.status.disabled')} •{' '}
                                 {t('agents.toolDescriptions.' + tool.name) || tool.name}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {agent.agentBuiltinSkills && agent.agentBuiltinSkills.length > 0 && (
+                  <Card className='border-0 shadow-sm'>
+                    <CardHeader className='pb-3'>
+                      <CardTitle className='flex items-center gap-2 text-base'>
+                        <Key className='text-primary h-4 w-4' />
+                        {t('agents.fields.builtinSkills')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className='flex flex-wrap gap-2'>
+                        {agent.agentBuiltinSkills.map((skill: any) => (
+                          <Tooltip key={skill.name}>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant={skill.enabled ? 'default' : 'secondary'}
+                                className='cursor-default gap-1.5 px-2.5 py-1'
+                              >
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${skill.enabled ? 'bg-green-400' : 'bg-gray-400'}`}
+                                />
+                                {skill.name}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                {skill.enabled ? t('common.status.enabled') : t('common.status.disabled')} •{' '}
+                                {t('agents.skillDescriptions.' + skill.name) || skill.name}
                               </p>
                             </TooltipContent>
                           </Tooltip>

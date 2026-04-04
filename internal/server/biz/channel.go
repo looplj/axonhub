@@ -75,6 +75,7 @@ type ChannelServiceParams struct {
 	Executor      executors.ScheduledExecutor
 	Ent           *ent.Client
 	SystemService *SystemService
+	HttpClient    *httpclient.HttpClient
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
@@ -84,6 +85,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		},
 		Executors:          params.Executor,
 		SystemService:      params.SystemService,
+		httpClient:         params.HttpClient,
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
@@ -142,6 +144,8 @@ type ChannelService struct {
 	Executors     executors.ScheduledExecutor
 	SystemService *SystemService
 
+	httpClient *httpclient.HttpClient
+
 	enabledChannelsCache *live.Cache[[]*Channel]
 	channelNotifier      watcher.Notifier[live.CacheEvent[struct{}]]
 
@@ -163,6 +167,10 @@ type ChannelService struct {
 	// channelID -> apiKey -> statusCode -> count
 	apiKeyErrorCounts     map[int]map[string]map[int]int
 	apiKeyErrorCountsLock sync.Mutex
+
+	modelSyncMu sync.Mutex
+
+	lastModelSyncExecutionTime time.Time
 
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord

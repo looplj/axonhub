@@ -261,6 +261,18 @@ func (f PromptFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PromptMutation", m)
 }
 
+// The PromptProtectionRuleFunc type is an adapter to allow the use of ordinary
+// function as PromptProtectionRule mutator.
+type PromptProtectionRuleFunc func(context.Context, *ent.PromptProtectionRuleMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PromptProtectionRuleFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PromptProtectionRuleMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PromptProtectionRuleMutation", m)
+}
+
 // The PromptVersionFunc type is an adapter to allow the use of ordinary
 // function as PromptVersion mutator.
 type PromptVersionFunc func(context.Context, *ent.PromptVersionMutation) (ent.Value, error)

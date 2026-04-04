@@ -3,12 +3,15 @@ query AgentBootstrap {
   agentBootstrap {
     agentID
     agentName
+    agentInstanceName
+    createdByUserName
     model
     reasoningEffort
     systemPrompt
     tools { name description parameters config }
     skills { name content entrypoint args }
     builtinTools { name enabled order config }
+    builtinSkills { name enabled order config }
   }
 }
 
@@ -68,6 +71,30 @@ mutation DeployAxonClaw($input: DeployAxonClawInput!) {
       id
       agentID
       lastHeartbeatAt
+    }
+  }
+}
+
+query AvailableModels {
+  availableModels {
+    id
+    name
+    ownedBy
+    type
+    icon
+    description
+    contextLength
+    maxOutputTokens
+    capabilities {
+      vision
+      toolCall
+      reasoning
+    }
+    pricing {
+      input
+      output
+      cacheRead
+      cacheWrite
     }
   }
 }

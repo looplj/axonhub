@@ -66,8 +66,8 @@ func TestEstimateTokens_Mixed(t *testing.T) {
 
 func TestEstimateTokens_CJKMoreTokensThanASCII(t *testing.T) {
 	// Same character count, but CJK should estimate more tokens
-	ascii := "abcdefghij"       // 10 chars -> ~2.5 tokens
-	cjk := "你好世界天气很好今天" // 10 chars -> ~6.7 tokens
+	ascii := "abcdefghij" // 10 chars -> ~2.5 tokens
+	cjk := "你好世界天气很好今天"   // 10 chars -> ~6.7 tokens
 
 	asciiTokens := EstimateTokens(ascii)
 	cjkTokens := EstimateTokens(cjk)
@@ -90,8 +90,8 @@ func TestEstimateMessagesTokens(t *testing.T) {
 func TestEstimateMessagesTokens_WithToolUse(t *testing.T) {
 	messages := []Message{
 		{
-			Role:    RoleAssistant,
-			ToolUse: &ToolUse{Name: "read_file", Input: `{"path": "/test/file.txt"}`},
+			Role:     RoleAssistant,
+			ToolCall: &ToolCall{Name: "read_file", Input: `{"path": "/test/file.txt"}`},
 		},
 	}
 

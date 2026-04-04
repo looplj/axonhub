@@ -27,7 +27,7 @@ func WithAgentAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		apiKey, err := auth.AnthenticateAPIKey(c.Request.Context(), key)
+		apiKey, err := auth.AuthenticateAPIKey(c.Request.Context(), key)
 		if err != nil {
 			if ent.IsNotFound(err) || errors.Is(err, biz.ErrInvalidAPIKey) {
 				AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))

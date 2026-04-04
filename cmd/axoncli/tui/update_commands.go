@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	tea "charm.land/bubbletea/v2"
 	"github.com/google/uuid"
 	"github.com/looplj/axonhub/axon/agent"
+
+	tea "charm.land/bubbletea/v2"
 	axoncontext "github.com/looplj/axonhub/axon/context"
+
 	"github.com/looplj/axonhub/cmd/axoncli/conf"
 )
 
@@ -115,8 +117,9 @@ func (m *Model) handleCommand(input string) (tea.Cmd, bool) {
 				if msg.Content != nil {
 					content = truncateStr(msg.Content.String(), 100)
 				}
-				if msg.ToolUse != nil {
-					content = fmt.Sprintf("[tool_use: %s]", msg.ToolUse.Name)
+
+				if msg.ToolCall != nil {
+					content = fmt.Sprintf("[tool_call: %s]", msg.ToolCall.Name)
 				}
 				m.appendLine(fmt.Sprintf("  %3d. [%s] %s", i+1, msg.Role, content))
 			}

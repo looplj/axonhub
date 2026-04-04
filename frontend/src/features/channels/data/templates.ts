@@ -286,8 +286,8 @@ export function useApplyChannelOverrideTemplate() {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.templates.messages.applySuccess', { count: data.updated }));
     },
-    onError: (error) => {
-      toast.error(t('channels.templates.messages.applyError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

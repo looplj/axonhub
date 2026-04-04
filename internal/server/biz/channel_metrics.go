@@ -342,7 +342,7 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 			log.Int("channel_id", perf.ChannelID),
 			log.String("key_suffix", keySuffix), // Only log last 4 chars for security
 			log.Bool("success", perf.Success),
-			log.Any("error_code", perf.ErrorStatusCode),
+			log.Any("error_code", perf.ResponseStatusCode),
 		)
 	}
 }
@@ -435,7 +435,11 @@ func (svc *ChannelService) IncrementChannelSelection(channelID int) {
 }
 
 func deriveErrorMessage(errorCode int) string {
-	return http.StatusText(errorCode)
+	if text := http.StatusText(errorCode); text != "" {
+		return text
+	}
+
+	return fmt.Sprintf("Error %d", errorCode)
 }
 
 // PerformanceRecord contains performance metrics collected during request processing.
@@ -450,8 +454,8 @@ type PerformanceRecord struct {
 	Canceled         bool
 	RequestCompleted bool
 
-	// If error status code is 0, it means the request is successful.
-	ErrorStatusCode int
+	// If response status code is 0, it means the request is successful.
+	ResponseStatusCode int
 }
 
 // Calculate calculates performance metrics from collected data.
@@ -491,7 +495,7 @@ func (m *PerformanceRecord) MarkFirstToken() {
 // MarkFailed marks the request as failed.
 func (m *PerformanceRecord) MarkFailed(errorCode int) {
 	m.Success = false
-	m.ErrorStatusCode = errorCode
+	m.ResponseStatusCode = errorCode
 	m.RequestCompleted = true
 	m.EndTime = time.Now()
 }

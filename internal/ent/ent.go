@@ -33,6 +33,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -128,6 +129,7 @@ func checkColumn(t, c string) error {
 			model.Table:                        model.ValidColumn,
 			project.Table:                      project.ValidColumn,
 			prompt.Table:                       prompt.ValidColumn,
+			promptprotectionrule.Table:         promptprotectionrule.ValidColumn,
 			promptversion.Table:                promptversion.ValidColumn,
 			providerquotastatus.Table:          providerquotastatus.ValidColumn,
 			request.Table:                      request.ValidColumn,

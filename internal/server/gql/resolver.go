@@ -8,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -44,6 +45,8 @@ type Resolver struct {
 	agentBootstrapService          *biz.AgentBootstrapService
 	providerQuotaService           *biz.ProviderQuotaService
 	messageChannelService          *biz.MessageChannelService
+	promptProtectionRuleService    *biz.PromptProtectionRuleService
+	gcWorker                       *gc.Worker
 	httpClient                     *httpclient.HttpClient
 	modelFetcher                   *biz.ModelFetcher
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
@@ -75,6 +78,8 @@ func NewSchema(
 	agentBootstrapService *biz.AgentBootstrapService,
 	providerQuotaService *biz.ProviderQuotaService,
 	messageChannelService *biz.MessageChannelService,
+	promptProtectionRuleService *biz.PromptProtectionRuleService,
+	gcWorker *gc.Worker,
 ) graphql.ExecutableSchema {
 	httpClient := httpclient.NewHttpClient()
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
@@ -104,9 +109,11 @@ func NewSchema(
 			agentBootstrapService:          agentBootstrapService,
 			providerQuotaService:           providerQuotaService,
 			messageChannelService:          messageChannelService,
+			promptProtectionRuleService:    promptProtectionRuleService,
+			gcWorker:                       gcWorker,
 			httpClient:                     httpClient,
 			modelFetcher:                   modelFetcher,
-			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, httpClient),
+			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient),
 		},
 	})
 }

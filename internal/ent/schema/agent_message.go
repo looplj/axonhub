@@ -25,8 +25,8 @@ func (AgentMessage) Mixin() []ent.Mixin {
 
 func (AgentMessage) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("agent_id", "sequence").
-			StorageKey("agent_messages_by_agent_id_sequence").
+		index.Fields("agent_instance_id", "sequence").
+			StorageKey("agent_messages_by_agent_instance_id_sequence").
 			Unique(),
 		index.Fields("agent_id", "agent_instance_id", "status", "created_at").
 			StorageKey("agent_messages_by_agent_id_status_created_at"),

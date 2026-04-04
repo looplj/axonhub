@@ -30,12 +30,12 @@ func TestPerformanceRecording_OnInboundLlmRequest_SetsStreamFlag(t *testing.T) {
 	}{
 		{
 			name:         "streaming request - Stream is true",
-			streamValue:  boolPtr(true),
+			streamValue:  new(true),
 			expectedFlag: true,
 		},
 		{
 			name:         "non-streaming request - Stream is false",
-			streamValue:  boolPtr(false),
+			streamValue:  new(false),
 			expectedFlag: false,
 		},
 		{
@@ -332,8 +332,3 @@ func TestPerformanceRecording_StreamFlagBugRegression(t *testing.T) {
 
 // TestRecordPerformanceStream_MarksFirstToken verifies that recordPerformanceStream
 // correctly marks the first token time.
-
-// Helper function for creating bool pointers
-func boolPtr(b bool) *bool {
-	return &b
-}

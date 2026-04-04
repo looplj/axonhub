@@ -178,6 +178,88 @@ func TestResponsesStreamingClientDisconnectMidStream(t *testing.T) {
 
 // TestResponsesStreamingRapidDisconnects tests multiple rapid connect/disconnect cycles
 // to ensure the server handles them correctly
+
+// TestResponsesStreamingClientDisconnectAfterOutputTextDone simulates a client
+// that stops reading immediately after the final text payload is available,
+// before the explicit response.completed event is observed locally.
+//
+// This is closer to a real proxy/client chain such as Claude Code -> AxonHub -> Codex,
+// where downstream teardown can happen very close to completion and the transport may be
+// canceled before the terminal event is processed in the expected order.
+func TestResponsesStreamingClientDisconnectAfterOutputTextDone(t *testing.T) {
+	helper := testutil.NewTestHelper(t, "TestResponsesStreamingClientDisconnectAfterOutputTextDone")
+
+	ctx := helper.CreateTestContext()
+	question := "Write exactly one short sentence about oceans."
+
+	t.Logf("Sending streaming request: %s", question)
+
+	params := responses.ResponseNewParams{
+		Model: shared.ResponsesModel(helper.GetModel()),
+		Input: responses.ResponseNewParamsInputUnion{
+			OfString: openai.String(question),
+		},
+	}
+
+	clientCtx, clientCancel := context.WithCancel(ctx)
+	defer clientCancel()
+
+	stream := helper.CreateResponseStreamingWithHeaders(clientCtx, params)
+	helper.AssertNoError(t, stream.Err(), "Failed to start Responses streaming")
+
+	var fullContent strings.Builder
+	var chunks int
+	var sawOutputTextDone bool
+	var sawResponseCompleted bool
+
+	for stream.Next() {
+		event := stream.Current()
+		chunks++
+
+		if event.Type == "response.output_text.delta" && event.Delta != "" {
+			fullContent.WriteString(event.Delta)
+		}
+
+		if event.Type == "response.output_text.done" {
+			sawOutputTextDone = true
+			t.Log("Received response.output_text.done, canceling before response.completed is consumed")
+			clientCancel()
+			break
+		}
+
+		if event.Type == "response.completed" {
+			sawResponseCompleted = true
+		}
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	if err := stream.Err(); err != nil {
+		t.Logf("Stream error after early teardown: %v", err)
+	}
+
+	finalContent := fullContent.String()
+	t.Logf("Received %d events before disconnect", chunks)
+	t.Logf("Final content collected before disconnect: %s", finalContent)
+	t.Logf("sawOutputTextDone=%v sawResponseCompleted=%v", sawOutputTextDone, sawResponseCompleted)
+
+	if chunks == 0 {
+		t.Error("Expected at least one event from Responses streaming")
+	}
+	if finalContent == "" {
+		t.Error("Expected non-empty text content before disconnect")
+	}
+	if !sawOutputTextDone {
+		t.Skip("Provider did not emit response.output_text.done in this run; cannot verify near-completion teardown path")
+	}
+	if sawResponseCompleted {
+		t.Log("response.completed was observed before cancellation in this run; near-completion timing may vary by provider")
+	}
+
+	t.Log("Near-completion teardown test finished. Verify AxonHub logs / request execution status:")
+	t.Log("  - final decision should still resolve to completed when aggregation proves completion")
+	t.Log("  - this is the closest integration-level regression to Claude Code style early stop")
+}
 func TestResponsesStreamingRapidDisconnects(t *testing.T) {
 	helper := testutil.NewTestHelper(t, "TestResponsesStreamingRapidDisconnects")
 

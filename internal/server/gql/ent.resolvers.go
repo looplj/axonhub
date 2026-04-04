@@ -73,6 +73,23 @@ func (r *agentResolver) PromptID(ctx context.Context, obj *ent.Agent) (*objects.
 	}, nil
 }
 
+// AgentBuiltinSkills is the resolver for the agentBuiltinSkills field.
+func (r *agentResolver) AgentBuiltinSkills(ctx context.Context, obj *ent.Agent) ([]*AgentBuiltinSkill, error) {
+	return lo.Map(obj.AgentBuiltinSkills, func(item objects.AgentBuiltinSkill, _ int) *AgentBuiltinSkill {
+		var cfg objects.JSONRawMessage
+		if item.Config != nil {
+			cfg = *item.Config
+		}
+
+		return &AgentBuiltinSkill{
+			Name:    item.Name,
+			Enabled: item.Enabled,
+			Order:   item.Order,
+			Config:  cfg,
+		}
+	}), nil
+}
+
 // ID is the resolver for the id field.
 func (r *agentHostResolver) ID(ctx context.Context, obj *ent.AgentHost) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -517,6 +534,14 @@ func (r *promptResolver) DraftVersionID(ctx context.Context, obj *ent.Prompt) (*
 }
 
 // ID is the resolver for the id field.
+func (r *promptProtectionRuleResolver) ID(ctx context.Context, obj *ent.PromptProtectionRule) (*objects.GUID, error) {
+	return &objects.GUID{
+		Type: ent.TypePromptProtectionRule,
+		ID:   obj.ID,
+	}, nil
+}
+
+// ID is the resolver for the id field.
 func (r *promptVersionResolver) ID(ctx context.Context, obj *ent.PromptVersion) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypePromptVersion,
@@ -822,7 +847,10 @@ func (r *queryResolver) MessageChannelAgentInstances(ctx context.Context, after 
 
 // MessageChannelBindingRequests is the resolver for the messageChannelBindingRequests field.
 func (r *queryResolver) MessageChannelBindingRequests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.MessageChannelBindingRequestOrder, where *ent.MessageChannelBindingRequestWhereInput) (*ent.MessageChannelBindingRequestConnection, error) {
-	panic(fmt.Errorf("not implemented: MessageChannelBindingRequests - messageChannelBindingRequests"))
+	return r.client.MessageChannelBindingRequest.Query().Paginate(ctx, after, first, before, last,
+		ent.WithMessageChannelBindingRequestOrder(orderBy),
+		ent.WithMessageChannelBindingRequestFilter(where.Filter),
+	)
 }
 
 // Models is the resolver for the models field.
@@ -865,6 +893,22 @@ func (r *queryResolver) Prompts(ctx context.Context, after *entgql.Cursor[int], 
 	return r.client.Prompt.Query().Paginate(ctx, after, first, before, last,
 		ent.WithPromptOrder(orderBy),
 		ent.WithPromptFilter(where.Filter),
+	)
+}
+
+// PromptProtectionRules is the resolver for the promptProtectionRules field.
+func (r *queryResolver) PromptProtectionRules(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptProtectionRuleOrder, where *ent.PromptProtectionRuleWhereInput) (*ent.PromptProtectionRuleConnection, error) {
+	if err := validatePaginationArgs(first, last); err != nil {
+		return nil, err
+	}
+
+	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
+		orderBy.Field = ent.DefaultPromptProtectionRuleOrder.Field
+	}
+
+	return r.client.PromptProtectionRule.Query().Paginate(ctx, after, first, before, last,
+		ent.WithPromptProtectionRuleOrder(orderBy),
+		ent.WithPromptProtectionRuleFilter(where.Filter),
 	)
 }
 
@@ -1523,6 +1567,11 @@ func (r *Resolver) Project() ProjectResolver { return &projectResolver{r} }
 // Prompt returns PromptResolver implementation.
 func (r *Resolver) Prompt() PromptResolver { return &promptResolver{r} }
 
+// PromptProtectionRule returns PromptProtectionRuleResolver implementation.
+func (r *Resolver) PromptProtectionRule() PromptProtectionRuleResolver {
+	return &promptProtectionRuleResolver{r}
+}
+
 // PromptVersion returns PromptVersionResolver implementation.
 func (r *Resolver) PromptVersion() PromptVersionResolver { return &promptVersionResolver{r} }
 
@@ -1591,6 +1640,7 @@ type messageChannelBindingRequestResolver struct{ *Resolver }
 type modelResolver struct{ *Resolver }
 type projectResolver struct{ *Resolver }
 type promptResolver struct{ *Resolver }
+type promptProtectionRuleResolver struct{ *Resolver }
 type promptVersionResolver struct{ *Resolver }
 type providerQuotaStatusResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

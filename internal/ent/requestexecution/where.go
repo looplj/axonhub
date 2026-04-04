@@ -105,6 +105,11 @@ func ErrorMessage(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldErrorMessage, v))
 }
 
+// ResponseStatusCode applies equality check predicate on the "response_status_code" field. It's identical to ResponseStatusCodeEQ.
+func ResponseStatusCode(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldResponseStatusCode, v))
+}
+
 // Stream applies equality check predicate on the "stream" field. It's identical to StreamEQ.
 func Stream(v bool) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldStream, v))
@@ -618,6 +623,56 @@ func ErrorMessageEqualFold(v string) predicate.RequestExecution {
 // ErrorMessageContainsFold applies the ContainsFold predicate on the "error_message" field.
 func ErrorMessageContainsFold(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldContainsFold(FieldErrorMessage, v))
+}
+
+// ResponseStatusCodeEQ applies the EQ predicate on the "response_status_code" field.
+func ResponseStatusCodeEQ(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldResponseStatusCode, v))
+}
+
+// ResponseStatusCodeNEQ applies the NEQ predicate on the "response_status_code" field.
+func ResponseStatusCodeNEQ(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldResponseStatusCode, v))
+}
+
+// ResponseStatusCodeIn applies the In predicate on the "response_status_code" field.
+func ResponseStatusCodeIn(vs ...int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldResponseStatusCode, vs...))
+}
+
+// ResponseStatusCodeNotIn applies the NotIn predicate on the "response_status_code" field.
+func ResponseStatusCodeNotIn(vs ...int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldResponseStatusCode, vs...))
+}
+
+// ResponseStatusCodeGT applies the GT predicate on the "response_status_code" field.
+func ResponseStatusCodeGT(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldResponseStatusCode, v))
+}
+
+// ResponseStatusCodeGTE applies the GTE predicate on the "response_status_code" field.
+func ResponseStatusCodeGTE(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldResponseStatusCode, v))
+}
+
+// ResponseStatusCodeLT applies the LT predicate on the "response_status_code" field.
+func ResponseStatusCodeLT(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldResponseStatusCode, v))
+}
+
+// ResponseStatusCodeLTE applies the LTE predicate on the "response_status_code" field.
+func ResponseStatusCodeLTE(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldResponseStatusCode, v))
+}
+
+// ResponseStatusCodeIsNil applies the IsNil predicate on the "response_status_code" field.
+func ResponseStatusCodeIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldResponseStatusCode))
+}
+
+// ResponseStatusCodeNotNil applies the NotNil predicate on the "response_status_code" field.
+func ResponseStatusCodeNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldResponseStatusCode))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

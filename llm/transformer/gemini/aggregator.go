@@ -38,6 +38,7 @@ func AggregateStreamChunks(
 		responseID    string
 		modelVersion  string
 		candidateAggs = make(map[int64]*candidateAggregator)
+		scope, _      = shared.GetTransportScope(ctx)
 	)
 
 	for _, chunk := range chunks {
@@ -105,9 +106,7 @@ func AggregateStreamChunks(
 								Arguments: string(argsJSON),
 							},
 						}
-						if normalized := shared.NormalizeGeminiThoughtSignature(part.ThoughtSignature); normalized != nil {
-							setOutboundToolCallThoughtSignature(agg.toolCalls[toolCallIndex], *normalized)
-						}
+						setOutboundToolCallThoughtSignature(agg.toolCalls[toolCallIndex], part.ThoughtSignature, scope)
 
 					case part.InlineData != nil:
 						agg.inlineDataParts = append(agg.inlineDataParts, part.InlineData)

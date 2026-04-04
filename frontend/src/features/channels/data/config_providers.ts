@@ -28,6 +28,7 @@ import {
   XiaomiMiMo,
   Exa,
   Tavily,
+  Fireworks
 } from '@lobehub/icons';
 import { BraveIcon } from '@/assets/brave-icon';
 import { NanoGPTIcon } from '@/assets/nanogpt-icon';
@@ -244,6 +245,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Tavily,
     color: 'bg-[#468BFF] text-white border-[#468BFF]',
     channelTypes: ['search_tavily'],
+  },
+  fireworks: {
+    provider: 'fireworks',
+    icon: Fireworks,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    channelTypes: ['fireworks'],
   },
 };
 

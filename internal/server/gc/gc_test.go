@@ -250,13 +250,13 @@ func TestWorker_cleanupWithZeroDays(t *testing.T) {
 	ctx := context.Background()
 
 	// Test with 0 days - should not error
-	err := worker.cleanupRequests(ctx, 0)
+	err := worker.cleanupRequests(ctx, 0, false)
 	if err != nil {
 		t.Fatalf("cleanupRequests with 0 days failed: %v", err)
 	}
 
 	// Test with negative days - should not error
-	err = worker.cleanupUsageLogs(ctx, -1)
+	err = worker.cleanupUsageLogs(ctx, -1, false)
 	if err != nil {
 		t.Fatalf("cleanupUsageLogs with negative days failed: %v", err)
 	}

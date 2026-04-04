@@ -30,6 +30,7 @@ export const messageChannelAgentInstanceBindingSchema = z.object({
   chatID: z.string().optional(),
   allowFrom: z.array(z.string()).optional().nullable(),
   excludeKeywords: z.array(z.string()).optional().nullable(),
+  allowWithoutMention: z.boolean().optional(),
 });
 export type MessageChannelAgentInstanceBinding = z.infer<typeof messageChannelAgentInstanceBindingSchema>;
 
@@ -127,6 +128,7 @@ export const messageChannelAgentInstanceBindingInputSchema = z.object({
   chatID: z.string().optional(),
   allowFrom: z.array(z.string()).optional().nullable(),
   excludeKeywords: z.array(z.string()).optional().nullable(),
+  allowWithoutMention: z.boolean().optional(),
 });
 export type MessageChannelAgentInstanceBindingInput = z.infer<typeof messageChannelAgentInstanceBindingInputSchema>;
 

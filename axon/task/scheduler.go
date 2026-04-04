@@ -182,7 +182,18 @@ func (s *Scheduler) tick(ctx context.Context) error {
 func (s *Scheduler) executeTask(ctx context.Context, t Task) {
 	defer s.markRunning(t.ID, false)
 
-	err := s.handler.HandleTask(ctx, t)
+	current, err := s.store.Get(t.ID)
+	if err != nil {
+		s.logger.Warn("task not found in store, skipping execution", "task", t.ID, "error", err)
+		return
+	}
+
+	if !current.Enabled {
+		s.logger.Info("task is disabled, skipping execution", "task", t.ID)
+		return
+	}
+
+	err = s.handler.HandleTask(ctx, t)
 	now := s.nowFunc().Format(time.RFC3339)
 
 	isOneShot := t.Trigger.Type == TriggerTypeAt || t.Trigger.Type == TriggerTypeDelay

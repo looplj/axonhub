@@ -4,7 +4,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // ToLLMToolCall converts OpenAI ToolCall to unified llm.ToolCall.
@@ -27,10 +26,8 @@ func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
 	if extraContent != nil &&
 		extraContent.Google != nil &&
 		extraContent.Google.ThoughtSignature != "" {
-		if normalized := shared.NormalizeGeminiThoughtSignature(extraContent.Google.ThoughtSignature); normalized != nil {
-			toolCall.TransformerMetadata = map[string]any{
-				TransformerMetadataKeyGoogleThoughtSignature: *normalized,
-			}
+		toolCall.TransformerMetadata = map[string]any{
+			TransformerMetadataKeyGoogleThoughtSignature: extraContent.Google.ThoughtSignature,
 		}
 	}
 
@@ -129,6 +126,21 @@ func (m Message) ToLLMMessage() llm.Message {
 		Refusal:          m.Refusal,
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: m.ReasoningContent,
+		Reasoning:        m.Reasoning,
+	}
+
+	if m.Audio != nil {
+		msg.Audio = &llm.OutputAudio{
+			ID:         m.Audio.ID,
+			Data:       m.Audio.Data,
+			ExpiresAt:  m.Audio.ExpiresAt,
+			Transcript: m.Audio.Transcript,
+		}
+	}
+
+	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
+	if msg.ReasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
+		msg.ReasoningContent = m.Reasoning
 	}
 
 	// Convert Content
@@ -205,10 +217,16 @@ func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 		}
 	}
 
-	if p.Audio != nil {
-		part.Audio = &llm.Audio{
-			Format: p.Audio.Format,
-			Data:   p.Audio.Data,
+	if p.VideoURL != nil {
+		part.VideoURL = &llm.VideoURL{
+			URL: p.VideoURL.URL,
+		}
+	}
+
+	if p.InputAudio != nil {
+		part.InputAudio = &llm.InputAudio{
+			Format: p.InputAudio.Format,
+			Data:   p.InputAudio.Data,
 		}
 	}
 

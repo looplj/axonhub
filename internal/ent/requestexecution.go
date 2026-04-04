@@ -48,6 +48,8 @@ type RequestExecution struct {
 	ResponseChunks []objects.JSONRawMessage `json:"response_chunks,omitempty"`
 	// ErrorMessage holds the value of the "error_message" field.
 	ErrorMessage string `json:"error_message,omitempty"`
+	// HTTP status code from the upstream provider
+	ResponseStatusCode *int `json:"response_status_code,omitempty"`
 	// Status holds the value of the "status" field.
 	Status requestexecution.Status `json:"status,omitempty"`
 	// Stream holds the value of the "stream" field.
@@ -121,7 +123,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case requestexecution.FieldStream:
 			values[i] = new(sql.NullBool)
-		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs:
+		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs:
 			values[i] = new(sql.NullInt64)
 		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -231,6 +233,13 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field error_message", values[i])
 			} else if value.Valid {
 				_m.ErrorMessage = value.String
+			}
+		case requestexecution.FieldResponseStatusCode:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field response_status_code", values[i])
+			} else if value.Valid {
+				_m.ResponseStatusCode = new(int)
+				*_m.ResponseStatusCode = int(value.Int64)
 			}
 		case requestexecution.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -355,6 +364,11 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("error_message=")
 	builder.WriteString(_m.ErrorMessage)
+	builder.WriteString(", ")
+	if v := _m.ResponseStatusCode; v != nil {
+		builder.WriteString("response_status_code=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))

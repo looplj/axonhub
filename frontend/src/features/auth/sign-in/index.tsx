@@ -10,7 +10,9 @@ export default function SignIn() {
 
   return (
     <AuthLayout>
-      <AnimatedLineBackground key='optimized-layout' />
+      <div data-testid='sign-in-animation-layer'>
+        <AnimatedLineBackground key='optimized-layout' />
+      </div>
       <TwoColumnAuth
         title={t('auth.signIn.title')}
         description={t('auth.signIn.subtitle')}

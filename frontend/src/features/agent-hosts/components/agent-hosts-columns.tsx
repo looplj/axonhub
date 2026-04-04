@@ -1,19 +1,15 @@
-import { useCallback, useState, memo } from 'react';
+import { useCallback, memo } from 'react';
 import { format } from 'date-fns';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import {
-  IconEdit,
-  IconTrash,
-  IconCheck,
-  IconBan,
+  IconArchive,
   IconServer,
   IconContainer,
   IconDeviceDesktop,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,60 +17,32 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
-import { useAgentHosts } from '../context/agent-hosts-context';
 import { useUpdateAgentHostStatus } from '../data/agent-hosts';
 import { AgentHost, AgentHostType, AgentHostStatus } from '../data/schema';
-
-// Status Switch Cell Component to handle status toggle
-const StatusSwitchCell = memo(({ row }: { row: Row<AgentHost> }) => {
-  const agentHost = row.original;
-  const updateStatus = useUpdateAgentHostStatus();
-
-  const isActive = agentHost.status === 'active';
-
-  const handleSwitchChange = useCallback(async () => {
-    const newStatus: AgentHostStatus = isActive ? 'inactive' : 'active';
-    try {
-      await updateStatus.mutateAsync({
-        id: agentHost.id,
-        status: newStatus,
-      });
-    } catch (_error) {}
-  }, [agentHost.id, isActive, updateStatus]);
-
-  return (
-    <div className="flex justify-center">
-      <Switch
-        checked={isActive}
-        onCheckedChange={handleSwitchChange}
-        disabled={updateStatus.isPending}
-        data-testid="agent-host-status-switch"
-      />
-    </div>
-  );
-});
-
-StatusSwitchCell.displayName = 'StatusSwitchCell';
 
 // Action Cell Component
 const ActionCell = memo(({ row }: { row: Row<AgentHost> }) => {
   const { t } = useTranslation();
   const agentHost = row.original;
-  const { setOpen, setCurrentRow } = useAgentHosts();
-  const { agentHostsPermissions } = usePermissions();
+  const updateStatus = useUpdateAgentHostStatus();
+  const canArchive = agentHost.status !== 'inactive';
 
-  const isLocal = agentHost.type === 'local';
+  const handleArchive = useCallback(async () => {
+    try {
+      await updateStatus.mutateAsync({
+        id: agentHost.id,
+        status: 'inactive',
+      });
+    } catch (_error) {}
+  }, [agentHost.id, updateStatus]);
 
-  const handleEdit = useCallback(() => {
-    setCurrentRow(agentHost);
-    setOpen('edit');
-  }, [agentHost, setCurrentRow, setOpen]);
+  if (!canArchive) {
+    return null;
+  }
 
   return (
     <div className="flex items-center justify-center">
@@ -85,25 +53,10 @@ const ActionCell = memo(({ row }: { row: Row<AgentHost> }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[160px]">
-          <DropdownMenuItem onClick={handleEdit}>
-            <IconEdit size={16} className="mr-2" />
-            {t('common.buttons.edit')}
+          <DropdownMenuItem onClick={handleArchive} disabled={updateStatus.isPending}>
+            <IconArchive size={16} className="mr-2" />
+            {t('common.buttons.archive')}
           </DropdownMenuItem>
-          {!isLocal && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  setCurrentRow(agentHost);
-                  setOpen('delete');
-                }}
-                className="text-red-500!"
-              >
-                <IconTrash size={16} className="mr-2" />
-                {t('common.buttons.delete')}
-              </DropdownMenuItem>
-            </>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

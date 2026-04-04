@@ -166,12 +166,6 @@ func (_c *MessageChannelBindingRequestCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *MessageChannelBindingRequestCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "MessageChannelBindingRequest.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "MessageChannelBindingRequest.updated_at"`)}
-	}
 	if _, ok := _c.mutation.MessageChannelID(); !ok {
 		return &ValidationError{Name: "message_channel_id", err: errors.New(`ent: missing required field "MessageChannelBindingRequest.message_channel_id"`)}
 	}

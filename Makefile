@@ -3,7 +3,8 @@
 	e2e-test e2e-backend-start e2e-backend-stop e2e-backend-status e2e-backend-restart e2e-backend-clean \
 	migration-test migration-test-all migration-test-all-dbs \
 	sync-faq sync-models filter-logs \
-	lint lint-all lint-privacy
+	lint lint-all lint-privacy \
+	generate-schema
 
 # Generate GraphQL and Ent code
 generate:
@@ -37,7 +38,7 @@ docker-build-axonclaw:
 # Build the frontend application
 build-frontend:
 	@echo "Building axonhub frontend..."
-	cd frontend && pnpm vite build
+	cd frontend && pnpm run build
 	@echo "Copying frontend dist to server static directory..."
 	rm -rf internal/server/static/dist/assets
 	mkdir -p internal/server/static/dist
@@ -176,6 +177,13 @@ lint-all:
 	@echo ""
 	@echo "All lint checks passed!"
 
+# Generate JSON schema for configuration
+generate-schema:
+	@echo "Generating JSON schema for configuration..."
+	@cd cmd/schema && go run . > ../../config.schema.json
+	@echo "JSON schema generated at config.schema.json"
+
+# Run all lint checks
 lint: lint-all lint-privacy
 	@echo "All lint checks passed!"
 

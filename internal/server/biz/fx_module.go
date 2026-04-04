@@ -28,6 +28,7 @@ var Module = fx.Module("biz",
 	fx.Provide(NewAgentBootstrapService),
 	fx.Provide(NewAgentHostService),
 	fx.Provide(NewAgentDeployService),
+	fx.Provide(NewPromptProtectionRuleService),
 	fx.Provide(NewQuotaService),
 	fx.Provide(NewProviderQuotaService),
 	fx.Provide(NewMessageChannelService),
@@ -75,6 +76,14 @@ var Module = fx.Module("biz",
 			},
 			OnStop: func(ctx context.Context) error {
 				return svc.Stop(ctx)
+			},
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *PromptProtectionRuleService) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				svc.Stop()
+				return nil
 			},
 		})
 	}),

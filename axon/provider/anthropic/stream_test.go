@@ -186,9 +186,9 @@ func TestStreamProcessor_HandleToolCallStreaming(t *testing.T) {
 	require.Len(t, receivedEvents, 2)
 	assert.Equal(t, agent.StreamEventToolCallDelta, receivedEvents[0].Type)
 	assert.Equal(t, `{"loc`, receivedEvents[0].Text)
-	require.NotNil(t, receivedEvents[0].ToolUse)
-	assert.Equal(t, "tool_123", receivedEvents[0].ToolUse.ID)
-	assert.Equal(t, "get_weather", receivedEvents[0].ToolUse.Name)
+	require.NotNil(t, receivedEvents[0].ToolCall)
+	assert.Equal(t, "tool_123", receivedEvents[0].ToolCall.ID)
+	assert.Equal(t, "get_weather", receivedEvents[0].ToolCall.Name)
 
 	assert.Equal(t, agent.StreamEventToolCallDelta, receivedEvents[1].Type)
 	assert.Equal(t, `ation": "Tokyo"}`, receivedEvents[1].Text)
@@ -241,9 +241,9 @@ func TestStreamProcessor_HandleToolCallComplete(t *testing.T) {
 	assert.Equal(t, 50, usageEvent.Usage.OutputTokens)
 
 	require.NotNil(t, toolCompleteEvent)
-	assert.Equal(t, "tool_456", toolCompleteEvent.ToolUse.ID)
-	assert.Equal(t, "calculate", toolCompleteEvent.ToolUse.Name)
-	assert.Equal(t, `{"expression": "2+2"}`, toolCompleteEvent.ToolUse.Input)
+	assert.Equal(t, "tool_456", toolCompleteEvent.ToolCall.ID)
+	assert.Equal(t, "calculate", toolCompleteEvent.ToolCall.Name)
+	assert.Equal(t, `{"expression": "2+2"}`, toolCompleteEvent.ToolCall.Input)
 }
 
 func TestStreamProcessor_HandleMessageStart(t *testing.T) {

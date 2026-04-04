@@ -16,6 +16,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $BaseDir = Join-Path $ScriptDir '.axonclaw'
 $PidFile = Join-Path $BaseDir 'axonclaw.pid'
 $ProcessName = 'axonclaw'
+$ExpectedBinary = Join-Path $ScriptDir 'axonclaw'
 
 function Show-Usage {
   Write-Host @" 
@@ -83,14 +84,20 @@ function Stop-ByPid(){
   }
 }
 
+function Get-InstanceProcesses(){
+  Get-Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.Path -and $_.Path -eq $ExpectedBinary
+  }
+}
+
 function Stop-ByProcessName(){
-  Write-Info 'Stopping AxonClaw by process name...'
-  $procs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match '^axonclaw' }
+  Write-Info 'Stopping AxonClaw by exact instance path...'
+  $procs = Get-InstanceProcesses
   if(-not $procs){
-    Write-Warn 'No AxonClaw processes found'
+    Write-Warn "No AxonClaw process found for $ExpectedBinary"
     return $false
   }
-  Write-Info ("Found AxonClaw processes: " + ($procs.Id -join ' '))
+  Write-Info ("Found AxonClaw processes for this instance: " + ($procs.Id -join ' '))
   foreach($p in $procs){
     Write-Info ("Stopping process " + $p.Id + ' ...')
     try { Stop-Process -Id $p.Id -ErrorAction SilentlyContinue } catch {}
@@ -105,21 +112,21 @@ function Stop-ByProcessName(){
     }
   }
   Start-Sleep -Seconds 2
-  $remaining = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match '^axonclaw' }
+  $remaining = Get-InstanceProcesses
   if(-not $remaining){
-    Write-Success 'All AxonClaw processes stopped successfully'
+    Write-Success 'All AxonClaw processes for this instance stopped successfully'
     Remove-Item -Force $PidFile -ErrorAction SilentlyContinue
     return $true
   } else {
-    Write-Err ("Some AxonClaw processes are still running: " + ($remaining.Id -join ' '))
+    Write-Err ("Some AxonClaw processes for this instance are still running: " + ($remaining.Id -join ' '))
     return $false
   }
 }
 
 function Check-Running(){
-  $procs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match '^axonclaw' }
+  $procs = Get-InstanceProcesses
   if($procs){
-    Write-Info 'Running AxonClaw processes:'
+    Write-Info 'Running AxonClaw processes for this instance:'
     $procs | Select-Object Id,ProcessName,Path | Format-Table -AutoSize | Out-String | Write-Host
     return $true
   }
@@ -127,21 +134,21 @@ function Check-Running(){
 }
 
 if($Force){
-  Write-Info 'Force stopping all AxonClaw processes...'
-  $procs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match '^axonclaw' }
+  Write-Info 'Force stopping AxonClaw processes for this instance...'
+  $procs = Get-InstanceProcesses
   if($procs){
     foreach($p in $procs){ try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {} }
     Start-Sleep -Seconds 2
-    $still = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match '^axonclaw' }
+    $still = Get-InstanceProcesses
     if(-not $still){
-      Write-Success 'All AxonClaw processes force-stopped'
+      Write-Success 'All AxonClaw processes for this instance force-stopped'
       Remove-Item -Force $PidFile -ErrorAction SilentlyContinue
     } else {
-      Write-Err 'Failed to force-stop some processes'
+      Write-Err 'Failed to force-stop some AxonClaw processes for this instance'
       exit 1
     }
   } else {
-    Write-Info 'No AxonClaw processes found'
+    Write-Info 'No AxonClaw processes found for this instance'
   }
   exit 0
 }

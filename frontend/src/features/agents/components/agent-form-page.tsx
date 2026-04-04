@@ -25,12 +25,23 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { useQueryModels } from '@/gql/models';
 import { useCreateAgent, useUpdateAgent } from '../data/agents';
 import { useAgentDetail } from '../data/agent-detail';
-import type { AgentBuiltinToolInput } from '../data/schema';
-import { builtinToolOptions, builtinToolDefaultEnabled } from '../data/agent-tools';
+import type { AgentBuiltinSkillInput, AgentBuiltinToolInput } from '../data/schema';
+import {
+  builtinSkillDefaultEnabled,
+  builtinSkillOptions,
+  builtinToolDefaultEnabled,
+  builtinToolOptions,
+} from '../data/agent-tools';
 import { defaultSystemPrompt } from '../data/prompt';
 
 
 const builtinToolSchema = z.object({
+  name: z.string().min(1),
+  enabled: z.boolean(),
+  order: z.number().int(),
+});
+
+const builtinSkillSchema = z.object({
   name: z.string().min(1),
   enabled: z.boolean(),
   order: z.number().int(),
@@ -44,6 +55,7 @@ const agentFormSchema = z.object({
   systemPrompt: z.string().min(1),
   skillsPolicyAdd: z.enum(['open', 'approval_required', 'registry_only']),
   builtinTools: z.array(builtinToolSchema),
+  builtinSkills: z.array(builtinSkillSchema),
 });
 
 type FormData = z.infer<typeof agentFormSchema>;
@@ -53,6 +65,15 @@ interface AgentFormPageProps {
 }
 
 interface SortableToolItemProps {
+  field: { id: string; name: string; enabled: boolean; order: number };
+  index: number;
+  availableOptions: string[];
+  onRemove: (index: number) => void;
+  form: any;
+  t: (key: string) => string;
+}
+
+interface SortableSkillItemProps {
   field: { id: string; name: string; enabled: boolean; order: number };
   index: number;
   availableOptions: string[];
@@ -142,6 +163,83 @@ function SortableToolItem({ field, index, availableOptions, onRemove, form, t }:
   );
 }
 
+function SortableSkillItem({ field, index, availableOptions, onRemove, form, t }: SortableSkillItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const currentName = form.getValues(`builtinSkills.${index}.name`);
+  const description = t(`agents.skillDescriptions.${currentName}`);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-center gap-2 rounded-md border p-2 hover:shadow-sm ${
+        isDragging ? 'ring-primary/20 relative z-50 shadow-xl ring-2' : 'hover:border-primary/20'
+      }`}
+    >
+      <div
+        className='text-muted-foreground hover:text-foreground flex cursor-grab items-center active:cursor-grabbing'
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className='h-4 w-4' />
+      </div>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className='flex flex-1'>
+            <FormField
+              control={form.control}
+              name={`builtinSkills.${index}.name`}
+              render={({ field }) => (
+                <FormItem className='w-full space-y-0'>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className='h-9 w-full'>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableOptions.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side='top' className='max-w-xs'>
+          <p>{description}</p>
+        </TooltipContent>
+      </Tooltip>
+
+      <FormField
+        control={form.control}
+        name={`builtinSkills.${index}.enabled`}
+        render={({ field }) => (
+          <FormItem className='flex items-center space-y-0'>
+            <Switch checked={field.value} onCheckedChange={field.onChange} />
+          </FormItem>
+        )}
+      />
+
+      <Button type='button' variant='ghost' size='icon' onClick={() => onRemove(index)} className='h-9 w-9 shrink-0'>
+        <Trash2 className='h-4 w-4' />
+      </Button>
+    </div>
+  );
+}
+
 export function AgentFormPage({ mode }: AgentFormPageProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -187,12 +285,28 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
           enabled: true,
           order: index,
         })),
+      builtinSkills: builtinSkillOptions
+        .filter((name) => builtinSkillDefaultEnabled[name])
+        .map((name, index) => ({
+          name,
+          enabled: true,
+          order: index,
+        })),
     },
   });
 
   const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: 'builtinTools',
+  });
+  const {
+    fields: skillFields,
+    append: appendSkill,
+    remove: removeSkill,
+    move: moveSkill,
+  } = useFieldArray({
+    control: form.control,
+    name: 'builtinSkills',
   });
 
   const sensors = useSensors(
@@ -219,12 +333,24 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
         form.setValue(`builtinTools.${idx}.order`, idx);
       });
     }
+
+    const oldSkillIndex = skillFields.findIndex((field) => field.id === active.id);
+    const newSkillIndex = skillFields.findIndex((field) => field.id === over.id);
+
+    if (oldSkillIndex !== -1 && newSkillIndex !== -1) {
+      moveSkill(oldSkillIndex, newSkillIndex);
+      const currentSkills = form.getValues('builtinSkills') || [];
+      currentSkills.forEach((skill, idx) => {
+        form.setValue(`builtinSkills.${idx}.order`, idx);
+      });
+    }
   };
 
   const normalizedAgentData = useMemo(() => {
     if (!isEdit || !agent) return null;
 
     const existingBuiltinTools = Array.isArray(agent.agentBuiltinTools) ? agent.agentBuiltinTools : [];
+    const existingBuiltinSkills = Array.isArray(agent.agentBuiltinSkills) ? agent.agentBuiltinSkills : [];
     const existingSkillsPolicyAdd =
       agent.skillsPolicy && typeof agent.skillsPolicy === 'object' && 'add' in agent.skillsPolicy
         ? (agent.skillsPolicy as any).add
@@ -238,6 +364,7 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
       systemPrompt: agent.prompt?.content || '',
       skillsPolicyAdd: existingSkillsPolicyAdd,
       builtinTools: existingBuiltinTools,
+      builtinSkills: existingBuiltinSkills,
     };
   }, [isEdit, agent]);
 
@@ -274,6 +401,7 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
 
   const onSubmit = async (values: FormData) => {
     const builtinTools = (values.builtinTools || []) as AgentBuiltinToolInput[];
+    const builtinSkills = (values.builtinSkills || []) as AgentBuiltinSkillInput[];
     const skillsPolicy = values.skillsPolicyAdd ? { add: values.skillsPolicyAdd } : undefined;
 
     if (isEdit && agentId) {
@@ -286,6 +414,7 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
           reasoningEffort: values.reasoningEffort,
           systemPrompt: values.systemPrompt,
           builtinTools,
+          builtinSkills,
           skillsPolicy,
         },
       });
@@ -297,6 +426,7 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
         reasoningEffort: values.reasoningEffort,
         systemPrompt: values.systemPrompt,
         builtinTools,
+        builtinSkills,
         skillsPolicy,
       });
     }
@@ -308,9 +438,13 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
   const selectedToolNames = useMemo(() => {
     return new Set(fields.map((_, i) => form.getValues(`builtinTools.${i}.name`)));
   }, [fields, form]);
+  const selectedSkillNames = useMemo(() => {
+    return new Set(skillFields.map((_, i) => form.getValues(`builtinSkills.${i}.name`)));
+  }, [skillFields, form]);
 
   // Check if all tools are added
   const canAddMore = fields.length < builtinToolOptions.length;
+  const canAddMoreSkills = skillFields.length < builtinSkillOptions.length;
 
   if (isEdit && agentLoading) {
     return (
@@ -492,7 +626,7 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
                   </Card>
                 </div>
 
-                {/* Right column – Skills Policy & Builtin Tools (1/3) */}
+                {/* Right column – Skills Policy & Builtin Tools/Skills (1/3) */}
                 <div className='space-y-6 lg:col-span-1'>
                   {/* Skills Policy Card */}
                   <Card className='border-0 shadow-sm'>
@@ -575,6 +709,67 @@ export function AgentFormPage({ mode }: AgentFormPageProps) {
                                       index={index}
                                       availableOptions={availableOptions}
                                       onRemove={remove}
+                                      form={form}
+                                      t={t}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className='flex flex-col border-0 shadow-sm'>
+                    <CardHeader className='pb-3'>
+                      <div className='flex items-center justify-between'>
+                        <CardTitle className='flex items-center gap-2 text-base'>
+                          <Key className='h-4 w-4' />
+                          {t('agents.fields.builtinSkills')}
+                        </CardTitle>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() => {
+                            const availableSkill = builtinSkillOptions.find((opt) => !selectedSkillNames.has(opt));
+                            if (availableSkill) {
+                              appendSkill({ name: availableSkill, enabled: true, order: skillFields.length });
+                            }
+                          }}
+                          disabled={!canAddMoreSkills}
+                          className='gap-2'
+                        >
+                          <Plus className='h-4 w-4' />
+                          {t('agents.actions.addSkill')}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className='flex-1'>
+                      <div className='space-y-2 pr-1'>
+                        {skillFields.length === 0 ? (
+                          <p className='text-muted-foreground text-sm'>{t('agents.form.noSkills')}</p>
+                        ) : (
+                          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <SortableContext items={skillFields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                              <div className='space-y-2'>
+                                {skillFields.map((field, index) => {
+                                  const otherSelectedNames = new Set(
+                                    skillFields
+                                      .map((_, i) => form.getValues(`builtinSkills.${i}.name`))
+                                      .filter((name) => name !== field.name)
+                                  );
+                                  const availableOptions = builtinSkillOptions.filter((opt) => !otherSelectedNames.has(opt));
+
+                                  return (
+                                    <SortableSkillItem
+                                      key={field.id}
+                                      field={field}
+                                      index={index}
+                                      availableOptions={availableOptions}
+                                      onRemove={removeSkill}
                                       form={form}
                                       t={t}
                                     />

@@ -54,6 +54,8 @@ type Tx struct {
 	Project *ProjectClient
 	// Prompt is the client for interacting with the Prompt builders.
 	Prompt *PromptClient
+	// PromptProtectionRule is the client for interacting with the PromptProtectionRule builders.
+	PromptProtectionRule *PromptProtectionRuleClient
 	// PromptVersion is the client for interacting with the PromptVersion builders.
 	PromptVersion *PromptVersionClient
 	// ProviderQuotaStatus is the client for interacting with the ProviderQuotaStatus builders.
@@ -234,6 +236,7 @@ func (tx *Tx) init() {
 	tx.Model = NewModelClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.Prompt = NewPromptClient(tx.config)
+	tx.PromptProtectionRule = NewPromptProtectionRuleClient(tx.config)
 	tx.PromptVersion = NewPromptVersionClient(tx.config)
 	tx.ProviderQuotaStatus = NewProviderQuotaStatusClient(tx.config)
 	tx.Request = NewRequestClient(tx.config)

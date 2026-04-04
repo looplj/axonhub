@@ -27,6 +27,12 @@ const AGENTS_QUERY = `
             order
             config
           }
+          agentBuiltinSkills {
+            name
+            enabled
+            order
+            config
+          }
           skillsPolicy {
             add
           }
@@ -67,6 +73,12 @@ const CREATE_AGENT_MUTATION = `
         order
         config
       }
+      agentBuiltinSkills {
+        name
+        enabled
+        order
+        config
+      }
       skillsPolicy {
         add
       }
@@ -92,6 +104,12 @@ const UPDATE_AGENT_MUTATION = `
       model
       reasoningEffort
       agentBuiltinTools {
+        name
+        enabled
+        order
+        config
+      }
+      agentBuiltinSkills {
         name
         enabled
         order
@@ -202,4 +220,3 @@ export function useDeleteAgent() {
     },
   });
 }
-

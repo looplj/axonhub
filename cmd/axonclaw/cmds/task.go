@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,24 +26,15 @@ func NewTaskCommand(opts StdioOptions) *cobra.Command {
 		stderr = os.Stderr
 	}
 
-	taskDir := filepath.Join(conf.DefaultDir, "tasks")
 	var store *task.Store
 
 	root := &cobra.Command{
-		Use:   "tasks",
-		Short: "Manage local scheduled tasks",
-		Long: `Manage local scheduled tasks that can trigger actions at specific times.
+		Use:   "scheduler",
+		Short: "Manage scheduled tasks (cron jobs)",
+		Long: `Manage scheduled tasks that can trigger actions at specific times.
 
-Tasks are stored locally and can send messages to the agent when triggered.
+Tasks are stored locally and can prompt the agent when triggered.
 This is useful for reminders, periodic checks, or scheduled notifications.
-
-Available Commands:
-  list     List all tasks
-  get      Get details of a specific task
-  add      Add a new scheduled task
-  delete   Delete a task
-  enable   Enable a disabled task
-  disable  Disable an enabled task
 
 Trigger Types:
   cron     - Cron expression (e.g., "0 9 * * *" for daily at 9:00)
@@ -50,46 +42,54 @@ Trigger Types:
   at       - One-time execution at specific RFC3339 time
   delay    - One-time execution after a delay (e.g., "10m", "1h", "30s")
 
-Action Types:
-  send_agent_message - Send a message to the agent when triggered
+Task Types:
+  prompt - Prompt the agent when triggered
     Required field: message (string)
+    Optional field: mode (main|isolated), defaults to isolated
+    Optional field: model (string), only supported in isolated mode
 
 Examples:
   # Add a daily reminder at 9:00 AM
-  axonclaw tasks add --id daily-reminder --name "Daily Standup" \
-    --trigger-type cron --cron "0 9 * * *" \
-    --action '{"type":"send_agent_message","message":"Time for daily standup!"}'
+  axonclaw scheduler add --id daily-reminder --name "Daily Standup" \
+    --type prompt --trigger-type cron --cron "0 9 * * *" \
+    --action '{"message":"Time for daily standup!"}'
 
   # Add a task that runs every 30 minutes
-  axonclaw tasks add --id periodic-check --name "Periodic Check" \
-    --trigger-type interval --interval "30m" \
-    --action '{"type":"send_agent_message","message":"Check your progress!"}'
+  axonclaw scheduler add --id periodic-check --name "Periodic Check" \
+    --type prompt --trigger-type interval --interval "30m" \
+    --action '{"message":"Check your progress!"}'
 
   # Add a one-time reminder
-  axonclaw tasks add --id one-time --name "Meeting Reminder" \
-    --trigger-type at --at "2024-01-15T14:30:00Z" \
-    --action '{"type":"send_agent_message","message":"Meeting starts in 5 minutes"}'
+  axonclaw scheduler add --id one-time --name "Meeting Reminder" \
+    --type prompt --trigger-type at --at "2024-01-15T14:30:00Z" \
+    --action '{"message":"Meeting starts in 5 minutes","mode":"main"}'
 
   # Add a task that runs after a delay
-  axonclaw tasks add --id delayed-task --name "Delayed Notification" \
-    --trigger-type delay --delay "10m" \
-    --action '{"type":"send_agent_message","message":"10 minutes have passed!"}'
+  axonclaw scheduler add --id delayed-task --name "Delayed Notification" \
+    --type prompt --trigger-type delay --delay "10m" \
+    --action '{"message":"10 minutes have passed!"}'
 
   # List all tasks
-  axonclaw tasks list
+  axonclaw scheduler list
 
   # Disable a task
-  axonclaw tasks disable daily-reminder
+  axonclaw scheduler disable daily-reminder
 
   # Enable a task
-  axonclaw tasks enable daily-reminder
+  axonclaw scheduler enable daily-reminder
 
   # Delete a task
-  axonclaw tasks delete daily-reminder
+  axonclaw scheduler delete daily-reminder
 `,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			runtimeDir, err := conf.RuntimeDir()
+			if err != nil {
+				return fmt.Errorf("resolve runtime directory: %w", err)
+			}
+
+			taskDir := filepath.Join(runtimeDir, "tasks")
 			s, err := task.NewStore(taskDir)
 			if err != nil {
 				return err
@@ -105,6 +105,7 @@ Examples:
 	root.AddCommand(newTaskListCmd(stdout, storeGetter))
 	root.AddCommand(newTaskGetCmd(stdout, storeGetter))
 	root.AddCommand(newTaskAddCmd(stdout, storeGetter))
+	root.AddCommand(newTaskUpdateCmd(stdout, storeGetter))
 	root.AddCommand(newTaskDeleteCmd(stdout, storeGetter))
 	root.AddCommand(newTaskEnableCmd(stdout, storeGetter, true))
 	root.AddCommand(newTaskEnableCmd(stdout, storeGetter, false))
@@ -117,7 +118,7 @@ func newTaskListCmd(out *os.File, store func() *task.Store) *cobra.Command {
 		Use:   "list",
 		Short: "List tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			tasks, err := store().Load()
+			tasks, err := store().List()
 			if err != nil {
 				return err
 			}
@@ -163,6 +164,7 @@ func newTaskAddCmd(out *os.File, store func() *task.Store) *cobra.Command {
 		name      string
 		enabled   bool
 		trigType  string
+		taskType  string
 		cronExpr  string
 		interval  string
 		at        string
@@ -178,8 +180,9 @@ func newTaskAddCmd(out *os.File, store func() *task.Store) *cobra.Command {
 
 Required flags:
   --id           Unique task identifier
+  --type         Task type
   --trigger-type Type of trigger (cron|interval|at|delay)
-  --action       Action JSON with type and parameters
+  --action       Action JSON with task parameters
 
 Trigger-specific flags:
   --cron     Cron expression (required for --trigger-type=cron)
@@ -193,16 +196,21 @@ Optional flags:
   --timezone IANA timezone for schedule (e.g., "Asia/Shanghai")
 
 Action format:
-  {"type":"send_agent_message","message":"your message here"}
+  {"message":"your message here","mode":"isolated","model":"gpt-4"}
 
 Examples:
-  axonclaw tasks add --id my-task --trigger-type cron --cron "0 9 * * *" \
-    --action '{"type":"send_agent_message","message":"Good morning!"}'
+  axonclaw scheduler add --id my-task --type prompt --trigger-type cron --cron "0 9 * * *" \
+    --action '{"message":"Good morning!","model":"gpt-4"}'
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id = strings.TrimSpace(id)
 			if id == "" {
 				return fmt.Errorf("--id is required")
+			}
+
+			taskType = strings.TrimSpace(taskType)
+			if taskType == "" {
+				return fmt.Errorf("--type is required")
 			}
 			if strings.TrimSpace(actionRaw) == "" {
 				return fmt.Errorf("--action is required")
@@ -212,8 +220,9 @@ Examples:
 			if err := json.Unmarshal([]byte(actionRaw), &action); err != nil {
 				return fmt.Errorf("invalid --action json: %w", err)
 			}
-			if _, ok := action["type"].(string); !ok {
-				return fmt.Errorf("action.type is required and must be string")
+
+			if _, ok := action["type"]; ok {
+				return fmt.Errorf("action.type is no longer supported; use --type instead")
 			}
 
 			trigger := task.Trigger{
@@ -231,6 +240,7 @@ Examples:
 			t := task.Task{
 				ID:      id,
 				Name:    strings.TrimSpace(name),
+				Type:    taskType,
 				Enabled: enabled,
 				Trigger: trigger,
 				Action:  action,
@@ -248,6 +258,7 @@ Examples:
 
 	cmd.Flags().StringVar(&id, "id", "", "Task ID")
 	cmd.Flags().StringVar(&name, "name", "", "Task name")
+	cmd.Flags().StringVar(&taskType, "type", "", "Task type, e.g. prompt")
 	cmd.Flags().BoolVar(&enabled, "enabled", true, "Enable task")
 	cmd.Flags().StringVar(&trigType, "trigger-type", "", "Trigger type: cron|interval|at|delay")
 	cmd.Flags().StringVar(&cronExpr, "cron", "", "Cron expression (for trigger-type=cron)")
@@ -255,8 +266,156 @@ Examples:
 	cmd.Flags().StringVar(&at, "at", "", "RFC3339 time (for trigger-type=at)")
 	cmd.Flags().StringVar(&delay, "delay", "", "Duration, e.g. 10m (for trigger-type=delay)")
 	cmd.Flags().StringVar(&timezone, "timezone", "", "IANA timezone, e.g. Asia/Shanghai")
-	cmd.Flags().StringVar(&actionRaw, "action", "", `Action JSON, e.g. {"type":"send_agent_message","message":"hi"}`)
+	cmd.Flags().StringVar(&actionRaw, "action", "", `Action JSON, e.g. {"message":"hi","mode":"isolated"}`)
 	return cmd
+}
+
+func newTaskUpdateCmd(out *os.File, store func() *task.Store) *cobra.Command {
+	var (
+		name      string
+		enabled   *bool
+		trigType  string
+		cronExpr  string
+		interval  string
+		at        string
+		delay     string
+		timezone  string
+		actionRaw string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "update <id>",
+		Short: "Update an existing task",
+		Long: `Update an existing scheduled task.
+
+Only provided flags will be updated; omitted flags keep their current values.
+
+Examples:
+  # Update the message of a task
+  axonclaw scheduler update my-task --action '{"message":"New message"}'
+
+  # Change the schedule
+  axonclaw scheduler update my-task --cron "0 10 * * *"
+
+  # Disable a task
+  axonclaw scheduler update my-task --enabled=false
+`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id := strings.TrimSpace(args[0])
+			if id == "" {
+				return fmt.Errorf("task id is required")
+			}
+
+			existing, err := store().Get(id)
+			if err != nil {
+				if errors.Is(err, task.ErrTaskNotFound) {
+					return fmt.Errorf("task %q not found", id)
+				}
+
+				return err
+			}
+
+			updated := *existing
+
+			if cmd.Flags().Changed("name") {
+				updated.Name = strings.TrimSpace(name)
+			}
+
+			if enabled != nil {
+				updated.Enabled = *enabled
+			}
+
+			if cmd.Flags().Changed("trigger-type") {
+				updated.Trigger.Type = task.TriggerType(strings.TrimSpace(trigType))
+			}
+
+			if cmd.Flags().Changed("cron") {
+				updated.Trigger.Cron = strings.TrimSpace(cronExpr)
+			}
+
+			if cmd.Flags().Changed("interval") {
+				updated.Trigger.Interval = strings.TrimSpace(interval)
+			}
+
+			if cmd.Flags().Changed("at") {
+				updated.Trigger.At = strings.TrimSpace(at)
+			}
+
+			if cmd.Flags().Changed("delay") {
+				updated.Trigger.Delay = strings.TrimSpace(delay)
+			}
+
+			if cmd.Flags().Changed("timezone") {
+				updated.Trigger.Timezone = strings.TrimSpace(timezone)
+			}
+
+			if cmd.Flags().Changed("action") {
+				var action map[string]any
+				if err := json.Unmarshal([]byte(actionRaw), &action); err != nil {
+					return fmt.Errorf("invalid --action json: %w", err)
+				}
+
+				updated.Action = action
+			}
+
+			if err := validateTrigger(updated.Trigger); err != nil {
+				return err
+			}
+
+			if err := store().UpdateTask(updated); err != nil {
+				return err
+			}
+
+			fmt.Fprintf(out, "task updated: %s\n", id)
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&name, "name", "", "Task name")
+	cmd.Flags().Var(newBoolValue(enabled, &enabled), "enabled", "Enable task (true/false)")
+	cmd.Flags().StringVar(&trigType, "trigger-type", "", "Trigger type: cron|interval|at|delay")
+	cmd.Flags().StringVar(&cronExpr, "cron", "", "Cron expression (for trigger-type=cron)")
+	cmd.Flags().StringVar(&interval, "interval", "", "Duration, e.g. 10m (for trigger-type=interval)")
+	cmd.Flags().StringVar(&at, "at", "", "RFC3339 time (for trigger-type=at)")
+	cmd.Flags().StringVar(&delay, "delay", "", "Duration, e.g. 10m (for trigger-type=delay)")
+	cmd.Flags().StringVar(&timezone, "timezone", "", "IANA timezone, e.g. Asia/Shanghai")
+	cmd.Flags().StringVar(&actionRaw, "action", "", `Action JSON, e.g. {"message":"hi","mode":"isolated"}`)
+
+	return cmd
+}
+
+type boolValue struct {
+	value **bool
+}
+
+func newBoolValue(defaultVal *bool, target **bool) *boolValue {
+	*target = defaultVal
+	return &boolValue{value: target}
+}
+
+func (b *boolValue) String() string {
+	if *b.value == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%v", **b.value)
+}
+
+func (b *boolValue) Set(s string) error {
+	v, err := strconv.ParseBool(s)
+	if err != nil {
+		return err
+	}
+
+	*b.value = &v
+
+	return nil
+}
+
+func (b *boolValue) Type() string {
+	return "bool"
 }
 
 func newTaskDeleteCmd(out *os.File, store func() *task.Store) *cobra.Command {

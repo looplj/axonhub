@@ -1,5 +1,12 @@
 package agent
 
+func newTextMessage(role Role, text string) Message {
+	return Message{
+		Role:    role,
+		Content: &Content{Text: &text},
+	}
+}
+
 func cloneMessages(in []Message) []Message {
 	if in == nil {
 		return nil
@@ -43,9 +50,9 @@ func cloneMessage(in Message) Message {
 		out.IsError = &b
 	}
 
-	if in.ToolUse != nil {
-		tu := *in.ToolUse
-		out.ToolUse = &tu
+	if in.ToolCall != nil {
+		tu := *in.ToolCall
+		out.ToolCall = &tu
 	}
 
 	return out

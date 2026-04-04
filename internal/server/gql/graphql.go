@@ -32,6 +32,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -47,6 +48,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/gql/logging"
 )
 
@@ -77,6 +79,8 @@ type Dependencies struct {
 	AgentBootstrapService          *biz.AgentBootstrapService
 	ProviderQuotaService           *biz.ProviderQuotaService
 	MessageChannelService          *biz.MessageChannelService
+	PromptProtectionRuleService    *biz.PromptProtectionRuleService
+	GCWorker                       *gc.Worker
 }
 
 type GraphqlHandler struct {
@@ -111,6 +115,8 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.AgentBootstrapService,
 			deps.ProviderQuotaService,
 			deps.MessageChannelService,
+			deps.PromptProtectionRuleService,
+			deps.GCWorker,
 		),
 	)
 
@@ -179,6 +185,7 @@ var guidTypeToNodeType = map[string]string{
 	ent.TypeAgentHost:                    agenthost.Table,
 	ent.TypeMessageChannelBindingRequest: messagechannelbindingrequest.Table,
 	ent.TypeMessageChannel:               messagechannel.Table,
+	ent.TypePromptProtectionRule:         promptprotectionrule.Table,
 }
 
 func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (*ent.Channel, error) {

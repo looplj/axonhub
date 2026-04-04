@@ -419,8 +419,8 @@ export function useCreateModel() {
       queryClient.invalidateQueries({ queryKey: ['models'] });
       toast.success(t('models.messages.createSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('models.messages.createError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -438,8 +438,8 @@ export function useBulkCreateModels() {
       queryClient.invalidateQueries({ queryKey: ['models'] });
       toast.success(t('models.messages.bulkCreateSuccess', { count: variables.length }));
     },
-    onError: (error: Error) => {
-      toast.error(t('models.messages.bulkCreateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -457,8 +457,8 @@ export function useUpdateModel() {
       queryClient.invalidateQueries({ queryKey: ['models'] });
       toast.success(t('models.messages.updateSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('models.messages.updateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -475,8 +475,8 @@ export function useDeleteModel() {
       queryClient.invalidateQueries({ queryKey: ['models'] });
       toast.success(t('models.messages.deleteSuccess'));
     },
-    onError: (error: Error) => {
-      toast.error(t('models.messages.deleteError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -494,8 +494,8 @@ export function useBulkDisableModels() {
       queryClient.invalidateQueries({ queryKey: ['models'] });
       toast.success(t('models.messages.bulkDisableSuccess', { count: variables.length }));
     },
-    onError: (error: Error) => {
-      toast.error(t('models.messages.bulkDisableError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -513,8 +513,8 @@ export function useBulkEnableModels() {
       queryClient.invalidateQueries({ queryKey: ['models'] });
       toast.success(t('models.messages.bulkEnableSuccess', { count: variables.length }));
     },
-    onError: (error: Error) => {
-      toast.error(t('models.messages.bulkEnableError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

@@ -26,6 +26,12 @@ const AGENT_DETAIL_QUERY = `
           order
           config
         }
+        agentBuiltinSkills {
+          name
+          enabled
+          order
+          config
+        }
         skillsPolicy {
           add
         }
@@ -89,6 +95,7 @@ type AgentDetail = {
   model: string;
   reasoningEffort: 'none' | 'low' | 'medium' | 'high';
   agentBuiltinTools: any;
+  agentBuiltinSkills: any;
   skillsPolicy: any;
   prompt?: { id?: string; content?: string } | null;
   instances?: {
