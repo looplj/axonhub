@@ -71,6 +71,10 @@ AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型
 
 ## 将 Claude Code 作为提供商渠道
 
+> **⚠️ 重要提示**
+> 
+> 由于 Claude Code 的风控机制复杂，且本项目定位与 Claude Code 渠道的使用场景存在差异，后续将不再重点维护此渠道。如有需要，建议使用 CLIProxyAPI、sub2api 等项目。现有功能可能不再更新或优化，请谨慎使用。
+
 AxonHub 还可以将您的 Claude Code 订阅作为后端提供商，允许非 Claude Code 工具利用 Claude Code 的能力。当您希望将其他应用程序（OpenAI 兼容客户端、自定义工具等）的请求通过 Claude Code 路由时，这非常有用。
 
 ### 前置要求

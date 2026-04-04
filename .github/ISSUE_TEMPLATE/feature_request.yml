@@ -26,9 +26,11 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem Statement / 问题描述
-      description: Is your feature request related to a problem? Please describe. / 你的功能请求是否与某个问题相关？请描述。
-      placeholder: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...] / 清晰简洁地描述问题。例如：当 [...] 时我总是很困扰
+      label: Background and Problem Statement / 背景和问题描述
+      description: Please provide the background context and describe the problem. / 请提供背景信息并描述问题。
+      placeholder: |
+        Background: What is the context or scenario? / 背景：什么场景或上下文？
+        Problem: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...] / 问题：清晰简洁地描述问题。例如：当 [...] 时我总是很困扰
     validations:
       required: true
 
@@ -40,13 +42,6 @@ body:
       placeholder: A clear and concise description of what you want to happen. / 清晰简洁地描述你希望实现的效果。
     validations:
       required: true
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered / 备选方案
-      description: Describe any alternative solutions or features you've considered / 描述你考虑过的其他替代方案或功能
-      placeholder: List any alternative approaches... / 列出其他替代思路...
 
   - type: dropdown
     id: category
@@ -66,9 +61,3 @@ body:
         - Other / 其他
     validations:
       required: true
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional Context / 其他补充信息
-      description: Add any other context, mockups, or screenshots about the feature request here / 在此补充其他上下文、原型图或截图

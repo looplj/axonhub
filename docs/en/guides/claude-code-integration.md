@@ -71,6 +71,10 @@ AxonHub model profiles remap incoming model names to provider-specific equivalen
 
 ## Using Claude Code as a Provider Channel
 
+> **⚠️ Important Notice**
+> 
+> Due to the complexity of Claude Code's risk control mechanisms and the scope of this project, we will no longer prioritize maintaining this channel. If you have related needs, we recommend using alternative projects like CLIProxyAPI or sub2api. Existing functionality may not receive updates or optimizations. Please use with caution.
+
 AxonHub can also use your Claude Code subscription as a backend provider, allowing non-Claude Code tools to leverage Claude Code's capabilities. This is useful when you want to route requests from other applications (OpenAI-compatible clients, custom tools, etc.) through Claude Code.
 
 ### Prerequisites
