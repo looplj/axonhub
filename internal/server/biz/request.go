@@ -881,6 +881,42 @@ func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, reque
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
 }
 
+// ClearProcessingRequestsOnShutdown marks all processing requests as canceled during server shutdown.
+// This ensures requests don't remain in "processing" state after the server stops.
+func (s *RequestService) ClearProcessingRequestsOnShutdown(ctx context.Context) error {
+	client := s.entFromContext(ctx)
+
+	// Update all processing requests to canceled
+	_, err := client.Request.Update().
+		Where(request.StatusEQ(request.StatusProcessing)).
+		SetStatus(request.StatusCanceled).
+		Save(ctx)
+
+	if err != nil {
+		return fmt.Errorf("failed to clear processing requests on shutdown: %w", err)
+	}
+
+	return nil
+}
+
+// ClearProcessingExecutionsOnShutdown marks all processing request executions as canceled during server shutdown.
+// This ensures executions don't remain in "processing" state after the server stops.
+func (s *RequestService) ClearProcessingExecutionsOnShutdown(ctx context.Context) error {
+	client := s.entFromContext(ctx)
+
+	// Update all processing executions to canceled
+	_, err := client.RequestExecution.Update().
+		Where(requestexecution.StatusEQ(requestexecution.StatusProcessing)).
+		SetStatus(requestexecution.StatusCanceled).
+		Save(ctx)
+
+	if err != nil {
+		return fmt.Errorf("failed to clear processing executions on shutdown: %w", err)
+	}
+
+	return nil
+}
+
 // UpdateRequestChannelID updates request with channel ID after channel selection.
 func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID int, channelID int) error {
 	client := s.entFromContext(ctx)

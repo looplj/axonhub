@@ -13,13 +13,13 @@ import (
 	"gopkg.in/yaml.v3"
 
 	sdk "go.opentelemetry.io/otel/sdk/metric"
-
 	"github.com/looplj/axonhub/conf"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
 )
 
@@ -61,7 +61,7 @@ func startServer() {
 		}),
 		fx.Provide(conf.Load),
 		fx.Provide(metrics.NewProvider),
-		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client) {
+		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client, requestSvc *biz.RequestService) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					if provider != nil {
@@ -92,6 +92,14 @@ func startServer() {
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {
+					// Clear all processing requests on shutdown
+					if err := requestSvc.ClearProcessingRequestsOnShutdown(ctx); err != nil {
+						log.Error(ctx, "failed to clear processing requests on shutdown", log.Cause(err))
+					}
+					if err := requestSvc.ClearProcessingExecutionsOnShutdown(ctx); err != nil {
+						log.Error(ctx, "failed to clear processing executions on shutdown", log.Cause(err))
+					}
+
 					err := server.Shutdown(ctx)
 					if err != nil {
 						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
