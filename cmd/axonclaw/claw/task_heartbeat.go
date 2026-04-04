@@ -171,7 +171,7 @@ func (h *TaskHandler) handleHeartbeat(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	result, err := h.runner.ProcessIsolated(ctx, text, systemPrompts)
+	result, err := h.runner.ProcessIsolated(ctx, text, systemPrompts, "")
 	if err != nil {
 		return fmt.Errorf("process heartbeat task: %w", err)
 	}

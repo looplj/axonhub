@@ -405,7 +405,7 @@ func (r *Runner) FollowUP(ctx context.Context, text string) {
 	})
 }
 
-func (r *Runner) ProcessIsolated(ctx context.Context, text string, systemPrompts []string) (*agent.Result, error) {
+func (r *Runner) ProcessIsolated(ctx context.Context, text string, systemPrompts []string, model string) (*agent.Result, error) {
 	cfg := r.Agent.Config()
 
 	ctx = newIsolatedContext(ctx)
@@ -415,8 +415,12 @@ func (r *Runner) ProcessIsolated(ctx context.Context, text string, systemPrompts
 	// shared so that events (e.g. archive writing) are still propagated.
 	cm := agent.NewSimpleContextManager(nil)
 
+	if model == "" {
+		model = cfg.Model
+	}
+
 	return subagent.Run(ctx, subagent.Config{
-		Model:          cfg.Model,
+		Model:          model,
 		SystemPrompts:  systemPrompts,
 		Provider:       r.Provider,
 		ContextManager: cm,

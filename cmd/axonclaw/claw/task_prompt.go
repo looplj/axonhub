@@ -18,6 +18,7 @@ const (
 type PromptAction struct {
 	Message string `json:"message"`
 	Mode    string `json:"mode,omitempty"`
+	Model   string `json:"model,omitempty"`
 }
 
 func (a PromptAction) Validate() error {
@@ -28,6 +29,10 @@ func (a PromptAction) Validate() error {
 	mode := a.NormalizedMode()
 	if mode != PromptModeMain && mode != PromptModeIsolated {
 		return fmt.Errorf("prompt mode must be %q or %q", PromptModeMain, PromptModeIsolated)
+	}
+
+	if strings.TrimSpace(a.Model) != "" && mode == PromptModeMain {
+		return fmt.Errorf("model is only supported in %q mode", PromptModeIsolated)
 	}
 
 	return nil
@@ -60,7 +65,7 @@ func (h *TaskHandler) handlePrompt(ctx context.Context, t task.Task) error {
 		return nil
 	}
 
-	_, err = h.runner.ProcessIsolated(ctx, action.Message, h.runner.Agent.Config().SystemPrompts)
+	_, err = h.runner.ProcessIsolated(ctx, action.Message, h.runner.Agent.Config().SystemPrompts, action.Model)
 	if err != nil {
 		return fmt.Errorf("process isolated prompt task: %w", err)
 	}

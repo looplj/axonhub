@@ -168,6 +168,33 @@ func (s *Store) Add(t Task) error {
 	return s.saveLocked(tasks)
 }
 
+func (s *Store) UpdateTask(t Task) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tasks, err := s.loadLocked()
+	if err != nil {
+		return err
+	}
+
+	idx := -1
+
+	for i := range tasks {
+		if tasks[i].ID == t.ID {
+			idx = i
+			break
+		}
+	}
+
+	if idx < 0 {
+		return ErrTaskNotFound
+	}
+
+	tasks[idx] = t
+
+	return s.saveLocked(tasks)
+}
+
 func (s *Store) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
