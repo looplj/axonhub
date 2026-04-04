@@ -45,7 +45,7 @@ type Params struct {
 	TokenProvider   oauth.TokenGetter // OAuth token provider (required)
 	BaseURL         string            // Base URL for the Anthropic API (optional)
 	IsOfficial      bool              // Whether the channel uses official OAuth credentials
-	AccountIdentity string
+	AccountIdentity string            // Account identifier for identity generation
 }
 
 // NewOutboundTransformer creates a new ClaudeCodeTransformer with OAuth authentication.
@@ -70,9 +70,10 @@ func NewOutboundTransformer(params Params) (*ClaudeCodeTransformer, error) {
 	}
 
 	return &ClaudeCodeTransformer{
-		Outbound:   outbound,
-		tokens:     params.TokenProvider,
-		isOfficial: params.IsOfficial,
+		Outbound:        outbound,
+		tokens:          params.TokenProvider,
+		isOfficial:      params.IsOfficial,
+		accountIdentity: params.AccountIdentity,
 	}, nil
 }
 
@@ -80,8 +81,9 @@ func NewOutboundTransformer(params Params) (*ClaudeCodeTransformer, error) {
 // It wraps an OutboundTransformer and adds Claude Code specific headers and system message.
 type ClaudeCodeTransformer struct {
 	transformer.Outbound
-	tokens     oauth.TokenGetter
-	isOfficial bool
+	tokens          oauth.TokenGetter
+	isOfficial      bool
+	accountIdentity string // Account identifier for identity generation
 }
 
 // TransformRequest overrides the base TransformRequest to add Claude Code specific modifications.
@@ -93,20 +95,11 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		return nil, fmt.Errorf("request is nil")
 	}
 
-	rawUA := ""
-	keepClientUA := false
-
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		rawUA = llmReq.RawRequest.Headers.Get("User-Agent")
-		keepClientUA = isClaudeCLIUserAgent(rawUA)
-
 		for _, header := range claudeCodeHeaders {
 			llmReq.RawRequest.Headers.Del(header[0])
 		}
-
-		if !keepClientUA {
-			llmReq.RawRequest.Headers.Del("User-Agent")
-		}
+		llmReq.RawRequest.Headers.Del("User-Agent")
 	}
 
 	// Clone the request to avoid mutating the original
@@ -125,8 +118,21 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	if t.isOfficial {
 		reqCopy = *ensureBillingSystemMessageCCH(&reqCopy)
 	}
-	reqCopy = injectFakeUserIDStructured(ctx, reqCopy)
-	if t.isOfficial && !keepClientUA {
+	
+	// Inject user ID based on account identity
+	reqCopy = injectFakeUserIDStructured(ctx, reqCopy, t.accountIdentity)
+	
+	// Rewrite user messages (<system-reminder> blocks)
+	reqCopy = *rewriteUserMessagesStructured(&reqCopy)
+	
+	// Extract first user message and compute CCH hash
+	firstUserText := extractFirstUserMessage(reqCopy.Messages)
+	cchHash := ComputeCCH(firstUserText, CCHVersion)
+	
+	// Rewrite system prompt with canonical values and CCH hash
+	reqCopy = *rewriteSystemPromptStructured(&reqCopy, cchHash)
+	
+	if t.isOfficial {
 		reqCopy = *applyClaudeToolPrefixStructured(&reqCopy, toolPrefix)
 	}
 
@@ -171,7 +177,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		httpReq.Metadata = make(map[string]string)
 	}
 
-	if t.isOfficial && !keepClientUA {
+	if t.isOfficial {
 		httpReq.Metadata["strip_tool_prefix"] = "true"
 	}
 
@@ -187,11 +193,7 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 		httpReq.Headers.Set("Accept", "application/json")
 	}
 
-	if keepClientUA && rawUA != "" {
-		httpReq.Headers.Set("User-Agent", rawUA)
-	} else {
-		httpReq.Headers.Set("User-Agent", UserAgent)
-	}
+	httpReq.Headers.Set("User-Agent", UserAgent)
 
 	// Claude Code OAuth always uses Bearer token authentication.
 	// Note: For API key authentication, use the standard Anthropic channel type instead.
@@ -348,6 +350,4 @@ func stripClaudeToolPrefixFromStreamLine(line []byte, prefix string) []byte {
 	return line
 }
 
-func isClaudeCLIUserAgent(value string) bool {
-	return strings.HasPrefix(value, "claude-cli/")
-}
+

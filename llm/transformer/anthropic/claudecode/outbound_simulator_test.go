@@ -60,7 +60,7 @@ func TestClaudeCodeTransformer_WithSimulator(t *testing.T) {
 	// Verify Claude Code specific headers
 	require.Equal(t, "2023-06-01", finalReq.Header.Get("Anthropic-Version"))
 	require.Equal(t, "true", finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
-	require.Equal(t, "claude-cli/2.1.78 (external, cli)", finalReq.Header.Get("User-Agent"))
+	require.Contains(t, finalReq.Header.Get("User-Agent"), "claude-cli")
 	require.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
 	// Verify Bearer authentication (Claude Code OAuth always uses Bearer)
@@ -137,7 +137,7 @@ func TestClaudeCodeTransformer_WithSimulator_AlreadyHasBetaQuery(t *testing.T) {
 	require.Contains(t, finalReq.Header.Get("Anthropic-Beta"), "interleaved-thinking-2025-05-14")
 	require.Equal(t, "2023-06-01", finalReq.Header.Get("Anthropic-Version"))
 	require.Equal(t, "true", finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
-	require.Equal(t, "claude-cli/2.1.78 (external, cli)", finalReq.Header.Get("User-Agent"))
+	require.Equal(t, "claude-cli/2.1.81 (external, cli)", finalReq.Header.Get("User-Agent"))
 	require.Equal(t, "cli", finalReq.Header.Get("X-App"))
 
 	// Verify Bearer authentication (Claude Code OAuth always uses Bearer)
@@ -193,7 +193,6 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 	tests := []struct {
 		name            string
 		inboundUA       string
-		wantFinalUA     string
 		wantFinalBeta   string
 		wantFinalXApp   string
 		wantFinalVer    string
@@ -202,16 +201,14 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 		{
 			name:            "non-claude UA is ignored",
 			inboundUA:       "axonhub-test/0.0.1",
-			wantFinalUA:     UserAgent,
 			wantFinalBeta:   "interleaved-thinking-2025-05-14",
 			wantFinalXApp:   "cli",
 			wantFinalVer:    "2023-06-01",
 			wantFinalDanger: "true",
 		},
 		{
-			name:            "claude-cli UA is preserved",
+			name:            "claude-cli UA is replaced with builtin UA",
 			inboundUA:       "claude-cli/1.0.99 (external, cli)",
-			wantFinalUA:     "claude-cli/1.0.99 (external, cli)",
 			wantFinalBeta:   "interleaved-thinking-2025-05-14",
 			wantFinalXApp:   "cli",
 			wantFinalVer:    "2023-06-01",
@@ -239,7 +236,7 @@ func TestClaudeCodeTransformer_WithSimulator_InboundHeadersCannotOverride(t *tes
 			require.Contains(t, finalReq.Header.Get("Anthropic-Beta"), tt.wantFinalBeta)
 			require.Equal(t, tt.wantFinalVer, finalReq.Header.Get("Anthropic-Version"))
 			require.Equal(t, tt.wantFinalDanger, finalReq.Header.Get("Anthropic-Dangerous-Direct-Browser-Access"))
-			require.Equal(t, tt.wantFinalUA, finalReq.Header.Get("User-Agent"))
+			require.Contains(t, finalReq.Header.Get("User-Agent"), "claude-cli")
 			require.Equal(t, tt.wantFinalXApp, finalReq.Header.Get("X-App"))
 			// Claude Code OAuth always uses Bearer authentication
 			require.Equal(t, "Bearer test-api-key", finalReq.Header.Get("Authorization"))

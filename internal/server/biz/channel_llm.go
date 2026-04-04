@@ -94,14 +94,32 @@ func getProxyConfig(channelSettings *objects.ChannelSettings) *httpclient.ProxyC
 	return channelSettings.Proxy
 }
 
-// getHttpClient returns the injected default HTTP client when no custom proxy is configured,
-// or creates a new one with proxy support (inheriting TLS settings from the default client).
-func (svc *ChannelService) getHttpClient(channelSettings *objects.ChannelSettings) *httpclient.HttpClient {
-	if channelSettings == nil || channelSettings.Proxy == nil {
+// buildHttpClientForChannel returns an HTTP client configured for specific channel types.
+// For Claude Code channels, TLS fingerprinting is enabled to mimic Node.js 20.x.
+func (svc *ChannelService) buildHttpClientForChannel(channelSettings *objects.ChannelSettings, channelType channel.Type) *httpclient.HttpClient {
+	proxyConfig := getProxyConfig(channelSettings)
+
+	// Enable TLS fingerprinting for Claude Code channels
+	if channelType == channel.TypeClaudecode {
+		return httpclient.NewHttpClientWithProxy(proxyConfig, httpclient.WithNodeTLSFingerprint(true))
+	}
+
+	// For other channel types, use the default client with optional proxy
+	if proxyConfig != nil && proxyConfig.Type != httpclient.ProxyTypeEnvironment {
+		if svc.httpClient != nil {
+			return svc.httpClient.WithProxy(proxyConfig)
+		}
+
+		return httpclient.NewHttpClientWithProxy(proxyConfig)
+	}
+
+	// Return default client (may be nil in tests, but that's acceptable for test channels)
+	if svc.httpClient != nil {
 		return svc.httpClient
 	}
 
-	return svc.httpClient.WithProxy(channelSettings.Proxy)
+	// Fallback: create a new client for tests or edge cases
+	return httpclient.NewHttpClient()
 }
 
 // buildChannel creates a Channel with precomputed caches (transformer is set separately).
@@ -190,7 +208,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		}
 	}
 
-	httpClient := svc.getHttpClient(c.Settings)
+	httpClient := svc.buildHttpClientForChannel(c.Settings, c.Type)
 	ch := buildChannel(c, httpClient)
 	accountIdentity := strconv.Itoa(c.ID)
 

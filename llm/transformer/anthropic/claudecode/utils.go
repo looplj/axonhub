@@ -13,15 +13,41 @@ import (
 
 const claudeCodeBillingCCHMetadataKey = "claudecode_billing_cch"
 
+// extractFirstUserMessage extracts text from the first user message in API format.
+func extractFirstUserMessage(messages []llm.Message) string {
+	for _, msg := range messages {
+		if msg.Role != "user" {
+			continue
+		}
+
+		// Handle string content
+		if msg.Content.Content != nil {
+			return *msg.Content.Content
+		}
+
+		// Handle array content
+		if len(msg.Content.MultipleContent) > 0 {
+			for _, part := range msg.Content.MultipleContent {
+				if part.Type == "text" && part.Text != nil {
+					return *part.Text
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
 // injectFakeUserIDStructured generates and injects a fake user ID into the request metadata.
-func injectFakeUserIDStructured(ctx context.Context, llmReq llm.Request) llm.Request {
+func injectFakeUserIDStructured(ctx context.Context, llmReq llm.Request, accountIdentity string) llm.Request {
 	if llmReq.Metadata == nil {
 		llmReq.Metadata = make(map[string]string)
 	}
 
 	existingUserID := llmReq.Metadata["user_id"]
 	if existingUserID == "" || ParseUserID(existingUserID) == nil {
-		llmReq.Metadata["user_id"] = GenerateUserID(ctx)
+		// Use account-based identity generation
+		llmReq.Metadata["user_id"] = GenerateUserIDFromAccount(ctx, accountIdentity)
 	}
 
 	return llmReq
@@ -306,6 +332,69 @@ func injectClaudeCodeSystemMessageStructured(llmReq *llm.Request) *llm.Request {
 	if llmReq.TransformOptions.ArrayInstructions == nil {
 		arrayInstructions := true
 		llmReq.TransformOptions.ArrayInstructions = &arrayInstructions
+	}
+
+	return llmReq
+}
+
+// rewriteSystemPromptStructured rewrites the system prompt with canonical environment values.
+func rewriteSystemPromptStructured(llmReq *llm.Request, cchHash string) *llm.Request {
+	promptEnv := DefaultPromptEnv()
+
+	// Rewrite system messages
+	for i := range llmReq.Messages {
+		msg := &llmReq.Messages[i]
+		if msg.Role != "system" {
+			continue
+		}
+
+		// Handle string content
+		if msg.Content.Content != nil {
+			rewritten := RewritePromptText(*msg.Content.Content, promptEnv, cchHash)
+			*msg.Content.Content = rewritten
+		}
+
+		// Handle array content
+		if len(msg.Content.MultipleContent) > 0 {
+			for j := range msg.Content.MultipleContent {
+				part := &msg.Content.MultipleContent[j]
+				if part.Type == "text" && part.Text != nil {
+					rewritten := RewritePromptText(*part.Text, promptEnv, cchHash)
+					*part.Text = rewritten
+				}
+			}
+		}
+	}
+
+	return llmReq
+}
+
+// rewriteUserMessagesStructured rewrites <system-reminder> blocks in user messages.
+func rewriteUserMessagesStructured(llmReq *llm.Request) *llm.Request {
+	promptEnv := DefaultPromptEnv()
+
+	for i := range llmReq.Messages {
+		msg := &llmReq.Messages[i]
+		if msg.Role != "user" {
+			continue
+		}
+
+		// Handle string content
+		if msg.Content.Content != nil {
+			rewritten := RewriteSystemReminders(*msg.Content.Content, promptEnv)
+			*msg.Content.Content = rewritten
+		}
+
+		// Handle array content
+		if len(msg.Content.MultipleContent) > 0 {
+			for j := range msg.Content.MultipleContent {
+				part := &msg.Content.MultipleContent[j]
+				if part.Type == "text" && part.Text != nil {
+					rewritten := RewriteSystemReminders(*part.Text, promptEnv)
+					*part.Text = rewritten
+				}
+			}
+		}
 	}
 
 	return llmReq

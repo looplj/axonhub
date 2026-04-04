@@ -71,7 +71,8 @@ func BuildUserID(uid UserID) string {
 	return string(data)
 }
 
-// GenerateUserID creates a random user_id in v2 JSON format.
+// GenerateUserID creates a random user_id in v2 JSON format (deprecated).
+// Deprecated: Use GenerateUserIDFromAccount for deterministic identity.
 func GenerateUserID(ctx context.Context) string {
 	hexBytes := make([]byte, 32)
 	_, _ = rand.Read(hexBytes)
@@ -84,6 +85,23 @@ func GenerateUserID(ctx context.Context) string {
 	return BuildUserID(UserID{
 		DeviceID:    hex.EncodeToString(hexBytes),
 		AccountUUID: "",
+		SessionID:   sessionID,
+	})
+}
+
+// GenerateUserIDFromAccount creates a deterministic user_id based on account identity.
+// This ensures all requests from the same account appear as a single device.
+func GenerateUserIDFromAccount(ctx context.Context, accountIdentity string) string {
+	identity := GenerateIdentityFromAccount(accountIdentity)
+
+	sessionID, ok := shared.GetSessionID(ctx)
+	if !ok || strings.TrimSpace(sessionID) == "" {
+		sessionID = uuid.New().String()
+	}
+
+	return BuildUserID(UserID{
+		DeviceID:    identity.DeviceID,
+		AccountUUID: identity.AccountUUID,
 		SessionID:   sessionID,
 	})
 }

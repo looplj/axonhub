@@ -77,7 +77,11 @@ require (
 )
 
 require (
+	github.com/andybalholm/brotli v1.0.6 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
+	github.com/cloudflare/circl v1.3.7 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/refraction-networking/utls v1.6.7 // indirect
 	github.com/tmaxmax/go-sse v0.11.0 // indirect
 )
 

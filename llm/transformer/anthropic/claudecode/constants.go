@@ -1,5 +1,7 @@
 package claudecode
 
+import "fmt"
+
 // DefaultModels returns a static list of Claude Code-capable model IDs.
 func DefaultModels() []string {
 	return []string{
@@ -19,8 +21,6 @@ const (
 
 	RedirectURI = "http://localhost:54545/callback"
 	Scopes      = "org:create_api_key user:profile user:inference"
-	// UserAgent keep consistent with Claude CLI.
-	UserAgent = "claude-cli/2.1.78 (external, cli)"
 
 	// ClaudeCodeBetaHeader contains the beta feature identifiers for Claude Code API.
 	ClaudeCodeBetaHeader = "claude-code-20250219,interleaved-thinking-2025-05-14,prompt-caching-scope-2026-01-05,effort-2025-11-24"
@@ -33,4 +33,12 @@ const (
 	ClaudeCodeAppHeader = "cli"
 	// ClaudeCodeQuotaCheckModel is the model used for quota checking requests.
 	ClaudeCodeQuotaCheckModel = "claude-haiku-4-5"
+
+	// CCHVersion is the version used for CCH hash computation.
+	CCHVersion = "2.1.81"
+)
+
+var (
+	// UserAgent keep consistent with Claude CLI.
+	UserAgent = fmt.Sprintf("claude-cli/%s (external, cli)", CCHVersion)
 )
