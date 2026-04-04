@@ -97,17 +97,19 @@ func startServer() {
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {
-					// Clear all processing requests on shutdown
+					// First, gracefully shutdown the server to allow active requests to complete
+					err := server.Shutdown(ctx)
+					if err != nil {
+						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
+					}
+
+					// After shutdown, clear any remaining processing records owned by this node
+					// that didn't complete during graceful shutdown
 					if err := requestSvc.ClearProcessingRequestsOnShutdown(ctx); err != nil {
 						log.Error(context.Background(), "failed to clear processing requests on shutdown", log.Cause(err))
 					}
 					if err := requestSvc.ClearProcessingExecutionsOnShutdown(ctx); err != nil {
 						log.Error(context.Background(), "failed to clear processing executions on shutdown", log.Cause(err))
-					}
-
-					err := server.Shutdown(ctx)
-					if err != nil {
-						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
 					}
 
 					err = ent.Close()

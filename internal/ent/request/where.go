@@ -105,6 +105,11 @@ func ExternalID(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldExternalID, v))
 }
 
+// NodeID applies equality check predicate on the "node_id" field. It's identical to NodeIDEQ.
+func NodeID(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldNodeID, v))
+}
+
 // Stream applies equality check predicate on the "stream" field. It's identical to StreamEQ.
 func Stream(v bool) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldStream, v))
@@ -638,6 +643,81 @@ func StatusIn(vs ...Status) predicate.Request {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// NodeIDEQ applies the EQ predicate on the "node_id" field.
+func NodeIDEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldNodeID, v))
+}
+
+// NodeIDNEQ applies the NEQ predicate on the "node_id" field.
+func NodeIDNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldNodeID, v))
+}
+
+// NodeIDIn applies the In predicate on the "node_id" field.
+func NodeIDIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldNodeID, vs...))
+}
+
+// NodeIDNotIn applies the NotIn predicate on the "node_id" field.
+func NodeIDNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldNodeID, vs...))
+}
+
+// NodeIDGT applies the GT predicate on the "node_id" field.
+func NodeIDGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldNodeID, v))
+}
+
+// NodeIDGTE applies the GTE predicate on the "node_id" field.
+func NodeIDGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldNodeID, v))
+}
+
+// NodeIDLT applies the LT predicate on the "node_id" field.
+func NodeIDLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldNodeID, v))
+}
+
+// NodeIDLTE applies the LTE predicate on the "node_id" field.
+func NodeIDLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldNodeID, v))
+}
+
+// NodeIDContains applies the Contains predicate on the "node_id" field.
+func NodeIDContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldNodeID, v))
+}
+
+// NodeIDHasPrefix applies the HasPrefix predicate on the "node_id" field.
+func NodeIDHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldNodeID, v))
+}
+
+// NodeIDHasSuffix applies the HasSuffix predicate on the "node_id" field.
+func NodeIDHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldNodeID, v))
+}
+
+// NodeIDIsNil applies the IsNil predicate on the "node_id" field.
+func NodeIDIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldNodeID))
+}
+
+// NodeIDNotNil applies the NotNil predicate on the "node_id" field.
+func NodeIDNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldNodeID))
+}
+
+// NodeIDEqualFold applies the EqualFold predicate on the "node_id" field.
+func NodeIDEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldNodeID, v))
+}
+
+// NodeIDContainsFold applies the ContainsFold predicate on the "node_id" field.
+func NodeIDContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldNodeID, v))
 }
 
 // StreamEQ applies the EQ predicate on the "stream" field.

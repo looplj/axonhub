@@ -148,6 +148,26 @@ func (_u *RequestUpdate) SetNillableStatus(v *request.Status) *RequestUpdate {
 	return _u
 }
 
+// SetNodeID sets the "node_id" field.
+func (_u *RequestUpdate) SetNodeID(v string) *RequestUpdate {
+	_u.mutation.SetNodeID(v)
+	return _u
+}
+
+// SetNillableNodeID sets the "node_id" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableNodeID(v *string) *RequestUpdate {
+	if v != nil {
+		_u.SetNodeID(*v)
+	}
+	return _u
+}
+
+// ClearNodeID clears the value of the "node_id" field.
+func (_u *RequestUpdate) ClearNodeID() *RequestUpdate {
+	_u.mutation.ClearNodeID()
+	return _u
+}
+
 // SetMetricsLatencyMs sets the "metrics_latency_ms" field.
 func (_u *RequestUpdate) SetMetricsLatencyMs(v int64) *RequestUpdate {
 	_u.mutation.ResetMetricsLatencyMs()
@@ -489,6 +509,12 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
+	if value, ok := _u.mutation.NodeID(); ok {
+		_spec.SetField(request.FieldNodeID, field.TypeString, value)
+	}
+	if _u.mutation.NodeIDCleared() {
+		_spec.ClearField(request.FieldNodeID, field.TypeString)
+	}
 	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
 	}
@@ -783,6 +809,26 @@ func (_u *RequestUpdateOne) SetNillableStatus(v *request.Status) *RequestUpdateO
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetNodeID sets the "node_id" field.
+func (_u *RequestUpdateOne) SetNodeID(v string) *RequestUpdateOne {
+	_u.mutation.SetNodeID(v)
+	return _u
+}
+
+// SetNillableNodeID sets the "node_id" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableNodeID(v *string) *RequestUpdateOne {
+	if v != nil {
+		_u.SetNodeID(*v)
+	}
+	return _u
+}
+
+// ClearNodeID clears the value of the "node_id" field.
+func (_u *RequestUpdateOne) ClearNodeID() *RequestUpdateOne {
+	_u.mutation.ClearNodeID()
 	return _u
 }
 
@@ -1156,6 +1202,12 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.NodeID(); ok {
+		_spec.SetField(request.FieldNodeID, field.TypeString, value)
+	}
+	if _u.mutation.NodeIDCleared() {
+		_spec.ClearField(request.FieldNodeID, field.TypeString)
 	}
 	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)

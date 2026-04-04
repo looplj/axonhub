@@ -1565,6 +1565,10 @@ input CreateRequestInput {
   responseChunks: [JSONRawMessageInput!]
   externalID: String
   status: RequestStatus!
+  """
+  ID of the node processing this request, null if not yet assigned or completed
+  """
+  nodeID: String
   stream: Boolean
   clientIP: String
   metricsLatencyMs: Int
@@ -3890,6 +3894,10 @@ type Request implements Node {
   channelID: ID
   externalID: String
   status: RequestStatus!
+  """
+  ID of the node processing this request, null if not yet assigned or completed
+  """
+  nodeID: String
   stream: Boolean!
   clientIP: String!
   metricsLatencyMs: Int
@@ -4031,6 +4039,10 @@ type RequestExecution implements Node {
   """
   responseStatusCode: Int
   status: RequestExecutionStatus!
+  """
+  ID of the node processing this execution, null if not yet assigned or completed
+  """
+  nodeID: String
   stream: Boolean!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
@@ -4268,6 +4280,24 @@ input RequestExecutionWhereInput {
   statusIn: [RequestExecutionStatus!]
   statusNotIn: [RequestExecutionStatus!]
   """
+  node_id field predicates
+  """
+  nodeID: String
+  nodeIDNEQ: String
+  nodeIDIn: [String!]
+  nodeIDNotIn: [String!]
+  nodeIDGT: String
+  nodeIDGTE: String
+  nodeIDLT: String
+  nodeIDLTE: String
+  nodeIDContains: String
+  nodeIDHasPrefix: String
+  nodeIDHasSuffix: String
+  nodeIDIsNil: Boolean
+  nodeIDNotNil: Boolean
+  nodeIDEqualFold: String
+  nodeIDContainsFold: String
+  """
   stream field predicates
   """
   stream: Boolean
@@ -4500,6 +4530,24 @@ input RequestWhereInput {
   statusNEQ: RequestStatus
   statusIn: [RequestStatus!]
   statusNotIn: [RequestStatus!]
+  """
+  node_id field predicates
+  """
+  nodeID: String
+  nodeIDNEQ: String
+  nodeIDIn: [String!]
+  nodeIDNotIn: [String!]
+  nodeIDGT: String
+  nodeIDGTE: String
+  nodeIDLT: String
+  nodeIDLTE: String
+  nodeIDContains: String
+  nodeIDHasPrefix: String
+  nodeIDHasSuffix: String
+  nodeIDIsNil: Boolean
+  nodeIDNotNil: Boolean
+  nodeIDEqualFold: String
+  nodeIDContainsFold: String
   """
   stream field predicates
   """
@@ -5563,6 +5611,11 @@ input UpdateRequestInput {
   externalID: String
   clearExternalID: Boolean
   status: RequestStatus
+  """
+  ID of the node processing this request, null if not yet assigned or completed
+  """
+  nodeID: String
+  clearNodeID: Boolean
   metricsLatencyMs: Int
   clearMetricsLatencyMs: Boolean
   metricsFirstTokenLatencyMs: Int

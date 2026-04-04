@@ -3510,6 +3510,11 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldStatus)
 				fieldSeen[request.FieldStatus] = struct{}{}
 			}
+		case "nodeID":
+			if _, ok := fieldSeen[request.FieldNodeID]; !ok {
+				selectedFields = append(selectedFields, request.FieldNodeID)
+				fieldSeen[request.FieldNodeID] = struct{}{}
+			}
 		case "stream":
 			if _, ok := fieldSeen[request.FieldStream]; !ok {
 				selectedFields = append(selectedFields, request.FieldStream)
@@ -3753,6 +3758,11 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 			if _, ok := fieldSeen[requestexecution.FieldStatus]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldStatus)
 				fieldSeen[requestexecution.FieldStatus] = struct{}{}
+			}
+		case "nodeID":
+			if _, ok := fieldSeen[requestexecution.FieldNodeID]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldNodeID)
+				fieldSeen[requestexecution.FieldNodeID] = struct{}{}
 			}
 		case "stream":
 			if _, ok := fieldSeen[requestexecution.FieldStream]; !ok {

@@ -206,6 +206,20 @@ func (_c *RequestCreate) SetStatus(v request.Status) *RequestCreate {
 	return _c
 }
 
+// SetNodeID sets the "node_id" field.
+func (_c *RequestCreate) SetNodeID(v string) *RequestCreate {
+	_c.mutation.SetNodeID(v)
+	return _c
+}
+
+// SetNillableNodeID sets the "node_id" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableNodeID(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetNodeID(*v)
+	}
+	return _c
+}
+
 // SetStream sets the "stream" field.
 func (_c *RequestCreate) SetStream(v bool) *RequestCreate {
 	_c.mutation.SetStream(v)
@@ -564,6 +578,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
+	if value, ok := _c.mutation.NodeID(); ok {
+		_spec.SetField(request.FieldNodeID, field.TypeString, value)
+		_node.NodeID = &value
+	}
 	if value, ok := _c.mutation.Stream(); ok {
 		_spec.SetField(request.FieldStream, field.TypeBool, value)
 		_node.Stream = value
@@ -876,6 +894,24 @@ func (u *RequestUpsert) SetStatus(v request.Status) *RequestUpsert {
 // UpdateStatus sets the "status" field to the value that was provided on create.
 func (u *RequestUpsert) UpdateStatus() *RequestUpsert {
 	u.SetExcluded(request.FieldStatus)
+	return u
+}
+
+// SetNodeID sets the "node_id" field.
+func (u *RequestUpsert) SetNodeID(v string) *RequestUpsert {
+	u.Set(request.FieldNodeID, v)
+	return u
+}
+
+// UpdateNodeID sets the "node_id" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateNodeID() *RequestUpsert {
+	u.SetExcluded(request.FieldNodeID)
+	return u
+}
+
+// ClearNodeID clears the value of the "node_id" field.
+func (u *RequestUpsert) ClearNodeID() *RequestUpsert {
+	u.SetNull(request.FieldNodeID)
 	return u
 }
 
@@ -1204,6 +1240,27 @@ func (u *RequestUpsertOne) SetStatus(v request.Status) *RequestUpsertOne {
 func (u *RequestUpsertOne) UpdateStatus() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetNodeID sets the "node_id" field.
+func (u *RequestUpsertOne) SetNodeID(v string) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetNodeID(v)
+	})
+}
+
+// UpdateNodeID sets the "node_id" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateNodeID() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateNodeID()
+	})
+}
+
+// ClearNodeID clears the value of the "node_id" field.
+func (u *RequestUpsertOne) ClearNodeID() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearNodeID()
 	})
 }
 
@@ -1718,6 +1775,27 @@ func (u *RequestUpsertBulk) SetStatus(v request.Status) *RequestUpsertBulk {
 func (u *RequestUpsertBulk) UpdateStatus() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetNodeID sets the "node_id" field.
+func (u *RequestUpsertBulk) SetNodeID(v string) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetNodeID(v)
+	})
+}
+
+// UpdateNodeID sets the "node_id" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateNodeID() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateNodeID()
+	})
+}
+
+// ClearNodeID clears the value of the "node_id" field.
+func (u *RequestUpsertBulk) ClearNodeID() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearNodeID()
 	})
 }
 

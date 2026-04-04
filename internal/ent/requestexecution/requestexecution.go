@@ -47,6 +47,8 @@ const (
 	FieldResponseStatusCode = "response_status_code"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldNodeID holds the string denoting the node_id field in the database.
+	FieldNodeID = "node_id"
 	// FieldStream holds the string denoting the stream field in the database.
 	FieldStream = "stream"
 	// FieldMetricsLatencyMs holds the string denoting the metrics_latency_ms field in the database.
@@ -104,6 +106,7 @@ var Columns = []string{
 	FieldErrorMessage,
 	FieldResponseStatusCode,
 	FieldStatus,
+	FieldNodeID,
 	FieldStream,
 	FieldMetricsLatencyMs,
 	FieldMetricsFirstTokenLatencyMs,
@@ -227,6 +230,11 @@ func ByResponseStatusCode(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByNodeID orders the results by the node_id field.
+func ByNodeID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldNodeID, opts...).ToFunc()
 }
 
 // ByStream orders the results by the stream field.

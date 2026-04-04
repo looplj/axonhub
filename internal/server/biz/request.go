@@ -22,7 +22,19 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"os"
 )
+
+// getNodeID returns a unique identifier for this node instance.
+// This is used for multi-node safe cleanup of processing records.
+func getNodeID() string {
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" {
+		// Fallback to a random ID if hostname is unavailable
+		return fmt.Sprintf("node-%d", time.Now().UnixNano())
+	}
+	return hostname
+}
 
 // RequestService handles request and request execution operations.
 type RequestService struct {
@@ -32,6 +44,8 @@ type RequestService struct {
 	UsageLogService    *UsageLogService
 	DataStorageService *DataStorageService
 	channelCache       xcache.Cache[int]
+	// nodeID identifies this node instance for multi-node safe cleanup.
+	nodeID string
 }
 
 // NewRequestService creates a new RequestService.
@@ -49,6 +63,7 @@ func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogSe
 				Expiration: 30 * time.Minute,
 			},
 		}),
+		nodeID: getNodeID(),
 	}
 }
 
@@ -171,6 +186,7 @@ func (s *RequestService) CreateRequest(
 		SetFormat(string(format)).
 		SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
 		SetStatus(request.StatusProcessing).
+		SetNodeID(s.nodeID).
 		SetStream(isStream).
 		SetRequestHeaders(requestHeadersBytes)
 
@@ -307,6 +323,7 @@ func (s *RequestService) CreateRequestExecution(
 		SetModelID(modelID).
 		SetRequestBody(requestBodyForDB).
 		SetStatus(requestexecution.StatusProcessing).
+		SetNodeID(s.nodeID).
 		SetStream(request.Stream).
 		SetRequestHeaders(requestHeadersBytes)
 
@@ -900,48 +917,52 @@ func (s *RequestService) clearProcessingRecords(
 	})
 }
 
-// ClearProcessingRequestsOnShutdown marks all processing requests as canceled during server shutdown.
-// This ensures requests don't remain in "processing" state after the server stops.
+// ClearProcessingRequestsOnShutdown marks processing requests owned by this node as canceled.
+// This is safe for multi-node deployments - only requests created by this node are cleared.
 func (s *RequestService) ClearProcessingRequestsOnShutdown(ctx context.Context) error {
 	return s.clearProcessingRecords(ctx, "shutdown-cleanup-requests", "requests", func(ctx context.Context) (int, error) {
 		client := s.entFromContext(ctx)
 		return client.Request.Update().
-			Where(request.StatusEQ(request.StatusProcessing)).
+			Where(
+				request.StatusEQ(request.StatusProcessing),
+				request.NodeIDEQ(s.nodeID),
+			).
 			SetStatus(request.StatusCanceled).
 			Save(ctx)
 	})
 }
 
-// ClearProcessingExecutionsOnShutdown marks all processing request executions as canceled during server shutdown.
-// This ensures executions don't remain in "processing" state after the server stops.
+// ClearProcessingExecutionsOnShutdown marks processing request executions owned by this node as canceled.
+// This is safe for multi-node deployments - only executions created by this node are cleared.
 func (s *RequestService) ClearProcessingExecutionsOnShutdown(ctx context.Context) error {
 	return s.clearProcessingRecords(ctx, "shutdown-cleanup-executions", "executions", func(ctx context.Context) (int, error) {
 		client := s.entFromContext(ctx)
 		return client.RequestExecution.Update().
-			Where(requestexecution.StatusEQ(requestexecution.StatusProcessing)).
-			SetStatus(requestexecution.StatusCanceled).
+			Where(
+				requestexecution.StatusEQ(requestexecution.StatusProcessing),
+				requestexecution.NodeIDEQ(s.nodeID),
+			).SetStatus(requestexecution.StatusCanceled).
 			Save(ctx)
 	})
 }
 
-// ClearStaleProcessingOnStartup clears any stale processing records left from previous runs.
+// ClearStaleProcessingOnStartup clears stale processing records from previous runs of this node.
 // This handles cases where the server crashed or was forcefully terminated, leaving
 // records stuck in 'processing' state. It should be called during server initialization.
+// Only records from this node's previous runs are cleared to ensure multi-node safety.
 func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) error {
 	var errs []error
 
 	if err := s.ClearProcessingRequestsOnShutdown(ctx); err != nil {
-		log.Warn(ctx, "failed to clear stale processing requests on startup", log.Cause(err))
 		errs = append(errs, err)
 	}
 
 	if err := s.ClearProcessingExecutionsOnShutdown(ctx); err != nil {
-		log.Warn(ctx, "failed to clear stale processing executions on startup", log.Cause(err))
 		errs = append(errs, err)
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("startup cleanup failed: %v", errs)
+		return fmt.Errorf("startup cleanup failed: %w", errors.Join(errs...))
 	}
 	return nil
 }

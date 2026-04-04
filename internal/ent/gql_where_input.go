@@ -5670,6 +5670,23 @@ type RequestWhereInput struct {
 	StatusIn    []request.Status `json:"statusIn,omitempty"`
 	StatusNotIn []request.Status `json:"statusNotIn,omitempty"`
 
+	// "node_id" field predicates.
+	NodeID             *string  `json:"nodeID,omitempty"`
+	NodeIDNEQ          *string  `json:"nodeIDNEQ,omitempty"`
+	NodeIDIn           []string `json:"nodeIDIn,omitempty"`
+	NodeIDNotIn        []string `json:"nodeIDNotIn,omitempty"`
+	NodeIDGT           *string  `json:"nodeIDGT,omitempty"`
+	NodeIDGTE          *string  `json:"nodeIDGTE,omitempty"`
+	NodeIDLT           *string  `json:"nodeIDLT,omitempty"`
+	NodeIDLTE          *string  `json:"nodeIDLTE,omitempty"`
+	NodeIDContains     *string  `json:"nodeIDContains,omitempty"`
+	NodeIDHasPrefix    *string  `json:"nodeIDHasPrefix,omitempty"`
+	NodeIDHasSuffix    *string  `json:"nodeIDHasSuffix,omitempty"`
+	NodeIDIsNil        bool     `json:"nodeIDIsNil,omitempty"`
+	NodeIDNotNil       bool     `json:"nodeIDNotNil,omitempty"`
+	NodeIDEqualFold    *string  `json:"nodeIDEqualFold,omitempty"`
+	NodeIDContainsFold *string  `json:"nodeIDContainsFold,omitempty"`
+
 	// "stream" field predicates.
 	Stream    *bool `json:"stream,omitempty"`
 	StreamNEQ *bool `json:"streamNEQ,omitempty"`
@@ -6160,6 +6177,51 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, request.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.NodeID != nil {
+		predicates = append(predicates, request.NodeIDEQ(*i.NodeID))
+	}
+	if i.NodeIDNEQ != nil {
+		predicates = append(predicates, request.NodeIDNEQ(*i.NodeIDNEQ))
+	}
+	if len(i.NodeIDIn) > 0 {
+		predicates = append(predicates, request.NodeIDIn(i.NodeIDIn...))
+	}
+	if len(i.NodeIDNotIn) > 0 {
+		predicates = append(predicates, request.NodeIDNotIn(i.NodeIDNotIn...))
+	}
+	if i.NodeIDGT != nil {
+		predicates = append(predicates, request.NodeIDGT(*i.NodeIDGT))
+	}
+	if i.NodeIDGTE != nil {
+		predicates = append(predicates, request.NodeIDGTE(*i.NodeIDGTE))
+	}
+	if i.NodeIDLT != nil {
+		predicates = append(predicates, request.NodeIDLT(*i.NodeIDLT))
+	}
+	if i.NodeIDLTE != nil {
+		predicates = append(predicates, request.NodeIDLTE(*i.NodeIDLTE))
+	}
+	if i.NodeIDContains != nil {
+		predicates = append(predicates, request.NodeIDContains(*i.NodeIDContains))
+	}
+	if i.NodeIDHasPrefix != nil {
+		predicates = append(predicates, request.NodeIDHasPrefix(*i.NodeIDHasPrefix))
+	}
+	if i.NodeIDHasSuffix != nil {
+		predicates = append(predicates, request.NodeIDHasSuffix(*i.NodeIDHasSuffix))
+	}
+	if i.NodeIDIsNil {
+		predicates = append(predicates, request.NodeIDIsNil())
+	}
+	if i.NodeIDNotNil {
+		predicates = append(predicates, request.NodeIDNotNil())
+	}
+	if i.NodeIDEqualFold != nil {
+		predicates = append(predicates, request.NodeIDEqualFold(*i.NodeIDEqualFold))
+	}
+	if i.NodeIDContainsFold != nil {
+		predicates = append(predicates, request.NodeIDContainsFold(*i.NodeIDContainsFold))
 	}
 	if i.Stream != nil {
 		predicates = append(predicates, request.StreamEQ(*i.Stream))
@@ -6665,6 +6727,23 @@ type RequestExecutionWhereInput struct {
 	StatusIn    []requestexecution.Status `json:"statusIn,omitempty"`
 	StatusNotIn []requestexecution.Status `json:"statusNotIn,omitempty"`
 
+	// "node_id" field predicates.
+	NodeID             *string  `json:"nodeID,omitempty"`
+	NodeIDNEQ          *string  `json:"nodeIDNEQ,omitempty"`
+	NodeIDIn           []string `json:"nodeIDIn,omitempty"`
+	NodeIDNotIn        []string `json:"nodeIDNotIn,omitempty"`
+	NodeIDGT           *string  `json:"nodeIDGT,omitempty"`
+	NodeIDGTE          *string  `json:"nodeIDGTE,omitempty"`
+	NodeIDLT           *string  `json:"nodeIDLT,omitempty"`
+	NodeIDLTE          *string  `json:"nodeIDLTE,omitempty"`
+	NodeIDContains     *string  `json:"nodeIDContains,omitempty"`
+	NodeIDHasPrefix    *string  `json:"nodeIDHasPrefix,omitempty"`
+	NodeIDHasSuffix    *string  `json:"nodeIDHasSuffix,omitempty"`
+	NodeIDIsNil        bool     `json:"nodeIDIsNil,omitempty"`
+	NodeIDNotNil       bool     `json:"nodeIDNotNil,omitempty"`
+	NodeIDEqualFold    *string  `json:"nodeIDEqualFold,omitempty"`
+	NodeIDContainsFold *string  `json:"nodeIDContainsFold,omitempty"`
+
 	// "stream" field predicates.
 	Stream    *bool `json:"stream,omitempty"`
 	StreamNEQ *bool `json:"streamNEQ,omitempty"`
@@ -7130,6 +7209,51 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, requestexecution.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.NodeID != nil {
+		predicates = append(predicates, requestexecution.NodeIDEQ(*i.NodeID))
+	}
+	if i.NodeIDNEQ != nil {
+		predicates = append(predicates, requestexecution.NodeIDNEQ(*i.NodeIDNEQ))
+	}
+	if len(i.NodeIDIn) > 0 {
+		predicates = append(predicates, requestexecution.NodeIDIn(i.NodeIDIn...))
+	}
+	if len(i.NodeIDNotIn) > 0 {
+		predicates = append(predicates, requestexecution.NodeIDNotIn(i.NodeIDNotIn...))
+	}
+	if i.NodeIDGT != nil {
+		predicates = append(predicates, requestexecution.NodeIDGT(*i.NodeIDGT))
+	}
+	if i.NodeIDGTE != nil {
+		predicates = append(predicates, requestexecution.NodeIDGTE(*i.NodeIDGTE))
+	}
+	if i.NodeIDLT != nil {
+		predicates = append(predicates, requestexecution.NodeIDLT(*i.NodeIDLT))
+	}
+	if i.NodeIDLTE != nil {
+		predicates = append(predicates, requestexecution.NodeIDLTE(*i.NodeIDLTE))
+	}
+	if i.NodeIDContains != nil {
+		predicates = append(predicates, requestexecution.NodeIDContains(*i.NodeIDContains))
+	}
+	if i.NodeIDHasPrefix != nil {
+		predicates = append(predicates, requestexecution.NodeIDHasPrefix(*i.NodeIDHasPrefix))
+	}
+	if i.NodeIDHasSuffix != nil {
+		predicates = append(predicates, requestexecution.NodeIDHasSuffix(*i.NodeIDHasSuffix))
+	}
+	if i.NodeIDIsNil {
+		predicates = append(predicates, requestexecution.NodeIDIsNil())
+	}
+	if i.NodeIDNotNil {
+		predicates = append(predicates, requestexecution.NodeIDNotNil())
+	}
+	if i.NodeIDEqualFold != nil {
+		predicates = append(predicates, requestexecution.NodeIDEqualFold(*i.NodeIDEqualFold))
+	}
+	if i.NodeIDContainsFold != nil {
+		predicates = append(predicates, requestexecution.NodeIDContainsFold(*i.NodeIDContainsFold))
 	}
 	if i.Stream != nil {
 		predicates = append(predicates, requestexecution.StreamEQ(*i.Stream))

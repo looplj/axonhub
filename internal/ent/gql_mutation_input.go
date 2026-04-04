@@ -770,6 +770,7 @@ type CreateRequestInput struct {
 	ResponseChunks             []objects.JSONRawMessage
 	ExternalID                 *string
 	Status                     request.Status
+	NodeID                     *string
 	Stream                     *bool
 	ClientIP                   *string
 	MetricsLatencyMs           *int64
@@ -810,6 +811,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 		m.SetExternalID(*v)
 	}
 	m.SetStatus(i.Status)
+	if v := i.NodeID; v != nil {
+		m.SetNodeID(*v)
+	}
 	if v := i.Stream; v != nil {
 		m.SetStream(*v)
 	}
@@ -869,6 +873,8 @@ type UpdateRequestInput struct {
 	ClearExternalID                 bool
 	ExternalID                      *string
 	Status                          *request.Status
+	ClearNodeID                     bool
+	NodeID                          *string
 	ClearMetricsLatencyMs           bool
 	MetricsLatencyMs                *int64
 	ClearMetricsFirstTokenLatencyMs bool
@@ -921,6 +927,12 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.Status; v != nil {
 		m.SetStatus(*v)
+	}
+	if i.ClearNodeID {
+		m.ClearNodeID()
+	}
+	if v := i.NodeID; v != nil {
+		m.SetNodeID(*v)
 	}
 	if i.ClearMetricsLatencyMs {
 		m.ClearMetricsLatencyMs()
