@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -21,7 +23,6 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/samber/lo"
 )
 
 // AllModelEntries is the resolver for the allModelEntries field.
@@ -358,6 +359,15 @@ func (r *mutationResolver) UpdateUserStatus(ctx context.Context, id objects.GUID
 	return r.userService.UpdateUserStatus(ctx, id.ID, status)
 }
 
+// DeleteUser is the resolver for the deleteUser field.
+func (r *mutationResolver) DeleteUser(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.userService.DeleteUser(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // CreateRole is the resolver for the createRole field.
 func (r *mutationResolver) CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error) {
 	return r.roleService.CreateRole(ctx, input)
@@ -665,6 +675,8 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type channelSettingsResolver struct{ *Resolver }
-type mutationResolver struct{ *Resolver }
-type segmentResolver struct{ *Resolver }
+type (
+	channelSettingsResolver struct{ *Resolver }
+	mutationResolver        struct{ *Resolver }
+	segmentResolver         struct{ *Resolver }
+)

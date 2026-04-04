@@ -1,8 +1,9 @@
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { IconEdit, IconUserOff, IconUserCheck, IconKey, IconUserPlus } from '@tabler/icons-react';
+import { IconEdit, IconUserOff, IconUserCheck, IconKey, IconUserPlus, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +23,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation();
   const { setOpen, setCurrentRow } = useUsers();
   const { userPermissions } = usePermissions();
+  const { auth } = useAuthStore();
+
+  // Can't delete self, owner users, or if no permission
+  const canDelete = userPermissions.canWrite &&
+    !row.original.isOwner &&
+    auth?.user?.id !== row.original.id;
 
   // Don't show menu if user has no write permissions
   if (!userPermissions.canWrite) {
@@ -96,6 +103,23 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               )}
               {row.original.status === 'activated' ? t('users.actions.deactivate') : t('users.actions.activate')}
             </DropdownMenuItem>
+          )}
+
+          {/* Delete - requires write permission, can't delete self or owner */}
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setCurrentRow(row.original);
+                  setOpen('delete');
+                }}
+                className='text-red-600!'
+              >
+                <IconTrash size={16} className='mr-2' />
+                {t('users.actions.delete')}
+              </DropdownMenuItem>
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

@@ -161,6 +161,12 @@ export const UPDATE_USER_STATUS_MUTATION = `
   }
 `;
 
+export const DELETE_USER_MUTATION = `
+  mutation DeleteUser($id: ID!) {
+    deleteUser(id: $id)
+  }
+`;
+
 export const SIGN_IN_MUTATION = `
   mutation SignIn($input: SignInInput!) {
     signIn(input: $input) {

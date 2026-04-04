@@ -650,6 +650,7 @@ type Mutation {
   createUser(input: CreateUserInput!): User!
   updateUser(id: ID!, input: UpdateUserInput!): User!
   updateUserStatus(id: ID!, status: UserStatus!): User!
+  deleteUser(id: ID!): Boolean!
 
   createRole(input: CreateRoleInput!): Role!
   updateRole(id: ID!, input: UpdateRoleInput!): Role!

@@ -147,5 +147,6 @@
   "apikeys.validation.quotaAtLeastOneLimit": "配额至少需要设置一个限制项",
   "apikeys.validation.quotaPastDurationRequired": "过去一段时间的配置不能为空",
   "apikeys.validation.quotaCalendarDurationRequired": "自然周期的配置不能为空",
-  "apikeys.validation.quotaCostInvalid": "Cost 必须是有效数字"
+  "apikeys.validation.quotaCostInvalid": "Cost 必须是有效数字",
+  "apikeys.user.deleted": "用户已删除"
 }

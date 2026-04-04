@@ -19,18 +19,19 @@ interface Props {
 
 export function UsersDeleteDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
-  const [confirmText, setConfirmText] = useState('');
+  const [value, setValue] = useState('');
   const deleteUser = useDeleteUser();
 
   const fullName = `${currentRow.firstName} ${currentRow.lastName}`;
 
   const handleDelete = async () => {
-    if (confirmText.trim() !== fullName) return;
+    if (value.trim() !== fullName) return;
 
     try {
       await deleteUser.mutateAsync(currentRow.id);
       toast.success(t('common.success.userDeleted'));
       onOpenChange(false);
+      setValue('');
     } catch (error) {
       toast.error(t('common.errors.somethingWentWrong'));
     }
@@ -39,39 +40,40 @@ export function UsersDeleteDialog({ open, onOpenChange, currentRow }: Props) {
   return (
     <ConfirmDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(state) => {
+        if (!state) setValue('');
+        onOpenChange(state);
+      }}
       handleConfirm={handleDelete}
-      disabled={confirmText.trim() !== fullName || deleteUser.isPending}
+      disabled={value.trim() !== fullName || deleteUser.isPending}
       title={
         <span className='text-destructive'>
-          <IconAlertTriangle className='stroke-destructive mr-1 inline-block' size={18} /> Delete User
+          <IconAlertTriangle className='stroke-destructive mr-1 inline-block' size={18} /> {t('users.dialogs.delete.title')}
         </span>
       }
       desc={
         <div className='space-y-4'>
-          <p className='mb-2'>
-            Are you sure you want to delete <span className='font-bold'>{fullName}</span>?
-            <br />
-            This action will permanently remove the user from the system. This cannot be undone.
-          </p>
-
-          <Label className='my-2'>
-            Full Name:
+          <Alert variant='destructive'>
+            <IconAlertTriangle className='h-4 w-4' />
+            <AlertTitle>{t('users.dialogs.delete.warning')}</AlertTitle>
+            <AlertDescription>{t('users.dialogs.delete.warningTitle')}</AlertDescription>
+          </Alert>
+          <div className='space-y-2'>
+            <Label htmlFor='user-fullname'>
+              {t('users.dialogs.delete.confirmLabel')} <strong>{fullName}</strong> {t('users.dialogs.delete.confirmLabelSuffix')}
+            </Label>
             <Input
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder='Enter full name to confirm deletion.'
+              id='user-fullname'
+              placeholder={fullName}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
               data-testid='delete-confirmation-input'
             />
-          </Label>
-
-          <Alert variant='destructive'>
-            <AlertTitle>Warning!</AlertTitle>
-            <AlertDescription>Please be carefull, this operation can not be rolled back.</AlertDescription>
-          </Alert>
+          </div>
         </div>
       }
-      confirmText={deleteUser.isPending ? 'Deleting...' : 'Delete'}
+      confirmText={deleteUser.isPending ? t('users.dialogs.delete.deletingButton') : t('users.dialogs.delete.confirmButton')}
+      cancelBtnText={t('common.buttons.cancel')}
       destructive
       data-testid='delete-dialog'
     />

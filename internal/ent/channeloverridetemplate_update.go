@@ -208,9 +208,6 @@ func (_u *ChannelOverrideTemplateUpdate) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "ChannelOverrideTemplate.name": %w`, err)}
 		}
 	}
-	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "ChannelOverrideTemplate.user"`)
-	}
 	return nil
 }
 
@@ -494,9 +491,6 @@ func (_u *ChannelOverrideTemplateUpdateOne) check() error {
 		if err := channeloverridetemplate.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "ChannelOverrideTemplate.name": %w`, err)}
 		}
-	}
-	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "ChannelOverrideTemplate.user"`)
 	}
 	return nil
 }

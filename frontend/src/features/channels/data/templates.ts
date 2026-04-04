@@ -13,6 +13,11 @@ export const channelOverrideTemplateSchema = z.object({
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   userID: z.string(),
+  user: z.object({
+    id: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+  }).nullable().optional(),
   name: z.string(),
   description: z.string().optional().nullable(),
   headerOverrideOperations: z.array(overrideOperationSchema),
@@ -70,6 +75,11 @@ const TEMPLATE_FRAGMENT = `
     createdAt
     updatedAt
     userID
+    user {
+      id
+      firstName
+      lastName
+    }
     name
     description
     overrideParameters

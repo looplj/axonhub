@@ -7,7 +7,7 @@ type APIKey implements Node {
   """
   The creator of the API key
   """
-  userID: ID!
+  userID: ID
   """
   Project ID, default to 1 for backward compatibility
   """
@@ -24,7 +24,7 @@ type APIKey implements Node {
   """
   scopes: [String!]
   profiles: APIKeyProfiles
-  user: User!
+  user: User @goField(forceResolver: true)
   project: Project!
   requests(
     """
@@ -172,6 +172,8 @@ input APIKeyWhereInput {
   userIDNEQ: ID
   userIDIn: [ID!]
   userIDNotIn: [ID!]
+  userIDIsNil: Boolean
+  userIDNotNil: Boolean
   """
   project_id field predicates
   """
@@ -796,7 +798,7 @@ type ChannelOverrideTemplate implements Node {
   """
   Owner of this template
   """
-  userID: ID!
+  userID: ID
   """
   Template name, unique per user
   """
@@ -821,7 +823,7 @@ type ChannelOverrideTemplate implements Node {
   Override request body parameters
   """
   bodyOverrideOperations: [OverrideOperation!] @goField(forceResolver: true)
-  user: User!
+  user: User @goField(forceResolver: true)
 }
 """
 A connection to a list of items.
@@ -921,6 +923,8 @@ input ChannelOverrideTemplateWhereInput {
   userIDNEQ: ID
   userIDIn: [ID!]
   userIDNotIn: [ID!]
+  userIDIsNil: Boolean
+  userIDNotNil: Boolean
   """
   name field predicates
   """

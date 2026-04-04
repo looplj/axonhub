@@ -102,3 +102,41 @@ cd cmd/axoncli && go test ./...  # Run CLI tests
 ## Biz Service Rules
 
 1. Dependency services are guaranteed to be initialized by the framework, so your business logic must not add nil checks for them.
+2. **Use `contexts.GetUser(ctx)` to get current user**, NOT `ctx.Value("user_id").(int)`. The correct pattern:
+   ```go
+   // ✅ Correct
+   currentUser, ok := contexts.GetUser(ctx)
+   if ok && currentUser != nil && currentUser.ID == id {
+       return fmt.Errorf("cannot delete yourself")
+   }
+   
+   // ❌ Wrong - will always return false/zero value
+   currentUserID, ok := ctx.Value("user_id").(int)
+   ```
+3. **Use transactions for operations that modify multiple tables**. Use `s.RunInTransaction(ctx, func(ctx context.Context) error { ... })`:
+   ```go
+   return s.RunInTransaction(ctx, func(ctx context.Context) error {
+       // All database operations within this closure are atomic
+       _, err := client.UserProject.Delete().Where(...).Exec(ctx)
+       if err != nil {
+           return err
+       }
+       _, err = client.UserRole.Delete().Where(...).Exec(ctx)
+       if err != nil {
+           return err
+       }
+       return client.User.DeleteOneID(id).Exec(ctx)
+   })
+   ```
+4. **Do NOT manually delete related entities when Ent schema has `OnDelete` cascade**. Check the schema's `edge.OnDelete()` annotation:
+   ```go
+   // In ent/schema/user.go, edges to User may have:
+   // edge.From("api_keys", APIKey.Type).Ref("user").Unique().
+   //     Annotations(ent.OnDelete(ent.Cascade))
+   // This means deleting User will automatically cascade delete APIKey.
+   // DO NOT manually delete APIKey, ChannelOverrideTemplate, etc. before deleting User.
+   ```
+5. **Do NOT write manual migration SQL files**. Ent handles schema migrations automatically:
+   - Schema changes are applied automatically when the server starts (in development mode).
+   - To add a field: update the ent schema in `internal/ent/schema/*.go`, then run `make generate`.
+   - DO NOT create files in `migrations/` directory for schema changes.
