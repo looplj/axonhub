@@ -122,6 +122,7 @@ func buildPromptEnv(boot *bootstrap.Bootstrap, workspace string) prompts.PromptE
 	return prompts.PromptEnv{
 		Date:         boot.Date,
 		Timezone:     boot.Timezone,
+		Model:        boot.Model,
 		OS:           boot.OS,
 		Workspace:    workspace,
 		ThreadID:     boot.ThreadID,
@@ -415,9 +416,18 @@ func (r *Runner) ProcessIsolated(ctx context.Context, text string, systemPrompts
 	// shared so that events (e.g. archive writing) are still propagated.
 	cm := agent.NewSimpleContextManager(nil)
 
+	r.Logger.Info("ProcessIsolated model resolution",
+		"input_model", model,
+		"config_model", cfg.Model,
+	)
+
 	if model == "" {
 		model = cfg.Model
 	}
+
+	r.Logger.Info("ProcessIsolated final model",
+		"resolved_model", model,
+	)
 
 	return subagent.Run(ctx, subagent.Config{
 		Model:          model,

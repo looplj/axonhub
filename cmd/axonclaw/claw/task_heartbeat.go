@@ -23,6 +23,7 @@ type HeartbeatSettings struct {
 	Timezone     string `json:"timezone"`
 	LightContext bool   `json:"light_context"`
 	AckMaxChars  int    `json:"ack_max_chars"`
+	Model        string `json:"model,omitempty"`
 }
 
 func DefaultHeartbeatSettings() HeartbeatSettings {
@@ -115,6 +116,10 @@ func HeartbeatSettingsFromTask(t task.Task) HeartbeatSettings {
 		settings.AckMaxChars = actionSettings.AckMaxChars
 	}
 
+	if strings.TrimSpace(actionSettings.Model) != "" {
+		settings.Model = strings.TrimSpace(actionSettings.Model)
+	}
+
 	return settings
 }
 
@@ -148,8 +153,10 @@ func ApplyHeartbeatSetting(t *task.Task, key, value string) error {
 		}
 
 		t.Action["ack_max_chars"] = n
+	case "model":
+		t.Action["model"] = value
 	default:
-		return fmt.Errorf("unknown key %q (available: interval, active_start, active_end, timezone, light_context, ack_max_chars)", key)
+		return fmt.Errorf("unknown key %q (available: interval, active_start, active_end, timezone, light_context, ack_max_chars, model)", key)
 	}
 
 	return nil
@@ -171,7 +178,7 @@ func (h *TaskHandler) handleHeartbeat(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	result, err := h.runner.ProcessIsolated(ctx, text, systemPrompts, "")
+	result, err := h.runner.ProcessIsolated(ctx, text, systemPrompts, settings.Model)
 	if err != nil {
 		return fmt.Errorf("process heartbeat task: %w", err)
 	}

@@ -396,4 +396,7 @@ issues:
   new: true
 
   # Auto-fix enabled issues. Default is false.
-  fix: true
+  # ⚠️ 注意：fix 会修复所有检测到的问题，不只是 new code
+  # 要只修复新代码，请使用命令行: golangci-lint run --new --fix
+  # 或者: golangci-lint run --new-from-rev=HEAD~1 --fix
+  fix: false

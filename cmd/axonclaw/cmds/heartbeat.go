@@ -4,24 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/looplj/axonhub/axon/task"
 	"github.com/spf13/cobra"
 
 	"github.com/looplj/axonhub/cmd/axonclaw/claw"
-	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
-
-func newHeartbeatTaskStore() (*task.Store, error) {
-	runtimeDir, err := conf.RuntimeDir()
-	if err != nil {
-		return nil, fmt.Errorf("resolve runtime directory: %w", err)
-	}
-
-	return task.NewStore(filepath.Join(runtimeDir, "tasks"))
-}
 
 func NewHeartbeatCommand(opts StdioOptions) *cobra.Command {
 	stdout := opts.Stdout
@@ -51,6 +40,7 @@ and handle anything that needs proactive attention.`,
 	root.AddCommand(newHeartbeatEnableCmd(stdout, true))
 	root.AddCommand(newHeartbeatEnableCmd(stdout, false))
 	root.AddCommand(newHeartbeatIntervalCmd(stdout))
+	root.AddCommand(newHeartbeatModelCmd(stdout))
 
 	return root
 }
@@ -60,7 +50,7 @@ func newHeartbeatStatusCmd(out *os.File) *cobra.Command {
 		Use:   "status",
 		Short: "Show heartbeat status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newHeartbeatTaskStore()
+			store, err := newTaskStore()
 			if err != nil {
 				return err
 			}
@@ -90,6 +80,12 @@ func newHeartbeatStatusCmd(out *os.File) *cobra.Command {
 				fmt.Fprintf(out, "Timezone: (local)\n")
 			}
 
+			if settings.Model != "" {
+				fmt.Fprintf(out, "Model: %s\n", settings.Model)
+			} else {
+				fmt.Fprintf(out, "Model: (default)\n")
+			}
+
 			fmt.Fprintf(out, "Light Context: %v\n", settings.LightContext)
 			fmt.Fprintf(out, "Ack Max Chars: %d\n", settings.AckMaxChars)
 			fmt.Fprintf(out, "Task ID: %s\n", claw.SystemTaskHeartbeatID)
@@ -112,7 +108,7 @@ func newHeartbeatEnableCmd(out *os.File, enable bool) *cobra.Command {
 		Use:   use,
 		Short: short,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newHeartbeatTaskStore()
+			store, err := newTaskStore()
 			if err != nil {
 				return err
 			}
@@ -136,6 +132,67 @@ func newHeartbeatEnableCmd(out *os.File, enable bool) *cobra.Command {
 	}
 }
 
+func newHeartbeatModelCmd(out *os.File) *cobra.Command {
+	return &cobra.Command{
+		Use:   "model [model]",
+		Short: "Show or set heartbeat model",
+		Long: `Show or set the model used for heartbeat tasks.
+
+Examples:
+  axonclaw heartbeat model
+  axonclaw heartbeat model claude-sonnet-4-20250514`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := newTaskStore()
+			if err != nil {
+				return err
+			}
+
+			t, err := store.Get(claw.SystemTaskHeartbeatID)
+			if err != nil {
+				return err
+			}
+
+			if len(args) == 0 {
+				model := claw.HeartbeatSettingsFromTask(*t).Model
+				if model == "" {
+					model = "(default)"
+				}
+
+				fmt.Fprintln(out, model)
+
+				return nil
+			}
+
+			value := strings.TrimSpace(args[0])
+			if err := claw.ApplyHeartbeatSetting(t, "model", value); err != nil {
+				return err
+			}
+
+			if err := store.Update(func(tasks []task.Task) ([]task.Task, bool, error) {
+				for i := range tasks {
+					if tasks[i].ID != claw.SystemTaskHeartbeatID {
+						continue
+					}
+
+					t.Runtime = tasks[i].Runtime
+					tasks[i] = *t
+
+					return tasks, true, nil
+				}
+
+				return tasks, false, fmt.Errorf("heartbeat task %q not found", claw.SystemTaskHeartbeatID)
+			}); err != nil {
+				return err
+			}
+
+			fmt.Fprintf(out, "Heartbeat model set to %s.\n", value)
+
+			return nil
+		},
+	}
+}
+
 func newHeartbeatIntervalCmd(out *os.File) *cobra.Command {
 	return &cobra.Command{
 		Use:   "interval [duration]",
@@ -147,7 +204,7 @@ Examples:
   axonclaw heartbeat interval 1h`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newHeartbeatTaskStore()
+			store, err := newTaskStore()
 			if err != nil {
 				return err
 			}

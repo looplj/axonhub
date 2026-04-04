@@ -5,15 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/axon/task"
 	"github.com/spf13/cobra"
-
-	"github.com/looplj/axonhub/cmd/axonclaw/conf"
 )
 
 func NewTaskCommand(opts StdioOptions) *cobra.Command {
@@ -84,13 +81,7 @@ Examples:
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			runtimeDir, err := conf.RuntimeDir()
-			if err != nil {
-				return fmt.Errorf("resolve runtime directory: %w", err)
-			}
-
-			taskDir := filepath.Join(runtimeDir, "tasks")
-			s, err := task.NewStore(taskDir)
+			s, err := newTaskStore()
 			if err != nil {
 				return err
 			}

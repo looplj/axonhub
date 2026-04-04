@@ -9,6 +9,7 @@ import (
 type PromptEnv struct {
 	Date              string
 	Timezone          string
+	Model             string
 	OS                string
 	Workspace         string
 	ThreadID          string

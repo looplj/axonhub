@@ -58,12 +58,25 @@ func (h *TaskHandler) handlePrompt(ctx context.Context, t task.Task) error {
 	}
 
 	mode := action.NormalizedMode()
-	h.logger.Info("execute task prompt to agent", "task_id", t.ID, "task_name", t.Name, "mode", mode)
+	h.logger.Info("execute task prompt to agent",
+		"task_id", t.ID,
+		"task_name", t.Name,
+		"mode", mode,
+		"configured_model", action.Model,
+		"raw_action", t.Action,
+	)
 
 	if mode == PromptModeMain {
 		h.runner.FollowUP(ctx, action.Message)
 		return nil
 	}
+
+	h.logger.Info("prompt task model resolution",
+		"task_id", t.ID,
+		"action_model", action.Model,
+		"agent_default_model", h.runner.Agent.Config().Model,
+		"acton_model", action.Model,
+	)
 
 	_, err = h.runner.ProcessIsolated(ctx, action.Message, h.runner.Agent.Config().SystemPrompts, action.Model)
 	if err != nil {

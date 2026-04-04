@@ -79,6 +79,7 @@ func Do(ctx context.Context, client graphql.Client, data Params) (*Bootstrap, er
 	tmplData := prompts.PromptEnv{
 		Date:              now.Format("2006-01-02"),
 		Timezone:          timezone,
+		Model:             model,
 		OS:                osName,
 		Workspace:         data.Workspace,
 		ThreadID:          threadID,

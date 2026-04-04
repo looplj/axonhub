@@ -49,6 +49,27 @@ func TestBuildSystemPromptsReturnsEmptyWhenSystemFileIsEmpty(t *testing.T) {
 	}
 }
 
+func TestBuildSystemPromptsIncludesModelInEnvironmentPrompt(t *testing.T) {
+	prompts := BuildSystemPrompts(PromptEnv{Model: "claude-3-7-sonnet"}, &Bootstrap{})
+
+	var envPrompt string
+
+	for _, p := range prompts {
+		if strings.Contains(p, "# Environment") {
+			envPrompt = p
+			break
+		}
+	}
+
+	if envPrompt == "" {
+		t.Fatalf("missing environment prompt in results")
+	}
+
+	if !strings.Contains(envPrompt, "| **Model** | claude-3-7-sonnet |") {
+		t.Fatalf("missing model row in environment prompt: %q", envPrompt)
+	}
+}
+
 func TestDefaultSystemTemplateContainsBasicContent(t *testing.T) {
 	system := DefaultSystemTemplate
 	if !strings.Contains(system, "helpful assistant") {
