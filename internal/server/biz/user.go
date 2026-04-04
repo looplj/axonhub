@@ -8,10 +8,12 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
+	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -451,4 +453,67 @@ func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID i
 	s.invalidateUserCache(ctx, userID)
 
 	return userProject, nil
+}
+
+// DeleteUser soft deletes a user and handles all related data.
+// This method performs the following operations:
+// 1. Validates permissions
+// 2. Checks if user is owner (cannot delete owner)
+// 3. Removes user from all projects (UserProject)
+// 4. Removes all user roles (UserRole)
+// 5. Soft deletes the user
+// 6. Invalidates user cache.
+func (s *UserService) DeleteUser(ctx context.Context, id int) error {
+	// Validate permissions before deleting
+	if err := s.permissionValidator.CanEditUserPermissions(ctx, id, nil); err != nil {
+		return fmt.Errorf("permission denied: %w", err)
+	}
+
+	// Check if trying to delete self
+	currentUser, ok := contexts.GetUser(ctx)
+	if ok && currentUser != nil && currentUser.ID == id {
+		return fmt.Errorf("cannot delete yourself")
+	}
+
+	return s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
+
+		// Get user to check if it's an owner
+		u, err := client.User.Get(ctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get user: %w", err)
+		}
+
+		// Cannot delete owner users
+		if u.IsOwner {
+			return fmt.Errorf("cannot delete owner user, transfer ownership first")
+		}
+
+		// 1. Delete UserProject relationships
+		_, err = client.UserProject.Delete().
+			Where(userproject.UserIDEQ(id)).
+			Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete user projects: %w", err)
+		}
+
+		// 2. Delete UserRole relationships
+		_, err = client.UserRole.Delete().
+			Where(userrole.UserIDEQ(id)).
+			Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete user roles: %w", err)
+		}
+
+		// 3. Soft delete the user
+		err = client.User.DeleteOneID(id).Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete user: %w", err)
+		}
+
+		// 4. Invalidate user cache
+		s.invalidateUserCache(ctx, id)
+
+		return nil
+	})
 }

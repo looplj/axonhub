@@ -145,5 +145,6 @@
   "apikeys.validation.quotaAtLeastOneLimit": "Quota must set at least one limit",
   "apikeys.validation.quotaPastDurationRequired": "Past duration is required",
   "apikeys.validation.quotaCalendarDurationRequired": "Calendar duration is required",
-  "apikeys.validation.quotaCostInvalid": "Cost must be a valid number"
+  "apikeys.validation.quotaCostInvalid": "Cost must be a valid number",
+  "apikeys.user.deleted": "User Deleted"
 }

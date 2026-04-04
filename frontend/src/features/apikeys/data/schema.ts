@@ -26,7 +26,7 @@ export const apiKeySchema = z.object({
   id: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-  user: userSchema.partial().optional(),
+  user: userSchema.partial().optional().nullable(),
   key: z.string(),
   name: z.string(),
   type: apiKeyTypeSchema,

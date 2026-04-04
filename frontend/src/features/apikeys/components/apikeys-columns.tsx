@@ -99,7 +99,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.creator')} />,
     cell: ({ row }) => {
       const creator = row.original.user;
-      const displayName = creator ? `${creator.firstName} ${creator.lastName}` : '-';
+      const displayName = creator ? `${creator.firstName} ${creator.lastName}` : t('apikeys.user.deleted');
       return <LongText className='text-muted-foreground max-w-24'>{displayName}</LongText>;
     },
     filterFn: (row, _id, value) => {

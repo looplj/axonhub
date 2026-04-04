@@ -230,6 +230,16 @@ func UserIDNotIn(vs ...int) predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotIn(FieldUserID, vs...))
 }
 
+// UserIDIsNil applies the IsNil predicate on the "user_id" field.
+func UserIDIsNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldIsNull(FieldUserID))
+}
+
+// UserIDNotNil applies the NotNil predicate on the "user_id" field.
+func UserIDNotNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotNull(FieldUserID))
+}
+
 // ProjectIDEQ applies the EQ predicate on the "project_id" field.
 func ProjectIDEQ(v int) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldProjectID, v))

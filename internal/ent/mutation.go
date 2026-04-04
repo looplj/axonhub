@@ -357,9 +357,22 @@ func (m *APIKeyMutation) OldUserID(ctx context.Context) (v int, err error) {
 	return oldValue.UserID, nil
 }
 
+// ClearUserID clears the value of the "user_id" field.
+func (m *APIKeyMutation) ClearUserID() {
+	m.user = nil
+	m.clearedFields[apikey.FieldUserID] = struct{}{}
+}
+
+// UserIDCleared returns if the "user_id" field was cleared in this mutation.
+func (m *APIKeyMutation) UserIDCleared() bool {
+	_, ok := m.clearedFields[apikey.FieldUserID]
+	return ok
+}
+
 // ResetUserID resets all changes to the "user_id" field.
 func (m *APIKeyMutation) ResetUserID() {
 	m.user = nil
+	delete(m.clearedFields, apikey.FieldUserID)
 }
 
 // SetProjectID sets the "project_id" field.
@@ -664,7 +677,7 @@ func (m *APIKeyMutation) ClearUser() {
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *APIKeyMutation) UserCleared() bool {
-	return m.cleareduser
+	return m.UserIDCleared() || m.cleareduser
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -1024,6 +1037,9 @@ func (m *APIKeyMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *APIKeyMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(apikey.FieldUserID) {
+		fields = append(fields, apikey.FieldUserID)
+	}
 	if m.FieldCleared(apikey.FieldScopes) {
 		fields = append(fields, apikey.FieldScopes)
 	}
@@ -1044,6 +1060,9 @@ func (m *APIKeyMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *APIKeyMutation) ClearField(name string) error {
 	switch name {
+	case apikey.FieldUserID:
+		m.ClearUserID()
+		return nil
 	case apikey.FieldScopes:
 		m.ClearScopes()
 		return nil
@@ -5394,9 +5413,22 @@ func (m *ChannelOverrideTemplateMutation) OldUserID(ctx context.Context) (v int,
 	return oldValue.UserID, nil
 }
 
+// ClearUserID clears the value of the "user_id" field.
+func (m *ChannelOverrideTemplateMutation) ClearUserID() {
+	m.user = nil
+	m.clearedFields[channeloverridetemplate.FieldUserID] = struct{}{}
+}
+
+// UserIDCleared returns if the "user_id" field was cleared in this mutation.
+func (m *ChannelOverrideTemplateMutation) UserIDCleared() bool {
+	_, ok := m.clearedFields[channeloverridetemplate.FieldUserID]
+	return ok
+}
+
 // ResetUserID resets all changes to the "user_id" field.
 func (m *ChannelOverrideTemplateMutation) ResetUserID() {
 	m.user = nil
+	delete(m.clearedFields, channeloverridetemplate.FieldUserID)
 }
 
 // SetName sets the "name" field.
@@ -5709,7 +5741,7 @@ func (m *ChannelOverrideTemplateMutation) ClearUser() {
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *ChannelOverrideTemplateMutation) UserCleared() bool {
-	return m.cleareduser
+	return m.UserIDCleared() || m.cleareduser
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -5974,6 +6006,9 @@ func (m *ChannelOverrideTemplateMutation) AddField(name string, value ent.Value)
 // mutation.
 func (m *ChannelOverrideTemplateMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(channeloverridetemplate.FieldUserID) {
+		fields = append(fields, channeloverridetemplate.FieldUserID)
+	}
 	if m.FieldCleared(channeloverridetemplate.FieldDescription) {
 		fields = append(fields, channeloverridetemplate.FieldDescription)
 	}
@@ -5997,6 +6032,9 @@ func (m *ChannelOverrideTemplateMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ChannelOverrideTemplateMutation) ClearField(name string) error {
 	switch name {
+	case channeloverridetemplate.FieldUserID:
+		m.ClearUserID()
+		return nil
 	case channeloverridetemplate.FieldDescription:
 		m.ClearDescription()
 		return nil

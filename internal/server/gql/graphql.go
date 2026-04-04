@@ -163,3 +163,20 @@ func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (
 
 	return ch, nil
 }
+
+func getNilableUser(ctx context.Context, client *ent.Client, userID int) (*ent.User, error) {
+	if userID == 0 {
+		return nil, nil
+	}
+
+	u, err := client.User.Query().Where(user.ID(userID)).First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to load user: %w", err)
+	}
+
+	return u, nil
+}

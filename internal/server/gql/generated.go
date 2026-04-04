@@ -805,6 +805,7 @@ type ComplexityRoot struct {
 		DeletePromptProtectionRule           func(childComplexity int, id objects.GUID) int
 		DeleteProxyPreset                    func(childComplexity int, url string) int
 		DeleteRole                           func(childComplexity int, id objects.GUID) int
+		DeleteUser                           func(childComplexity int, id objects.GUID) int
 		DisableChannelAPIKey                 func(childComplexity int, channelID objects.GUID, key string) int
 		EnableAllChannelAPIKeys              func(childComplexity int, channelID objects.GUID) int
 		EnableChannelAPIKey                  func(childComplexity int, channelID objects.GUID, key string) int
@@ -1698,6 +1699,8 @@ type APIKeyResolver interface {
 
 	UserID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error)
 	ProjectID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error)
+
+	User(ctx context.Context, obj *ent.APIKey) (*ent.User, error)
 }
 type ChannelResolver interface {
 	ID(ctx context.Context, obj *ent.Channel) (*objects.GUID, error)
@@ -1726,6 +1729,7 @@ type ChannelOverrideTemplateResolver interface {
 
 	HeaderOverrideOperations(ctx context.Context, obj *ent.ChannelOverrideTemplate) ([]*objects.OverrideOperation, error)
 	BodyOverrideOperations(ctx context.Context, obj *ent.ChannelOverrideTemplate) ([]*objects.OverrideOperation, error)
+	User(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*ent.User, error)
 }
 type ChannelProbeResolver interface {
 	ID(ctx context.Context, obj *ent.ChannelProbe) (*objects.GUID, error)
@@ -1775,6 +1779,7 @@ type MutationResolver interface {
 	CreateUser(ctx context.Context, input ent.CreateUserInput) (*ent.User, error)
 	UpdateUser(ctx context.Context, id objects.GUID, input ent.UpdateUserInput) (*ent.User, error)
 	UpdateUserStatus(ctx context.Context, id objects.GUID, status user.Status) (*ent.User, error)
+	DeleteUser(ctx context.Context, id objects.GUID) (bool, error)
 	CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error)
 	UpdateRole(ctx context.Context, id objects.GUID, input ent.UpdateRoleInput) (*ent.Role, error)
 	DeleteRole(ctx context.Context, id objects.GUID) (bool, error)
@@ -4968,6 +4973,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteRole(childComplexity, args["id"].(objects.GUID)), true
+	case "Mutation.deleteUser":
+		if e.complexity.Mutation.DeleteUser == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteUser_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteUser(childComplexity, args["id"].(objects.GUID)), true
 	case "Mutation.disableChannelAPIKey":
 		if e.complexity.Mutation.DisableChannelAPIKey == nil {
 			break
@@ -10091,6 +10107,17 @@ func (ec *executionContext) field_Mutation_deleteRole_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_disableChannelAPIKey_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12241,9 +12268,9 @@ func (ec *executionContext) _APIKey_userID(ctx context.Context, field graphql.Co
 			return ec.resolvers.APIKey().UserID(ctx, obj)
 		},
 		nil,
-		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		ec.marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -12476,12 +12503,12 @@ func (ec *executionContext) _APIKey_user(ctx context.Context, field graphql.Coll
 		field,
 		ec.fieldContext_APIKey_user,
 		func(ctx context.Context) (any, error) {
-			return obj.User(ctx)
+			return ec.resolvers.APIKey().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUser,
+		ec.marshalOUser2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUser,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -12490,7 +12517,7 @@ func (ec *executionContext) fieldContext_APIKey_user(_ context.Context, field gr
 		Object:     "APIKey",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: false,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -17834,9 +17861,9 @@ func (ec *executionContext) _ChannelOverrideTemplate_userID(ctx context.Context,
 			return ec.resolvers.ChannelOverrideTemplate().UserID(ctx, obj)
 		},
 		nil,
-		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		ec.marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -18068,12 +18095,12 @@ func (ec *executionContext) _ChannelOverrideTemplate_user(ctx context.Context, f
 		field,
 		ec.fieldContext_ChannelOverrideTemplate_user,
 		func(ctx context.Context) (any, error) {
-			return obj.User(ctx)
+			return ec.resolvers.ChannelOverrideTemplate().User(ctx, obj)
 		},
 		nil,
-		ec.marshalNUser2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUser,
+		ec.marshalOUser2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUser,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -18082,7 +18109,7 @@ func (ec *executionContext) fieldContext_ChannelOverrideTemplate_user(_ context.
 		Object:     "ChannelOverrideTemplate",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: false,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -26376,6 +26403,47 @@ func (ec *executionContext) fieldContext_Mutation_updateUserStatus(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateUserStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deleteUser,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeleteUser(ctx, fc.Args["id"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -50229,7 +50297,7 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDIsNil", "userIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -50501,6 +50569,20 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.UserIDNotIn = converted
+		case "userIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIDIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIDIsNil = data
+		case "userIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIDNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIDNotNil = data
 		case "projectID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectID"))
 			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
@@ -52732,7 +52814,7 @@ func (ec *executionContext) unmarshalInputChannelOverrideTemplateWhereInput(ctx 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "overrideParameters", "overrideParametersNEQ", "overrideParametersIn", "overrideParametersNotIn", "overrideParametersGT", "overrideParametersGTE", "overrideParametersLT", "overrideParametersLTE", "overrideParametersContains", "overrideParametersHasPrefix", "overrideParametersHasSuffix", "overrideParametersEqualFold", "overrideParametersContainsFold", "hasUser", "hasUserWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDIsNil", "userIDNotNil", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "overrideParameters", "overrideParametersNEQ", "overrideParametersIn", "overrideParametersNotIn", "overrideParametersGT", "overrideParametersGTE", "overrideParametersLT", "overrideParametersLTE", "overrideParametersContains", "overrideParametersHasPrefix", "overrideParametersHasSuffix", "overrideParametersEqualFold", "overrideParametersContainsFold", "hasUser", "hasUserWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -53004,6 +53086,20 @@ func (ec *executionContext) unmarshalInputChannelOverrideTemplateWhereInput(ctx 
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.UserIDNotIn = converted
+		case "userIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIDIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIDIsNil = data
+		case "userIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIDNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIDNotNil = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -72547,16 +72643,13 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 		case "userID":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._APIKey_userID(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -72643,16 +72736,13 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 		case "user":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._APIKey_user(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -75208,16 +75298,13 @@ func (ec *executionContext) _ChannelOverrideTemplate(ctx context.Context, sel as
 		case "userID":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._ChannelOverrideTemplate_userID(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -75327,16 +75414,13 @@ func (ec *executionContext) _ChannelOverrideTemplate(ctx context.Context, sel as
 		case "user":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._ChannelOverrideTemplate_user(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -78692,6 +78776,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateUserStatus":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateUserStatus(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteUser":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteUser(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
