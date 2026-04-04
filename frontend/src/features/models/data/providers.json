@@ -3205,64 +3205,6 @@
           }
         },
         {
-          "id": "claude-3-7-sonnet-latest",
-          "name": "Claude Sonnet 3.7 (latest)",
-          "family": "claude-sonnet",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10-31",
-          "release_date": "2025-02-19",
-          "last_updated": "2025-02-19",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 3,
-            "output": 15,
-            "cache_read": 0.3,
-            "cache_write": 3.75
-          },
-          "limit": {
-            "context": 200000,
-            "output": 64000
-          },
-          "display_name": "Claude Sonnet 3.7 (latest)",
-          "type": "chat",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": false,
-              "mode": "budget",
-              "budget": {
-                "min": 1024,
-                "unit": "tokens"
-              },
-              "interleaved": false,
-              "summaries": false,
-              "visibility": "full",
-              "continuation": [
-                "thinking_blocks"
-              ],
-              "notes": [
-                "Anthropic uses thinking budget tokens"
-              ]
-            }
-          }
-        },
-        {
           "id": "claude-3-5-haiku-20241022",
           "name": "Claude Haiku 3.5",
           "family": "claude-haiku",
@@ -5181,6 +5123,68 @@
       "doc": "https://ai.google.dev/gemini-api/docs/pricing",
       "display_name": "google",
       "models": [
+        {
+          "id": "gemma-4-26b",
+          "name": "Gemma 4 26B",
+          "family": "gemma",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-02",
+          "last_updated": "2026-04-02",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "display_name": "Gemma 4 26B",
+          "type": "chat"
+        },
+        {
+          "id": "gemma-4-31b",
+          "name": "Gemma 4 31B",
+          "family": "gemma",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-02",
+          "last_updated": "2026-04-02",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "display_name": "Gemma 4 31B",
+          "type": "chat"
+        },
         {
           "id": "gemini-3.1-flash-lite-preview",
           "name": "Gemini 3.1 Flash Lite Preview",
