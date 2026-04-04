@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/eko/gocache/lib/v4/store"
@@ -22,7 +23,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"os"
 )
 
 // getNodeID returns a unique identifier for this node instance.
@@ -30,10 +30,11 @@ import (
 func getNodeID() string {
 	hostname, err := os.Hostname()
 	if err != nil || hostname == "" {
-		// Fallback to a random ID if hostname is unavailable
-		return fmt.Sprintf("node-%d", time.Now().UnixNano())
+		// Fallback to timestamp+PID if hostname is unavailable
+		return fmt.Sprintf("node-%d-%d", time.Now().UnixNano(), os.Getpid())
 	}
-	return hostname
+	// Include PID for uniqueness in containerized environments
+	return fmt.Sprintf("%s-%d", hostname, os.Getpid())
 }
 
 // RequestService handles request and request execution operations.
@@ -950,14 +951,42 @@ func (s *RequestService) ClearProcessingExecutionsOnShutdown(ctx context.Context
 // This handles cases where the server crashed or was forcefully terminated, leaving
 // records stuck in 'processing' state. It should be called during server initialization.
 // Only records from this node's previous runs are cleared to ensure multi-node safety.
+// Also clears orphaned records with NULL node_id (from before this feature was implemented).
 func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) error {
 	var errs []error
 
+	// Clear records owned by this node
 	if err := s.ClearProcessingRequestsOnShutdown(ctx); err != nil {
 		errs = append(errs, err)
 	}
 
 	if err := s.ClearProcessingExecutionsOnShutdown(ctx); err != nil {
+		errs = append(errs, err)
+	}
+
+	// Clear orphaned records with NULL node_id (from before this feature)
+	if err := s.clearProcessingRecords(ctx, "startup-cleanup-orphaned-requests", "orphaned requests", func(ctx context.Context) (int, error) {
+		client := s.entFromContext(ctx)
+		return client.Request.Update().
+			Where(
+				request.StatusEQ(request.StatusProcessing),
+				request.NodeIDIsNil(),
+			).
+			SetStatus(request.StatusCanceled).
+			Save(ctx)
+	}); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := s.clearProcessingRecords(ctx, "startup-cleanup-orphaned-executions", "orphaned executions", func(ctx context.Context) (int, error) {
+		client := s.entFromContext(ctx)
+		return client.RequestExecution.Update().
+			Where(
+				requestexecution.StatusEQ(requestexecution.StatusProcessing),
+				requestexecution.NodeIDIsNil(),
+			).SetStatus(requestexecution.StatusCanceled).
+			Save(ctx)
+	}); err != nil {
 		errs = append(errs, err)
 	}
 
