@@ -32,7 +32,7 @@ func setupTestRequestService(t *testing.T) (*RequestService, *ent.Client, contex
 	channelService := NewChannelServiceForTest(client)
 	usageLogService := NewUsageLogService(client, systemService, channelService)
 	dataStorageService := NewDataStorageService(DataStorageServiceParams{
-		SystemService: systemService,
+	SystemService: systemService,
 		CacheConfig:   xcache.Config{},
 		Executor:      executors.NewPoolScheduleExecutor(),
 		Client:        client,
@@ -43,190 +43,212 @@ func setupTestRequestService(t *testing.T) (*RequestService, *ent.Client, contex
 	return requestService, client, ctx
 }
 
-func TestRequestService_ClearProcessingRequestsOnShutdown(t *testing.T) {
+// testClearProcessingEntity defines how to test clearing processing status for an entity type
+type testClearProcessingEntity struct {
+	name string
+	// createProcessing creates processing records and returns their IDs
+	createProcessing func(t *testing.T, ctx context.Context, client *ent.Client, projID int, traceID int) []int
+	// createNonProcessing creates a non-processing record and returns its ID
+	createNonProcessing func(t *testing.T, ctx context.Context, client *ent.Client, projID int, traceID int) int
+	// getStatus gets the status of a record by ID
+	getStatus func(t *testing.T, ctx context.Context, client *ent.Client, id int) string
+	// countProcessing counts processing records
+	countProcessing func(ctx context.Context, client *ent.Client) (int, error)
+	// callShutdownMethod calls the shutdown method being tested
+	callShutdownMethod func(ctx context.Context, svc *RequestService) error
+}
+
+func testClearProcessingOnShutdown(t *testing.T, tc testClearProcessingEntity) {
+	t.Helper()
+
+	t.Run(tc.name, func(t *testing.T) {
+
 	svc, client, ctx := setupTestRequestService(t)
 	defer client.Close()
 
-	// Create test project
-	proj, err := client.Project.Create().
-		SetName("test-project").
-		SetStatus(project.StatusActive).
-		Save(ctx)
-	require.NoError(t, err)
+		// Create test project
+		proj, err := client.Project.Create().
+			SetName("test-project").
+			SetStatus(project.StatusActive).
+			Save(ctx)
+		require.NoError(t, err)
 
-	// Create test trace
-	tr, err := client.Trace.Create().
-		SetTraceID("test-trace").
-		SetProjectID(proj.ID).
-		Save(ctx)
-	require.NoError(t, err)
+		// Create test trace
+		tr, err := client.Trace.Create().
+			SetTraceID("test-trace").
+			SetProjectID(proj.ID).
+			Save(ctx)
+		require.NoError(t, err)
 
-	// Create processing requests
-	req1, err := client.Request.Create().
-		SetProjectID(proj.ID).
-		SetTraceID(tr.ID).
-		SetModelID("gpt-4").
-		SetFormat("openai/chat_completions").
-		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
-		SetStatus(request.StatusProcessing).
-		SetStream(false).
-		Save(ctx)
-	require.NoError(t, err)
+		// Create processing records
+		processingIDs := tc.createProcessing(t, ctx, client, proj.ID, tr.ID)
 
-	req2, err := client.Request.Create().
-		SetProjectID(proj.ID).
-		SetTraceID(tr.ID).
-		SetModelID("gpt-4").
-		SetFormat("openai/chat_completions").
-		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
-		SetStatus(request.StatusProcessing).
-		SetStream(false).
-		Save(ctx)
-	require.NoError(t, err)
+		// Create a non-processing record
+		nonProcessingID := tc.createNonProcessing(t, ctx, client, proj.ID, tr.ID)
 
-	// Create a non-processing request (should not be affected)
-	req3, err := client.Request.Create().
-		SetProjectID(proj.ID).
-		SetTraceID(tr.ID).
-		SetModelID("gpt-4").
-		SetFormat("openai/chat_completions").
-		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
-		SetStatus(request.StatusCompleted).
-		SetStream(false).
-		Save(ctx)
-	require.NoError(t, err)
+		// Call the method
+		err = tc.callShutdownMethod(ctx, svc)
+		require.NoError(t, err)
 
-	// Call the method
-	err = svc.ClearProcessingRequestsOnShutdown(ctx)
-	require.NoError(t, err)
+		// Verify processing records are now canceled
+		for _, id := range processingIDs {
+			status := tc.getStatus(t, ctx, client, id)
+			require.Equal(t, "canceled", status, "processing record should be canceled")
+		}
 
-	// Verify processing requests are now canceled
-	updatedReq1, err := client.Request.Get(ctx, req1.ID)
-	require.NoError(t, err)
-	require.Equal(t, request.StatusCanceled, updatedReq1.Status)
+		// Verify non-processing record is unchanged
+		nonProcessingStatus := tc.getStatus(t, ctx, client, nonProcessingID)
+		require.Equal(t, "completed", nonProcessingStatus, "non-processing record should be unchanged")
 
-	updatedReq2, err := client.Request.Get(ctx, req2.ID)
-	require.NoError(t, err)
-	require.Equal(t, request.StatusCanceled, updatedReq2.Status)
+		// Count processing records - should be 0
+		processingCount, err := tc.countProcessing(ctx, client)
+		require.NoError(t, err)
+		require.Equal(t, 0, processingCount, "no processing records should remain after shutdown")
+	})
+}
 
-	// Verify non-processing request is unchanged
-	updatedReq3, err := client.Request.Get(ctx, req3.ID)
-	require.NoError(t, err)
-	require.Equal(t, request.StatusCompleted, updatedReq3.Status)
-
-	// Count processing requests - should be 0
-	processingCount, err := client.Request.Query().
-		Where(request.StatusEQ(request.StatusProcessing)).
-		Count(ctx)
-	require.NoError(t, err)
-	require.Equal(t, 0, processingCount)
+func TestRequestService_ClearProcessingRequestsOnShutdown(t *testing.T) {
+	tc := testClearProcessingEntity{
+		name: "requests",
+		createProcessing: func(t *testing.T, ctx context.Context, client *ent.Client, projID int, traceID int) []int {
+			t.Helper()
+			var ids []int
+			for i := 0; i < 2; i++ {
+				req, err := client.Request.Create().
+					SetProjectID(projID).
+					SetTraceID(traceID).
+					SetModelID("gpt-4").
+					SetFormat("openai/chat_completions").
+					SetRequestBody([]byte(`{"model":"gpt-4"}`)).
+					SetStatus(request.StatusProcessing).
+					SetStream(false).
+					Save(ctx)
+				require.NoError(t, err)
+				ids = append(ids, req.ID)
+			}
+			return ids
+		},
+		createNonProcessing: func(t *testing.T, ctx context.Context, client *ent.Client, projID int, traceID int) int {
+			t.Helper()
+			req, err := client.Request.Create().
+				SetProjectID(projID).
+				SetTraceID(traceID).
+				SetModelID("gpt-4").
+				SetFormat("openai/chat_completions").
+				SetRequestBody([]byte(`{"model":"gpt-4"}`)).
+				SetStatus(request.StatusCompleted).
+				SetStream(false).
+				Save(ctx)
+			require.NoError(t, err)
+			return req.ID
+		},
+		getStatus: func(t *testing.T, ctx context.Context, client *ent.Client, id int) string {
+			t.Helper()
+			req, err := client.Request.Get(ctx, id)
+			require.NoError(t, err)
+			return string(req.Status)
+		},
+		countProcessing: func(ctx context.Context, client *ent.Client) (int, error) {
+			return client.Request.Query().
+				Where(request.StatusEQ(request.StatusProcessing)).
+				Count(ctx)
+		},
+		callShutdownMethod: func(ctx context.Context, svc *RequestService) error {
+			return svc.ClearProcessingRequestsOnShutdown(ctx)
+		},
+	}
+	testClearProcessingOnShutdown(t, tc)
 }
 
 func TestRequestService_ClearProcessingRequestsOnShutdown_NoProcessingRequests(t *testing.T) {
 	svc, client, ctx := setupTestRequestService(t)
 	defer client.Close()
 
-	// Call the method when there are no processing requests
 	err := svc.ClearProcessingRequestsOnShutdown(ctx)
 	require.NoError(t, err)
 }
 
 func TestRequestService_ClearProcessingExecutionsOnShutdown(t *testing.T) {
-	svc, client, ctx := setupTestRequestService(t)
-	defer client.Close()
+	tc := testClearProcessingEntity{
+		name: "executions",
+		createProcessing: func(t *testing.T, ctx context.Context, client *ent.Client, projID int, traceID int) []int {
+			t.Helper()
+			// First create a request for the executions
+			req, err := client.Request.Create().
+				SetProjectID(projID).
+				SetTraceID(traceID).
+				SetModelID("gpt-4").
+				SetFormat("openai/chat_completions").
+				SetRequestBody([]byte(`{"model":"gpt-4"}`)).
+				SetStatus(request.StatusProcessing).
+				SetStream(false).
+				Save(ctx)
+			require.NoError(t, err)
 
-	// Create test project
-	proj, err := client.Project.Create().
-		SetName("test-project").
-		SetStatus(project.StatusActive).
-		Save(ctx)
-	require.NoError(t, err)
+			var ids []int
+			for i := 0; i < 2; i++ {
+				exec, err := client.RequestExecution.Create().
+					SetProjectID(projID).
+					SetRequestID(req.ID).
+					SetModelID("gpt-4").
+					SetFormat("openai/chat_completions").
+					SetRequestBody([]byte(`{"model":"gpt-4"}`)).
+					SetStatus(requestexecution.StatusProcessing).
+					SetStream(false).
+					Save(ctx)
+				require.NoError(t, err)
+				ids = append(ids, exec.ID)
+			}
+			return ids
+		},
+		createNonProcessing: func(t *testing.T, ctx context.Context, client *ent.Client, projID int, traceID int) int {
+			t.Helper()
+			// First create a request for the execution
+			req, err := client.Request.Create().
+				SetProjectID(projID).
+				SetTraceID(traceID).
+				SetModelID("gpt-4").
+				SetFormat("openai/chat_completions").
+				SetRequestBody([]byte(`{"model":"gpt-4"}`)).
+				SetStatus(request.StatusProcessing).
+				SetStream(false).
+				Save(ctx)
+			require.NoError(t, err)
 
-	// Create test trace
-	tr, err := client.Trace.Create().
-		SetTraceID("test-trace").
-		SetProjectID(proj.ID).
-		Save(ctx)
-	require.NoError(t, err)
-
-	// Create a request for the executions
-	req, err := client.Request.Create().
-		SetProjectID(proj.ID).
-		SetTraceID(tr.ID).
-		SetModelID("gpt-4").
-		SetFormat("openai/chat_completions").
-		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
-		SetStatus(request.StatusProcessing).
-		SetStream(false).
-		Save(ctx)
-	require.NoError(t, err)
-
-	// Create processing executions
-	exec1, err := client.RequestExecution.Create().
-		SetProjectID(proj.ID).
-		SetRequestID(req.ID).
-		SetModelID("gpt-4").
-		SetFormat("openai/chat_completions").
-		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
-		SetStatus(requestexecution.StatusProcessing).
-		SetStream(false).
-		Save(ctx)
-	require.NoError(t, err)
-
-	exec2, err := client.RequestExecution.Create().
-		SetProjectID(proj.ID).
-		SetRequestID(req.ID).
-		SetModelID("gpt-4").
-		SetFormat("openai/chat_completions").
-		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
-		SetStatus(requestexecution.StatusProcessing).
-		SetStream(false).
-		Save(ctx)
-	require.NoError(t, err)
-
-	// Create a non-processing execution (should not be affected)
-	exec3, err := client.RequestExecution.Create().
-		SetProjectID(proj.ID).
-		SetRequestID(req.ID).
-		SetModelID("gpt-4").
-		SetFormat("openai/chat_completions").
-		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
-		SetStatus(requestexecution.StatusCompleted).
-		SetStream(false).
-		Save(ctx)
-	require.NoError(t, err)
-
-	// Call the method
-	err = svc.ClearProcessingExecutionsOnShutdown(ctx)
-	require.NoError(t, err)
-
-	// Verify processing executions are now canceled
-	updatedExec1, err := client.RequestExecution.Get(ctx, exec1.ID)
-	require.NoError(t, err)
-	require.Equal(t, requestexecution.StatusCanceled, updatedExec1.Status)
-
-	updatedExec2, err := client.RequestExecution.Get(ctx, exec2.ID)
-	require.NoError(t, err)
-	require.Equal(t, requestexecution.StatusCanceled, updatedExec2.Status)
-
-	// Verify non-processing execution is unchanged
-	updatedExec3, err := client.RequestExecution.Get(ctx, exec3.ID)
-	require.NoError(t, err)
-	require.Equal(t, requestexecution.StatusCompleted, updatedExec3.Status)
-
-	// Count processing executions - should be 0
-	processingCount, err := client.RequestExecution.Query().
-		Where(requestexecution.StatusEQ(requestexecution.StatusProcessing)).
-		Count(ctx)
-	require.NoError(t, err)
-	require.Equal(t, 0, processingCount)
+			exec, err := client.RequestExecution.Create().
+				SetProjectID(projID).
+				SetRequestID(req.ID).
+				SetModelID("gpt-4").
+				SetFormat("openai/chat_completions").
+				SetRequestBody([]byte(`{"model":"gpt-4"}`)).
+				SetStatus(requestexecution.StatusCompleted).
+				SetStream(false).
+				Save(ctx)
+			require.NoError(t, err)
+			return exec.ID
+		},
+		getStatus: func(t *testing.T, ctx context.Context, client *ent.Client, id int) string {
+			t.Helper()
+			exec, err := client.RequestExecution.Get(ctx, id)
+			require.NoError(t, err)
+			return string(exec.Status)
+		},
+		countProcessing: func(ctx context.Context, client *ent.Client) (int, error) {
+			return client.RequestExecution.Query().
+				Where(requestexecution.StatusEQ(requestexecution.StatusProcessing)).
+				Count(ctx)
+		},
+		callShutdownMethod: func(ctx context.Context, svc *RequestService) error {
+			return svc.ClearProcessingExecutionsOnShutdown(ctx)
+		},
+	}
+	testClearProcessingOnShutdown(t, tc)
 }
 
 func TestRequestService_ClearProcessingExecutionsOnShutdown_NoProcessingExecutions(t *testing.T) {
 	svc, client, ctx := setupTestRequestService(t)
 	defer client.Close()
 
-	// Call the method when there are no processing executions
 	err := svc.ClearProcessingExecutionsOnShutdown(ctx)
 	require.NoError(t, err)
 }

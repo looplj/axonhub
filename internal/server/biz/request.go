@@ -882,44 +882,46 @@ func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, reque
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
 }
 
-// ClearProcessingRequestsOnShutdown marks all processing requests as canceled during server shutdown.
-// This ensures requests don't remain in "processing" state after the server stops.
-func (s *RequestService) ClearProcessingRequestsOnShutdown(ctx context.Context) error {
-	return authz.RunWithSystemBypassVoid(ctx, "shutdown-cleanup-requests", func(ctx context.Context) error {
-		client := s.entFromContext(ctx)
-
-		// Update all processing requests to canceled
-		_, err := client.Request.Update().
-			Where(request.StatusEQ(request.StatusProcessing)).
-			SetStatus(request.StatusCanceled).
-			Save(ctx)
-
+// clearProcessingOnShutdown is a helper that wraps the common pattern of clearing
+// processing records on shutdown. It runs with system bypass and handles error wrapping.
+func (s *RequestService) clearProcessingOnShutdown(
+	ctx context.Context,
+	authzReason string,
+	updateFn func(ctx context.Context) (int, error),
+	entityName string,
+) error {
+	return authz.RunWithSystemBypassVoid(ctx, authzReason, func(ctx context.Context) error {
+		_, err := updateFn(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to clear processing requests on shutdown: %w", err)
+			return fmt.Errorf("failed to clear processing %s on shutdown: %w", entityName, err)
 		}
 
 		return nil
 	})
 }
 
+// ClearProcessingRequestsOnShutdown marks all processing requests as canceled during server shutdown.
+// This ensures requests don't remain in "processing" state after the server stops.
+func (s *RequestService) ClearProcessingRequestsOnShutdown(ctx context.Context) error {
+	return s.clearProcessingOnShutdown(ctx, "shutdown-cleanup-requests", func(ctx context.Context) (int, error) {
+		client := s.entFromContext(ctx)
+		return client.Request.Update().
+			Where(request.StatusEQ(request.StatusProcessing)).
+			SetStatus(request.StatusCanceled).
+			Save(ctx)
+	}, "requests")
+}
+
 // ClearProcessingExecutionsOnShutdown marks all processing request executions as canceled during server shutdown.
 // This ensures executions don't remain in "processing" state after the server stops.
 func (s *RequestService) ClearProcessingExecutionsOnShutdown(ctx context.Context) error {
-	return authz.RunWithSystemBypassVoid(ctx, "shutdown-cleanup-executions", func(ctx context.Context) error {
+	return s.clearProcessingOnShutdown(ctx, "shutdown-cleanup-executions", func(ctx context.Context) (int, error) {
 		client := s.entFromContext(ctx)
-
-		// Update all processing executions to canceled
-		_, err := client.RequestExecution.Update().
+		return client.RequestExecution.Update().
 			Where(requestexecution.StatusEQ(requestexecution.StatusProcessing)).
 			SetStatus(requestexecution.StatusCanceled).
 			Save(ctx)
-
-		if err != nil {
-			return fmt.Errorf("failed to clear processing executions on shutdown: %w", err)
-		}
-
-		return nil
-	})
+	}, "executions")
 }
 
 // UpdateRequestChannelID updates request with channel ID after channel selection.
