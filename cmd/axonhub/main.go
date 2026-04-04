@@ -80,6 +80,11 @@ func startServer() {
 			})
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
+					// Clear any stale processing records from previous crashes
+					if err := requestSvc.ClearStaleProcessingOnStartup(ctx); err != nil {
+						log.Warn(ctx, "failed to clear stale processing records on startup", log.Cause(err))
+					}
+
 					go func() {
 						err := server.Run()
 						if err != nil {
@@ -94,10 +99,10 @@ func startServer() {
 				OnStop: func(ctx context.Context) error {
 					// Clear all processing requests on shutdown
 					if err := requestSvc.ClearProcessingRequestsOnShutdown(ctx); err != nil {
-						log.Error(ctx, "failed to clear processing requests on shutdown", log.Cause(err))
+						log.Error(context.Background(), "failed to clear processing requests on shutdown", log.Cause(err))
 					}
 					if err := requestSvc.ClearProcessingExecutionsOnShutdown(ctx); err != nil {
-						log.Error(ctx, "failed to clear processing executions on shutdown", log.Cause(err))
+						log.Error(context.Background(), "failed to clear processing executions on shutdown", log.Cause(err))
 					}
 
 					err := server.Shutdown(ctx)

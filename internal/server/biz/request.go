@@ -882,18 +882,18 @@ func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, reque
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
 }
 
-// clearProcessingOnShutdown is a helper that wraps the common pattern of clearing
-// processing records on shutdown. It runs with system bypass and handles error wrapping.
-func (s *RequestService) clearProcessingOnShutdown(
+// clearProcessingRecords is a helper that wraps the common pattern of clearing
+// processing records. It runs with system bypass and handles error wrapping.
+func (s *RequestService) clearProcessingRecords(
 	ctx context.Context,
 	authzReason string,
-	updateFn func(ctx context.Context) (int, error),
 	entityName string,
+	updateFn func(ctx context.Context) (int, error),
 ) error {
 	return authz.RunWithSystemBypassVoid(ctx, authzReason, func(ctx context.Context) error {
 		_, err := updateFn(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to clear processing %s on shutdown: %w", entityName, err)
+			return fmt.Errorf("failed to clear processing %s: %w", entityName, err)
 		}
 
 		return nil
@@ -903,25 +903,47 @@ func (s *RequestService) clearProcessingOnShutdown(
 // ClearProcessingRequestsOnShutdown marks all processing requests as canceled during server shutdown.
 // This ensures requests don't remain in "processing" state after the server stops.
 func (s *RequestService) ClearProcessingRequestsOnShutdown(ctx context.Context) error {
-	return s.clearProcessingOnShutdown(ctx, "shutdown-cleanup-requests", func(ctx context.Context) (int, error) {
+	return s.clearProcessingRecords(ctx, "shutdown-cleanup-requests", "requests", func(ctx context.Context) (int, error) {
 		client := s.entFromContext(ctx)
 		return client.Request.Update().
 			Where(request.StatusEQ(request.StatusProcessing)).
 			SetStatus(request.StatusCanceled).
 			Save(ctx)
-	}, "requests")
+	})
 }
 
 // ClearProcessingExecutionsOnShutdown marks all processing request executions as canceled during server shutdown.
 // This ensures executions don't remain in "processing" state after the server stops.
 func (s *RequestService) ClearProcessingExecutionsOnShutdown(ctx context.Context) error {
-	return s.clearProcessingOnShutdown(ctx, "shutdown-cleanup-executions", func(ctx context.Context) (int, error) {
+	return s.clearProcessingRecords(ctx, "shutdown-cleanup-executions", "executions", func(ctx context.Context) (int, error) {
 		client := s.entFromContext(ctx)
 		return client.RequestExecution.Update().
 			Where(requestexecution.StatusEQ(requestexecution.StatusProcessing)).
 			SetStatus(requestexecution.StatusCanceled).
 			Save(ctx)
-	}, "executions")
+	})
+}
+
+// ClearStaleProcessingOnStartup clears any stale processing records left from previous runs.
+// This handles cases where the server crashed or was forcefully terminated, leaving
+// records stuck in 'processing' state. It should be called during server initialization.
+func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) error {
+	var errs []error
+
+	if err := s.ClearProcessingRequestsOnShutdown(ctx); err != nil {
+		log.Warn(ctx, "failed to clear stale processing requests on startup", log.Cause(err))
+		errs = append(errs, err)
+	}
+
+	if err := s.ClearProcessingExecutionsOnShutdown(ctx); err != nil {
+		log.Warn(ctx, "failed to clear stale processing executions on startup", log.Cause(err))
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("startup cleanup failed: %v", errs)
+	}
+	return nil
 }
 
 // UpdateRequestChannelID updates request with channel ID after channel selection.
