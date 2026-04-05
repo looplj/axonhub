@@ -11,6 +11,7 @@ import (
 
 	"github.com/eko/gocache/lib/v4/store"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -879,6 +880,66 @@ func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, reque
 	}
 
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
+}
+
+// cancelStaleRecords updates records older than maxAge to canceled status.
+func (s *RequestService) cancelStaleRecords(
+	ctx context.Context,
+	maxAge time.Duration,
+	entityName string,
+	updateFn func(ctx context.Context, cutoff time.Time) (int, error),
+) error {
+	cutoff := time.Now().UTC().Add(-maxAge)
+	return authz.RunWithSystemBypassVoid(ctx, "cleanup-"+entityName, func(ctx context.Context) error {
+		count, err := updateFn(ctx, cutoff)
+		if err != nil {
+			return fmt.Errorf("failed to cancel stale %s: %w", entityName, err)
+		}
+		if count > 0 {
+			log.Info(ctx, "canceled stale processing records",
+				log.String("entity", entityName),
+				log.Int("count", count),
+				log.Duration("maxAge", maxAge))
+		}
+		return nil
+	})
+}
+
+// maxProcessingDuration defines how long a record can be in "processing" state.
+// Records exceeding this are considered stuck and will be canceled on startup.
+const maxProcessingDuration = 1 * time.Hour
+
+func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) error {
+	var errs []error
+
+	if err := s.cancelStaleRecords(ctx, maxProcessingDuration, "requests", func(ctx context.Context, cutoff time.Time) (int, error) {
+		return s.entFromContext(ctx).Request.Update().
+			Where(
+				request.StatusEQ(request.StatusProcessing),
+				request.CreatedAtLT(cutoff),
+			).
+			SetStatus(request.StatusCanceled).
+			Save(ctx)
+	}); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := s.cancelStaleRecords(ctx, maxProcessingDuration, "executions", func(ctx context.Context, cutoff time.Time) (int, error) {
+		return s.entFromContext(ctx).RequestExecution.Update().
+			Where(
+				requestexecution.StatusEQ(requestexecution.StatusProcessing),
+				requestexecution.CreatedAtLT(cutoff),
+			).
+			SetStatus(requestexecution.StatusCanceled).
+			Save(ctx)
+	}); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("startup cleanup failed: %w", errors.Join(errs...))
+	}
+	return nil
 }
 
 // UpdateRequestChannelID updates request with channel ID after channel selection.

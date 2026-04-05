@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
 )
 
@@ -61,7 +62,7 @@ func startServer() {
 		}),
 		fx.Provide(conf.Load),
 		fx.Provide(metrics.NewProvider),
-		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client) {
+		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client, requestSvc *biz.RequestService) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					if provider != nil {
@@ -80,6 +81,10 @@ func startServer() {
 			})
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
+					if err := requestSvc.ClearStaleProcessingOnStartup(ctx); err != nil {
+						log.Warn(ctx, "failed to cancel stale processing records on startup", log.Cause(err))
+					}
+
 					go func() {
 						err := server.Run()
 						if err != nil {
