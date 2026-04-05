@@ -147,7 +147,7 @@ export function useThreads(variables?: { first?: number; after?: string; orderBy
         const data = await graphqlRequest<{ threads: ThreadConnection }>(query, finalVariables, headers);
         return threadConnectionSchema.parse(data?.threads);
       } catch (error) {
-        handleError(error, t('threads.errors.fetchList'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -194,7 +194,7 @@ export function useThreadDetail({
 
         return threadDetailSchema.parse(data.node);
       } catch (error) {
-        handleError(error, t('threads.errors.fetchDetail'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },

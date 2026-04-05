@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 	"github.com/looplj/axonhub/internal/scopes"
 )
@@ -115,7 +116,7 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 	}
 
 	if existing != nil {
-		return nil, fmt.Errorf("model '%s' already exists", input.ModelID)
+		return nil, xerrors.DuplicateNameError("model", input.ModelID)
 	}
 
 	createBuilder := svc.entFromContext(ctx).Model.Create().

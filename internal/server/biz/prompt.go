@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xmap"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 )
@@ -129,6 +130,21 @@ func (svc *PromptService) CreatePrompt(ctx context.Context, input ent.CreateProm
 		return nil, err
 	}
 
+	// Check for duplicate prompt name in the same project
+	exists, err := svc.entFromContext(ctx).Prompt.Query().
+		Where(
+			prompt.Name(input.Name),
+			prompt.ProjectIDEQ(projectID),
+		).
+		Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check prompt name uniqueness: %w", err)
+	}
+
+	if exists {
+		return nil, xerrors.DuplicateNameError("prompt", input.Name)
+	}
+
 	createBuilder := svc.entFromContext(ctx).Prompt.Create().
 		SetProjectID(projectID).
 		SetName(input.Name).
@@ -158,6 +174,24 @@ func (svc *PromptService) UpdatePrompt(ctx context.Context, id int, input *ent.U
 	if input.Settings != nil {
 		if err := svc.ValidatePromptSettings(*input.Settings); err != nil {
 			return nil, err
+		}
+	}
+
+	// Check for duplicate name if being updated
+	if input.Name != nil {
+		exists, err := svc.entFromContext(ctx).Prompt.Query().
+			Where(
+				prompt.Name(*input.Name),
+				prompt.ProjectIDEQ(projectID),
+				prompt.IDNEQ(id),
+			).
+			Exist(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check prompt name uniqueness: %w", err)
+		}
+
+		if exists {
+			return nil, xerrors.DuplicateNameError("prompt", *input.Name)
 		}
 	}
 

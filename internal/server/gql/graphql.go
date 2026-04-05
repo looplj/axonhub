@@ -2,16 +2,19 @@ package gql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"entgo.io/contrib/entgql"
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -33,6 +36,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
@@ -118,6 +122,25 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		// TestChannel performs LLM API calls which can be long-running, and the
 		// database operations within don't require transactional consistency.
 		SkipTxFunc: entgql.SkipOperations("TestChannel"),
+	})
+
+	// Set error presenter to handle CodedError and add extensions.code
+	gqlSrv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
+		// Check if it's a CodedError
+		var codedErr *xerrors.CodedError
+		if errors.As(err, &codedErr) {
+			return &gqlerror.Error{
+				Message: codedErr.Message,
+				Extensions: map[string]any{
+					"code":     codedErr.Code,
+					"resource": codedErr.Extensions["resource"],
+					"field":    codedErr.Extensions["field"],
+					"value":    codedErr.Extensions["value"],
+				},
+			}
+		}
+		// Return default error presentation
+		return graphql.DefaultErrorPresenter(ctx, err)
 	})
 
 	return &GraphqlHandler{

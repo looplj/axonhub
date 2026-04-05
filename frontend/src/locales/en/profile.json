@@ -1,8 +1,4 @@
 {
-  "profile.dropdown.user": "User",
-  "profile.dropdown.defaultEmail": "user@example.com",
-  "profile.dropdown.settings": "Settings",
-  "profile.dropdown.logOut": "Log out",
   "profile.title": "Profile",
   "profile.description": "This is how others will see you on the site.",
   "profile.form.fields.firstName.label": "First Name",
@@ -13,7 +9,6 @@
   "profile.form.fields.lastName.description": "Your last name as it will appear to other users.",
   "profile.form.fields.email.label": "Email",
   "profile.form.fields.email.placeholder": "Enter your email address",
-  "profile.form.fields.email.description": "Your email address for account notifications and login.",
   "profile.form.fields.email.disabled_description": "Email address cannot be changed.",
   "profile.form.fields.preferLanguage.label": "Preferred Language",
   "profile.form.fields.preferLanguage.placeholder": "Select your preferred language",

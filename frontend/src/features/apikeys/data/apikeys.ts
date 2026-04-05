@@ -299,7 +299,7 @@ export function useApiKeys(
         const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, mergedVariables, headers);
         return apiKeyConnectionSchema.parse(data?.apiKeys);
       } catch (error) {
-        handleError(error, t('apikeys.errors.fetchData'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -322,7 +322,7 @@ export function useApiKey(id: string) {
         const data = await graphqlRequest<{ node: ApiKey }>(query, { id }, headers);
         return apiKeySchema.parse(data.node);
       } catch (error) {
-        handleError(error, t('apikeys.errors.fetchDetails'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -353,7 +353,7 @@ export function useApiKeyQuotaUsages(
         );
         return apiKeyProfileQuotaUsageSchema.array().parse(data.apiKeyQuotaUsages);
       } catch (error) {
-        handleError(error, t('apikeys.errors.fetchDetails'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -388,7 +388,7 @@ export function useApiKeyTokenUsageStats(
         );
         return apiKeyTokenUsageStatsSchema.array().parse(data.apiKeyTokenUsageStats);
       } catch (error) {
-        handleError(error, t('apikeys.errors.fetchUsageStats'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -403,6 +403,7 @@ export function useCreateApiKey() {
   const queryClient = useQueryClient();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: (input: CreateApiKeyInput) => {
@@ -419,8 +420,8 @@ export function useCreateApiKey() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.createSuccess'));
     },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
+    onError: (error) => {
+      handleError(error, { context: t('apikeys.dialogs.create.title') });
     },
   });
 }
@@ -430,6 +431,7 @@ export function useUpdateApiKey() {
   const queryClient = useQueryClient();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyInput }) => {
@@ -442,8 +444,8 @@ export function useUpdateApiKey() {
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] });
       toast.success(t('apikeys.messages.updateSuccess'));
     },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
+    onError: (error) => {
+      handleError(error, { context: t('apikeys.dialogs.edit.title') });
     },
   });
 }

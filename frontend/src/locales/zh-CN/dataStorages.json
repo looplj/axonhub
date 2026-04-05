@@ -24,6 +24,7 @@
   "dataStorages.dialogs.fields.s3AccessKey.editPlaceholder": "留空表示不更新",
   "dataStorages.dialogs.fields.s3SecretKey.editPlaceholder": "留空表示不更新",
   "dataStorages.dialogs.fields.gcsCredential.editPlaceholder": "留空表示不更新",
+  "dataStorages.dialogs.fields.webdavPassword.editPlaceholder": "留空表示不更新",
   "dataStorages.validation.nameRequired": "名称不能为空",
   "dataStorages.validation.directoryRequired": "目录路径不能为空",
   "dataStorages.validation.s3BucketRequired": "Bucket 名称不能为空",

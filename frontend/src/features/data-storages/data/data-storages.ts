@@ -140,7 +140,7 @@ export function useDataStorages(variables?: Record<string, any>) {
         const data = await graphqlRequest<{ dataStorages: DataStoragesConnection }>(DATA_STORAGES_QUERY, variables);
         return dataStoragesConnectionSchema.parse(data.dataStorages);
       } catch (error) {
-        handleError(error, t('dataStorages.errors.fetchData'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -150,24 +150,27 @@ export function useDataStorages(variables?: Record<string, any>) {
 export function useArchiveDataStorage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const data = await graphqlRequest<{ updateDataStorage: Pick<DataStorage, 'id' | 'status'> }>(UPDATE_DATA_STORAGE_STATUS_MUTATION, {
-        id,
-        input: {
-          status: 'archived',
-        },
-      });
+      try {
+        const data = await graphqlRequest<{ updateDataStorage: Pick<DataStorage, 'id' | 'status'> }>(UPDATE_DATA_STORAGE_STATUS_MUTATION, {
+          id,
+          input: {
+            status: 'archived',
+          },
+        });
 
-      return dataStorageSchema.pick({ id: true, status: true }).parse(data.updateDataStorage);
+        return dataStorageSchema.pick({ id: true, status: true }).parse(data.updateDataStorage);
+      } catch (error) {
+        handleError(error, { context: 'Archive Data Storage' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dataStorages'] });
       toast.success(t('dataStorages.messages.archiveSuccess'));
-    },
-    onError: (error: any) => {
-      toast.error(t('dataStorages.messages.archiveError'));
     },
   });
 }
@@ -175,23 +178,26 @@ export function useArchiveDataStorage() {
 export function useCreateDataStorage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: CreateDataStorageInput) => {
-      // Validate input
-      const validatedInput = createDataStorageInputSchema.parse(input);
-      const data = await graphqlRequest<{ createDataStorage: DataStorage }>(CREATE_DATA_STORAGE_MUTATION, {
-        input: validatedInput,
-      });
-      // Validate response data
-      return dataStorageSchema.parse(data.createDataStorage);
+      try {
+        // Validate input
+        const validatedInput = createDataStorageInputSchema.parse(input);
+        const data = await graphqlRequest<{ createDataStorage: DataStorage }>(CREATE_DATA_STORAGE_MUTATION, {
+          input: validatedInput,
+        });
+        // Validate response data
+        return dataStorageSchema.parse(data.createDataStorage);
+      } catch (error) {
+        handleError(error, { context: t('dataStorages.dialogs.create.title') });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dataStorages'] });
       toast.success(t('common.messages.success'));
-    },
-    onError: (error: any) => {
-      toast.error(t('dataStorages.errors.createError'));
     },
   });
 }
@@ -199,24 +205,27 @@ export function useCreateDataStorage() {
 export function useUpdateDataStorage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateDataStorageInput }) => {
-      // Validate input
-      const validatedInput = updateDataStorageInputSchema.parse(input);
-      const data = await graphqlRequest<{ updateDataStorage: DataStorage }>(UPDATE_DATA_STORAGE_MUTATION, {
-        id,
-        input: validatedInput,
-      });
-      // Use schema that includes credentials since this is for update
-      return dataStorageWithCredentialsSchema.parse(data.updateDataStorage);
+      try {
+        // Validate input
+        const validatedInput = updateDataStorageInputSchema.parse(input);
+        const data = await graphqlRequest<{ updateDataStorage: DataStorage }>(UPDATE_DATA_STORAGE_MUTATION, {
+          id,
+          input: validatedInput,
+        });
+        // Use schema that includes credentials since this is for update
+        return dataStorageWithCredentialsSchema.parse(data.updateDataStorage);
+      } catch (error) {
+        handleError(error, { context: t('dataStorages.dialogs.edit.title') });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dataStorages'] });
       toast.success(t('common.messages.success'));
-    },
-    onError: (error: any) => {
-      toast.error(t('dataStorages.errors.updateError'));
     },
   });
 }

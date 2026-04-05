@@ -34,6 +34,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // DataStorageService handles data storage operations.
@@ -190,6 +191,18 @@ func (s *DataStorageService) buildFileSystem(ctx context.Context, ds *ent.DataSt
 
 // CreateDataStorage creates a new data storage record and refreshes relevant caches.
 func (s *DataStorageService) CreateDataStorage(ctx context.Context, input *ent.CreateDataStorageInput) (*ent.DataStorage, error) {
+	// Check for duplicate data storage name
+	exists, err := ent.FromContext(ctx).DataStorage.Query().
+		Where(datastorage.Name(input.Name)).
+		Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check data storage name uniqueness: %w", err)
+	}
+
+	if exists {
+		return nil, xerrors.DuplicateNameError("data storage", input.Name)
+	}
+
 	dataStorage, err := ent.FromContext(ctx).DataStorage.Create().
 		SetName(input.Name).
 		SetSettings(input.Settings).
@@ -214,6 +227,23 @@ func (s *DataStorageService) UpdateDataStorage(ctx context.Context, id int, inpu
 	existing, err := ent.FromContext(ctx).DataStorage.Get(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data storage: %w", err)
+	}
+
+	// Check for duplicate name if being updated
+	if input.Name != nil && *input.Name != existing.Name {
+		exists, err := ent.FromContext(ctx).DataStorage.Query().
+			Where(
+				datastorage.Name(*input.Name),
+				datastorage.IDNEQ(id),
+			).
+			Exist(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check data storage name uniqueness: %w", err)
+		}
+
+		if exists {
+			return nil, xerrors.DuplicateNameError("data storage", *input.Name)
+		}
 	}
 
 	// Build updated settings by merging with existing settings

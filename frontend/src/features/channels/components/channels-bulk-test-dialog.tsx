@@ -131,12 +131,12 @@ export function ChannelsBulkTestDialog() {
         setResultStatus(channel, result.success ? 'success' : 'failed', {
           modelID,
           latency: result.success ? result.latency : undefined,
-          error: result.success ? undefined : (result.error || t('channels.messages.testUnknownError')),
+          error: result.success ? undefined : (result.error || t('common.errors.internalServerError')),
         });
       } catch (error) {
         setResultStatus(channel, 'failed', {
           modelID,
-          error: error instanceof Error ? error.message : t('channels.messages.testUnknownError'),
+          error: error instanceof Error ? error.message : t('common.errors.internalServerError'),
         });
       }
     },

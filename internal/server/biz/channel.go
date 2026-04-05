@@ -456,7 +456,7 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	if existing != nil {
-		return nil, fmt.Errorf("channel with name '%s' already exists", input.Name)
+		return nil, xerrors.DuplicateNameError("channel", input.Name)
 	}
 
 	channel, err := svc.createChannel(ctx, input)
@@ -486,7 +486,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 
 		if existing != nil {
-			return nil, fmt.Errorf("channel with name '%s' already exists", *input.Name)
+			return nil, xerrors.DuplicateNameError("channel", *input.Name)
 		}
 	}
 
