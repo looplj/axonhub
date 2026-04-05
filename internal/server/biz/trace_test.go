@@ -888,6 +888,1032 @@ func TestTraceService_GetRequestTrace_MultipleRequestsWithToolResults(t *testing
 	require.NotNil(t, findSpanByType(child.ResponseSpans, "text"))
 }
 
+func TestTraceService_GetRootSegment_TreeByToolCallID(t *testing.T) {
+	traceService, client := setupTestTraceService(t, nil)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	projectEntity, err := client.Project.Create().
+		SetName("tree-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	traceEntity, err := client.Trace.Create().
+		SetTraceID("trace-tree-toolcall").
+		SetProjectID(projectEntity.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	now := time.Now()
+
+	// Request 1: user asks → LLM responds with two tool_calls (call_A, call_B)
+	req1Body := []byte(`{
+		"model": "gpt-4",
+		"messages": [
+			{"role": "user", "content": "Do tasks A and B"}
+		]
+	}`)
+	resp1Body := []byte(`{
+		"id": "chatcmpl-001",
+		"object": "chat.completion",
+		"model": "gpt-4",
+		"choices": [{
+			"index": 0,
+			"message": {
+				"role": "assistant",
+				"content": null,
+				"tool_calls": [
+					{"id": "call_A", "type": "function", "function": {"name": "task_a", "arguments": "{}"}},
+					{"id": "call_B", "type": "function", "function": {"name": "task_b", "arguments": "{}"}}
+				]
+			},
+			"finish_reason": "tool_calls"
+		}]
+	}`)
+
+	// Request 2: carries Request 1 context + tool_result for call_A only
+	req2Body := []byte(`{
+		"model": "gpt-4",
+		"messages": [
+			{"role": "user", "content": "Do tasks A and B"},
+			{"role": "assistant", "content": null, "tool_calls": [
+				{"id": "call_A", "type": "function", "function": {"name": "task_a", "arguments": "{}"}},
+				{"id": "call_B", "type": "function", "function": {"name": "task_b", "arguments": "{}"}}
+			]},
+			{"role": "tool", "tool_call_id": "call_A", "content": "Task A done"}
+		]
+	}`)
+	resp2Body := []byte(`{
+		"id": "chatcmpl-002",
+		"object": "chat.completion",
+		"model": "gpt-4",
+		"choices": [{
+			"index": 0,
+			"message": {"role": "assistant", "content": "Task A is done."},
+			"finish_reason": "stop"
+		}]
+	}`)
+
+	// Request 3: carries Request 1 context + tool_result for call_B only
+	req3Body := []byte(`{
+		"model": "gpt-4",
+		"messages": [
+			{"role": "user", "content": "Do tasks A and B"},
+			{"role": "assistant", "content": null, "tool_calls": [
+				{"id": "call_A", "type": "function", "function": {"name": "task_a", "arguments": "{}"}},
+				{"id": "call_B", "type": "function", "function": {"name": "task_b", "arguments": "{}"}}
+			]},
+			{"role": "tool", "tool_call_id": "call_B", "content": "Task B done"}
+		]
+	}`)
+	resp3Body := []byte(`{
+		"id": "chatcmpl-003",
+		"object": "chat.completion",
+		"model": "gpt-4",
+		"choices": [{
+			"index": 0,
+			"message": {"role": "assistant", "content": "Task B is done."},
+			"finish_reason": "stop"
+		}]
+	}`)
+
+	req1, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).
+		SetTraceID(traceEntity.ID).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetRequestBody(req1Body).
+		SetResponseBody(resp1Body).
+		SetStatus("completed").
+		SetStream(false).
+		SetCreatedAt(now).
+		SetUpdatedAt(now.Add(100 * time.Millisecond)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req2, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).
+		SetTraceID(traceEntity.ID).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetRequestBody(req2Body).
+		SetResponseBody(resp2Body).
+		SetStatus("completed").
+		SetStream(false).
+		SetCreatedAt(now.Add(time.Second)).
+		SetUpdatedAt(now.Add(time.Second + 100*time.Millisecond)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req3, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).
+		SetTraceID(traceEntity.ID).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetRequestBody(req3Body).
+		SetResponseBody(resp3Body).
+		SetStatus("completed").
+		SetStream(false).
+		SetCreatedAt(now.Add(2 * time.Second)).
+		SetUpdatedAt(now.Add(2*time.Second + 100*time.Millisecond)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	traceRoot, err := traceService.GetRootSegment(ctx, traceEntity.ID)
+	require.NoError(t, err)
+	require.NotNil(t, traceRoot)
+
+	// Root should be Request 1
+	require.Equal(t, req1.ID, traceRoot.ID)
+	require.Nil(t, traceRoot.ParentID)
+
+	// Both Request 2 and Request 3 should be children of Request 1 (tree, not chain)
+	// because both consume tool_call_ids produced by Request 1
+	require.Len(t, traceRoot.Children, 2, "expected 2 children for root (tree structure), got a chain")
+
+	child1 := traceRoot.Children[0]
+	child2 := traceRoot.Children[1]
+
+	require.Equal(t, req2.ID, child1.ID)
+	require.Equal(t, req3.ID, child2.ID)
+	require.Equal(t, req1.ID, *child1.ParentID)
+	require.Equal(t, req1.ID, *child2.ParentID)
+
+	// Children should have no further children
+	require.Len(t, child1.Children, 0)
+	require.Len(t, child2.Children, 0)
+
+	// Verify deduplicated request spans: the shared prefix (user_query + tool_calls) should be removed
+	// Only the unique tool_result span should remain
+	require.Equal(t, 1, countSpansByType(child1.RequestSpans, "tool_result"))
+	require.Equal(t, 1, countSpansByType(child2.RequestSpans, "tool_result"))
+}
+
+func TestTraceService_GetRootSegment_TreeBySpanPrefixMatch(t *testing.T) {
+	traceService, client := setupTestTraceService(t, nil)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	projectEntity, err := client.Project.Create().
+		SetName("prefix-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	traceEntity, err := client.Trace.Create().
+		SetTraceID("trace-prefix-match").
+		SetProjectID(projectEntity.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	now := time.Now()
+
+	// Request 1: [user_msg] → text response
+	req1Body := []byte(`{
+		"model": "gpt-4",
+		"messages": [{"role": "user", "content": "Hello"}]
+	}`)
+	resp1Body := []byte(`{
+		"id": "c-001", "object": "chat.completion", "model": "gpt-4",
+		"choices": [{"index": 0, "message": {"role": "assistant", "content": "Hi there!"}, "finish_reason": "stop"}]
+	}`)
+
+	// Request 2: carries Request 1 full context + new user message (prefix matches Request 1)
+	req2Body := []byte(`{
+		"model": "gpt-4",
+		"messages": [
+			{"role": "user", "content": "Hello"},
+			{"role": "assistant", "content": "Hi there!"},
+			{"role": "user", "content": "Tell me more"}
+		]
+	}`)
+	resp2Body := []byte(`{
+		"id": "c-002", "object": "chat.completion", "model": "gpt-4",
+		"choices": [{"index": 0, "message": {"role": "assistant", "content": "Sure, here is more info."}, "finish_reason": "stop"}]
+	}`)
+
+	// Request 3: carries Request 1+2 full context + new user message (prefix matches Request 2)
+	req3Body := []byte(`{
+		"model": "gpt-4",
+		"messages": [
+			{"role": "user", "content": "Hello"},
+			{"role": "assistant", "content": "Hi there!"},
+			{"role": "user", "content": "Tell me more"},
+			{"role": "assistant", "content": "Sure, here is more info."},
+			{"role": "user", "content": "Thanks!"}
+		]
+	}`)
+	resp3Body := []byte(`{
+		"id": "c-003", "object": "chat.completion", "model": "gpt-4",
+		"choices": [{"index": 0, "message": {"role": "assistant", "content": "You are welcome!"}, "finish_reason": "stop"}]
+	}`)
+
+	req1, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+		SetModelID("gpt-4").SetFormat("openai/chat_completions").
+		SetRequestBody(req1Body).SetResponseBody(resp1Body).
+		SetStatus("completed").SetStream(false).
+		SetCreatedAt(now).SetUpdatedAt(now.Add(100 * time.Millisecond)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req2, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+		SetModelID("gpt-4").SetFormat("openai/chat_completions").
+		SetRequestBody(req2Body).SetResponseBody(resp2Body).
+		SetStatus("completed").SetStream(false).
+		SetCreatedAt(now.Add(time.Second)).SetUpdatedAt(now.Add(time.Second + 100*time.Millisecond)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req3, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+		SetModelID("gpt-4").SetFormat("openai/chat_completions").
+		SetRequestBody(req3Body).SetResponseBody(resp3Body).
+		SetStatus("completed").SetStream(false).
+		SetCreatedAt(now.Add(2 * time.Second)).SetUpdatedAt(now.Add(2*time.Second + 100*time.Millisecond)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	traceRoot, err := traceService.GetRootSegment(ctx, traceEntity.ID)
+	require.NoError(t, err)
+	require.NotNil(t, traceRoot)
+
+	// Request 1 is root
+	require.Equal(t, req1.ID, traceRoot.ID)
+
+	// Request 2's prefix matches Request 1 (longest match) → child of Request 1
+	require.Len(t, traceRoot.Children, 1)
+	child := traceRoot.Children[0]
+	require.Equal(t, req2.ID, child.ID)
+	require.Equal(t, req1.ID, *child.ParentID)
+
+	// Request 3's prefix matches Request 2 more than Request 1 → child of Request 2
+	require.Len(t, child.Children, 1)
+	grandchild := child.Children[0]
+	require.Equal(t, req3.ID, grandchild.ID)
+	require.Equal(t, req2.ID, *grandchild.ParentID)
+
+	// Verify deduplication: each child should only have the new unique spans
+	// Request 2 should have 1 new user_query ("Tell me more"), not the shared prefix
+	require.Equal(t, 1, countSpansByType(child.RequestSpans, "user_query"))
+	// Request 3 should have 1 new user_query ("Thanks!"), not the shared prefix
+	require.Equal(t, 1, countSpansByType(grandchild.RequestSpans, "user_query"))
+}
+
+func TestTraceService_GetRootSegment_FallbackChronologicalNearest(t *testing.T) {
+	traceService, client := setupTestTraceService(t, nil)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	projectEntity, err := client.Project.Create().
+		SetName("fallback-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	now := time.Now()
+
+	t.Run("two disjoint requests form a linear chain", func(t *testing.T) {
+		traceEntity, err := client.Trace.Create().
+			SetTraceID("trace-fallback-2").
+			SetProjectID(projectEntity.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Request 1: standalone user message
+		req1Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [{"role": "user", "content": "Alpha question"}]
+		}`)
+		resp1Body := []byte(`{
+			"id": "c-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Alpha answer"}, "finish_reason": "stop"}]
+		}`)
+
+		// Request 2: completely different user message — no shared prefix, no tool_call_ids
+		req2Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [{"role": "user", "content": "Beta question"}]
+		}`)
+		resp2Body := []byte(`{
+			"id": "c-002", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Beta answer"}, "finish_reason": "stop"}]
+		}`)
+
+		req1, err := client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(req1Body).SetResponseBody(resp1Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now).SetUpdatedAt(now.Add(100 * time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		req2, err := client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(req2Body).SetResponseBody(resp2Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(time.Second)).SetUpdatedAt(now.Add(time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		traceRoot, err := traceService.GetRootSegment(ctx, traceEntity.ID)
+		require.NoError(t, err)
+		require.NotNil(t, traceRoot)
+
+		// Request 1 is root
+		require.Equal(t, req1.ID, traceRoot.ID)
+		require.Nil(t, traceRoot.ParentID)
+
+		// Request 2 falls back to the chronologically nearest previous (Request 1)
+		require.Len(t, traceRoot.Children, 1)
+		child := traceRoot.Children[0]
+		require.Equal(t, req2.ID, child.ID)
+		require.Equal(t, req1.ID, *child.ParentID)
+		require.Len(t, child.Children, 0)
+	})
+
+	t.Run("three disjoint requests form a linear chain via fallback", func(t *testing.T) {
+		traceEntity, err := client.Trace.Create().
+			SetTraceID("trace-fallback-3").
+			SetProjectID(projectEntity.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Three requests with completely disjoint content — no shared prefix, no tool_call_ids
+		req1Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [{"role": "user", "content": "First topic"}]
+		}`)
+		resp1Body := []byte(`{
+			"id": "c-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "First reply"}, "finish_reason": "stop"}]
+		}`)
+
+		req2Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [{"role": "user", "content": "Second topic"}]
+		}`)
+		resp2Body := []byte(`{
+			"id": "c-002", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Second reply"}, "finish_reason": "stop"}]
+		}`)
+
+		req3Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [{"role": "user", "content": "Third topic"}]
+		}`)
+		resp3Body := []byte(`{
+			"id": "c-003", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Third reply"}, "finish_reason": "stop"}]
+		}`)
+
+		req1, err := client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(req1Body).SetResponseBody(resp1Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now).SetUpdatedAt(now.Add(100 * time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		req2, err := client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(req2Body).SetResponseBody(resp2Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(time.Second)).SetUpdatedAt(now.Add(time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		req3, err := client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(req3Body).SetResponseBody(resp3Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(2 * time.Second)).SetUpdatedAt(now.Add(2*time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		traceRoot, err := traceService.GetRootSegment(ctx, traceEntity.ID)
+		require.NoError(t, err)
+		require.NotNil(t, traceRoot)
+
+		// Request 1 is root
+		require.Equal(t, req1.ID, traceRoot.ID)
+		require.Nil(t, traceRoot.ParentID)
+
+		// Request 2 falls back to nearest predecessor → Request 1
+		require.Len(t, traceRoot.Children, 1)
+		child := traceRoot.Children[0]
+		require.Equal(t, req2.ID, child.ID)
+		require.Equal(t, req1.ID, *child.ParentID)
+
+		// Request 3 falls back to nearest predecessor → Request 2 (not Request 1)
+		require.Len(t, child.Children, 1)
+		grandchild := child.Children[0]
+		require.Equal(t, req3.ID, grandchild.ID)
+		require.Equal(t, req2.ID, *grandchild.ParentID)
+		require.Len(t, grandchild.Children, 0)
+	})
+
+	t.Run("fallback is superseded when prefix match exists", func(t *testing.T) {
+		traceEntity, err := client.Trace.Create().
+			SetTraceID("trace-fallback-mixed").
+			SetProjectID(projectEntity.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Request 1: [user_msg_A]
+		req1Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [{"role": "user", "content": "Alpha"}]
+		}`)
+		resp1Body := []byte(`{
+			"id": "c-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Alpha reply"}, "finish_reason": "stop"}]
+		}`)
+
+		// Request 2: completely different content — no prefix match with Request 1
+		req2Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [{"role": "user", "content": "Bravo"}]
+		}`)
+		resp2Body := []byte(`{
+			"id": "c-002", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Bravo reply"}, "finish_reason": "stop"}]
+		}`)
+
+		// Request 3: prefix matches Request 1 (carries Request 1 context)
+		req3Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "user", "content": "Alpha"},
+				{"role": "assistant", "content": "Alpha reply"},
+				{"role": "user", "content": "Continue Alpha"}
+			]
+		}`)
+		resp3Body := []byte(`{
+			"id": "c-003", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Alpha continued"}, "finish_reason": "stop"}]
+		}`)
+
+		req1, err := client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(req1Body).SetResponseBody(resp1Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now).SetUpdatedAt(now.Add(100 * time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		req2, err := client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(req2Body).SetResponseBody(resp2Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(time.Second)).SetUpdatedAt(now.Add(time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		req3, err := client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(req3Body).SetResponseBody(resp3Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(2 * time.Second)).SetUpdatedAt(now.Add(2*time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		traceRoot, err := traceService.GetRootSegment(ctx, traceEntity.ID)
+		require.NoError(t, err)
+		require.NotNil(t, traceRoot)
+
+		// Request 1 is root
+		require.Equal(t, req1.ID, traceRoot.ID)
+
+		// Request 2: no prefix match → fallback to nearest predecessor (Request 1)
+		// Request 3: prefix matches Request 1 → child of Request 1 (not Request 2)
+		// So both Request 2 and Request 3 should be children of Request 1
+		require.Len(t, traceRoot.Children, 2)
+
+		child1 := traceRoot.Children[0]
+		child2 := traceRoot.Children[1]
+
+		require.Equal(t, req2.ID, child1.ID)
+		require.Equal(t, req1.ID, *child1.ParentID)
+		require.Equal(t, req3.ID, child2.ID)
+		require.Equal(t, req1.ID, *child2.ParentID)
+
+		require.Len(t, child1.Children, 0)
+		require.Len(t, child2.Children, 0)
+	})
+}
+
+func TestTraceService_GetRootSegment_CrossTraceDedup(t *testing.T) {
+	t.Run("first segment deduplicates against previous trace in same thread", func(t *testing.T) {
+		traceService, client := setupTestTraceService(t, nil)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		projectEntity, err := client.Project.Create().
+			SetName("cross-trace-project").
+			SetStatus(project.StatusActive).
+			Save(ctx)
+		require.NoError(t, err)
+
+		threadEntity, err := client.Thread.Create().
+			SetThreadID("thread-cross-trace-dedup").
+			SetProjectID(projectEntity.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		now := time.Now()
+
+		// --- Trace 1: user asks a question, LLM responds ---
+		trace1, err := client.Trace.Create().
+			SetTraceID("trace-cross-1").
+			SetProjectID(projectEntity.ID).
+			SetThreadID(threadEntity.ID).
+			SetCreatedAt(now).
+			Save(ctx)
+		require.NoError(t, err)
+
+		trace1ReqBody := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "system", "content": "You are a helpful assistant."},
+				{"role": "user", "content": "What is Go?"}
+			]
+		}`)
+		trace1RespBody := []byte(`{
+			"id": "c-t1-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Go is a programming language."}, "finish_reason": "stop"}],
+			"usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30}
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).
+			SetTraceID(trace1.ID).
+			SetModelID("gpt-4").
+			SetFormat("openai/chat_completions").
+			SetRequestBody(trace1ReqBody).
+			SetResponseBody(trace1RespBody).
+			SetStatus("completed").
+			SetStream(false).
+			SetCreatedAt(now).
+			SetUpdatedAt(now.Add(100 * time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// --- Trace 2: carries trace 1's full context + new user message ---
+		trace2, err := client.Trace.Create().
+			SetTraceID("trace-cross-2").
+			SetProjectID(projectEntity.ID).
+			SetThreadID(threadEntity.ID).
+			SetCreatedAt(now.Add(10 * time.Second)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		trace2ReqBody := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "system", "content": "You are a helpful assistant."},
+				{"role": "user", "content": "What is Go?"},
+				{"role": "assistant", "content": "Go is a programming language."},
+				{"role": "user", "content": "Tell me about goroutines."}
+			]
+		}`)
+		trace2RespBody := []byte(`{
+			"id": "c-t2-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Goroutines are lightweight threads."}, "finish_reason": "stop"}],
+			"usage": {"prompt_tokens": 40, "completion_tokens": 10, "total_tokens": 50}
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).
+			SetTraceID(trace2.ID).
+			SetModelID("gpt-4").
+			SetFormat("openai/chat_completions").
+			SetRequestBody(trace2ReqBody).
+			SetResponseBody(trace2RespBody).
+			SetStatus("completed").
+			SetStream(false).
+			SetCreatedAt(now.Add(10 * time.Second)).
+			SetUpdatedAt(now.Add(10*time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Verify trace 2's root segment has duplicated spans removed
+		root, err := traceService.GetRootSegment(ctx, trace2.ID)
+		require.NoError(t, err)
+		require.NotNil(t, root)
+
+		// Only the new user_query ("Tell me about goroutines.") should remain
+		// The system instruction, first user_query, and assistant text from trace 1 should be removed
+		require.Equal(t, 1, countSpansByType(root.RequestSpans, "user_query"),
+			"expected only the new user_query, previous trace context should be deduped")
+		require.Equal(t, 0, countSpansByType(root.RequestSpans, "system_instruction"),
+			"system instruction from previous trace should be deduped")
+		require.Equal(t, 0, countSpansByType(root.RequestSpans, "text"),
+			"assistant text from previous trace should be deduped")
+
+		// The new user query should be the correct one
+		userSpan := findSpanByType(root.RequestSpans, "user_query")
+		require.NotNil(t, userSpan)
+		require.Equal(t, "Tell me about goroutines.", userSpan.Value.UserQuery.Text)
+
+		// Response spans should be unaffected
+		require.Equal(t, 1, countSpansByType(root.ResponseSpans, "text"))
+	})
+
+	t.Run("no dedup when trace has no thread", func(t *testing.T) {
+		traceService, client := setupTestTraceService(t, nil)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		projectEntity, err := client.Project.Create().
+			SetName("no-thread-project").
+			SetStatus(project.StatusActive).
+			Save(ctx)
+		require.NoError(t, err)
+
+		now := time.Now()
+
+		traceEntity, err := client.Trace.Create().
+			SetTraceID("trace-no-thread").
+			SetProjectID(projectEntity.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		reqBody := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "system", "content": "You are helpful."},
+				{"role": "user", "content": "Hello"}
+			]
+		}`)
+		respBody := []byte(`{
+			"id": "c-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Hi!"}, "finish_reason": "stop"}]
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).
+			SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").
+			SetFormat("openai/chat_completions").
+			SetRequestBody(reqBody).
+			SetResponseBody(respBody).
+			SetStatus("completed").
+			SetStream(false).
+			SetCreatedAt(now).
+			SetUpdatedAt(now.Add(100 * time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		root, err := traceService.GetRootSegment(ctx, traceEntity.ID)
+		require.NoError(t, err)
+		require.NotNil(t, root)
+
+		// All spans should remain since there's no thread context to dedup against
+		require.Equal(t, 1, countSpansByType(root.RequestSpans, "system_instruction"))
+		require.Equal(t, 1, countSpansByType(root.RequestSpans, "user_query"))
+	})
+
+	t.Run("no dedup when trace is the first in thread", func(t *testing.T) {
+		traceService, client := setupTestTraceService(t, nil)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		projectEntity, err := client.Project.Create().
+			SetName("first-in-thread-project").
+			SetStatus(project.StatusActive).
+			Save(ctx)
+		require.NoError(t, err)
+
+		threadEntity, err := client.Thread.Create().
+			SetThreadID("thread-first-trace").
+			SetProjectID(projectEntity.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		now := time.Now()
+
+		traceEntity, err := client.Trace.Create().
+			SetTraceID("trace-first-in-thread").
+			SetProjectID(projectEntity.ID).
+			SetThreadID(threadEntity.ID).
+			SetCreatedAt(now).
+			Save(ctx)
+		require.NoError(t, err)
+
+		reqBody := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "system", "content": "You are helpful."},
+				{"role": "user", "content": "Hello"}
+			]
+		}`)
+		respBody := []byte(`{
+			"id": "c-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Hi!"}, "finish_reason": "stop"}]
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).
+			SetTraceID(traceEntity.ID).
+			SetModelID("gpt-4").
+			SetFormat("openai/chat_completions").
+			SetRequestBody(reqBody).
+			SetResponseBody(respBody).
+			SetStatus("completed").
+			SetStream(false).
+			SetCreatedAt(now).
+			SetUpdatedAt(now.Add(100 * time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		root, err := traceService.GetRootSegment(ctx, traceEntity.ID)
+		require.NoError(t, err)
+		require.NotNil(t, root)
+
+		// All spans should remain since this is the first trace in the thread
+		require.Equal(t, 1, countSpansByType(root.RequestSpans, "system_instruction"))
+		require.Equal(t, 1, countSpansByType(root.RequestSpans, "user_query"))
+	})
+
+	t.Run("cross-trace dedup with tool calls in previous trace", func(t *testing.T) {
+		traceService, client := setupTestTraceService(t, nil)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		projectEntity, err := client.Project.Create().
+			SetName("cross-trace-tools-project").
+			SetStatus(project.StatusActive).
+			Save(ctx)
+		require.NoError(t, err)
+
+		threadEntity, err := client.Thread.Create().
+			SetThreadID("thread-cross-trace-tools").
+			SetProjectID(projectEntity.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		now := time.Now()
+
+		// --- Trace 1: Request 1 (user ask) → tool call ---
+		trace1, err := client.Trace.Create().
+			SetTraceID("trace-tools-1").
+			SetProjectID(projectEntity.ID).
+			SetThreadID(threadEntity.ID).
+			SetCreatedAt(now).
+			Save(ctx)
+		require.NoError(t, err)
+
+		t1Req1Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "user", "content": "What is the weather?"}
+			]
+		}`)
+		t1Resp1Body := []byte(`{
+			"id": "c-t1-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": null,
+				"tool_calls": [{"id": "call_weather", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"SF\"}"}}]
+			}, "finish_reason": "tool_calls"}]
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(trace1.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(t1Req1Body).SetResponseBody(t1Resp1Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now).SetUpdatedAt(now.Add(100 * time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Trace 1: Request 2 (tool result → final answer)
+		t1Req2Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "user", "content": "What is the weather?"},
+				{"role": "assistant", "content": null, "tool_calls": [{"id": "call_weather", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"SF\"}"}}]},
+				{"role": "tool", "tool_call_id": "call_weather", "content": "72°F sunny"}
+			]
+		}`)
+		t1Resp2Body := []byte(`{
+			"id": "c-t1-002", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "The weather in SF is 72°F and sunny."}, "finish_reason": "stop"}]
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(trace1.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(t1Req2Body).SetResponseBody(t1Resp2Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(time.Second)).SetUpdatedAt(now.Add(time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// --- Trace 2: carries all of trace 1's context + new user message ---
+		trace2, err := client.Trace.Create().
+			SetTraceID("trace-tools-2").
+			SetProjectID(projectEntity.ID).
+			SetThreadID(threadEntity.ID).
+			SetCreatedAt(now.Add(10 * time.Second)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		t2ReqBody := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "user", "content": "What is the weather?"},
+				{"role": "assistant", "content": null, "tool_calls": [{"id": "call_weather", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"SF\"}"}}]},
+				{"role": "tool", "tool_call_id": "call_weather", "content": "72°F sunny"},
+				{"role": "assistant", "content": "The weather in SF is 72°F and sunny."},
+				{"role": "user", "content": "What about tomorrow?"}
+			]
+		}`)
+		t2RespBody := []byte(`{
+			"id": "c-t2-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Tomorrow will be 68°F and cloudy."}, "finish_reason": "stop"}]
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(trace2.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(t2ReqBody).SetResponseBody(t2RespBody).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(10 * time.Second)).SetUpdatedAt(now.Add(10*time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		root, err := traceService.GetRootSegment(ctx, trace2.ID)
+		require.NoError(t, err)
+		require.NotNil(t, root)
+
+		// Only the new user_query should remain after dedup
+		require.Equal(t, 1, countSpansByType(root.RequestSpans, "user_query"),
+			"only the new user query should remain")
+		require.Equal(t, 0, countSpansByType(root.RequestSpans, "tool_use"),
+			"tool_use from previous trace should be deduped")
+		require.Equal(t, 0, countSpansByType(root.RequestSpans, "tool_result"),
+			"tool_result from previous trace should be deduped")
+		require.Equal(t, 0, countSpansByType(root.RequestSpans, "text"),
+			"assistant text from previous trace should be deduped")
+
+		userSpan := findSpanByType(root.RequestSpans, "user_query")
+		require.NotNil(t, userSpan)
+		require.Equal(t, "What about tomorrow?", userSpan.Value.UserQuery.Text)
+	})
+
+	t.Run("cross-trace dedup does not affect within-trace dedup", func(t *testing.T) {
+		traceService, client := setupTestTraceService(t, nil)
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+
+		projectEntity, err := client.Project.Create().
+			SetName("cross-trace-combined-project").
+			SetStatus(project.StatusActive).
+			Save(ctx)
+		require.NoError(t, err)
+
+		threadEntity, err := client.Thread.Create().
+			SetThreadID("thread-cross-trace-combined").
+			SetProjectID(projectEntity.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		now := time.Now()
+
+		// --- Trace 1: simple Q&A ---
+		trace1, err := client.Trace.Create().
+			SetTraceID("trace-combined-1").
+			SetProjectID(projectEntity.ID).
+			SetThreadID(threadEntity.ID).
+			SetCreatedAt(now).
+			Save(ctx)
+		require.NoError(t, err)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(trace1.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody([]byte(`{"model":"gpt-4","messages":[{"role":"user","content":"First question"}]}`)).
+			SetResponseBody([]byte(`{"id":"c1","object":"chat.completion","model":"gpt-4","choices":[{"index":0,"message":{"role":"assistant","content":"First answer"},"finish_reason":"stop"}]}`)).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now).SetUpdatedAt(now.Add(100 * time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// --- Trace 2: two requests, first carries trace 1 context, second carries trace 2 req 1 context ---
+		trace2, err := client.Trace.Create().
+			SetTraceID("trace-combined-2").
+			SetProjectID(projectEntity.ID).
+			SetThreadID(threadEntity.ID).
+			SetCreatedAt(now.Add(10 * time.Second)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Trace 2, Request 1: carries trace 1 context + new question
+		t2Req1Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "user", "content": "First question"},
+				{"role": "assistant", "content": "First answer"},
+				{"role": "user", "content": "Second question"}
+			]
+		}`)
+		t2Resp1Body := []byte(`{
+			"id": "c-t2-001", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": null,
+				"tool_calls": [{"id": "call_t2", "type": "function", "function": {"name": "search", "arguments": "{}"}}]
+			}, "finish_reason": "tool_calls"}]
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(trace2.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(t2Req1Body).SetResponseBody(t2Resp1Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(10 * time.Second)).SetUpdatedAt(now.Add(10*time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Trace 2, Request 2: carries trace 2 req 1 context + tool result
+		t2Req2Body := []byte(`{
+			"model": "gpt-4",
+			"messages": [
+				{"role": "user", "content": "First question"},
+				{"role": "assistant", "content": "First answer"},
+				{"role": "user", "content": "Second question"},
+				{"role": "assistant", "content": null, "tool_calls": [{"id": "call_t2", "type": "function", "function": {"name": "search", "arguments": "{}"}}]},
+				{"role": "tool", "tool_call_id": "call_t2", "content": "search result"}
+			]
+		}`)
+		t2Resp2Body := []byte(`{
+			"id": "c-t2-002", "object": "chat.completion", "model": "gpt-4",
+			"choices": [{"index": 0, "message": {"role": "assistant", "content": "Second answer"}, "finish_reason": "stop"}]
+		}`)
+
+		_, err = client.Request.Create().
+			SetProjectID(projectEntity.ID).SetTraceID(trace2.ID).
+			SetModelID("gpt-4").SetFormat("openai/chat_completions").
+			SetRequestBody(t2Req2Body).SetResponseBody(t2Resp2Body).
+			SetStatus("completed").SetStream(false).
+			SetCreatedAt(now.Add(11 * time.Second)).SetUpdatedAt(now.Add(11*time.Second + 100*time.Millisecond)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		root, err := traceService.GetRootSegment(ctx, trace2.ID)
+		require.NoError(t, err)
+		require.NotNil(t, root)
+
+		// Root (trace 2, req 1): cross-trace dedup removes trace 1 context,
+		// only "Second question" should remain
+		require.Equal(t, 1, countSpansByType(root.RequestSpans, "user_query"))
+		userSpan := findSpanByType(root.RequestSpans, "user_query")
+		require.NotNil(t, userSpan)
+		require.Equal(t, "Second question", userSpan.Value.UserQuery.Text)
+
+		// Child (trace 2, req 2): within-trace dedup against parent
+		require.Len(t, root.Children, 1)
+		child := root.Children[0]
+
+		// Only the tool_result should remain after within-trace dedup
+		require.Equal(t, 1, countSpansByType(child.RequestSpans, "tool_result"))
+		require.Equal(t, 0, countSpansByType(child.RequestSpans, "user_query"),
+			"user queries should be deduped against parent within-trace")
+	})
+}
+
 func TestTraceService_GetRequestTrace_integration(t *testing.T) {
 	if true {
 		t.Skip("skipping integration test in short mode")

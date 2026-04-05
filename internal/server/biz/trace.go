@@ -399,17 +399,25 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 		return nil, nil
 	}
 
-	eg, ctx := errgroup.WithContext(ctx)
-	eg.SetLimit(MaxConcurrentBodyLoads) // 限制并发数量，防止内存泄漏
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(MaxConcurrentBodyLoads) // 限制并发数量，防止内存占用过高
+
+	// Load previous trace spans concurrently with request bodies
+	var prevSpans []Span
+
+	eg.Go(func() error {
+		prevSpans = s.getPreviousTraceSpans(egCtx, client, traceID)
+		return nil
+	})
 
 	for _, req := range requests {
 		eg.Go(func() (err error) {
-			req.RequestBody, err = s.requestService.LoadRequestBody(ctx, req)
+			req.RequestBody, err = s.requestService.LoadRequestBody(egCtx, req)
 			if err != nil {
 				return fmt.Errorf("failed to load request body: %w", err)
 			}
 
-			req.ResponseBody, err = s.requestService.LoadResponseBody(ctx, req)
+			req.ResponseBody, err = s.requestService.LoadResponseBody(egCtx, req)
 			if err != nil {
 				return fmt.Errorf("failed to load request response body: %w", err)
 			}
@@ -422,34 +430,116 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 		return nil, fmt.Errorf("failed to load request body: %w", err)
 	}
 
-	segments := make([]*Segment, len(requests))
-	// Store the original spans for each segment (including request and response) for later comparison
-	var originSegmentSpans [][]Span
+	// Build segment info for tree construction.
+	// Instead of a linear chain, we build a tree based on:
+	// 1. tool_call_id linkage (consumed tool_result → produced tool_use)
+	// 2. span content prefix matching
+	// 3. fallback to the chronologically nearest previous segment
+	buildInfos := make([]*segmentBuildInfo, len(requests))
+	toolCallIndex := make(map[string]*segmentBuildInfo) // tool_call_id → producing segment
 
 	for i, req := range requests {
-		segments[i], err = requestToSegment(ctx, req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build segment: %w", err)
+		seg, segErr := requestToSegment(ctx, req)
+		if segErr != nil {
+			return nil, fmt.Errorf("failed to build segment: %w", segErr)
 		}
 
-		// Preserve the original spans (request + response) for subsequent comparison
-		segmentSpans := segments[i].RequestSpans
-		segmentSpans = append(segmentSpans, segments[i].ResponseSpans...)
-		originSegmentSpans = append(originSegmentSpans, segmentSpans)
+		info := &segmentBuildInfo{
+			segment:             seg,
+			originSpans:         append(append([]Span{}, seg.RequestSpans...), seg.ResponseSpans...),
+			originRequestSpans:  append([]Span{}, seg.RequestSpans...),
+			producedToolCallIDs: extractProducedToolCallIDs(seg.ResponseSpans),
+			consumedToolCallIDs: extractConsumedToolCallIDs(seg.RequestSpans),
+		}
+		buildInfos[i] = info
 
 		if i == 0 {
+			// Deduplicate the first segment's request spans against the previous trace
+			// in the same thread. When a thread has multiple traces, the first request
+			// of a new trace carries all context messages from previous traces as prefix,
+			// which should be removed.
+			// Note: originSpans and originRequestSpans are NOT updated here because
+			// within-trace child dedup needs the full original spans to properly match
+			// the prefix carried by subsequent requests in this trace.
+			if len(prevSpans) > 0 {
+				seg.RequestSpans = deduplicateSpansWithParent(seg.RequestSpans, prevSpans)
+			}
+
+			for id := range info.producedToolCallIDs {
+				toolCallIndex[id] = info
+			}
+
 			continue
 		}
 
-		segments[i].ParentID = &requests[i-1].ID
-		segments[i-1].Children = append(segments[i-1].Children, segments[i])
+		// Find the real parent using 3-tier strategy
+		parent := findSegmentParent(info, buildInfos[:i], toolCallIndex)
+		seg.ParentID = &parent.segment.ID
+		parent.segment.Children = append(parent.segment.Children, seg)
 
-		// Deduplicate requestSpans because later requests carry previous context messages as a prefix
-		// Remove spans that duplicate those in the parent segment
-		segments[i].RequestSpans = deduplicateSpansWithParent(segments[i].RequestSpans, originSegmentSpans[i-1])
+		// Deduplicate request spans against the real parent's combined spans
+		seg.RequestSpans = deduplicateSpansWithParent(seg.RequestSpans, parent.originSpans)
+
+		for id := range info.producedToolCallIDs {
+			toolCallIndex[id] = info
+		}
 	}
 
-	return segments[0], nil
+	return buildInfos[0].segment, nil
+}
+
+// getPreviousTraceSpans loads all spans from the previous trace in the same thread.
+// This is used to deduplicate the first segment of a trace, which may carry context
+// messages from previous traces as prefix in the same thread.
+func (s *TraceService) getPreviousTraceSpans(ctx context.Context, client *ent.Client, traceID int) []Span {
+	// Find the current trace to get its thread_id and created_at
+	currentTrace, err := client.Trace.Get(ctx, traceID)
+	if err != nil || currentTrace.ThreadID == 0 {
+		return nil
+	}
+
+	// Find the previous trace in the same thread (ordered by created_at desc, before current)
+	prevTrace, err := client.Trace.Query().
+		Where(
+			trace.ThreadIDEQ(currentTrace.ThreadID),
+			trace.IDNEQ(traceID),
+			trace.CreatedAtLT(currentTrace.CreatedAt),
+		).
+		Order(ent.Desc(trace.FieldCreatedAt)).
+		First(ctx)
+	if err != nil {
+		return nil
+	}
+
+	// Load the last completed request of the previous trace
+	lastReq, err := client.Request.Query().
+		Where(
+			request.TraceIDEQ(prevTrace.ID),
+			request.StatusEQ(request.StatusCompleted),
+		).
+		Order(ent.Desc(request.FieldCreatedAt)).
+		First(ctx)
+	if err != nil {
+		return nil
+	}
+
+	lastReq.RequestBody, err = s.requestService.LoadRequestBody(ctx, lastReq)
+	if err != nil {
+		return nil
+	}
+
+	lastReq.ResponseBody, err = s.requestService.LoadResponseBody(ctx, lastReq)
+	if err != nil {
+		return nil
+	}
+
+	seg, err := requestToSegment(ctx, lastReq)
+	if err != nil || seg == nil {
+		return nil
+	}
+
+	// Return combined request + response spans as the full context of the previous trace's last request
+	return append(append([]Span{}, seg.RequestSpans...), seg.ResponseSpans...)
 }
 
 // FirstUserQuery is the resolver for the firstUserQuery field.
@@ -894,7 +984,8 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 				EndTime:   now,
 				Value: &SpanValue{
 					ToolResult: &SpanToolResult{
-						Text: msg.Content.Content,
+						ToolCallID: lo.FromPtr(msg.ToolCallID),
+						Text:       msg.Content.Content,
 					},
 				},
 			})
@@ -954,7 +1045,8 @@ func extractSpansFromMessage(msg *llm.Message, idPrefix string) []Span {
 					EndTime:   now,
 					Value: &SpanValue{
 						ToolResult: &SpanToolResult{
-							Text: part.Text,
+							ToolCallID: lo.FromPtr(msg.ToolCallID),
+							Text:       part.Text,
 						},
 					},
 				})
@@ -1273,6 +1365,100 @@ func extractMetadataFromUsage(usage *llm.Usage) *RequestMetadata {
 	}
 
 	return metadata
+}
+
+// segmentBuildInfo holds intermediate data for building the segment tree.
+type segmentBuildInfo struct {
+	segment             *Segment
+	originSpans         []Span              // original request + response spans (for dedup and prefix target)
+	originRequestSpans  []Span              // original request spans only (for prefix matching source)
+	producedToolCallIDs map[string]struct{} // tool_call IDs produced in response (tool_use spans)
+	consumedToolCallIDs map[string]struct{} // tool_call IDs consumed in request (tool_result spans)
+}
+
+// extractProducedToolCallIDs extracts tool_call IDs from tool_use spans in response.
+func extractProducedToolCallIDs(responseSpans []Span) map[string]struct{} {
+	ids := make(map[string]struct{})
+
+	for _, span := range responseSpans {
+		if span.Type == "tool_use" && span.Value != nil && span.Value.ToolUse != nil && span.Value.ToolUse.ID != "" {
+			ids[span.Value.ToolUse.ID] = struct{}{}
+		}
+	}
+
+	return ids
+}
+
+// extractConsumedToolCallIDs extracts tool_call IDs from tool_result spans in request.
+func extractConsumedToolCallIDs(requestSpans []Span) map[string]struct{} {
+	ids := make(map[string]struct{})
+
+	for _, span := range requestSpans {
+		if span.Type == "tool_result" && span.Value != nil && span.Value.ToolResult != nil && span.Value.ToolResult.ToolCallID != "" {
+			ids[span.Value.ToolResult.ToolCallID] = struct{}{}
+		}
+	}
+
+	return ids
+}
+
+// findSegmentParent determines the parent for a segment using a 3-tier strategy:
+//  1. Tool call ID matching: find the latest segment whose response produced tool_call_ids consumed by this segment.
+//  2. Span prefix matching: find the segment with the longest common request span prefix.
+//  3. Fallback: use the chronologically nearest previous segment.
+func findSegmentParent(current *segmentBuildInfo, predecessors []*segmentBuildInfo, toolCallIndex map[string]*segmentBuildInfo) *segmentBuildInfo {
+	// Strategy 1: Tool call ID matching
+	if len(current.consumedToolCallIDs) > 0 {
+		var latestProducer *segmentBuildInfo
+
+		for id := range current.consumedToolCallIDs {
+			if producer, ok := toolCallIndex[id]; ok {
+				if latestProducer == nil || producer.segment.StartTime.After(latestProducer.segment.StartTime) {
+					latestProducer = producer
+				}
+			}
+		}
+
+		if latestProducer != nil {
+			return latestProducer
+		}
+	}
+
+	// Strategy 2: Span prefix matching — find the segment with the longest common prefix
+	var bestMatch *segmentBuildInfo
+
+	bestMatchLen := 0
+
+	for _, pred := range predecessors {
+		matchLen := countCommonSpanPrefix(current.originRequestSpans, pred.originSpans)
+		if matchLen > bestMatchLen {
+			bestMatchLen = matchLen
+			bestMatch = pred
+		}
+	}
+
+	if bestMatch != nil {
+		return bestMatch
+	}
+
+	// Strategy 3: Fallback to the chronologically nearest previous segment
+	return predecessors[len(predecessors)-1]
+}
+
+// countCommonSpanPrefix counts the number of matching spans from the start of two span slices.
+func countCommonSpanPrefix(current, predecessor []Span) int {
+	maxLen := min(len(current), len(predecessor))
+	count := 0
+
+	for i := range maxLen {
+		if spanToKey(current[i]) != spanToKey(predecessor[i]) {
+			break
+		}
+
+		count++
+	}
+
+	return count
 }
 
 // deduplicateSpansWithParent removes spans from current that already exist in parent.

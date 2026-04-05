@@ -85,7 +85,7 @@ export function TraceCard({ trace, onViewTrace, index }: TraceCardProps) {
               variant='ghost'
               size='sm'
               onClick={() => onViewTrace(trace.id)}
-              className='h-8 gap-1.5 rounded-lg text-xs font-medium text-muted-foreground/80 transition-colors hover:bg-primary/5 hover:text-primary'
+              className='group/button h-8 gap-1.5 rounded-lg text-xs font-medium text-muted-foreground/80 transition-colors hover:bg-primary/5 hover:text-primary'
             >
               {t('threads.detail.viewTrace')}
               <ArrowUpRight className='h-3.5 w-3.5 transition-transform group-hover/button:translate-x-0.5 group-hover/button:-translate-y-0.5' />

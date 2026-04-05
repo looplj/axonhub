@@ -18,6 +18,7 @@
   "traces.detail.title": "Trace Details",
   "traces.detail.notFound": "Trace not found",
   "traces.detail.noTraceData": "No trace data available",
+  "traces.detail.checkTraceIdHint": "Please check the Trace ID or try again later",
   "traces.detail.levelBadge": "Level {{level}}",
   "traces.detail.durationLabel": "Duration",
   "traces.detail.itemsLabel": "Items",
@@ -88,5 +89,10 @@
   "traces.timeline.summary.duration": "Duration {{value}}",
   "traces.timeline.summary.tokenCount": "{{value}} tokens",
   "traces.timeline.collapseAll": "Collapse All",
-  "traces.timeline.expandAll": "Expand All"
+  "traces.timeline.expandAll": "Expand All",
+  "traces.flowTimeline.title": "Flow",
+  "traces.treeTimeline.title": "Tree",
+  "traces.detail.viewMode.flat": "Flat",
+  "traces.detail.viewMode.flow": "Flow",
+  "traces.detail.viewMode.tree": "Tree"
 }

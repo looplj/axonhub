@@ -67,6 +67,8 @@
   "pagination.hasNext": "Has next",
   "pagination.showing": "Showing {{start}}-{{end}} of {{total}}",
   "common.close": "Close",
+  "common.fullscreen": "Fullscreen",
+  "common.exitFullscreen": "Exit Fullscreen",
   "common.refresh": "Refresh",
   "common.autoRefresh": "Auto Refresh",
   "common.showArchived": "Show archived",
