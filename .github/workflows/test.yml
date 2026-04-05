@@ -5,9 +5,11 @@ on:
   push:
     branches:
       - "unstable"
+      - "release/**"
   pull_request:
     branches:
       - "unstable"
+      - "release/**"
 env:
   GO111MODULE: on
 jobs:
@@ -25,4 +27,4 @@ jobs:
           stable: true
 
       - name: Test
-        run: go test -v --short ./...
+        run: make test-backend-all

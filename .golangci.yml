@@ -19,7 +19,6 @@ run:
   # list of build tags, all linters use it. Default is empty list.
   build-tags: []
 
-
 linters:
   default: all
   disable:
@@ -75,7 +74,6 @@ linters:
     - dogsled
     - unqueryvet
     - predeclared
-    
 
   # all available settings of specific linters
   settings:
@@ -194,8 +192,12 @@ linters:
       # Force newlines in end of case at this limit (0 = never).
       force-case-trailing-whitespace: 0
 
-  
   exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     # Exclude all linters from running on ent files.
     paths:
       - internal/ent
@@ -244,10 +246,19 @@ linters:
         linters:
           - gofmt
 
+        # For compatibility with previous versions.
+      # Also, those reports are not relevant.
+      - linters: [gosec]
+        text: "(G704: SSRF via taint analysis|G703: Path traversal via taint analysis|G702: Command injection via taint analysis|G115: integer overflow conversion uintptr|G705: XSS via taint analysis)"
+
       # Exclude some staticcheck messages
       - linters:
           - staticcheck
         text: "SA9003:"
+
+      - linters:
+          - staticcheck
+        text: "SA1019:"
 
       - linters:
           - staticcheck
@@ -338,7 +349,7 @@ formatters:
       # Split chained methods on the dots as opposed to the arguments.
       # Default: true
       chain-split-dots: false
-    
+
     goimports:
       # Local prefixes to use with "goimports -local".
       # Default: []
@@ -365,7 +376,7 @@ formatters:
       - "axonhub.resolvers.go"
       - "ent.resolvers.go"
       - "internal/ent"
-  
+      - "internal/server/gql/ent.resolvers.go"
 
 issues:
   # make issues output unique by line, default is true

@@ -7,12 +7,12 @@
           "type": "input_text"
         }
       ],
-      "role": "user"
+      "role": "user",
+      "type": "message"
     },
     {
       "content": [
         {
-          "annotations": [],
           "text": "Hello Alice. How can I help you today?",
           "type": "output_text"
         }
@@ -28,12 +28,12 @@
           "type": "input_text"
         }
       ],
-      "role": "user"
+      "role": "user",
+      "type": "message"
     },
     {
       "content": [
         {
-          "annotations": [],
           "text": "That's a lovely combination! Paris is a wonderful city.",
           "type": "output_text"
         }
@@ -49,12 +49,12 @@
           "type": "input_text"
         }
       ],
-      "role": "user"
+      "role": "user",
+      "type": "message"
     },
     {
       "content": [
         {
-          "annotations": [],
           "text": "Your name is Alice.",
           "type": "output_text"
         }
@@ -64,13 +64,18 @@
       "type": "message"
     },
     {
+      "type": "compaction",
+      "encrypted_content": "gAAAAABpxygtxqpBeKM2Wvlv2Owja3cpZk2rbpgr8iXCl9Zhl7JAJCVy7nIP==="
+    },
+    {
       "content": [
         {
           "text": "Where do I live?",
           "type": "input_text"
         }
       ],
-      "role": "user"
+      "role": "user",
+      "type": "message"
     }
   ],
   "model": "deepseek-chat"

@@ -5,9 +5,9 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -30,6 +30,7 @@ func NewMigrator(client *ent.Client) *Migrator {
 	migrator := NewMigratorWithoutRegistrations(client)
 	migrator.Register(NewV0_3_0())
 	migrator.Register(NewV0_4_0())
+	migrator.Register(NewV1_0_0())
 
 	return migrator
 }
@@ -108,7 +109,7 @@ func (m *Migrator) shouldRunMigration(ctx context.Context, migrationVersion stri
 // Run executes all registered migrations in order, checking versions before each migration.
 func (m *Migrator) Run(ctx context.Context) error {
 	ctx = ent.NewContext(ctx, m.client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(ctx, "database-migrate")
 
 	inited, err := m.systemService.IsInitialized(ctx)
 	if err != nil {

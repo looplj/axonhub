@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -146,6 +147,25 @@ func (_u *APIKeyUpdate) AddRequests(v ...*Request) *APIKeyUpdate {
 	return _u.AddRequestIDs(ids...)
 }
 
+// SetAgentInstanceID sets the "agent_instance" edge to the AgentInstance entity by ID.
+func (_u *APIKeyUpdate) SetAgentInstanceID(id int) *APIKeyUpdate {
+	_u.mutation.SetAgentInstanceID(id)
+	return _u
+}
+
+// SetNillableAgentInstanceID sets the "agent_instance" edge to the AgentInstance entity by ID if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableAgentInstanceID(id *int) *APIKeyUpdate {
+	if id != nil {
+		_u = _u.SetAgentInstanceID(*id)
+	}
+	return _u
+}
+
+// SetAgentInstance sets the "agent_instance" edge to the AgentInstance entity.
+func (_u *APIKeyUpdate) SetAgentInstance(v *AgentInstance) *APIKeyUpdate {
+	return _u.SetAgentInstanceID(v.ID)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdate) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -170,6 +190,12 @@ func (_u *APIKeyUpdate) RemoveRequests(v ...*Request) *APIKeyUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveRequestIDs(ids...)
+}
+
+// ClearAgentInstance clears the "agent_instance" edge to the AgentInstance entity.
+func (_u *APIKeyUpdate) ClearAgentInstance() *APIKeyUpdate {
+	_u.mutation.ClearAgentInstance()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -333,6 +359,35 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.AgentInstanceCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   apikey.AgentInstanceTable,
+			Columns: []string{apikey.AgentInstanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentinstance.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.AgentInstanceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   apikey.AgentInstanceTable,
+			Columns: []string{apikey.AgentInstanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentinstance.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -469,6 +524,25 @@ func (_u *APIKeyUpdateOne) AddRequests(v ...*Request) *APIKeyUpdateOne {
 	return _u.AddRequestIDs(ids...)
 }
 
+// SetAgentInstanceID sets the "agent_instance" edge to the AgentInstance entity by ID.
+func (_u *APIKeyUpdateOne) SetAgentInstanceID(id int) *APIKeyUpdateOne {
+	_u.mutation.SetAgentInstanceID(id)
+	return _u
+}
+
+// SetNillableAgentInstanceID sets the "agent_instance" edge to the AgentInstance entity by ID if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableAgentInstanceID(id *int) *APIKeyUpdateOne {
+	if id != nil {
+		_u = _u.SetAgentInstanceID(*id)
+	}
+	return _u
+}
+
+// SetAgentInstance sets the "agent_instance" edge to the AgentInstance entity.
+func (_u *APIKeyUpdateOne) SetAgentInstance(v *AgentInstance) *APIKeyUpdateOne {
+	return _u.SetAgentInstanceID(v.ID)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdateOne) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -493,6 +567,12 @@ func (_u *APIKeyUpdateOne) RemoveRequests(v ...*Request) *APIKeyUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveRequestIDs(ids...)
+}
+
+// ClearAgentInstance clears the "agent_instance" edge to the AgentInstance entity.
+func (_u *APIKeyUpdateOne) ClearAgentInstance() *APIKeyUpdateOne {
+	_u.mutation.ClearAgentInstance()
+	return _u
 }
 
 // Where appends a list predicates to the APIKeyUpdate builder.
@@ -679,6 +759,35 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.AgentInstanceCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   apikey.AgentInstanceTable,
+			Columns: []string{apikey.AgentInstanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentinstance.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.AgentInstanceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   apikey.AgentInstanceTable,
+			Columns: []string{apikey.AgentInstanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentinstance.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

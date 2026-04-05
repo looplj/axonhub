@@ -7,6 +7,9 @@ const (
 	RequestTypeEmbedding RequestType = "embedding"
 	RequestTypeRerank    RequestType = "rerank"
 	RequestTypeImage     RequestType = "image"
+	RequestTypeVideo     RequestType = "video"
+	RequestTypeSearch    RequestType = "search"
+	RequestTypeCompact   RequestType = "compact"
 )
 
 func (r RequestType) String() string {
@@ -18,10 +21,12 @@ type APIFormat string
 const (
 	APIFormatOpenAIChatCompletion  APIFormat = "openai/chat_completions"
 	APIFormatOpenAIResponse        APIFormat = "openai/responses"
+	APIFormatOpenAIResponseCompact APIFormat = "openai/responses_compact"
 	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"
 	APIFormatOpenAIImageEdit       APIFormat = "openai/image_edit"
 	APIFormatOpenAIImageVariation  APIFormat = "openai/image_variation"
 	APIFormatOpenAIEmbedding       APIFormat = "openai/embeddings"
+	APIFormatOpenAIVideo           APIFormat = "openai/video"
 	APIFormatGeminiContents        APIFormat = "gemini/contents"
 	APIFormatAnthropicMessage      APIFormat = "anthropic/messages"
 	APIFormatAiSDKText             APIFormat = "aisdk/text"
@@ -29,10 +34,26 @@ const (
 
 	APIFormatJinaRerank    APIFormat = "jina/rerank"
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
+
+	APIFormatSeedanceVideo APIFormat = "seedance/video"
+	APIFormatAxonHubSearch APIFormat = "axonhub/search"
+	APIFormatTavilySearch  APIFormat = "tavily/search"
+	APIFormatBraveSearch   APIFormat = "brave/search"
+	APIFormatExaSearch     APIFormat = "exa/search"
 )
 
 func (f APIFormat) String() string {
 	return string(f)
+}
+
+// IsSearch returns true if the API format is a search format.
+func (f APIFormat) IsSearch() bool {
+	switch f {
+	case APIFormatAxonHubSearch, APIFormatTavilySearch, APIFormatBraveSearch, APIFormatExaSearch:
+		return true
+	default:
+		return false
+	}
 }
 
 const (
@@ -41,6 +62,9 @@ const (
 
 	// ToolTypeImageGeneration is the image generation grounding tool type for OpenAI.
 	ToolTypeImageGeneration = "image_generation"
+
+	// ToolTypeWebSearch is the web search grounding tool type.
+	ToolTypeWebSearch = "web_search"
 
 	// ToolTypeGoogleSearch is the Google Search grounding tool type for Gemini.
 	ToolTypeGoogleSearch = "google_search"
@@ -51,11 +75,7 @@ const (
 	// ToolTypeGoogleUrlContext is the URL context grounding tool type for Gemini 2.0+.
 	ToolTypeGoogleUrlContext = "google_url_context"
 
-	// ToolTypeAnthropicWebSearch is the native web search tool type for Anthropic (Beta).
-	// This tool is only supported by native Anthropic API format channels.
-	ToolTypeAnthropicWebSearch = "web_search_20250305"
-
-	// AnthropicWebSearchFunctionName is the standard function name that triggers
-	// native Anthropic web search tool transformation.
-	AnthropicWebSearchFunctionName = "web_search"
+	// ToolTypeResponsesCustomTool is the custom tool type for OpenAI Responses API.
+	// Custom tools use freeform input (not JSON) and a grammar-based format definition.
+	ToolTypeResponsesCustomTool = "responses_custom_tool"
 )

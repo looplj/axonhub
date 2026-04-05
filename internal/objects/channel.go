@@ -1,7 +1,10 @@
 package objects
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
@@ -23,6 +26,42 @@ type ModelMapping struct {
 type HeaderEntry struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+// Override operation types.
+const (
+	OverrideOpSet    = "set"
+	OverrideOpDelete = "delete"
+	OverrideOpRename = "rename"
+	OverrideOpCopy   = "copy"
+)
+
+// OverrideOperation defines a structured override operation for request body/header manipulation.
+type OverrideOperation struct {
+	Op        string `json:"op"`
+	Path      string `json:"path,omitempty"`
+	From      string `json:"from,omitempty"`
+	To        string `json:"to,omitempty"`
+	Value     string `json:"value,omitempty"`
+	Condition string `json:"condition,omitempty"`
+}
+
+func HeaderEntriesToOverrideOperations(headers []HeaderEntry) []OverrideOperation {
+	if len(headers) == 0 {
+		return nil
+	}
+
+	ops := make([]OverrideOperation, 0, len(headers))
+	for _, header := range headers {
+		if header.Value == "__AXONHUB_CLEAR__" {
+			ops = append(ops, OverrideOperation{Op: OverrideOpDelete, Path: header.Key})
+			continue
+		}
+
+		ops = append(ops, OverrideOperation{Op: OverrideOpSet, Path: header.Key, Value: header.Value})
+	}
+
+	return ops
 }
 
 type TransformOptions struct {
@@ -67,17 +106,42 @@ type ChannelSettings struct {
 	// OverrideParameters sets the channel override the request body.
 	// A json string.
 	// e.g. {"max_tokens": 100}, {"temperature": 0.7}
+	// Deprecated Use bodyOverrideOperations instead.
 	OverrideParameters string `json:"overrideParameters"`
+
+	// BodyOverrideOperations sets the channel override operations for the request body.
+	// When present (including an empty array), it takes precedence over OverrideParameters.
+	BodyOverrideOperations []OverrideOperation `json:"bodyOverrideOperations,omitempty"`
 
 	// OverrideHeaders sets the channel override the request headers.
 	// e.g. [{"key": "User-Agent", "value": "AxonHub"}]
+	// Supported ops: set (default), delete, rename, copy.
+	// Deprecated Use headerOverrideOperations instead.
 	OverrideHeaders []HeaderEntry `json:"overrideHeaders"`
+
+	// HeaderOverrideOperations sets the channel override operations for request headers.
+	// When present (including an empty array), it takes precedence over OverrideHeaders.
+	HeaderOverrideOperations []OverrideOperation `json:"headerOverrideOperations,omitempty"`
 
 	// Proxy configuration for the channel. If not set, defaults to environment proxy type.
 	Proxy *httpclient.ProxyConfig `json:"proxy,omitempty"`
 
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`
+
+	// PassThroughUserAgent controls whether to pass through the original User-Agent header to upstream AI providers.
+	// When set to nil, it inherits from the global system setting.
+	// When set to true/false, it overrides the global setting.
+	PassThroughUserAgent *bool `json:"passThroughUserAgent,omitempty"`
+}
+
+// DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）
+// 注意：禁用判断以 Key 明文为主键。
+type DisabledAPIKey struct {
+	Key        string    `json:"key"`
+	DisabledAt time.Time `json:"disabledAt"`
+	ErrorCode  int       `json:"errorCode"`
+	Reason     string    `json:"reason,omitempty"`
 }
 
 type ChannelCredentials struct {
@@ -119,22 +183,32 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 	return keys
 }
 
-// HasMultipleAPIKeys returns true if the channel has more than one API key.
-func (c *ChannelCredentials) HasMultipleAPIKeys() bool {
-	keys := c.GetAllAPIKeys()
-	return len(keys) > 1
-}
-
-// GetSingleAPIKey returns the single API key for the channel.
-// If multiple keys are configured, returns the first one.
-// Returns empty string if no keys are configured.
-func (c *ChannelCredentials) GetSingleAPIKey() string {
-	keys := c.GetAllAPIKeys()
-	if len(keys) > 0 {
-		return keys[0]
+// GetEnabledAPIKeys returns API keys that are not disabled.
+func (c *ChannelCredentials) GetEnabledAPIKeys(disabledKeys []DisabledAPIKey) []string {
+	allKeys := c.GetAllAPIKeys()
+	if len(disabledKeys) == 0 {
+		return allKeys
 	}
 
-	return ""
+	disabledSet := make(map[string]struct{}, len(disabledKeys))
+	for _, dk := range disabledKeys {
+		if dk.Key == "" {
+			continue
+		}
+
+		disabledSet[dk.Key] = struct{}{}
+	}
+
+	enabled := make([]string, 0, len(allKeys))
+	for _, key := range allKeys {
+		if _, ok := disabledSet[key]; ok {
+			continue
+		}
+
+		enabled = append(enabled, key)
+	}
+
+	return enabled
 }
 
 // IsOAuth returns true if OAuth credentials are configured and valid.
@@ -196,4 +270,63 @@ const (
 
 type ChannelPolicies struct {
 	Stream CapabilityPolicy `json:"stream,omitempty"`
+}
+
+// ParseOverrideOperations parses the override parameters string.
+// Supports both legacy map format (JSON object) and new operation array format (JSON array).
+// Legacy format is automatically converted to OverrideOperation slice.
+func ParseOverrideOperations(raw string) ([]OverrideOperation, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "{}" || raw == "[]" {
+		return nil, nil
+	}
+
+	if raw[0] == '[' {
+		var ops []OverrideOperation
+		if err := json.Unmarshal([]byte(raw), &ops); err != nil {
+			return nil, fmt.Errorf("invalid override operations: %w", err)
+		}
+
+		return ops, nil
+	}
+
+	var legacy map[string]any
+	if err := json.Unmarshal([]byte(raw), &legacy); err != nil {
+		return nil, fmt.Errorf("invalid override parameters: %w", err)
+	}
+
+	ops := make([]OverrideOperation, 0, len(legacy))
+	for key, value := range legacy {
+		if strVal, ok := value.(string); ok && strVal == "__AXONHUB_CLEAR__" {
+			ops = append(ops, OverrideOperation{Op: OverrideOpDelete, Path: key})
+		} else {
+			// Convert value to string
+			var strValue string
+
+			switch v := value.(type) {
+			case string:
+				strValue = v
+			default:
+				strValue = fmt.Sprintf("%v", value)
+			}
+
+			ops = append(ops, OverrideOperation{Op: OverrideOpSet, Path: key, Value: strValue})
+		}
+	}
+
+	return ops, nil
+}
+
+// SerializeOverrideOperations converts override operations to a JSON string for storage.
+func SerializeOverrideOperations(ops []OverrideOperation) (string, error) {
+	if len(ops) == 0 {
+		return "[]", nil
+	}
+
+	data, err := json.Marshal(ops)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize override operations: %w", err)
+	}
+
+	return string(data), nil
 }

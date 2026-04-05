@@ -45,6 +45,347 @@ func (_m *APIKey) Requests(
 	return _m.QueryRequests().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *APIKey) AgentInstance(ctx context.Context) (*AgentInstance, error) {
+	result, err := _m.Edges.AgentInstanceOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgentInstance().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *Agent) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *Agent) CreatedByUser(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.CreatedByUserOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryCreatedByUser().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *Agent) Prompt(ctx context.Context) (*Prompt, error) {
+	result, err := _m.Edges.PromptOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryPrompt().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *Agent) ToolBindings(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentToolOrder, where *AgentToolWhereInput,
+) (*AgentToolConnection, error) {
+	opts := []AgentToolPaginateOption{
+		WithAgentToolOrder(orderBy),
+		WithAgentToolFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[3][alias]
+	if nodes, err := _m.NamedToolBindings(alias); err == nil || hasTotalCount {
+		pager, err := newAgentToolPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentToolConnection{Edges: []*AgentToolEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryToolBindings().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Agent) SkillBindings(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentSkillOrder, where *AgentSkillWhereInput,
+) (*AgentSkillConnection, error) {
+	opts := []AgentSkillPaginateOption{
+		WithAgentSkillOrder(orderBy),
+		WithAgentSkillFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	if nodes, err := _m.NamedSkillBindings(alias); err == nil || hasTotalCount {
+		pager, err := newAgentSkillPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentSkillConnection{Edges: []*AgentSkillEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QuerySkillBindings().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Agent) Instances(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentInstanceOrder, where *AgentInstanceWhereInput,
+) (*AgentInstanceConnection, error) {
+	opts := []AgentInstancePaginateOption{
+		WithAgentInstanceOrder(orderBy),
+		WithAgentInstanceFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
+	if nodes, err := _m.NamedInstances(alias); err == nil || hasTotalCount {
+		pager, err := newAgentInstancePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentInstanceConnection{Edges: []*AgentInstanceEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryInstances().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Agent) Threads(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentThreadOrder, where *AgentThreadWhereInput,
+) (*AgentThreadConnection, error) {
+	opts := []AgentThreadPaginateOption{
+		WithAgentThreadOrder(orderBy),
+		WithAgentThreadFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[6][alias]
+	if nodes, err := _m.NamedThreads(alias); err == nil || hasTotalCount {
+		pager, err := newAgentThreadPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentThreadConnection{Edges: []*AgentThreadEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryThreads().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Agent) Messages(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentMessageOrder, where *AgentMessageWhereInput,
+) (*AgentMessageConnection, error) {
+	opts := []AgentMessagePaginateOption{
+		WithAgentMessageOrder(orderBy),
+		WithAgentMessageFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[7][alias]
+	if nodes, err := _m.NamedMessages(alias); err == nil || hasTotalCount {
+		pager, err := newAgentMessagePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentMessageConnection{Edges: []*AgentMessageEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryMessages().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Agent) Memories(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentMemoryOrder, where *AgentMemoryWhereInput,
+) (*AgentMemoryConnection, error) {
+	opts := []AgentMemoryPaginateOption{
+		WithAgentMemoryOrder(orderBy),
+		WithAgentMemoryFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
+	if nodes, err := _m.NamedMemories(alias); err == nil || hasTotalCount {
+		pager, err := newAgentMemoryPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentMemoryConnection{Edges: []*AgentMemoryEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryMemories().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *AgentHost) Instances(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentInstanceOrder, where *AgentInstanceWhereInput,
+) (*AgentInstanceConnection, error) {
+	opts := []AgentInstancePaginateOption{
+		WithAgentInstanceOrder(orderBy),
+		WithAgentInstanceFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[0][alias]
+	if nodes, err := _m.NamedInstances(alias); err == nil || hasTotalCount {
+		pager, err := newAgentInstancePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentInstanceConnection{Edges: []*AgentInstanceEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryInstances().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *AgentInstance) Agent(ctx context.Context) (*Agent, error) {
+	result, err := _m.Edges.AgentOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgent().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentInstance) Host(ctx context.Context) (*AgentHost, error) {
+	result, err := _m.Edges.HostOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryHost().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *AgentInstance) APIKey(ctx context.Context) (*APIKey, error) {
+	result, err := _m.Edges.APIKeyOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAPIKey().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentInstance) Messages(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentMessageOrder, where *AgentMessageWhereInput,
+) (*AgentMessageConnection, error) {
+	opts := []AgentMessagePaginateOption{
+		WithAgentMessageOrder(orderBy),
+		WithAgentMessageFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[3][alias]
+	if nodes, err := _m.NamedMessages(alias); err == nil || hasTotalCount {
+		pager, err := newAgentMessagePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentMessageConnection{Edges: []*AgentMessageEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryMessages().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *AgentInstance) MessageChannelBindings(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *MessageChannelAgentInstanceOrder, where *MessageChannelAgentInstanceWhereInput,
+) (*MessageChannelAgentInstanceConnection, error) {
+	opts := []MessageChannelAgentInstancePaginateOption{
+		WithMessageChannelAgentInstanceOrder(orderBy),
+		WithMessageChannelAgentInstanceFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	if nodes, err := _m.NamedMessageChannelBindings(alias); err == nil || hasTotalCount {
+		pager, err := newMessageChannelAgentInstancePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &MessageChannelAgentInstanceConnection{Edges: []*MessageChannelAgentInstanceEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryMessageChannelBindings().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *AgentMemory) Agent(ctx context.Context) (*Agent, error) {
+	result, err := _m.Edges.AgentOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgent().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *AgentMessage) Agent(ctx context.Context) (*Agent, error) {
+	result, err := _m.Edges.AgentOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgent().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentMessage) AgentInstance(ctx context.Context) (*AgentInstance, error) {
+	result, err := _m.Edges.AgentInstanceOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgentInstance().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentMessage) MessageChannel(ctx context.Context) (*MessageChannel, error) {
+	result, err := _m.Edges.MessageChannelOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryMessageChannel().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *AgentSkill) Agent(ctx context.Context) (*Agent, error) {
+	result, err := _m.Edges.AgentOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgent().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentSkill) Skill(ctx context.Context) (*Skill, error) {
+	result, err := _m.Edges.SkillOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QuerySkill().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentSkill) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentThread) Agent(ctx context.Context) (*Agent, error) {
+	result, err := _m.Edges.AgentOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgent().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentThread) Thread(ctx context.Context) (*Thread, error) {
+	result, err := _m.Edges.ThreadOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryThread().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentTool) Agent(ctx context.Context) (*Agent, error) {
+	result, err := _m.Edges.AgentOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgent().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentTool) Tool(ctx context.Context) (*Tool, error) {
+	result, err := _m.Edges.ToolOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryTool().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *AgentTool) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, err
+}
+
 func (_m *Channel) Requests(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *RequestOrder, where *RequestWhereInput,
 ) (*RequestConnection, error) {
@@ -226,6 +567,72 @@ func (_m *DataStorage) Executions(
 	return _m.QueryExecutions().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *MessageChannel) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *MessageChannel) AgentInstanceBindings(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *MessageChannelAgentInstanceOrder, where *MessageChannelAgentInstanceWhereInput,
+) (*MessageChannelAgentInstanceConnection, error) {
+	opts := []MessageChannelAgentInstancePaginateOption{
+		WithMessageChannelAgentInstanceOrder(orderBy),
+		WithMessageChannelAgentInstanceFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[1][alias]
+	if nodes, err := _m.NamedAgentInstanceBindings(alias); err == nil || hasTotalCount {
+		pager, err := newMessageChannelAgentInstancePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &MessageChannelAgentInstanceConnection{Edges: []*MessageChannelAgentInstanceEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgentInstanceBindings().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *MessageChannel) Messages(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentMessageOrder, where *AgentMessageWhereInput,
+) (*AgentMessageConnection, error) {
+	opts := []AgentMessagePaginateOption{
+		WithAgentMessageOrder(orderBy),
+		WithAgentMessageFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
+	if nodes, err := _m.NamedMessages(alias); err == nil || hasTotalCount {
+		pager, err := newAgentMessagePager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentMessageConnection{Edges: []*AgentMessageEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryMessages().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *MessageChannelAgentInstance) MessageChannel(ctx context.Context) (*MessageChannel, error) {
+	result, err := _m.Edges.MessageChannelOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryMessageChannel().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *MessageChannelAgentInstance) AgentInstance(ctx context.Context) (*AgentInstance, error) {
+	result, err := _m.Edges.AgentInstanceOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAgentInstance().Only(ctx)
+	}
+	return result, err
+}
+
 func (_m *Project) Users(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserOrder, where *UserWhereInput,
 ) (*UserConnection, error) {
@@ -394,6 +801,153 @@ func (_m *Project) Prompts(
 	return _m.QueryPrompts().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *Project) PromptVersions(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *PromptVersionOrder, where *PromptVersionWhereInput,
+) (*PromptVersionConnection, error) {
+	opts := []PromptVersionPaginateOption{
+		WithPromptVersionOrder(orderBy),
+		WithPromptVersionFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
+	if nodes, err := _m.NamedPromptVersions(alias); err == nil || hasTotalCount {
+		pager, err := newPromptVersionPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &PromptVersionConnection{Edges: []*PromptVersionEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryPromptVersions().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Project) Agents(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentOrder, where *AgentWhereInput,
+) (*AgentConnection, error) {
+	opts := []AgentPaginateOption{
+		WithAgentOrder(orderBy),
+		WithAgentFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[9][alias]
+	if nodes, err := _m.NamedAgents(alias); err == nil || hasTotalCount {
+		pager, err := newAgentPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentConnection{Edges: []*AgentEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgents().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Project) Tools(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *ToolOrder, where *ToolWhereInput,
+) (*ToolConnection, error) {
+	opts := []ToolPaginateOption{
+		WithToolOrder(orderBy),
+		WithToolFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[10][alias]
+	if nodes, err := _m.NamedTools(alias); err == nil || hasTotalCount {
+		pager, err := newToolPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &ToolConnection{Edges: []*ToolEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryTools().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Project) Skills(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *SkillOrder, where *SkillWhereInput,
+) (*SkillConnection, error) {
+	opts := []SkillPaginateOption{
+		WithSkillOrder(orderBy),
+		WithSkillFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[11][alias]
+	if nodes, err := _m.NamedSkills(alias); err == nil || hasTotalCount {
+		pager, err := newSkillPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &SkillConnection{Edges: []*SkillEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QuerySkills().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Project) AgentToolBindings(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentToolOrder, where *AgentToolWhereInput,
+) (*AgentToolConnection, error) {
+	opts := []AgentToolPaginateOption{
+		WithAgentToolOrder(orderBy),
+		WithAgentToolFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[12][alias]
+	if nodes, err := _m.NamedAgentToolBindings(alias); err == nil || hasTotalCount {
+		pager, err := newAgentToolPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentToolConnection{Edges: []*AgentToolEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgentToolBindings().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Project) AgentSkillBindings(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentSkillOrder, where *AgentSkillWhereInput,
+) (*AgentSkillConnection, error) {
+	opts := []AgentSkillPaginateOption{
+		WithAgentSkillOrder(orderBy),
+		WithAgentSkillFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[13][alias]
+	if nodes, err := _m.NamedAgentSkillBindings(alias); err == nil || hasTotalCount {
+		pager, err := newAgentSkillPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentSkillConnection{Edges: []*AgentSkillEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgentSkillBindings().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Project) MessageChannels(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *MessageChannelOrder, where *MessageChannelWhereInput,
+) (*MessageChannelConnection, error) {
+	opts := []MessageChannelPaginateOption{
+		WithMessageChannelOrder(orderBy),
+		WithMessageChannelFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[14][alias]
+	if nodes, err := _m.NamedMessageChannels(alias); err == nil || hasTotalCount {
+		pager, err := newMessageChannelPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &MessageChannelConnection{Edges: []*MessageChannelEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryMessageChannels().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (_m *Project) ProjectUsers(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserProjectOrder, where *UserProjectWhereInput,
 ) (*UserProjectConnection, error) {
@@ -402,7 +956,7 @@ func (_m *Project) ProjectUsers(
 		WithUserProjectFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[15][alias]
 	if nodes, err := _m.NamedProjectUsers(alias); err == nil || hasTotalCount {
 		pager, err := newUserProjectPager(opts, last != nil)
 		if err != nil {
@@ -434,6 +988,130 @@ func (_m *Prompt) Projects(
 		return conn, nil
 	}
 	return _m.QueryProjects().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Prompt) Versions(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *PromptVersionOrder, where *PromptVersionWhereInput,
+) (*PromptVersionConnection, error) {
+	opts := []PromptVersionPaginateOption{
+		WithPromptVersionOrder(orderBy),
+		WithPromptVersionFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[1][alias]
+	if nodes, err := _m.NamedVersions(alias); err == nil || hasTotalCount {
+		pager, err := newPromptVersionPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &PromptVersionConnection{Edges: []*PromptVersionEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryVersions().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Prompt) ActiveVersion(ctx context.Context) (*PromptVersion, error) {
+	result, err := _m.Edges.ActiveVersionOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryActiveVersion().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *Prompt) DraftVersion(ctx context.Context) (*PromptVersion, error) {
+	result, err := _m.Edges.DraftVersionOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryDraftVersion().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *Prompt) Agents(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentOrder, where *AgentWhereInput,
+) (*AgentConnection, error) {
+	opts := []AgentPaginateOption{
+		WithAgentOrder(orderBy),
+		WithAgentFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	if nodes, err := _m.NamedAgents(alias); err == nil || hasTotalCount {
+		pager, err := newAgentPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentConnection{Edges: []*AgentEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgents().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *PromptVersion) Prompt(ctx context.Context) (*Prompt, error) {
+	result, err := _m.Edges.PromptOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryPrompt().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *PromptVersion) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *PromptVersion) CreatedByUser(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.CreatedByUserOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryCreatedByUser().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *PromptVersion) ActiveForPrompts(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *PromptOrder, where *PromptWhereInput,
+) (*PromptConnection, error) {
+	opts := []PromptPaginateOption{
+		WithPromptOrder(orderBy),
+		WithPromptFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[3][alias]
+	if nodes, err := _m.NamedActiveForPrompts(alias); err == nil || hasTotalCount {
+		pager, err := newPromptPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &PromptConnection{Edges: []*PromptEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryActiveForPrompts().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *PromptVersion) DraftForPrompts(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *PromptOrder, where *PromptWhereInput,
+) (*PromptConnection, error) {
+	opts := []PromptPaginateOption{
+		WithPromptOrder(orderBy),
+		WithPromptFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	if nodes, err := _m.NamedDraftForPrompts(alias); err == nil || hasTotalCount {
+		pager, err := newPromptPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &PromptConnection{Edges: []*PromptEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryDraftForPrompts().Paginate(ctx, after, first, before, last, opts...)
 }
 
 func (_m *ProviderQuotaStatus) Channel(ctx context.Context) (*Channel, error) {
@@ -600,6 +1278,43 @@ func (_m *Role) UserRoles(
 	return _m.QueryUserRoles().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *Skill) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *Skill) CreatedByUser(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.CreatedByUserOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryCreatedByUser().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *Skill) AgentBindings(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentSkillOrder, where *AgentSkillWhereInput,
+) (*AgentSkillConnection, error) {
+	opts := []AgentSkillPaginateOption{
+		WithAgentSkillOrder(orderBy),
+		WithAgentSkillFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
+	if nodes, err := _m.NamedAgentBindings(alias); err == nil || hasTotalCount {
+		pager, err := newAgentSkillPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentSkillConnection{Edges: []*AgentSkillEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgentBindings().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (_m *Thread) Project(ctx context.Context) (*Project, error) {
 	result, err := _m.Edges.ProjectOrErr()
 	if IsNotLoaded(err) {
@@ -627,6 +1342,64 @@ func (_m *Thread) Traces(
 		return conn, nil
 	}
 	return _m.QueryTraces().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Thread) AgentThreads(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentThreadOrder, where *AgentThreadWhereInput,
+) (*AgentThreadConnection, error) {
+	opts := []AgentThreadPaginateOption{
+		WithAgentThreadOrder(orderBy),
+		WithAgentThreadFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
+	if nodes, err := _m.NamedAgentThreads(alias); err == nil || hasTotalCount {
+		pager, err := newAgentThreadPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentThreadConnection{Edges: []*AgentThreadEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgentThreads().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *Tool) Project(ctx context.Context) (*Project, error) {
+	result, err := _m.Edges.ProjectOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryProject().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *Tool) CreatedByUser(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.CreatedByUserOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryCreatedByUser().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *Tool) AgentBindings(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentToolOrder, where *AgentToolWhereInput,
+) (*AgentToolConnection, error) {
+	opts := []AgentToolPaginateOption{
+		WithAgentToolOrder(orderBy),
+		WithAgentToolFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[2][alias]
+	if nodes, err := _m.NamedAgentBindings(alias); err == nil || hasTotalCount {
+		pager, err := newAgentToolPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentToolConnection{Edges: []*AgentToolEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgentBindings().Paginate(ctx, after, first, before, last, opts...)
 }
 
 func (_m *Trace) Project(ctx context.Context) (*Project, error) {
@@ -774,6 +1547,90 @@ func (_m *User) ChannelOverrideTemplates(
 	return _m.QueryChannelOverrideTemplates().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (_m *User) PromptVersions(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *PromptVersionOrder, where *PromptVersionWhereInput,
+) (*PromptVersionConnection, error) {
+	opts := []PromptVersionPaginateOption{
+		WithPromptVersionOrder(orderBy),
+		WithPromptVersionFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	if nodes, err := _m.NamedPromptVersions(alias); err == nil || hasTotalCount {
+		pager, err := newPromptVersionPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &PromptVersionConnection{Edges: []*PromptVersionEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryPromptVersions().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *User) Agents(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *AgentOrder, where *AgentWhereInput,
+) (*AgentConnection, error) {
+	opts := []AgentPaginateOption{
+		WithAgentOrder(orderBy),
+		WithAgentFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
+	if nodes, err := _m.NamedAgents(alias); err == nil || hasTotalCount {
+		pager, err := newAgentPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &AgentConnection{Edges: []*AgentEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryAgents().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *User) Tools(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *ToolOrder, where *ToolWhereInput,
+) (*ToolConnection, error) {
+	opts := []ToolPaginateOption{
+		WithToolOrder(orderBy),
+		WithToolFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[6][alias]
+	if nodes, err := _m.NamedTools(alias); err == nil || hasTotalCount {
+		pager, err := newToolPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &ToolConnection{Edges: []*ToolEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QueryTools().Paginate(ctx, after, first, before, last, opts...)
+}
+
+func (_m *User) Skills(
+	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *SkillOrder, where *SkillWhereInput,
+) (*SkillConnection, error) {
+	opts := []SkillPaginateOption{
+		WithSkillOrder(orderBy),
+		WithSkillFilter(where.Filter),
+	}
+	alias := graphql.GetFieldContext(ctx).Field.Alias
+	totalCount, hasTotalCount := _m.Edges.totalCount[7][alias]
+	if nodes, err := _m.NamedSkills(alias); err == nil || hasTotalCount {
+		pager, err := newSkillPager(opts, last != nil)
+		if err != nil {
+			return nil, err
+		}
+		conn := &SkillConnection{Edges: []*SkillEdge{}, TotalCount: totalCount}
+		conn.build(nodes, pager, after, first, before, last)
+		return conn, nil
+	}
+	return _m.QuerySkills().Paginate(ctx, after, first, before, last, opts...)
+}
+
 func (_m *User) ProjectUsers(
 	ctx context.Context, after *Cursor, first *int, before *Cursor, last *int, orderBy *UserProjectOrder, where *UserProjectWhereInput,
 ) (*UserProjectConnection, error) {
@@ -782,7 +1639,7 @@ func (_m *User) ProjectUsers(
 		WithUserProjectFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[4][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[8][alias]
 	if nodes, err := _m.NamedProjectUsers(alias); err == nil || hasTotalCount {
 		pager, err := newUserProjectPager(opts, last != nil)
 		if err != nil {
@@ -803,7 +1660,7 @@ func (_m *User) UserRoles(
 		WithUserRoleFilter(where.Filter),
 	}
 	alias := graphql.GetFieldContext(ctx).Field.Alias
-	totalCount, hasTotalCount := _m.Edges.totalCount[5][alias]
+	totalCount, hasTotalCount := _m.Edges.totalCount[9][alias]
 	if nodes, err := _m.NamedUserRoles(alias); err == nil || hasTotalCount {
 		pager, err := newUserRolePager(opts, last != nil)
 		if err != nil {

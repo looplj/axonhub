@@ -37,6 +37,11 @@ const (
 	StreamEventTypeFunctionCallArgumentsDelta StreamEventType = "response.function_call_arguments.delta"
 	StreamEventTypeFunctionCallArgumentsDone  StreamEventType = "response.function_call_arguments.done"
 
+	// Custom tool call events.
+
+	StreamEventTypeCustomToolCallInputDelta StreamEventType = "response.custom_tool_call_input.delta"
+	StreamEventTypeCustomToolCallInputDone  StreamEventType = "response.custom_tool_call_input.done"
+
 	// Reasoning events.
 
 	StreamEventTypeReasoningSummaryPartAdded StreamEventType = "response.reasoning_summary_part.added"
@@ -84,6 +89,9 @@ type StreamEvent struct {
 	CallID    string `json:"call_id,omitempty"`
 	Arguments string `json:"arguments,omitempty"`
 
+	// For custom_tool_call_input.done events
+	Input string `json:"input,omitempty"`
+
 	// For reasoning_summary_* events
 	SummaryIndex *int `json:"summary_index,omitempty"`
 
@@ -94,7 +102,7 @@ type StreamEvent struct {
 	// For error events
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message,omitempty"`
-	Param   string `json:"param,omitempty"`
+	Param   *string `json:"param,omitempty"`
 }
 
 // StreamEventContentPart represents a content part in streaming events.

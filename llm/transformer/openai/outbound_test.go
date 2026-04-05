@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -189,6 +190,108 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformRequest_StripsUnsupportedToolCallExtraContentForOpenAI(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *Config
+	}{
+		{
+			name: "openai platform",
+			config: &Config{
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://api.openai.com/v1",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformerInterface, err := NewOutboundTransformerWithConfig(tt.config)
+			if err != nil {
+				t.Fatalf("Failed to create transformer: %v", err)
+			}
+
+			transformer := transformerInterface.(*OutboundTransformer)
+
+			httpReq, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				Model: "gpt-4o-mini",
+				Messages: []llm.Message{
+					{
+						Role: "assistant",
+						ToolCalls: []llm.ToolCall{
+							{
+								ID:   "call_1",
+								Type: "function",
+								Function: llm.FunctionCall{
+									Name:      "get_weather",
+									Arguments: `{"city":"Shanghai"}`,
+								},
+								Index: 0,
+								TransformerMetadata: map[string]any{
+									TransformerMetadataKeyGoogleThoughtSignature: "sig_from_metadata",
+								},
+							},
+						},
+					},
+				},
+			})
+			if err != nil {
+				t.Fatalf("TransformRequest() unexpected error = %v", err)
+			}
+
+			var oaiReq Request
+			if err := json.Unmarshal(httpReq.Body, &oaiReq); err != nil {
+				t.Fatalf("failed to unmarshal request body: %v", err)
+			}
+
+			if !assert.Len(t, oaiReq.Messages, 1) || !assert.Len(t, oaiReq.Messages[0].ToolCalls, 1) {
+				return
+			}
+
+			assert.Nil(t, oaiReq.Messages[0].ToolCalls[0].ExtraContent)
+		})
+	}
+}
+
+func TestStripUnsupportedToolCallExtraContentForOpenAI_OnlyStripsThoughtSignature(t *testing.T) {
+	req := &Request{
+		Messages: []Message{
+			{
+				Role: "assistant",
+				ToolCalls: []ToolCall{
+					{
+						ID: "call_1",
+						ExtraContent: &ToolCallExtraContent{
+							Google: &ToolCallGoogleExtraContent{
+								ThoughtSignature: "",
+							},
+						},
+					},
+					{
+						ID: "call_2",
+						ExtraContent: &ToolCallExtraContent{
+							Google: &ToolCallGoogleExtraContent{
+								ThoughtSignature: "sig_to_strip",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	stripUnsupportedToolCallExtraContent(req)
+
+	if !assert.NotNil(t, req.Messages[0].ToolCalls[0].ExtraContent) {
+		return
+	}
+
+	assert.NotNil(t, req.Messages[0].ToolCalls[0].ExtraContent.Google)
+	assert.Equal(t, "", req.Messages[0].ToolCalls[0].ExtraContent.Google.ThoughtSignature)
+	assert.Nil(t, req.Messages[0].ToolCalls[1].ExtraContent)
+}
+
 func TestOutboundTransformer_TransformError(t *testing.T) {
 	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	if err != nil {
@@ -211,6 +314,15 @@ func TestOutboundTransformer_TransformError(t *testing.T) {
 			},
 			expectedErrMessage: "Invalid request",
 			expectedErrType:    "invalid_request_error",
+		},
+		{
+			name: "nvidia error with numeric code",
+			httpErr: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+				Body:       []byte(`{"error":{"message":"You passed 194561 input tokens","type":"BadRequestError","param":"input_tokens","code":400}}`),
+			},
+			expectedErrMessage: "You passed 194561 input tokens",
+			expectedErrType:    "BadRequestError",
 		},
 		{
 			name: "http error with non-json body",
@@ -389,6 +501,27 @@ func TestOutboundTransformer_AggregateStreamChunks(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformStreamChunk_StreamErrorEvent(t *testing.T) {
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
+
+	_, err = transformer.TransformStreamChunk(context.Background(), &httpclient.StreamEvent{
+		Type: "error",
+		Data: []byte(`{"error":{"code":"1311","message":"当前订阅套餐暂未开放GPT-6权限"},"request_id":"2026031122524215033670187648af"}`),
+	})
+	assert.Error(t, err)
+
+	var respErr *llm.ResponseError
+	assert.True(t, errors.As(err, &respErr))
+	assert.Equal(t, "当前订阅套餐暂未开放GPT-6权限", respErr.Detail.Message)
+	assert.Equal(t, "1311", respErr.Detail.Code)
+	assert.Equal(t, "2026031122524215033670187648af", respErr.Detail.RequestID)
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
@@ -582,6 +715,60 @@ func TestNewOutboundTransformer(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformResponse_WithGeminiToolCallThoughtSignature(t *testing.T) {
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	transformer := transformerInterface.(*OutboundTransformer)
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: mustMarshal(Response{
+			ID:      "chatcmpl-1",
+			Object:  "chat.completion",
+			Created: 123,
+			Model:   "gemini-3-pro",
+			Choices: []Choice{
+				{
+					Index: 0,
+					Message: &Message{
+						Role: "assistant",
+						ToolCalls: []ToolCall{
+							{
+								ID:   "call_1",
+								Type: "function",
+								Function: FunctionCall{
+									Name:      "get_weather",
+									Arguments: `{"city":"Shanghai"}`,
+								},
+								Index: 0,
+								ExtraContent: &ToolCallExtraContent{
+									Google: &ToolCallGoogleExtraContent{
+										ThoughtSignature: "base64_signature",
+									},
+								},
+							},
+						},
+					},
+					FinishReason: lo.ToPtr("tool_calls"),
+				},
+			},
+		}),
+	}
+
+	result, err := transformer.TransformResponse(t.Context(), httpResp)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	if !assert.Len(t, result.Choices, 1) || !assert.NotNil(t, result.Choices[0].Message) {
+		return
+	}
+
+	assert.NotNil(t, result.Choices[0].Message.ReasoningSignature)
+	assert.Equal(t, "base64_signature", *result.Choices[0].Message.ReasoningSignature)
+}
+
 func TestOutboundTransformer_RawURL(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -609,7 +796,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 					},
 				},
 			},
-			expectedURL:    "https://custom.api.com/v1/chat/completions",
+			expectedURL:    "https://custom.api.com/v1",
 			expectedRawURL: true,
 		},
 		{
@@ -631,7 +818,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 				},
 			},
 			expectedURL:    "https://custom.api.com/v100/chat/completions",
-			expectedRawURL: true,
+			expectedRawURL: false,
 		},
 		{
 			name: "raw URL with full path",
@@ -652,7 +839,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 				},
 			},
 			expectedURL:    "https://custom.api.com/v1/chat/completions/chat/completions",
-			expectedRawURL: true,
+			expectedRawURL: false,
 		},
 		{
 			name: "raw URL false with standard URL",
@@ -699,7 +886,7 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 			expectedRawURL: false,
 		},
 		{
-			name: "raw URL with custom endpoint without version",
+			name: "raw base URL with custom endpoint without version",
 			config: &Config{
 				PlatformType:   PlatformOpenAI,
 				BaseURL:        "https://custom-endpoint.com/api/llm#",
@@ -717,6 +904,27 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 				},
 			},
 			expectedURL:    "https://custom-endpoint.com/api/llm/chat/completions",
+			expectedRawURL: false,
+		},
+		{
+			name: "raw URL with custom endpoint without version",
+			config: &Config{
+				PlatformType:   PlatformOpenAI,
+				BaseURL:        "https://custom-endpoint.com/api/llm##",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model: "gpt-4",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello, world!"),
+						},
+					},
+				},
+			},
+			expectedURL:    "https://custom-endpoint.com/api/llm",
 			expectedRawURL: true,
 		},
 	}

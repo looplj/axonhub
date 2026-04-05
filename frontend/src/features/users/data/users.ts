@@ -33,7 +33,7 @@ export function useUsers(
         const data = await graphqlRequest<{ users: UserConnection }>(USERS_QUERY, queryVariables);
         return userConnectionSchema.parse(data?.users);
       } catch (error) {
-        handleError(error, t('users.messages.loadUsersError'));
+        handleError(error, t('common.errors.loadFailed'));
         throw error;
       }
     },
@@ -56,7 +56,7 @@ export function useUser(id: string) {
         }
         return userSchema.parse(user);
       } catch (error) {
-        handleError(error, t('users.messages.loadUserError'));
+        handleError(error, t('common.errors.loadFailed'));
         throw error;
       }
     },
@@ -78,8 +78,8 @@ export function useCreateUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.createSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.createError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -97,8 +97,8 @@ export function useUpdateUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.updateSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.updateError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -118,8 +118,8 @@ export function useUpdateUserStatus() {
       const statusText = variables.status === 'activated' ? t('users.status.activated') : t('users.status.deactivated');
       toast.success(t('users.messages.statusUpdateSuccess', { status: statusText }));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.statusUpdateError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -137,8 +137,8 @@ export function useDeleteUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.deleteSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.deleteError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

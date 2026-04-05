@@ -1,0 +1,18 @@
+{{- if .Values.axonhub.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "axonhub.fullname" . }}-data
+  labels:
+    {{- include "axonhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: axonhub
+spec:
+  accessModes:
+    {{- toYaml .Values.axonhub.persistence.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.axonhub.persistence.size }}
+  {{- if .Values.axonhub.persistence.storageClass }}
+  storageClassName: {{ .Values.axonhub.persistence.storageClass }}
+  {{- end }}
+{{- end }}

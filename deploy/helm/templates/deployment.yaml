@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "axonhub.fullname" . }}
+  labels:
+    {{- include "axonhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: axonhub
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.axonhub.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "axonhub.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: axonhub
+  template:
+    metadata:
+      {{- with .Values.axonhub.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "axonhub.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: axonhub
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "axonhub.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.axonhub.podSecurityContext | nindent 8 }}
+      {{- if .Values.postgresql.enabled }}
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ include "axonhub.postgresql.serviceName" . }} 5432; do echo waiting for postgresql; sleep 2; done;']
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.axonhub.securityContext | nindent 12 }}
+          image: "{{ .Values.axonhub.image.repository }}:{{ .Values.axonhub.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.axonhub.image.pullPolicy }}
+          env:
+            {{- range $key, $value := .Values.axonhub.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.axonhub.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.axonhub.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.axonhub.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.axonhub.resources | nindent 12 }}
+          {{- if .Values.axonhub.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          {{- end }}
+      {{- with .Values.axonhub.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.axonhub.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.axonhub.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.axonhub.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "axonhub.fullname" . }}-data
+      {{- end }}

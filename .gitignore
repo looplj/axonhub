@@ -91,6 +91,7 @@ dev-debug.log
 node_modules/
 # Lock files - project uses pnpm
 package-lock.json
+bun.lock
 # Environment variables
 .env
 # Editor directories and files
@@ -120,11 +121,13 @@ test-results
 .claude
 .qoder
 .codebuddy
+.factory
+.agent/subagents
+.agent/summary
 dumps
 .builds
 .pnpm-store
 .serena
-.claude
 .gomodcache
 .gocache
 
@@ -132,6 +135,8 @@ config.yml
 internal/server/static/dist
 *.b64
 coverage.out
+*.test
+*.backup
 
 # E2E testing artifacts
 scripts/e2e/.e2e-backend.pid
@@ -139,10 +144,25 @@ scripts/e2e/axonhub-e2e.db
 scripts/e2e/e2e-backend.log
 scripts/e2e/axonhub-e2e
 scripts/e2e/.e2e-backend-db-type
-scripts/migration/migration-test/
 # Migration testing artifacts
 scripts/migration/migration-test/
-tools
+llm/tools/*.jsonl
+llm/tools/*.json
 
 mise.toml
 locales_backup
+.sisyphus
+
+# Chunkhound local database
+.chunkhound/
+.superset/
+.axonclaw/
+.axoncli/
+.snow/
+config.schema.json
+*.zip
+*.db-shm
+*.db-wal
+deploy_dev.sh
+redeploy_dev.sh
+deploy_honey.sh

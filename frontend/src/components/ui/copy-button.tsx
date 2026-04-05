@@ -15,7 +15,7 @@ export function CopyButton({ content, copyMessage }: CopyButtonProps) {
   });
 
   return (
-    <Button variant='ghost' size='icon' className='relative h-6 w-6' aria-label='Copy to clipboard' onClick={handleCopy}>
+    <Button type='button' variant='ghost' size='icon' className='relative h-6 w-6' aria-label='Copy to clipboard' onClick={handleCopy}>
       <div className='absolute inset-0 flex items-center justify-center'>
         <Check className={cn('h-4 w-4 transition-transform ease-in-out', isCopied ? 'scale-100' : 'scale-0')} />
       </div>

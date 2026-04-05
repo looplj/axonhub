@@ -1,7 +1,10 @@
-.PHONY: generate build backend frontend cleanup-db \
+.PHONY: generate build build-backend build-frontend build-axonclaw docker-build-axonclaw cleanup-db \
+	test-backend-all \
 	e2e-test e2e-backend-start e2e-backend-stop e2e-backend-status e2e-backend-restart e2e-backend-clean \
 	migration-test migration-test-all migration-test-all-dbs \
-	sync-faq sync-models filter-logs
+	sync-faq sync-models filter-logs \
+	lint lint-all lint-privacy \
+	generate-schema
 
 # Generate GraphQL and Ent code
 generate:
@@ -20,10 +23,22 @@ build-backend:
 	go build -ldflags "-s -w" -tags=nomsgpack -o axonhub ./cmd/axonhub
 	@echo "Backend build completed!"
 
+# Build the axonclaw agent
+build-axonclaw:
+	@echo "Building axonclaw..."
+	cd cmd/axonclaw && go build -ldflags "-s -w" -o axonclaw .
+	@echo "Axonclaw build completed!"
+
+# Build axonclaw docker image
+docker-build-axonclaw:
+	@echo "Building axonclaw docker image..."
+	docker build -f cmd/axonclaw/Dockerfile -t axonclaw .
+	@echo "Axonclaw docker image build completed!"
+
 # Build the frontend application
 build-frontend:
 	@echo "Building axonhub frontend..."
-	cd frontend && pnpm vite build
+	cd frontend && pnpm run build
 	@echo "Copying frontend dist to server static directory..."
 	rm -rf internal/server/static/dist/assets
 	mkdir -p internal/server/static/dist
@@ -50,6 +65,26 @@ cleanup-db:
 	@sqlite3 axonhub.db "DELETE FROM users WHERE email LIKE 'pw-test-%' OR first_name LIKE 'pw-test%';"
 	@sqlite3 axonhub.db "DELETE FROM projects WHERE slug LIKE 'pw-test-%' OR name LIKE 'pw-test-%';"
 	@echo "Cleanup completed!"
+
+# --- Testing ---
+
+# Run all backend tests across all Go modules
+test-backend-all:
+	@echo "Running all backend tests..."
+	@echo ""
+	@echo "=== Testing root module ==="
+	go test ./...
+	@echo ""
+	@echo "=== Testing axon module ==="
+	cd axon && go test ./...
+	@echo ""
+	@echo "=== Testing llm module ==="
+	cd llm && go test ./...
+	@echo ""
+	@echo "=== Testing axoncli module ==="
+	cd cmd/axoncli && go test ./...
+	@echo ""
+	@echo "All backend tests completed!"
 
 # --- E2E Testing ---
 
@@ -121,3 +156,37 @@ sync-models:
 filter-logs:
 	@echo "Filtering load balance logs..."
 	@./scripts/utils/filter-load-balance-logs.sh
+
+# --- Linting ---
+
+GO_LINT_CMD = golangci-lint run --timeout 10m --max-same-issues 50 ./...
+
+GO_MODULES := . axon llm cmd/axoncli cmd/axonclaw
+
+lint-all:
+	@echo "Running golangci-lint across all Go modules..."
+	@for module in $(GO_MODULES); do \
+		echo ""; \
+		echo "=== Linting $$module module ==="; \
+		if [ -f "$$module/go.mod" ]; then \
+			cd $$module && $(GO_LINT_CMD) && cd - > /dev/null; \
+		else \
+			$(GO_LINT_CMD); \
+		fi; \
+	done
+	@echo ""
+	@echo "All lint checks passed!"
+
+# Generate JSON schema for configuration
+generate-schema:
+	@echo "Generating JSON schema for configuration..."
+	@cd cmd/schema && go run . > ../../config.schema.json
+	@echo "JSON schema generated at config.schema.json"
+
+# Run all lint checks
+lint: lint-all lint-privacy
+	@echo "All lint checks passed!"
+
+lint-privacy:
+	@echo "Checking for illegal privacy.DecisionContext(...Allow) usage..."
+	@./scripts/lint/check-privacy-allow.sh

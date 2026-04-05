@@ -41,10 +41,10 @@ weight: 50   # 中等优先级
 base_url: "https://api.openai.com/v1"
 
 # 渠道 C - 第三方渠道
-name: "azure-openai"
-type: "azure"
+name: "openai-third-party"
+type: "openai"
 weight: 30   # 低优先级
-base_url: "https://your-resource.openai.azure.com"
+base_url: "https://api.example.com/v1"
 ```
 
 ### 2. 启用负载均衡
@@ -167,6 +167,7 @@ A: 启用调试模式，查看日志中的渠道评分和排序。
 
 ## 🔗 相关文档
 
+- [请求处理流程指南](request-processing.md)
 - [OpenAI API](../api-reference/openai-api.md)
 - [Anthropic API](../api-reference/anthropic-api.md)
 - [Gemini API](../api-reference/gemini-api.md)

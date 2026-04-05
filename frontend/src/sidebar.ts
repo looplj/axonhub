@@ -1,7 +1,7 @@
 import {
   IconLayoutDashboard,
   IconPackages,
-  IconUserCog,
+  IconSettings,
   IconUsers,
   IconRobot,
   IconShield,
@@ -12,6 +12,8 @@ import {
   IconBaselineDensityMedium,
   IconAi,
   IconNote,
+  IconServer,
+  IconMessage,
 } from '@tabler/icons-react';
 import { Command } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -84,6 +86,16 @@ export function useSidebarData(): SidebarData {
           icon: IconRobot,
         } as NavLink,
         {
+          title: t('sidebar.items.agentHosts'),
+          url: '/agent-hosts',
+          icon: IconServer,
+        } as NavLink,
+        {
+          title: t('sidebar.items.promptProtectionRules'),
+          url: '/prompt-protection-rules',
+          icon: IconShield,
+        } as NavLink,
+        {
           title: t('sidebar.items.dataStorages'),
           url: '/data-storages',
           icon: IconDatabase,
@@ -138,7 +150,16 @@ export function useSidebarData(): SidebarData {
           url: '/project/threads',
           icon: IconBaselineDensityMedium,
         } as NavLink,
-
+        {
+          title: t('sidebar.items.agents'),
+          url: '/project/agents',
+          icon: IconRobot,
+        } as NavLink,
+        {
+          title: t('sidebar.items.messageChannels'),
+          url: '/project/message-channels',
+          icon: IconMessage,
+        } as NavLink,
         {
           title: t('sidebar.items.users'),
           url: '/project/users',
@@ -160,9 +181,10 @@ export function useSidebarData(): SidebarData {
       title: t('sidebar.groups.settings'),
       items: [
         {
-          title: t('sidebar.items.profile'),
-          url: '/settings',
-          icon: IconUserCog,
+          title: t('sidebar.items.system'),
+          url: '/system',
+          icon: IconSettings,
+          mobileOnly: true,
         } as NavLink,
         // {
         //   title: 'Account',

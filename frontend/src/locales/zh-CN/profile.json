@@ -29,6 +29,5 @@
   "profile.form.validation.lastNameTooLong": "姓氏长度不能超过50个字符。",
   "profile.form.validation.emailInvalid": "请输入有效的邮箱地址。",
   "profile.form.validation.languageRequired": "请选择首选语言。",
-  "profile.form.messages.updateSuccess": "个人资料更新成功！",
-  "profile.form.messages.updateError": "更新个人资料失败：{{error}}"
+  "profile.form.messages.updateSuccess": "个人资料更新成功！"
 }

@@ -374,10 +374,3 @@ func TestExtendedThinkingWithToolUse(t *testing.T) {
 		t.Logf("Model did not request tool use, stop reason: %s", response.StopReason)
 	}
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

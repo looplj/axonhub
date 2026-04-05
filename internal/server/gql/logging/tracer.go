@@ -1,0 +1,52 @@
+package logging
+
+import (
+	"context"
+
+	"github.com/99designs/gqlgen/graphql"
+	"go.uber.org/zap"
+
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/tracing"
+)
+
+type LoggingTracer struct{}
+
+var _ interface {
+	graphql.HandlerExtension
+	graphql.ResponseInterceptor
+} = &LoggingTracer{}
+
+func (t *LoggingTracer) ExtensionName() string {
+	return "logging_tracer"
+}
+
+func (t *LoggingTracer) Validate(schema graphql.ExecutableSchema) error {
+	return nil
+}
+
+func (t *LoggingTracer) InterceptResponse(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
+	if graphql.HasOperationContext(ctx) {
+		opCtx := graphql.GetOperationContext(ctx)
+		ctx = tracing.WithOperationName(ctx, opCtx.OperationName)
+
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "received graphql request",
+				zap.Any("raw", opCtx.RawQuery),
+				zap.Any("variables", opCtx.Variables),
+			)
+		}
+	}
+
+	resp := next(ctx)
+
+	// Capture GraphQL errors to context for access logging
+	if resp != nil && len(resp.Errors) > 0 {
+		for _, gqlErr := range resp.Errors {
+			contexts.AddError(ctx, gqlErr)
+		}
+	}
+
+	return resp
+}

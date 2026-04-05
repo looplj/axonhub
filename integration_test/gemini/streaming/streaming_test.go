@@ -521,10 +521,3 @@ func TestStreamingChatSession(t *testing.T) {
 
 	t.Logf("Chat streaming completed successfully")
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

@@ -47,6 +47,8 @@ const (
 	EdgeProject = "project"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
+	// EdgeAgentInstance holds the string denoting the agent_instance edge name in mutations.
+	EdgeAgentInstance = "agent_instance"
 	// Table holds the table name of the apikey in the database.
 	Table = "api_keys"
 	// UserTable is the table that holds the user relation/edge.
@@ -70,6 +72,13 @@ const (
 	RequestsInverseTable = "requests"
 	// RequestsColumn is the table column denoting the requests relation/edge.
 	RequestsColumn = "api_key_id"
+	// AgentInstanceTable is the table that holds the agent_instance relation/edge.
+	AgentInstanceTable = "agent_instances"
+	// AgentInstanceInverseTable is the table name for the AgentInstance entity.
+	// It exists in this package in order to avoid circular dependency with the "agentinstance" package.
+	AgentInstanceInverseTable = "agent_instances"
+	// AgentInstanceColumn is the table column denoting the agent_instance relation/edge.
+	AgentInstanceColumn = "api_key_id"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -133,6 +142,8 @@ const DefaultType = TypeUser
 const (
 	TypeUser           Type = "user"
 	TypeServiceAccount Type = "service_account"
+	TypeNoauth         Type = "noauth"
+	TypeAgent          Type = "agent"
 )
 
 func (_type Type) String() string {
@@ -142,7 +153,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeUser, TypeServiceAccount:
+	case TypeUser, TypeServiceAccount, TypeNoauth, TypeAgent:
 		return nil
 	default:
 		return fmt.Errorf("apikey: invalid enum value for type field: %q", _type)
@@ -256,6 +267,13 @@ func ByRequests(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newRequestsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByAgentInstanceField orders the results by agent_instance field.
+func ByAgentInstanceField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAgentInstanceStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -275,6 +293,13 @@ func newRequestsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RequestsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
+	)
+}
+func newAgentInstanceStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AgentInstanceInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, AgentInstanceTable, AgentInstanceColumn),
 	)
 }
 

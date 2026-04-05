@@ -15,12 +15,12 @@ type APIKey implements Node {
   key: String!
   name: String!
   """
-  API Key type: user or service_account
+  API Key type: user, service_account, noauth, or agent
   """
   type: APIKeyType!
   status: APIKeyStatus!
   """
-  API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.
+  API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account/agent: custom scopes.
   """
   scopes: [String!]
   profiles: APIKeyProfiles
@@ -57,6 +57,7 @@ type APIKey implements Node {
     """
     where: RequestWhereInput
   ): RequestConnection!
+  agentInstance: AgentInstance
 }
 """
 A connection to a list of items.
@@ -122,6 +123,8 @@ APIKeyType is enum for the field type
 enum APIKeyType @goModel(model: "github.com/looplj/axonhub/internal/ent/apikey.Type") {
   user
   service_account
+  noauth
+  agent
 }
 """
 APIKeyWhereInput is used for filtering APIKey objects.
@@ -239,6 +242,2106 @@ input APIKeyWhereInput {
   """
   hasRequests: Boolean
   hasRequestsWith: [RequestWhereInput!]
+  """
+  agent_instance edge predicates
+  """
+  hasAgentInstance: Boolean
+  hasAgentInstanceWith: [AgentInstanceWhereInput!]
+}
+type Agent implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID that this agent belongs to
+  """
+  projectID: ID!
+  """
+  Created by user
+  """
+  createdByUserID: ID!
+  """
+  Agent name
+  """
+  name: String!
+  """
+  Agent description
+  """
+  description: String!
+  """
+  Agent status
+  """
+  status: AgentStatus!
+  """
+  Prompt ID for the agent system prompt
+  """
+  promptID: ID!
+  """
+  Model override (empty means default/profile)
+  """
+  model: String!
+  """
+  Reasoning effort level for extended thinking
+  """
+  reasoningEffort: AgentReasoningEffort!
+  """
+  Agent built-in tools configuration (JSON)
+  """
+  agentBuiltinTools: [AgentBuiltinTool!]!
+  """
+  Agent built-in skills configuration (JSON)
+  """
+  agentBuiltinSkills: [AgentBuiltinSkill!]!
+  """
+  Skill add/install policy (JSON)
+  """
+  skillsPolicy: AgentSkillsPolicy!
+  project: Project!
+  createdByUser: User!
+  prompt: Prompt!
+  toolBindings(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentTools returned from the connection.
+    """
+    orderBy: AgentToolOrder
+
+    """
+    Filtering options for AgentTools returned from the connection.
+    """
+    where: AgentToolWhereInput
+  ): AgentToolConnection!
+  skillBindings(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentSkills returned from the connection.
+    """
+    orderBy: AgentSkillOrder
+
+    """
+    Filtering options for AgentSkills returned from the connection.
+    """
+    where: AgentSkillWhereInput
+  ): AgentSkillConnection!
+  instances(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentInstances returned from the connection.
+    """
+    orderBy: AgentInstanceOrder
+
+    """
+    Filtering options for AgentInstances returned from the connection.
+    """
+    where: AgentInstanceWhereInput
+  ): AgentInstanceConnection!
+  threads(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentThreads returned from the connection.
+    """
+    orderBy: AgentThreadOrder
+
+    """
+    Filtering options for AgentThreads returned from the connection.
+    """
+    where: AgentThreadWhereInput
+  ): AgentThreadConnection!
+  messages(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentMessages returned from the connection.
+    """
+    orderBy: AgentMessageOrder
+
+    """
+    Filtering options for AgentMessages returned from the connection.
+    """
+    where: AgentMessageWhereInput
+  ): AgentMessageConnection!
+  memories(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentMemories returned from the connection.
+    """
+    orderBy: AgentMemoryOrder
+
+    """
+    Filtering options for AgentMemories returned from the connection.
+    """
+    where: AgentMemoryWhereInput
+  ): AgentMemoryConnection!
+}
+"""
+A connection to a list of items.
+"""
+type AgentConnection {
+  """
+  A list of edges.
+  """
+  edges: [AgentEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type AgentEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: Agent
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+type AgentHost implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Host name
+  """
+  name: String!
+  """
+  Host type: vm, docker or local
+  """
+  type: AgentHostType!
+  """
+  Host status
+  """
+  status: AgentHostStatus!
+  """
+  Host address
+  """
+  addr: String!
+  """
+  Host user for authentication
+  """
+  user: String!
+  """
+  Authentication method: password or ssh_key
+  """
+  authMethod: AgentHostAuthMethod!
+  """
+  Working directory for vm/local host types, e.g. /opt/axonclaw
+  """
+  directory: String!
+  instances(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentInstances returned from the connection.
+    """
+    orderBy: AgentInstanceOrder
+
+    """
+    Filtering options for AgentInstances returned from the connection.
+    """
+    where: AgentInstanceWhereInput
+  ): AgentInstanceConnection!
+}
+"""
+AgentHostAuthMethod is enum for the field auth_method
+"""
+enum AgentHostAuthMethod @goModel(model: "github.com/looplj/axonhub/internal/ent/agenthost.AuthMethod") {
+  password
+  ssh_key
+}
+"""
+A connection to a list of items.
+"""
+type AgentHostConnection {
+  """
+  A list of edges.
+  """
+  edges: [AgentHostEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type AgentHostEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: AgentHost
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for AgentHost connections
+"""
+input AgentHostOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order AgentHosts.
+  """
+  field: AgentHostOrderField!
+}
+"""
+Properties by which AgentHost connections can be ordered.
+"""
+enum AgentHostOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+AgentHostStatus is enum for the field status
+"""
+enum AgentHostStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/agenthost.Status") {
+  active
+  inactive
+}
+"""
+AgentHostType is enum for the field type
+"""
+enum AgentHostType @goModel(model: "github.com/looplj/axonhub/internal/ent/agenthost.Type") {
+  vm
+  docker
+  local
+}
+"""
+AgentHostWhereInput is used for filtering AgentHost objects.
+Input was generated by ent.
+"""
+input AgentHostWhereInput {
+  not: AgentHostWhereInput
+  and: [AgentHostWhereInput!]
+  or: [AgentHostWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  name field predicates
+  """
+  name: String
+  nameNEQ: String
+  nameIn: [String!]
+  nameNotIn: [String!]
+  nameGT: String
+  nameGTE: String
+  nameLT: String
+  nameLTE: String
+  nameContains: String
+  nameHasPrefix: String
+  nameHasSuffix: String
+  nameEqualFold: String
+  nameContainsFold: String
+  """
+  type field predicates
+  """
+  type: AgentHostType
+  typeNEQ: AgentHostType
+  typeIn: [AgentHostType!]
+  typeNotIn: [AgentHostType!]
+  """
+  status field predicates
+  """
+  status: AgentHostStatus
+  statusNEQ: AgentHostStatus
+  statusIn: [AgentHostStatus!]
+  statusNotIn: [AgentHostStatus!]
+  """
+  addr field predicates
+  """
+  addr: String
+  addrNEQ: String
+  addrIn: [String!]
+  addrNotIn: [String!]
+  addrGT: String
+  addrGTE: String
+  addrLT: String
+  addrLTE: String
+  addrContains: String
+  addrHasPrefix: String
+  addrHasSuffix: String
+  addrEqualFold: String
+  addrContainsFold: String
+  """
+  user field predicates
+  """
+  user: String
+  userNEQ: String
+  userIn: [String!]
+  userNotIn: [String!]
+  userGT: String
+  userGTE: String
+  userLT: String
+  userLTE: String
+  userContains: String
+  userHasPrefix: String
+  userHasSuffix: String
+  userEqualFold: String
+  userContainsFold: String
+  """
+  auth_method field predicates
+  """
+  authMethod: AgentHostAuthMethod
+  authMethodNEQ: AgentHostAuthMethod
+  authMethodIn: [AgentHostAuthMethod!]
+  authMethodNotIn: [AgentHostAuthMethod!]
+  """
+  directory field predicates
+  """
+  directory: String
+  directoryNEQ: String
+  directoryIn: [String!]
+  directoryNotIn: [String!]
+  directoryGT: String
+  directoryGTE: String
+  directoryLT: String
+  directoryLTE: String
+  directoryContains: String
+  directoryHasPrefix: String
+  directoryHasSuffix: String
+  directoryEqualFold: String
+  directoryContainsFold: String
+  """
+  instances edge predicates
+  """
+  hasInstances: Boolean
+  hasInstancesWith: [AgentInstanceWhereInput!]
+}
+type AgentInstance implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID that this agent instance belongs to
+  """
+  projectID: Int!
+  agentID: ID!
+  """
+  Agent Host ID (null means unknown/CLI started)
+  """
+  agentHostID: ID
+  """
+  Human readable name
+  """
+  name: String!
+  """
+  Instance description
+  """
+  description: String!
+  """
+  Platform information like os/arch
+  """
+  platform: String!
+  """
+  Service account API key ID bound to this agent instance
+  """
+  apiKeyID: ID!
+  """
+  Last heartbeat timestamp
+  """
+  lastHeartbeatAt: Time!
+  """
+  AxonHub base URL used by this agent instance
+  """
+  axonhubBaseURL: String!
+  """
+  Instance status
+  """
+  status: AgentInstanceStatus!
+  agent: Agent!
+  host: AgentHost
+  apiKey: APIKey!
+  messages(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentMessages returned from the connection.
+    """
+    orderBy: AgentMessageOrder
+
+    """
+    Filtering options for AgentMessages returned from the connection.
+    """
+    where: AgentMessageWhereInput
+  ): AgentMessageConnection!
+  messageChannelBindings(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for MessageChannelAgentInstances returned from the connection.
+    """
+    orderBy: MessageChannelAgentInstanceOrder
+
+    """
+    Filtering options for MessageChannelAgentInstances returned from the connection.
+    """
+    where: MessageChannelAgentInstanceWhereInput
+  ): MessageChannelAgentInstanceConnection!
+}
+"""
+A connection to a list of items.
+"""
+type AgentInstanceConnection {
+  """
+  A list of edges.
+  """
+  edges: [AgentInstanceEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type AgentInstanceEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: AgentInstance
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for AgentInstance connections
+"""
+input AgentInstanceOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order AgentInstances.
+  """
+  field: AgentInstanceOrderField!
+}
+"""
+Properties by which AgentInstance connections can be ordered.
+"""
+enum AgentInstanceOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+AgentInstanceStatus is enum for the field status
+"""
+enum AgentInstanceStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/agentinstance.Status") {
+  pending
+  running
+  stopped
+  error
+}
+"""
+AgentInstanceWhereInput is used for filtering AgentInstance objects.
+Input was generated by ent.
+"""
+input AgentInstanceWhereInput {
+  not: AgentInstanceWhereInput
+  and: [AgentInstanceWhereInput!]
+  or: [AgentInstanceWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: Int
+  projectIDNEQ: Int
+  projectIDIn: [Int!]
+  projectIDNotIn: [Int!]
+  projectIDGT: Int
+  projectIDGTE: Int
+  projectIDLT: Int
+  projectIDLTE: Int
+  """
+  agent_id field predicates
+  """
+  agentID: ID
+  agentIDNEQ: ID
+  agentIDIn: [ID!]
+  agentIDNotIn: [ID!]
+  """
+  agent_host_id field predicates
+  """
+  agentHostID: ID
+  agentHostIDNEQ: ID
+  agentHostIDIn: [ID!]
+  agentHostIDNotIn: [ID!]
+  agentHostIDIsNil: Boolean
+  agentHostIDNotNil: Boolean
+  """
+  name field predicates
+  """
+  name: String
+  nameNEQ: String
+  nameIn: [String!]
+  nameNotIn: [String!]
+  nameGT: String
+  nameGTE: String
+  nameLT: String
+  nameLTE: String
+  nameContains: String
+  nameHasPrefix: String
+  nameHasSuffix: String
+  nameEqualFold: String
+  nameContainsFold: String
+  """
+  description field predicates
+  """
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionEqualFold: String
+  descriptionContainsFold: String
+  """
+  platform field predicates
+  """
+  platform: String
+  platformNEQ: String
+  platformIn: [String!]
+  platformNotIn: [String!]
+  platformGT: String
+  platformGTE: String
+  platformLT: String
+  platformLTE: String
+  platformContains: String
+  platformHasPrefix: String
+  platformHasSuffix: String
+  platformEqualFold: String
+  platformContainsFold: String
+  """
+  api_key_id field predicates
+  """
+  apiKeyID: ID
+  apiKeyIDNEQ: ID
+  apiKeyIDIn: [ID!]
+  apiKeyIDNotIn: [ID!]
+  """
+  last_heartbeat_at field predicates
+  """
+  lastHeartbeatAt: Time
+  lastHeartbeatAtNEQ: Time
+  lastHeartbeatAtIn: [Time!]
+  lastHeartbeatAtNotIn: [Time!]
+  lastHeartbeatAtGT: Time
+  lastHeartbeatAtGTE: Time
+  lastHeartbeatAtLT: Time
+  lastHeartbeatAtLTE: Time
+  """
+  axonhub_base_url field predicates
+  """
+  axonhubBaseURL: String
+  axonhubBaseURLNEQ: String
+  axonhubBaseURLIn: [String!]
+  axonhubBaseURLNotIn: [String!]
+  axonhubBaseURLGT: String
+  axonhubBaseURLGTE: String
+  axonhubBaseURLLT: String
+  axonhubBaseURLLTE: String
+  axonhubBaseURLContains: String
+  axonhubBaseURLHasPrefix: String
+  axonhubBaseURLHasSuffix: String
+  axonhubBaseURLEqualFold: String
+  axonhubBaseURLContainsFold: String
+  """
+  status field predicates
+  """
+  status: AgentInstanceStatus
+  statusNEQ: AgentInstanceStatus
+  statusIn: [AgentInstanceStatus!]
+  statusNotIn: [AgentInstanceStatus!]
+  """
+  agent edge predicates
+  """
+  hasAgent: Boolean
+  hasAgentWith: [AgentWhereInput!]
+  """
+  host edge predicates
+  """
+  hasHost: Boolean
+  hasHostWith: [AgentHostWhereInput!]
+  """
+  api_key edge predicates
+  """
+  hasAPIKey: Boolean
+  hasAPIKeyWith: [APIKeyWhereInput!]
+  """
+  messages edge predicates
+  """
+  hasMessages: Boolean
+  hasMessagesWith: [AgentMessageWhereInput!]
+  """
+  message_channel_bindings edge predicates
+  """
+  hasMessageChannelBindings: Boolean
+  hasMessageChannelBindingsWith: [MessageChannelAgentInstanceWhereInput!]
+}
+type AgentMemory implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID that this memory belongs to
+  """
+  projectID: Int!
+  """
+  Agent ID that this memory belongs to (null means project scope)
+  """
+  agentID: ID
+  """
+  Memory path
+  """
+  path: String!
+  """
+  Memory content
+  """
+  content: String!
+  """
+  Optional source metadata
+  """
+  source: String!
+  agent: Agent
+}
+"""
+A connection to a list of items.
+"""
+type AgentMemoryConnection {
+  """
+  A list of edges.
+  """
+  edges: [AgentMemoryEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type AgentMemoryEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: AgentMemory
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for AgentMemory connections
+"""
+input AgentMemoryOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order AgentMemories.
+  """
+  field: AgentMemoryOrderField!
+}
+"""
+Properties by which AgentMemory connections can be ordered.
+"""
+enum AgentMemoryOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+AgentMemoryWhereInput is used for filtering AgentMemory objects.
+Input was generated by ent.
+"""
+input AgentMemoryWhereInput {
+  not: AgentMemoryWhereInput
+  and: [AgentMemoryWhereInput!]
+  or: [AgentMemoryWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: Int
+  projectIDNEQ: Int
+  projectIDIn: [Int!]
+  projectIDNotIn: [Int!]
+  projectIDGT: Int
+  projectIDGTE: Int
+  projectIDLT: Int
+  projectIDLTE: Int
+  """
+  agent_id field predicates
+  """
+  agentID: ID
+  agentIDNEQ: ID
+  agentIDIn: [ID!]
+  agentIDNotIn: [ID!]
+  agentIDIsNil: Boolean
+  agentIDNotNil: Boolean
+  """
+  path field predicates
+  """
+  path: String
+  pathNEQ: String
+  pathIn: [String!]
+  pathNotIn: [String!]
+  pathGT: String
+  pathGTE: String
+  pathLT: String
+  pathLTE: String
+  pathContains: String
+  pathHasPrefix: String
+  pathHasSuffix: String
+  pathEqualFold: String
+  pathContainsFold: String
+  """
+  content field predicates
+  """
+  content: String
+  contentNEQ: String
+  contentIn: [String!]
+  contentNotIn: [String!]
+  contentGT: String
+  contentGTE: String
+  contentLT: String
+  contentLTE: String
+  contentContains: String
+  contentHasPrefix: String
+  contentHasSuffix: String
+  contentEqualFold: String
+  contentContainsFold: String
+  """
+  source field predicates
+  """
+  source: String
+  sourceNEQ: String
+  sourceIn: [String!]
+  sourceNotIn: [String!]
+  sourceGT: String
+  sourceGTE: String
+  sourceLT: String
+  sourceLTE: String
+  sourceContains: String
+  sourceHasPrefix: String
+  sourceHasSuffix: String
+  sourceEqualFold: String
+  sourceContainsFold: String
+  """
+  agent edge predicates
+  """
+  hasAgent: Boolean
+  hasAgentWith: [AgentWhereInput!]
+}
+type AgentMessage implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  projectID: Int!
+  agentID: ID!
+  """
+  Agent instance ID if the message is from an agent
+  """
+  agentInstanceID: ID!
+  """
+  Message direction
+  """
+  direction: AgentMessageDirection!
+  """
+  Message sender type
+  """
+  senderType: AgentMessageSenderType!
+  """
+  Sender ID, user_id or agent_instance_id or message_channel_id
+  """
+  senderID: ID
+  """
+  Message type for operator/runtime routing
+  """
+  type: AgentMessageType!
+  """
+  Correlation ID for request/response matching (e.g. approval request id)
+  """
+  correlationID: String!
+  """
+  Message content (JSON)
+  """
+  content: JSONRawMessage!
+  status: AgentMessageStatus!
+  """
+  Monotonic sequence for the agent
+  """
+  sequence: Int!
+  expiresAt: Time
+  """
+  External platform message ID (e.g., feishu message_id) for inbound message tracking
+  """
+  externalMessageID: String
+  """
+  The agent message id that this message replies to
+  """
+  replyToMessageID: Int
+  agent: Agent!
+  agentInstance: AgentInstance!
+  messageChannel: MessageChannel
+}
+"""
+A connection to a list of items.
+"""
+type AgentMessageConnection {
+  """
+  A list of edges.
+  """
+  edges: [AgentMessageEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+AgentMessageDirection is enum for the field direction
+"""
+enum AgentMessageDirection @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.Direction") {
+  to_agent
+  to_user
+}
+"""
+An edge in a connection.
+"""
+type AgentMessageEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: AgentMessage
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for AgentMessage connections
+"""
+input AgentMessageOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order AgentMessages.
+  """
+  field: AgentMessageOrderField!
+}
+"""
+Properties by which AgentMessage connections can be ordered.
+"""
+enum AgentMessageOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+AgentMessageSenderType is enum for the field sender_type
+"""
+enum AgentMessageSenderType @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.SenderType") {
+  user
+  agent
+  system
+  message_channel
+}
+"""
+AgentMessageStatus is enum for the field status
+"""
+enum AgentMessageStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.Status") {
+  pending
+  acked
+  expired
+}
+"""
+AgentMessageType is enum for the field type
+"""
+enum AgentMessageType @goModel(model: "github.com/looplj/axonhub/internal/ent/agentmessage.Type") {
+  chat
+  approval_request
+  approval_result
+  system_event
+}
+"""
+AgentMessageWhereInput is used for filtering AgentMessage objects.
+Input was generated by ent.
+"""
+input AgentMessageWhereInput {
+  not: AgentMessageWhereInput
+  and: [AgentMessageWhereInput!]
+  or: [AgentMessageWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: Int
+  projectIDNEQ: Int
+  projectIDIn: [Int!]
+  projectIDNotIn: [Int!]
+  projectIDGT: Int
+  projectIDGTE: Int
+  projectIDLT: Int
+  projectIDLTE: Int
+  """
+  agent_id field predicates
+  """
+  agentID: ID
+  agentIDNEQ: ID
+  agentIDIn: [ID!]
+  agentIDNotIn: [ID!]
+  """
+  agent_instance_id field predicates
+  """
+  agentInstanceID: ID
+  agentInstanceIDNEQ: ID
+  agentInstanceIDIn: [ID!]
+  agentInstanceIDNotIn: [ID!]
+  """
+  direction field predicates
+  """
+  direction: AgentMessageDirection
+  directionNEQ: AgentMessageDirection
+  directionIn: [AgentMessageDirection!]
+  directionNotIn: [AgentMessageDirection!]
+  """
+  sender_type field predicates
+  """
+  senderType: AgentMessageSenderType
+  senderTypeNEQ: AgentMessageSenderType
+  senderTypeIn: [AgentMessageSenderType!]
+  senderTypeNotIn: [AgentMessageSenderType!]
+  """
+  sender_id field predicates
+  """
+  senderID: ID
+  senderIDNEQ: ID
+  senderIDIn: [ID!]
+  senderIDNotIn: [ID!]
+  senderIDIsNil: Boolean
+  senderIDNotNil: Boolean
+  """
+  type field predicates
+  """
+  type: AgentMessageType
+  typeNEQ: AgentMessageType
+  typeIn: [AgentMessageType!]
+  typeNotIn: [AgentMessageType!]
+  """
+  correlation_id field predicates
+  """
+  correlationID: String
+  correlationIDNEQ: String
+  correlationIDIn: [String!]
+  correlationIDNotIn: [String!]
+  correlationIDGT: String
+  correlationIDGTE: String
+  correlationIDLT: String
+  correlationIDLTE: String
+  correlationIDContains: String
+  correlationIDHasPrefix: String
+  correlationIDHasSuffix: String
+  correlationIDEqualFold: String
+  correlationIDContainsFold: String
+  """
+  status field predicates
+  """
+  status: AgentMessageStatus
+  statusNEQ: AgentMessageStatus
+  statusIn: [AgentMessageStatus!]
+  statusNotIn: [AgentMessageStatus!]
+  """
+  sequence field predicates
+  """
+  sequence: Int
+  sequenceNEQ: Int
+  sequenceIn: [Int!]
+  sequenceNotIn: [Int!]
+  sequenceGT: Int
+  sequenceGTE: Int
+  sequenceLT: Int
+  sequenceLTE: Int
+  """
+  expires_at field predicates
+  """
+  expiresAt: Time
+  expiresAtNEQ: Time
+  expiresAtIn: [Time!]
+  expiresAtNotIn: [Time!]
+  expiresAtGT: Time
+  expiresAtGTE: Time
+  expiresAtLT: Time
+  expiresAtLTE: Time
+  expiresAtIsNil: Boolean
+  expiresAtNotNil: Boolean
+  """
+  external_message_id field predicates
+  """
+  externalMessageID: String
+  externalMessageIDNEQ: String
+  externalMessageIDIn: [String!]
+  externalMessageIDNotIn: [String!]
+  externalMessageIDGT: String
+  externalMessageIDGTE: String
+  externalMessageIDLT: String
+  externalMessageIDLTE: String
+  externalMessageIDContains: String
+  externalMessageIDHasPrefix: String
+  externalMessageIDHasSuffix: String
+  externalMessageIDIsNil: Boolean
+  externalMessageIDNotNil: Boolean
+  externalMessageIDEqualFold: String
+  externalMessageIDContainsFold: String
+  """
+  reply_to_message_id field predicates
+  """
+  replyToMessageID: Int
+  replyToMessageIDNEQ: Int
+  replyToMessageIDIn: [Int!]
+  replyToMessageIDNotIn: [Int!]
+  replyToMessageIDGT: Int
+  replyToMessageIDGTE: Int
+  replyToMessageIDLT: Int
+  replyToMessageIDLTE: Int
+  replyToMessageIDIsNil: Boolean
+  replyToMessageIDNotNil: Boolean
+  """
+  agent edge predicates
+  """
+  hasAgent: Boolean
+  hasAgentWith: [AgentWhereInput!]
+  """
+  agent_instance edge predicates
+  """
+  hasAgentInstance: Boolean
+  hasAgentInstanceWith: [AgentInstanceWhereInput!]
+  """
+  message_channel edge predicates
+  """
+  hasMessageChannel: Boolean
+  hasMessageChannelWith: [MessageChannelWhereInput!]
+}
+"""
+Ordering options for Agent connections
+"""
+input AgentOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order Agents.
+  """
+  field: AgentOrderField!
+}
+"""
+Properties by which Agent connections can be ordered.
+"""
+enum AgentOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+AgentReasoningEffort is enum for the field reasoning_effort
+"""
+enum AgentReasoningEffort @goModel(model: "github.com/looplj/axonhub/internal/ent/agent.ReasoningEffort") {
+  none
+  low
+  medium
+  high
+}
+type AgentSkill implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID for scoping
+  """
+  projectID: ID!
+  agentID: ID!
+  skillID: ID!
+  enabled: Boolean!
+  """
+  Skill order in agent
+  """
+  order: Int!
+  """
+  Default args for the skill
+  """
+  args: String!
+  agent: Agent!
+  skill: Skill!
+  project: Project!
+}
+"""
+A connection to a list of items.
+"""
+type AgentSkillConnection {
+  """
+  A list of edges.
+  """
+  edges: [AgentSkillEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type AgentSkillEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: AgentSkill
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for AgentSkill connections
+"""
+input AgentSkillOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order AgentSkills.
+  """
+  field: AgentSkillOrderField!
+}
+"""
+Properties by which AgentSkill connections can be ordered.
+"""
+enum AgentSkillOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+AgentSkillWhereInput is used for filtering AgentSkill objects.
+Input was generated by ent.
+"""
+input AgentSkillWhereInput {
+  not: AgentSkillWhereInput
+  and: [AgentSkillWhereInput!]
+  or: [AgentSkillWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: ID
+  projectIDNEQ: ID
+  projectIDIn: [ID!]
+  projectIDNotIn: [ID!]
+  """
+  agent_id field predicates
+  """
+  agentID: ID
+  agentIDNEQ: ID
+  agentIDIn: [ID!]
+  agentIDNotIn: [ID!]
+  """
+  skill_id field predicates
+  """
+  skillID: ID
+  skillIDNEQ: ID
+  skillIDIn: [ID!]
+  skillIDNotIn: [ID!]
+  """
+  enabled field predicates
+  """
+  enabled: Boolean
+  enabledNEQ: Boolean
+  """
+  order field predicates
+  """
+  order: Int
+  orderNEQ: Int
+  orderIn: [Int!]
+  orderNotIn: [Int!]
+  orderGT: Int
+  orderGTE: Int
+  orderLT: Int
+  orderLTE: Int
+  """
+  args field predicates
+  """
+  args: String
+  argsNEQ: String
+  argsIn: [String!]
+  argsNotIn: [String!]
+  argsGT: String
+  argsGTE: String
+  argsLT: String
+  argsLTE: String
+  argsContains: String
+  argsHasPrefix: String
+  argsHasSuffix: String
+  argsEqualFold: String
+  argsContainsFold: String
+  """
+  agent edge predicates
+  """
+  hasAgent: Boolean
+  hasAgentWith: [AgentWhereInput!]
+  """
+  skill edge predicates
+  """
+  hasSkill: Boolean
+  hasSkillWith: [SkillWhereInput!]
+  """
+  project edge predicates
+  """
+  hasProject: Boolean
+  hasProjectWith: [ProjectWhereInput!]
+}
+"""
+AgentStatus is enum for the field status
+"""
+enum AgentStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/agent.Status") {
+  enabled
+  disabled
+  archived
+}
+type AgentThread implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  projectID: Int!
+  agentID: ID!
+  threadID: ID!
+  agent: Agent!
+  thread: Thread!
+}
+"""
+A connection to a list of items.
+"""
+type AgentThreadConnection {
+  """
+  A list of edges.
+  """
+  edges: [AgentThreadEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type AgentThreadEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: AgentThread
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for AgentThread connections
+"""
+input AgentThreadOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order AgentThreads.
+  """
+  field: AgentThreadOrderField!
+}
+"""
+Properties by which AgentThread connections can be ordered.
+"""
+enum AgentThreadOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+AgentThreadWhereInput is used for filtering AgentThread objects.
+Input was generated by ent.
+"""
+input AgentThreadWhereInput {
+  not: AgentThreadWhereInput
+  and: [AgentThreadWhereInput!]
+  or: [AgentThreadWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: Int
+  projectIDNEQ: Int
+  projectIDIn: [Int!]
+  projectIDNotIn: [Int!]
+  projectIDGT: Int
+  projectIDGTE: Int
+  projectIDLT: Int
+  projectIDLTE: Int
+  """
+  agent_id field predicates
+  """
+  agentID: ID
+  agentIDNEQ: ID
+  agentIDIn: [ID!]
+  agentIDNotIn: [ID!]
+  """
+  thread_id field predicates
+  """
+  threadID: ID
+  threadIDNEQ: ID
+  threadIDIn: [ID!]
+  threadIDNotIn: [ID!]
+  """
+  agent edge predicates
+  """
+  hasAgent: Boolean
+  hasAgentWith: [AgentWhereInput!]
+  """
+  thread edge predicates
+  """
+  hasThread: Boolean
+  hasThreadWith: [ThreadWhereInput!]
+}
+type AgentTool implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID for scoping
+  """
+  projectID: ID!
+  agentID: ID!
+  toolID: ID!
+  enabled: Boolean!
+  """
+  Tool order in agent
+  """
+  order: Int!
+  """
+  Agent-specific tool config override (JSON)
+  """
+  config: JSONRawMessage!
+  agent: Agent!
+  tool: Tool!
+  project: Project!
+}
+"""
+A connection to a list of items.
+"""
+type AgentToolConnection {
+  """
+  A list of edges.
+  """
+  edges: [AgentToolEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type AgentToolEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: AgentTool
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for AgentTool connections
+"""
+input AgentToolOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order AgentTools.
+  """
+  field: AgentToolOrderField!
+}
+"""
+Properties by which AgentTool connections can be ordered.
+"""
+enum AgentToolOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+AgentToolWhereInput is used for filtering AgentTool objects.
+Input was generated by ent.
+"""
+input AgentToolWhereInput {
+  not: AgentToolWhereInput
+  and: [AgentToolWhereInput!]
+  or: [AgentToolWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: ID
+  projectIDNEQ: ID
+  projectIDIn: [ID!]
+  projectIDNotIn: [ID!]
+  """
+  agent_id field predicates
+  """
+  agentID: ID
+  agentIDNEQ: ID
+  agentIDIn: [ID!]
+  agentIDNotIn: [ID!]
+  """
+  tool_id field predicates
+  """
+  toolID: ID
+  toolIDNEQ: ID
+  toolIDIn: [ID!]
+  toolIDNotIn: [ID!]
+  """
+  enabled field predicates
+  """
+  enabled: Boolean
+  enabledNEQ: Boolean
+  """
+  order field predicates
+  """
+  order: Int
+  orderNEQ: Int
+  orderIn: [Int!]
+  orderNotIn: [Int!]
+  orderGT: Int
+  orderGTE: Int
+  orderLT: Int
+  orderLTE: Int
+  """
+  agent edge predicates
+  """
+  hasAgent: Boolean
+  hasAgentWith: [AgentWhereInput!]
+  """
+  tool edge predicates
+  """
+  hasTool: Boolean
+  hasToolWith: [ToolWhereInput!]
+  """
+  project edge predicates
+  """
+  hasProject: Boolean
+  hasProjectWith: [ProjectWhereInput!]
+}
+"""
+AgentWhereInput is used for filtering Agent objects.
+Input was generated by ent.
+"""
+input AgentWhereInput {
+  not: AgentWhereInput
+  and: [AgentWhereInput!]
+  or: [AgentWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: ID
+  projectIDNEQ: ID
+  projectIDIn: [ID!]
+  projectIDNotIn: [ID!]
+  """
+  created_by_user_id field predicates
+  """
+  createdByUserID: ID
+  createdByUserIDNEQ: ID
+  createdByUserIDIn: [ID!]
+  createdByUserIDNotIn: [ID!]
+  """
+  name field predicates
+  """
+  name: String
+  nameNEQ: String
+  nameIn: [String!]
+  nameNotIn: [String!]
+  nameGT: String
+  nameGTE: String
+  nameLT: String
+  nameLTE: String
+  nameContains: String
+  nameHasPrefix: String
+  nameHasSuffix: String
+  nameEqualFold: String
+  nameContainsFold: String
+  """
+  description field predicates
+  """
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionEqualFold: String
+  descriptionContainsFold: String
+  """
+  status field predicates
+  """
+  status: AgentStatus
+  statusNEQ: AgentStatus
+  statusIn: [AgentStatus!]
+  statusNotIn: [AgentStatus!]
+  """
+  prompt_id field predicates
+  """
+  promptID: ID
+  promptIDNEQ: ID
+  promptIDIn: [ID!]
+  promptIDNotIn: [ID!]
+  """
+  model field predicates
+  """
+  model: String
+  modelNEQ: String
+  modelIn: [String!]
+  modelNotIn: [String!]
+  modelGT: String
+  modelGTE: String
+  modelLT: String
+  modelLTE: String
+  modelContains: String
+  modelHasPrefix: String
+  modelHasSuffix: String
+  modelEqualFold: String
+  modelContainsFold: String
+  """
+  reasoning_effort field predicates
+  """
+  reasoningEffort: AgentReasoningEffort
+  reasoningEffortNEQ: AgentReasoningEffort
+  reasoningEffortIn: [AgentReasoningEffort!]
+  reasoningEffortNotIn: [AgentReasoningEffort!]
+  """
+  project edge predicates
+  """
+  hasProject: Boolean
+  hasProjectWith: [ProjectWhereInput!]
+  """
+  created_by_user edge predicates
+  """
+  hasCreatedByUser: Boolean
+  hasCreatedByUserWith: [UserWhereInput!]
+  """
+  prompt edge predicates
+  """
+  hasPrompt: Boolean
+  hasPromptWith: [PromptWhereInput!]
+  """
+  tool_bindings edge predicates
+  """
+  hasToolBindings: Boolean
+  hasToolBindingsWith: [AgentToolWhereInput!]
+  """
+  skill_bindings edge predicates
+  """
+  hasSkillBindings: Boolean
+  hasSkillBindingsWith: [AgentSkillWhereInput!]
+  """
+  instances edge predicates
+  """
+  hasInstances: Boolean
+  hasInstancesWith: [AgentInstanceWhereInput!]
+  """
+  threads edge predicates
+  """
+  hasThreads: Boolean
+  hasThreadsWith: [AgentThreadWhereInput!]
+  """
+  messages edge predicates
+  """
+  hasMessages: Boolean
+  hasMessagesWith: [AgentMessageWhereInput!]
+  """
+  memories edge predicates
+  """
+  hasMemories: Boolean
+  hasMemoriesWith: [AgentMemoryWhereInput!]
 }
 type Channel implements Node {
   id: ID!
@@ -249,7 +2352,12 @@ type Channel implements Node {
   name: String!
   status: ChannelStatus!
   supportedModels: [String!]!
+  manualModels: [String!]
   autoSyncSupportedModels: Boolean!
+  """
+  Regex pattern to filter models during auto-sync. Empty string means no filtering.
+  """
+  autoSyncModelPattern: String
   tags: [String!]
   defaultTestModel: String!
   policies: ChannelPolicies @goField(forceResolver: true)
@@ -792,7 +2900,7 @@ type ChannelOverrideTemplate implements Node {
   """
   userID: ID!
   """
-  Template name, unique per user and channel type
+  Template name, unique per user
   """
   name: String!
   """
@@ -800,17 +2908,21 @@ type ChannelOverrideTemplate implements Node {
   """
   description: String
   """
-  Channel type this template applies to
-  """
-  channelType: String!
-  """
   Override request body parameters as JSON string
   """
-  overrideParameters: String!
+  overrideParameters: String! @deprecated(reason: "Use body_override_operations instead")
   """
   Override request headers
   """
-  overrideHeaders: [HeaderEntry!]!
+  overrideHeaders: [HeaderEntry!]! @deprecated
+  """
+  Override request headers
+  """
+  headerOverrideOperations: [OverrideOperation!] @goField(forceResolver: true)
+  """
+  Override request body parameters
+  """
+  bodyOverrideOperations: [OverrideOperation!] @goField(forceResolver: true)
   user: User!
 }
 """
@@ -945,22 +3057,6 @@ input ChannelOverrideTemplateWhereInput {
   descriptionNotNil: Boolean
   descriptionEqualFold: String
   descriptionContainsFold: String
-  """
-  channel_type field predicates
-  """
-  channelType: String
-  channelTypeNEQ: String
-  channelTypeIn: [String!]
-  channelTypeNotIn: [String!]
-  channelTypeGT: String
-  channelTypeGTE: String
-  channelTypeLT: String
-  channelTypeLTE: String
-  channelTypeContains: String
-  channelTypeHasPrefix: String
-  channelTypeHasSuffix: String
-  channelTypeEqualFold: String
-  channelTypeContainsFold: String
   """
   override_parameters field predicates
   """
@@ -1109,6 +3205,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   deepseek
   deepseek_anthropic
   deepinfra
+  fireworks
   doubao
   doubao_anthropic
   moonshot
@@ -1120,6 +3217,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   anthropic_fake
   openai_fake
   openrouter
+  xiaomi
   xai
   ppio
   siliconflow
@@ -1134,9 +3232,14 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   bailian
   jina
   github
+  github_copilot
   claudecode
   cerebras
   antigravity
+  nanogpt
+  search_tavily
+  search_brave
+  search_exa
 }
 """
 ChannelWhereInput is used for filtering Channel objects.
@@ -1232,6 +3335,24 @@ input ChannelWhereInput {
   """
   autoSyncSupportedModels: Boolean
   autoSyncSupportedModelsNEQ: Boolean
+  """
+  auto_sync_model_pattern field predicates
+  """
+  autoSyncModelPattern: String
+  autoSyncModelPatternNEQ: String
+  autoSyncModelPatternIn: [String!]
+  autoSyncModelPatternNotIn: [String!]
+  autoSyncModelPatternGT: String
+  autoSyncModelPatternGTE: String
+  autoSyncModelPatternLT: String
+  autoSyncModelPatternLTE: String
+  autoSyncModelPatternContains: String
+  autoSyncModelPatternHasPrefix: String
+  autoSyncModelPatternHasSuffix: String
+  autoSyncModelPatternIsNil: Boolean
+  autoSyncModelPatternNotNil: Boolean
+  autoSyncModelPatternEqualFold: String
+  autoSyncModelPatternContainsFold: String
   """
   default_test_model field predicates
   """
@@ -1333,13 +3454,160 @@ Input was generated by ent.
 input CreateAPIKeyInput {
   name: String!
   """
-  API Key type: user or service_account
+  API Key type: user, service_account, noauth, or agent
   """
   type: APIKeyType
   """
-  API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.
+  API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account/agent: custom scopes.
   """
   scopes: [String!]
+  projectID: ID!
+}
+"""
+CreateAgentHostInput is used for create AgentHost object.
+Input was generated by ent.
+"""
+input CreateAgentHostInput {
+  """
+  Host name
+  """
+  name: String!
+  """
+  Host type: vm, docker or local
+  """
+  type: AgentHostType
+  """
+  Host status
+  """
+  status: AgentHostStatus
+  """
+  Host address
+  """
+  addr: String
+  """
+  Host user for authentication
+  """
+  user: String
+  """
+  Authentication method: password or ssh_key
+  """
+  authMethod: AgentHostAuthMethod
+  """
+  Host password for authentication
+  """
+  password: String
+  """
+  SSH private key for authentication
+  """
+  sshPrivateKey: String
+  """
+  Working directory for vm/local host types, e.g. /opt/axonclaw
+  """
+  directory: String
+}
+"""
+CreateAgentInstanceInput is used for create AgentInstance object.
+Input was generated by ent.
+"""
+input CreateAgentInstanceInput {
+  """
+  Project ID that this agent instance belongs to
+  """
+  projectID: Int!
+  """
+  Human readable name
+  """
+  name: String
+  """
+  Instance description
+  """
+  description: String
+  """
+  Platform information like os/arch
+  """
+  platform: String
+  """
+  Last heartbeat timestamp
+  """
+  lastHeartbeatAt: Time!
+  """
+  AxonHub base URL used by this agent instance
+  """
+  axonhubBaseURL: String
+  """
+  Instance status
+  """
+  status: AgentInstanceStatus
+  agentID: ID!
+  hostID: ID
+  apiKeyID: ID!
+}
+"""
+CreateAgentMemoryInput is used for create AgentMemory object.
+Input was generated by ent.
+"""
+input CreateAgentMemoryInput {
+  """
+  Project ID that this memory belongs to
+  """
+  projectID: Int!
+  """
+  Memory path
+  """
+  path: String!
+  """
+  Memory content
+  """
+  content: String!
+  """
+  Optional source metadata
+  """
+  source: String
+  agentID: ID
+}
+"""
+CreateAgentSkillInput is used for create AgentSkill object.
+Input was generated by ent.
+"""
+input CreateAgentSkillInput {
+  enabled: Boolean
+  """
+  Skill order in agent
+  """
+  order: Int
+  """
+  Default args for the skill
+  """
+  args: String
+  agentID: ID!
+  skillID: ID!
+  projectID: ID!
+}
+"""
+CreateAgentThreadInput is used for create AgentThread object.
+Input was generated by ent.
+"""
+input CreateAgentThreadInput {
+  projectID: Int!
+  agentID: ID!
+  threadID: ID!
+}
+"""
+CreateAgentToolInput is used for create AgentTool object.
+Input was generated by ent.
+"""
+input CreateAgentToolInput {
+  enabled: Boolean
+  """
+  Tool order in agent
+  """
+  order: Int
+  """
+  Agent-specific tool config override (JSON)
+  """
+  config: JSONRawMessageInput
+  agentID: ID!
+  toolID: ID!
   projectID: ID!
 }
 """
@@ -1352,7 +3620,12 @@ input CreateChannelInput {
   name: String!
   credentials: ChannelCredentialsInput!
   supportedModels: [String!]!
+  manualModels: [String!]
   autoSyncSupportedModels: Boolean
+  """
+  Regex pattern to filter models during auto-sync. Empty string means no filtering.
+  """
+  autoSyncModelPattern: String
   tags: [String!]
   defaultTestModel: String!
   policies: ChannelPoliciesInput
@@ -1372,7 +3645,7 @@ Input was generated by ent.
 """
 input CreateChannelOverrideTemplateInput {
   """
-  Template name, unique per user and channel type
+  Template name, unique per user
   """
   name: String!
   """
@@ -1380,17 +3653,13 @@ input CreateChannelOverrideTemplateInput {
   """
   description: String
   """
-  Channel type this template applies to
-  """
-  channelType: String!
-  """
-  Override request body parameters as JSON string
-  """
-  overrideParameters: String
-  """
   Override request headers
   """
-  overrideHeaders: [HeaderEntryInput!]
+  headerOverrideOperations: [OverrideOperationInput!]
+  """
+  Override request body parameters
+  """
+  bodyOverrideOperations: [OverrideOperationInput!]
 }
 """
 CreateDataStorageInput is used for create DataStorage object.
@@ -1417,6 +3686,57 @@ input CreateDataStorageInput {
   data source status
   """
   status: DataStorageStatus
+}
+"""
+CreateMessageChannelAgentInstanceInput is used for create MessageChannelAgentInstance object.
+Input was generated by ent.
+"""
+input CreateMessageChannelAgentInstanceInput {
+  """
+  Whether this binding is enabled
+  """
+  enabled: Boolean
+  """
+  Channel-specific config for this agent instance binding
+  """
+  config: MessageChannelAgentInstanceBindingInput
+  messageChannelID: ID!
+  agentInstanceID: ID!
+}
+"""
+CreateMessageChannelBindingRequestInput is used for create MessageChannelBindingRequest object.
+Input was generated by ent.
+"""
+input CreateMessageChannelBindingRequestInput {
+  messageChannelID: Int!
+  agentInstanceID: Int!
+  """
+  Type of the binding request
+  """
+  type: MessageChannelBindingRequestType
+}
+"""
+CreateMessageChannelInput is used for create MessageChannel object.
+Input was generated by ent.
+"""
+input CreateMessageChannelInput {
+  """
+  Human readable name for this message channel
+  """
+  name: String!
+  """
+  Description of this message channel
+  """
+  description: String
+  """
+  Message channel type
+  """
+  type: MessageChannelType
+  status: MessageChannelStatus
+  """
+  Channel-specific settings
+  """
+  settings: MessageChannelSettingsInput
 }
 """
 CreateModelInput is used for create Model object.
@@ -1479,6 +3799,10 @@ Input was generated by ent.
 """
 input CreatePromptInput {
   """
+  Prompt type
+  """
+  type: PromptType
+  """
   prompt name
   """
   name: String!
@@ -1496,10 +3820,63 @@ input CreatePromptInput {
   content: String!
   status: PromptStatus
   """
+  prompt insertion order, smaller values are inserted first
+  """
+  order: Int
+  """
   prompt settings in JSON format
   """
   settings: PromptSettingsInput!
   projectIDs: [ID!]
+  activeVersionID: ID
+  draftVersionID: ID
+}
+"""
+CreatePromptProtectionRuleInput is used for create PromptProtectionRule object.
+Input was generated by ent.
+"""
+input CreatePromptProtectionRuleInput {
+  """
+  Rule name
+  """
+  name: String!
+  """
+  Rule description
+  """
+  description: String
+  """
+  Regex pattern to match prompt content
+  """
+  pattern: String!
+  """
+  Prompt protection rule settings
+  """
+  settings: PromptProtectionSettingsInput!
+}
+"""
+CreatePromptVersionInput is used for create PromptVersion object.
+Input was generated by ent.
+"""
+input CreatePromptVersionInput {
+  """
+  Prompt version number (monotonic)
+  """
+  version: Int!
+  """
+  Prompt content
+  """
+  content: String!
+  """
+  Prompt version status
+  """
+  status: PromptVersionStatus
+  """
+  Change log for this version
+  """
+  changeLog: String
+  promptID: ID!
+  projectID: ID!
+  createdByUserID: ID
 }
 """
 CreateRequestInput is used for create Request object.
@@ -1522,6 +3899,22 @@ input CreateRequestInput {
   clientIP: String
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
+  """
+  whether the generated content has been saved to external storage
+  """
+  contentSaved: Boolean
+  """
+  data storage id used to save the content file
+  """
+  contentStorageID: Int
+  """
+  storage key/path of the saved content file
+  """
+  contentStorageKey: String
+  """
+  when the content file was saved
+  """
+  contentSavedAt: Time
   apiKeyID: ID
   projectID: ID!
   traceID: ID
@@ -1546,6 +3939,42 @@ input CreateRoleInput {
   projectID: ID
 }
 """
+CreateSkillInput is used for create Skill object.
+Input was generated by ent.
+"""
+input CreateSkillInput {
+  """
+  Skill name
+  """
+  name: String!
+  """
+  Skill description
+  """
+  description: String
+  """
+  Skill kind
+  """
+  kind: SkillKind
+  """
+  Skill content (prompt/instructions)
+  """
+  content: String
+  """
+  Skill entrypoint (e.g. scripts/run.sh)
+  """
+  entrypoint: String
+  """
+  Optional bundle metadata (JSON)
+  """
+  bundle: JSONRawMessageInput
+  """
+  Skill status
+  """
+  status: SkillStatus
+  projectID: ID
+  createdByUserID: ID
+}
+"""
 CreateSystemInput is used for create System object.
 Input was generated by ent.
 """
@@ -1563,6 +3992,38 @@ input CreateThreadInput {
   """
   threadID: String!
   projectID: ID!
+}
+"""
+CreateToolInput is used for create Tool object.
+Input was generated by ent.
+"""
+input CreateToolInput {
+  """
+  Tool name
+  """
+  name: String!
+  """
+  Tool description
+  """
+  description: String
+  """
+  Tool type
+  """
+  type: ToolType
+  """
+  Tool parameters schema (JSON schema)
+  """
+  schema: JSONRawMessageInput
+  """
+  Tool default policy (JSON)
+  """
+  defaultPolicy: JSONRawMessageInput
+  """
+  Tool status
+  """
+  status: ToolStatus
+  projectID: ID
+  createdByUserID: ID
 }
 """
 CreateTraceInput is used for create Trace object.
@@ -1954,6 +4415,599 @@ input DataStorageWhereInput {
 The builtin Map type
 """
 scalar Map
+type MessageChannel implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID that this message channel belongs to
+  """
+  projectID: ID!
+  """
+  Human readable name for this message channel
+  """
+  name: String!
+  """
+  Description of this message channel
+  """
+  description: String!
+  """
+  Message channel type
+  """
+  type: MessageChannelType!
+  status: MessageChannelStatus!
+  """
+  Channel-specific settings
+  """
+  settings: MessageChannelSettings
+  project: Project!
+  agentInstanceBindings(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for MessageChannelAgentInstances returned from the connection.
+    """
+    orderBy: MessageChannelAgentInstanceOrder
+
+    """
+    Filtering options for MessageChannelAgentInstances returned from the connection.
+    """
+    where: MessageChannelAgentInstanceWhereInput
+  ): MessageChannelAgentInstanceConnection!
+  messages(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentMessages returned from the connection.
+    """
+    orderBy: AgentMessageOrder
+
+    """
+    Filtering options for AgentMessages returned from the connection.
+    """
+    where: AgentMessageWhereInput
+  ): AgentMessageConnection!
+}
+type MessageChannelAgentInstance implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  messageChannelID: ID!
+  agentInstanceID: ID!
+  """
+  Whether this binding is enabled
+  """
+  enabled: Boolean!
+  """
+  Channel-specific config for this agent instance binding
+  """
+  config: MessageChannelAgentInstanceBinding!
+  messageChannel: MessageChannel!
+  agentInstance: AgentInstance!
+}
+"""
+A connection to a list of items.
+"""
+type MessageChannelAgentInstanceConnection {
+  """
+  A list of edges.
+  """
+  edges: [MessageChannelAgentInstanceEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type MessageChannelAgentInstanceEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: MessageChannelAgentInstance
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for MessageChannelAgentInstance connections
+"""
+input MessageChannelAgentInstanceOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order MessageChannelAgentInstances.
+  """
+  field: MessageChannelAgentInstanceOrderField!
+}
+"""
+Properties by which MessageChannelAgentInstance connections can be ordered.
+"""
+enum MessageChannelAgentInstanceOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+MessageChannelAgentInstanceWhereInput is used for filtering MessageChannelAgentInstance objects.
+Input was generated by ent.
+"""
+input MessageChannelAgentInstanceWhereInput {
+  not: MessageChannelAgentInstanceWhereInput
+  and: [MessageChannelAgentInstanceWhereInput!]
+  or: [MessageChannelAgentInstanceWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  message_channel_id field predicates
+  """
+  messageChannelID: ID
+  messageChannelIDNEQ: ID
+  messageChannelIDIn: [ID!]
+  messageChannelIDNotIn: [ID!]
+  """
+  agent_instance_id field predicates
+  """
+  agentInstanceID: ID
+  agentInstanceIDNEQ: ID
+  agentInstanceIDIn: [ID!]
+  agentInstanceIDNotIn: [ID!]
+  """
+  enabled field predicates
+  """
+  enabled: Boolean
+  enabledNEQ: Boolean
+  """
+  message_channel edge predicates
+  """
+  hasMessageChannel: Boolean
+  hasMessageChannelWith: [MessageChannelWhereInput!]
+  """
+  agent_instance edge predicates
+  """
+  hasAgentInstance: Boolean
+  hasAgentInstanceWith: [AgentInstanceWhereInput!]
+}
+type MessageChannelBindingRequest implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  messageChannelID: Int!
+  agentInstanceID: Int!
+  """
+  Type of the binding request
+  """
+  type: MessageChannelBindingRequestType!
+  """
+  Pair code for request/response matching (e.g. approval request id)
+  """
+  pairCode: String!
+  """
+  Status of the binding request
+  """
+  status: MessageChannelBindingRequestStatus!
+  """
+  Expiration time for the binding request
+  """
+  expiresAt: Time!
+}
+"""
+A connection to a list of items.
+"""
+type MessageChannelBindingRequestConnection {
+  """
+  A list of edges.
+  """
+  edges: [MessageChannelBindingRequestEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type MessageChannelBindingRequestEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: MessageChannelBindingRequest
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for MessageChannelBindingRequest connections
+"""
+input MessageChannelBindingRequestOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order MessageChannelBindingRequests.
+  """
+  field: MessageChannelBindingRequestOrderField!
+}
+"""
+Properties by which MessageChannelBindingRequest connections can be ordered.
+"""
+enum MessageChannelBindingRequestOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+MessageChannelBindingRequestStatus is enum for the field status
+"""
+enum MessageChannelBindingRequestStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest.Status") {
+  pending
+  approved
+}
+"""
+MessageChannelBindingRequestType is enum for the field type
+"""
+enum MessageChannelBindingRequestType @goModel(model: "github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest.Type") {
+  pair
+}
+"""
+MessageChannelBindingRequestWhereInput is used for filtering MessageChannelBindingRequest objects.
+Input was generated by ent.
+"""
+input MessageChannelBindingRequestWhereInput {
+  not: MessageChannelBindingRequestWhereInput
+  and: [MessageChannelBindingRequestWhereInput!]
+  or: [MessageChannelBindingRequestWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  message_channel_id field predicates
+  """
+  messageChannelID: Int
+  messageChannelIDNEQ: Int
+  messageChannelIDIn: [Int!]
+  messageChannelIDNotIn: [Int!]
+  messageChannelIDGT: Int
+  messageChannelIDGTE: Int
+  messageChannelIDLT: Int
+  messageChannelIDLTE: Int
+  """
+  agent_instance_id field predicates
+  """
+  agentInstanceID: Int
+  agentInstanceIDNEQ: Int
+  agentInstanceIDIn: [Int!]
+  agentInstanceIDNotIn: [Int!]
+  agentInstanceIDGT: Int
+  agentInstanceIDGTE: Int
+  agentInstanceIDLT: Int
+  agentInstanceIDLTE: Int
+  """
+  type field predicates
+  """
+  type: MessageChannelBindingRequestType
+  typeNEQ: MessageChannelBindingRequestType
+  typeIn: [MessageChannelBindingRequestType!]
+  typeNotIn: [MessageChannelBindingRequestType!]
+  """
+  pair_code field predicates
+  """
+  pairCode: String
+  pairCodeNEQ: String
+  pairCodeIn: [String!]
+  pairCodeNotIn: [String!]
+  pairCodeGT: String
+  pairCodeGTE: String
+  pairCodeLT: String
+  pairCodeLTE: String
+  pairCodeContains: String
+  pairCodeHasPrefix: String
+  pairCodeHasSuffix: String
+  pairCodeEqualFold: String
+  pairCodeContainsFold: String
+  """
+  status field predicates
+  """
+  status: MessageChannelBindingRequestStatus
+  statusNEQ: MessageChannelBindingRequestStatus
+  statusIn: [MessageChannelBindingRequestStatus!]
+  statusNotIn: [MessageChannelBindingRequestStatus!]
+  """
+  expires_at field predicates
+  """
+  expiresAt: Time
+  expiresAtNEQ: Time
+  expiresAtIn: [Time!]
+  expiresAtNotIn: [Time!]
+  expiresAtGT: Time
+  expiresAtGTE: Time
+  expiresAtLT: Time
+  expiresAtLTE: Time
+}
+"""
+A connection to a list of items.
+"""
+type MessageChannelConnection {
+  """
+  A list of edges.
+  """
+  edges: [MessageChannelEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type MessageChannelEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: MessageChannel
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for MessageChannel connections
+"""
+input MessageChannelOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order MessageChannels.
+  """
+  field: MessageChannelOrderField!
+}
+"""
+Properties by which MessageChannel connections can be ordered.
+"""
+enum MessageChannelOrderField {
+  CREATED_AT
+  UPDATED_AT
+  TYPE
+  STATUS
+}
+"""
+MessageChannelStatus is enum for the field status
+"""
+enum MessageChannelStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/messagechannel.Status") {
+  enabled
+  disabled
+}
+"""
+MessageChannelType is enum for the field type
+"""
+enum MessageChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/messagechannel.Type") {
+  feishu
+}
+"""
+MessageChannelWhereInput is used for filtering MessageChannel objects.
+Input was generated by ent.
+"""
+input MessageChannelWhereInput {
+  not: MessageChannelWhereInput
+  and: [MessageChannelWhereInput!]
+  or: [MessageChannelWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: ID
+  projectIDNEQ: ID
+  projectIDIn: [ID!]
+  projectIDNotIn: [ID!]
+  """
+  name field predicates
+  """
+  name: String
+  nameNEQ: String
+  nameIn: [String!]
+  nameNotIn: [String!]
+  nameGT: String
+  nameGTE: String
+  nameLT: String
+  nameLTE: String
+  nameContains: String
+  nameHasPrefix: String
+  nameHasSuffix: String
+  nameEqualFold: String
+  nameContainsFold: String
+  """
+  description field predicates
+  """
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionEqualFold: String
+  descriptionContainsFold: String
+  """
+  type field predicates
+  """
+  type: MessageChannelType
+  typeNEQ: MessageChannelType
+  typeIn: [MessageChannelType!]
+  typeNotIn: [MessageChannelType!]
+  """
+  status field predicates
+  """
+  status: MessageChannelStatus
+  statusNEQ: MessageChannelStatus
+  statusIn: [MessageChannelStatus!]
+  statusNotIn: [MessageChannelStatus!]
+  """
+  project edge predicates
+  """
+  hasProject: Boolean
+  hasProjectWith: [ProjectWhereInput!]
+  """
+  agent_instance_bindings edge predicates
+  """
+  hasAgentInstanceBindings: Boolean
+  hasAgentInstanceBindingsWith: [MessageChannelAgentInstanceWhereInput!]
+  """
+  messages edge predicates
+  """
+  hasMessages: Boolean
+  hasMessagesWith: [AgentMessageWhereInput!]
+}
 type Model implements Node {
   id: ID!
   createdAt: Time!
@@ -2056,6 +5110,8 @@ enum ModelType @goModel(model: "github.com/looplj/axonhub/internal/ent/model.Typ
   chat
   embedding
   rerank
+  image_generation
+  video_generation
 }
 """
 ModelWhereInput is used for filtering Model objects.
@@ -2520,6 +5576,223 @@ type Project implements Node {
     """
     where: PromptWhereInput
   ): PromptConnection!
+  promptVersions(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for PromptVersions returned from the connection.
+    """
+    orderBy: PromptVersionOrder
+
+    """
+    Filtering options for PromptVersions returned from the connection.
+    """
+    where: PromptVersionWhereInput
+  ): PromptVersionConnection!
+  agents(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Agents returned from the connection.
+    """
+    orderBy: AgentOrder
+
+    """
+    Filtering options for Agents returned from the connection.
+    """
+    where: AgentWhereInput
+  ): AgentConnection!
+  tools(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Tools returned from the connection.
+    """
+    orderBy: ToolOrder
+
+    """
+    Filtering options for Tools returned from the connection.
+    """
+    where: ToolWhereInput
+  ): ToolConnection!
+  skills(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Skills returned from the connection.
+    """
+    orderBy: SkillOrder
+
+    """
+    Filtering options for Skills returned from the connection.
+    """
+    where: SkillWhereInput
+  ): SkillConnection!
+  agentToolBindings(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentTools returned from the connection.
+    """
+    orderBy: AgentToolOrder
+
+    """
+    Filtering options for AgentTools returned from the connection.
+    """
+    where: AgentToolWhereInput
+  ): AgentToolConnection!
+  agentSkillBindings(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentSkills returned from the connection.
+    """
+    orderBy: AgentSkillOrder
+
+    """
+    Filtering options for AgentSkills returned from the connection.
+    """
+    where: AgentSkillWhereInput
+  ): AgentSkillConnection!
+  messageChannels(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for MessageChannels returned from the connection.
+    """
+    orderBy: MessageChannelOrder
+
+    """
+    Filtering options for MessageChannels returned from the connection.
+    """
+    where: MessageChannelWhereInput
+  ): MessageChannelConnection!
   projectUsers: [UserProject!]
 }
 """
@@ -2700,6 +5973,41 @@ input ProjectWhereInput {
   hasPrompts: Boolean
   hasPromptsWith: [PromptWhereInput!]
   """
+  prompt_versions edge predicates
+  """
+  hasPromptVersions: Boolean
+  hasPromptVersionsWith: [PromptVersionWhereInput!]
+  """
+  agents edge predicates
+  """
+  hasAgents: Boolean
+  hasAgentsWith: [AgentWhereInput!]
+  """
+  tools edge predicates
+  """
+  hasTools: Boolean
+  hasToolsWith: [ToolWhereInput!]
+  """
+  skills edge predicates
+  """
+  hasSkills: Boolean
+  hasSkillsWith: [SkillWhereInput!]
+  """
+  agent_tool_bindings edge predicates
+  """
+  hasAgentToolBindings: Boolean
+  hasAgentToolBindingsWith: [AgentToolWhereInput!]
+  """
+  agent_skill_bindings edge predicates
+  """
+  hasAgentSkillBindings: Boolean
+  hasAgentSkillBindingsWith: [AgentSkillWhereInput!]
+  """
+  message_channels edge predicates
+  """
+  hasMessageChannels: Boolean
+  hasMessageChannelsWith: [MessageChannelWhereInput!]
+  """
   project_users edge predicates
   """
   hasProjectUsers: Boolean
@@ -2713,6 +6021,10 @@ type Prompt implements Node {
   Project ID that this prompt belongs to
   """
   projectID: Int!
+  """
+  Prompt type
+  """
+  type: PromptType
   """
   prompt name
   """
@@ -2731,9 +6043,21 @@ type Prompt implements Node {
   content: String!
   status: PromptStatus!
   """
+  prompt insertion order, smaller values are inserted first
+  """
+  order: Int!
+  """
   prompt settings in JSON format
   """
   settings: PromptSettings!
+  """
+  Active prompt version ID
+  """
+  activeVersionID: ID
+  """
+  Draft prompt version ID
+  """
+  draftVersionID: ID
   projects(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -2765,6 +6089,70 @@ type Prompt implements Node {
     """
     where: ProjectWhereInput
   ): ProjectConnection!
+  versions(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for PromptVersions returned from the connection.
+    """
+    orderBy: PromptVersionOrder
+
+    """
+    Filtering options for PromptVersions returned from the connection.
+    """
+    where: PromptVersionWhereInput
+  ): PromptVersionConnection!
+  activeVersion: PromptVersion
+  draftVersion: PromptVersion
+  agents(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Agents returned from the connection.
+    """
+    orderBy: AgentOrder
+
+    """
+    Filtering options for Agents returned from the connection.
+    """
+    where: AgentWhereInput
+  ): AgentConnection!
 }
 """
 A connection to a list of items.
@@ -2815,6 +6203,185 @@ Properties by which Prompt connections can be ordered.
 enum PromptOrderField {
   CREATED_AT
   UPDATED_AT
+  ORDER
+}
+type PromptProtectionRule implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Rule name
+  """
+  name: String!
+  """
+  Rule description
+  """
+  description: String!
+  """
+  Regex pattern to match prompt content
+  """
+  pattern: String!
+  status: PromptProtectionRuleStatus!
+  """
+  Prompt protection rule settings
+  """
+  settings: PromptProtectionSettings!
+}
+"""
+A connection to a list of items.
+"""
+type PromptProtectionRuleConnection {
+  """
+  A list of edges.
+  """
+  edges: [PromptProtectionRuleEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type PromptProtectionRuleEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: PromptProtectionRule
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for PromptProtectionRule connections
+"""
+input PromptProtectionRuleOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order PromptProtectionRules.
+  """
+  field: PromptProtectionRuleOrderField!
+}
+"""
+Properties by which PromptProtectionRule connections can be ordered.
+"""
+enum PromptProtectionRuleOrderField {
+  CREATED_AT
+  UPDATED_AT
+  NAME
+}
+"""
+PromptProtectionRuleStatus is enum for the field status
+"""
+enum PromptProtectionRuleStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/promptprotectionrule.Status") {
+  enabled
+  disabled
+  archived
+}
+"""
+PromptProtectionRuleWhereInput is used for filtering PromptProtectionRule objects.
+Input was generated by ent.
+"""
+input PromptProtectionRuleWhereInput {
+  not: PromptProtectionRuleWhereInput
+  and: [PromptProtectionRuleWhereInput!]
+  or: [PromptProtectionRuleWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  name field predicates
+  """
+  name: String
+  nameNEQ: String
+  nameIn: [String!]
+  nameNotIn: [String!]
+  nameGT: String
+  nameGTE: String
+  nameLT: String
+  nameLTE: String
+  nameContains: String
+  nameHasPrefix: String
+  nameHasSuffix: String
+  nameEqualFold: String
+  nameContainsFold: String
+  """
+  description field predicates
+  """
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionEqualFold: String
+  descriptionContainsFold: String
+  """
+  pattern field predicates
+  """
+  pattern: String
+  patternNEQ: String
+  patternIn: [String!]
+  patternNotIn: [String!]
+  patternGT: String
+  patternGTE: String
+  patternLT: String
+  patternLTE: String
+  patternContains: String
+  patternHasPrefix: String
+  patternHasSuffix: String
+  patternEqualFold: String
+  patternContainsFold: String
+  """
+  status field predicates
+  """
+  status: PromptProtectionRuleStatus
+  statusNEQ: PromptProtectionRuleStatus
+  statusIn: [PromptProtectionRuleStatus!]
+  statusNotIn: [PromptProtectionRuleStatus!]
 }
 """
 PromptStatus is enum for the field status
@@ -2822,6 +6389,309 @@ PromptStatus is enum for the field status
 enum PromptStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/prompt.Status") {
   enabled
   disabled
+}
+"""
+PromptType is enum for the field type
+"""
+enum PromptType @goModel(model: "github.com/looplj/axonhub/internal/ent/prompt.Type") {
+  agent
+  system
+}
+type PromptVersion implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID that this prompt version belongs to
+  """
+  projectID: ID!
+  """
+  Prompt ID that this version belongs to
+  """
+  promptID: ID!
+  """
+  Prompt version number (monotonic)
+  """
+  version: Int!
+  """
+  Prompt content
+  """
+  content: String!
+  """
+  Prompt version status
+  """
+  status: PromptVersionStatus!
+  """
+  Change log for this version
+  """
+  changeLog: String!
+  """
+  Creator user ID (optional)
+  """
+  createdByUserID: ID
+  prompt: Prompt!
+  project: Project!
+  createdByUser: User
+  activeForPrompts(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Prompts returned from the connection.
+    """
+    orderBy: PromptOrder
+
+    """
+    Filtering options for Prompts returned from the connection.
+    """
+    where: PromptWhereInput
+  ): PromptConnection!
+  draftForPrompts(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Prompts returned from the connection.
+    """
+    orderBy: PromptOrder
+
+    """
+    Filtering options for Prompts returned from the connection.
+    """
+    where: PromptWhereInput
+  ): PromptConnection!
+}
+"""
+A connection to a list of items.
+"""
+type PromptVersionConnection {
+  """
+  A list of edges.
+  """
+  edges: [PromptVersionEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type PromptVersionEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: PromptVersion
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for PromptVersion connections
+"""
+input PromptVersionOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order PromptVersions.
+  """
+  field: PromptVersionOrderField!
+}
+"""
+Properties by which PromptVersion connections can be ordered.
+"""
+enum PromptVersionOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+PromptVersionStatus is enum for the field status
+"""
+enum PromptVersionStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/promptversion.Status") {
+  draft
+  active
+  archived
+}
+"""
+PromptVersionWhereInput is used for filtering PromptVersion objects.
+Input was generated by ent.
+"""
+input PromptVersionWhereInput {
+  not: PromptVersionWhereInput
+  and: [PromptVersionWhereInput!]
+  or: [PromptVersionWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: ID
+  projectIDNEQ: ID
+  projectIDIn: [ID!]
+  projectIDNotIn: [ID!]
+  """
+  prompt_id field predicates
+  """
+  promptID: ID
+  promptIDNEQ: ID
+  promptIDIn: [ID!]
+  promptIDNotIn: [ID!]
+  """
+  version field predicates
+  """
+  version: Int
+  versionNEQ: Int
+  versionIn: [Int!]
+  versionNotIn: [Int!]
+  versionGT: Int
+  versionGTE: Int
+  versionLT: Int
+  versionLTE: Int
+  """
+  content field predicates
+  """
+  content: String
+  contentNEQ: String
+  contentIn: [String!]
+  contentNotIn: [String!]
+  contentGT: String
+  contentGTE: String
+  contentLT: String
+  contentLTE: String
+  contentContains: String
+  contentHasPrefix: String
+  contentHasSuffix: String
+  contentEqualFold: String
+  contentContainsFold: String
+  """
+  status field predicates
+  """
+  status: PromptVersionStatus
+  statusNEQ: PromptVersionStatus
+  statusIn: [PromptVersionStatus!]
+  statusNotIn: [PromptVersionStatus!]
+  """
+  change_log field predicates
+  """
+  changeLog: String
+  changeLogNEQ: String
+  changeLogIn: [String!]
+  changeLogNotIn: [String!]
+  changeLogGT: String
+  changeLogGTE: String
+  changeLogLT: String
+  changeLogLTE: String
+  changeLogContains: String
+  changeLogHasPrefix: String
+  changeLogHasSuffix: String
+  changeLogEqualFold: String
+  changeLogContainsFold: String
+  """
+  created_by_user_id field predicates
+  """
+  createdByUserID: ID
+  createdByUserIDNEQ: ID
+  createdByUserIDIn: [ID!]
+  createdByUserIDNotIn: [ID!]
+  createdByUserIDIsNil: Boolean
+  createdByUserIDNotNil: Boolean
+  """
+  prompt edge predicates
+  """
+  hasPrompt: Boolean
+  hasPromptWith: [PromptWhereInput!]
+  """
+  project edge predicates
+  """
+  hasProject: Boolean
+  hasProjectWith: [ProjectWhereInput!]
+  """
+  created_by_user edge predicates
+  """
+  hasCreatedByUser: Boolean
+  hasCreatedByUserWith: [UserWhereInput!]
+  """
+  active_for_prompts edge predicates
+  """
+  hasActiveForPrompts: Boolean
+  hasActiveForPromptsWith: [PromptWhereInput!]
+  """
+  draft_for_prompts edge predicates
+  """
+  hasDraftForPrompts: Boolean
+  hasDraftForPromptsWith: [PromptWhereInput!]
 }
 """
 PromptWhereInput is used for filtering Prompt objects.
@@ -2875,6 +6745,15 @@ input PromptWhereInput {
   projectIDGTE: Int
   projectIDLT: Int
   projectIDLTE: Int
+  """
+  type field predicates
+  """
+  type: PromptType
+  typeNEQ: PromptType
+  typeIn: [PromptType!]
+  typeNotIn: [PromptType!]
+  typeIsNil: Boolean
+  typeNotNil: Boolean
   """
   name field predicates
   """
@@ -2947,10 +6826,59 @@ input PromptWhereInput {
   statusIn: [PromptStatus!]
   statusNotIn: [PromptStatus!]
   """
+  order field predicates
+  """
+  order: Int
+  orderNEQ: Int
+  orderIn: [Int!]
+  orderNotIn: [Int!]
+  orderGT: Int
+  orderGTE: Int
+  orderLT: Int
+  orderLTE: Int
+  """
+  active_version_id field predicates
+  """
+  activeVersionID: ID
+  activeVersionIDNEQ: ID
+  activeVersionIDIn: [ID!]
+  activeVersionIDNotIn: [ID!]
+  activeVersionIDIsNil: Boolean
+  activeVersionIDNotNil: Boolean
+  """
+  draft_version_id field predicates
+  """
+  draftVersionID: ID
+  draftVersionIDNEQ: ID
+  draftVersionIDIn: [ID!]
+  draftVersionIDNotIn: [ID!]
+  draftVersionIDIsNil: Boolean
+  draftVersionIDNotNil: Boolean
+  """
   projects edge predicates
   """
   hasProjects: Boolean
   hasProjectsWith: [ProjectWhereInput!]
+  """
+  versions edge predicates
+  """
+  hasVersions: Boolean
+  hasVersionsWith: [PromptVersionWhereInput!]
+  """
+  active_version edge predicates
+  """
+  hasActiveVersion: Boolean
+  hasActiveVersionWith: [PromptVersionWhereInput!]
+  """
+  draft_version edge predicates
+  """
+  hasDraftVersion: Boolean
+  hasDraftVersionWith: [PromptVersionWhereInput!]
+  """
+  agents edge predicates
+  """
+  hasAgents: Boolean
+  hasAgentsWith: [AgentWhereInput!]
 }
 type ProviderQuotaStatus implements Node {
   id: ID!
@@ -3163,6 +7091,254 @@ type Query {
     """
     where: APIKeyWhereInput
   ): APIKeyConnection!
+  agents(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Agents returned from the connection.
+    """
+    orderBy: AgentOrder
+
+    """
+    Filtering options for Agents returned from the connection.
+    """
+    where: AgentWhereInput
+  ): AgentConnection!
+  agentHosts(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentHosts returned from the connection.
+    """
+    orderBy: AgentHostOrder
+
+    """
+    Filtering options for AgentHosts returned from the connection.
+    """
+    where: AgentHostWhereInput
+  ): AgentHostConnection!
+  agentInstances(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentInstances returned from the connection.
+    """
+    orderBy: AgentInstanceOrder
+
+    """
+    Filtering options for AgentInstances returned from the connection.
+    """
+    where: AgentInstanceWhereInput
+  ): AgentInstanceConnection!
+  agentMemories(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentMemories returned from the connection.
+    """
+    orderBy: AgentMemoryOrder
+
+    """
+    Filtering options for AgentMemories returned from the connection.
+    """
+    where: AgentMemoryWhereInput
+  ): AgentMemoryConnection!
+  agentMessages(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentMessages returned from the connection.
+    """
+    orderBy: AgentMessageOrder
+
+    """
+    Filtering options for AgentMessages returned from the connection.
+    """
+    where: AgentMessageWhereInput
+  ): AgentMessageConnection!
+  agentSkills(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentSkills returned from the connection.
+    """
+    orderBy: AgentSkillOrder
+
+    """
+    Filtering options for AgentSkills returned from the connection.
+    """
+    where: AgentSkillWhereInput
+  ): AgentSkillConnection!
+  agentThreads(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentThreads returned from the connection.
+    """
+    orderBy: AgentThreadOrder
+
+    """
+    Filtering options for AgentThreads returned from the connection.
+    """
+    where: AgentThreadWhereInput
+  ): AgentThreadConnection!
+  agentTools(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentTools returned from the connection.
+    """
+    orderBy: AgentToolOrder
+
+    """
+    Filtering options for AgentTools returned from the connection.
+    """
+    where: AgentToolWhereInput
+  ): AgentToolConnection!
   channels(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -3256,6 +7432,99 @@ type Query {
     """
     where: DataStorageWhereInput
   ): DataStorageConnection!
+  messageChannels(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for MessageChannels returned from the connection.
+    """
+    orderBy: MessageChannelOrder
+
+    """
+    Filtering options for MessageChannels returned from the connection.
+    """
+    where: MessageChannelWhereInput
+  ): MessageChannelConnection!
+  messageChannelAgentInstances(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for MessageChannelAgentInstances returned from the connection.
+    """
+    orderBy: MessageChannelAgentInstanceOrder
+
+    """
+    Filtering options for MessageChannelAgentInstances returned from the connection.
+    """
+    where: MessageChannelAgentInstanceWhereInput
+  ): MessageChannelAgentInstanceConnection!
+  messageChannelBindingRequests(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for MessageChannelBindingRequests returned from the connection.
+    """
+    orderBy: MessageChannelBindingRequestOrder
+
+    """
+    Filtering options for MessageChannelBindingRequests returned from the connection.
+    """
+    where: MessageChannelBindingRequestWhereInput
+  ): MessageChannelBindingRequestConnection!
   models(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -3349,6 +7618,68 @@ type Query {
     """
     where: PromptWhereInput
   ): PromptConnection!
+  promptProtectionRules(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for PromptProtectionRules returned from the connection.
+    """
+    orderBy: PromptProtectionRuleOrder
+
+    """
+    Filtering options for PromptProtectionRules returned from the connection.
+    """
+    where: PromptProtectionRuleWhereInput
+  ): PromptProtectionRuleConnection!
+  promptVersions(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for PromptVersions returned from the connection.
+    """
+    orderBy: PromptVersionOrder
+
+    """
+    Filtering options for PromptVersions returned from the connection.
+    """
+    where: PromptVersionWhereInput
+  ): PromptVersionConnection!
   requests(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -3411,6 +7742,37 @@ type Query {
     """
     where: RoleWhereInput
   ): RoleConnection!
+  skills(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Skills returned from the connection.
+    """
+    orderBy: SkillOrder
+
+    """
+    Filtering options for Skills returned from the connection.
+    """
+    where: SkillWhereInput
+  ): SkillConnection!
   systems(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -3473,6 +7835,37 @@ type Query {
     """
     where: ThreadWhereInput
   ): ThreadConnection!
+  tools(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Tools returned from the connection.
+    """
+    orderBy: ToolOrder
+
+    """
+    Filtering options for Tools returned from the connection.
+    """
+    where: ToolWhereInput
+  ): ToolConnection!
   traces(
     """
     Returns the elements in the list that come after the specified cursor.
@@ -3604,6 +7997,22 @@ type Request implements Node {
   clientIP: String!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
+  """
+  whether the generated content has been saved to external storage
+  """
+  contentSaved: Boolean!
+  """
+  data storage id used to save the content file
+  """
+  contentStorageID: Int
+  """
+  storage key/path of the saved content file
+  """
+  contentStorageKey: String
+  """
+  when the content file was saved
+  """
+  contentSavedAt: Time
   apiKey: APIKey
   project: Project!
   trace: Trace
@@ -3720,6 +8129,10 @@ type RequestExecution implements Node {
   responseBody: JSONRawMessage @goField(forceResolver: true)
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
   errorMessage: String
+  """
+  HTTP status code from the upstream provider
+  """
+  responseStatusCode: Int
   status: RequestExecutionStatus!
   stream: Boolean!
   metricsLatencyMs: Int
@@ -3937,6 +8350,19 @@ input RequestExecutionWhereInput {
   errorMessageNotNil: Boolean
   errorMessageEqualFold: String
   errorMessageContainsFold: String
+  """
+  response_status_code field predicates
+  """
+  responseStatusCode: Int
+  responseStatusCodeNEQ: Int
+  responseStatusCodeIn: [Int!]
+  responseStatusCodeNotIn: [Int!]
+  responseStatusCodeGT: Int
+  responseStatusCodeGTE: Int
+  responseStatusCodeLT: Int
+  responseStatusCodeLTE: Int
+  responseStatusCodeIsNil: Boolean
+  responseStatusCodeNotNil: Boolean
   """
   status field predicates
   """
@@ -4225,6 +8651,55 @@ input RequestWhereInput {
   metricsFirstTokenLatencyMsIsNil: Boolean
   metricsFirstTokenLatencyMsNotNil: Boolean
   """
+  content_saved field predicates
+  """
+  contentSaved: Boolean
+  contentSavedNEQ: Boolean
+  """
+  content_storage_id field predicates
+  """
+  contentStorageID: Int
+  contentStorageIDNEQ: Int
+  contentStorageIDIn: [Int!]
+  contentStorageIDNotIn: [Int!]
+  contentStorageIDGT: Int
+  contentStorageIDGTE: Int
+  contentStorageIDLT: Int
+  contentStorageIDLTE: Int
+  contentStorageIDIsNil: Boolean
+  contentStorageIDNotNil: Boolean
+  """
+  content_storage_key field predicates
+  """
+  contentStorageKey: String
+  contentStorageKeyNEQ: String
+  contentStorageKeyIn: [String!]
+  contentStorageKeyNotIn: [String!]
+  contentStorageKeyGT: String
+  contentStorageKeyGTE: String
+  contentStorageKeyLT: String
+  contentStorageKeyLTE: String
+  contentStorageKeyContains: String
+  contentStorageKeyHasPrefix: String
+  contentStorageKeyHasSuffix: String
+  contentStorageKeyIsNil: Boolean
+  contentStorageKeyNotNil: Boolean
+  contentStorageKeyEqualFold: String
+  contentStorageKeyContainsFold: String
+  """
+  content_saved_at field predicates
+  """
+  contentSavedAt: Time
+  contentSavedAtNEQ: Time
+  contentSavedAtIn: [Time!]
+  contentSavedAtNotIn: [Time!]
+  contentSavedAtGT: Time
+  contentSavedAtGTE: Time
+  contentSavedAtLT: Time
+  contentSavedAtLTE: Time
+  contentSavedAtIsNil: Boolean
+  contentSavedAtNotNil: Boolean
+  """
   api_key edge predicates
   """
   hasAPIKey: Boolean
@@ -4457,6 +8932,301 @@ input RoleWhereInput {
   hasUserRoles: Boolean
   hasUserRolesWith: [UserRoleWhereInput!]
 }
+type Skill implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID, null means global skill
+  """
+  projectID: ID
+  """
+  Skill name
+  """
+  name: String!
+  """
+  Skill description
+  """
+  description: String!
+  """
+  Skill kind
+  """
+  kind: SkillKind!
+  """
+  Skill content (prompt/instructions)
+  """
+  content: String
+  """
+  Skill entrypoint (e.g. scripts/run.sh)
+  """
+  entrypoint: String!
+  """
+  Optional bundle metadata (JSON)
+  """
+  bundle: JSONRawMessage
+  """
+  Skill status
+  """
+  status: SkillStatus!
+  """
+  Creator user ID (optional)
+  """
+  createdByUserID: ID
+  project: Project
+  createdByUser: User
+  agentBindings(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentSkills returned from the connection.
+    """
+    orderBy: AgentSkillOrder
+
+    """
+    Filtering options for AgentSkills returned from the connection.
+    """
+    where: AgentSkillWhereInput
+  ): AgentSkillConnection!
+}
+"""
+A connection to a list of items.
+"""
+type SkillConnection {
+  """
+  A list of edges.
+  """
+  edges: [SkillEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type SkillEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: Skill
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+SkillKind is enum for the field kind
+"""
+enum SkillKind @goModel(model: "github.com/looplj/axonhub/internal/ent/skill.Kind") {
+  prompt
+  script
+  hybrid
+}
+"""
+Ordering options for Skill connections
+"""
+input SkillOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order Skills.
+  """
+  field: SkillOrderField!
+}
+"""
+Properties by which Skill connections can be ordered.
+"""
+enum SkillOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+SkillStatus is enum for the field status
+"""
+enum SkillStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/skill.Status") {
+  enabled
+  disabled
+  archived
+}
+"""
+SkillWhereInput is used for filtering Skill objects.
+Input was generated by ent.
+"""
+input SkillWhereInput {
+  not: SkillWhereInput
+  and: [SkillWhereInput!]
+  or: [SkillWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: ID
+  projectIDNEQ: ID
+  projectIDIn: [ID!]
+  projectIDNotIn: [ID!]
+  projectIDIsNil: Boolean
+  projectIDNotNil: Boolean
+  """
+  name field predicates
+  """
+  name: String
+  nameNEQ: String
+  nameIn: [String!]
+  nameNotIn: [String!]
+  nameGT: String
+  nameGTE: String
+  nameLT: String
+  nameLTE: String
+  nameContains: String
+  nameHasPrefix: String
+  nameHasSuffix: String
+  nameEqualFold: String
+  nameContainsFold: String
+  """
+  description field predicates
+  """
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionEqualFold: String
+  descriptionContainsFold: String
+  """
+  kind field predicates
+  """
+  kind: SkillKind
+  kindNEQ: SkillKind
+  kindIn: [SkillKind!]
+  kindNotIn: [SkillKind!]
+  """
+  content field predicates
+  """
+  content: String
+  contentNEQ: String
+  contentIn: [String!]
+  contentNotIn: [String!]
+  contentGT: String
+  contentGTE: String
+  contentLT: String
+  contentLTE: String
+  contentContains: String
+  contentHasPrefix: String
+  contentHasSuffix: String
+  contentIsNil: Boolean
+  contentNotNil: Boolean
+  contentEqualFold: String
+  contentContainsFold: String
+  """
+  entrypoint field predicates
+  """
+  entrypoint: String
+  entrypointNEQ: String
+  entrypointIn: [String!]
+  entrypointNotIn: [String!]
+  entrypointGT: String
+  entrypointGTE: String
+  entrypointLT: String
+  entrypointLTE: String
+  entrypointContains: String
+  entrypointHasPrefix: String
+  entrypointHasSuffix: String
+  entrypointEqualFold: String
+  entrypointContainsFold: String
+  """
+  status field predicates
+  """
+  status: SkillStatus
+  statusNEQ: SkillStatus
+  statusIn: [SkillStatus!]
+  statusNotIn: [SkillStatus!]
+  """
+  created_by_user_id field predicates
+  """
+  createdByUserID: ID
+  createdByUserIDNEQ: ID
+  createdByUserIDIn: [ID!]
+  createdByUserIDNotIn: [ID!]
+  createdByUserIDIsNil: Boolean
+  createdByUserIDNotNil: Boolean
+  """
+  project edge predicates
+  """
+  hasProject: Boolean
+  hasProjectWith: [ProjectWhereInput!]
+  """
+  created_by_user edge predicates
+  """
+  hasCreatedByUser: Boolean
+  hasCreatedByUserWith: [UserWhereInput!]
+  """
+  agent_bindings edge predicates
+  """
+  hasAgentBindings: Boolean
+  hasAgentBindingsWith: [AgentSkillWhereInput!]
+}
 type System implements Node {
   id: ID!
   createdAt: Time!
@@ -4632,6 +9402,37 @@ type Thread implements Node {
     """
     where: TraceWhereInput
   ): TraceConnection!
+  agentThreads(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentThreads returned from the connection.
+    """
+    orderBy: AgentThreadOrder
+
+    """
+    Filtering options for AgentThreads returned from the connection.
+    """
+    where: AgentThreadWhereInput
+  ): AgentThreadConnection!
 }
 """
 A connection to a list of items.
@@ -4757,11 +9558,271 @@ input ThreadWhereInput {
   """
   hasTraces: Boolean
   hasTracesWith: [TraceWhereInput!]
+  """
+  agent_threads edge predicates
+  """
+  hasAgentThreads: Boolean
+  hasAgentThreadsWith: [AgentThreadWhereInput!]
 }
 """
 The builtin Time type
 """
 scalar Time
+type Tool implements Node {
+  id: ID!
+  createdAt: Time!
+  updatedAt: Time!
+  """
+  Project ID, null means global tool
+  """
+  projectID: ID
+  """
+  Tool name
+  """
+  name: String!
+  """
+  Tool description
+  """
+  description: String!
+  """
+  Tool type
+  """
+  type: ToolType!
+  """
+  Tool parameters schema (JSON schema)
+  """
+  schema: JSONRawMessage!
+  """
+  Tool default policy (JSON)
+  """
+  defaultPolicy: JSONRawMessage!
+  """
+  Tool status
+  """
+  status: ToolStatus!
+  """
+  Creator user ID (optional)
+  """
+  createdByUserID: ID
+  project: Project
+  createdByUser: User
+  agentBindings(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for AgentTools returned from the connection.
+    """
+    orderBy: AgentToolOrder
+
+    """
+    Filtering options for AgentTools returned from the connection.
+    """
+    where: AgentToolWhereInput
+  ): AgentToolConnection!
+}
+"""
+A connection to a list of items.
+"""
+type ToolConnection {
+  """
+  A list of edges.
+  """
+  edges: [ToolEdge]
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  Identifies the total count of items in the connection.
+  """
+  totalCount: Int!
+}
+"""
+An edge in a connection.
+"""
+type ToolEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: Tool
+  """
+  A cursor for use in pagination.
+  """
+  cursor: Cursor!
+}
+"""
+Ordering options for Tool connections
+"""
+input ToolOrder {
+  """
+  The ordering direction.
+  """
+  direction: OrderDirection! = ASC
+  """
+  The field by which to order Tools.
+  """
+  field: ToolOrderField!
+}
+"""
+Properties by which Tool connections can be ordered.
+"""
+enum ToolOrderField {
+  CREATED_AT
+  UPDATED_AT
+}
+"""
+ToolStatus is enum for the field status
+"""
+enum ToolStatus @goModel(model: "github.com/looplj/axonhub/internal/ent/tool.Status") {
+  enabled
+  disabled
+  archived
+}
+"""
+ToolType is enum for the field type
+"""
+enum ToolType @goModel(model: "github.com/looplj/axonhub/internal/ent/tool.Type") {
+  custom
+}
+"""
+ToolWhereInput is used for filtering Tool objects.
+Input was generated by ent.
+"""
+input ToolWhereInput {
+  not: ToolWhereInput
+  and: [ToolWhereInput!]
+  or: [ToolWhereInput!]
+  """
+  id field predicates
+  """
+  id: ID
+  idNEQ: ID
+  idIn: [ID!]
+  idNotIn: [ID!]
+  idGT: ID
+  idGTE: ID
+  idLT: ID
+  idLTE: ID
+  """
+  created_at field predicates
+  """
+  createdAt: Time
+  createdAtNEQ: Time
+  createdAtIn: [Time!]
+  createdAtNotIn: [Time!]
+  createdAtGT: Time
+  createdAtGTE: Time
+  createdAtLT: Time
+  createdAtLTE: Time
+  """
+  updated_at field predicates
+  """
+  updatedAt: Time
+  updatedAtNEQ: Time
+  updatedAtIn: [Time!]
+  updatedAtNotIn: [Time!]
+  updatedAtGT: Time
+  updatedAtGTE: Time
+  updatedAtLT: Time
+  updatedAtLTE: Time
+  """
+  project_id field predicates
+  """
+  projectID: ID
+  projectIDNEQ: ID
+  projectIDIn: [ID!]
+  projectIDNotIn: [ID!]
+  projectIDIsNil: Boolean
+  projectIDNotNil: Boolean
+  """
+  name field predicates
+  """
+  name: String
+  nameNEQ: String
+  nameIn: [String!]
+  nameNotIn: [String!]
+  nameGT: String
+  nameGTE: String
+  nameLT: String
+  nameLTE: String
+  nameContains: String
+  nameHasPrefix: String
+  nameHasSuffix: String
+  nameEqualFold: String
+  nameContainsFold: String
+  """
+  description field predicates
+  """
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionEqualFold: String
+  descriptionContainsFold: String
+  """
+  type field predicates
+  """
+  type: ToolType
+  typeNEQ: ToolType
+  typeIn: [ToolType!]
+  typeNotIn: [ToolType!]
+  """
+  status field predicates
+  """
+  status: ToolStatus
+  statusNEQ: ToolStatus
+  statusIn: [ToolStatus!]
+  statusNotIn: [ToolStatus!]
+  """
+  created_by_user_id field predicates
+  """
+  createdByUserID: ID
+  createdByUserIDNEQ: ID
+  createdByUserIDIn: [ID!]
+  createdByUserIDNotIn: [ID!]
+  createdByUserIDIsNil: Boolean
+  createdByUserIDNotNil: Boolean
+  """
+  project edge predicates
+  """
+  hasProject: Boolean
+  hasProjectWith: [ProjectWhereInput!]
+  """
+  created_by_user edge predicates
+  """
+  hasCreatedByUser: Boolean
+  hasCreatedByUserWith: [UserWhereInput!]
+  """
+  agent_bindings edge predicates
+  """
+  hasAgentBindings: Boolean
+  hasAgentBindingsWith: [AgentToolWhereInput!]
+}
 type Trace implements Node {
   id: ID!
   createdAt: Time!
@@ -4958,17 +10019,139 @@ Input was generated by ent.
 input UpdateAPIKeyInput {
   name: String
   """
-  API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.
+  API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account/agent: custom scopes.
   """
   scopes: [String!]
   appendScopes: [String!]
   clearScopes: Boolean
 }
 """
+UpdateAgentHostInput is used for update AgentHost object.
+Input was generated by ent.
+"""
+input UpdateAgentHostInput {
+  """
+  Host name
+  """
+  name: String
+  """
+  Host status
+  """
+  status: AgentHostStatus
+  """
+  Host address
+  """
+  addr: String
+  """
+  Host user for authentication
+  """
+  user: String
+  """
+  Authentication method: password or ssh_key
+  """
+  authMethod: AgentHostAuthMethod
+  """
+  Host password for authentication
+  """
+  password: String
+  """
+  SSH private key for authentication
+  """
+  sshPrivateKey: String
+  """
+  Working directory for vm/local host types, e.g. /opt/axonclaw
+  """
+  directory: String
+}
+"""
+UpdateAgentInstanceInput is used for update AgentInstance object.
+Input was generated by ent.
+"""
+input UpdateAgentInstanceInput {
+  """
+  Human readable name
+  """
+  name: String
+  """
+  Instance description
+  """
+  description: String
+  """
+  Platform information like os/arch
+  """
+  platform: String
+  """
+  Last heartbeat timestamp
+  """
+  lastHeartbeatAt: Time
+  """
+  AxonHub base URL used by this agent instance
+  """
+  axonhubBaseURL: String
+  """
+  Instance status
+  """
+  status: AgentInstanceStatus
+  hostID: ID
+  clearHost: Boolean
+}
+"""
+UpdateAgentMemoryInput is used for update AgentMemory object.
+Input was generated by ent.
+"""
+input UpdateAgentMemoryInput {
+  """
+  Memory path
+  """
+  path: String
+  """
+  Memory content
+  """
+  content: String
+  """
+  Optional source metadata
+  """
+  source: String
+  agentID: ID
+  clearAgent: Boolean
+}
+"""
+UpdateAgentSkillInput is used for update AgentSkill object.
+Input was generated by ent.
+"""
+input UpdateAgentSkillInput {
+  enabled: Boolean
+  """
+  Skill order in agent
+  """
+  order: Int
+  """
+  Default args for the skill
+  """
+  args: String
+}
+"""
+UpdateAgentToolInput is used for update AgentTool object.
+Input was generated by ent.
+"""
+input UpdateAgentToolInput {
+  enabled: Boolean
+  """
+  Tool order in agent
+  """
+  order: Int
+  """
+  Agent-specific tool config override (JSON)
+  """
+  config: JSONRawMessageInput
+  appendConfig: JSONRawMessageInput
+}
+"""
 UpdateChannelInput is used for update Channel object.
 Input was generated by ent.
 """
 input UpdateChannelInput {
+  type: ChannelType
   baseURL: String
   clearBaseURL: Boolean
   name: String
@@ -4976,7 +10159,15 @@ input UpdateChannelInput {
   credentials: ChannelCredentialsInput
   supportedModels: [String!]
   appendSupportedModels: [String!]
+  manualModels: [String!]
+  appendManualModels: [String!]
+  clearManualModels: Boolean
   autoSyncSupportedModels: Boolean
+  """
+  Regex pattern to filter models during auto-sync. Empty string means no filtering.
+  """
+  autoSyncModelPattern: String
+  clearAutoSyncModelPattern: Boolean
   tags: [String!]
   appendTags: [String!]
   clearTags: Boolean
@@ -5003,7 +10194,7 @@ Input was generated by ent.
 """
 input UpdateChannelOverrideTemplateInput {
   """
-  Template name, unique per user and channel type
+  Template name, unique per user
   """
   name: String
   """
@@ -5012,18 +10203,17 @@ input UpdateChannelOverrideTemplateInput {
   description: String
   clearDescription: Boolean
   """
-  Channel type this template applies to
-  """
-  channelType: String
-  """
-  Override request body parameters as JSON string
-  """
-  overrideParameters: String
-  """
   Override request headers
   """
-  overrideHeaders: [HeaderEntryInput!]
-  appendOverrideHeaders: [HeaderEntryInput!]
+  headerOverrideOperations: [OverrideOperationInput!]
+  appendHeaderOverrideOperations: [OverrideOperationInput!]
+  clearHeaderOverrideOperations: Boolean
+  """
+  Override request body parameters
+  """
+  bodyOverrideOperations: [OverrideOperationInput!]
+  appendBodyOverrideOperations: [OverrideOperationInput!]
+  clearBodyOverrideOperations: Boolean
 }
 """
 UpdateDataStorageInput is used for update DataStorage object.
@@ -5048,10 +10238,70 @@ input UpdateDataStorageInput {
   status: DataStorageStatus
 }
 """
+UpdateMessageChannelAgentInstanceInput is used for update MessageChannelAgentInstance object.
+Input was generated by ent.
+"""
+input UpdateMessageChannelAgentInstanceInput {
+  """
+  Whether this binding is enabled
+  """
+  enabled: Boolean
+  """
+  Channel-specific config for this agent instance binding
+  """
+  config: MessageChannelAgentInstanceBindingInput
+}
+"""
+UpdateMessageChannelBindingRequestInput is used for update MessageChannelBindingRequest object.
+Input was generated by ent.
+"""
+input UpdateMessageChannelBindingRequestInput {
+  """
+  Type of the binding request
+  """
+  type: MessageChannelBindingRequestType
+}
+"""
+UpdateMessageChannelInput is used for update MessageChannel object.
+Input was generated by ent.
+"""
+input UpdateMessageChannelInput {
+  """
+  Human readable name for this message channel
+  """
+  name: String
+  """
+  Description of this message channel
+  """
+  description: String
+  """
+  Message channel type
+  """
+  type: MessageChannelType
+  status: MessageChannelStatus
+  """
+  Channel-specific settings
+  """
+  settings: MessageChannelSettingsInput
+  clearSettings: Boolean
+}
+"""
 UpdateModelInput is used for update Model object.
 Input was generated by ent.
 """
 input UpdateModelInput {
+  """
+  developer of the model, eg. deeepseek
+  """
+  developer: String
+  """
+  model id, eg. deeepseek-chat
+  """
+  modelID: String
+  """
+  model type
+  """
+  type: ModelType
   """
   model name, eg. DeepSeek Chat
   """
@@ -5100,6 +10350,11 @@ Input was generated by ent.
 """
 input UpdatePromptInput {
   """
+  Prompt type
+  """
+  type: PromptType
+  clearType: Boolean
+  """
   prompt name
   """
   name: String
@@ -5117,12 +10372,67 @@ input UpdatePromptInput {
   content: String
   status: PromptStatus
   """
+  prompt insertion order, smaller values are inserted first
+  """
+  order: Int
+  """
   prompt settings in JSON format
   """
   settings: PromptSettingsInput
   addProjectIDs: [ID!]
   removeProjectIDs: [ID!]
   clearProjects: Boolean
+  activeVersionID: ID
+  clearActiveVersion: Boolean
+  draftVersionID: ID
+  clearDraftVersion: Boolean
+}
+"""
+UpdatePromptProtectionRuleInput is used for update PromptProtectionRule object.
+Input was generated by ent.
+"""
+input UpdatePromptProtectionRuleInput {
+  """
+  Rule name
+  """
+  name: String
+  """
+  Rule description
+  """
+  description: String
+  """
+  Regex pattern to match prompt content
+  """
+  pattern: String
+  status: PromptProtectionRuleStatus
+  """
+  Prompt protection rule settings
+  """
+  settings: PromptProtectionSettingsInput
+}
+"""
+UpdatePromptVersionInput is used for update PromptVersion object.
+Input was generated by ent.
+"""
+input UpdatePromptVersionInput {
+  """
+  Prompt version number (monotonic)
+  """
+  version: Int
+  """
+  Prompt content
+  """
+  content: String
+  """
+  Prompt version status
+  """
+  status: PromptVersionStatus
+  """
+  Change log for this version
+  """
+  changeLog: String
+  createdByUserID: ID
+  clearCreatedByUser: Boolean
 }
 """
 UpdateRequestInput is used for update Request object.
@@ -5148,6 +10458,25 @@ input UpdateRequestInput {
   clearMetricsLatencyMs: Boolean
   metricsFirstTokenLatencyMs: Int
   clearMetricsFirstTokenLatencyMs: Boolean
+  """
+  whether the generated content has been saved to external storage
+  """
+  contentSaved: Boolean
+  """
+  data storage id used to save the content file
+  """
+  contentStorageID: Int
+  clearContentStorageID: Boolean
+  """
+  storage key/path of the saved content file
+  """
+  contentStorageKey: String
+  clearContentStorageKey: Boolean
+  """
+  when the content file was saved
+  """
+  contentSavedAt: Time
+  clearContentSavedAt: Boolean
   channelID: ID
   clearChannel: Boolean
 }
@@ -5170,6 +10499,45 @@ input UpdateRoleInput {
   clearProject: Boolean
 }
 """
+UpdateSkillInput is used for update Skill object.
+Input was generated by ent.
+"""
+input UpdateSkillInput {
+  """
+  Skill name
+  """
+  name: String
+  """
+  Skill description
+  """
+  description: String
+  """
+  Skill kind
+  """
+  kind: SkillKind
+  """
+  Skill content (prompt/instructions)
+  """
+  content: String
+  clearContent: Boolean
+  """
+  Skill entrypoint (e.g. scripts/run.sh)
+  """
+  entrypoint: String
+  """
+  Optional bundle metadata (JSON)
+  """
+  bundle: JSONRawMessageInput
+  appendBundle: JSONRawMessageInput
+  clearBundle: Boolean
+  """
+  Skill status
+  """
+  status: SkillStatus
+  createdByUserID: ID
+  clearCreatedByUser: Boolean
+}
+"""
 UpdateSystemInput is used for update System object.
 Input was generated by ent.
 """
@@ -5186,6 +10554,40 @@ input UpdateThreadInput {
   Unique thread identifier for this thread
   """
   threadID: String
+}
+"""
+UpdateToolInput is used for update Tool object.
+Input was generated by ent.
+"""
+input UpdateToolInput {
+  """
+  Tool name
+  """
+  name: String
+  """
+  Tool description
+  """
+  description: String
+  """
+  Tool type
+  """
+  type: ToolType
+  """
+  Tool parameters schema (JSON schema)
+  """
+  schema: JSONRawMessageInput
+  appendSchema: JSONRawMessageInput
+  """
+  Tool default policy (JSON)
+  """
+  defaultPolicy: JSONRawMessageInput
+  appendDefaultPolicy: JSONRawMessageInput
+  """
+  Tool status
+  """
+  status: ToolStatus
+  createdByUserID: ID
+  clearCreatedByUser: Boolean
 }
 """
 UpdateTraceInput is used for update Trace object.
@@ -5918,6 +11320,130 @@ type User implements Node {
     """
     where: ChannelOverrideTemplateWhereInput
   ): ChannelOverrideTemplateConnection!
+  promptVersions(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for PromptVersions returned from the connection.
+    """
+    orderBy: PromptVersionOrder
+
+    """
+    Filtering options for PromptVersions returned from the connection.
+    """
+    where: PromptVersionWhereInput
+  ): PromptVersionConnection!
+  agents(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Agents returned from the connection.
+    """
+    orderBy: AgentOrder
+
+    """
+    Filtering options for Agents returned from the connection.
+    """
+    where: AgentWhereInput
+  ): AgentConnection!
+  tools(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Tools returned from the connection.
+    """
+    orderBy: ToolOrder
+
+    """
+    Filtering options for Tools returned from the connection.
+    """
+    where: ToolWhereInput
+  ): ToolConnection!
+  skills(
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: Cursor
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: Cursor
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Ordering options for Skills returned from the connection.
+    """
+    orderBy: SkillOrder
+
+    """
+    Filtering options for Skills returned from the connection.
+    """
+    where: SkillWhereInput
+  ): SkillConnection!
   projectUsers: [UserProject!]
   userRoles: [UserRole!]
 }
@@ -6292,6 +11818,26 @@ input UserWhereInput {
   """
   hasChannelOverrideTemplates: Boolean
   hasChannelOverrideTemplatesWith: [ChannelOverrideTemplateWhereInput!]
+  """
+  prompt_versions edge predicates
+  """
+  hasPromptVersions: Boolean
+  hasPromptVersionsWith: [PromptVersionWhereInput!]
+  """
+  agents edge predicates
+  """
+  hasAgents: Boolean
+  hasAgentsWith: [AgentWhereInput!]
+  """
+  tools edge predicates
+  """
+  hasTools: Boolean
+  hasToolsWith: [ToolWhereInput!]
+  """
+  skills edge predicates
+  """
+  hasSkills: Boolean
+  hasSkillsWith: [SkillWhereInput!]
   """
   project_users edge predicates
   """

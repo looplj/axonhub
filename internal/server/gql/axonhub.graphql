@@ -3,6 +3,32 @@ scalar JSONRawMessageInput
 scalar Decimal
 scalar DecimalInput
 
+"""
+Agent built-in tool configuration entry.
+
+Note: the same shape is also used by the agent runtime GraphQL API.
+"""
+type AgentBuiltinTool {
+  name: String!
+  enabled: Boolean!
+  order: Int!
+  config: JSONRawMessage
+}
+
+type AgentBuiltinSkill {
+  name: String!
+  enabled: Boolean!
+  order: Int!
+  config: JSONRawMessage
+}
+
+"""
+Agent skills policy stored in DB as structured JSON.
+"""
+type AgentSkillsPolicy {
+  add: String!
+}
+
 type ModelMapping {
   from: String!
   to: String!
@@ -18,10 +44,33 @@ input HeaderEntryInput {
   value: String!
 }
 
+type OverrideOperation {
+  op: String!
+  path: String
+  from: String
+  to: String
+  value: String
+  condition: String
+}
+
+input OverrideOperationInput {
+  op: String!
+  path: String
+  from: String
+  to: String
+  value: String
+  condition: String
+}
+
 type TransformOptions {
   forceArrayInstructions: Boolean!
   forceArrayInputs: Boolean!
   replaceDeveloperRoleWithSystem: Boolean!
+}
+
+type SyncChannelModelsPayload {
+  channelID: ID!
+  supportedModels: [String!]!
 }
 
 input TransformOptionsInput {
@@ -56,10 +105,11 @@ type ChannelSettings {
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
   hideMappedModels: Boolean
-  overrideParameters: String
-  overrideHeaders: [HeaderEntry!]
   proxy: ProxyConfig
   transformOptions: TransformOptions
+  headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
+  bodyOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
+  passThroughUserAgent: Boolean
 }
 
 enum CapabilityPolicy {
@@ -87,10 +137,11 @@ input ChannelSettingsInput {
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
   hideMappedModels: Boolean
-  overrideParameters: String
-  overrideHeaders: [HeaderEntryInput!]
   proxy: ProxyConfigInput
   transformOptions: TransformOptionsInput
+  headerOverrideOperations: [OverrideOperationInput!]
+  bodyOverrideOperations: [OverrideOperationInput!]
+  passThroughUserAgent: Boolean
 }
 
 type ChannelCredentials {
@@ -98,6 +149,13 @@ type ChannelCredentials {
   apiKeys: [String!]
   gcp: GCPCredential
   oauth: OAuthCredentials
+}
+
+type DisabledAPIKey {
+  key: String!
+  disabledAt: Time!
+  errorCode: Int!
+  reason: String
 }
 
 type OAuthCredentials {
@@ -221,6 +279,7 @@ input APIKeyProfileInput {
   modelMappings: [ModelMappingInput!]
   channelIDs: [Int!]
   channelTags: [String!]
+  channelTagsMatchMode: APIKeyMatchMode
   modelIDs: [String!]
   quota: APIKeyQuotaInput
   loadBalanceStrategy: String
@@ -240,9 +299,15 @@ type APIKeyProfile {
   modelMappings: [ModelMapping!]
   channelIDs: [Int!]
   channelTags: [String!]
+  channelTagsMatchMode: APIKeyMatchMode
   modelIDs: [String!]
   quota: APIKeyQuota
   loadBalanceStrategy: String
+}
+
+enum APIKeyMatchMode {
+  any
+  all
 }
 
 input APIKeyQuotaInput {
@@ -270,6 +335,7 @@ input APIKeyQuotaPastDurationInput {
 }
 
 enum APIKeyQuotaPastDurationUnit {
+  minute
   hour
   day
 }
@@ -305,6 +371,24 @@ type APIKeyQuotaCalendarDuration {
   unit: APIKeyQuotaCalendarDurationUnit!
 }
 
+type APIKeyQuotaUsage {
+  requestCount: Int!
+  totalTokens: Int!
+  totalCost: Decimal!
+}
+
+type APIKeyQuotaWindow {
+  start: Time
+  end: Time
+}
+
+type APIKeyProfileQuotaUsage {
+  profileName: String!
+  quota: APIKeyQuota!
+  window: APIKeyQuotaWindow!
+  usage: APIKeyQuotaUsage!
+}
+
 input FetchModelsInput {
   channelType: String!
   baseURL: String!
@@ -330,6 +414,7 @@ input QueryModelsInput {
   statusIn: [ChannelStatus!]
   includeMapping: Boolean
   includePrefix: Boolean
+  includeAllChannelModels: Boolean
 }
 
 type ChannelTypeCount {
@@ -417,12 +502,12 @@ type GCS {
 }
 
 type UsageMetadata {
-  totalInputTokens: Int! 
-  totalOutputTokens: Int! 
-  totalTokens: Int! 
-  totalCachedTokens: Int! 
-  totalCachedWriteTokens: Int! 
-  totalCost: Decimal! 
+  totalInputTokens: Int!
+  totalOutputTokens: Int!
+  totalTokens: Int!
+  totalCachedTokens: Int!
+  totalCachedWriteTokens: Int!
+  totalCost: Decimal!
 }
 
 extend type Trace {
@@ -448,6 +533,11 @@ extend type Channel {
   Channel credentials, will be null if user can not access the the credentials
   """
   credentials: ChannelCredentials @goField(forceResolver: true)
+
+  """
+  Disabled API keys for this channel. Sensitive: will be null if user can not access.
+  """
+  disabledAPIKeys: [DisabledAPIKey!] @goField(forceResolver: true)
 }
 
 type Segment {
@@ -543,6 +633,11 @@ type ApplyChannelOverrideTemplatePayload {
   channels: [Channel!]!
 }
 
+type DeleteDisabledAPIKeysPayload {
+  success: Boolean!
+  message: String
+}
+
 type Mutation {
   createChannel(input: CreateChannelInput!): Channel!
   bulkCreateChannels(input: BulkCreateChannelsInput!): [Channel!]!
@@ -552,12 +647,23 @@ type Mutation {
   bulkArchiveChannels(ids: [ID!]!): Boolean!
   bulkDisableChannels(ids: [ID!]!): Boolean!
   bulkEnableChannels(ids: [ID!]!): Boolean!
+  bulkRecoverChannels(ids: [ID!]!): Boolean!
   bulkDeleteChannels(ids: [ID!]!): Boolean!
   testChannel(input: TestChannelInput!): TestChannelPayload!
   bulkImportChannels(input: BulkImportChannelsInput!): BulkImportChannelsResult!
   bulkUpdateChannelOrdering(
     input: BulkUpdateChannelOrderingInput!
   ): BulkUpdateChannelOrderingResult!
+
+  # Channel API Key Management
+  disableChannelAPIKey(channelID: ID!, key: String!): Boolean!
+  enableChannelAPIKey(channelID: ID!, key: String!): Boolean!
+  enableAllChannelAPIKeys(channelID: ID!): Boolean!
+  enableSelectedChannelAPIKeys(channelID: ID!, keys: [String!]!): Boolean!
+  deleteDisabledChannelAPIKeys(
+    channelID: ID!
+    keys: [String!]!
+  ): DeleteDisabledAPIKeysPayload!
 
   createAPIKey(input: CreateAPIKeyInput!): APIKey!
   updateAPIKey(id: ID!, input: UpdateAPIKeyInput!): APIKey!
@@ -599,6 +705,9 @@ type Mutation {
   applyChannelOverrideTemplate(
     input: ApplyChannelOverrideTemplateInput!
   ): ApplyChannelOverrideTemplatePayload!
+
+  # Trigger immediate model sync for a channel
+  syncChannelModels(channelID: ID!, pattern: String): SyncChannelModelsPayload!
 }
 
 input QueryChannelInput {
@@ -658,4 +767,9 @@ extend type Query {
   hasTag: String
   """
   queryChannels(input: QueryChannelInput!): ChannelConnection!
+
+  """
+  Returns quota usage for profiles that have quota enabled for an API key.
+  """
+  apiKeyQuotaUsages(apiKeyId: ID!): [APIKeyProfileQuotaUsage!]!
 }

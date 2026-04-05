@@ -30,6 +30,19 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   }
 
   return (
+    <div className='flex items-center gap-1'>
+      <Button
+        variant='ghost'
+        className='h-8 w-8 p-0'
+        onClick={() => {
+          setCurrentRow(row.original);
+          setOpen('edit');
+        }}
+        data-testid='row-edit-button'
+      >
+        <IconEdit size={16} />
+        <span className='sr-only'>{t('common.actions.edit')}</span>
+      </Button>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant='ghost' className='data-[state=open]:bg-muted flex h-8 w-8 p-0' data-testid='row-actions'>
@@ -89,5 +102,6 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         </PermissionGuard>
       </DropdownMenuContent>
     </DropdownMenu>
+    </div>
   );
 }

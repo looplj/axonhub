@@ -32,20 +32,21 @@ func TestConvertToChatCompletionResponse_WithThinking(t *testing.T) {
 		Model: "claude-3-sonnet-20240229",
 	}
 
-	result := convertToLlmResponse(anthropicResp, PlatformDirect)
+	result := convertToLlmResponse(anthropicResp, PlatformDirect, shared.TransportScope{})
 
 	require.NotNil(t, result)
 	require.Len(t, result.Choices, 1)
 	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
 	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-	require.Equal(t, signature, *result.Choices[0].Message.ReasoningSignature)
+	require.Equal(t, *shared.EncodeAnthropicSignature(lo.ToPtr(signature), ""), *result.Choices[0].Message.ReasoningSignature)
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
 	require.Equal(t, answer, *result.Choices[0].Message.Content.Content)
 	require.Empty(t, result.Choices[0].Message.Content.MultipleContent)
 }
 
-func TestOutboundConvert_GeminiThoughtSignatureNotAnthropicRedactedThinking(t *testing.T) {
+func TestOutboundConvert_GeminiThoughtSignatureBecomesAnthropicRedactedThinking(t *testing.T) {
+	geminiSig := shared.EncodeGeminiThoughtSignature(new("signature_A"), "")
 	chatReq := &llm.Request{
 		Model:     "claude-sonnet-4-5-20250929",
 		MaxTokens: lo.ToPtr(int64(16000)),
@@ -58,7 +59,7 @@ func TestOutboundConvert_GeminiThoughtSignatureNotAnthropicRedactedThinking(t *t
 			},
 			{
 				Role:                     "assistant",
-				RedactedReasoningContent: shared.EncodeGeminiThoughtSignature(lo.ToPtr("signature_A")),
+				RedactedReasoningContent: geminiSig,
 				Content: llm.MessageContent{
 					Content: lo.ToPtr("Hi"),
 				},
@@ -79,9 +80,13 @@ func TestOutboundConvert_GeminiThoughtSignatureNotAnthropicRedactedThinking(t *t
 
 	assistantMsg := anthropicReq.Messages[1]
 	require.Equal(t, "assistant", assistantMsg.Role)
-	require.NotNil(t, assistantMsg.Content.Content)
-	require.Equal(t, "Hi", *assistantMsg.Content.Content)
-	require.Empty(t, assistantMsg.Content.MultipleContent)
+	require.Nil(t, assistantMsg.Content.Content)
+	require.Len(t, assistantMsg.Content.MultipleContent, 2)
+	require.Equal(t, "redacted_thinking", assistantMsg.Content.MultipleContent[0].Type)
+	require.Equal(t, *geminiSig, assistantMsg.Content.MultipleContent[0].Data)
+	require.Equal(t, "text", assistantMsg.Content.MultipleContent[1].Type)
+	require.NotNil(t, assistantMsg.Content.MultipleContent[1].Text)
+	require.Equal(t, "Hi", *assistantMsg.Content.MultipleContent[1].Text)
 }
 
 func TestConvertToChatCompletionResponse_WithRedactedThinking(t *testing.T) {
@@ -101,7 +106,7 @@ func TestConvertToChatCompletionResponse_WithRedactedThinking(t *testing.T) {
 		Model: "claude-sonnet-4-5-20250929",
 	}
 
-	result := convertToLlmResponse(anthropicResp, PlatformDirect)
+	result := convertToLlmResponse(anthropicResp, PlatformDirect, shared.TransportScope{})
 
 	require.NotNil(t, result)
 	require.Len(t, result.Choices, 1)
@@ -132,14 +137,14 @@ func TestConvertToChatCompletionResponse_WithThinkingAndRedactedThinking(t *test
 		Model: "claude-sonnet-4-5-20250929",
 	}
 
-	result := convertToLlmResponse(anthropicResp, PlatformDirect)
+	result := convertToLlmResponse(anthropicResp, PlatformDirect, shared.TransportScope{})
 
 	require.NotNil(t, result)
 	require.Len(t, result.Choices, 1)
 	require.NotNil(t, result.Choices[0].Message.ReasoningContent)
 	require.Equal(t, thinking, *result.Choices[0].Message.ReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
-	require.Equal(t, signature, *result.Choices[0].Message.ReasoningSignature)
+	require.Equal(t, *shared.EncodeAnthropicSignature(lo.ToPtr(signature), ""), *result.Choices[0].Message.ReasoningSignature)
 	require.NotNil(t, result.Choices[0].Message.RedactedReasoningContent)
 	require.Equal(t, redactedData, *result.Choices[0].Message.RedactedReasoningContent)
 	require.NotNil(t, result.Choices[0].Message.Content.Content)
@@ -204,7 +209,7 @@ func TestReasoningEffortToThinking(t *testing.T) {
 				ReasoningEffort: tt.reasoningEffort,
 			}
 
-			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
+			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config, shared.TransportScope{})
 
 			if anthropicReq.Thinking == nil {
 				t.Errorf("Expected Thinking to be non-nil")
@@ -227,7 +232,7 @@ func TestNoReasoningEffort(t *testing.T) {
 		Model: "claude-3-sonnet-20240229",
 	}
 
-	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil)
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil, shared.TransportScope{})
 
 	if anthropicReq.Thinking != nil {
 		t.Errorf("Expected Thinking to be nil when ReasoningEffort is not set")
@@ -288,7 +293,7 @@ func TestReasoningBudgetPriority(t *testing.T) {
 				ReasoningBudget: tt.reasoningBudget,
 			}
 
-			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config)
+			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, tt.config, shared.TransportScope{})
 
 			if anthropicReq.Thinking == nil {
 				t.Errorf("Expected Thinking to be non-nil")
@@ -529,6 +534,286 @@ func TestThinkingBudgetToReasoningEffort(t *testing.T) {
 	}
 }
 
+func TestThinking_AdaptiveOutbound(t *testing.T) {
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		validate func(t *testing.T, anthropicReq *MessageRequest)
+	}{
+		{
+			name: "metadata thinking_type=adaptive -> Thinking{Type: adaptive} and omit budget_tokens",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ReasoningEffort: "high",
+				ReasoningBudget: lo.ToPtr(int64(30000)),
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyThinkingType: "adaptive",
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "adaptive", anthropicReq.Thinking.Type)
+
+				thinkingJSON, err := json.Marshal(anthropicReq.Thinking)
+				require.NoError(t, err)
+				require.JSONEq(t, `{"type":"adaptive"}`, string(thinkingJSON))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			anthropicReq := convertToAnthropicRequest(tt.chatReq)
+			tt.validate(t, anthropicReq)
+		})
+	}
+}
+
+func TestThinking_AdaptiveInbound(t *testing.T) {
+	tests := []struct {
+		name         string
+		anthropicReq *MessageRequest
+		validate     func(t *testing.T, chatReq *llm.Request)
+	}{
+		{
+			name: "Thinking{Type: adaptive} -> TransformerMetadata thinking_type=adaptive",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role: "user",
+						Content: MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				Thinking: &Thinking{Type: "adaptive"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				require.Equal(t, "adaptive", chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType])
+				require.Equal(t, "high", chatReq.ReasoningEffort)
+				require.Nil(t, chatReq.ReasoningBudget)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chatReq, err := convertToLLMRequest(tt.anthropicReq)
+			require.NoError(t, err)
+			tt.validate(t, chatReq)
+		})
+	}
+}
+
+func TestThinking_AdaptiveJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		thinking Thinking
+		validate func(t *testing.T, data []byte)
+	}{
+		{
+			name: "adaptive marshal omits budget_tokens",
+			thinking: Thinking{
+				Type: "adaptive",
+			},
+			validate: func(t *testing.T, data []byte) {
+				t.Helper()
+				require.JSONEq(t, `{"type":"adaptive"}`, string(data))
+
+				var decoded Thinking
+				err := json.Unmarshal(data, &decoded)
+				require.NoError(t, err)
+				require.Equal(t, "adaptive", decoded.Type)
+				require.Equal(t, int64(0), decoded.BudgetTokens)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.thinking)
+			require.NoError(t, err)
+			tt.validate(t, data)
+		})
+	}
+}
+
+func TestOutputConfig_Outbound(t *testing.T) {
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		config   *Config
+		validate func(t *testing.T, anthropicReq *MessageRequest)
+	}{
+		{
+			name: "TransformerMetadata output_config_effort=max -> OutputConfig{Effort:max}",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyOutputConfigEffort: "max",
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, anthropicReq.OutputConfig)
+				require.Equal(t, "max", anthropicReq.OutputConfig.Effort)
+			},
+		},
+		{
+			name: "unsupported platform output_config_effort=max -> Thinking enabled high budget",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyOutputConfigEffort: "max",
+				},
+			},
+			config: &Config{
+				Type: PlatformDeepSeek,
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.Nil(t, anthropicReq.OutputConfig)
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+				require.Equal(t, int64(30000), anthropicReq.Thinking.BudgetTokens)
+			},
+		},
+		{
+			name: "without output_config metadata -> OutputConfig nil",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.Nil(t, anthropicReq.OutputConfig)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var anthropicReq *MessageRequest
+			if tt.config != nil {
+				anthropicReq = convertToAnthropicRequestWithConfig(tt.chatReq, tt.config, shared.TransportScope{})
+			} else {
+				anthropicReq = convertToAnthropicRequest(tt.chatReq)
+			}
+			tt.validate(t, anthropicReq)
+		})
+	}
+}
+
+func TestOutputConfig_Inbound(t *testing.T) {
+	tests := []struct {
+		name         string
+		anthropicReq *MessageRequest
+		validate     func(t *testing.T, chatReq *llm.Request)
+	}{
+		{
+			name: "OutputConfig effort=high -> TransformerMetadata output_config_effort=high and ReasoningEffort=high",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				OutputConfig: &OutputConfig{Effort: "high"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				require.Equal(t, "high", chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
+				require.Equal(t, "high", chatReq.ReasoningEffort)
+			},
+		},
+		{
+			name: "OutputConfig effort=max -> TransformerMetadata output_config_effort=max and ReasoningEffort=xhigh",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: new("hello")},
+					},
+				},
+				OutputConfig: &OutputConfig{Effort: "max"},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				require.Equal(t, "max", chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
+				require.Equal(t, "xhigh", chatReq.ReasoningEffort)
+			},
+		},
+		{
+			name: "without output_config -> TransformerMetadata has no output_config_effort",
+			anthropicReq: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 4096,
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+			},
+			validate: func(t *testing.T, chatReq *llm.Request) {
+				t.Helper()
+				require.NotNil(t, chatReq.TransformerMetadata)
+				_, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort]
+				require.False(t, ok)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chatReq, err := convertToLLMRequest(tt.anthropicReq)
+			require.NoError(t, err)
+			tt.validate(t, chatReq)
+		})
+	}
+}
+
 func TestInboundTransformer_RedactedThinkingInRequest(t *testing.T) {
 	const (
 		thinking     = "Let me analyze this step by step..."
@@ -756,6 +1041,9 @@ func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 		textContent  = "Based on my analysis..."
 	)
 
+	// Signatures in unified format are encoded with the Anthropic prefix + channel footprint
+	encodedSignature := *shared.EncodeAnthropicSignature(lo.ToPtr(signature), "")
+
 	chatReq := &llm.Request{
 		Model:           "claude-sonnet-4-5-20250929",
 		MaxTokens:       lo.ToPtr(int64(16000)),
@@ -770,7 +1058,7 @@ func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 			{
 				Role:                     "assistant",
 				ReasoningContent:         lo.ToPtr(thinking),
-				ReasoningSignature:       lo.ToPtr(signature),
+				ReasoningSignature:       lo.ToPtr(encodedSignature),
 				RedactedReasoningContent: lo.ToPtr(redactedData),
 				Content: llm.MessageContent{
 					Content: lo.ToPtr(textContent),
@@ -801,7 +1089,8 @@ func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 	require.NotNil(t, assistantMsg.Content.MultipleContent[0].Thinking)
 	require.Equal(t, thinking, *assistantMsg.Content.MultipleContent[0].Thinking)
 	require.NotNil(t, assistantMsg.Content.MultipleContent[0].Signature)
-	require.Equal(t, signature, *assistantMsg.Content.MultipleContent[0].Signature)
+	// Official Anthropic platforms decode the internal marker before sending upstream.
+	require.Equal(t, shared.EnsureBase64Encoding(signature), *assistantMsg.Content.MultipleContent[0].Signature)
 
 	// Second block should be redacted_thinking
 	require.Equal(t, "redacted_thinking", assistantMsg.Content.MultipleContent[1].Type)
@@ -865,4 +1154,45 @@ func TestOutboundConvert_RedactedThinkingOnlyToAnthropic(t *testing.T) {
 	require.Equal(t, "text", assistantMsg.Content.MultipleContent[1].Type)
 	require.NotNil(t, assistantMsg.Content.MultipleContent[1].Text)
 	require.Equal(t, textContent, *assistantMsg.Content.MultipleContent[1].Text)
+}
+
+func TestOutboundConvert_RedactedThinkingToAnthropicCompatiblePlatformKeepsEncodedSignature(t *testing.T) {
+	const (
+		thinking    = "Let me analyze this step by step..."
+		signature   = "WaUjzkypQ2mUEVM36O2TxuC06KN8xyfbJwyem2dw3URve/op91XWHOEBLLqIOMfFG/UvLEczmEsUjavL...."
+		textContent = "Based on my analysis..."
+	)
+
+	encodedSignature := *shared.EncodeAnthropicSignature(lo.ToPtr(signature), "")
+
+	chatReq := &llm.Request{
+		Model:           "deepseek-chat",
+		MaxTokens:       new(int64(16000)),
+		ReasoningEffort: "medium",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: new("Hello"),
+				},
+			},
+			{
+				Role:               "assistant",
+				ReasoningContent:   lo.ToPtr(thinking),
+				ReasoningSignature: new(encodedSignature),
+				Content: llm.MessageContent{
+					Content: lo.ToPtr(textContent),
+				},
+			},
+		},
+	}
+
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDeepSeek}, shared.TransportScope{})
+
+	require.NotNil(t, anthropicReq)
+	require.Len(t, anthropicReq.Messages, 2)
+	require.Len(t, anthropicReq.Messages[1].Content.MultipleContent, 2)
+	require.Equal(t, "thinking", anthropicReq.Messages[1].Content.MultipleContent[0].Type)
+	require.NotNil(t, anthropicReq.Messages[1].Content.MultipleContent[0].Signature)
+	require.Equal(t, encodedSignature, *anthropicReq.Messages[1].Content.MultipleContent[0].Signature)
 }

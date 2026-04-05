@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -24,18 +24,8 @@ const (
 	codexAPIURL  = "https://chatgpt.com/backend-api/codex/responses"
 )
 
-var codexHeaders = [][]string{
-	{"Accept", "text/event-stream"},
-	{"Connection", "Keep-Alive"},
-	{"Openai-Beta", "responses=experimental"},
-	{"Originator", "codex_cli_rs"},
-}
-
 // OutboundTransformer implements transformer.Outbound for Codex proxy.
 // It always talks to the Codex Responses upstream (SSE only) and adapts requests accordingly.
-//
-// It also implements pipeline.ChannelCustomizedExecutor to support non-streaming callers:
-// the executor will transparently perform an SSE request and aggregate chunks.
 //
 //nolint:containedctx // It is used as a transformer.
 type OutboundTransformer struct {
@@ -51,8 +41,9 @@ var (
 )
 
 type Params struct {
-	TokenProvider oauth.TokenGetter
-	BaseURL       string
+	TokenProvider   oauth.TokenGetter
+	BaseURL         string
+	AccountIdentity string
 }
 
 func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
@@ -68,7 +59,11 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
-	ro, err := responses.NewOutboundTransformer(baseURL, "dummy")
+	ro, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
+		BaseURL:         baseURL,
+		APIKeyProvider:  auth.NewStaticKeyProvider("dummy"),
+		AccountIdentity: params.AccountIdentity,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -92,33 +87,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, errors.New("request is nil")
 	}
 
-	rawUA := ""
-	keepClientUA := false
-	rawVersion := ""
-	keepClientVersion := false
 	rawSessionID := ""
+	rawOriginator := ""
+	rawUserAgent := ""
 
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		rawUA = llmReq.RawRequest.Headers.Get("User-Agent")
-		keepClientUA = isCodexCLIUserAgent(rawUA)
-		rawVersion = llmReq.RawRequest.Headers.Get("Version")
-		keepClientVersion = keepClientUA && isCodexCLIVersion(rawVersion)
 		rawSessionID = llmReq.RawRequest.Headers.Get("Session_id")
-
-		for _, header := range codexHeaders {
-			llmReq.RawRequest.Headers.Del(header[0])
-		}
-
-		llmReq.RawRequest.Headers.Del("Conversation_id")
-		llmReq.RawRequest.Headers.Del("Chatgpt-Account-Id")
-
-		if !keepClientVersion {
-			llmReq.RawRequest.Headers.Del("Version")
-		}
-
-		if !keepClientUA {
-			llmReq.RawRequest.Headers.Del("User-Agent")
-		}
+		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
+		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
 	}
 
 	creds, err := t.tokens.Get(ctx)
@@ -133,8 +109,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	reqCopy := *llmReq
 
 	// Codex expects Responses API payload with some strict rules.
-	// Always enable stream and disable store.
-	reqCopy.Stream = lo.ToPtr(true)
+	// Always enable stream except for compact requests and disable store.
+	//nolint: exhaustive // We only care about compact requests.
+	switch reqCopy.RequestType {
+	case llm.RequestTypeCompact:
+		reqCopy.Stream = new(false)
+	default:
+		reqCopy.Stream = new(true)
+	}
 	reqCopy.Store = lo.ToPtr(false)
 
 	// Codex recommends parallel tool calls.
@@ -144,50 +126,44 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if reqCopy.TransformerMetadata == nil {
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
-
 	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
 		reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
+	}
+	if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
+		// Enable reasoning summary for Codex CLI requests.
+		reqCopy.ReasoningSummary = lo.ToPtr("auto")
 	}
 
 	// Codex Responses rejects token limit fields, so strip them out.
 	reqCopy.MaxCompletionTokens = nil
 	reqCopy.MaxTokens = nil
 
-	// Strip sampling params and tier.
-	reqCopy.ServiceTier = nil
-	reqCopy.Temperature = nil
-	reqCopy.TopP = nil
-
-	// Codex upstream validates the raw `instructions` string more strictly.
-	// If incoming request is not already a Codex CLI prompt, force the Codex CLI instructions.
-	if !isCodexRequest(reqCopy.Messages) {
-		reqCopy.Messages = appendCodexSystemInstruction(reqCopy.Messages)
-	}
+	reqCopy.Metadata = nil
 
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err
 	}
 
-	// Codex upstream expects SSE.
-	for _, header := range codexHeaders {
-		hreq.Headers.Set(header[0], header[1])
-	}
-
 	// Overwrite auth.
 	hreq.Auth = &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: creds.AccessToken}
-
-	// Keep Codex-specific headers.
-	if keepClientUA && rawUA != "" {
-		hreq.Headers.Set("User-Agent", rawUA)
+	// Compact requests expect JSON response, others expect SSE stream.
+	if llmReq.RequestType == llm.RequestTypeCompact {
+		hreq.Headers.Set("Accept", "application/json")
 	} else {
-		hreq.Headers.Set("User-Agent", UserAgent)
+		hreq.Headers.Set("Accept", "text/event-stream")
 	}
 
-	if keepClientVersion && rawVersion != "" {
-		hreq.Headers.Set("Version", rawVersion)
+	hreq.Headers.Del("User-Agent")
+
+	if rawOriginator != "" {
+		hreq.Headers.Set("Originator", rawOriginator)
 	} else {
-		hreq.Headers.Set("Version", codexDefaultVersion)
+		hreq.Headers.Set("Originator", AxonHubOriginator)
+	}
+
+	if rawUserAgent != "" {
+		hreq.Headers.Set("User-Agent", rawUserAgent)
 	}
 
 	if rawSessionID != "" {
@@ -205,40 +181,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	return hreq, nil
-}
-
-func appendCodexSystemInstruction(msgs []llm.Message) []llm.Message {
-	systemMsg := llm.Message{
-		Role: "system",
-		Content: llm.MessageContent{
-			Content: lo.ToPtr(CodexInstructions),
-		},
-	}
-
-	return append([]llm.Message{systemMsg}, msgs...)
-}
-
-func isCodexRequest(msgs []llm.Message) bool {
-	for _, msg := range msgs {
-		if msg.Role != "system" && msg.Role != "developer" {
-			continue
-		}
-
-		if msg.Content.Content != nil {
-			content := *msg.Content.Content
-			if strings.HasPrefix(content, CodexInstructionPrefix) || strings.HasPrefix(content, "You are Codex") {
-				return true
-			}
-		} else if len(msg.Content.MultipleContent) > 0 {
-			for _, item := range msg.Content.MultipleContent {
-				if item.Text != nil && (strings.HasPrefix(*item.Text, CodexInstructionPrefix) || strings.HasPrefix(*item.Text, "You are Codex")) {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
 }
 
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
@@ -267,23 +209,9 @@ type codexExecutor struct {
 }
 
 func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
-	// Ensure Codex-required headers are not overridden by inbound headers.
-	for _, header := range codexHeaders {
-		request.Headers.Set(header[0], header[1])
+	if request.RequestType == string(llm.RequestTypeCompact) {
+		return e.inner.Do(ctx, request)
 	}
-
-	if !isCodexCLIUserAgent(request.Headers.Get("User-Agent")) {
-		request.Headers.Set("User-Agent", UserAgent)
-	}
-
-	if request.Headers.Get("Conversation_id") == "" {
-		request.Headers.Set("Conversation_id", request.Headers.Get("Session_id"))
-	}
-
-	if !isCodexCLIUserAgent(request.Headers.Get("User-Agent")) || !isCodexCLIVersion(request.Headers.Get("Version")) {
-		request.Headers.Set("Version", codexDefaultVersion)
-	}
-
 	stream, err := e.inner.DoStream(ctx, request)
 	if err != nil {
 		return nil, err
@@ -294,15 +222,17 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 	}()
 
 	var chunks []*httpclient.StreamEvent
-
 	for stream.Next() {
 		ev := stream.Current()
 		if ev == nil {
 			continue
 		}
-		// Copy data because decoder may reuse buffers.
-		copied := &httpclient.StreamEvent{Type: ev.Type, LastEventID: ev.LastEventID, Data: append([]byte(nil), ev.Data...)}
-		chunks = append(chunks, copied)
+
+		chunks = append(chunks, &httpclient.StreamEvent{
+			Type:        ev.Type,
+			LastEventID: ev.LastEventID,
+			Data:        append([]byte(nil), ev.Data...),
+		})
 	}
 
 	if err := stream.Err(); err != nil {
@@ -325,26 +255,5 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 }
 
 func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
-	// Ensure Codex-required headers are not overridden by inbound headers.
-	for _, header := range codexHeaders {
-		request.Headers.Set(header[0], header[1])
-	}
-
-	if !isCodexCLIUserAgent(request.Headers.Get("User-Agent")) {
-		request.Headers.Set("User-Agent", UserAgent)
-	}
-
-	if request.Headers.Get("Conversation_id") == "" {
-		request.Headers.Set("Conversation_id", request.Headers.Get("Session_id"))
-	}
-
-	if !isCodexCLIUserAgent(request.Headers.Get("User-Agent")) || !isCodexCLIVersion(request.Headers.Get("Version")) {
-		request.Headers.Set("Version", codexDefaultVersion)
-	}
-
 	return e.inner.DoStream(ctx, request)
-}
-
-func isCodexCLIUserAgent(value string) bool {
-	return strings.HasPrefix(value, "codex_cli_rs/")
 }

@@ -25,7 +25,13 @@ import {
   AiHubMix,
   Cerebras,
   Claude,
+  XiaomiMiMo,
+  Exa,
+  Tavily,
+  Fireworks
 } from '@lobehub/icons';
+import { BraveIcon } from '@/assets/brave-icon';
+import { NanoGPTIcon } from '@/assets/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
 
@@ -52,7 +58,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'deepseek',
     icon: DeepSeek,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    channelTypes: ['deepseek', 'deepseek_anthropic'],
+    channelTypes: ['deepseek_anthropic', 'deepseek'],
   },
   gemini: {
     provider: 'gemini',
@@ -70,19 +76,19 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'moonshot',
     icon: Moonshot,
     color: 'bg-black-100 text-black-800 border-black-200',
-    channelTypes: ['moonshot', 'moonshot_anthropic'],
+    channelTypes: ['moonshot_anthropic', 'moonshot'],
   },
   zhipu: {
     provider: 'zhipu',
     icon: Zhipu,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
-    channelTypes: ['zhipu', 'zhipu_anthropic'],
+    channelTypes: ['zhipu_anthropic', 'zhipu'],
   },
   minimax: {
     provider: 'minimax',
     icon: Minimax,
     color: 'bg-red-100 text-red-800 border-red-200',
-    channelTypes: ['minimax', 'minimax_anthropic'],
+    channelTypes: ['minimax_anthropic', 'minimax'],
   },
   claudecode: {
     provider: 'claudecode',
@@ -112,7 +118,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'doubao',
     icon: Doubao,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    channelTypes: ['doubao', 'doubao_anthropic'],
+    channelTypes: ['doubao_anthropic', 'doubao'],
   },
   longcat: {
     provider: 'longcat',
@@ -143,6 +149,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Github,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['github'],
+  },
+  github_copilot: {
+    provider: 'github_copilot',
+    icon: Github,
+    color: 'bg-[#6e40c9] text-white border-[#6e40c9]',
+    channelTypes: ['github_copilot'],
   },
   ppio: {
     provider: 'ppio',
@@ -186,6 +198,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['openrouter'],
   },
+  xiaomi: {
+    provider: 'xiaomi',
+    icon: XiaomiMiMo,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    channelTypes: ['xiaomi'],
+  },
   vercel: {
     provider: 'vercel',
     icon: Vercel,
@@ -203,6 +221,36 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Cerebras,
     color: 'bg-[#F15928] text-white border-[#F15928]',
     channelTypes: ['cerebras'],
+  },
+  nanogpt: {
+    provider: 'nanogpt',
+    icon: NanoGPTIcon,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    channelTypes: ['nanogpt'],
+  },
+  brave_search: {
+    provider: 'brave_search',
+    icon: BraveIcon,
+    color: 'bg-[#FB542B] text-white border-[#FB542B]',
+    channelTypes: ['search_brave'],
+  },
+  exa: {
+    provider: 'exa',
+    icon: Exa,
+    color: 'bg-[#4338CA] text-white border-[#4338CA]',
+    channelTypes: ['search_exa'],
+  },
+  tavily: {
+    provider: 'tavily',
+    icon: Tavily,
+    color: 'bg-[#468BFF] text-white border-[#468BFF]',
+    channelTypes: ['search_tavily'],
+  },
+  fireworks: {
+    provider: 'fireworks',
+    icon: Fireworks,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    channelTypes: ['fireworks'],
   },
 };
 

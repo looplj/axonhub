@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useChannelSetting, useUpdateChannelSetting, type ProbeFrequency } from '@/features/system/data/system';
+import { useChannelSetting, useUpdateChannelSetting, type AutoSyncFrequency, type ProbeFrequency } from '@/features/system/data/system';
 import { useChannels } from '../context/channels-context';
 
 const PROBE_FREQUENCY_OPTIONS: { value: ProbeFrequency; label: string }[] = [
@@ -16,6 +16,12 @@ const PROBE_FREQUENCY_OPTIONS: { value: ProbeFrequency; label: string }[] = [
   { value: 'FIVE_MINUTES', label: '5 minutes' },
   { value: 'THIRTY_MINUTES', label: '30 minutes' },
   { value: 'ONE_HOUR', label: '1 hour' },
+];
+
+const AUTO_SYNC_FREQUENCY_OPTIONS: { value: AutoSyncFrequency; label: string }[] = [
+  { value: 'ONE_HOUR', label: '1 hour' },
+  { value: 'SIX_HOURS', label: '6 hours' },
+  { value: 'ONE_DAY', label: '1 day' },
 ];
 
 export function ChannelsSystemSettingsDialog() {
@@ -28,11 +34,15 @@ export function ChannelsSystemSettingsDialog() {
 
   const [probeEnabled, setProbeEnabled] = React.useState(false);
   const [probeFrequency, setProbeFrequency] = React.useState<ProbeFrequency>('ONE_MINUTE');
+  const [autoSyncFrequency, setAutoSyncFrequency] = React.useState<AutoSyncFrequency>('ONE_HOUR');
 
   React.useEffect(() => {
     if (settings?.probe) {
       setProbeEnabled(settings.probe.enabled);
       setProbeFrequency(settings.probe.frequency);
+    }
+    if (settings?.autoSync?.frequency) {
+      setAutoSyncFrequency(settings.autoSync.frequency);
     }
   }, [settings]);
 
@@ -42,9 +52,12 @@ export function ChannelsSystemSettingsDialog() {
         enabled: probeEnabled,
         frequency: probeFrequency,
       },
+      autoSync: {
+        frequency: autoSyncFrequency,
+      },
     });
     setOpen(null);
-  }, [updateSettings, probeEnabled, probeFrequency, setOpen]);
+  }, [updateSettings, probeEnabled, probeFrequency, autoSyncFrequency, setOpen]);
 
   const handleClose = useCallback(() => {
     setOpen(null);
@@ -110,6 +123,34 @@ export function ChannelsSystemSettingsDialog() {
                     <p className='text-muted-foreground text-xs mt-1'>{t('channels.dialogs.systemSettings.channelProbe.frequencyWarning')}</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className='pb-0'>
+                <CardTitle className='flex items-center gap-2 text-sm'>
+                  <Activity className='text-muted-foreground h-4 w-4' />
+                  {t('channels.dialogs.systemSettings.autoSync.label')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4 pt-4'>
+                <div className='space-y-2'>
+                  <label htmlFor='auto-sync-frequency' className='text-sm font-medium'>
+                    {t('channels.dialogs.systemSettings.autoSync.frequencyLabel')}
+                  </label>
+                  <Select value={autoSyncFrequency} onValueChange={(value) => setAutoSyncFrequency(value as AutoSyncFrequency)}>
+                    <SelectTrigger id='auto-sync-frequency' disabled={updateSettings.isPending}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUTO_SYNC_FREQUENCY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className='text-muted-foreground text-xs'>{t('channels.dialogs.systemSettings.autoSync.frequencyDescription')}</p>
+                </div>
               </CardContent>
             </Card>
           </div>

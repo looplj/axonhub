@@ -8,10 +8,10 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
@@ -96,7 +96,7 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 				ChannelID:       1,
 				EndTime:         now,
 				Success:         false,
-				ErrorStatusCode: 500,
+				ResponseStatusCode: 500,
 			},
 			validateFunc: func(t *testing.T) {
 				require.Equal(t, int64(1), slot.FailureCount)
@@ -111,7 +111,7 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 				ChannelID:       1,
 				EndTime:         now,
 				Success:         false,
-				ErrorStatusCode: 429,
+				ResponseStatusCode: 429,
 			},
 			validateFunc: func(t *testing.T) {
 				require.Equal(t, int64(2), slot.FailureCount)
@@ -125,7 +125,7 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 				ChannelID:       1,
 				EndTime:         now,
 				Success:         false,
-				ErrorStatusCode: 500,
+				ResponseStatusCode: 500,
 			},
 			validateFunc: func(t *testing.T) {
 				require.Equal(t, int64(3), slot.FailureCount)
@@ -161,7 +161,7 @@ func TestChannelMetrics_ConsecutiveFailures(t *testing.T) {
 			ChannelID:       1,
 			EndTime:         now,
 			Success:         false,
-			ErrorStatusCode: 500,
+			ResponseStatusCode: 500,
 		}
 		cm.recordFailure(slot, perf)
 	}
@@ -182,7 +182,7 @@ func TestChannelMetrics_ConsecutiveFailures(t *testing.T) {
 		ChannelID:       1,
 		EndTime:         now,
 		Success:         false,
-		ErrorStatusCode: 429,
+		ResponseStatusCode: 429,
 	}
 	cm.recordFailure(slot, failPerf)
 	require.Equal(t, int64(1), cm.aggregatedMetrics.ConsecutiveFailures)
@@ -239,7 +239,7 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	svc := NewChannelServiceForTest(client)
 
@@ -303,7 +303,7 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 				EndTime:          now,
 				Success:          false,
 				RequestCompleted: true,
-				ErrorStatusCode:  tt.errorCode,
+				ResponseStatusCode:  tt.errorCode,
 			}
 
 			svc.RecordPerformance(ctx, perf)
@@ -331,7 +331,7 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	svc := &ChannelService{
 		AbstractService: &AbstractService{
@@ -378,7 +378,7 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 				EndTime:          now,
 				Success:          false,
 				RequestCompleted: true,
-				ErrorStatusCode:  500,
+				ResponseStatusCode:  500,
 			},
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]
@@ -395,7 +395,7 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 				EndTime:          now,
 				Success:          false,
 				RequestCompleted: true,
-				ErrorStatusCode:  429,
+				ResponseStatusCode:  429,
 			},
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]
@@ -467,7 +467,7 @@ func TestPerformanceRecord_Methods(t *testing.T) {
 		perf.MarkFailed(500)
 		require.False(t, perf.Success)
 		require.True(t, perf.RequestCompleted)
-		require.Equal(t, 500, perf.ErrorStatusCode)
+		require.Equal(t, 500, perf.ResponseStatusCode)
 		require.False(t, perf.EndTime.IsZero())
 	})
 

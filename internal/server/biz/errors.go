@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrInvalidJWT             = errors.New("invalid jwt token")
+	ErrInvalidToken           = errors.New("invalid token")
 	ErrInvalidAPIKey          = errors.New("invalid api key")
 	ErrInvalidPassword        = errors.New("invalid password")
 	ErrInvalidModel           = transformer.ErrInvalidModel
@@ -16,4 +17,5 @@ var (
 	ErrServiceAccountRequired = errors.New("service account api key required")
 	ErrAPIKeyScopeRequired    = errors.New("api key missing required scope")
 	ErrAPIKeyNameRequired     = errors.New("api key name is required")
+	ErrSystemNotInitialized   = errors.New("system not initialized")
 )

@@ -57,9 +57,11 @@ func RequestFromLLM(r *llm.Request) *Request {
 		}
 	}
 
-	// Convert Tools
-	req.Tools = lo.Map(r.Tools, func(t llm.Tool, _ int) Tool {
-		return ToolFromLLM(t)
+	// Convert Tools – only include function tools; other types
+	// (image_generation, responses_custom_tool, etc.) are not supported
+	// by the Chat Completions API and must be filtered out.
+	req.Tools = lo.FilterMap(r.Tools, func(t llm.Tool, _ int) (Tool, bool) {
+		return ToolFromLLM(t), t.Type == llm.ToolTypeFunction
 	})
 
 	// Convert ToolChoice
@@ -94,12 +96,40 @@ func RequestFromLLM(r *llm.Request) *Request {
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.
 func MessageFromLLM(m llm.Message) Message {
+	var reasoningContent, reasoning *string
+
+	reasoningContent = m.ReasoningContent
+
+	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
+	if reasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
+		reasoningContent = m.Reasoning
+	}
+
+	// Determine final reasoning value
+	reasoning = m.Reasoning
+
+	// Sync: if Reasoning is empty but ReasoningContent has value, use ReasoningContent
+	if reasoning == nil && reasoningContent != nil && *reasoningContent != "" {
+		reasoning = reasoningContent
+	}
+
+	// Build the Message with both fields determined
 	msg := Message{
 		Role:             m.Role,
 		Name:             m.Name,
 		Refusal:          m.Refusal,
 		ToolCallID:       m.ToolCallID,
-		ReasoningContent: m.ReasoningContent,
+		ReasoningContent: reasoningContent,
+		Reasoning:        reasoning,
+	}
+
+	if m.Audio != nil {
+		msg.Audio = &OutputAudio{
+			ID:         m.Audio.ID,
+			Data:       m.Audio.Data,
+			ExpiresAt:  m.Audio.ExpiresAt,
+			Transcript: m.Audio.Transcript,
+		}
 	}
 
 	// Convert Content
@@ -145,8 +175,13 @@ func MessageContentFromLLM(c llm.MessageContent) MessageContent {
 	}
 
 	if c.MultipleContent != nil {
-		content.MultipleContent = lo.Map(c.MultipleContent, func(p llm.MessageContentPart, _ int) MessageContentPart {
-			return MessageContentPartFromLLM(p)
+		content.MultipleContent = lo.FilterMap(c.MultipleContent, func(p llm.MessageContentPart, _ int) (MessageContentPart, bool) {
+			switch p.Type {
+			case "compaction", "compaction_summary":
+				return MessageContentPart{}, false
+			default:
+				return MessageContentPartFromLLM(p), true
+			}
 		})
 	}
 
@@ -167,10 +202,16 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 		}
 	}
 
-	if p.Audio != nil {
-		part.Audio = &Audio{
-			Format: p.Audio.Format,
-			Data:   p.Audio.Data,
+	if p.VideoURL != nil {
+		part.VideoURL = &VideoURL{
+			URL: p.VideoURL.URL,
+		}
+	}
+
+	if p.InputAudio != nil {
+		part.InputAudio = &InputAudio{
+			Format: p.InputAudio.Format,
+			Data:   p.InputAudio.Data,
 		}
 	}
 
@@ -192,7 +233,7 @@ func ToolFromLLM(t llm.Tool) Tool {
 
 // ToolCallFromLLM creates OpenAI ToolCall from unified llm.ToolCall.
 func ToolCallFromLLM(tc llm.ToolCall) ToolCall {
-	return ToolCall{
+	toolCall := ToolCall{
 		ID:   tc.ID,
 		Type: tc.Type,
 		Function: FunctionCall{
@@ -201,6 +242,16 @@ func ToolCallFromLLM(tc llm.ToolCall) ToolCall {
 		},
 		Index: tc.Index,
 	}
+
+	if raw, ok := tc.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string); ok && raw != "" {
+		toolCall.ExtraContent = &ToolCallExtraContent{
+			Google: &ToolCallGoogleExtraContent{
+				ThoughtSignature: raw,
+			},
+		}
+	}
+
+	return toolCall
 }
 
 // ToLLMResponse converts OpenAI Response to unified llm.Response.

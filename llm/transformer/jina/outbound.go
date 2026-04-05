@@ -92,6 +92,8 @@ func (t *OutboundTransformer) TransformRequest(
 		return t.transformRerankRequest(ctx, llmReq)
 	case llm.RequestTypeEmbedding:
 		return t.transformEmbeddingRequest(ctx, llmReq)
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
@@ -299,14 +301,6 @@ func (t *OutboundTransformer) transformRerankResponse(
 		}
 	}
 
-	// Convert usage
-	if jinaResp.Usage != nil {
-		llmRerankResp.Usage = &llm.RerankUsage{
-			PromptTokens: jinaResp.Usage.PromptTokens,
-			TotalTokens:  jinaResp.Usage.TotalTokens,
-		}
-	}
-
 	// Build unified response
 	llmResp := &llm.Response{
 		RequestType: llm.RequestTypeRerank,
@@ -315,12 +309,11 @@ func (t *OutboundTransformer) transformRerankResponse(
 		Model:       jinaResp.Model,
 	}
 
-	// Map usage if available
+	// Set usage on Response
 	if jinaResp.Usage != nil {
 		llmResp.Usage = &llm.Usage{
-			PromptTokens:     int64(jinaResp.Usage.PromptTokens),
-			CompletionTokens: 0,
-			TotalTokens:      int64(jinaResp.Usage.TotalTokens),
+			PromptTokens: int64(jinaResp.Usage.PromptTokens),
+			TotalTokens:  int64(jinaResp.Usage.TotalTokens),
 		}
 	}
 
@@ -353,14 +346,6 @@ func (t *OutboundTransformer) transformEmbeddingResponse(
 		}
 	}
 
-	// Convert usage
-	if jinaResp.Usage.PromptTokens > 0 || jinaResp.Usage.TotalTokens > 0 {
-		llmEmbeddingResp.Usage = &llm.EmbeddingUsage{
-			PromptTokens: jinaResp.Usage.PromptTokens,
-			TotalTokens:  jinaResp.Usage.TotalTokens,
-		}
-	}
-
 	llmResp := &llm.Response{
 		RequestType: llm.RequestTypeEmbedding,
 		APIFormat:   llm.APIFormatJinaEmbedding,
@@ -368,11 +353,11 @@ func (t *OutboundTransformer) transformEmbeddingResponse(
 		Model:       jinaResp.Model,
 	}
 
+	// Set usage on Response
 	if jinaResp.Usage.PromptTokens > 0 || jinaResp.Usage.TotalTokens > 0 {
 		llmResp.Usage = &llm.Usage{
-			PromptTokens:     jinaResp.Usage.PromptTokens,
-			CompletionTokens: 0,
-			TotalTokens:      jinaResp.Usage.TotalTokens,
+			PromptTokens: jinaResp.Usage.PromptTokens,
+			TotalTokens:  jinaResp.Usage.TotalTokens,
 		}
 	}
 

@@ -20,6 +20,16 @@ func (t Type) IsOpenAI() bool {
 	return !t.IsAnthropicLike() && !t.IsAnthropic() && !t.IsGemini()
 }
 
+// UsesAnthropicModelAPI returns true if the channel type should use Anthropic-style
+// /v1/models endpoint with X-Api-Key authentication when fetching models.
+func (t Type) UsesAnthropicModelAPI() bool {
+	return t.IsAnthropic() || t.IsAnthropicLike() || t == TypeClaudecode
+}
+
+func (t Type) IsSearch() bool {
+	return strings.HasPrefix(string(t), "search_")
+}
+
 // SupportsGoogleNativeTools returns true if the channel type supports Google native tools.
 // Google native tools (google_search, google_url_context, google_code_execution) are only
 // supported by native Gemini API format channels (gemini, gemini_vertex).
@@ -35,5 +45,5 @@ func (t Type) SupportsGoogleNativeTools() bool {
 // Channels using Anthropic format but not native Anthropic API (e.g., deepseek_anthropic,
 // moonshot_anthropic) also do NOT support these tools.
 func (t Type) SupportsAnthropicNativeTools() bool {
-	return t == TypeAnthropic
+	return t == TypeAnthropic || t == TypeAnthropicAWS || t == TypeAnthropicGcp || t == TypeClaudecode
 }

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
 
+	entsql "entgo.io/ent/dialect/sql"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
@@ -26,7 +28,9 @@ import (
 var defaultBatchSize = 500
 
 type Config struct {
-	CRON string `json:"cron" yaml:"cron" conf:"cron" validate:"required"`
+	CRON          string `json:"cron" yaml:"cron" conf:"cron" validate:"required"`
+	VacuumEnabled bool   `json:"vacuum_enabled" yaml:"vacuum_enabled" conf:"vacuum_enabled"`
+	VacuumFull    bool   `json:"vacuum_full" yaml:"vacuum_full" conf:"vacuum_full"`
 }
 
 // Worker handles garbage collection and cleanup operations.
@@ -62,7 +66,6 @@ func NewWorker(params Params) *Worker {
 // deleteInBatches deletes records in batches to avoid memory issues
 // This function repeatedly executes the delete query until no more records are deleted.
 func (w *Worker) deleteInBatches(ctx context.Context, deleteFunc func() (int, error)) (int, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	totalDeleted := 0
 
 	for {
@@ -96,7 +99,7 @@ func (w *Worker) getBatchSize() int {
 
 func (w *Worker) Start(ctx context.Context) error {
 	cancelFunc, err := w.Executor.ScheduleFuncAtCronRate(
-		w.runCleanup,
+		w.runCleanupWithSystemContext,
 		executors.CRONRule{Expr: w.Config.CRON},
 	)
 	if err != nil {
@@ -124,12 +127,11 @@ func (w *Worker) Stop(ctx context.Context) error {
 }
 
 // runCleanup executes the cleanup process based on storage policy.
-func (w *Worker) runCleanup(ctx context.Context) {
+func (w *Worker) runCleanup(ctx context.Context, manual bool) {
 	log.Info(ctx, "Starting automatic cleanup process")
 
 	ctx = ent.NewContext(ctx, w.Ent)
 	ctx = schematype.SkipSoftDelete(ctx)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	// Get storage policy
 	policy, err := w.SystemService.StoragePolicy(ctx)
@@ -145,7 +147,7 @@ func (w *Worker) runCleanup(ctx context.Context) {
 		if option.Enabled {
 			switch option.ResourceType {
 			case "requests":
-				err := w.cleanupRequests(ctx, option.CleanupDays)
+				err := w.cleanupRequests(ctx, option.CleanupDays, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup requests",
 						log.String("resource", option.ResourceType),
@@ -156,7 +158,7 @@ func (w *Worker) runCleanup(ctx context.Context) {
 						log.Int("cleanup_days", option.CleanupDays))
 				}
 
-				err = w.cleanupThreads(ctx, option.CleanupDays)
+				err = w.cleanupThreads(ctx, option.CleanupDays, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup threads",
 						log.String("resource", "threads"),
@@ -167,7 +169,7 @@ func (w *Worker) runCleanup(ctx context.Context) {
 						log.Int("cleanup_days", option.CleanupDays))
 				}
 
-				err = w.cleanupTraces(ctx, option.CleanupDays)
+				err = w.cleanupTraces(ctx, option.CleanupDays, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup traces",
 						log.String("resource", "traces"),
@@ -178,7 +180,7 @@ func (w *Worker) runCleanup(ctx context.Context) {
 						log.Int("cleanup_days", option.CleanupDays))
 				}
 			case "usage_logs":
-				err := w.cleanupUsageLogs(ctx, option.CleanupDays)
+				err := w.cleanupUsageLogs(ctx, option.CleanupDays, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup usage logs",
 						log.String("resource", option.ResourceType),
@@ -196,7 +198,7 @@ func (w *Worker) runCleanup(ctx context.Context) {
 	}
 
 	// Always cleanup channel probe data older than 3 days
-	err = w.cleanupChannelProbes(ctx, 3)
+	err = w.cleanupChannelProbes(ctx, 3, manual)
 	if err != nil {
 		log.Error(ctx, "Failed to cleanup channel probes",
 			log.Cause(err))
@@ -205,18 +207,28 @@ func (w *Worker) runCleanup(ctx context.Context) {
 			log.Int("cleanup_days", 3))
 	}
 
+	// Run VACUUM after cleanup to reclaim storage space (SQLite and PostgreSQL)
+	if w.Config.VacuumEnabled {
+		if err := w.runVacuum(ctx); err != nil {
+			log.Error(ctx, "Failed to run VACUUM after cleanup",
+				log.Cause(err))
+		}
+	}
+
 	log.Info(ctx, "Automatic cleanup process completed")
 }
 
 // cleanupRequests deletes requests older than the specified number of days.
-func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int) error {
-	if cleanupDays <= 0 {
+func (w *Worker) cleanupRequests(ctx context.Context, cleanupDays int, manual bool) error {
+	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for requests")
 		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	if manual && cleanupDays == 0 {
+		cutoffTime = time.Now()
+	}
 
 	execResult, err := w.cleanupOldRequestExecutions(ctx, cutoffTime)
 	if err != nil {
@@ -411,13 +423,15 @@ func (w *Worker) getDataStorageCached(ctx context.Context, id int, cache map[int
 }
 
 // cleanupUsageLogs deletes usage logs older than the specified number of days.
-func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int) error {
-	if cleanupDays <= 0 {
+func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int, manual bool) error {
+	if !manual && cleanupDays <= 0 {
 		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	if manual && cleanupDays == 0 {
+		cutoffTime = time.Now()
+	}
 
 	// Delete usage logs in batches
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
@@ -435,14 +449,16 @@ func (w *Worker) cleanupUsageLogs(ctx context.Context, cleanupDays int) error {
 }
 
 // cleanupThreads deletes threads older than the specified number of days.
-func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int) error {
-	if cleanupDays <= 0 {
+func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int, manual bool) error {
+	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for threads")
 		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	if manual && cleanupDays == 0 {
+		cutoffTime = time.Now()
+	}
 
 	// Delete threads in batches
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
@@ -460,14 +476,16 @@ func (w *Worker) cleanupThreads(ctx context.Context, cleanupDays int) error {
 }
 
 // cleanupTraces deletes traces older than the specified number of days.
-func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int) error {
-	if cleanupDays <= 0 {
+func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int, manual bool) error {
+	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for traces")
 		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	if manual && cleanupDays == 0 {
+		cutoffTime = time.Now()
+	}
 
 	// Delete traces in batches
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
@@ -485,14 +503,16 @@ func (w *Worker) cleanupTraces(ctx context.Context, cleanupDays int) error {
 }
 
 // cleanupChannelProbes deletes channel probes older than the specified number of days.
-func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int) error {
-	if cleanupDays <= 0 {
+func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int, manual bool) error {
+	if !manual && cleanupDays <= 0 {
 		log.Debug(ctx, "No cleanup needed for channel probes")
-		return nil
+		return nil // No cleanup needed
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 	cutoffTime := time.Now().AddDate(0, 0, -cleanupDays)
+	if manual && cleanupDays == 0 {
+		cutoffTime = time.Now()
+	}
 
 	result, err := w.deleteInBatches(ctx, func() (int, error) {
 		return w.Ent.ChannelProbe.Delete().Where(channelprobe.TimestampLT(cutoffTime.Unix())).Exec(ctx)
@@ -508,9 +528,71 @@ func (w *Worker) cleanupChannelProbes(ctx context.Context, cleanupDays int) erro
 	return nil
 }
 
+// runVacuum executes VACUUM command on SQLite/PostgreSQL database to reclaim storage space.
+// This should be called after cleanup operations to defragment the database file.
+func (w *Worker) runVacuum(ctx context.Context) error {
+	if !w.Config.VacuumEnabled {
+		log.Debug(ctx, "VACUUM is disabled, skipping")
+		return nil
+	}
+
+	// Get the underlying SQL driver to check if it's SQLite
+	dbDriver := w.Ent.Driver()
+	if dbDriver == nil {
+		return fmt.Errorf("failed to get database driver")
+	}
+
+	// Try to cast to *entsql.Driver to access underlying *sql.DB
+	sqlDriver, ok := dbDriver.(*entsql.Driver)
+	if !ok {
+		log.Debug(ctx, "Database driver is not *entsql.Driver, skipping VACUUM")
+		return nil
+	}
+
+	// Check if this is SQLite or PostgreSQL
+	if sqlDriver.Dialect() != dialect.SQLite && sqlDriver.Dialect() != dialect.Postgres {
+		log.Debug(ctx, "Database does not support VACUUM, skipping",
+			log.String("dialect", sqlDriver.Dialect()))
+
+		return nil
+	}
+
+	log.Info(ctx, "Starting database VACUUM operation",
+		log.String("dialect", sqlDriver.Dialect()),
+		log.Bool("vacuum_full", w.Config.VacuumFull))
+
+	startTime := time.Now()
+
+	// Execute VACUUM using raw SQL
+	var vacuumSQL string
+	if sqlDriver.Dialect() == dialect.Postgres && w.Config.VacuumFull {
+		vacuumSQL = "VACUUM FULL"
+	} else {
+		vacuumSQL = "VACUUM"
+	}
+
+	_, err := sqlDriver.ExecContext(ctx, vacuumSQL, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to execute %s: %w", vacuumSQL, err)
+	}
+
+	duration := time.Since(startTime)
+	log.Info(ctx, "Database VACUUM completed successfully",
+		log.Duration("duration", duration),
+		log.String("command", vacuumSQL))
+
+	return nil
+}
+
+// RunVacuumNow manually triggers the VACUUM operation.
+// This can be useful for testing or manual execution.
+func (w *Worker) RunVacuumNow(ctx context.Context) error {
+	return w.runVacuum(ctx)
+}
+
 // RunCleanupNow manually triggers the cleanup process.
 // This can be useful for testing or manual execution.
 func (w *Worker) RunCleanupNow(ctx context.Context) error {
-	w.runCleanup(ctx)
+	w.runCleanup(ctx, true)
 	return nil
 }

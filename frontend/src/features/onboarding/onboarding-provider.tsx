@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useOnboardingInfo } from '@/features/system/data/system';
+import { useAuthStore } from '@/stores/authStore';
+import { AutoDisableChannelOnboardingFlow } from './auto-disable-channel-onboarding-flow';
 import { OnboardingFlow } from './onboarding-flow';
+
+type OnboardingMode = 'none' | 'main' | 'autoDisableChannel';
 
 interface OnboardingProviderProps {
   children: React.ReactNode;
@@ -12,23 +16,32 @@ interface OnboardingProviderProps {
 
 export function OnboardingProvider({ children, showOnboarding = true, onComplete }: OnboardingProviderProps) {
   const { data: onboardingInfo, isLoading } = useOnboardingInfo();
-  const [shouldShowOnboarding, setShouldShowOnboarding] = useState(false);
+  const [mode, setMode] = useState<OnboardingMode>('none');
+  const user = useAuthStore((state) => state.auth.user);
+  const isOwner = user?.isOwner ?? false;
 
   useEffect(() => {
-    if (!isLoading && showOnboarding) {
-      // If onboardingInfo is null or not onboarded, show onboarding
+    if (!isLoading && showOnboarding && isOwner) {
       if (!onboardingInfo || !onboardingInfo.onboarded) {
-        setShouldShowOnboarding(true);
+        setMode('main');
+      } else if (!onboardingInfo.autoDisableChannel?.onboarded) {
+        setMode('autoDisableChannel');
       } else {
-        setShouldShowOnboarding(false);
+        setMode('none');
       }
     }
-  }, [onboardingInfo, isLoading, showOnboarding]);
+  }, [onboardingInfo, isLoading, showOnboarding, isOwner]);
+
+  const handleComplete = () => {
+    setMode('none');
+    onComplete?.();
+  };
 
   return (
     <>
       {children}
-      {shouldShowOnboarding && <OnboardingFlow onComplete={onComplete} />}
+      {mode === 'main' && <OnboardingFlow onComplete={handleComplete} />}
+      {mode === 'autoDisableChannel' && <AutoDisableChannelOnboardingFlow onComplete={handleComplete} />}
     </>
   );
 }

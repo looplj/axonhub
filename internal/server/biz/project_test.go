@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
@@ -38,7 +38,7 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test project
 	projectName := uuid.NewString()
@@ -110,7 +110,7 @@ func TestProjectService_GetProjectByID_WithDifferentCaches(t *testing.T) {
 
 			ctx := context.Background()
 			ctx = ent.NewContext(ctx, client)
-			ctx = privacy.DecisionContext(ctx, privacy.Allow)
+			ctx = authz.WithTestBypass(ctx)
 
 			// Create test project
 			projectName := uuid.NewString()
@@ -160,7 +160,7 @@ func TestProjectService_UpdateProjectStatus_CacheInvalidation(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create test project
 	projectName := uuid.NewString()

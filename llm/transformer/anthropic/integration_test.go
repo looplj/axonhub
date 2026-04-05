@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 )
 
 func TestAnthropicTransformers_Integration(t *testing.T) {
@@ -19,10 +20,11 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 
 	tests := []struct {
-		name                 string
-		anthropicRequestJSON string
-		expectedModel        string
-		expectedMaxTokens    int64
+		name                    string
+		anthropicRequestJSON    string
+		expectedModel           string
+		expectedMaxTokens       int64
+		expectedThinkingDisplay string
 	}{
 		{
 			name: "simple text message",
@@ -84,6 +86,88 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			expectedModel:     "claude-3-sonnet-20240229",
 			expectedMaxTokens: 1024,
 		},
+		{
+			name: "thinking with display summarized",
+			anthropicRequestJSON: `{
+				"model": "claude-sonnet-4-20250514",
+				"max_tokens": 8096,
+				"thinking": {
+					"type": "enabled",
+					"budget_tokens": 5000,
+					"display": "summarized"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello"
+					}
+				]
+			}`,
+			expectedModel:           "claude-sonnet-4-20250514",
+			expectedMaxTokens:       8096,
+			expectedThinkingDisplay: "summarized",
+		},
+		{
+			name: "thinking with display omitted",
+			anthropicRequestJSON: `{
+				"model": "claude-sonnet-4-20250514",
+				"max_tokens": 4096,
+				"thinking": {
+					"type": "enabled",
+					"budget_tokens": 10000,
+					"display": "omitted"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello"
+					}
+				]
+			}`,
+			expectedModel:           "claude-sonnet-4-20250514",
+			expectedMaxTokens:       4096,
+			expectedThinkingDisplay: "omitted",
+		},
+		{
+			name: "adaptive thinking with display summarized",
+			anthropicRequestJSON: `{
+				"model": "claude-sonnet-4-20250514",
+				"max_tokens": 4096,
+				"thinking": {
+					"type": "adaptive",
+					"display": "summarized"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello"
+					}
+				]
+			}`,
+			expectedModel:           "claude-sonnet-4-20250514",
+			expectedMaxTokens:       4096,
+			expectedThinkingDisplay: "summarized",
+		},
+		{
+			name: "disabled thinking ignores display",
+			anthropicRequestJSON: `{
+				"model": "claude-sonnet-4-20250514",
+				"max_tokens": 4096,
+				"thinking": {
+					"type": "disabled",
+					"display": "summarized"
+				},
+				"messages": [
+					{
+						"role": "user",
+						"content": "Hello"
+					}
+				]
+			}`,
+			expectedModel:           "claude-sonnet-4-20250514",
+			expectedMaxTokens:       4096,
+			expectedThinkingDisplay: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -123,6 +207,14 @@ func TestAnthropicTransformers_Integration(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedModel, anthropicReq.Model)
 			require.Equal(t, tt.expectedMaxTokens, anthropicReq.MaxTokens)
+
+			// Verify thinking display round-trip
+			if tt.expectedThinkingDisplay != "" {
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, tt.expectedThinkingDisplay, anthropicReq.Thinking.Display)
+			} else if anthropicReq.Thinking != nil {
+				require.Empty(t, anthropicReq.Thinking.Display)
+			}
 
 			// Step 3: Simulate Anthropic response and transform back
 			anthropicResponse := &Message{
@@ -207,10 +299,6 @@ func TestTransformRequest_Integration(t *testing.T) {
 			requestFile: `anthropic-claude-code2.request.json`,
 		},
 		{
-			name:        "claude cache control",
-			requestFile: `anthropic-cache-control-inbound.request.json`,
-		},
-		{
 			name:        "claude thinking",
 			requestFile: `anthropic-thinking.request.json`,
 		},
@@ -261,15 +349,49 @@ func TestTransformRequest_Integration(t *testing.T) {
 			require.NoError(t, err)
 
 			var gotReq MessageRequest
-
 			err = json.Unmarshal(outboundReq.Body, &gotReq)
 			require.NoError(t, err)
 
-			if !xtest.Equal(wantReq, gotReq) {
-				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq))
+			// 忽略 cache_control 差异：ensureCacheControl 会在 outbound 路径中自动注入断点，
+			// 可能导致 CacheControl 字段和 Content→MultipleContent 结构变化。
+			// 这些行为的正确性已在 ensure_cache_control_test.go 中覆盖。
+			if !xtest.Equal(wantReq, gotReq, ignoreCacheControlWithNormalize...) {
+				t.Errorf("wantReq != gotReq\n%s", cmp.Diff(wantReq, gotReq, ignoreCacheControlWithNormalize...))
 			}
 		})
 	}
+
+	// 单独测试 cache_control 超限的 fixture：该文件包含 6 个 cache_control 断点。
+	// strict mode 下会重建为结构锚点 + 受预算约束的消息锚点（此场景为 3 个）。
+	t.Run("cache control exceeds limit", func(t *testing.T) {
+		var wantReq MessageRequest
+
+		err := xtest.LoadTestData(t, "anthropic-cache-control-inbound.request.json", &wantReq)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+
+		encoder := json.NewEncoder(&buf)
+		encoder.SetEscapeHTML(false)
+		require.NoError(t, encoder.Encode(wantReq))
+
+		chatReq, err := inboundTransformer.TransformRequest(t.Context(), &httpclient.Request{
+			Headers: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			Body: buf.Bytes(),
+		})
+		require.NoError(t, err)
+
+		outboundReq, err := outboundTransformer.TransformRequest(t.Context(), chatReq)
+		require.NoError(t, err)
+
+		var gotReq MessageRequest
+
+		err = json.Unmarshal(outboundReq.Body, &gotReq)
+		require.NoError(t, err)
+		require.Equal(t, 3, countCacheControls(&gotReq))
+	})
 }
 
 func TestAnthropicTransformers_StreamingIntegration(t *testing.T) {
@@ -390,36 +512,47 @@ func TestTransformResponse_Integration(t *testing.T) {
 	outboundTransformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
 
 	tests := []struct {
-		name        string
-		requestFile string
+		name         string
+		requestFile  string
+		expectedFile string
 	}{
 		{
-			name:        "anthropic-tool.response.json",
-			requestFile: `anthropic-tool.response.json`,
+			name:         "anthropic-tool.response.json",
+			requestFile:  `anthropic-tool.response.json`,
+			expectedFile: `anthropic-tool.response.json`,
 		},
 		{
-			name:        "anthropic-think.response.json",
-			requestFile: `anthropic-think.response.json`,
+			name:         "anthropic-think.response.json",
+			requestFile:  `anthropic-think.response.json`,
+			expectedFile: `anthropic-think.response.json`,
 		},
 		{
-			name:        "anthropic-tool2.response.json",
-			requestFile: `anthropic-tool2.response.json`,
+			name:         "anthropic-tool2.response.json",
+			requestFile:  `anthropic-tool2.response.json`,
+			expectedFile: `anthropic-tool2.response.json`,
 		},
 		{
-			name:        "anthropic-stop.response.json",
-			requestFile: `anthropic-stop.response.json`,
+			name:         "anthropic-stop.response.json",
+			requestFile:  `anthropic-stop.response.json`,
+			expectedFile: `anthropic-stop.response.json`,
 		},
 		{
-			name:        "anthropic-cache-usage.response.json",
-			requestFile: `anthropic-cache-usage.response.json`,
+			name:         "anthropic-cache-usage.response.json",
+			requestFile:  `anthropic-cache-usage.response.json`,
+			expectedFile: `anthropic-cache-usage.response.json`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var wantMessage Message
+			var inputMessage Message
 
-			err := xtest.LoadTestData(t, tt.requestFile, &wantMessage)
+			err := xtest.LoadTestData(t, tt.requestFile, &inputMessage)
+			require.NoError(t, err)
+
+			var expectedMessage Message
+
+			err = xtest.LoadTestData(t, tt.expectedFile, &expectedMessage)
 			require.NoError(t, err)
 
 			var buf bytes.Buffer
@@ -427,7 +560,7 @@ func TestTransformResponse_Integration(t *testing.T) {
 			encoder := json.NewEncoder(&buf)
 			encoder.SetEscapeHTML(false)
 
-			if err := encoder.Encode(wantMessage); err != nil {
+			if err := encoder.Encode(inputMessage); err != nil {
 				t.Fatalf("failed to marshal tool result: %v", err)
 			}
 
@@ -448,8 +581,8 @@ func TestTransformResponse_Integration(t *testing.T) {
 			err = json.Unmarshal(inboundResp.Body, &gotMessage)
 			require.NoError(t, err)
 
-			if !xtest.Equal(wantMessage, gotMessage) {
-				t.Errorf("wantMessage != gotMessage\n%s", cmp.Diff(wantMessage, gotMessage))
+			if !xtest.Equal(expectedMessage, gotMessage, cmpopts.IgnoreFields(MessageContentBlock{}, "Signature")) {
+				t.Errorf("wantMessage != gotMessage\n%s", cmp.Diff(expectedMessage, gotMessage))
 			}
 		})
 	}

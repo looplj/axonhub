@@ -55,16 +55,16 @@ func (APIKey) Fields() []ent.Field {
 			),
 		field.String("name"),
 		field.Enum("type").
-			Values("user", "service_account").
+			Values("user", "service_account","noauth", "agent").
 			Default("user").
-			Comment("API Key type: user or service_account").Annotations(
+			Comment("API Key type: user, service_account, noauth, or agent").Annotations(
 			entgql.Skip(entgql.SkipMutationUpdateInput),
 		),
 		field.Enum("status").Values("enabled", "disabled", "archived").Default("enabled").Annotations(
 			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 		),
 		field.Strings("scopes").
-			Comment("API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account: custom scopes.").
+			Comment("API Key specific scopes. For user type: default read_channels, write_requests (immutable). For service_account/agent: custom scopes.").
 			Default([]string{"read_channels", "write_requests"}).
 			Optional(),
 		field.JSON("profiles", &objects.APIKeyProfiles{}).
@@ -99,6 +99,11 @@ func (APIKey) Edges() []ent.Edge {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
+		edge.To("agent_instance", AgentInstance.Type).
+			Unique().
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 	}
 }
 
@@ -118,7 +123,7 @@ func (APIKey) Policy() ent.Policy {
 			scopes.OwnerRule(), // owner 用户可以访问所有 API Keys
 		},
 		Mutation: scopes.MutationPolicy{
-			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteAPIKeys), // 需要 API Keys 写入权限
+			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteAPIKeys),   // 需要 API Keys 写入权限
 			scopes.APIKeyProjectScopeWriteRule(scopes.ScopeWriteAPIKeys), // API key scope + project 校验
 			scopes.OwnerRule(), // owner 用户可以修改所有 API Keys
 		},

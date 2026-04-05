@@ -14,6 +14,14 @@ import (
 	"entgo.io/ent/dialect/sql/schema"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/hashicorp/go-multierror"
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmemory"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agentthread"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
@@ -21,15 +29,22 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -48,6 +63,46 @@ var apikeyImplementors = []string{"APIKey", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*APIKey) IsNode() {}
+
+var agentImplementors = []string{"Agent", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Agent) IsNode() {}
+
+var agenthostImplementors = []string{"AgentHost", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentHost) IsNode() {}
+
+var agentinstanceImplementors = []string{"AgentInstance", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentInstance) IsNode() {}
+
+var agentmemoryImplementors = []string{"AgentMemory", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentMemory) IsNode() {}
+
+var agentmessageImplementors = []string{"AgentMessage", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentMessage) IsNode() {}
+
+var agentskillImplementors = []string{"AgentSkill", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentSkill) IsNode() {}
+
+var agentthreadImplementors = []string{"AgentThread", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentThread) IsNode() {}
+
+var agenttoolImplementors = []string{"AgentTool", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*AgentTool) IsNode() {}
 
 var channelImplementors = []string{"Channel", "Node"}
 
@@ -79,6 +134,21 @@ var datastorageImplementors = []string{"DataStorage", "Node"}
 // IsNode implements the Node interface check for GQLGen.
 func (*DataStorage) IsNode() {}
 
+var messagechannelImplementors = []string{"MessageChannel", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*MessageChannel) IsNode() {}
+
+var messagechannelagentinstanceImplementors = []string{"MessageChannelAgentInstance", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*MessageChannelAgentInstance) IsNode() {}
+
+var messagechannelbindingrequestImplementors = []string{"MessageChannelBindingRequest", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*MessageChannelBindingRequest) IsNode() {}
+
 var modelImplementors = []string{"Model", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
@@ -93,6 +163,16 @@ var promptImplementors = []string{"Prompt", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Prompt) IsNode() {}
+
+var promptprotectionruleImplementors = []string{"PromptProtectionRule", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*PromptProtectionRule) IsNode() {}
+
+var promptversionImplementors = []string{"PromptVersion", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*PromptVersion) IsNode() {}
 
 var providerquotastatusImplementors = []string{"ProviderQuotaStatus", "Node"}
 
@@ -114,6 +194,11 @@ var roleImplementors = []string{"Role", "Node"}
 // IsNode implements the Node interface check for GQLGen.
 func (*Role) IsNode() {}
 
+var skillImplementors = []string{"Skill", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Skill) IsNode() {}
+
 var systemImplementors = []string{"System", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
@@ -123,6 +208,11 @@ var threadImplementors = []string{"Thread", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Thread) IsNode() {}
+
+var toolImplementors = []string{"Tool", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Tool) IsNode() {}
 
 var traceImplementors = []string{"Trace", "Node"}
 
@@ -216,6 +306,78 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			}
 		}
 		return query.Only(ctx)
+	case agent.Table:
+		query := c.Agent.Query().
+			Where(agent.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case agenthost.Table:
+		query := c.AgentHost.Query().
+			Where(agenthost.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agenthostImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case agentinstance.Table:
+		query := c.AgentInstance.Query().
+			Where(agentinstance.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentinstanceImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case agentmemory.Table:
+		query := c.AgentMemory.Query().
+			Where(agentmemory.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentmemoryImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case agentmessage.Table:
+		query := c.AgentMessage.Query().
+			Where(agentmessage.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentmessageImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case agentskill.Table:
+		query := c.AgentSkill.Query().
+			Where(agentskill.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentskillImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case agentthread.Table:
+		query := c.AgentThread.Query().
+			Where(agentthread.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agentthreadImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case agenttool.Table:
+		query := c.AgentTool.Query().
+			Where(agenttool.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, agenttoolImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
 	case channel.Table:
 		query := c.Channel.Query().
 			Where(channel.ID(id))
@@ -270,6 +432,33 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			}
 		}
 		return query.Only(ctx)
+	case messagechannel.Table:
+		query := c.MessageChannel.Query().
+			Where(messagechannel.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, messagechannelImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case messagechannelagentinstance.Table:
+		query := c.MessageChannelAgentInstance.Query().
+			Where(messagechannelagentinstance.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, messagechannelagentinstanceImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case messagechannelbindingrequest.Table:
+		query := c.MessageChannelBindingRequest.Query().
+			Where(messagechannelbindingrequest.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, messagechannelbindingrequestImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
 	case model.Table:
 		query := c.Model.Query().
 			Where(model.ID(id))
@@ -293,6 +482,24 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(prompt.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, promptImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case promptprotectionrule.Table:
+		query := c.PromptProtectionRule.Query().
+			Where(promptprotectionrule.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, promptprotectionruleImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case promptversion.Table:
+		query := c.PromptVersion.Query().
+			Where(promptversion.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, promptversionImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -333,6 +540,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			}
 		}
 		return query.Only(ctx)
+	case skill.Table:
+		query := c.Skill.Query().
+			Where(skill.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, skillImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
 	case system.Table:
 		query := c.System.Query().
 			Where(system.ID(id))
@@ -347,6 +563,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(thread.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, threadImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case tool.Table:
+		query := c.Tool.Query().
+			Where(tool.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, toolImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -485,6 +710,134 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 				*noder = node
 			}
 		}
+	case agent.Table:
+		query := c.Agent.Query().
+			Where(agent.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agentImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case agenthost.Table:
+		query := c.AgentHost.Query().
+			Where(agenthost.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agenthostImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case agentinstance.Table:
+		query := c.AgentInstance.Query().
+			Where(agentinstance.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agentinstanceImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case agentmemory.Table:
+		query := c.AgentMemory.Query().
+			Where(agentmemory.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agentmemoryImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case agentmessage.Table:
+		query := c.AgentMessage.Query().
+			Where(agentmessage.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agentmessageImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case agentskill.Table:
+		query := c.AgentSkill.Query().
+			Where(agentskill.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agentskillImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case agentthread.Table:
+		query := c.AgentThread.Query().
+			Where(agentthread.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agentthreadImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case agenttool.Table:
+		query := c.AgentTool.Query().
+			Where(agenttool.IDIn(ids...))
+		query, err := query.CollectFields(ctx, agenttoolImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
 	case channel.Table:
 		query := c.Channel.Query().
 			Where(channel.IDIn(ids...))
@@ -581,6 +934,54 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 				*noder = node
 			}
 		}
+	case messagechannel.Table:
+		query := c.MessageChannel.Query().
+			Where(messagechannel.IDIn(ids...))
+		query, err := query.CollectFields(ctx, messagechannelImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case messagechannelagentinstance.Table:
+		query := c.MessageChannelAgentInstance.Query().
+			Where(messagechannelagentinstance.IDIn(ids...))
+		query, err := query.CollectFields(ctx, messagechannelagentinstanceImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case messagechannelbindingrequest.Table:
+		query := c.MessageChannelBindingRequest.Query().
+			Where(messagechannelbindingrequest.IDIn(ids...))
+		query, err := query.CollectFields(ctx, messagechannelbindingrequestImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
 	case model.Table:
 		query := c.Model.Query().
 			Where(model.IDIn(ids...))
@@ -617,6 +1018,38 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.Prompt.Query().
 			Where(prompt.IDIn(ids...))
 		query, err := query.CollectFields(ctx, promptImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case promptprotectionrule.Table:
+		query := c.PromptProtectionRule.Query().
+			Where(promptprotectionrule.IDIn(ids...))
+		query, err := query.CollectFields(ctx, promptprotectionruleImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case promptversion.Table:
+		query := c.PromptVersion.Query().
+			Where(promptversion.IDIn(ids...))
+		query, err := query.CollectFields(ctx, promptversionImplementors...)
 		if err != nil {
 			return nil, err
 		}
@@ -693,6 +1126,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 				*noder = node
 			}
 		}
+	case skill.Table:
+		query := c.Skill.Query().
+			Where(skill.IDIn(ids...))
+		query, err := query.CollectFields(ctx, skillImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
 	case system.Table:
 		query := c.System.Query().
 			Where(system.IDIn(ids...))
@@ -713,6 +1162,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.Thread.Query().
 			Where(thread.IDIn(ids...))
 		query, err := query.CollectFields(ctx, threadImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case tool.Table:
+		query := c.Tool.Query().
+			Where(tool.IDIn(ids...))
+		query, err := query.CollectFields(ctx, toolImplementors...)
 		if err != nil {
 			return nil, err
 		}

@@ -75,6 +75,18 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       enableSorting: true,
     },
     {
+      accessorKey: 'order',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('prompts.columns.order')} />,
+      cell: ({ row }) => {
+        const order = row.getValue('order') as number;
+        return <div className='text-center text-sm'>{order}</div>;
+      },
+      meta: {
+        className: 'w-[80px] min-w-[80px]',
+      },
+      enableSorting: true,
+    },
+    {
       accessorKey: 'description',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.description')} />,
       cell: ({ row }) => {

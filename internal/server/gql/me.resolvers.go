@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -54,7 +54,7 @@ func (r *queryResolver) MyProjects(ctx context.Context) ([]*ent.Project, error) 
 		return nil, fmt.Errorf("user not found in context")
 	}
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithSystemBypass(ctx, "read-my-projects")
 
 	return r.client.Project.Query().
 		Where(project.HasUsersWith(user.IDEQ(u.ID))).

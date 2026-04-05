@@ -52,6 +52,11 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/prompt-protection-rules',
+        requiredScopes: ['read_channels'],
+        mode: 'hidden',
+      },
+      {
         path: '/data-storages',
         requiredScopes: ['read_data_storages'],
         mode: 'hidden',
@@ -59,6 +64,11 @@ export const routeConfigs: RouteGroup[] = [
       {
         path: '/system',
         requiredScopes: ['read_system'],
+        mode: 'hidden',
+      },
+      {
+        path: '/agent-hosts',
+        requiredScopes: ['read_agents'],
         mode: 'hidden',
       },
       {
@@ -74,6 +84,11 @@ export const routeConfigs: RouteGroup[] = [
       {
         path: '/project/api-keys',
         requiredScopes: ['read_api_keys'],
+        mode: 'hidden',
+      },
+      {
+        path: '/project/agents',
+        requiredScopes: ['read_agents'],
         mode: 'hidden',
       },
       {
@@ -114,6 +129,11 @@ export const routeConfigs: RouteGroup[] = [
       {
         path: '/project/playground',
         // Playground is accessible to all users
+      },
+      {
+        path: '/project/message-channels',
+        requiredScopes: ['read_agents'],
+        mode: 'hidden',
       },
     ],
   },

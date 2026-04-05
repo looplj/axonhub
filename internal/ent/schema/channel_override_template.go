@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -29,8 +30,8 @@ func (ChannelOverrideTemplate) Indexes() []ent.Index {
 	return []ent.Index{
 		// Unique template name per user, channel type, and deleted_at
 		// This ensures template names are unique within a user's templates for the same channel type
-		index.Fields("user_id", "channel_type", "name", "deleted_at").
-			StorageKey("channel_override_templates_by_user_type_name").
+		index.Fields("user_id", "name", "deleted_at").
+			StorageKey("channel_override_templates_by_user_name").
 			Unique(),
 	}
 }
@@ -45,18 +46,44 @@ func (ChannelOverrideTemplate) Fields() []ent.Field {
 			),
 		field.String("name").
 			NotEmpty().
-			Comment("Template name, unique per user and channel type"),
+			Comment("Template name, unique per user"),
 		field.String("description").
 			Optional().
 			Comment("Template description"),
-		field.String("channel_type").
-			Comment("Channel type this template applies to"),
 		field.String("override_parameters").
-			Default("{}").
+			SchemaType(map[string]string{
+				dialect.MySQL: "mediumtext",
+			}).
+			DefaultFunc(func() string { return "{}" }).
+			Deprecated("Use body_override_operations instead").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			).
 			Comment("Override request body parameters as JSON string"),
+
 		field.JSON("override_headers", []objects.HeaderEntry{}).
 			Default([]objects.HeaderEntry{}).
+			Deprecated("Use header_override_operations instead").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			).
 			Comment("Override request headers"),
+
+		field.JSON("header_override_operations", []objects.OverrideOperation{}).
+			Default([]objects.OverrideOperation{}).
+			Optional().
+			Annotations(
+				entgql.Directives(forceResolver()),
+			).
+			Comment("Override request headers"),
+
+		field.JSON("body_override_operations", []objects.OverrideOperation{}).
+			Default([]objects.OverrideOperation{}).
+			Optional().
+			Annotations(
+				entgql.Directives(forceResolver()),
+			).
+			Comment("Override request body parameters"),
 	}
 }
 

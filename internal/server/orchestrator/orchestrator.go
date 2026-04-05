@@ -4,12 +4,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/pipeline/stream"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -25,6 +27,7 @@ func NewChatCompletionOrchestrator(
 	usageLogService *biz.UsageLogService,
 	promptService *biz.PromptService,
 	quotaService *biz.QuotaService,
+	promptProtectionRuleService *biz.PromptProtectionRuleService,
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 
@@ -52,7 +55,9 @@ func NewChatCompletionOrchestrator(
 		UsageLogService: usageLogService,
 		QuotaService:    quotaService,
 		PromptProvider:  promptService,
+		PromptProtecter: promptProtectionRuleService,
 		Middlewares: []pipeline.Middleware{
+			cc.StripBillingHeaderCCH(),
 			stream.EnsureUsage(),
 		},
 		PipelineFactory:            pipeline.NewFactory(httpClient),
@@ -77,6 +82,7 @@ type ChatCompletionOrchestrator struct {
 	QuotaService    *biz.QuotaService
 	PromptProvider  PromptProvider
 	Middlewares     []pipeline.Middleware
+	PromptProtecter PromptProtecter
 	PipelineFactory *pipeline.Factory
 	ModelMapper     *ModelMapper
 
@@ -127,6 +133,9 @@ type ChatCompletionResult struct {
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
+	// The context is system bypassed to allow the orchestrator to access the system settings.
+	ctx = authz.WithSystemBypass(ctx, "process-chat-completion")
+
 	apiKey, _ := contexts.GetAPIKey(ctx)
 
 	// Get retry policy from system settings
@@ -162,6 +171,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		UsageLogService:       processor.UsageLogService,
 		ChannelService:        processor.ChannelService,
 		PromptProvider:        processor.PromptProvider,
+		PromptProtecter:       processor.PromptProtecter,
 		RetryPolicyProvider:   processor.SystemService,
 		CandidateSelector:     processor.channelSelector,
 		LoadBalancer:          loadBalancer,
@@ -189,18 +199,30 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	inbound, outbound := NewPersistentTransformers(state, processor.Inbound)
 
 	// Add inbound middlewares (executed after inbound.TransformRequest)
-	middlewares = append(middlewares,
-		enforceQuota(inbound, processor.QuotaService),
-		checkApiKeyModelAccess(inbound),
-		applyModelMapping(inbound),
-		selectCandidates(inbound),
-		injectPrompts(inbound),
-		persistRequest(inbound),
-	)
+	if processor.Inbound.APIFormat().IsSearch() {
+		middlewares = append(middlewares,
+			selectSearchCandidates(inbound),
+			persistRequest(inbound),
+		)
+	} else {
+		middlewares = append(middlewares,
+			enforceQuota(inbound, processor.QuotaService),
+			checkApiKeyModelAccess(inbound),
+			applyModelMapping(inbound),
+			selectCandidates(inbound),
+			injectPrompts(inbound),
+			protectPrompts(inbound),
+			persistRequest(inbound),
+		)
+	}
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)
 	middlewares = append(middlewares,
 		applyOverrideRequestBody(outbound),
+		// applyUserAgentPassThrough runs before header overrides to set the initial
+		// User-Agent value (either from client pass-through or default "axonhub/1.0").
+		// This allows override headers to modify the User-Agent if configured.
+		applyUserAgentPassThrough(outbound, processor.SystemService),
 		applyOverrideRequestHeaders(outbound),
 
 		// Unified performance tracking middleware.

@@ -15,10 +15,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xredis"
 )
 
-func intPtr(i int) *int {
-	return &i
-}
-
 func TestNewMemory(t *testing.T) {
 	client := gocache.New(5*time.Minute, 10*time.Minute)
 	cache := NewMemory[string](client)

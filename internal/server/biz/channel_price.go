@@ -243,6 +243,30 @@ func (svc *ChannelService) SaveChannelModelPrices(
 	return results, nil
 }
 
+// preloadModelPrices loads active model prices for a channel and caches them.
+func (svc *ChannelService) preloadModelPrices(ctx context.Context, ch *Channel) {
+	prices, err := svc.entFromContext(ctx).ChannelModelPrice.Query().
+		Where(
+			channelmodelprice.ChannelID(ch.ID),
+			channelmodelprice.DeletedAtEQ(0),
+		).
+		All(ctx)
+	if err != nil {
+		log.Warn(ctx, "failed to preload model prices", log.Int("channel_id", ch.ID), log.Cause(err))
+		return
+	}
+
+	cache := make(map[string]*ent.ChannelModelPrice, len(prices))
+	for _, p := range prices {
+		cache[p.ModelID] = p
+	}
+
+	ch.cachedModelPrices = cache
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "preloaded model prices", log.Int("channel_id", ch.ID), log.Int("count", len(cache)))
+	}
+}
+
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func generateReferenceID() string {

@@ -2,8 +2,11 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 var ErrAPIKeyRequired = errors.New("API key is required")
@@ -68,17 +71,17 @@ func ExtractAPIKeyFromRequest(r *http.Request, config *APIKeyConfig) (string, er
 		// 对于 Authorization header，如果配置要求 Bearer 前缀
 		if strings.ToLower(headerName) == "authorization" && config.RequireBearer {
 			if !strings.HasPrefix(headerValue, "Bearer ") {
-				lastError = errors.New("Authorization header must start with 'Bearer '")
+				lastError = fmt.Errorf("%w: Authorization header must start with 'Bearer '", biz.ErrInvalidToken)
 				continue
 			}
 
 			apiKey := strings.TrimPrefix(headerValue, "Bearer ")
-			if apiKey == "" {
-				lastError = ErrAPIKeyRequired
+			if strings.TrimSpace(apiKey) == "" {
+				lastError = fmt.Errorf("%w: API key is required", biz.ErrInvalidToken)
 				continue
 			}
 
-			return apiKey, nil
+			return strings.TrimSpace(apiKey), nil
 		}
 
 		// 尝试匹配允许的前缀

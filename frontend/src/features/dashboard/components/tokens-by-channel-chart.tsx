@@ -1,0 +1,170 @@
+'use client';
+
+
+import { useTranslation } from 'react-i18next';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
+import { Loader2 } from 'lucide-react';
+import { formatNumber } from '@/utils/format-number';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useTokensByChannel } from '../data/dashboard';
+import type { TimePeriod } from '@/components/time-period-selector';
+import { ChartLegend } from './chart-legend';
+
+const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
+
+const TOKEN_COLORS = {
+  input: 'var(--chart-1)',
+  output: 'var(--chart-2)',
+  cached: 'var(--chart-3)',
+};
+
+interface TokensByChannelChartProps {
+  timePeriod: TimePeriod;
+}
+
+export function TokensByChannelChart({ timePeriod }: TokensByChannelChartProps) {
+  const { t } = useTranslation();
+  const { data: tokenData, isLoading, isFetching, error } = useTokensByChannel(timePeriod);
+
+  if (isLoading) {
+    return (
+      <div className='flex h-[300px] items-center justify-center'>
+        <Skeleton className='h-[250px] w-full rounded-md' />
+      </div>
+    );
+  }
+
+  const hasError = error;
+
+  const chartData = tokenData
+    ?.map((item) => ({
+      name: item.channelName,
+      inputTokens: item.inputTokens,
+      outputTokens: item.outputTokens,
+      cachedTokens: item.cachedTokens,
+      totalTokens: item.totalTokens,
+    }))
+    .slice(0, 10) ?? [];
+
+  const totalAllChannels = chartData.reduce((sum, item) => sum + item.totalTokens, 0);
+
+  const legendItems = chartData.map((item, index) => {
+    const percent = totalAllChannels ? (item.totalTokens / totalAllChannels) * 100 : 0;
+    return {
+      name: item.name,
+      index: index + 1,
+      color: COLORS[index % COLORS.length],
+      primaryValue: formatNumber(item.totalTokens),
+      secondaryValue: `${percent.toFixed(1)}%`,
+    };
+  });
+
+  type TokenTooltipProps = TooltipProps<number, string> & {
+    payload?: Array<{
+      payload: {
+        name: string;
+        inputTokens: number;
+        outputTokens: number;
+        cachedTokens: number;
+        totalTokens: number;
+      };
+    }>;
+  };
+
+  const tooltipContent = (props: TokenTooltipProps) => {
+    if (!props.active || !props.payload?.length) return null;
+
+    const data = props.payload[0].payload;
+    const percent = totalAllChannels ? ((data.totalTokens ?? 0) / totalAllChannels) * 100 : 0;
+
+    return (
+      <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
+        <div className='text-foreground text-sm font-medium mb-1'>{data.name}</div>
+        <div className='space-y-1'>
+          <div className='flex justify-between gap-4'>
+            <span className='text-muted-foreground'>{t('dashboard.stats.inputTokens')}:</span>
+            <span className='font-medium'>{formatNumber(data.inputTokens)}</span>
+          </div>
+          <div className='flex justify-between gap-4'>
+            <span className='text-muted-foreground'>{t('dashboard.stats.outputTokens')}:</span>
+            <span className='font-medium'>{formatNumber(data.outputTokens)}</span>
+          </div>
+          <div className='flex justify-between gap-4'>
+            <span className='text-muted-foreground'>{t('dashboard.stats.cachedTokens')}:</span>
+            <span className='font-medium'>{formatNumber(data.cachedTokens)}</span>
+          </div>
+          <div className='border-t pt-1 flex justify-between gap-4'>
+            <span className='text-foreground font-medium'>{t('dashboard.stats.totalTokens')}:</span>
+            <span className='font-semibold'>{formatNumber(data.totalTokens)} ({percent.toFixed(1)}%)</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className='relative space-y-6'>
+      {hasError ? (
+        <div className='flex h-[300px] items-center justify-center'>
+          <div className='text-sm text-red-500'>
+            {t('dashboard.charts.errorLoadingTokenData')} {error.message}
+          </div>
+        </div>
+      ) : chartData.length === 0 ? (
+        <div className='flex h-[300px] items-center justify-center'>
+          <div className='text-muted-foreground text-sm'>{t('dashboard.charts.noTokenData')}</div>
+        </div>
+      ) : (
+        <>
+          <ResponsiveContainer width='100%' height={320}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
+              <XAxis
+                dataKey='name'
+                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                width={60}
+                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                tickFormatter={(value) => formatNumber(value)}
+              />
+              <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
+              <Bar
+                dataKey='inputTokens'
+                fill={TOKEN_COLORS.input}
+                name={t('dashboard.stats.inputTokens')}
+                radius={[6, 6, 0, 0]}
+                isAnimationActive={false}
+              />
+              <Bar
+                dataKey='outputTokens'
+                fill={TOKEN_COLORS.output}
+                name={t('dashboard.stats.outputTokens')}
+                radius={[6, 6, 0, 0]}
+                isAnimationActive={false}
+              />
+              <Bar
+                dataKey='cachedTokens'
+                fill={TOKEN_COLORS.cached}
+                name={t('dashboard.stats.cachedTokens')}
+                radius={[6, 6, 0, 0]}
+                isAnimationActive={false}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+
+          <ChartLegend items={legendItems} />
+        </>
+      )}
+      {isFetching && (
+        <div className='absolute inset-0 flex items-center justify-center bg-background/50'>
+          <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+        </div>
+      )}
+    </div>
+  );
+}

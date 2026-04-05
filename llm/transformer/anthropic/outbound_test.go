@@ -7,13 +7,15 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/pkg/xjson"
-	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -286,6 +288,31 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testing.T) {
+	outbound, err := NewOutboundTransformerWithConfig(&Config{
+		Type:            PlatformDirect,
+		BaseURL:         "https://api.anthropic.com",
+		AccountIdentity: "channel-1",
+		APIKeyProvider:  auth.NewStaticKeyProvider("test-api-key"),
+	})
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "claude-3-sonnet-20240229",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: new("hi")}},
+		},
+	}
+
+	hreq, err := outbound.TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+	require.NotNil(t, hreq.Metadata)
+
+	tp := outbound.(*OutboundTransformer)
+	require.Equal(t, tp.config.BaseURL, hreq.Metadata[shared.MetadataKeyBaseURL])
+	require.Equal(t, "channel-1", hreq.Metadata[shared.MetadataKeyAccountIdentity])
 }
 
 func TestOutboundTransformer_ErrorHandling(t *testing.T) {
@@ -669,14 +696,7 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 					},
 					Tools: []llm.Tool{
 						{
-							Type: "function",
-							Function: llm.Function{
-								Name:        "web_search",
-								Description: "Search the web for information",
-								Parameters: json.RawMessage(
-									`{"type": "object", "properties": {"query": {"type": "string"}}}`,
-								),
-							},
+							Type: llm.ToolTypeWebSearch,
 						},
 					},
 				},
@@ -741,10 +761,12 @@ func TestOutboundTransformer_ToolUse(t *testing.T) {
 
 					err := json.Unmarshal(result.Body, &anthropicReq)
 					require.NoError(t, err)
-					// Note: Tool choice is not directly supported in current implementation
-					// but should not cause errors
 					require.NotNil(t, anthropicReq.Tools)
 					require.Len(t, anthropicReq.Tools, 1)
+					require.NotNil(t, anthropicReq.ToolChoice)
+					require.Equal(t, "tool", anthropicReq.ToolChoice.Type)
+					require.NotNil(t, anthropicReq.ToolChoice.Name)
+					require.Equal(t, "calculator", *anthropicReq.ToolChoice.Name)
 
 					// Verify beta header is NOT set for regular function tools
 					require.Empty(t, result.Headers.Get("Anthropic-Beta"))
@@ -1012,9 +1034,9 @@ func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				err = xtest.LoadTestData(t, tt.expectedFile, &expectedReq)
 				require.NoError(t, err)
 
-				// Verify the transformed request matches the expected request
-				if !xtest.Equal(expectedReq, gotReq) {
-					t.Fatalf("requests are not equal %s", cmp.Diff(expectedReq, gotReq))
+				// 忽略 cache_control 差异：ensureCacheControl 会在 outbound 路径中自动注入断点。
+				if !xtest.Equal(expectedReq, gotReq, ignoreCacheControlWithNormalize...) {
+					t.Fatalf("requests are not equal %s", cmp.Diff(expectedReq, gotReq, ignoreCacheControlWithNormalize...))
 				}
 			}
 		})
@@ -1039,11 +1061,7 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 			},
 			Tools: []llm.Tool{
 				{
-					Type: "function",
-					Function: llm.Function{
-						Name:        "web_search",
-						Description: "Search the web",
-					},
+					Type: llm.ToolTypeWebSearch,
 				},
 			},
 		}
@@ -1070,17 +1088,17 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 			},
 			Tools: []llm.Tool{
 				{
-					Type: llm.ToolTypeAnthropicWebSearch, // Already transformed type
+					Type: llm.ToolTypeWebSearch,
 				},
 			},
 		}
 
 		result, err := transformer.TransformRequest(t.Context(), chatReq)
 		require.NoError(t, err)
-		// Should still set Beta header for already-transformed tool type
+		// Should set Beta header for web_search tool type
 		require.Equal(t, "web-search-2025-03-05", result.Headers.Get("Anthropic-Beta"))
 
-		// Verify tool is passed through correctly
+		// Verify tool is converted correctly
 		var anthropicReq MessageRequest
 
 		err = json.Unmarshal(result.Body, &anthropicReq)
@@ -1145,11 +1163,7 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 					},
 				},
 				{
-					Type: "function",
-					Function: llm.Function{
-						Name:        "web_search",
-						Description: "Search the web",
-					},
+					Type: llm.ToolTypeWebSearch,
 				},
 			},
 		}
@@ -1181,42 +1195,19 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 	})
 }
 
-func TestOutboundTransformer_RawURL(t *testing.T) {
+func TestOutboundTransformer_NativeToolFiltering(t *testing.T) {
 	tests := []struct {
-		name           string
-		config         *Config
-		request        *llm.Request
-		expectedURL    string
-		expectedRawURL bool
+		name              string
+		config            *Config
+		request           *llm.Request
+		expectedToolCount int
+		expectedToolNames []string
 	}{
 		{
-			name: "raw URL enabled with Config",
+			name: "Direct platform preserves native tools",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom.api.com/v1",
-				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-				RawURL:  true,
-			},
-			request: &llm.Request{
-				Model:     "claude-3-sonnet-20240229",
-				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
-						},
-					},
-				},
-			},
-			expectedURL:    "https://custom.api.com/v1/messages",
-			expectedRawURL: true,
-		},
-		{
-			name: "raw URL auto-enabled with # suffix",
-			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom.api.com/v100#",
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1226,19 +1217,31 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 					{
 						Role: "user",
 						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+					},
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "calculator",
+							Description: "Perform calculations",
 						},
 					},
 				},
 			},
-			expectedURL:    "https://custom.api.com/v100/messages",
-			expectedRawURL: true,
+			expectedToolCount: 2,
+			expectedToolNames: []string{"web_search", "calculator"},
 		},
 		{
-			name: "raw URL with full path",
+			name: "Bedrock platform preserves native tools",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom.api.com/v1/messages#",
+				Type:           PlatformBedrock,
+				BaseURL:        "https://bedrock-runtime.us-east-1.amazonaws.com",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1248,110 +1251,65 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 					{
 						Role: "user",
 						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+					},
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "calculator",
+							Description: "Perform calculations",
 						},
 					},
 				},
 			},
-			expectedURL:    "https://custom.api.com/v1/messages/messages",
-			expectedRawURL: true,
+			expectedToolCount: 2,
+			expectedToolNames: []string{"web_search", "calculator"},
 		},
 		{
-			name: "raw URL false with standard URL",
+			name: "ClaudeCode platform preserves native tools",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://api.anthropic.com",
+				Type:           PlatformClaudeCode,
+				BaseURL:        "https://api.anthropic.com",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-				RawURL:  false,
 			},
 			request: &llm.Request{
-				Model:     "claude-3-sonnet-20240229",
+				Model:     "claude-sonnet-4-20250514",
 				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
 				Messages: []llm.Message{
 					{
 						Role: "user",
 						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
+							Content: func() *string { s := "Hello"; return &s }(),
 						},
 					},
 				},
-			},
-			expectedURL:    "https://api.anthropic.com/v1/messages",
-			expectedRawURL: false,
-		},
-		{
-			name: "raw URL false with v1 already in URL",
-			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://api.anthropic.com/v1",
-				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-				RawURL:  false,
-			},
-			request: &llm.Request{
-				Model:     "claude-3-sonnet-20240229",
-				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.Message{
+				Tools: []llm.Tool{
 					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
-						},
+						Type: llm.ToolTypeWebSearch,
 					},
-				},
-			},
-			expectedURL:    "https://api.anthropic.com/v1/messages",
-			expectedRawURL: false,
-		},
-		{
-			name: "raw URL with custom endpoint without version",
-			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom-endpoint.com/api/llm#",
-				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-			},
-			request: &llm.Request{
-				Model:     "claude-3-sonnet-20240229",
-				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.Message{
 					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
+						Type: "function",
+						Function: llm.Function{
+							Name:        "calculator",
+							Description: "Perform calculations",
 						},
 					},
 				},
 			},
-			expectedURL:    "https://custom-endpoint.com/api/llm/messages",
-			expectedRawURL: true,
+			expectedToolCount: 2,
+			expectedToolNames: []string{"web_search", "calculator"},
 		},
 		{
-			name: "raw URL with streaming enabled",
+			name: "DeepSeek platform filters native tools",
 			config: &Config{
-				Type:    PlatformDirect,
-				BaseURL: "https://custom.api.com/v1#",
-				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
-			},
-			request: &llm.Request{
-				Model:     "claude-3-sonnet-20240229",
-				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
-				Messages: []llm.Message{
-					{
-						Role: "user",
-						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
-						},
-					},
-				},
-				Stream: func() *bool { v := true; return &v }(),
-			},
-			expectedURL:    "https://custom.api.com/v1/messages",
-			expectedRawURL: true,
-		},
-		{
-			name: "raw URL with DeepSeek platform",
-			config: &Config{
-				Type:    PlatformDeepSeek,
-				BaseURL: "https://api.deepseek.com/v1#",
+				Type:           PlatformDeepSeek,
+				BaseURL:        "https://api.deepseek.com",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1361,19 +1319,31 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 					{
 						Role: "user",
 						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: ToolTypeWebSearch20250305,
+					},
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "calculator",
+							Description: "Perform calculations",
 						},
 					},
 				},
 			},
-			expectedURL:    "https://api.deepseek.com/v1/messages",
-			expectedRawURL: true,
+			expectedToolCount: 1,
+			expectedToolNames: []string{"calculator"},
 		},
 		{
-			name: "raw URL with Doubao platform",
+			name: "Doubao platform filters native tools",
 			config: &Config{
-				Type:    PlatformDoubao,
-				BaseURL: "https://ark.cn-beijing.volces.com/v20#",
+				Type:           PlatformDoubao,
+				BaseURL:        "https://ark.cn-beijing.volces.com",
 				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 			},
 			request: &llm.Request{
@@ -1383,37 +1353,381 @@ func TestOutboundTransformer_RawURL(t *testing.T) {
 					{
 						Role: "user",
 						Content: llm.MessageContent{
-							Content: func() *string { s := "Hello, world!"; return &s }(),
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: ToolTypeWebSearch20250305,
+					},
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "get_weather",
+							Description: "Get weather info",
 						},
 					},
 				},
 			},
-			expectedURL:    "https://ark.cn-beijing.volces.com/v20/messages",
-			expectedRawURL: true,
+			expectedToolCount: 1,
+			expectedToolNames: []string{"get_weather"},
+		},
+		{
+			name: "Non-direct platform with only native tools results in empty tools",
+			config: &Config{
+				Type:           PlatformDeepSeek,
+				BaseURL:        "https://api.deepseek.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model:     "deepseek-chat",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: ToolTypeWebSearch20250305,
+					},
+				},
+			},
+			expectedToolCount: 0,
+			expectedToolNames: []string{},
+		},
+		{
+			name: "Direct platform with llm.ToolTypeWebSearch type converts to native tool",
+			config: &Config{
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Search for AI news"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+						WebSearch: &llm.WebSearch{
+							MaxUses: func() *int64 { v := int64(5); return &v }(),
+						},
+					},
+				},
+			},
+			expectedToolCount: 1,
+			expectedToolNames: []string{"web_search"},
+		},
+		{
+			name: "Direct platform ignores image_generation native tool",
+			config: &Config{
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Generate an image"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeImageGeneration,
+					},
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "calculator",
+							Description: "Perform calculations",
+						},
+					},
+				},
+			},
+			expectedToolCount: 1,
+			expectedToolNames: []string{"calculator"},
+		},
+		{
+			name: "Direct platform ignores Google native tools",
+			config: &Config{
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Search Google"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeGoogleSearch,
+					},
+					{
+						Type: llm.ToolTypeGoogleCodeExecution,
+					},
+					{
+						Type: llm.ToolTypeGoogleUrlContext,
+					},
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "calculator",
+							Description: "Perform calculations",
+						},
+					},
+				},
+			},
+			expectedToolCount: 1,
+			expectedToolNames: []string{"calculator"},
+		},
+		{
+			name: "Mixed tools with web_search type and other native tools - only web_search converted",
+			config: &Config{
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Search and calculate"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+					},
+					{
+						Type: llm.ToolTypeImageGeneration,
+					},
+					{
+						Type: llm.ToolTypeGoogleSearch,
+					},
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "calculator",
+							Description: "Perform calculations",
+						},
+					},
+				},
+			},
+			expectedToolCount: 2,
+			expectedToolNames: []string{"web_search", "calculator"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformerInterface, err := NewOutboundTransformerWithConfig(tt.config)
-			if err != nil {
-				t.Fatalf("Failed to create transformer: %v", err)
-			}
-
-			transformer := transformerInterface.(*OutboundTransformer)
-
-			if transformer.config.RawURL != tt.expectedRawURL {
-				t.Errorf("Expected RawURL to be %v, got %v", tt.expectedRawURL, transformer.config.RawURL)
-			}
+			transformer, err := NewOutboundTransformerWithConfig(tt.config)
+			require.NoError(t, err)
 
 			result, err := transformer.TransformRequest(t.Context(), tt.request)
-			if err != nil {
-				t.Fatalf("TransformRequest() unexpected error = %v", err)
-			}
+			require.NoError(t, err)
+			require.NotNil(t, result)
 
-			if result.URL != tt.expectedURL {
-				t.Errorf("Expected URL %s, got %s", tt.expectedURL, result.URL)
+			var anthropicReq MessageRequest
+
+			err = json.Unmarshal(result.Body, &anthropicReq)
+			require.NoError(t, err)
+
+			if tt.expectedToolCount == 0 {
+				require.Nil(t, anthropicReq.Tools)
+			} else {
+				require.NotNil(t, anthropicReq.Tools)
+				require.Len(t, anthropicReq.Tools, tt.expectedToolCount)
+
+				actualNames := make([]string, len(anthropicReq.Tools))
+				for i, tool := range anthropicReq.Tools {
+					actualNames[i] = tool.Name
+				}
+
+				require.Equal(t, tt.expectedToolNames, actualNames)
 			}
+		})
+	}
+}
+
+func TestOutboundTransformer_WebSearchParameters(t *testing.T) {
+	tests := []struct {
+		name         string
+		config       *Config
+		request      *llm.Request
+		validateTool func(t *testing.T, tool Tool)
+	}{
+		{
+			name: "web_search with all parameters",
+			config: &Config{
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Search for local news"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+						WebSearch: &llm.WebSearch{
+							MaxUses:        lo.ToPtr(int64(10)),
+							Strict:         lo.ToPtr(true),
+							AllowedDomains: []string{"example.com", "test.org"},
+							BlockedDomains: []string{"blocked.com"},
+							UserLocation: llm.WebSearchToolUserLocation{
+								City:     "San Francisco",
+								Country:  "US",
+								Region:   "California",
+								Timezone: "America/Los_Angeles",
+								Type:     "approximate",
+							},
+						},
+					},
+				},
+			},
+			validateTool: func(t *testing.T, tool Tool) {
+				t.Helper()
+				require.Equal(t, ToolTypeWebSearch20250305, tool.Type)
+				require.Equal(t, WebSearchFunctionName, tool.Name)
+				require.NotNil(t, tool.MaxUses)
+				require.Equal(t, int64(10), *tool.MaxUses)
+				require.NotNil(t, tool.Strict)
+				require.Equal(t, true, *tool.Strict)
+				require.Equal(t, []string{"example.com", "test.org"}, tool.AllowedDomains)
+				require.Equal(t, []string{"blocked.com"}, tool.BlockedDomains)
+				require.Equal(t, "San Francisco", tool.UserLocation.City)
+				require.Equal(t, "US", tool.UserLocation.Country)
+				require.Equal(t, "California", tool.UserLocation.Region)
+				require.Equal(t, "America/Los_Angeles", tool.UserLocation.Timezone)
+				require.Equal(t, "approximate", tool.UserLocation.Type)
+			},
+		},
+		{
+			name: "web_search with partial parameters",
+			config: &Config{
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Search for news"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+						WebSearch: &llm.WebSearch{
+							MaxUses: lo.ToPtr(int64(5)),
+						},
+					},
+				},
+			},
+			validateTool: func(t *testing.T, tool Tool) {
+				t.Helper()
+				require.Equal(t, ToolTypeWebSearch20250305, tool.Type)
+				require.Equal(t, WebSearchFunctionName, tool.Name)
+				require.NotNil(t, tool.MaxUses)
+				require.Equal(t, int64(5), *tool.MaxUses)
+				require.Nil(t, tool.Strict)
+				require.Empty(t, tool.AllowedDomains)
+				require.Empty(t, tool.BlockedDomains)
+			},
+		},
+		{
+			name: "web_search with no parameters",
+			config: &Config{
+				Type:           PlatformDirect,
+				BaseURL:        "https://api.anthropic.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			},
+			request: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Search for news"; return &s }(),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type:      llm.ToolTypeWebSearch,
+						WebSearch: &llm.WebSearch{},
+					},
+				},
+			},
+			validateTool: func(t *testing.T, tool Tool) {
+				t.Helper()
+				require.Equal(t, ToolTypeWebSearch20250305, tool.Type)
+				require.Equal(t, WebSearchFunctionName, tool.Name)
+				require.Nil(t, tool.MaxUses)
+				require.Nil(t, tool.Strict)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformer, err := NewOutboundTransformerWithConfig(tt.config)
+			require.NoError(t, err)
+
+			result, err := transformer.TransformRequest(t.Context(), tt.request)
+			require.NoError(t, err)
+			require.NotNil(t, result)
+
+			var anthropicReq MessageRequest
+
+			err = json.Unmarshal(result.Body, &anthropicReq)
+			require.NoError(t, err)
+			require.NotNil(t, anthropicReq.Tools)
+			require.Len(t, anthropicReq.Tools, 1)
+
+			tt.validateTool(t, anthropicReq.Tools[0])
 		})
 	}
 }

@@ -149,6 +149,52 @@ func TestIsNewerVersion(t *testing.T) {
 	}
 }
 
+func TestIsAxonHubTag(t *testing.T) {
+	tests := []struct {
+		name string
+		tag  string
+		want bool
+	}{
+		{
+			name: "standard axonhub tag",
+			tag:  "v1.0.0",
+			want: true,
+		},
+		{
+			name: "axonhub prerelease tag",
+			tag:  "v1.0.0-beta",
+			want: true,
+		},
+		{
+			name: "axonclaw prefixed tag",
+			tag:  "axonclaw/v1.0.0",
+			want: false,
+		},
+		{
+			name: "other service prefixed tag",
+			tag:  "other-service/v2.0.0",
+			want: false,
+		},
+		{
+			name: "empty tag",
+			tag:  "",
+			want: false,
+		},
+		{
+			name: "non-version tag",
+			tag:  "release-2024",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isAxonHubTag(tt.tag)
+			require.Equal(t, tt.want, got, "isAxonHubTag(%q) = %v, want %v", tt.tag, got, tt.want)
+		})
+	}
+}
+
 func TestIsPreReleaseTag(t *testing.T) {
 	tests := []struct {
 		name string

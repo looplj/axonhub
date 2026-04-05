@@ -16,6 +16,7 @@ type PersistenceState struct {
 	UsageLogService     *biz.UsageLogService
 	ChannelService      *biz.ChannelService
 	PromptProvider      PromptProvider
+	PromptProtecter     PromptProtecter
 	RetryPolicyProvider RetryPolicyProvider
 	CandidateSelector   CandidateSelector
 	LoadBalancer        *LoadBalancer
@@ -45,4 +46,10 @@ type PersistenceState struct {
 
 	// Perf is the performance record for the current request.
 	Perf *biz.PerformanceRecord
+
+	// StreamCompleted tracks whether the stream has response successfully completed.
+	// This is used to distinguish between a stream that was canceled mid-way
+	// versus a stream that completed successfully but the client disconnected
+	// immediately after receiving the last chunk.
+	StreamCompleted bool
 }

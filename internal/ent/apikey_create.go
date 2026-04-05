@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -165,6 +166,25 @@ func (_c *APIKeyCreate) AddRequests(v ...*Request) *APIKeyCreate {
 	return _c.AddRequestIDs(ids...)
 }
 
+// SetAgentInstanceID sets the "agent_instance" edge to the AgentInstance entity by ID.
+func (_c *APIKeyCreate) SetAgentInstanceID(id int) *APIKeyCreate {
+	_c.mutation.SetAgentInstanceID(id)
+	return _c
+}
+
+// SetNillableAgentInstanceID sets the "agent_instance" edge to the AgentInstance entity by ID if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableAgentInstanceID(id *int) *APIKeyCreate {
+	if id != nil {
+		_c = _c.SetAgentInstanceID(*id)
+	}
+	return _c
+}
+
+// SetAgentInstance sets the "agent_instance" edge to the AgentInstance entity.
+func (_c *APIKeyCreate) SetAgentInstance(v *AgentInstance) *APIKeyCreate {
+	return _c.SetAgentInstanceID(v.ID)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_c *APIKeyCreate) Mutation() *APIKeyMutation {
 	return _c.mutation
@@ -245,12 +265,6 @@ func (_c *APIKeyCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *APIKeyCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "APIKey.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "APIKey.updated_at"`)}
-	}
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "APIKey.deleted_at"`)}
 	}
@@ -394,6 +408,22 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.AgentInstanceIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   apikey.AgentInstanceTable,
+			Columns: []string{apikey.AgentInstanceColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentinstance.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

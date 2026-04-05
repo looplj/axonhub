@@ -25,7 +25,8 @@ function groupTypesByPrefix(typeCounts: ChannelTypeCount[]): GroupedTypeCount[] 
 
   typeCounts.forEach(({ type, count }) => {
     // Find the base prefix (before the first underscore or the whole string)
-    const prefix = type.split('_')[0];
+    // For search_* types, don't group by "search" (it isn't a real channel type in configs/i18n).
+    const prefix = type.startsWith('search_') ? type : type.split('_')[0];
 
     if (!groups.has(prefix)) {
       groups.set(prefix, { types: [], totalCount: 0 });
@@ -70,8 +71,11 @@ export const ChannelsTypeTabs = memo(function ChannelsTypeTabs({ typeCounts, sel
   };
 
   return (
-    <div className='mb-6 w-full'>
-      <div className='hide-scroll flex items-center gap-2 overflow-x-auto overflow-y-hidden scroll-smooth'>
+    <div className='mb-6 w-full overflow-hidden'>
+      <div
+        className='hide-scroll flex flex-nowrap items-center gap-2 overflow-x-auto scroll-smooth'
+        onWheel={(e) => { e.currentTarget.scrollLeft += e.deltaY; }}
+      >
         {/* All tab */}
         <button
           onClick={() => onTabChange('all')}

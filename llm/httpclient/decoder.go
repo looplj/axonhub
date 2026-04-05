@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"sync"
 
 	"github.com/tmaxmax/go-sse"
-
-	"github.com/looplj/axonhub/internal/log"
 )
 
 // decoderRegistry holds registered stream decoders.
@@ -63,6 +62,11 @@ type defaultSSEDecoder struct {
 	sseStream *sse.Stream
 	current   *StreamEvent
 	err       error
+
+	// NOT concurrency-safe: do not call Next/Close from multiple goroutines.
+	// Close is made idempotent (safe to call multiple times sequentially).
+	closed   bool
+	closeErr error
 }
 
 // Next advances to the next event in the stream.
@@ -71,10 +75,14 @@ func (s *defaultSSEDecoder) Next() bool {
 		return false
 	}
 
+	if s.closed {
+		return false
+	}
+
 	// Check context cancellation
 	select {
 	case <-s.ctx.Done():
-		log.Debug(s.ctx, "SSE stream closed")
+		slog.DebugContext(s.ctx, "SSE stream closed")
 
 		s.err = s.ctx.Err()
 		_ = s.Close()
@@ -87,7 +95,7 @@ func (s *defaultSSEDecoder) Next() bool {
 	event, err := s.sseStream.Recv()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			log.Debug(s.ctx, "SSE stream closed")
+			slog.DebugContext(s.ctx, "SSE stream closed")
 			_ = s.Close()
 
 			return false
@@ -99,7 +107,7 @@ func (s *defaultSSEDecoder) Next() bool {
 		return false
 	}
 
-	log.Debug(s.ctx, "SSE event received", log.Any("event", event))
+	slog.DebugContext(s.ctx, "SSE event received", slog.Any("event", event))
 
 	// Create stream event for this event
 	s.current = &StreamEvent{
@@ -123,14 +131,18 @@ func (s *defaultSSEDecoder) Err() error {
 
 // Close closes the stream and releases resources.
 func (s *defaultSSEDecoder) Close() error {
-	if s.sseStream != nil {
-		err := s.sseStream.Close()
-		log.Debug(s.ctx, "SSE stream closed")
-
-		return err
+	// NOT concurrency-safe: callers must not call Close concurrently with Next.
+	if s.closed {
+		return s.closeErr
 	}
 
-	return nil
+	s.closed = true
+	if s.sseStream != nil {
+		s.closeErr = s.sseStream.Close()
+		slog.DebugContext(s.ctx, "SSE stream closed")
+	}
+
+	return s.closeErr
 }
 
 // init registers the default SSE decoder.

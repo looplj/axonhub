@@ -14,6 +14,22 @@ type Tx struct {
 	config
 	// APIKey is the client for interacting with the APIKey builders.
 	APIKey *APIKeyClient
+	// Agent is the client for interacting with the Agent builders.
+	Agent *AgentClient
+	// AgentHost is the client for interacting with the AgentHost builders.
+	AgentHost *AgentHostClient
+	// AgentInstance is the client for interacting with the AgentInstance builders.
+	AgentInstance *AgentInstanceClient
+	// AgentMemory is the client for interacting with the AgentMemory builders.
+	AgentMemory *AgentMemoryClient
+	// AgentMessage is the client for interacting with the AgentMessage builders.
+	AgentMessage *AgentMessageClient
+	// AgentSkill is the client for interacting with the AgentSkill builders.
+	AgentSkill *AgentSkillClient
+	// AgentThread is the client for interacting with the AgentThread builders.
+	AgentThread *AgentThreadClient
+	// AgentTool is the client for interacting with the AgentTool builders.
+	AgentTool *AgentToolClient
 	// Channel is the client for interacting with the Channel builders.
 	Channel *ChannelClient
 	// ChannelModelPrice is the client for interacting with the ChannelModelPrice builders.
@@ -26,12 +42,22 @@ type Tx struct {
 	ChannelProbe *ChannelProbeClient
 	// DataStorage is the client for interacting with the DataStorage builders.
 	DataStorage *DataStorageClient
+	// MessageChannel is the client for interacting with the MessageChannel builders.
+	MessageChannel *MessageChannelClient
+	// MessageChannelAgentInstance is the client for interacting with the MessageChannelAgentInstance builders.
+	MessageChannelAgentInstance *MessageChannelAgentInstanceClient
+	// MessageChannelBindingRequest is the client for interacting with the MessageChannelBindingRequest builders.
+	MessageChannelBindingRequest *MessageChannelBindingRequestClient
 	// Model is the client for interacting with the Model builders.
 	Model *ModelClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
 	// Prompt is the client for interacting with the Prompt builders.
 	Prompt *PromptClient
+	// PromptProtectionRule is the client for interacting with the PromptProtectionRule builders.
+	PromptProtectionRule *PromptProtectionRuleClient
+	// PromptVersion is the client for interacting with the PromptVersion builders.
+	PromptVersion *PromptVersionClient
 	// ProviderQuotaStatus is the client for interacting with the ProviderQuotaStatus builders.
 	ProviderQuotaStatus *ProviderQuotaStatusClient
 	// Request is the client for interacting with the Request builders.
@@ -40,10 +66,14 @@ type Tx struct {
 	RequestExecution *RequestExecutionClient
 	// Role is the client for interacting with the Role builders.
 	Role *RoleClient
+	// Skill is the client for interacting with the Skill builders.
+	Skill *SkillClient
 	// System is the client for interacting with the System builders.
 	System *SystemClient
 	// Thread is the client for interacting with the Thread builders.
 	Thread *ThreadClient
+	// Tool is the client for interacting with the Tool builders.
+	Tool *ToolClient
 	// Trace is the client for interacting with the Trace builders.
 	Trace *TraceClient
 	// UsageLog is the client for interacting with the UsageLog builders.
@@ -186,21 +216,36 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.APIKey = NewAPIKeyClient(tx.config)
+	tx.Agent = NewAgentClient(tx.config)
+	tx.AgentHost = NewAgentHostClient(tx.config)
+	tx.AgentInstance = NewAgentInstanceClient(tx.config)
+	tx.AgentMemory = NewAgentMemoryClient(tx.config)
+	tx.AgentMessage = NewAgentMessageClient(tx.config)
+	tx.AgentSkill = NewAgentSkillClient(tx.config)
+	tx.AgentThread = NewAgentThreadClient(tx.config)
+	tx.AgentTool = NewAgentToolClient(tx.config)
 	tx.Channel = NewChannelClient(tx.config)
 	tx.ChannelModelPrice = NewChannelModelPriceClient(tx.config)
 	tx.ChannelModelPriceVersion = NewChannelModelPriceVersionClient(tx.config)
 	tx.ChannelOverrideTemplate = NewChannelOverrideTemplateClient(tx.config)
 	tx.ChannelProbe = NewChannelProbeClient(tx.config)
 	tx.DataStorage = NewDataStorageClient(tx.config)
+	tx.MessageChannel = NewMessageChannelClient(tx.config)
+	tx.MessageChannelAgentInstance = NewMessageChannelAgentInstanceClient(tx.config)
+	tx.MessageChannelBindingRequest = NewMessageChannelBindingRequestClient(tx.config)
 	tx.Model = NewModelClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.Prompt = NewPromptClient(tx.config)
+	tx.PromptProtectionRule = NewPromptProtectionRuleClient(tx.config)
+	tx.PromptVersion = NewPromptVersionClient(tx.config)
 	tx.ProviderQuotaStatus = NewProviderQuotaStatusClient(tx.config)
 	tx.Request = NewRequestClient(tx.config)
 	tx.RequestExecution = NewRequestExecutionClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
+	tx.Skill = NewSkillClient(tx.config)
 	tx.System = NewSystemClient(tx.config)
 	tx.Thread = NewThreadClient(tx.config)
+	tx.Tool = NewToolClient(tx.config)
 	tx.Trace = NewTraceClient(tx.config)
 	tx.UsageLog = NewUsageLogClient(tx.config)
 	tx.User = NewUserClient(tx.config)

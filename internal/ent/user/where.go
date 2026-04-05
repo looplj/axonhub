@@ -757,6 +757,98 @@ func HasChannelOverrideTemplatesWith(preds ...predicate.ChannelOverrideTemplate)
 	})
 }
 
+// HasPromptVersions applies the HasEdge predicate on the "prompt_versions" edge.
+func HasPromptVersions() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PromptVersionsTable, PromptVersionsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPromptVersionsWith applies the HasEdge predicate on the "prompt_versions" edge with a given conditions (other predicates).
+func HasPromptVersionsWith(preds ...predicate.PromptVersion) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newPromptVersionsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasAgents applies the HasEdge predicate on the "agents" edge.
+func HasAgents() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, AgentsTable, AgentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAgentsWith applies the HasEdge predicate on the "agents" edge with a given conditions (other predicates).
+func HasAgentsWith(preds ...predicate.Agent) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newAgentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasTools applies the HasEdge predicate on the "tools" edge.
+func HasTools() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ToolsTable, ToolsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasToolsWith applies the HasEdge predicate on the "tools" edge with a given conditions (other predicates).
+func HasToolsWith(preds ...predicate.Tool) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newToolsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasSkills applies the HasEdge predicate on the "skills" edge.
+func HasSkills() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, SkillsTable, SkillsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSkillsWith applies the HasEdge predicate on the "skills" edge with a given conditions (other predicates).
+func HasSkillsWith(preds ...predicate.Skill) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newSkillsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasProjectUsers applies the HasEdge predicate on the "project_users" edge.
 func HasProjectUsers() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

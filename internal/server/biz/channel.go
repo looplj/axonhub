@@ -12,7 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/watcher"
@@ -47,11 +47,11 @@ type Channel struct {
 	startTokenProvider func()
 	stopTokenProvider  func()
 
-	// cachedOverrideParams stores the parsed override parameters to avoid repeated JSON parsing
-	cachedOverrideParams map[string]any
+	// cachedOverrideOps stores the parsed override operations to avoid repeated JSON parsing
+	cachedOverrideOps []objects.OverrideOperation
 
 	// cachedOverrideHeaders stores the parsed override headers to avoid repeated JSON parsing
-	cachedOverrideHeaders []objects.HeaderEntry
+	cachedOverrideHeaders []objects.OverrideOperation
 
 	// cachedModelEntries caches GetModelEntries results
 	// RequestModel -> Entry
@@ -60,6 +60,12 @@ type Channel struct {
 	// cachedModelPrices caches model prices per request model id
 	// RequestModel -> ChannelModelPrice entity (contains Price and ReferenceID)
 	cachedModelPrices map[string]*ent.ChannelModelPrice
+
+	// cachedEnabledAPIKeys caches enabled API keys (computed once when channel is loaded)
+	cachedEnabledAPIKeys []string
+
+	// cachedDisabledKeySet caches disabled key lookup set for O(1) check
+	cachedDisabledKeySet map[string]struct{}
 }
 
 type ChannelServiceParams struct {
@@ -69,6 +75,7 @@ type ChannelServiceParams struct {
 	Executor      executors.ScheduledExecutor
 	Ent           *ent.Client
 	SystemService *SystemService
+	HttpClient    *httpclient.HttpClient
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
@@ -78,16 +85,13 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		},
 		Executors:          params.Executor,
 		SystemService:      params.SystemService,
+		httpClient:         params.HttpClient,
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
+		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
 	}
-
-	// Load channel performance metrics after channels are loaded
-	if err := svc.LoadChannelPerformances(context.Background()); err != nil {
-		log.Error(context.Background(), "failed to load channel performances", log.Cause(err))
-		// Continue loading channels even if metrics loading fails
-	}
+	svc.initChannelPerformances(context.Background())
 
 	watcherMode := params.CacheConfig.Mode
 	if watcherMode == "" {
@@ -112,22 +116,17 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	svc.channelNotifier = notifier
 
 	svc.enabledChannelsCache = live.NewCache(live.Options[[]*Channel]{
-		Name:            "enabled_channels",
+		Name:            "axonhub:enabled_channels",
 		InitialValue:    []*Channel{},
 		RefreshInterval: time.Minute,
-		RefreshFunc:     svc.refreshEnabledChannels,
+		RefreshFunc:     svc.onCacheRefreshed,
 		OnSwap:          svc.onEnabledChannelsSwap,
 		Watcher:         svc.channelNotifier,
 	})
 	xerrors.NoErr(svc.enabledChannelsCache.Load(context.Background(), true))
 
 	// Schedule model sync every hour
-	xerrors.NoErr2(
-		svc.Executors.ScheduleFuncAtCronRate(
-			svc.syncChannelModels,
-			executors.CRONRule{Expr: "11 * * * *"},
-		),
-	)
+	xerrors.NoErr2(svc.Executors.ScheduleFuncAtCronRate(svc.runSyncChannelModelsPeriodically, executors.CRONRule{Expr: "11 * * * *"}))
 
 	// Start performance metrics background flush
 	go svc.startPerformanceProcess()
@@ -144,6 +143,8 @@ type ChannelService struct {
 
 	Executors     executors.ScheduledExecutor
 	SystemService *SystemService
+
+	httpClient *httpclient.HttpClient
 
 	enabledChannelsCache *live.Cache[[]*Channel]
 	channelNotifier      watcher.Notifier[live.CacheEvent[struct{}]]
@@ -162,16 +163,24 @@ type ChannelService struct {
 	channelErrorCounts     map[int]map[int]int
 	channelErrorCountsLock sync.Mutex
 
+	// apiKeyErrorCounts stores the error counts for each API key and status code
+	// channelID -> apiKey -> statusCode -> count
+	apiKeyErrorCounts     map[int]map[string]map[int]int
+	apiKeyErrorCountsLock sync.Mutex
+
+	modelSyncMu sync.Mutex
+
+	lastModelSyncExecutionTime time.Time
+
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
 }
 
-func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
+func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
+	// Query latest updated channel including soft-deleted ones to detect deletions
 	latestUpdatedChannel, err := svc.entFromContext(ctx).Channel.Query().
 		Order(ent.Desc(channel.FieldUpdatedAt)).
-		First(ctx)
+		First(schematype.SkipSoftDelete(ctx))
 	if err != nil && !ent.IsNotFound(err) {
 		return current, lastUpdate, false, err
 	}
@@ -196,7 +205,7 @@ func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current [
 	var channels []*Channel
 
 	for _, c := range entities {
-		channel, err := svc.buildChannel(c)
+		channel, err := svc.buildChannelWithTransformer(c)
 		if err != nil {
 			log.Warn(ctx, "failed to build channel",
 				log.String("channel", c.Name),
@@ -208,7 +217,7 @@ func (svc *ChannelService) refreshEnabledChannels(ctx context.Context, current [
 		}
 
 		// Preload override parameters
-		overrideParams := channel.GetOverrideParameters()
+		overrideParams := channel.GetBodyOverrideOperations()
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "created outbound transformer",
 				log.String("channel", c.Name),
@@ -284,22 +293,21 @@ func (svc *ChannelService) SetEnabledChannelsForTest(channels []*Channel) {
 // GetChannel retrieves a specific channel by ID for testing purposes,
 // including disabled channels. This bypasses the normal enabled-only filtering.
 func (svc *ChannelService) GetChannel(ctx context.Context, channelID int) (*Channel, error) {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	// Get the channel entity from database (including disabled ones)
 	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	return svc.buildChannel(entity)
+	return svc.buildChannelWithTransformer(entity)
 }
 
 // ListModelsInput represents the input for listing models with filters.
 type ListModelsInput struct {
-	StatusIn       []channel.Status
-	IncludeMapping bool
-	IncludePrefix  bool
+	StatusIn                []channel.Status
+	IncludeAllChannelModels bool
+	IncludeMapping          bool
+	IncludePrefix           bool
 }
 
 // ModelIdentityWithStatus represents a model with its status.
@@ -345,26 +353,36 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 	modelMap := make(map[string]channel.Status)
 
 	for _, ch := range channels {
-		// Add all supported models
-		for _, modelID := range ch.SupportedModels {
-			setModelStatus(modelMap, modelID, ch.Status)
-		}
+		if input.IncludeAllChannelModels {
+			// Use GetModelEntries to get all model entries (including mapping, prefix, auto_trim)
+			bizCh := &Channel{Channel: ch}
 
-		// Add model mappings if requested
-		if input.IncludeMapping && ch.Settings != nil {
-			for _, mapping := range ch.Settings.ModelMappings {
-				// Only add the mapping if the target model is supported
-				if slices.Contains(ch.SupportedModels, mapping.To) {
-					setModelStatus(modelMap, mapping.From, ch.Status)
+			entries := bizCh.GetModelEntries()
+			for requestModel := range entries {
+				setModelStatus(modelMap, requestModel, ch.Status)
+			}
+		} else {
+			// Add all supported models
+			for _, modelID := range ch.SupportedModels {
+				setModelStatus(modelMap, modelID, ch.Status)
+			}
+
+			// Add model mappings if requested
+			if input.IncludeMapping && ch.Settings != nil {
+				for _, mapping := range ch.Settings.ModelMappings {
+					// Only add the mapping if the target model is supported
+					if slices.Contains(ch.SupportedModels, mapping.To) {
+						setModelStatus(modelMap, mapping.From, ch.Status)
+					}
 				}
 			}
-		}
 
-		// Add models with extra prefix if requested
-		if input.IncludePrefix && ch.Settings != nil && ch.Settings.ExtraModelPrefix != "" {
-			for _, modelID := range ch.SupportedModels {
-				prefixedModel := ch.Settings.ExtraModelPrefix + "/" + modelID
-				setModelStatus(modelMap, prefixedModel, ch.Status)
+			// Add models with extra prefix if requested
+			if input.IncludePrefix && ch.Settings != nil && ch.Settings.ExtraModelPrefix != "" {
+				for _, modelID := range ch.SupportedModels {
+					prefixedModel := ch.Settings.ExtraModelPrefix + "/" + modelID
+					setModelStatus(modelMap, prefixedModel, ch.Status)
+				}
 			}
 		}
 	}
@@ -384,6 +402,20 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 // createChannel creates a new channel without triggering a reload.
 // This is useful for batch operations where reload should happen once at the end.
 func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	if input.Settings != nil {
+		if input.Settings.BodyOverrideOperations != nil {
+			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
+				return nil, fmt.Errorf("invalid body override operations: %w", err)
+			}
+		}
+
+		if input.Settings.HeaderOverrideOperations != nil {
+			if err := ValidateOverrideHeaders(input.Settings.HeaderOverrideOperations); err != nil {
+				return nil, fmt.Errorf("invalid header override operations: %w", err)
+			}
+		}
+	}
+
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
@@ -391,22 +423,23 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		SetName(input.Name).
 		SetCredentials(input.Credentials).
 		SetSupportedModels(input.SupportedModels).
+		SetManualModels(input.ManualModels).
 		SetDefaultTestModel(input.DefaultTestModel).
 		SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels).
+		SetNillableAutoSyncModelPattern(input.AutoSyncModelPattern).
 		SetSettings(input.Settings)
 
 	if input.Tags != nil {
 		createBuilder.SetTags(input.Tags)
 	}
 
+	if input.Policies != nil {
+		createBuilder.SetPolicies(*input.Policies)
+	}
+
 	channel, err := createBuilder.Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create channel: %w", err)
-	}
-
-	// Initialize ChannelPerformance record for the new channel
-	if err := svc.InitializeChannelPerformance(ctx, channel.ID); err != nil {
-		return nil, fmt.Errorf("failed to initialize channel performance record: %w", err)
 	}
 
 	return channel, nil
@@ -458,6 +491,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	mut := svc.entFromContext(ctx).Channel.UpdateOneID(id).
+		SetNillableType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableName(input.Name).
 		SetNillableDefaultTestModel(input.DefaultTestModel).
@@ -468,20 +502,25 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		mut.SetSupportedModels(input.SupportedModels)
 	}
 
+	if input.ManualModels != nil {
+		mut.SetManualModels(input.ManualModels)
+	}
+
 	if input.Tags != nil {
 		mut.SetTags(input.Tags)
 	}
 
 	if input.Settings != nil {
-		// Always normalize and validate override parameters
-		input.Settings.OverrideParameters = NormalizeOverrideParameters(input.Settings.OverrideParameters)
-		if err := ValidateOverrideParameters(input.Settings.OverrideParameters); err != nil {
-			return nil, fmt.Errorf("invalid override parameters: %w", err)
+		// Always normalize and validate override settings.
+		if input.Settings.BodyOverrideOperations != nil {
+			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
+				return nil, fmt.Errorf("invalid body override operations: %w", err)
+			}
 		}
-		// Validate override headers
-		if len(input.Settings.OverrideHeaders) > 0 {
-			if err := ValidateOverrideHeaders(input.Settings.OverrideHeaders); err != nil {
-				return nil, fmt.Errorf("invalid override headers: %w", err)
+
+		if input.Settings.HeaderOverrideOperations != nil {
+			if err := ValidateOverrideHeaders(input.Settings.HeaderOverrideOperations); err != nil {
+				return nil, fmt.Errorf("invalid header override operations: %w", err)
 			}
 		}
 
@@ -502,6 +541,12 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 	if input.ClearRemark {
 		mut.ClearRemark()
+	}
+
+	if input.ClearAutoSyncModelPattern {
+		mut.ClearAutoSyncModelPattern()
+	} else if input.AutoSyncModelPattern != nil {
+		mut.SetAutoSyncModelPattern(*input.AutoSyncModelPattern)
 	}
 
 	if input.ClearErrorMessage {
@@ -540,24 +585,9 @@ func (svc *ChannelService) asyncReloadChannels() {
 		return
 	}
 
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Error(context.Background(), "panic in async reload channels", log.Any("panic", r))
-			}
-		}()
-
-		reloadCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := svc.channelNotifier.Notify(reloadCtx, live.NewForceRefreshEvent[struct{}]()); err != nil {
-			log.Warn(reloadCtx, "channel cache watcher notify failed", log.Cause(err))
-		}
-
-		if reloadErr := svc.enabledChannelsCache.Load(reloadCtx, true); reloadErr != nil {
-			log.Error(reloadCtx, "failed to reload channels after bulk update", log.Cause(reloadErr))
-		}
-	}()
+	if err := svc.channelNotifier.Notify(context.Background(), live.NewForceRefreshEvent[struct{}]()); err != nil {
+		log.Warn(context.Background(), "channel cache watcher notify failed", log.Cause(err))
+	}
 }
 
 // DeleteChannel deletes a channel by ID.
@@ -569,4 +599,15 @@ func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
 	svc.asyncReloadChannels()
 
 	return nil
+}
+
+// GetEnabledAPIKeys returns cached enabled API keys.
+func (c *Channel) GetEnabledAPIKeys() []string {
+	return c.cachedEnabledAPIKeys
+}
+
+// IsAPIKeyDisabled checks if a key is disabled (O(1) lookup).
+func (c *Channel) IsAPIKeyDisabled(key string) bool {
+	_, ok := c.cachedDisabledKeySet[key]
+	return ok
 }

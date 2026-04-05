@@ -58,20 +58,32 @@ type UserEdges struct {
 	Roles []*Role `json:"roles,omitempty"`
 	// ChannelOverrideTemplates holds the value of the channel_override_templates edge.
 	ChannelOverrideTemplates []*ChannelOverrideTemplate `json:"channel_override_templates,omitempty"`
+	// PromptVersions holds the value of the prompt_versions edge.
+	PromptVersions []*PromptVersion `json:"prompt_versions,omitempty"`
+	// Agents holds the value of the agents edge.
+	Agents []*Agent `json:"agents,omitempty"`
+	// Tools holds the value of the tools edge.
+	Tools []*Tool `json:"tools,omitempty"`
+	// Skills holds the value of the skills edge.
+	Skills []*Skill `json:"skills,omitempty"`
 	// ProjectUsers holds the value of the project_users edge.
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// UserRoles holds the value of the user_roles edge.
 	UserRoles []*UserRole `json:"user_roles,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [6]bool
+	loadedTypes [10]bool
 	// totalCount holds the count of the edges above.
-	totalCount [6]map[string]int
+	totalCount [10]map[string]int
 
 	namedProjects                 map[string][]*Project
 	namedAPIKeys                  map[string][]*APIKey
 	namedRoles                    map[string][]*Role
 	namedChannelOverrideTemplates map[string][]*ChannelOverrideTemplate
+	namedPromptVersions           map[string][]*PromptVersion
+	namedAgents                   map[string][]*Agent
+	namedTools                    map[string][]*Tool
+	namedSkills                   map[string][]*Skill
 	namedProjectUsers             map[string][]*UserProject
 	namedUserRoles                map[string][]*UserRole
 }
@@ -112,10 +124,46 @@ func (e UserEdges) ChannelOverrideTemplatesOrErr() ([]*ChannelOverrideTemplate, 
 	return nil, &NotLoadedError{edge: "channel_override_templates"}
 }
 
+// PromptVersionsOrErr returns the PromptVersions value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) PromptVersionsOrErr() ([]*PromptVersion, error) {
+	if e.loadedTypes[4] {
+		return e.PromptVersions, nil
+	}
+	return nil, &NotLoadedError{edge: "prompt_versions"}
+}
+
+// AgentsOrErr returns the Agents value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) AgentsOrErr() ([]*Agent, error) {
+	if e.loadedTypes[5] {
+		return e.Agents, nil
+	}
+	return nil, &NotLoadedError{edge: "agents"}
+}
+
+// ToolsOrErr returns the Tools value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ToolsOrErr() ([]*Tool, error) {
+	if e.loadedTypes[6] {
+		return e.Tools, nil
+	}
+	return nil, &NotLoadedError{edge: "tools"}
+}
+
+// SkillsOrErr returns the Skills value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) SkillsOrErr() ([]*Skill, error) {
+	if e.loadedTypes[7] {
+		return e.Skills, nil
+	}
+	return nil, &NotLoadedError{edge: "skills"}
+}
+
 // ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) ProjectUsersOrErr() ([]*UserProject, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[8] {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
@@ -124,7 +172,7 @@ func (e UserEdges) ProjectUsersOrErr() ([]*UserProject, error) {
 // UserRolesOrErr returns the UserRoles value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) UserRolesOrErr() ([]*UserRole, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[9] {
 		return e.UserRoles, nil
 	}
 	return nil, &NotLoadedError{edge: "user_roles"}
@@ -271,6 +319,26 @@ func (_m *User) QueryRoles() *RoleQuery {
 // QueryChannelOverrideTemplates queries the "channel_override_templates" edge of the User entity.
 func (_m *User) QueryChannelOverrideTemplates() *ChannelOverrideTemplateQuery {
 	return NewUserClient(_m.config).QueryChannelOverrideTemplates(_m)
+}
+
+// QueryPromptVersions queries the "prompt_versions" edge of the User entity.
+func (_m *User) QueryPromptVersions() *PromptVersionQuery {
+	return NewUserClient(_m.config).QueryPromptVersions(_m)
+}
+
+// QueryAgents queries the "agents" edge of the User entity.
+func (_m *User) QueryAgents() *AgentQuery {
+	return NewUserClient(_m.config).QueryAgents(_m)
+}
+
+// QueryTools queries the "tools" edge of the User entity.
+func (_m *User) QueryTools() *ToolQuery {
+	return NewUserClient(_m.config).QueryTools(_m)
+}
+
+// QuerySkills queries the "skills" edge of the User entity.
+func (_m *User) QuerySkills() *SkillQuery {
+	return NewUserClient(_m.config).QuerySkills(_m)
 }
 
 // QueryProjectUsers queries the "project_users" edge of the User entity.
@@ -437,6 +505,102 @@ func (_m *User) appendNamedChannelOverrideTemplates(name string, edges ...*Chann
 		_m.Edges.namedChannelOverrideTemplates[name] = []*ChannelOverrideTemplate{}
 	} else {
 		_m.Edges.namedChannelOverrideTemplates[name] = append(_m.Edges.namedChannelOverrideTemplates[name], edges...)
+	}
+}
+
+// NamedPromptVersions returns the PromptVersions named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedPromptVersions(name string) ([]*PromptVersion, error) {
+	if _m.Edges.namedPromptVersions == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedPromptVersions[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedPromptVersions(name string, edges ...*PromptVersion) {
+	if _m.Edges.namedPromptVersions == nil {
+		_m.Edges.namedPromptVersions = make(map[string][]*PromptVersion)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedPromptVersions[name] = []*PromptVersion{}
+	} else {
+		_m.Edges.namedPromptVersions[name] = append(_m.Edges.namedPromptVersions[name], edges...)
+	}
+}
+
+// NamedAgents returns the Agents named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedAgents(name string) ([]*Agent, error) {
+	if _m.Edges.namedAgents == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedAgents[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedAgents(name string, edges ...*Agent) {
+	if _m.Edges.namedAgents == nil {
+		_m.Edges.namedAgents = make(map[string][]*Agent)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedAgents[name] = []*Agent{}
+	} else {
+		_m.Edges.namedAgents[name] = append(_m.Edges.namedAgents[name], edges...)
+	}
+}
+
+// NamedTools returns the Tools named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedTools(name string) ([]*Tool, error) {
+	if _m.Edges.namedTools == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedTools[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedTools(name string, edges ...*Tool) {
+	if _m.Edges.namedTools == nil {
+		_m.Edges.namedTools = make(map[string][]*Tool)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedTools[name] = []*Tool{}
+	} else {
+		_m.Edges.namedTools[name] = append(_m.Edges.namedTools[name], edges...)
+	}
+}
+
+// NamedSkills returns the Skills named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedSkills(name string) ([]*Skill, error) {
+	if _m.Edges.namedSkills == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedSkills[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedSkills(name string, edges ...*Skill) {
+	if _m.Edges.namedSkills == nil {
+		_m.Edges.namedSkills = make(map[string][]*Skill)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedSkills[name] = []*Skill{}
+	} else {
+		_m.Edges.namedSkills[name] = append(_m.Edges.namedSkills[name], edges...)
 	}
 }
 

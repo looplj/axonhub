@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"net/url"
 	"strings"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
@@ -72,9 +72,9 @@ func (e *Executor) Do(ctx context.Context, request *httpclient.Request) (*httpcl
 	for _, endpoint := range allEndpoints {
 		if e.healthTracker.ShouldSkip(modelName, endpoint) {
 			skippedEndpoints = append(skippedEndpoints, endpoint)
-			log.Debug(ctx, "skipping endpoint in cooldown",
-				log.String("endpoint", endpoint),
-				log.String("model", modelName))
+			slog.DebugContext(ctx, "skipping endpoint in cooldown",
+				slog.String("endpoint", endpoint),
+				slog.String("model", modelName))
 		} else {
 			availableEndpoints = append(availableEndpoints, endpoint)
 		}
@@ -82,9 +82,9 @@ func (e *Executor) Do(ctx context.Context, request *httpclient.Request) (*httpcl
 
 	// If all endpoints are in cooldown, fail fast
 	if len(availableEndpoints) == 0 {
-		log.Warn(ctx, "all antigravity endpoints in cooldown, failing fast",
-			log.String("model", modelName),
-			log.Strings("skipped_endpoints", skippedEndpoints))
+		slog.WarnContext(ctx, "all antigravity endpoints in cooldown, failing fast",
+			slog.String("model", modelName),
+			slog.Any("skipped_endpoints", skippedEndpoints))
 
 		return nil, fmt.Errorf("all antigravity endpoints in cooldown for model %s", modelName)
 	}
@@ -98,11 +98,11 @@ func (e *Executor) Do(ctx context.Context, request *httpclient.Request) (*httpcl
 		// Clone the request and update the URL for this endpoint
 		reqCopy := e.cloneRequestForEndpoint(request, endpoint)
 
-		log.Debug(ctx, "attempting antigravity request",
-			log.String("endpoint", endpoint),
-			log.Int("attempt", i+1),
-			log.Int("available_endpoints", len(availableEndpoints)),
-			log.String("model", modelName),
+		slog.DebugContext(ctx, "attempting antigravity request",
+			slog.String("endpoint", endpoint),
+			slog.Int("attempt", i+1),
+			slog.Int("available_endpoints", len(availableEndpoints)),
+			slog.String("model", modelName),
 		)
 
 		resp, err := e.inner.Do(ctx, reqCopy)
@@ -112,9 +112,9 @@ func (e *Executor) Do(ctx context.Context, request *httpclient.Request) (*httpcl
 			e.healthTracker.RecordSuccess(modelName, endpoint)
 
 			if i > 0 {
-				log.Info(ctx, "antigravity request succeeded with fallback endpoint",
-					log.String("endpoint", endpoint),
-					log.Int("attempt", i+1),
+				slog.InfoContext(ctx, "antigravity request succeeded with fallback endpoint",
+					slog.String("endpoint", endpoint),
+					slog.Int("attempt", i+1),
 				)
 			}
 
@@ -138,10 +138,10 @@ func (e *Executor) Do(ctx context.Context, request *httpclient.Request) (*httpcl
 
 		if statusCode > 0 && ShouldRetryWithDifferentEndpoint(statusCode) {
 			e.healthTracker.RecordFailure(modelName, endpoint, statusCode)
-			log.Warn(ctx, "antigravity request failed, trying next endpoint",
-				log.String("current_endpoint", endpoint),
-				log.Int("status_code", statusCode),
-				log.Int("attempt", i+1),
+			slog.WarnContext(ctx, "antigravity request failed, trying next endpoint",
+				slog.String("current_endpoint", endpoint),
+				slog.Int("status_code", statusCode),
+				slog.Int("attempt", i+1),
 			)
 
 			continue
@@ -149,14 +149,14 @@ func (e *Executor) Do(ctx context.Context, request *httpclient.Request) (*httpcl
 
 		// Non-retryable error or network error - stop trying
 		if err != nil {
-			log.Warn(ctx, "antigravity request failed with network error",
-				log.String("endpoint", endpoint),
-				log.Cause(err),
+			slog.WarnContext(ctx, "antigravity request failed with network error",
+				slog.String("endpoint", endpoint),
+				slog.Any("error", err),
 			)
 		} else {
-			log.Debug(ctx, "antigravity request failed with non-retryable status",
-				log.String("endpoint", endpoint),
-				log.Int("status_code", resp.StatusCode),
+			slog.DebugContext(ctx, "antigravity request failed with non-retryable status",
+				slog.String("endpoint", endpoint),
+				slog.Int("status_code", resp.StatusCode),
 			)
 		}
 
@@ -166,11 +166,11 @@ func (e *Executor) Do(ctx context.Context, request *httpclient.Request) (*httpcl
 
 	// All available endpoints exhausted
 	if lastResp != nil {
-		log.Error(ctx, "all available antigravity endpoints exhausted",
-			log.Int("final_status", lastResp.StatusCode),
-			log.String("model", modelName),
-			log.Int("tried_endpoints", len(availableEndpoints)),
-			log.Int("skipped_endpoints", len(skippedEndpoints)),
+		slog.ErrorContext(ctx, "all available antigravity endpoints exhausted",
+			slog.Int("final_status", lastResp.StatusCode),
+			slog.String("model", modelName),
+			slog.Int("tried_endpoints", len(availableEndpoints)),
+			slog.Int("skipped_endpoints", len(skippedEndpoints)),
 		)
 
 		return lastResp, lastErr
@@ -196,9 +196,9 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 	for _, endpoint := range allEndpoints {
 		if e.healthTracker.ShouldSkip(modelName, endpoint) {
 			skippedEndpoints = append(skippedEndpoints, endpoint)
-			log.Debug(ctx, "skipping endpoint in cooldown for stream",
-				log.String("endpoint", endpoint),
-				log.String("model", modelName))
+			slog.DebugContext(ctx, "skipping endpoint in cooldown for stream",
+				slog.String("endpoint", endpoint),
+				slog.String("model", modelName))
 		} else {
 			availableEndpoints = append(availableEndpoints, endpoint)
 		}
@@ -206,9 +206,9 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 
 	// If all endpoints are in cooldown, fail fast
 	if len(availableEndpoints) == 0 {
-		log.Warn(ctx, "all antigravity endpoints in cooldown for stream, failing fast",
-			log.String("model", modelName),
-			log.Strings("skipped_endpoints", skippedEndpoints))
+		slog.WarnContext(ctx, "all antigravity endpoints in cooldown for stream, failing fast",
+			slog.String("model", modelName),
+			slog.Any("skipped_endpoints", skippedEndpoints))
 
 		return nil, fmt.Errorf("all antigravity endpoints in cooldown for model %s", modelName)
 	}
@@ -218,11 +218,11 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 	for i, endpoint := range availableEndpoints {
 		reqCopy := e.cloneRequestForEndpoint(request, endpoint)
 
-		log.Debug(ctx, "attempting antigravity stream request",
-			log.String("endpoint", endpoint),
-			log.Int("attempt", i+1),
-			log.Int("available_endpoints", len(availableEndpoints)),
-			log.String("model", modelName),
+		slog.DebugContext(ctx, "attempting antigravity stream request",
+			slog.String("endpoint", endpoint),
+			slog.Int("attempt", i+1),
+			slog.Int("available_endpoints", len(availableEndpoints)),
+			slog.String("model", modelName),
 		)
 
 		stream, err := e.inner.DoStream(ctx, reqCopy)
@@ -232,9 +232,9 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 			e.healthTracker.RecordSuccess(modelName, endpoint)
 
 			if i > 0 {
-				log.Info(ctx, "antigravity stream request succeeded with fallback endpoint",
-					log.String("endpoint", endpoint),
-					log.Int("attempt", i+1),
+				slog.InfoContext(ctx, "antigravity stream request succeeded with fallback endpoint",
+					slog.String("endpoint", endpoint),
+					slog.Int("attempt", i+1),
 				)
 			}
 
@@ -260,38 +260,34 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 		e.healthTracker.RecordFailure(modelName, endpoint, statusCode)
 
 		if statusCode > 0 && ShouldRetryWithDifferentEndpoint(statusCode) {
-			log.Warn(ctx, "antigravity stream request failed with retryable status, trying next endpoint",
-				log.String("current_endpoint", endpoint),
-				log.Int("status_code", statusCode),
-				log.Int("attempt", i+1),
+			slog.WarnContext(ctx, "antigravity stream request failed with retryable status, trying next endpoint",
+				slog.String("current_endpoint", endpoint),
+				slog.Int("status_code", statusCode),
+				slog.Int("attempt", i+1),
 			)
 			continue
 		}
 
-		// For other errors (network errors without status code), existing logic just logs and continues?
-		// The original code was:
-		// e.healthTracker.RecordFailure(modelName, endpoint, 0)
-		// log.Warn(ctx, "antigravity stream request failed, trying next endpoint", ...)
-		// It ALWAYS retried on error for streaming.
-		// Let's preserve that aggressive retry for streaming unless we KNOW it's non-retryable (e.g. 400 Bad Request)
+		// For other errors (network errors without status code), preserve aggressive retry for streaming
+		// unless we KNOW it's non-retryable (e.g. 400 Bad Request).
 
 		if statusCode > 0 && !ShouldRetryWithDifferentEndpoint(statusCode) {
 			// Non-retryable status code (e.g. 400), return error immediately
 			return nil, err
 		}
 
-		log.Warn(ctx, "antigravity stream request failed, trying next endpoint",
-			log.String("current_endpoint", endpoint),
-			log.Int("attempt", i+1),
-			log.Cause(err),
+		slog.WarnContext(ctx, "antigravity stream request failed, trying next endpoint",
+			slog.String("current_endpoint", endpoint),
+			slog.Int("attempt", i+1),
+			slog.Any("error", err),
 		)
 	}
 
-	log.Error(ctx, "all available antigravity stream endpoints exhausted",
-		log.String("model", modelName),
-		log.Int("tried_endpoints", len(availableEndpoints)),
-		log.Int("skipped_endpoints", len(skippedEndpoints)),
-		log.Cause(lastErr),
+	slog.ErrorContext(ctx, "all available antigravity stream endpoints exhausted",
+		slog.String("model", modelName),
+		slog.Int("tried_endpoints", len(availableEndpoints)),
+		slog.Int("skipped_endpoints", len(skippedEndpoints)),
+		slog.Any("error", lastErr),
 	)
 
 	return nil, fmt.Errorf("all antigravity stream endpoints failed: %w", lastErr)
@@ -378,33 +374,33 @@ func (e *Executor) cloneRequestForEndpoint(request *httpclient.Request, endpoint
 func replaceBaseURL(originalURL, newBase string) string {
 	parsed, err := url.Parse(originalURL)
 	if err != nil {
-		log.Warn(context.Background(), "failed to parse original URL in replaceBaseURL",
-			log.String("originalURL", originalURL),
-			log.Cause(err))
+		slog.WarnContext(context.Background(), "failed to parse original URL in replaceBaseURL",
+			slog.String("originalURL", originalURL),
+			slog.Any("error", err))
 
 		return originalURL
 	}
 
 	if parsed.Path == "" {
-		log.Warn(context.Background(), "original URL has no path",
-			log.String("originalURL", originalURL))
+		slog.WarnContext(context.Background(), "original URL has no path",
+			slog.String("originalURL", originalURL))
 
 		return originalURL
 	}
 
 	if !strings.HasPrefix(parsed.Path, "/v1internal") {
-		log.Warn(context.Background(), "original URL does not contain expected /v1internal path segment",
-			log.String("originalURL", originalURL),
-			log.String("path", parsed.Path))
+		slog.WarnContext(context.Background(), "original URL does not contain expected /v1internal path segment",
+			slog.String("originalURL", originalURL),
+			slog.String("path", parsed.Path))
 
 		return originalURL
 	}
 
 	newBaseParsed, err := url.Parse(newBase)
 	if err != nil {
-		log.Warn(context.Background(), "failed to parse newBase in replaceBaseURL",
-			log.String("newBase", newBase),
-			log.Cause(err))
+		slog.WarnContext(context.Background(), "failed to parse newBase in replaceBaseURL",
+			slog.String("newBase", newBase),
+			slog.Any("error", err))
 
 		return originalURL
 	}

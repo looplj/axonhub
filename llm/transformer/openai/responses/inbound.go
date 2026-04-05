@@ -11,12 +11,11 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xerrors"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
-	"github.com/looplj/axonhub/internal/pkg/xmap"
-	"github.com/looplj/axonhub/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
@@ -115,7 +114,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
 		errResp := ResponseError{
 			Error: ResponseErrorDetail{
 				Message: llmErr.Detail.Message,
@@ -131,7 +130,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
+	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
 		return httpErr
 	}
 
@@ -259,7 +258,6 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 
 	chatReq.Messages = messages
 
-	// Convert tools
 	if len(req.Tools) > 0 {
 		tools, err := convertToolsToLLM(req.Tools)
 		if err != nil {
@@ -273,6 +271,19 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 	if req.Text != nil && req.Text.Format != nil && req.Text.Format.Type != "" {
 		chatReq.ResponseFormat = &llm.ResponseFormat{
 			Type: req.Text.Format.Type,
+		}
+
+		// Reconstruct json_schema from TextFormat fields
+		if req.Text.Format.Type == "json_schema" && req.Text.Format.Name != "" {
+			jsonSchema := rawJSONSchema{
+				Name:        req.Text.Format.Name,
+				Description: req.Text.Format.Description,
+				Schema:      req.Text.Format.Schema,
+				Strict:      req.Text.Format.Strict,
+			}
+			if data, err := json.Marshal(jsonSchema); err == nil {
+				chatReq.ResponseFormat.JSONSchema = data
+			}
 		}
 	}
 
@@ -374,7 +385,8 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 
 	reasoningItem := &items[startIdx]
 	msg := &llm.Message{
-		Role: "assistant",
+		Role:               "assistant",
+		ReasoningSignature: reasoningItem.EncryptedContent,
 	}
 
 	// Extract reasoning content
@@ -386,10 +398,6 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 
 	if reasoningText.Len() > 0 {
 		msg.ReasoningContent = lo.ToPtr(reasoningText.String())
-	}
-
-	if reasoningItem.EncryptedContent != nil && *reasoningItem.EncryptedContent != "" {
-		msg.ReasoningSignature = reasoningItem.EncryptedContent
 	}
 
 	consumed := 1
@@ -411,9 +419,27 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			})
 			consumed++
 
+		case "custom_tool_call":
+			// Merge custom_tool_call into the same assistant message
+			inputStr := ""
+			if nextItem.Input != nil {
+				inputStr = *nextItem.Input
+			}
+			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
+				ID:   nextItem.CallID,
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+					CallID: nextItem.CallID,
+					Name:   nextItem.Name,
+					Input:  inputStr,
+				},
+			})
+			consumed++
+
 		case "message", "input_text", "":
 			// If we encounter a text message with assistant role, merge its content
 			if nextItem.Role == "assistant" {
+				msg.ID = nextItem.ID
 				if nextItem.Content != nil && len(nextItem.Content.Items) > 0 && nextItem.isOutputMessageContent() {
 					msg.Content = convertContentItemsToMessageContent(nextItem.GetContentItems())
 				} else if nextItem.Content != nil {
@@ -446,6 +472,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 	switch item.Type {
 	case "message", "input_text", "":
 		msg := &llm.Message{
+			ID:   item.ID,
 			Role: item.Role,
 		}
 
@@ -496,18 +523,67 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			},
 		}, nil
 
-	case "function_call_output":
-		// Function call output - convert to tool message
+	case "custom_tool_call":
+		// Custom tool call from assistant - convert to tool call with ResponseCustomToolCall
+		inputStr := ""
+		if item.Input != nil {
+			inputStr = *item.Input
+		}
+
 		return &llm.Message{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{
+				{
+					ID:   item.CallID,
+					Type: llm.ToolTypeResponsesCustomTool,
+					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+						CallID: item.CallID,
+						Name:   item.Name,
+						Input:  inputStr,
+					},
+				},
+			},
+		}, nil
+
+	case "function_call_output":
+		if item.Output == nil {
+			return nil, fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, "function_call_output item must have non-nil Output")
+		}
+		// Function call output - convert to tool message
+		msg := &llm.Message{
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
 			Content:    convertToMessageContent(*item.Output),
-		}, nil
+		}
+		if item.Name != "" {
+			msg.ToolCallName = lo.ToPtr(item.Name)
+		}
+
+		return msg, nil
+
+	case "custom_tool_call_output":
+		if item.Output == nil {
+			return nil, fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, "custom_tool_call_output item must have non-nil Output")
+		}
+		// Custom tool call output - convert to tool message
+		msg := &llm.Message{
+			Role:       "tool",
+			ToolCallID: lo.ToPtr(item.CallID),
+			Content:    convertToMessageContent(*item.Output),
+		}
+		if item.Name != "" {
+			msg.ToolCallName = lo.ToPtr(item.Name)
+		}
+
+		return msg, nil
 
 	case "reasoning":
 		// Reasoning is handled by convertReasoningWithFollowing in convertInputToMessages
 		// This case should not be reached in normal flow, but return nil to skip if it does
 		return nil, nil
+
+	case "compaction", "compaction_summary":
+		return compactionMessageFromItem(item, item.Type), nil
 
 	default:
 		// Skip unknown types
@@ -590,6 +666,7 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 	case "input_text", "text", "output_text":
 		if item.Text != nil {
 			return &llm.MessageContentPart{
+				ID:   item.ID,
 				Type: "text",
 				Text: item.Text,
 			}, nil
@@ -600,6 +677,7 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 	case "input_image":
 		if item.ImageURL != nil {
 			return &llm.MessageContentPart{
+				ID:   item.ID,
 				Type: "image_url",
 				ImageURL: &llm.ImageURL{
 					URL:    *item.ImageURL,
@@ -609,6 +687,9 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 		}
 
 		return nil, nil
+
+	case "compaction", "compaction_summary":
+		return compactionContentPartFromItem(item, item.Type), nil
 
 	default:
 		return nil, nil
@@ -652,6 +733,23 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				},
 			})
 
+		case "custom":
+			customTool := &llm.ResponseCustomTool{
+				Name:        tool.Name,
+				Description: tool.Description,
+			}
+			if tool.Format != nil {
+				customTool.Format = &llm.ResponseCustomToolFormat{
+					Type:       tool.Format.Type,
+					Syntax:     tool.Format.Syntax,
+					Definition: tool.Format.Definition,
+				}
+			}
+			result = append(result, llm.Tool{
+				Type:               llm.ToolTypeResponsesCustomTool,
+				ResponseCustomTool: customTool,
+			})
+
 		default:
 			// Skip unsupported tool types
 			continue
@@ -688,33 +786,38 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			continue
 		}
 
-		// Handle reasoning content
-		if message.ReasoningContent != nil && *message.ReasoningContent != "" {
-			resp.Output = append(resp.Output, Item{
-				ID:     generateItemID(),
-				Type:   "reasoning",
-				Status: lo.ToPtr("completed"),
-				Summary: []ReasoningSummary{
-					{
-						Type: "summary_text",
-						Text: *message.ReasoningContent,
-					},
-				},
-				EncryptedContent: message.ReasoningSignature,
-			})
+		messageItemID := message.ID
+		if messageItemID == "" {
+			messageItemID = generateItemID()
 		}
 
-		// Handle tool calls (function calls)
+		// Handle reasoning content
+		if reasoningItem, ok := buildReasoningItem(*message); ok {
+			resp.Output = append(resp.Output, reasoningItem)
+		}
+
+		// Handle tool calls (function calls and custom tool calls)
 		if len(message.ToolCalls) > 0 {
 			for _, toolCall := range message.ToolCalls {
-				resp.Output = append(resp.Output, Item{
-					ID:        toolCall.ID,
-					Type:      "function_call",
-					CallID:    toolCall.ID,
-					Name:      toolCall.Function.Name,
-					Arguments: toolCall.Function.Arguments,
-					Status:    lo.ToPtr("completed"),
-				})
+				if toolCall.ResponseCustomToolCall != nil {
+					resp.Output = append(resp.Output, Item{
+						ID:     toolCall.ID,
+						Type:   "custom_tool_call",
+						CallID: toolCall.ResponseCustomToolCall.CallID,
+						Name:   toolCall.ResponseCustomToolCall.Name,
+						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
+						Status: lo.ToPtr("completed"),
+					})
+				} else {
+					resp.Output = append(resp.Output, Item{
+						ID:        toolCall.ID,
+						Type:      "function_call",
+						CallID:    toolCall.ID,
+						Name:      toolCall.Function.Name,
+						Arguments: toolCall.Function.Arguments,
+						Status:    lo.ToPtr("completed"),
+					})
+				}
 			}
 		}
 
@@ -722,7 +825,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 		if message.Content.Content != nil && *message.Content.Content != "" {
 			text := *message.Content.Content
 			resp.Output = append(resp.Output, Item{
-				ID:   generateItemID(),
+				ID:   messageItemID,
 				Type: "message",
 				Role: "assistant",
 				Content: &Input{
@@ -757,7 +860,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 							ID:           generateItemID(),
 							Type:         "image_generation_call",
 							Role:         "assistant",
-							Result:       lo.ToPtr(extractBase64FromDataURL(part.ImageURL.URL)),
+							Result:       new(xurl.ExtractBase64FromDataURL(part.ImageURL.URL)),
 							Status:       lo.ToPtr("completed"),
 							Background:   xmap.GetStringPtr(part.TransformerMetadata, "background"),
 							OutputFormat: xmap.GetStringPtr(part.TransformerMetadata, "output_format"),
@@ -766,12 +869,16 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						}
 						resp.Output = append(resp.Output, imageItem)
 					}
+				case "compaction", "compaction_summary":
+					if part.Compact != nil {
+						resp.Output = append(resp.Output, compactionItemFromPart(part, part.Type))
+					}
 				}
 			}
 
 			if len(contentItems) > 0 {
 				resp.Output = append(resp.Output, Item{
-					ID:      generateItemID(),
+					ID:      messageItemID,
 					Type:    "message",
 					Role:    "assistant",
 					Content: &Input{Items: contentItems},
@@ -825,7 +932,29 @@ func generateItemID() string {
 	return fmt.Sprintf("item_%s", lo.RandomString(16, lo.AlphanumericCharset))
 }
 
-// extractBase64FromDataURL extracts base64 data from a data URL.
-func extractBase64FromDataURL(url string) string {
-	return xurl.ExtractBase64FromDataURL(url)
+// buildReasoningItem creates a reasoning Item from a message's reasoning content and signature.
+// Returns the item and true if the message has reasoning data, otherwise returns zero value and false.
+func buildReasoningItem(msg llm.Message) (Item, bool) {
+	hasContent := msg.ReasoningContent != nil && *msg.ReasoningContent != ""
+	hasSignature := msg.ReasoningSignature != nil && *msg.ReasoningSignature != ""
+
+	if !hasContent && !hasSignature {
+		return Item{}, false
+	}
+
+	summary := []ReasoningSummary{}
+	if hasContent {
+		summary = append(summary, ReasoningSummary{
+			Type: "summary_text",
+			Text: *msg.ReasoningContent,
+		})
+	}
+
+	return Item{
+		ID:               generateItemID(),
+		Type:             "reasoning",
+		Status:           new("completed"),
+		Summary:          summary,
+		EncryptedContent: msg.ReasoningSignature,
+	}, true
 }

@@ -43,6 +43,8 @@ const (
 	FieldResponseChunks = "response_chunks"
 	// FieldErrorMessage holds the string denoting the error_message field in the database.
 	FieldErrorMessage = "error_message"
+	// FieldResponseStatusCode holds the string denoting the response_status_code field in the database.
+	FieldResponseStatusCode = "response_status_code"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// FieldStream holds the string denoting the stream field in the database.
@@ -100,6 +102,7 @@ var Columns = []string{
 	FieldResponseBody,
 	FieldResponseChunks,
 	FieldErrorMessage,
+	FieldResponseStatusCode,
 	FieldStatus,
 	FieldStream,
 	FieldMetricsLatencyMs,
@@ -214,6 +217,11 @@ func ByFormat(opts ...sql.OrderTermOption) OrderOption {
 // ByErrorMessage orders the results by the error_message field.
 func ByErrorMessage(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldErrorMessage, opts...).ToFunc()
+}
+
+// ByResponseStatusCode orders the results by the response_status_code field.
+func ByResponseStatusCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldResponseStatusCode, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

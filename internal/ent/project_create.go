@@ -11,12 +11,19 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -227,6 +234,111 @@ func (_c *ProjectCreate) AddPrompts(v ...*Prompt) *ProjectCreate {
 	return _c.AddPromptIDs(ids...)
 }
 
+// AddPromptVersionIDs adds the "prompt_versions" edge to the PromptVersion entity by IDs.
+func (_c *ProjectCreate) AddPromptVersionIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddPromptVersionIDs(ids...)
+	return _c
+}
+
+// AddPromptVersions adds the "prompt_versions" edges to the PromptVersion entity.
+func (_c *ProjectCreate) AddPromptVersions(v ...*PromptVersion) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddPromptVersionIDs(ids...)
+}
+
+// AddAgentIDs adds the "agents" edge to the Agent entity by IDs.
+func (_c *ProjectCreate) AddAgentIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddAgentIDs(ids...)
+	return _c
+}
+
+// AddAgents adds the "agents" edges to the Agent entity.
+func (_c *ProjectCreate) AddAgents(v ...*Agent) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddAgentIDs(ids...)
+}
+
+// AddToolIDs adds the "tools" edge to the Tool entity by IDs.
+func (_c *ProjectCreate) AddToolIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddToolIDs(ids...)
+	return _c
+}
+
+// AddTools adds the "tools" edges to the Tool entity.
+func (_c *ProjectCreate) AddTools(v ...*Tool) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddToolIDs(ids...)
+}
+
+// AddSkillIDs adds the "skills" edge to the Skill entity by IDs.
+func (_c *ProjectCreate) AddSkillIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddSkillIDs(ids...)
+	return _c
+}
+
+// AddSkills adds the "skills" edges to the Skill entity.
+func (_c *ProjectCreate) AddSkills(v ...*Skill) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddSkillIDs(ids...)
+}
+
+// AddAgentToolBindingIDs adds the "agent_tool_bindings" edge to the AgentTool entity by IDs.
+func (_c *ProjectCreate) AddAgentToolBindingIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddAgentToolBindingIDs(ids...)
+	return _c
+}
+
+// AddAgentToolBindings adds the "agent_tool_bindings" edges to the AgentTool entity.
+func (_c *ProjectCreate) AddAgentToolBindings(v ...*AgentTool) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddAgentToolBindingIDs(ids...)
+}
+
+// AddAgentSkillBindingIDs adds the "agent_skill_bindings" edge to the AgentSkill entity by IDs.
+func (_c *ProjectCreate) AddAgentSkillBindingIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddAgentSkillBindingIDs(ids...)
+	return _c
+}
+
+// AddAgentSkillBindings adds the "agent_skill_bindings" edges to the AgentSkill entity.
+func (_c *ProjectCreate) AddAgentSkillBindings(v ...*AgentSkill) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddAgentSkillBindingIDs(ids...)
+}
+
+// AddMessageChannelIDs adds the "message_channels" edge to the MessageChannel entity by IDs.
+func (_c *ProjectCreate) AddMessageChannelIDs(ids ...int) *ProjectCreate {
+	_c.mutation.AddMessageChannelIDs(ids...)
+	return _c
+}
+
+// AddMessageChannels adds the "message_channels" edges to the MessageChannel entity.
+func (_c *ProjectCreate) AddMessageChannels(v ...*MessageChannel) *ProjectCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMessageChannelIDs(ids...)
+}
+
 // AddProjectUserIDs adds the "project_users" edge to the UserProject entity by IDs.
 func (_c *ProjectCreate) AddProjectUserIDs(ids ...int) *ProjectCreate {
 	_c.mutation.AddProjectUserIDs(ids...)
@@ -310,12 +422,6 @@ func (_c *ProjectCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *ProjectCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Project.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Project.updated_at"`)}
-	}
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "Project.deleted_at"`)}
 	}
@@ -509,6 +615,118 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.PromptVersionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.PromptVersionsTable,
+			Columns: []string{project.PromptVersionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(promptversion.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.AgentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.AgentsTable,
+			Columns: []string{project.AgentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agent.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ToolsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ToolsTable,
+			Columns: []string{project.ToolsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tool.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.SkillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.SkillsTable,
+			Columns: []string{project.SkillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.AgentToolBindingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.AgentToolBindingsTable,
+			Columns: []string{project.AgentToolBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agenttool.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.AgentSkillBindingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.AgentSkillBindingsTable,
+			Columns: []string{project.AgentSkillBindingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentskill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.MessageChannelsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.MessageChannelsTable,
+			Columns: []string{project.MessageChannelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(messagechannel.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

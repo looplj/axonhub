@@ -92,12 +92,6 @@ func (_c *ChannelOverrideTemplateCreate) SetNillableDescription(v *string) *Chan
 	return _c
 }
 
-// SetChannelType sets the "channel_type" field.
-func (_c *ChannelOverrideTemplateCreate) SetChannelType(v string) *ChannelOverrideTemplateCreate {
-	_c.mutation.SetChannelType(v)
-	return _c
-}
-
 // SetOverrideParameters sets the "override_parameters" field.
 func (_c *ChannelOverrideTemplateCreate) SetOverrideParameters(v string) *ChannelOverrideTemplateCreate {
 	_c.mutation.SetOverrideParameters(v)
@@ -115,6 +109,18 @@ func (_c *ChannelOverrideTemplateCreate) SetNillableOverrideParameters(v *string
 // SetOverrideHeaders sets the "override_headers" field.
 func (_c *ChannelOverrideTemplateCreate) SetOverrideHeaders(v []objects.HeaderEntry) *ChannelOverrideTemplateCreate {
 	_c.mutation.SetOverrideHeaders(v)
+	return _c
+}
+
+// SetHeaderOverrideOperations sets the "header_override_operations" field.
+func (_c *ChannelOverrideTemplateCreate) SetHeaderOverrideOperations(v []objects.OverrideOperation) *ChannelOverrideTemplateCreate {
+	_c.mutation.SetHeaderOverrideOperations(v)
+	return _c
+}
+
+// SetBodyOverrideOperations sets the "body_override_operations" field.
+func (_c *ChannelOverrideTemplateCreate) SetBodyOverrideOperations(v []objects.OverrideOperation) *ChannelOverrideTemplateCreate {
+	_c.mutation.SetBodyOverrideOperations(v)
 	return _c
 }
 
@@ -179,24 +185,29 @@ func (_c *ChannelOverrideTemplateCreate) defaults() error {
 		_c.mutation.SetDeletedAt(v)
 	}
 	if _, ok := _c.mutation.OverrideParameters(); !ok {
-		v := channeloverridetemplate.DefaultOverrideParameters
+		if channeloverridetemplate.DefaultOverrideParameters == nil {
+			return fmt.Errorf("ent: uninitialized channeloverridetemplate.DefaultOverrideParameters (forgotten import ent/runtime?)")
+		}
+		v := channeloverridetemplate.DefaultOverrideParameters()
 		_c.mutation.SetOverrideParameters(v)
 	}
 	if _, ok := _c.mutation.OverrideHeaders(); !ok {
 		v := channeloverridetemplate.DefaultOverrideHeaders
 		_c.mutation.SetOverrideHeaders(v)
 	}
+	if _, ok := _c.mutation.HeaderOverrideOperations(); !ok {
+		v := channeloverridetemplate.DefaultHeaderOverrideOperations
+		_c.mutation.SetHeaderOverrideOperations(v)
+	}
+	if _, ok := _c.mutation.BodyOverrideOperations(); !ok {
+		v := channeloverridetemplate.DefaultBodyOverrideOperations
+		_c.mutation.SetBodyOverrideOperations(v)
+	}
 	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *ChannelOverrideTemplateCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "ChannelOverrideTemplate.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "ChannelOverrideTemplate.updated_at"`)}
-	}
 	if _, ok := _c.mutation.DeletedAt(); !ok {
 		return &ValidationError{Name: "deleted_at", err: errors.New(`ent: missing required field "ChannelOverrideTemplate.deleted_at"`)}
 	}
@@ -210,9 +221,6 @@ func (_c *ChannelOverrideTemplateCreate) check() error {
 		if err := channeloverridetemplate.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "ChannelOverrideTemplate.name": %w`, err)}
 		}
-	}
-	if _, ok := _c.mutation.ChannelType(); !ok {
-		return &ValidationError{Name: "channel_type", err: errors.New(`ent: missing required field "ChannelOverrideTemplate.channel_type"`)}
 	}
 	if _, ok := _c.mutation.OverrideParameters(); !ok {
 		return &ValidationError{Name: "override_parameters", err: errors.New(`ent: missing required field "ChannelOverrideTemplate.override_parameters"`)}
@@ -270,10 +278,6 @@ func (_c *ChannelOverrideTemplateCreate) createSpec() (*ChannelOverrideTemplate,
 		_spec.SetField(channeloverridetemplate.FieldDescription, field.TypeString, value)
 		_node.Description = value
 	}
-	if value, ok := _c.mutation.ChannelType(); ok {
-		_spec.SetField(channeloverridetemplate.FieldChannelType, field.TypeString, value)
-		_node.ChannelType = value
-	}
 	if value, ok := _c.mutation.OverrideParameters(); ok {
 		_spec.SetField(channeloverridetemplate.FieldOverrideParameters, field.TypeString, value)
 		_node.OverrideParameters = value
@@ -281,6 +285,14 @@ func (_c *ChannelOverrideTemplateCreate) createSpec() (*ChannelOverrideTemplate,
 	if value, ok := _c.mutation.OverrideHeaders(); ok {
 		_spec.SetField(channeloverridetemplate.FieldOverrideHeaders, field.TypeJSON, value)
 		_node.OverrideHeaders = value
+	}
+	if value, ok := _c.mutation.HeaderOverrideOperations(); ok {
+		_spec.SetField(channeloverridetemplate.FieldHeaderOverrideOperations, field.TypeJSON, value)
+		_node.HeaderOverrideOperations = value
+	}
+	if value, ok := _c.mutation.BodyOverrideOperations(); ok {
+		_spec.SetField(channeloverridetemplate.FieldBodyOverrideOperations, field.TypeJSON, value)
+		_node.BodyOverrideOperations = value
 	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -411,18 +423,6 @@ func (u *ChannelOverrideTemplateUpsert) ClearDescription() *ChannelOverrideTempl
 	return u
 }
 
-// SetChannelType sets the "channel_type" field.
-func (u *ChannelOverrideTemplateUpsert) SetChannelType(v string) *ChannelOverrideTemplateUpsert {
-	u.Set(channeloverridetemplate.FieldChannelType, v)
-	return u
-}
-
-// UpdateChannelType sets the "channel_type" field to the value that was provided on create.
-func (u *ChannelOverrideTemplateUpsert) UpdateChannelType() *ChannelOverrideTemplateUpsert {
-	u.SetExcluded(channeloverridetemplate.FieldChannelType)
-	return u
-}
-
 // SetOverrideParameters sets the "override_parameters" field.
 func (u *ChannelOverrideTemplateUpsert) SetOverrideParameters(v string) *ChannelOverrideTemplateUpsert {
 	u.Set(channeloverridetemplate.FieldOverrideParameters, v)
@@ -444,6 +444,42 @@ func (u *ChannelOverrideTemplateUpsert) SetOverrideHeaders(v []objects.HeaderEnt
 // UpdateOverrideHeaders sets the "override_headers" field to the value that was provided on create.
 func (u *ChannelOverrideTemplateUpsert) UpdateOverrideHeaders() *ChannelOverrideTemplateUpsert {
 	u.SetExcluded(channeloverridetemplate.FieldOverrideHeaders)
+	return u
+}
+
+// SetHeaderOverrideOperations sets the "header_override_operations" field.
+func (u *ChannelOverrideTemplateUpsert) SetHeaderOverrideOperations(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsert {
+	u.Set(channeloverridetemplate.FieldHeaderOverrideOperations, v)
+	return u
+}
+
+// UpdateHeaderOverrideOperations sets the "header_override_operations" field to the value that was provided on create.
+func (u *ChannelOverrideTemplateUpsert) UpdateHeaderOverrideOperations() *ChannelOverrideTemplateUpsert {
+	u.SetExcluded(channeloverridetemplate.FieldHeaderOverrideOperations)
+	return u
+}
+
+// ClearHeaderOverrideOperations clears the value of the "header_override_operations" field.
+func (u *ChannelOverrideTemplateUpsert) ClearHeaderOverrideOperations() *ChannelOverrideTemplateUpsert {
+	u.SetNull(channeloverridetemplate.FieldHeaderOverrideOperations)
+	return u
+}
+
+// SetBodyOverrideOperations sets the "body_override_operations" field.
+func (u *ChannelOverrideTemplateUpsert) SetBodyOverrideOperations(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsert {
+	u.Set(channeloverridetemplate.FieldBodyOverrideOperations, v)
+	return u
+}
+
+// UpdateBodyOverrideOperations sets the "body_override_operations" field to the value that was provided on create.
+func (u *ChannelOverrideTemplateUpsert) UpdateBodyOverrideOperations() *ChannelOverrideTemplateUpsert {
+	u.SetExcluded(channeloverridetemplate.FieldBodyOverrideOperations)
+	return u
+}
+
+// ClearBodyOverrideOperations clears the value of the "body_override_operations" field.
+func (u *ChannelOverrideTemplateUpsert) ClearBodyOverrideOperations() *ChannelOverrideTemplateUpsert {
+	u.SetNull(channeloverridetemplate.FieldBodyOverrideOperations)
 	return u
 }
 
@@ -565,20 +601,6 @@ func (u *ChannelOverrideTemplateUpsertOne) ClearDescription() *ChannelOverrideTe
 	})
 }
 
-// SetChannelType sets the "channel_type" field.
-func (u *ChannelOverrideTemplateUpsertOne) SetChannelType(v string) *ChannelOverrideTemplateUpsertOne {
-	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
-		s.SetChannelType(v)
-	})
-}
-
-// UpdateChannelType sets the "channel_type" field to the value that was provided on create.
-func (u *ChannelOverrideTemplateUpsertOne) UpdateChannelType() *ChannelOverrideTemplateUpsertOne {
-	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
-		s.UpdateChannelType()
-	})
-}
-
 // SetOverrideParameters sets the "override_parameters" field.
 func (u *ChannelOverrideTemplateUpsertOne) SetOverrideParameters(v string) *ChannelOverrideTemplateUpsertOne {
 	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
@@ -604,6 +626,48 @@ func (u *ChannelOverrideTemplateUpsertOne) SetOverrideHeaders(v []objects.Header
 func (u *ChannelOverrideTemplateUpsertOne) UpdateOverrideHeaders() *ChannelOverrideTemplateUpsertOne {
 	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
 		s.UpdateOverrideHeaders()
+	})
+}
+
+// SetHeaderOverrideOperations sets the "header_override_operations" field.
+func (u *ChannelOverrideTemplateUpsertOne) SetHeaderOverrideOperations(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsertOne {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.SetHeaderOverrideOperations(v)
+	})
+}
+
+// UpdateHeaderOverrideOperations sets the "header_override_operations" field to the value that was provided on create.
+func (u *ChannelOverrideTemplateUpsertOne) UpdateHeaderOverrideOperations() *ChannelOverrideTemplateUpsertOne {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.UpdateHeaderOverrideOperations()
+	})
+}
+
+// ClearHeaderOverrideOperations clears the value of the "header_override_operations" field.
+func (u *ChannelOverrideTemplateUpsertOne) ClearHeaderOverrideOperations() *ChannelOverrideTemplateUpsertOne {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.ClearHeaderOverrideOperations()
+	})
+}
+
+// SetBodyOverrideOperations sets the "body_override_operations" field.
+func (u *ChannelOverrideTemplateUpsertOne) SetBodyOverrideOperations(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsertOne {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.SetBodyOverrideOperations(v)
+	})
+}
+
+// UpdateBodyOverrideOperations sets the "body_override_operations" field to the value that was provided on create.
+func (u *ChannelOverrideTemplateUpsertOne) UpdateBodyOverrideOperations() *ChannelOverrideTemplateUpsertOne {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.UpdateBodyOverrideOperations()
+	})
+}
+
+// ClearBodyOverrideOperations clears the value of the "body_override_operations" field.
+func (u *ChannelOverrideTemplateUpsertOne) ClearBodyOverrideOperations() *ChannelOverrideTemplateUpsertOne {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.ClearBodyOverrideOperations()
 	})
 }
 
@@ -891,20 +955,6 @@ func (u *ChannelOverrideTemplateUpsertBulk) ClearDescription() *ChannelOverrideT
 	})
 }
 
-// SetChannelType sets the "channel_type" field.
-func (u *ChannelOverrideTemplateUpsertBulk) SetChannelType(v string) *ChannelOverrideTemplateUpsertBulk {
-	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
-		s.SetChannelType(v)
-	})
-}
-
-// UpdateChannelType sets the "channel_type" field to the value that was provided on create.
-func (u *ChannelOverrideTemplateUpsertBulk) UpdateChannelType() *ChannelOverrideTemplateUpsertBulk {
-	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
-		s.UpdateChannelType()
-	})
-}
-
 // SetOverrideParameters sets the "override_parameters" field.
 func (u *ChannelOverrideTemplateUpsertBulk) SetOverrideParameters(v string) *ChannelOverrideTemplateUpsertBulk {
 	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
@@ -930,6 +980,48 @@ func (u *ChannelOverrideTemplateUpsertBulk) SetOverrideHeaders(v []objects.Heade
 func (u *ChannelOverrideTemplateUpsertBulk) UpdateOverrideHeaders() *ChannelOverrideTemplateUpsertBulk {
 	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
 		s.UpdateOverrideHeaders()
+	})
+}
+
+// SetHeaderOverrideOperations sets the "header_override_operations" field.
+func (u *ChannelOverrideTemplateUpsertBulk) SetHeaderOverrideOperations(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsertBulk {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.SetHeaderOverrideOperations(v)
+	})
+}
+
+// UpdateHeaderOverrideOperations sets the "header_override_operations" field to the value that was provided on create.
+func (u *ChannelOverrideTemplateUpsertBulk) UpdateHeaderOverrideOperations() *ChannelOverrideTemplateUpsertBulk {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.UpdateHeaderOverrideOperations()
+	})
+}
+
+// ClearHeaderOverrideOperations clears the value of the "header_override_operations" field.
+func (u *ChannelOverrideTemplateUpsertBulk) ClearHeaderOverrideOperations() *ChannelOverrideTemplateUpsertBulk {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.ClearHeaderOverrideOperations()
+	})
+}
+
+// SetBodyOverrideOperations sets the "body_override_operations" field.
+func (u *ChannelOverrideTemplateUpsertBulk) SetBodyOverrideOperations(v []objects.OverrideOperation) *ChannelOverrideTemplateUpsertBulk {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.SetBodyOverrideOperations(v)
+	})
+}
+
+// UpdateBodyOverrideOperations sets the "body_override_operations" field to the value that was provided on create.
+func (u *ChannelOverrideTemplateUpsertBulk) UpdateBodyOverrideOperations() *ChannelOverrideTemplateUpsertBulk {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.UpdateBodyOverrideOperations()
+	})
+}
+
+// ClearBodyOverrideOperations clears the value of the "body_override_operations" field.
+func (u *ChannelOverrideTemplateUpsertBulk) ClearBodyOverrideOperations() *ChannelOverrideTemplateUpsertBulk {
+	return u.Update(func(s *ChannelOverrideTemplateUpsert) {
+		s.ClearBodyOverrideOperations()
 	})
 }
 

@@ -3,6 +3,9 @@ package objects
 type PromptActionType string
 
 const (
+	// PromptActionTypeNoop is the action to do nothing.
+	PromptActionTypeNoop PromptActionType = "noop"
+
 	// PromptActionTypePrepend is the action to prepend the prompt before the request messages.
 	PromptActionTypePrepend PromptActionType = "prepend"
 
@@ -25,6 +28,9 @@ const (
 
 	// PromptActivationConditionTypeModelPattern is the condition to activate the prompt for the models that match the pattern.
 	PromptActivationConditionTypeModelPattern PromptActivationConditionType = "model_pattern"
+
+	// PromptActivationConditionTypeAPIKey is the condition to activate the prompt for the specified API key.
+	PromptActivationConditionTypeAPIKey PromptActivationConditionType = "api_key"
 )
 
 // PromptActivationCondition is the condition to activate the prompt.
@@ -39,6 +45,9 @@ type PromptActivationCondition struct {
 	// ModelPattern is the pattern of the model to activate the prompt.
 	// The pattern is a regular expression.
 	ModelPattern *string `json:"model_pattern,omitempty"`
+
+	// APIKeyID is the ID of the API key to activate the prompt.
+	APIKeyID *int `json:"api_key_id,omitempty"`
 }
 
 // PromptActivationConditionComposite is the composite condition to activate the prompt.

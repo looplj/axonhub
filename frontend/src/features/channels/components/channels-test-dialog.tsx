@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import LongText from '@/components/long-text';
 import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { Channel } from '../data/schema';
+import { ErrorDisplay } from '../utils/error-formatter';
 
 type TestStatus = 'not_started' | 'testing' | 'success' | 'failed';
 
@@ -227,9 +228,9 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                         <TableCell className='font-medium'>
                           <div>{model}</div>
                           {result?.error && (
-                            <LongText className='mt-1 max-w-[200px] cursor-help text-xs text-red-600'>
-                              {result.error}
-                            </LongText>
+                            <div className='mt-1 max-w-[240px]'>
+                              <ErrorDisplay error={result.error} messageClassName='text-xs font-medium text-red-600' />
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>

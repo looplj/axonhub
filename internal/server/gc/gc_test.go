@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zhenzou/executors"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -152,7 +152,7 @@ func setupWorkerWithFSStorage(t *testing.T) (*Worker, context.Context, *ent.Data
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	dir := t.TempDir()
 	dirCopy := dir
@@ -250,13 +250,13 @@ func TestWorker_cleanupWithZeroDays(t *testing.T) {
 	ctx := context.Background()
 
 	// Test with 0 days - should not error
-	err := worker.cleanupRequests(ctx, 0)
+	err := worker.cleanupRequests(ctx, 0, false)
 	if err != nil {
 		t.Fatalf("cleanupRequests with 0 days failed: %v", err)
 	}
 
 	// Test with negative days - should not error
-	err = worker.cleanupUsageLogs(ctx, -1)
+	err = worker.cleanupUsageLogs(ctx, -1, false)
 	if err != nil {
 		t.Fatalf("cleanupUsageLogs with negative days failed: %v", err)
 	}

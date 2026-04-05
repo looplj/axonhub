@@ -395,12 +395,12 @@ server:
 
 db:
   dialect: "sqlite3"
-  dsn: "${BASE_DIR}/axonhub.db?cache=shared&_fk=1&journal_mode=WAL"
+  dsn: "${BASE_DIR}/axonhub.db?cache=shared&_fk=1"
 
 cache:
   mode: "memory"
-  cache:
-    expiration: "5s" 
+  memory:
+    expiration: "5s"
     cleanup_interval: "5s"
 
 log:
@@ -542,6 +542,7 @@ main() {
     echo "  3. Stop AxonHub: ./stop.sh"
     echo "  4. View logs: tail -f $LOG_DIR/axonhub.log"
     echo "  5. Access web interface: http://localhost:${port}"
+    echo "  6. Setup auto-start: ./setup.sh install-autostart"
     echo
     print_info "To start AxonHub now, run: ./start.sh"
 }

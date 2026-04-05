@@ -17,7 +17,9 @@ import { JsonViewer } from '@/components/json-tree-view';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { useGeneralSettings } from '@/features/system/data/system';
-import { useUsageLogs } from '../../usage-logs/data/usage-logs';
+import { useSelectedProjectId } from '@/stores/projectStore';
+import { getTokenFromStorage } from '@/stores/authStore';
+import { useUsageLogs } from '../data/usage-logs';
 import { useRequest, useRequestExecutions } from '../data';
 import { ChunksDialog } from './chunks-dialog';
 import { CurlPreviewDialog } from './curl-preview-dialog';
@@ -30,6 +32,7 @@ export default function RequestDetailPage() {
   const navigate = useNavigate();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
+  const selectedProjectId = useSelectedProjectId();
 
   const [showResponseChunks, setShowResponseChunks] = useState(false);
   const [showExecutionChunks, setShowExecutionChunks] = useState(false);
@@ -37,10 +40,15 @@ export default function RequestDetailPage() {
   const [selectedExecutionChunks, setSelectedExecutionChunks] = useState<any[]>([]);
   const [showCurlPreview, setShowCurlPreview] = useState(false);
   const [curlCommand, setCurlCommand] = useState('');
+  const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
 
   const { data: settings } = useGeneralSettings();
   const { data: request, isLoading } = useRequest(requestId);
-  const { data: executions } = useRequestExecutions(requestId, {
+  const {
+    data: executions,
+    isLoading: isExecutionsLoading,
+    isError: isExecutionsError,
+  } = useRequestExecutions(requestId, {
     first: 10,
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   });
@@ -68,6 +76,57 @@ export default function RequestDetailPage() {
     toast.success(t('requests.actions.download'));
   };
 
+  const downloadVideo = async () => {
+    if (!request?.contentSaved || !request?.contentStorageKey) return;
+    if (!selectedProjectId) return;
+
+    const projectIdNumber = extractNumberID(selectedProjectId);
+    const requestIdNumber = extractNumberID(request.id);
+    if (!projectIdNumber || !requestIdNumber) return;
+
+    const url = `/admin/requests/${encodeURIComponent(requestIdNumber)}/content`;
+
+    try {
+      setIsDownloadingVideo(true);
+
+      const token = getTokenFromStorage();
+      if (!token) {
+        toast.error(t('common.errors.sessionExpiredSignIn'));
+        return;
+      }
+
+      const resp = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Project-ID': selectedProjectId,
+        },
+      });
+
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+
+      const contentDisposition = resp.headers.get('Content-Disposition') || '';
+      const filenameMatch = contentDisposition.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = filenameMatch?.[1] || `video-${requestIdNumber}.mp4`;
+
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+      toast.success(t('requests.actions.download'));
+    } catch (err) {
+      toast.error(t('common.errors.operationFailed', { operation: t('requests.actions.downloadVideo') }));
+    } finally {
+      setIsDownloadingVideo(false);
+    }
+  };
+
   const showResponseChunksModal = useCallback(() => {
     if (request?.responseChunks) {
       setSelectedResponseChunks(request.responseChunks);
@@ -91,17 +150,23 @@ export default function RequestDetailPage() {
     }
   };
 
-  const showRequestCurlPreview = useCallback((headers: any, body: any) => {
-    const curl = generateRequestCurl(headers, body);
-    setCurlCommand(curl);
-    setShowCurlPreview(true);
-  }, []);
+  const showRequestCurlPreview = useCallback(
+    (headers: any, body: any, apiFormat?: string) => {
+      const curl = generateRequestCurl(headers, body, apiFormat as any);
+      setCurlCommand(curl);
+      setShowCurlPreview(true);
+    },
+    []
+  );
 
-  const showExecutionCurlPreview = useCallback((headers: any, body: any, channel?: { baseURL?: string; type?: string }) => {
-    const curl = generateExecutionCurl(headers, body, channel as any);
-    setCurlCommand(curl);
-    setShowCurlPreview(true);
-  }, []);
+  const showExecutionCurlPreview = useCallback(
+    (headers: any, body: any, channel?: { baseURL?: string; type?: string }, apiFormat?: string) => {
+      const curl = generateExecutionCurl(headers, body, channel as any, apiFormat as any);
+      setCurlCommand(curl);
+      setShowCurlPreview(true);
+    },
+    []
+  );
 
   const calculateLatency = (createdAt: string | Date, updatedAt: string | Date) => {
     if (!createdAt || !updatedAt) return null;
@@ -370,7 +435,7 @@ export default function RequestDetailPage() {
                     <Button
                       variant='outline'
                       size='sm'
-                      onClick={() => showRequestCurlPreview(request.requestHeaders, request.requestBody)}
+                      onClick={() => showRequestCurlPreview(request.requestHeaders, request.requestBody, request.format)}
                       className='hover:bg-primary hover:text-primary-foreground'
                     >
                       <Terminal className='mr-2 h-4 w-4' />
@@ -406,7 +471,14 @@ export default function RequestDetailPage() {
                         </div>
                       </div>
                       <div className='bg-muted/20 h-[300px] w-full overflow-auto rounded-lg border p-4'>
-                        <JsonViewer data={request.requestHeaders} rootName='' defaultExpanded={true} className='text-sm' />
+                        <JsonViewer
+                          data={request.requestHeaders}
+                          rootName=''
+                          defaultExpanded={true}
+                          expandDepth='all'
+                          hideArrayIndices={true}
+                          className='text-sm'
+                        />
                       </div>
                     </div>
                   )}
@@ -438,7 +510,14 @@ export default function RequestDetailPage() {
                       </div>
                     </div>
                     <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                      <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} className='text-sm' />
+                      <JsonViewer
+                        data={request.requestBody}
+                        rootName=''
+                        defaultExpanded={true}
+                        expandDepth='all'
+                        hideArrayIndices={true}
+                        className='text-sm'
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -451,6 +530,20 @@ export default function RequestDetailPage() {
                         {t('requests.columns.responseBody')}
                       </h4>
                       <div className='flex gap-2'>
+                        {(request.format === 'openai/video' || request.format === 'seedance/video') &&
+                          request.contentSaved &&
+                          request.contentStorageKey && (
+                          <Button
+                            variant='outline'
+                            size='sm'
+                            onClick={downloadVideo}
+                            disabled={isDownloadingVideo}
+                            className='hover:bg-primary hover:text-primary-foreground'
+                          >
+                            <Download className='mr-2 h-4 w-4' />
+                            {t('requests.actions.downloadVideo')}
+                          </Button>
+                        )}
                         <Button
                           variant='outline'
                           size='sm'
@@ -485,7 +578,14 @@ export default function RequestDetailPage() {
                     </div>
                     {request.responseBody ? (
                       <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                        <JsonViewer data={request.responseBody} rootName='' defaultExpanded={true} className='text-sm' />
+                        <JsonViewer
+                          data={request.responseBody}
+                          rootName=''
+                          defaultExpanded={true}
+                          expandDepth='all'
+                          hideArrayIndices={true}
+                          className='text-sm'
+                        />
                       </div>
                     ) : (
                       <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
@@ -499,7 +599,21 @@ export default function RequestDetailPage() {
                 </TabsContent>
 
                 <TabsContent value='executions' className='space-y-6 p-6'>
-                  {executions && executions.edges.length > 0 ? (
+                  {isExecutionsLoading ? (
+                    <div className='py-16 text-center'>
+                      <div className='space-y-4'>
+                        <div className='border-primary mx-auto h-12 w-12 animate-spin rounded-full border-b-2'></div>
+                        <p className='text-muted-foreground text-lg'>{t('common.loading')}</p>
+                      </div>
+                    </div>
+                  ) : isExecutionsError ? (
+                    <div className='py-16 text-center'>
+                      <div className='space-y-4'>
+                        <FileText className='text-muted-foreground mx-auto h-16 w-16' />
+                        <p className='text-muted-foreground text-lg'>{t('requests.errors.loadRequestDetailFailed')}</p>
+                      </div>
+                    </div>
+                  ) : executions && executions.edges.length > 0 ? (
                     <div className='space-y-6'>
                       {executions.edges.map((edge: any, index: number) => {
                         const execution = edge.node;
@@ -577,13 +691,20 @@ export default function RequestDetailPage() {
                                 </div>
                               </div>
 
-                              {execution.errorMessage && (
+                              {(execution.errorMessage || (execution.status === 'failed' && execution.responseStatusCode)) && (
                                 <div className='bg-destructive/5 border-destructive/20 space-y-3 rounded-lg border p-4'>
-                                  <span className='text-destructive flex items-center gap-2 text-sm font-semibold'>
-                                    <FileText className='h-4 w-4' />
-                                    {t('common.messages.errorMessage')}
-                                  </span>
-                                  <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>
+                                  <div className='flex items-center justify-between'>
+                                    <span className='text-destructive flex items-center gap-2 text-sm font-semibold'>
+                                      <FileText className='h-4 w-4' />
+                                      {t('common.messages.errorMessage')}
+                                    </span>
+                                    {execution.status === 'failed' && execution.responseStatusCode && (
+                                      <Badge variant='destructive'>HTTP {execution.responseStatusCode}</Badge>
+                                    )}
+                                  </div>
+                                  {execution.errorMessage && (
+                                    <p className='text-destructive bg-destructive/10 rounded border p-3 text-sm'>{execution.errorMessage}</p>
+                                  )}
                                 </div>
                               )}
 
@@ -592,7 +713,7 @@ export default function RequestDetailPage() {
                                   <Button
                                     variant='outline'
                                     size='sm'
-                                    onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel)}
+                                    onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel, execution.format)}
                                     className='hover:bg-primary hover:text-primary-foreground'
                                   >
                                     <Terminal className='mr-2 h-4 w-4' />
@@ -630,7 +751,13 @@ export default function RequestDetailPage() {
                                     </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
-                                    <JsonViewer data={execution.requestHeaders} rootName='' defaultExpanded={false} className='text-xs' />
+                                    <JsonViewer
+                                      data={execution.requestHeaders}
+                                      rootName=''
+                                      defaultExpanded={false}
+                                      hideArrayIndices={true}
+                                      className='text-xs'
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -664,7 +791,13 @@ export default function RequestDetailPage() {
                                     </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
-                                    <JsonViewer data={execution.requestBody} rootName='' defaultExpanded={false} className='text-xs' />
+                                    <JsonViewer
+                                      data={execution.requestBody}
+                                      rootName=''
+                                      defaultExpanded={false}
+                                      hideArrayIndices={true}
+                                      className='text-xs'
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -709,7 +842,13 @@ export default function RequestDetailPage() {
                                     </div>
                                   </div>
                                   <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
-                                    <JsonViewer data={execution.responseBody} rootName='' defaultExpanded={false} className='text-xs' />
+                                    <JsonViewer
+                                      data={execution.responseBody}
+                                      rootName=''
+                                      defaultExpanded={false}
+                                      hideArrayIndices={true}
+                                      className='text-xs'
+                                    />
                                   </div>
                                 </div>
                               )}

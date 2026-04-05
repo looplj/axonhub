@@ -5,9 +5,10 @@ export const promptActionSchema = z.object({
 });
 
 export const promptActivationConditionSchema = z.object({
-  type: z.enum(['model_id', 'model_pattern']),
+  type: z.enum(['model_id', 'model_pattern', 'api_key']),
   modelId: z.string().nullable().optional(),
   modelPattern: z.string().nullable().optional(),
+  apiKeyId: z.number().nullable().optional(),
 });
 
 export const promptActivationConditionCompositeSchema = z.object({
@@ -29,6 +30,7 @@ export const promptSchema = z.object({
   role: z.string(),
   content: z.string(),
   status: z.enum(['enabled', 'disabled']),
+  order: z.number(),
   settings: promptSettingsSchema,
 });
 
@@ -65,15 +67,17 @@ export interface CreatePromptInput {
   role: string;
   content: string;
   status?: 'enabled' | 'disabled';
+  order?: number;
   settings: {
     action: {
       type: 'prepend' | 'append';
     };
     conditions: Array<{
       conditions: Array<{
-        type: 'model_id' | 'model_pattern';
+        type: 'model_id' | 'model_pattern' | 'api_key';
         modelId?: string;
         modelPattern?: string;
+        apiKeyId?: number;
       }>;
     }>;
   };
@@ -85,15 +89,17 @@ export interface UpdatePromptInput {
   role?: string;
   content?: string;
   status?: 'enabled' | 'disabled';
+  order?: number;
   settings?: {
     action: {
       type: 'prepend' | 'append';
     };
     conditions: Array<{
       conditions: Array<{
-        type: 'model_id' | 'model_pattern';
+        type: 'model_id' | 'model_pattern' | 'api_key';
         modelId?: string;
         modelPattern?: string;
+        apiKeyId?: number;
       }>;
     }>;
   };

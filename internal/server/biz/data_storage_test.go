@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zhenzou/executors"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
@@ -51,6 +51,7 @@ func setupDataStorageTest(t *testing.T) (*ent.Client, *DataStorageService, conte
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
 
 	return client, service, ctx
 }
@@ -88,13 +89,12 @@ func setupDataStorageTestWithRedis(t *testing.T) (*ent.Client, *DataStorageServi
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
 
 	return client, service, ctx, mr
 }
 
 func createTestDataStorage(t *testing.T, client *ent.Client, ctx context.Context, name string, primary bool, dsType datastorage.Type) *ent.DataStorage {
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
-
 	settings := &objects.DataStorageSettings{}
 
 	if dsType == datastorage.TypeFs {
@@ -122,7 +122,7 @@ func TestDataStorageService_CreateDataStorage(t *testing.T) {
 	client, service, ctx := setupDataStorageTest(t)
 	defer client.Close()
 
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Seed cache entries to ensure they get cleared after creation.
 	require.NoError(t, service.Cache.Set(ctx, "datastorage:123", ent.DataStorage{ID: 123}))
@@ -158,7 +158,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		client, service, ctx := setupDataStorageTest(t)
 		defer client.Close()
 
-		ctx = privacy.DecisionContext(ctx, privacy.Allow)
+		ctx = authz.WithTestBypass(ctx)
 
 		original := createTestDataStorage(t, client, ctx, "update-storage", true, datastorage.TypeDatabase)
 
@@ -192,7 +192,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		client, service, ctx := setupDataStorageTest(t)
 		defer client.Close()
 
-		ctx = privacy.DecisionContext(ctx, privacy.Allow)
+		ctx = authz.WithTestBypass(ctx)
 
 		existingDirectory := "/existing/path"
 		existingDSN := "existing-dsn"
@@ -201,8 +201,8 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		existingGCSCredential := "existing-gcs-cred"
 
 		existingSettings := &objects.DataStorageSettings{
-			Directory: stringPtr(existingDirectory),
-			DSN:       stringPtr(existingDSN),
+			Directory: new(existingDirectory),
+			DSN:       new(existingDSN),
 			S3: &objects.S3{
 				BucketName: "existing-bucket",
 				Endpoint:   "existing-endpoint",
@@ -216,7 +216,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 			},
 		}
 
-		ctxWithDecision := privacy.DecisionContext(ctx, privacy.Allow)
+		ctxWithDecision := authz.WithTestBypass(ctx)
 		original, err := client.DataStorage.Create().
 			SetName("storage-with-creds").
 			SetDescription("Data storage with credentials").
@@ -269,11 +269,11 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		client, service, ctx := setupDataStorageTest(t)
 		defer client.Close()
 
-		ctx = privacy.DecisionContext(ctx, privacy.Allow)
+		ctx = authz.WithTestBypass(ctx)
 
 		existingSettings := &objects.DataStorageSettings{
-			Directory: stringPtr("/existing/path"),
-			DSN:       stringPtr("existing-dsn"),
+			Directory: new("/existing/path"),
+			DSN:       new("existing-dsn"),
 			S3: &objects.S3{
 				BucketName: "existing-bucket",
 				Endpoint:   "existing-endpoint",
@@ -287,7 +287,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 			},
 		}
 
-		ctxWithDecision := privacy.DecisionContext(ctx, privacy.Allow)
+		ctxWithDecision := authz.WithTestBypass(ctx)
 		original, err := client.DataStorage.Create().
 			SetName("storage-with-creds").
 			SetDescription("Data storage with credentials").
@@ -300,8 +300,8 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 
 		updateInput := ent.UpdateDataStorageInput{
 			Settings: &objects.DataStorageSettings{
-				Directory: stringPtr("/new/path"),
-				DSN:       stringPtr("new-dsn"),
+				Directory: new("/new/path"),
+				DSN:       new("new-dsn"),
 				S3: &objects.S3{
 					BucketName: "new-bucket",
 					Endpoint:   "new-endpoint",
@@ -342,7 +342,7 @@ func TestDataStorageService_UpdateDataStorage(t *testing.T) {
 		client, service, ctx := setupDataStorageTest(t)
 		defer client.Close()
 
-		ctx = privacy.DecisionContext(ctx, privacy.Allow)
+		ctx = authz.WithTestBypass(ctx)
 
 		cacheKey := "datastorage:999"
 		require.NoError(t, service.Cache.Set(ctx, cacheKey, ent.DataStorage{ID: 999}))
@@ -440,7 +440,7 @@ func TestDataStorageService_GetPrimaryDataStorage(t *testing.T) {
 
 	t.Run("no primary data storage", func(t *testing.T) {
 		// Delete the primary data storage
-		ctx := privacy.DecisionContext(ctx, privacy.Allow)
+		ctx := authz.WithTestBypass(ctx)
 		err := client.DataStorage.DeleteOneID(primaryDS.ID).Exec(ctx)
 		require.NoError(t, err)
 
@@ -563,7 +563,7 @@ func TestDataStorageService_GetFileSystem(t *testing.T) {
 	})
 
 	t.Run("fs storage without directory should fail", func(t *testing.T) {
-		ctx := privacy.DecisionContext(ctx, privacy.Allow)
+		ctx := authz.WithTestBypass(ctx)
 		fsDS, err := client.DataStorage.Create().
 			SetName("fs-no-dir").
 			SetDescription("FS storage without directory").
@@ -598,7 +598,7 @@ func TestDataStorageService_GetFileSystem(t *testing.T) {
 	})
 
 	t.Run("webdav storage should return afero filesystem", func(t *testing.T) {
-		ctx := privacy.DecisionContext(ctx, privacy.Allow)
+		ctx := authz.WithTestBypass(ctx)
 		webdavDS, err := client.DataStorage.Create().
 			SetName("webdav-storage-with-settings").
 			SetDescription("WebDAV storage with settings").
@@ -722,6 +722,7 @@ func TestDataStorageService_CacheExpiration(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create test data storage
 	testDS := createTestDataStorage(t, client, ctx, "test-storage", false, datastorage.TypeDatabase)

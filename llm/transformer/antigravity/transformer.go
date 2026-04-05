@@ -4,14 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
@@ -29,6 +29,13 @@ type Option func(*Transformer)
 func WithHTTPClient(client *httpclient.HttpClient) Option {
 	return func(t *Transformer) {
 		t.httpClient = client
+	}
+}
+
+// WithOnTokenRefreshed sets the callback for token refresh events.
+func WithOnTokenRefreshed(onRefreshed func(ctx context.Context, refreshed *oauth.OAuthCredentials) error) Option {
+	return func(t *Transformer) {
+		t.onTokenRefreshed = onRefreshed
 	}
 }
 
@@ -50,6 +57,7 @@ type Transformer struct {
 	geminiTransformer transformer.Outbound
 	tokenProvider     *oauth.TokenProvider
 	httpClient        *httpclient.HttpClient
+	onTokenRefreshed  func(ctx context.Context, refreshed *oauth.OAuthCredentials) error
 }
 
 // NewTransformer creates a new Antigravity Transformer.
@@ -108,7 +116,8 @@ func (t *Transformer) initTokenProvider(apiKey string) {
 			ClientID:     ClientID,
 			Scopes:       Scopes,
 		},
-		HTTPClient: httpClient,
+		HTTPClient:  httpClient,
+		OnRefreshed: t.onTokenRefreshed,
 	})
 }
 
@@ -188,7 +197,7 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	// 5. Build new Headers
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
-	headers.Set("User-Agent", UserAgent)
+	headers.Set("User-Agent", GetUserAgent())
 	headers.Set("X-Goog-Api-Client", ApiClient)
 	headers.Set("Client-Metadata", ClientMetadata)
 	headers.Set("X-Opencode-Tools-Debug", "1")
@@ -201,31 +210,19 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		headers.Set("Accept", "application/json")
 	}
 
-	// Auth
-	var auth *httpclient.AuthConfig
-
+	// Auth - OAuth only, no API key fallback
+	var authConfig *httpclient.AuthConfig
 	if t.tokenProvider != nil {
 		creds, err := t.tokenProvider.Get(ctx)
-		if err == nil {
-			headers.Set("Authorization", "Bearer "+creds.AccessToken)
-		} else {
-			log.Warn(ctx, "failed to get oauth token, attempting fallback to api key", log.Cause(err))
-
-			if t.config.APIKey != "" {
-				auth = &httpclient.AuthConfig{
-					Type:      "api_key",
-					APIKey:    t.config.APIKey,
-					HeaderKey: "x-goog-api-key",
-				}
-			}
+		if err != nil {
+			return nil, fmt.Errorf("failed to get OAuth token: %w", err)
 		}
-	} else if t.config.APIKey != "" {
-		// Fallback to API Key if no token provider (legacy/testing?)
-		auth = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    t.config.APIKey,
-			HeaderKey: "x-goog-api-key",
+		authConfig = &httpclient.AuthConfig{
+			Type:   httpclient.AuthTypeBearer,
+			APIKey: creds.AccessToken,
 		}
+	} else {
+		return nil, fmt.Errorf("no OAuth token provider configured")
 	}
 
 	// URL
@@ -236,7 +233,7 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		URL:     url,
 		Headers: headers,
 		Body:    body,
-		Auth:    auth,
+		Auth:    authConfig,
 	}
 
 	// Store the original model name in metadata for executor routing
@@ -251,15 +248,28 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 
 func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.GenerateContentRequest, llmReq *llm.Request) error {
 	// A. Schema Sanitization
-	if req.GenerationConfig != nil && len(req.GenerationConfig.ResponseSchema) > 0 {
-		var schema map[string]any
-		if err := json.Unmarshal(req.GenerationConfig.ResponseSchema, &schema); err == nil {
-			sanitized := SanitizeJSONSchema(schema)
-			// CRITICAL: Uppercase all type values for Antigravity API
-			sanitized = UppercaseSchemaTypes(sanitized)
-			req.GenerationConfig.ResponseSchema = xjson.MustMarshal(sanitized)
-		} else {
-			log.Debug(ctx, "failed to unmarshal response schema", log.Cause(err))
+	// Priority: ResponseJsonSchema first (set by Gemini transformer), then ResponseSchema
+	if req.GenerationConfig != nil {
+		var schemaData json.RawMessage
+		if len(req.GenerationConfig.ResponseJsonSchema) > 0 {
+			schemaData = req.GenerationConfig.ResponseJsonSchema
+		} else if len(req.GenerationConfig.ResponseSchema) > 0 {
+			schemaData = req.GenerationConfig.ResponseSchema
+		}
+
+		if len(schemaData) > 0 {
+			var schema map[string]any
+			if err := json.Unmarshal(schemaData, &schema); err == nil {
+				sanitized := SanitizeJSONSchema(schema)
+				// CRITICAL: Uppercase all type values for Antigravity API
+				sanitized = UppercaseSchemaTypes(sanitized)
+				// Set to ResponseSchema field (what Antigravity expects)
+				req.GenerationConfig.ResponseSchema = xjson.MustMarshal(sanitized)
+				// Clear ResponseJsonSchema to avoid sending both
+				req.GenerationConfig.ResponseJsonSchema = nil
+			} else {
+				slog.DebugContext(ctx, "failed to unmarshal response schema", slog.Any("error", err))
+			}
 		}
 	}
 
@@ -295,7 +305,7 @@ func (t *Transformer) patchGeminiRequest(ctx context.Context, req *gemini.Genera
 					// Clear ParametersJsonSchema to avoid sending both
 					fd.ParametersJsonSchema = nil
 				} else {
-					log.Debug(ctx, "failed to unmarshal tool parameters", log.String("tool", fd.Name), log.Cause(err))
+					slog.DebugContext(ctx, "failed to unmarshal tool parameters", slog.String("tool", fd.Name), slog.Any("error", err))
 				}
 			}
 		}

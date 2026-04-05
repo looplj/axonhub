@@ -3,29 +3,61 @@ package anthropic
 import (
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xjson"
-	"github.com/looplj/axonhub/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
-
-// ToolTypeWebSearch20250305 is an alias to llm.ToolTypeAnthropicWebSearch for package compatibility.
-const ToolTypeWebSearch20250305 = llm.ToolTypeAnthropicWebSearch
 
 // convertToAnthropicRequest converts ChatCompletionRequest to Anthropic MessageRequest.
 // Deprecated: Use convertToAnthropicRequestWithConfig instead.
 func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
-	return convertToAnthropicRequestWithConfig(chatReq, nil)
+	return convertToAnthropicRequestWithConfig(chatReq, nil, shared.TransportScope{})
 }
 
 // convertToAnthropicRequestWithConfig converts ChatCompletionRequest to Anthropic MessageRequest with config.
-func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
+func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config, scope shared.TransportScope) *MessageRequest {
 	req := buildBaseRequest(chatReq, config)
-	req.Tools = convertTools(chatReq.Tools)
-	req.Messages = convertMessages(chatReq)
+	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
+	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
+	req.Messages = convertMessages(chatReq, scope, config)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
 	return req
+}
+
+func shouldDecodeAnthropicSignature(config *Config) bool {
+	if config == nil {
+		return true
+	}
+
+	//nolint:exhaustive // Non-Anthropic platforms should fall back to false here.
+	switch config.Type {
+	case "", PlatformDirect, PlatformClaudeCode, PlatformVertex, PlatformBedrock:
+		return true
+	default:
+		return false
+	}
+}
+
+func prepareAnthropicReasoning(reasoningContent, reasoningSignature *string, scope shared.TransportScope, config *Config) (*string, *string) {
+	if reasoningSignature == nil || *reasoningSignature == "" {
+		return reasoningContent, reasoningSignature
+	}
+
+	if shouldDecodeAnthropicSignature(config) {
+		if scope.Footprint() == "" {
+			return reasoningContent, reasoningSignature
+		}
+
+		if decoded := shared.DecodeAnthropicSignatureInScope(reasoningSignature, scope); decoded != nil {
+			return reasoningContent, decoded
+		}
+
+		return nil, nil
+	}
+
+	return reasoningContent, reasoningSignature
 }
 
 // buildBaseRequest creates the base MessageRequest with common fields.
@@ -43,8 +75,36 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Metadata = &AnthropicMetadata{UserID: chatReq.Metadata["user_id"]}
 	}
 
-	if chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil {
+	// Determine thinking config priority: adaptive > enabled > disabled
+	if chatReq.TransformerMetadata != nil {
+		if v, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType].(string); ok && v == "adaptive" {
+			req.Thinking = &Thinking{Type: "adaptive"}
+		}
+	}
+
+	if req.Thinking == nil && (chatReq.ReasoningEffort != "" || chatReq.ReasoningBudget != nil) {
 		req.Thinking = buildThinking(chatReq, config)
+	}
+
+	// Restore thinking display from TransformerMetadata
+	if req.Thinking != nil && chatReq.TransformerMetadata != nil {
+		if display, ok := chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay].(string); ok && display != "" {
+			req.Thinking.Display = display
+		}
+	}
+
+	// Restore output_config from TransformerMetadata
+	if chatReq.TransformerMetadata != nil {
+		if effort, ok := chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort].(string); ok && effort != "" {
+			if supportsAdaptiveThinking(config) {
+				req.OutputConfig = &OutputConfig{Effort: effort}
+			} else if req.Thinking == nil || req.Thinking.Type == "adaptive" {
+				req.Thinking = &Thinking{
+					Type:         "enabled",
+					BudgetTokens: getThinkingBudgetTokensWithConfig(effort, config),
+				}
+			}
+		}
 	}
 
 	return req
@@ -73,36 +133,92 @@ func buildThinking(chatReq *llm.Request, config *Config) *Thinking {
 	}
 }
 
-// convertTools converts LLM tools to Anthropic tools.
-func convertTools(tools []llm.Tool) []Tool {
+// convertToolsAnthropic converts LLM tools to Anthropic tools.
+// If the platform is not direct Anthropic API or Bedrock, anthropic native tools (like web_search) are filtered out.
+// Only web_search tool is supported as native tool, other native tools (image_generation, google_*, etc.) are ignored.
+func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	if len(tools) == 0 {
 		return nil
 	}
 
 	anthropicTools := make([]Tool, 0, len(tools))
 
+	supportsNativeTools := supportsAnthropicNativeTools(config)
+
 	for _, tool := range tools {
-		// Use shared helper to detect Anthropic native tools (web_search)
-		if llm.IsAnthropicNativeTool(tool) {
-			anthropicTools = append(anthropicTools, Tool{
-				Type: ToolTypeWebSearch20250305,
-				Name: llm.AnthropicWebSearchFunctionName,
-			})
-		} else if tool.Type == llm.ToolTypeFunction {
+		switch tool.Type {
+		case llm.ToolTypeFunction:
 			anthropicTools = append(anthropicTools, Tool{
 				Name:         tool.Function.Name,
 				Description:  tool.Function.Description,
 				InputSchema:  tool.Function.Parameters,
 				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
 			})
+		case llm.ToolTypeWebSearch:
+			// Already transformed Anthropic native tool type
+			// If platform doesn't support native tools, skip this tool
+			if !supportsNativeTools {
+				continue
+			}
+
+			anthropicTool := Tool{
+				Type: ToolTypeWebSearch20250305,
+				Name: WebSearchFunctionName,
+			}
+			// Copy web search parameters if available
+			if tool.WebSearch != nil {
+				anthropicTool.MaxUses = tool.WebSearch.MaxUses
+				anthropicTool.Strict = tool.WebSearch.Strict
+				anthropicTool.AllowedDomains = tool.WebSearch.AllowedDomains
+				anthropicTool.BlockedDomains = tool.WebSearch.BlockedDomains
+				anthropicTool.UserLocation = WebSearchToolUserLocation{
+					City:     tool.WebSearch.UserLocation.City,
+					Country:  tool.WebSearch.UserLocation.Country,
+					Region:   tool.WebSearch.UserLocation.Region,
+					Timezone: tool.WebSearch.UserLocation.Timezone,
+					Type:     tool.WebSearch.UserLocation.Type,
+				}
+			}
+
+			anthropicTools = append(anthropicTools, anthropicTool)
+		default:
+			// Ignore other native tools (image_generation, google_*, etc.)
+			continue
 		}
 	}
 
-	if len(anthropicTools) == 0 {
+	return anthropicTools
+}
+
+// convertToolChoiceToAnthropic converts llm.ToolChoice to Anthropic ToolChoice.
+func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
+	if src == nil {
 		return nil
 	}
 
-	return anthropicTools
+	// String-form tool_choice: "auto", "none", "any", "required"
+	if src.ToolChoice != nil {
+		choice := *src.ToolChoice
+
+		// OpenAI "required" is equivalent to Anthropic "any"
+		if choice == "required" {
+			choice = "any"
+		}
+
+		return &ToolChoice{
+			Type: choice,
+		}
+	}
+
+	// Named tool_choice: {type: "function", function: {name: "xxx"}}
+	if src.NamedToolChoice != nil && src.NamedToolChoice.Function.Name != "" {
+		return &ToolChoice{
+			Type: "tool",
+			Name: lo.ToPtr(src.NamedToolChoice.Function.Name),
+		}
+	}
+
+	return nil
 }
 
 // convertStopSequences converts stop sequences.
@@ -123,7 +239,7 @@ func convertStopSequences(stop *llm.Stop) []string {
 }
 
 // convertMessages converts all messages to Anthropic format.
-func convertMessages(chatReq *llm.Request) []MessageParam {
+func convertMessages(chatReq *llm.Request, scope shared.TransportScope, config *Config) []MessageParam {
 	messages := make([]MessageParam, 0, len(chatReq.Messages))
 	// First, filter out system and developer messages as they are handled separately.
 	nonSystemMsgs := lo.Filter(chatReq.Messages, func(msg llm.Message, _ int) bool {
@@ -156,12 +272,12 @@ func convertMessages(chatReq *llm.Request) []MessageParam {
 				continue
 			}
 
-			if converted, ok := convertUserMessage(msg); ok {
+			if converted, ok := convertUserMessage(msg, scope); ok {
 				messages = append(messages, converted...)
 			}
 		case "assistant":
 			// Convert the assistant message.
-			if assistantMsg, ok := convertAssistantMessage(msg); ok {
+			if assistantMsg, ok := convertAssistantMessage(msg, scope, config); ok {
 				messages = append(messages, assistantMsg...)
 			}
 
@@ -333,8 +449,8 @@ func extractUserContentBlocks(msg llm.Message) []MessageContentBlock {
 }
 
 // convertUserMessage handles user message conversion.
-func convertUserMessage(msg llm.Message) ([]MessageParam, bool) {
-	content, ok := buildMessageContent(msg)
+func convertUserMessage(msg llm.Message, scope shared.TransportScope) ([]MessageParam, bool) {
+	content, ok := buildMessageContent(msg, scope, nil)
 	if !ok {
 		return nil, false
 	}
@@ -343,13 +459,13 @@ func convertUserMessage(msg llm.Message) ([]MessageParam, bool) {
 }
 
 // convertAssistantMessage handles assistant message conversion.
-func convertAssistantMessage(msg llm.Message) ([]MessageParam, bool) {
-	return convertAssistantWithToolCalls(msg)
+func convertAssistantMessage(msg llm.Message, scope shared.TransportScope, config *Config) ([]MessageParam, bool) {
+	return convertAssistantWithToolCalls(msg, scope, config)
 }
 
 // convertAssistantWithToolCalls handles assistant messages that have tool calls.
-func convertAssistantWithToolCalls(msg llm.Message) ([]MessageParam, bool) {
-	preBlocks := buildPreBlocks(msg)
+func convertAssistantWithToolCalls(msg llm.Message, scope shared.TransportScope, config *Config) ([]MessageParam, bool) {
+	preBlocks := buildPreBlocks(msg, scope, config)
 	toolContent, hasToolContent := convertMultiplePartContent(msg)
 
 	switch {
@@ -367,10 +483,17 @@ func convertAssistantWithToolCalls(msg llm.Message) ([]MessageParam, bool) {
 }
 
 // buildPreBlocks creates thinking and text blocks that precede tool use.
-func buildPreBlocks(msg llm.Message) []MessageContentBlock {
+func buildPreBlocks(msg llm.Message, scope shared.TransportScope, config *Config) []MessageContentBlock {
 	var blocks []MessageContentBlock
 
-	if block := buildThinkingBlock(msg.ReasoningContent, msg.ReasoningSignature); block != nil {
+	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
+		msg.ReasoningContent,
+		msg.ReasoningSignature,
+		scope,
+		config,
+	)
+
+	if block := buildThinkingBlock(reasoningContent, reasoningSignature); block != nil {
 		blocks = append(blocks, *block)
 	}
 
@@ -399,11 +522,11 @@ func buildContentFromBlocks(blocks []MessageContentBlock) MessageContent {
 }
 
 // buildMessageContent creates message content with optional thinking block.
-func buildMessageContent(msg llm.Message) (MessageContent, bool) {
+func buildMessageContent(msg llm.Message, scope shared.TransportScope, config *Config) (MessageContent, bool) {
 	// Handle simple string content
 	if msg.Content.Content != nil {
 		if msg.CacheControl != nil || hasThinkingContent(msg) {
-			return buildMultipleContentWithThinking(msg), true
+			return buildMultipleContentWithThinking(msg, scope, config), true
 		}
 
 		return MessageContent{Content: msg.Content.Content}, true
@@ -437,14 +560,21 @@ func buildMessageContent(msg llm.Message) (MessageContent, bool) {
 // hasThinkingContent checks if message has reasoning content.
 func hasThinkingContent(msg llm.Message) bool {
 	return (msg.ReasoningContent != nil && *msg.ReasoningContent != "") ||
-		(shared.IsAnthropicRedactedContent(msg.RedactedReasoningContent) && *msg.RedactedReasoningContent != "")
+		(msg.RedactedReasoningContent != nil && *msg.RedactedReasoningContent != "")
 }
 
 // buildMultipleContentWithThinking creates content blocks including thinking.
-func buildMultipleContentWithThinking(msg llm.Message) MessageContent {
+func buildMultipleContentWithThinking(msg llm.Message, scope shared.TransportScope, config *Config) MessageContent {
 	blocks := make([]MessageContentBlock, 0, 3)
 
-	if block := buildThinkingBlock(msg.ReasoningContent, msg.ReasoningSignature); block != nil {
+	reasoningContent, reasoningSignature := prepareAnthropicReasoning(
+		msg.ReasoningContent,
+		msg.ReasoningSignature,
+		scope,
+		config,
+	)
+
+	if block := buildThinkingBlock(reasoningContent, reasoningSignature); block != nil {
 		blocks = append(blocks, *block)
 	}
 
@@ -479,10 +609,6 @@ func buildThinkingBlock(reasoningContent, reasoningSignature *string) *MessageCo
 // buildRedactedThinkingBlock creates a redacted_thinking block from encrypted content.
 func buildRedactedThinkingBlock(redactedContent *string) *MessageContentBlock {
 	if redactedContent == nil || *redactedContent == "" {
-		return nil
-	}
-
-	if !shared.IsAnthropicRedactedContent(redactedContent) {
 		return nil
 	}
 
@@ -566,6 +692,29 @@ func convertToAnthropicTrivialContent(content llm.MessageContent) *MessageConten
 	return nil
 }
 
+func systemMessageToParts(msg llm.Message) []SystemPromptPart {
+	if msg.Content.Content != nil {
+		return []SystemPromptPart{{
+			Type:         "text",
+			Text:         *msg.Content.Content,
+			CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
+		}}
+	}
+
+	parts := make([]SystemPromptPart, 0, len(msg.Content.MultipleContent))
+	for _, part := range msg.Content.MultipleContent {
+		if part.Type == "text" && part.Text != nil {
+			parts = append(parts, SystemPromptPart{
+				Type:         "text",
+				Text:         *part.Text,
+				CacheControl: convertToAnthropicCacheControl(part.CacheControl),
+			})
+		}
+	}
+
+	return parts
+}
+
 func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 	// Partition messages into system and developer roles in a single loop for better performance
 	var systemOnlyMessages, developerMessages []llm.Message
@@ -589,32 +738,35 @@ func convertToAnthropicSystemPrompt(chatReq *llm.Request) *SystemPrompt {
 		// Leave System as nil when there are no system messages
 		return nil
 	case 1:
+		msg := systemMessages[0]
+		parts := systemMessageToParts(msg)
+
 		// If it was originally in array format, preserve that format
 		if wasArrayFormat {
 			return &SystemPrompt{
-				MultiplePrompts: []SystemPromptPart{{
-					Type:         "text",
-					Text:         *systemMessages[0].Content.Content,
-					CacheControl: convertToAnthropicCacheControl(systemMessages[0].CacheControl),
-				}},
+				MultiplePrompts: parts,
+			}
+		}
+
+		// Single string format
+		if len(parts) == 1 {
+			return &SystemPrompt{
+				Prompt: &parts[0].Text,
 			}
 		}
 
 		return &SystemPrompt{
-			Prompt: systemMessages[0].Content.Content,
+			MultiplePrompts: parts,
 		}
 	default:
 		// Combine system and developer messages in order
-		return &SystemPrompt{
-			MultiplePrompts: lo.Map(systemMessages, func(msg llm.Message, _ int) SystemPromptPart {
-				part := SystemPromptPart{
-					Type:         "text",
-					Text:         *msg.Content.Content,
-					CacheControl: convertToAnthropicCacheControl(msg.CacheControl),
-				}
+		var parts []SystemPromptPart
+		for _, msg := range systemMessages {
+			parts = append(parts, systemMessageToParts(msg)...)
+		}
 
-				return part
-			}),
+		return &SystemPrompt{
+			MultiplePrompts: parts,
 		}
 	}
 }
@@ -686,7 +838,7 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 }
 
 // convertToLlmResponse converts Anthropic Message to unified Response format.
-func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *llm.Response {
+func convertToLlmResponse(anthropicResp *Message, platformType PlatformType, scope shared.TransportScope) *llm.Response {
 	if anthropicResp == nil {
 		return &llm.Response{
 			ID:      "",
@@ -780,7 +932,7 @@ func convertToLlmResponse(anthropicResp *Message, platformType PlatformType) *ll
 		Content:                  content,
 		ToolCalls:                toolCalls,
 		ReasoningContent:         thinkingText,
-		ReasoningSignature:       thinkingSignature,
+		ReasoningSignature:       shared.EncodeAnthropicSignatureInScope(thinkingSignature, scope),
 		RedactedReasoningContent: redactedThinkingData,
 	}
 

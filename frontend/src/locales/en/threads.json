@@ -1,6 +1,6 @@
 {
-  "threads.title": "Thread Management",
-  "threads.description": "View and manage AI conversation threads and related traces",
+  "threads.title": "Threads",
+  "threads.description": "Browse conversation threads and their associated traces.",
   "threads.filters.filterThreadId": "Filter by thread ID...",
   "threads.columns.threadId": "Thread ID",
   "threads.columns.project": "Project",
@@ -20,7 +20,5 @@
   "threads.detail.tracesSubtitle": "Review recent traces and executions for this thread",
   "threads.detail.noTraces": "No traces found",
   "threads.detail.traces": "traces",
-  "threads.errors.fetchList": "Failed to fetch thread list",
-  "threads.errors.fetchDetail": "Failed to fetch thread details",
   "threads.errors.notFound": "Thread not found"
 }

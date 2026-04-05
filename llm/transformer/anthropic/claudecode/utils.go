@@ -1,47 +1,27 @@
 package claudecode
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/llm"
 )
 
-// userIDPattern matches Claude Code format: user_[64-hex]_account__session_[uuid-v4].
-var userIDPattern = regexp.MustCompile(`^user_[a-fA-F0-9]{64}_account__session_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
-// generateFakeUserID generates a fake user ID in Claude Code format.
-// Format: user_[64-hex-chars]_account__session_[UUID-v4].
-func generateFakeUserID() string {
-	hexBytes := make([]byte, 32)
-	_, _ = rand.Read(hexBytes)
-	hexPart := hex.EncodeToString(hexBytes)
-	uuidPart := uuid.New().String()
-
-	return "user_" + hexPart + "_account__session_" + uuidPart
-}
-
-// isValidUserID checks if a user ID matches Claude Code format.
-func isValidUserID(userID string) bool {
-	return userIDPattern.MatchString(userID)
-}
+const claudeCodeBillingCCHMetadataKey = "claudecode_billing_cch"
 
 // injectFakeUserIDStructured generates and injects a fake user ID into the request metadata.
-func injectFakeUserIDStructured(llmReq *llm.Request) *llm.Request {
+func injectFakeUserIDStructured(ctx context.Context, llmReq llm.Request) llm.Request {
 	if llmReq.Metadata == nil {
 		llmReq.Metadata = make(map[string]string)
 	}
 
 	existingUserID := llmReq.Metadata["user_id"]
-	if existingUserID == "" || !isValidUserID(existingUserID) {
-		llmReq.Metadata["user_id"] = generateFakeUserID()
+	if existingUserID == "" || ParseUserID(existingUserID) == nil {
+		llmReq.Metadata["user_id"] = GenerateUserID(ctx)
 	}
 
 	return llmReq
@@ -70,11 +50,6 @@ func extractAndRemoveBetas(body []byte) ([]string, []byte) {
 	body, _ = sjson.DeleteBytes(body, "betas")
 
 	return betas, body
-}
-
-// isClaudeOAuthToken checks if the API key is a Claude OAuth token.
-func isClaudeOAuthToken(apiKey string) bool {
-	return strings.Contains(apiKey, "sk-ant-oat")
 }
 
 // disableThinkingIfToolChoiceForcedStructured clears ReasoningEffort when tool_choice forces tool use.
@@ -194,16 +169,128 @@ func mergeBetasIntoHeader(baseBetas string, extraBetas []string) string {
 	return strings.Join(parts, ",")
 }
 
-// injectClaudeCodeSystemMessageStructured prepends the Claude Code system message with cache_control.
+// billingHeaderPrefix is the prefix used to identify billing header system messages.
+const billingHeaderPrefix = "x-anthropic-billing-header:"
+
+// removeBillingSystemMessages removes system messages that contain the
+// x-anthropic-billing-header pattern. These messages are injected by the
+// Claude Code CLI to report billing metadata. For non-official (non-OAuth)
+// channels, these messages should be stripped to avoid leaking client info.
+func removeBillingSystemMessages(llmReq *llm.Request) *llm.Request {
+	if len(llmReq.Messages) == 0 {
+		return llmReq
+	}
+
+	filtered := make([]llm.Message, 0, len(llmReq.Messages))
+
+	for _, msg := range llmReq.Messages {
+		if msg.Role == "system" && msg.Content.Content != nil &&
+			strings.HasPrefix(strings.TrimSpace(*msg.Content.Content), billingHeaderPrefix) {
+			continue
+		}
+
+		filtered = append(filtered, msg)
+	}
+
+	llmReq.Messages = filtered
+
+	return llmReq
+}
+
+func ensureBillingSystemMessageCCH(llmReq *llm.Request) *llm.Request {
+	if llmReq == nil || len(llmReq.Messages) == 0 {
+		return llmReq
+	}
+
+	cch := ""
+	if llmReq.TransformerMetadata != nil {
+		if v, ok := llmReq.TransformerMetadata[claudeCodeBillingCCHMetadataKey]; ok {
+			if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
+				cch = strings.TrimSpace(s)
+			}
+		}
+	}
+	if cch == "" {
+		return llmReq
+	}
+
+	for i := range llmReq.Messages {
+		msg := &llmReq.Messages[i]
+		if msg.Role != "system" {
+			continue
+		}
+
+		if msg.Content.Content != nil {
+			updated, changed := ensureBillingHeaderCCHInText(*msg.Content.Content, cch)
+			if changed {
+				*msg.Content.Content = updated
+			}
+		}
+
+		if len(msg.Content.MultipleContent) > 0 {
+			for j := range msg.Content.MultipleContent {
+				part := &msg.Content.MultipleContent[j]
+				if part.Type != "text" || part.Text == nil {
+					continue
+				}
+
+				updated, changed := ensureBillingHeaderCCHInText(*part.Text, cch)
+				if changed {
+					*part.Text = updated
+				}
+			}
+		}
+	}
+
+	return llmReq
+}
+
+func ensureBillingHeaderCCHInText(text string, cch string) (string, bool) {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return text, false
+	}
+
+	lower := strings.ToLower(trimmed)
+	if !strings.HasPrefix(lower, billingHeaderPrefix) {
+		return text, false
+	}
+
+	rest := strings.TrimSpace(trimmed[len(billingHeaderPrefix):])
+	if rest == "" {
+		return text, false
+	}
+
+	parts := strings.Split(rest, ";")
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+
+		if strings.HasPrefix(strings.ToLower(p), "cch=") {
+			return text, false
+		}
+	}
+
+	out := strings.TrimSpace(trimmed)
+	if !strings.HasSuffix(out, ";") {
+		out += ";"
+	}
+	out += " cch=" + strings.TrimSpace(cch) + ";"
+
+	return out, true
+}
+
+// injectClaudeCodeSystemMessageStructured prepends the Claude Code system message.
 func injectClaudeCodeSystemMessageStructured(llmReq *llm.Request) *llm.Request {
 	claudeCodeMsg := llm.Message{
 		Role: "system",
 		Content: llm.MessageContent{
 			Content: func() *string { s := claudeCodeSystemMessage; return &s }(),
 		},
-		CacheControl: &llm.CacheControl{
-			Type: "ephemeral",
-		},
+		// Force enable cache_control for Claude Code system message.
+		CacheControl: &llm.CacheControl{Type: "ephemeral"},
 	}
 
 	if len(llmReq.Messages) > 0 && llmReq.Messages[0].Role == "system" {

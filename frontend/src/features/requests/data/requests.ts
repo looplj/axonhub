@@ -131,11 +131,14 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           clientIP
           projectID
           dataStorageID
+          contentSaved
+          contentStorageKey
           requestHeaders
           requestBody
           responseBody
           responseChunks
           status
+          format
           usageLogs(first: 1) {
             edges {
               node {
@@ -191,7 +194,9 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 responseBody
                 responseChunks
                 errorMessage
+                responseStatusCode
                 status
+                format
                 stream
                 metricsFirstTokenLatencyMs
               }
@@ -287,6 +292,38 @@ export function useRequest(id: string) {
   });
 }
 
+/**
+ * Imperative (non-hook) fetch of a page of requests for drawer navigation.
+ * direction 'older' fetches the page after endCursor (older in DESC order).
+ * direction 'newer' fetches the page before startCursor (newer in DESC order).
+ */
+export async function fetchAdjacentRequestPage(params: {
+  cursor: string;
+  direction: 'older' | 'newer';
+  pageSize: number;
+  where?: Record<string, any>;
+  permissions: { canViewApiKeys: boolean; canViewChannels: boolean };
+  projectId?: string | null;
+}): Promise<{ requests: Request[]; pageInfo: RequestConnection['pageInfo'] }> {
+  const query = buildRequestsQuery(params.permissions);
+  const variables =
+    params.direction === 'older'
+      ? { first: params.pageSize, after: params.cursor }
+      : { last: params.pageSize, before: params.cursor };
+
+  const where: Record<string, any> = { ...params.where };
+  if (params.projectId) where.projectID = params.projectId;
+
+  const headers = params.projectId ? { 'X-Project-ID': params.projectId } : undefined;
+  const data = await graphqlRequest<{ requests: RequestConnection }>(
+    query,
+    { ...variables, where: Object.keys(where).length > 0 ? where : undefined, orderBy: { field: 'CREATED_AT', direction: 'DESC' } },
+    headers
+  );
+  const result = requestConnectionSchema.parse(data?.requests);
+  return { requests: result.edges.map((e) => e.node), pageInfo: result.pageInfo };
+}
+
 export function useRequestExecutions(
   requestID: string,
   variables?: {
@@ -296,20 +333,27 @@ export function useRequestExecutions(
     where?: Record<string, any>;
   }
 ) {
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
     queryKey: ['request-executions', requestID, variables, permissions, selectedProjectId],
     queryFn: async () => {
-      const query = buildRequestExecutionsQuery(permissions);
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const finalVariables = {
-        requestID,
-        ...variables,
-      };
-      const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(query, finalVariables, headers);
-      return requestExecutionConnectionSchema.parse(data?.node?.executions);
+      try {
+        const query = buildRequestExecutionsQuery(permissions);
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const finalVariables = {
+          requestID,
+          ...variables,
+        };
+        const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(query, finalVariables, headers);
+        return requestExecutionConnectionSchema.parse(data?.node?.executions);
+      } catch (error) {
+        handleError(error, t('requests.errors.loadRequestDetailFailed'));
+        throw error;
+      }
     },
     enabled: !!requestID,
   });

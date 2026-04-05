@@ -11,12 +11,12 @@ var (
 	// APIKeysColumns holds the columns for the "api_keys" table.
 	APIKeysColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "key", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"user", "service_account"}, Default: "user"},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"user", "service_account", "noauth", "agent"}, Default: "user"},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "enabled"},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
 		{Name: "profiles", Type: field.TypeJSON, Nullable: true},
@@ -60,19 +60,405 @@ var (
 			},
 		},
 	}
+	// AgentsColumns holds the columns for the "agents" table.
+	AgentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
+		{Name: "model", Type: field.TypeString, Default: ""},
+		{Name: "reasoning_effort", Type: field.TypeEnum, Enums: []string{"none", "low", "medium", "high"}, Default: "none"},
+		{Name: "agent_builtin_tools", Type: field.TypeJSON},
+		{Name: "agent_builtin_skills", Type: field.TypeJSON},
+		{Name: "skills_policy", Type: field.TypeJSON},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "prompt_id", Type: field.TypeInt},
+		{Name: "created_by_user_id", Type: field.TypeInt},
+	}
+	// AgentsTable holds the schema information for the "agents" table.
+	AgentsTable = &schema.Table{
+		Name:       "agents",
+		Columns:    AgentsColumns,
+		PrimaryKey: []*schema.Column{AgentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "agents_projects_agents",
+				Columns:    []*schema.Column{AgentsColumns[12]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agents_prompts_agents",
+				Columns:    []*schema.Column{AgentsColumns[13]},
+				RefColumns: []*schema.Column{PromptsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agents_users_agents",
+				Columns:    []*schema.Column{AgentsColumns[14]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agents_by_project_id_name",
+				Unique:  true,
+				Columns: []*schema.Column{AgentsColumns[12], AgentsColumns[4], AgentsColumns[3]},
+			},
+		},
+	}
+	// AgentHostsColumns holds the columns for the "agent_hosts" table.
+	AgentHostsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"vm", "docker", "local"}, Default: "vm"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive"}, Default: "active"},
+		{Name: "addr", Type: field.TypeString, Default: ""},
+		{Name: "user", Type: field.TypeString, Default: ""},
+		{Name: "auth_method", Type: field.TypeEnum, Enums: []string{"password", "ssh_key"}, Default: "password"},
+		{Name: "password", Type: field.TypeString, Default: ""},
+		{Name: "ssh_private_key", Type: field.TypeString, Default: "", SchemaType: map[string]string{"mysql": "text"}},
+		{Name: "directory", Type: field.TypeString, Default: ""},
+	}
+	// AgentHostsTable holds the schema information for the "agent_hosts" table.
+	AgentHostsTable = &schema.Table{
+		Name:       "agent_hosts",
+		Columns:    AgentHostsColumns,
+		PrimaryKey: []*schema.Column{AgentHostsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_hosts_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{AgentHostsColumns[4], AgentHostsColumns[3]},
+			},
+			{
+				Name:    "agent_hosts_by_type",
+				Unique:  false,
+				Columns: []*schema.Column{AgentHostsColumns[5], AgentHostsColumns[3]},
+			},
+		},
+	}
+	// AgentInstancesColumns holds the columns for the "agent_instances" table.
+	AgentInstancesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "name", Type: field.TypeString, Default: ""},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "platform", Type: field.TypeString, Default: ""},
+		{Name: "last_heartbeat_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime(6)"}},
+		{Name: "axonhub_base_url", Type: field.TypeString, Default: ""},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "running", "stopped", "error"}, Default: "running"},
+		{Name: "api_key_id", Type: field.TypeInt, Unique: true},
+		{Name: "agent_id", Type: field.TypeInt},
+		{Name: "agent_host_id", Type: field.TypeInt, Nullable: true},
+	}
+	// AgentInstancesTable holds the schema information for the "agent_instances" table.
+	AgentInstancesTable = &schema.Table{
+		Name:       "agent_instances",
+		Columns:    AgentInstancesColumns,
+		PrimaryKey: []*schema.Column{AgentInstancesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "agent_instances_api_keys_agent_instance",
+				Columns:    []*schema.Column{AgentInstancesColumns[11]},
+				RefColumns: []*schema.Column{APIKeysColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_instances_agents_instances",
+				Columns:    []*schema.Column{AgentInstancesColumns[12]},
+				RefColumns: []*schema.Column{AgentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_instances_agent_hosts_instances",
+				Columns:    []*schema.Column{AgentInstancesColumns[13]},
+				RefColumns: []*schema.Column{AgentHostsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_instances_by_agent_id_name",
+				Unique:  true,
+				Columns: []*schema.Column{AgentInstancesColumns[12], AgentInstancesColumns[5], AgentInstancesColumns[3]},
+			},
+			{
+				Name:    "agent_instances_by_api_key_id",
+				Unique:  true,
+				Columns: []*schema.Column{AgentInstancesColumns[11]},
+			},
+		},
+	}
+	// AgentMemoriesColumns holds the columns for the "agent_memories" table.
+	AgentMemoriesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "path", Type: field.TypeString},
+		{Name: "content", Type: field.TypeString, SchemaType: map[string]string{"mysql": "mediumtext"}},
+		{Name: "source", Type: field.TypeString, Default: ""},
+		{Name: "agent_id", Type: field.TypeInt, Nullable: true},
+	}
+	// AgentMemoriesTable holds the schema information for the "agent_memories" table.
+	AgentMemoriesTable = &schema.Table{
+		Name:       "agent_memories",
+		Columns:    AgentMemoriesColumns,
+		PrimaryKey: []*schema.Column{AgentMemoriesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "agent_memories_agents_memories",
+				Columns:    []*schema.Column{AgentMemoriesColumns[8]},
+				RefColumns: []*schema.Column{AgentsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_memories_by_project_id_agent_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{AgentMemoriesColumns[4], AgentMemoriesColumns[8], AgentMemoriesColumns[3], AgentMemoriesColumns[1]},
+			},
+			{
+				Name:    "agent_memories_by_project_id_path",
+				Unique:  false,
+				Columns: []*schema.Column{AgentMemoriesColumns[4], AgentMemoriesColumns[5]},
+			},
+		},
+	}
+	// AgentMessagesColumns holds the columns for the "agent_messages" table.
+	AgentMessagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "direction", Type: field.TypeEnum, Enums: []string{"to_agent", "to_user"}},
+		{Name: "sender_type", Type: field.TypeEnum, Enums: []string{"user", "agent", "system", "message_channel"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"chat", "approval_request", "approval_result", "system_event"}, Default: "chat"},
+		{Name: "correlation_id", Type: field.TypeString, Default: ""},
+		{Name: "content", Type: field.TypeJSON},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "acked", "expired"}, Default: "pending"},
+		{Name: "sequence", Type: field.TypeInt64},
+		{Name: "expires_at", Type: field.TypeTime, Nullable: true},
+		{Name: "external_message_id", Type: field.TypeString, Nullable: true},
+		{Name: "reply_to_message_id", Type: field.TypeInt, Nullable: true},
+		{Name: "agent_id", Type: field.TypeInt},
+		{Name: "agent_instance_id", Type: field.TypeInt},
+		{Name: "sender_id", Type: field.TypeInt, Nullable: true},
+	}
+	// AgentMessagesTable holds the schema information for the "agent_messages" table.
+	AgentMessagesTable = &schema.Table{
+		Name:       "agent_messages",
+		Columns:    AgentMessagesColumns,
+		PrimaryKey: []*schema.Column{AgentMessagesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "agent_messages_agents_messages",
+				Columns:    []*schema.Column{AgentMessagesColumns[14]},
+				RefColumns: []*schema.Column{AgentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_messages_agent_instances_messages",
+				Columns:    []*schema.Column{AgentMessagesColumns[15]},
+				RefColumns: []*schema.Column{AgentInstancesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_messages_message_channels_messages",
+				Columns:    []*schema.Column{AgentMessagesColumns[16]},
+				RefColumns: []*schema.Column{MessageChannelsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_messages_by_agent_instance_id_sequence",
+				Unique:  true,
+				Columns: []*schema.Column{AgentMessagesColumns[15], AgentMessagesColumns[10]},
+			},
+			{
+				Name:    "agent_messages_by_agent_id_status_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[15], AgentMessagesColumns[9], AgentMessagesColumns[1]},
+			},
+			{
+				Name:    "agent_messages_by_agent_id_correlation_id",
+				Unique:  false,
+				Columns: []*schema.Column{AgentMessagesColumns[14], AgentMessagesColumns[7]},
+			},
+			{
+				Name:    "agent_messages_by_sender_id_sender_type",
+				Unique:  false,
+				Columns: []*schema.Column{AgentMessagesColumns[16], AgentMessagesColumns[5]},
+			},
+		},
+	}
+	// AgentSkillsColumns holds the columns for the "agent_skills" table.
+	AgentSkillsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "order", Type: field.TypeInt, Default: 0},
+		{Name: "args", Type: field.TypeString, Default: ""},
+		{Name: "metadata", Type: field.TypeJSON, Nullable: true},
+		{Name: "agent_id", Type: field.TypeInt},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "skill_id", Type: field.TypeInt},
+	}
+	// AgentSkillsTable holds the schema information for the "agent_skills" table.
+	AgentSkillsTable = &schema.Table{
+		Name:       "agent_skills",
+		Columns:    AgentSkillsColumns,
+		PrimaryKey: []*schema.Column{AgentSkillsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "agent_skills_agents_skill_bindings",
+				Columns:    []*schema.Column{AgentSkillsColumns[7]},
+				RefColumns: []*schema.Column{AgentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_skills_projects_agent_skill_bindings",
+				Columns:    []*schema.Column{AgentSkillsColumns[8]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_skills_skills_agent_bindings",
+				Columns:    []*schema.Column{AgentSkillsColumns[9]},
+				RefColumns: []*schema.Column{SkillsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_skills_by_agent_id_skill_id",
+				Unique:  true,
+				Columns: []*schema.Column{AgentSkillsColumns[7], AgentSkillsColumns[9]},
+			},
+			{
+				Name:    "agent_skills_by_agent_id_enabled_order",
+				Unique:  false,
+				Columns: []*schema.Column{AgentSkillsColumns[7], AgentSkillsColumns[3], AgentSkillsColumns[4]},
+			},
+		},
+	}
+	// AgentThreadsColumns holds the columns for the "agent_threads" table.
+	AgentThreadsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "agent_id", Type: field.TypeInt},
+		{Name: "thread_id", Type: field.TypeInt},
+	}
+	// AgentThreadsTable holds the schema information for the "agent_threads" table.
+	AgentThreadsTable = &schema.Table{
+		Name:       "agent_threads",
+		Columns:    AgentThreadsColumns,
+		PrimaryKey: []*schema.Column{AgentThreadsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "agent_threads_agents_threads",
+				Columns:    []*schema.Column{AgentThreadsColumns[4]},
+				RefColumns: []*schema.Column{AgentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_threads_threads_agent_threads",
+				Columns:    []*schema.Column{AgentThreadsColumns[5]},
+				RefColumns: []*schema.Column{ThreadsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_threads_by_agent_id_thread_id",
+				Unique:  true,
+				Columns: []*schema.Column{AgentThreadsColumns[4], AgentThreadsColumns[5]},
+			},
+		},
+	}
+	// AgentToolsColumns holds the columns for the "agent_tools" table.
+	AgentToolsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "order", Type: field.TypeInt, Default: 0},
+		{Name: "config", Type: field.TypeJSON},
+		{Name: "agent_id", Type: field.TypeInt},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "tool_id", Type: field.TypeInt},
+	}
+	// AgentToolsTable holds the schema information for the "agent_tools" table.
+	AgentToolsTable = &schema.Table{
+		Name:       "agent_tools",
+		Columns:    AgentToolsColumns,
+		PrimaryKey: []*schema.Column{AgentToolsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "agent_tools_agents_tool_bindings",
+				Columns:    []*schema.Column{AgentToolsColumns[6]},
+				RefColumns: []*schema.Column{AgentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_tools_projects_agent_tool_bindings",
+				Columns:    []*schema.Column{AgentToolsColumns[7]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "agent_tools_tools_agent_bindings",
+				Columns:    []*schema.Column{AgentToolsColumns[8]},
+				RefColumns: []*schema.Column{ToolsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "agent_tools_by_agent_id_tool_id",
+				Unique:  true,
+				Columns: []*schema.Column{AgentToolsColumns[6], AgentToolsColumns[8]},
+			},
+			{
+				Name:    "agent_tools_by_agent_id_enabled_order",
+				Unique:  false,
+				Columns: []*schema.Column{AgentToolsColumns[6], AgentToolsColumns[3], AgentToolsColumns[4]},
+			},
+		},
+	}
 	// ChannelsColumns holds the columns for the "channels" table.
 	ChannelsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xai", "ppio", "siliconflow", "volcengine", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "burncloud", "modelscope", "bailian", "jina", "github", "claudecode", "cerebras", "antigravity"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "fireworks", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xiaomi", "xai", "ppio", "siliconflow", "volcengine", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "burncloud", "modelscope", "bailian", "jina", "github", "github_copilot", "claudecode", "cerebras", "antigravity", "nanogpt", "search_tavily", "search_brave", "search_exa"}},
 		{Name: "base_url", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
 		{Name: "credentials", Type: field.TypeJSON},
+		{Name: "disabled_api_keys", Type: field.TypeJSON, Nullable: true},
 		{Name: "supported_models", Type: field.TypeJSON},
+		{Name: "manual_models", Type: field.TypeJSON, Nullable: true},
 		{Name: "auto_sync_supported_models", Type: field.TypeBool, Default: false},
+		{Name: "auto_sync_model_pattern", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "tags", Type: field.TypeJSON, Nullable: true},
 		{Name: "default_test_model", Type: field.TypeString},
 		{Name: "policies", Type: field.TypeJSON, Nullable: true},
@@ -97,8 +483,8 @@ var (
 	// ChannelModelPricesColumns holds the columns for the "channel_model_prices" table.
 	ChannelModelPricesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "price", Type: field.TypeJSON},
@@ -129,8 +515,8 @@ var (
 	// ChannelModelPriceVersionsColumns holds the columns for the "channel_model_price_versions" table.
 	ChannelModelPriceVersionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "channel_id", Type: field.TypeInt},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "price", Type: field.TypeJSON},
@@ -157,14 +543,15 @@ var (
 	// ChannelOverrideTemplatesColumns holds the columns for the "channel_override_templates" table.
 	ChannelOverrideTemplatesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Nullable: true},
-		{Name: "channel_type", Type: field.TypeString},
-		{Name: "override_parameters", Type: field.TypeString, Default: "{}"},
+		{Name: "override_parameters", Type: field.TypeString, SchemaType: map[string]string{"mysql": "mediumtext"}},
 		{Name: "override_headers", Type: field.TypeJSON},
+		{Name: "header_override_operations", Type: field.TypeJSON, Nullable: true},
+		{Name: "body_override_operations", Type: field.TypeJSON, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt},
 	}
 	// ChannelOverrideTemplatesTable holds the schema information for the "channel_override_templates" table.
@@ -175,16 +562,16 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_override_templates_users_channel_override_templates",
-				Columns:    []*schema.Column{ChannelOverrideTemplatesColumns[9]},
+				Columns:    []*schema.Column{ChannelOverrideTemplatesColumns[10]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "channel_override_templates_by_user_type_name",
+				Name:    "channel_override_templates_by_user_name",
 				Unique:  true,
-				Columns: []*schema.Column{ChannelOverrideTemplatesColumns[9], ChannelOverrideTemplatesColumns[6], ChannelOverrideTemplatesColumns[4], ChannelOverrideTemplatesColumns[3]},
+				Columns: []*schema.Column{ChannelOverrideTemplatesColumns[10], ChannelOverrideTemplatesColumns[4], ChannelOverrideTemplatesColumns[3]},
 			},
 		},
 	}
@@ -222,8 +609,8 @@ var (
 	// DataStoragesColumns holds the columns for the "data_storages" table.
 	DataStoragesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString},
@@ -245,15 +632,126 @@ var (
 			},
 		},
 	}
+	// MessageChannelsColumns holds the columns for the "message_channels" table.
+	MessageChannelsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"feishu"}, Default: "feishu"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "enabled"},
+		{Name: "settings", Type: field.TypeJSON, Nullable: true},
+		{Name: "project_id", Type: field.TypeInt},
+	}
+	// MessageChannelsTable holds the schema information for the "message_channels" table.
+	MessageChannelsTable = &schema.Table{
+		Name:       "message_channels",
+		Columns:    MessageChannelsColumns,
+		PrimaryKey: []*schema.Column{MessageChannelsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "message_channels_projects_message_channels",
+				Columns:    []*schema.Column{MessageChannelsColumns[9]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "message_channels_by_project_name",
+				Unique:  true,
+				Columns: []*schema.Column{MessageChannelsColumns[9], MessageChannelsColumns[4], MessageChannelsColumns[3]},
+			},
+		},
+	}
+	// MessageChannelAgentInstancesColumns holds the columns for the "message_channel_agent_instances" table.
+	MessageChannelAgentInstancesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "enabled", Type: field.TypeBool, Default: true},
+		{Name: "config", Type: field.TypeJSON},
+		{Name: "agent_instance_id", Type: field.TypeInt},
+		{Name: "message_channel_id", Type: field.TypeInt},
+	}
+	// MessageChannelAgentInstancesTable holds the schema information for the "message_channel_agent_instances" table.
+	MessageChannelAgentInstancesTable = &schema.Table{
+		Name:       "message_channel_agent_instances",
+		Columns:    MessageChannelAgentInstancesColumns,
+		PrimaryKey: []*schema.Column{MessageChannelAgentInstancesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "message_channel_agent_instances_agent_instances_message_channel_bindings",
+				Columns:    []*schema.Column{MessageChannelAgentInstancesColumns[5]},
+				RefColumns: []*schema.Column{AgentInstancesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "message_channel_agent_instances_message_channels_agent_instance_bindings",
+				Columns:    []*schema.Column{MessageChannelAgentInstancesColumns[6]},
+				RefColumns: []*schema.Column{MessageChannelsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "message_channel_agent_instances_by_channel_agent",
+				Unique:  true,
+				Columns: []*schema.Column{MessageChannelAgentInstancesColumns[6], MessageChannelAgentInstancesColumns[5]},
+			},
+			{
+				Name:    "message_channel_agent_instances_by_agent_instance",
+				Unique:  false,
+				Columns: []*schema.Column{MessageChannelAgentInstancesColumns[5]},
+			},
+		},
+	}
+	// MessageChannelBindingRequestsColumns holds the columns for the "message_channel_binding_requests" table.
+	MessageChannelBindingRequestsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "message_channel_id", Type: field.TypeInt},
+		{Name: "agent_instance_id", Type: field.TypeInt},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"pair"}, Default: "pair"},
+		{Name: "pair_code", Type: field.TypeString},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "approved"}, Default: "pending"},
+		{Name: "expires_at", Type: field.TypeTime},
+	}
+	// MessageChannelBindingRequestsTable holds the schema information for the "message_channel_binding_requests" table.
+	MessageChannelBindingRequestsTable = &schema.Table{
+		Name:       "message_channel_binding_requests",
+		Columns:    MessageChannelBindingRequestsColumns,
+		PrimaryKey: []*schema.Column{MessageChannelBindingRequestsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "message_channel_binding_requests_by_channel",
+				Unique:  false,
+				Columns: []*schema.Column{MessageChannelBindingRequestsColumns[3]},
+			},
+			{
+				Name:    "message_channel_binding_requests_by_agent_instance",
+				Unique:  false,
+				Columns: []*schema.Column{MessageChannelBindingRequestsColumns[4]},
+			},
+			{
+				Name:    "message_channel_binding_requests_by_pair_code",
+				Unique:  true,
+				Columns: []*schema.Column{MessageChannelBindingRequestsColumns[6]},
+			},
+		},
+	}
 	// ModelsColumns holds the columns for the "models" table.
 	ModelsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "developer", Type: field.TypeString},
 		{Name: "model_id", Type: field.TypeString},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"chat", "embedding", "rerank"}, Default: "chat"},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"chat", "embedding", "rerank", "image_generation", "video_generation"}, Default: "chat"},
 		{Name: "name", Type: field.TypeString},
 		{Name: "icon", Type: field.TypeString},
 		{Name: "group", Type: field.TypeString},
@@ -283,8 +781,8 @@ var (
 	// ProjectsColumns holds the columns for the "projects" table.
 	ProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString, Unique: true},
 		{Name: "description", Type: field.TypeString, Default: ""},
@@ -306,22 +804,40 @@ var (
 	// PromptsColumns holds the columns for the "prompts" table.
 	PromptsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "project_id", Type: field.TypeInt},
+		{Name: "type", Type: field.TypeEnum, Nullable: true, Enums: []string{"agent", "system"}, Default: "system"},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "role", Type: field.TypeString},
-		{Name: "content", Type: field.TypeString},
+		{Name: "content", Type: field.TypeString, SchemaType: map[string]string{"mysql": "mediumtext"}},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled"}, Default: "disabled"},
+		{Name: "order", Type: field.TypeInt, Default: 0},
 		{Name: "settings", Type: field.TypeJSON},
+		{Name: "active_version_id", Type: field.TypeInt, Nullable: true},
+		{Name: "draft_version_id", Type: field.TypeInt, Nullable: true},
 	}
 	// PromptsTable holds the schema information for the "prompts" table.
 	PromptsTable = &schema.Table{
 		Name:       "prompts",
 		Columns:    PromptsColumns,
 		PrimaryKey: []*schema.Column{PromptsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "prompts_prompt_versions_active_for_prompts",
+				Columns:    []*schema.Column{PromptsColumns[13]},
+				RefColumns: []*schema.Column{PromptVersionsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "prompts_prompt_versions_draft_for_prompts",
+				Columns:    []*schema.Column{PromptsColumns[14]},
+				RefColumns: []*schema.Column{PromptVersionsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "prompts_by_project_id",
@@ -331,15 +847,92 @@ var (
 			{
 				Name:    "prompts_by_project_id_name",
 				Unique:  true,
-				Columns: []*schema.Column{PromptsColumns[4], PromptsColumns[5], PromptsColumns[3]},
+				Columns: []*schema.Column{PromptsColumns[4], PromptsColumns[6], PromptsColumns[3]},
+			},
+		},
+	}
+	// PromptProtectionRulesColumns holds the columns for the "prompt_protection_rules" table.
+	PromptProtectionRulesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "pattern", Type: field.TypeString},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
+		{Name: "settings", Type: field.TypeJSON},
+	}
+	// PromptProtectionRulesTable holds the schema information for the "prompt_protection_rules" table.
+	PromptProtectionRulesTable = &schema.Table{
+		Name:       "prompt_protection_rules",
+		Columns:    PromptProtectionRulesColumns,
+		PrimaryKey: []*schema.Column{PromptProtectionRulesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "prompt_protection_rules_by_name",
+				Unique:  true,
+				Columns: []*schema.Column{PromptProtectionRulesColumns[4], PromptProtectionRulesColumns[3]},
+			},
+		},
+	}
+	// PromptVersionsColumns holds the columns for the "prompt_versions" table.
+	PromptVersionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "version", Type: field.TypeInt},
+		{Name: "content", Type: field.TypeString, SchemaType: map[string]string{"mysql": "mediumtext"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "active", "archived"}, Default: "draft"},
+		{Name: "change_log", Type: field.TypeString, Default: ""},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "prompt_id", Type: field.TypeInt},
+		{Name: "created_by_user_id", Type: field.TypeInt, Nullable: true},
+	}
+	// PromptVersionsTable holds the schema information for the "prompt_versions" table.
+	PromptVersionsTable = &schema.Table{
+		Name:       "prompt_versions",
+		Columns:    PromptVersionsColumns,
+		PrimaryKey: []*schema.Column{PromptVersionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "prompt_versions_projects_prompt_versions",
+				Columns:    []*schema.Column{PromptVersionsColumns[8]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "prompt_versions_prompts_versions",
+				Columns:    []*schema.Column{PromptVersionsColumns[9]},
+				RefColumns: []*schema.Column{PromptsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "prompt_versions_users_prompt_versions",
+				Columns:    []*schema.Column{PromptVersionsColumns[10]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "prompt_versions_by_prompt_id_version",
+				Unique:  true,
+				Columns: []*schema.Column{PromptVersionsColumns[9], PromptVersionsColumns[4], PromptVersionsColumns[3]},
+			},
+			{
+				Name:    "prompt_versions_by_prompt_id_status_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{PromptVersionsColumns[9], PromptVersionsColumns[6], PromptVersionsColumns[3], PromptVersionsColumns[1]},
 			},
 		},
 	}
 	// ProviderQuotaStatusColumns holds the columns for the "provider_quota_status" table.
 	ProviderQuotaStatusColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex"}},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"available", "warning", "exhausted", "unknown"}},
@@ -378,8 +971,8 @@ var (
 	// RequestsColumns holds the columns for the "requests" table.
 	RequestsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "source", Type: field.TypeEnum, Enums: []string{"api", "playground", "test"}, Default: "api"},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
@@ -393,6 +986,10 @@ var (
 		{Name: "client_ip", Type: field.TypeString, Default: ""},
 		{Name: "metrics_latency_ms", Type: field.TypeInt64, Nullable: true},
 		{Name: "metrics_first_token_latency_ms", Type: field.TypeInt64, Nullable: true},
+		{Name: "content_saved", Type: field.TypeBool, Default: false},
+		{Name: "content_storage_id", Type: field.TypeInt, Nullable: true},
+		{Name: "content_storage_key", Type: field.TypeString, Nullable: true},
+		{Name: "content_saved_at", Type: field.TypeTime, Nullable: true},
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "data_storage_id", Type: field.TypeInt, Nullable: true},
@@ -407,31 +1004,31 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "requests_api_keys_requests",
-				Columns:    []*schema.Column{RequestsColumns[16]},
+				Columns:    []*schema.Column{RequestsColumns[20]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_channels_requests",
-				Columns:    []*schema.Column{RequestsColumns[17]},
+				Columns:    []*schema.Column{RequestsColumns[21]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_data_storages_requests",
-				Columns:    []*schema.Column{RequestsColumns[18]},
+				Columns:    []*schema.Column{RequestsColumns[22]},
 				RefColumns: []*schema.Column{DataStoragesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_projects_requests",
-				Columns:    []*schema.Column{RequestsColumns[19]},
+				Columns:    []*schema.Column{RequestsColumns[23]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "requests_traces_requests",
-				Columns:    []*schema.Column{RequestsColumns[20]},
+				Columns:    []*schema.Column{RequestsColumns[24]},
 				RefColumns: []*schema.Column{TracesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -440,22 +1037,22 @@ var (
 			{
 				Name:    "requests_by_api_key_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[16], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[20], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_project_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[19], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[23], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[17], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[21], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_trace_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[20], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[24], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_created_at",
@@ -467,8 +1064,8 @@ var (
 	// RequestExecutionsColumns holds the columns for the "request_executions" table.
 	RequestExecutionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "external_id", Type: field.TypeString, Nullable: true},
 		{Name: "model_id", Type: field.TypeString},
@@ -477,6 +1074,7 @@ var (
 		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
 		{Name: "response_chunks", Type: field.TypeJSON, Nullable: true},
 		{Name: "error_message", Type: field.TypeString, Nullable: true},
+		{Name: "response_status_code", Type: field.TypeInt, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "processing", "completed", "failed", "canceled"}},
 		{Name: "stream", Type: field.TypeBool, Default: false},
 		{Name: "metrics_latency_ms", Type: field.TypeInt64, Nullable: true},
@@ -494,41 +1092,41 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "request_executions_channels_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[16]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[17]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "request_executions_data_storages_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[17]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[18]},
 				RefColumns: []*schema.Column{DataStoragesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "request_executions_requests_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[18]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[19]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "request_executions_by_request_id",
+				Name:    "request_executions_by_request_id_status_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[18]},
+				Columns: []*schema.Column{RequestExecutionsColumns[19], RequestExecutionsColumns[12], RequestExecutionsColumns[1]},
 			},
 			{
 				Name:    "request_executions_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[16]},
+				Columns: []*schema.Column{RequestExecutionsColumns[17]},
 			},
 		},
 	}
 	// RolesColumns holds the columns for the "roles" table.
 	RolesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "name", Type: field.TypeString},
 		{Name: "level", Type: field.TypeEnum, Enums: []string{"system", "project"}, Default: "system"},
@@ -561,11 +1159,54 @@ var (
 			},
 		},
 	}
+	// SkillsColumns holds the columns for the "skills" table.
+	SkillsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "kind", Type: field.TypeEnum, Enums: []string{"prompt", "script", "hybrid"}, Default: "prompt"},
+		{Name: "content", Type: field.TypeString, Nullable: true, SchemaType: map[string]string{"mysql": "mediumtext"}},
+		{Name: "entrypoint", Type: field.TypeString, Default: ""},
+		{Name: "bundle", Type: field.TypeJSON, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "enabled"},
+		{Name: "project_id", Type: field.TypeInt, Nullable: true},
+		{Name: "created_by_user_id", Type: field.TypeInt, Nullable: true},
+	}
+	// SkillsTable holds the schema information for the "skills" table.
+	SkillsTable = &schema.Table{
+		Name:       "skills",
+		Columns:    SkillsColumns,
+		PrimaryKey: []*schema.Column{SkillsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "skills_projects_skills",
+				Columns:    []*schema.Column{SkillsColumns[11]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "skills_users_skills",
+				Columns:    []*schema.Column{SkillsColumns[12]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "skills_by_project_id_name",
+				Unique:  true,
+				Columns: []*schema.Column{SkillsColumns[11], SkillsColumns[4], SkillsColumns[3]},
+			},
+		},
+	}
 	// SystemsColumns holds the columns for the "systems" table.
 	SystemsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "key", Type: field.TypeString, Unique: true},
 		{Name: "value", Type: field.TypeString, SchemaType: map[string]string{"mysql": "mediumtext"}},
@@ -579,8 +1220,8 @@ var (
 	// ThreadsColumns holds the columns for the "threads" table.
 	ThreadsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "thread_id", Type: field.TypeString, Unique: true},
 		{Name: "project_id", Type: field.TypeInt},
 	}
@@ -610,11 +1251,53 @@ var (
 			},
 		},
 	}
+	// ToolsColumns holds the columns for the "tools" table.
+	ToolsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"custom"}, Default: "custom"},
+		{Name: "schema", Type: field.TypeJSON},
+		{Name: "default_policy", Type: field.TypeJSON},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "enabled"},
+		{Name: "project_id", Type: field.TypeInt, Nullable: true},
+		{Name: "created_by_user_id", Type: field.TypeInt, Nullable: true},
+	}
+	// ToolsTable holds the schema information for the "tools" table.
+	ToolsTable = &schema.Table{
+		Name:       "tools",
+		Columns:    ToolsColumns,
+		PrimaryKey: []*schema.Column{ToolsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tools_projects_tools",
+				Columns:    []*schema.Column{ToolsColumns[10]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "tools_users_tools",
+				Columns:    []*schema.Column{ToolsColumns[11]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "tools_by_project_id_name",
+				Unique:  true,
+				Columns: []*schema.Column{ToolsColumns[10], ToolsColumns[4], ToolsColumns[3]},
+			},
+		},
+	}
 	// TracesColumns holds the columns for the "traces" table.
 	TracesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "trace_id", Type: field.TypeString, Unique: true},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "thread_id", Type: field.TypeInt, Nullable: true},
@@ -659,8 +1342,8 @@ var (
 	// UsageLogsColumns holds the columns for the "usage_logs" table.
 	UsageLogsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "api_key_id", Type: field.TypeInt, Nullable: true},
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "prompt_tokens", Type: field.TypeInt64, Default: 0},
@@ -745,8 +1428,8 @@ var (
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "email", Type: field.TypeString, Unique: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"activated", "deactivated"}, Default: "activated"},
@@ -767,8 +1450,8 @@ var (
 	// UserProjectsColumns holds the columns for the "user_projects" table.
 	UserProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "is_owner", Type: field.TypeBool, Default: false},
 		{Name: "scopes", Type: field.TypeJSON, Nullable: true},
 		{Name: "user_id", Type: field.TypeInt},
@@ -809,8 +1492,8 @@ var (
 	// UserRolesColumns holds the columns for the "user_roles" table.
 	UserRolesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime, Nullable: true},
-		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "user_id", Type: field.TypeInt},
 		{Name: "role_id", Type: field.TypeInt},
 	}
@@ -874,21 +1557,36 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
+		AgentsTable,
+		AgentHostsTable,
+		AgentInstancesTable,
+		AgentMemoriesTable,
+		AgentMessagesTable,
+		AgentSkillsTable,
+		AgentThreadsTable,
+		AgentToolsTable,
 		ChannelsTable,
 		ChannelModelPricesTable,
 		ChannelModelPriceVersionsTable,
 		ChannelOverrideTemplatesTable,
 		ChannelProbesTable,
 		DataStoragesTable,
+		MessageChannelsTable,
+		MessageChannelAgentInstancesTable,
+		MessageChannelBindingRequestsTable,
 		ModelsTable,
 		ProjectsTable,
 		PromptsTable,
+		PromptProtectionRulesTable,
+		PromptVersionsTable,
 		ProviderQuotaStatusTable,
 		RequestsTable,
 		RequestExecutionsTable,
 		RolesTable,
+		SkillsTable,
 		SystemsTable,
 		ThreadsTable,
+		ToolsTable,
 		TracesTable,
 		UsageLogsTable,
 		UsersTable,
@@ -901,10 +1599,36 @@ var (
 func init() {
 	APIKeysTable.ForeignKeys[0].RefTable = ProjectsTable
 	APIKeysTable.ForeignKeys[1].RefTable = UsersTable
+	AgentsTable.ForeignKeys[0].RefTable = ProjectsTable
+	AgentsTable.ForeignKeys[1].RefTable = PromptsTable
+	AgentsTable.ForeignKeys[2].RefTable = UsersTable
+	AgentInstancesTable.ForeignKeys[0].RefTable = APIKeysTable
+	AgentInstancesTable.ForeignKeys[1].RefTable = AgentsTable
+	AgentInstancesTable.ForeignKeys[2].RefTable = AgentHostsTable
+	AgentMemoriesTable.ForeignKeys[0].RefTable = AgentsTable
+	AgentMessagesTable.ForeignKeys[0].RefTable = AgentsTable
+	AgentMessagesTable.ForeignKeys[1].RefTable = AgentInstancesTable
+	AgentMessagesTable.ForeignKeys[2].RefTable = MessageChannelsTable
+	AgentSkillsTable.ForeignKeys[0].RefTable = AgentsTable
+	AgentSkillsTable.ForeignKeys[1].RefTable = ProjectsTable
+	AgentSkillsTable.ForeignKeys[2].RefTable = SkillsTable
+	AgentThreadsTable.ForeignKeys[0].RefTable = AgentsTable
+	AgentThreadsTable.ForeignKeys[1].RefTable = ThreadsTable
+	AgentToolsTable.ForeignKeys[0].RefTable = AgentsTable
+	AgentToolsTable.ForeignKeys[1].RefTable = ProjectsTable
+	AgentToolsTable.ForeignKeys[2].RefTable = ToolsTable
 	ChannelModelPricesTable.ForeignKeys[0].RefTable = ChannelsTable
 	ChannelModelPriceVersionsTable.ForeignKeys[0].RefTable = ChannelModelPricesTable
 	ChannelOverrideTemplatesTable.ForeignKeys[0].RefTable = UsersTable
 	ChannelProbesTable.ForeignKeys[0].RefTable = ChannelsTable
+	MessageChannelsTable.ForeignKeys[0].RefTable = ProjectsTable
+	MessageChannelAgentInstancesTable.ForeignKeys[0].RefTable = AgentInstancesTable
+	MessageChannelAgentInstancesTable.ForeignKeys[1].RefTable = MessageChannelsTable
+	PromptsTable.ForeignKeys[0].RefTable = PromptVersionsTable
+	PromptsTable.ForeignKeys[1].RefTable = PromptVersionsTable
+	PromptVersionsTable.ForeignKeys[0].RefTable = ProjectsTable
+	PromptVersionsTable.ForeignKeys[1].RefTable = PromptsTable
+	PromptVersionsTable.ForeignKeys[2].RefTable = UsersTable
 	ProviderQuotaStatusTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestsTable.ForeignKeys[0].RefTable = APIKeysTable
 	RequestsTable.ForeignKeys[1].RefTable = ChannelsTable
@@ -915,7 +1639,11 @@ func init() {
 	RequestExecutionsTable.ForeignKeys[1].RefTable = DataStoragesTable
 	RequestExecutionsTable.ForeignKeys[2].RefTable = RequestsTable
 	RolesTable.ForeignKeys[0].RefTable = ProjectsTable
+	SkillsTable.ForeignKeys[0].RefTable = ProjectsTable
+	SkillsTable.ForeignKeys[1].RefTable = UsersTable
 	ThreadsTable.ForeignKeys[0].RefTable = ProjectsTable
+	ToolsTable.ForeignKeys[0].RefTable = ProjectsTable
+	ToolsTable.ForeignKeys[1].RefTable = UsersTable
 	TracesTable.ForeignKeys[0].RefTable = ProjectsTable
 	TracesTable.ForeignKeys[1].RefTable = ThreadsTable
 	UsageLogsTable.ForeignKeys[0].RefTable = ChannelsTable

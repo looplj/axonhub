@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/thread"
@@ -22,15 +23,17 @@ import (
 // ThreadQuery is the builder for querying Thread entities.
 type ThreadQuery struct {
 	config
-	ctx             *QueryContext
-	order           []thread.OrderOption
-	inters          []Interceptor
-	predicates      []predicate.Thread
-	withProject     *ProjectQuery
-	withTraces      *TraceQuery
-	loadTotal       []func(context.Context, []*Thread) error
-	modifiers       []func(*sql.Selector)
-	withNamedTraces map[string]*TraceQuery
+	ctx                   *QueryContext
+	order                 []thread.OrderOption
+	inters                []Interceptor
+	predicates            []predicate.Thread
+	withProject           *ProjectQuery
+	withTraces            *TraceQuery
+	withAgentThreads      *AgentThreadQuery
+	loadTotal             []func(context.Context, []*Thread) error
+	modifiers             []func(*sql.Selector)
+	withNamedTraces       map[string]*TraceQuery
+	withNamedAgentThreads map[string]*AgentThreadQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -104,6 +107,28 @@ func (_q *ThreadQuery) QueryTraces() *TraceQuery {
 			sqlgraph.From(thread.Table, thread.FieldID, selector),
 			sqlgraph.To(trace.Table, trace.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, thread.TracesTable, thread.TracesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAgentThreads chains the current query on the "agent_threads" edge.
+func (_q *ThreadQuery) QueryAgentThreads() *AgentThreadQuery {
+	query := (&AgentThreadClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(thread.Table, thread.FieldID, selector),
+			sqlgraph.To(agentthread.Table, agentthread.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, thread.AgentThreadsTable, thread.AgentThreadsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -298,13 +323,14 @@ func (_q *ThreadQuery) Clone() *ThreadQuery {
 		return nil
 	}
 	return &ThreadQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]thread.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.Thread{}, _q.predicates...),
-		withProject: _q.withProject.Clone(),
-		withTraces:  _q.withTraces.Clone(),
+		config:           _q.config,
+		ctx:              _q.ctx.Clone(),
+		order:            append([]thread.OrderOption{}, _q.order...),
+		inters:           append([]Interceptor{}, _q.inters...),
+		predicates:       append([]predicate.Thread{}, _q.predicates...),
+		withProject:      _q.withProject.Clone(),
+		withTraces:       _q.withTraces.Clone(),
+		withAgentThreads: _q.withAgentThreads.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -331,6 +357,17 @@ func (_q *ThreadQuery) WithTraces(opts ...func(*TraceQuery)) *ThreadQuery {
 		opt(query)
 	}
 	_q.withTraces = query
+	return _q
+}
+
+// WithAgentThreads tells the query-builder to eager-load the nodes that are connected to
+// the "agent_threads" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ThreadQuery) WithAgentThreads(opts ...func(*AgentThreadQuery)) *ThreadQuery {
+	query := (&AgentThreadClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAgentThreads = query
 	return _q
 }
 
@@ -418,9 +455,10 @@ func (_q *ThreadQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Threa
 	var (
 		nodes       = []*Thread{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withProject != nil,
 			_q.withTraces != nil,
+			_q.withAgentThreads != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -457,10 +495,24 @@ func (_q *ThreadQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Threa
 			return nil, err
 		}
 	}
+	if query := _q.withAgentThreads; query != nil {
+		if err := _q.loadAgentThreads(ctx, query, nodes,
+			func(n *Thread) { n.Edges.AgentThreads = []*AgentThread{} },
+			func(n *Thread, e *AgentThread) { n.Edges.AgentThreads = append(n.Edges.AgentThreads, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedTraces {
 		if err := _q.loadTraces(ctx, query, nodes,
 			func(n *Thread) { n.appendNamedTraces(name) },
 			func(n *Thread, e *Trace) { n.appendNamedTraces(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedAgentThreads {
+		if err := _q.loadAgentThreads(ctx, query, nodes,
+			func(n *Thread) { n.appendNamedAgentThreads(name) },
+			func(n *Thread, e *AgentThread) { n.appendNamedAgentThreads(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -516,6 +568,36 @@ func (_q *ThreadQuery) loadTraces(ctx context.Context, query *TraceQuery, nodes 
 	}
 	query.Where(predicate.Trace(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(thread.TracesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ThreadID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "thread_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ThreadQuery) loadAgentThreads(ctx context.Context, query *AgentThreadQuery, nodes []*Thread, init func(*Thread), assign func(*Thread, *AgentThread)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Thread)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(agentthread.FieldThreadID)
+	}
+	query.Where(predicate.AgentThread(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(thread.AgentThreadsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -639,6 +721,20 @@ func (_q *ThreadQuery) WithNamedTraces(name string, opts ...func(*TraceQuery)) *
 		_q.withNamedTraces = make(map[string]*TraceQuery)
 	}
 	_q.withNamedTraces[name] = query
+	return _q
+}
+
+// WithNamedAgentThreads tells the query-builder to eager-load the nodes that are connected to the "agent_threads"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ThreadQuery) WithNamedAgentThreads(name string, opts ...func(*AgentThreadQuery)) *ThreadQuery {
+	query := (&AgentThreadClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedAgentThreads == nil {
+		_q.withNamedAgentThreads = make(map[string]*AgentThreadQuery)
+	}
+	_q.withNamedAgentThreads[name] = query
 	return _q
 }
 

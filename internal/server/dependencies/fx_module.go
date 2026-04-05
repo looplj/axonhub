@@ -11,10 +11,20 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+type NewHttpClientParams struct {
+	fx.In
+
+	DisableSSLVerify bool `name:"disable_ssl_verify"`
+}
+
+func NewHttpClient(params NewHttpClientParams) *httpclient.HttpClient {
+	return httpclient.NewHttpClient(httpclient.WithInsecureSkipVerify(params.DisableSSLVerify))
+}
+
 var Module = fx.Module("dependencies",
 	fx.Provide(log.New),
 	fx.Provide(db.NewEntClient),
-	fx.Provide(httpclient.NewHttpClient),
+	fx.Provide(NewHttpClient),
 	fx.Provide(NewExecutors),
 	fx.Invoke(func(lc fx.Lifecycle, executor executors.ScheduledExecutor) {
 		lc.Append(fx.Hook{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -11,9 +12,19 @@ import (
 	"github.com/zhenzou/executors"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+func wrapHttpError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var httpErr *httpclient.Error
+	if errors.As(err, &httpErr) && len(httpErr.Body) > 0 {
+		return fmt.Errorf("%w (response body: %s)", err, string(httpErr.Body))
+	}
+	return err
+}
 
 type OAuthUrls struct {
 	AuthorizeUrl string
@@ -43,12 +54,12 @@ type TokenProvider struct {
 }
 
 type TokenProviderParams struct {
-	Credentials      *OAuthCredentials
+	Credentials *OAuthCredentials
 	// HTTPClient should be pre-configured with proxy settings if needed
-	HTTPClient       *httpclient.HttpClient
-	OAuthUrls        OAuthUrls
-	UserAgent        string
-	OnRefreshed      func(ctx context.Context, refreshed *OAuthCredentials) error
+	HTTPClient  *httpclient.HttpClient
+	OAuthUrls   OAuthUrls
+	UserAgent   string
+	OnRefreshed func(ctx context.Context, refreshed *OAuthCredentials) error
 	// ExchangeStrategy defines how to format token requests (form-encoded or JSON)
 	// If not provided, defaults to FormEncodedStrategy
 	ExchangeStrategy ExchangeStrategy
@@ -176,7 +187,7 @@ func (p *TokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
 
 		if onRefreshed != nil {
 			if err := onRefreshed(ctx, fresh); err != nil {
-				log.Warn(ctx, "failed to persist refreshed credentials", log.Cause(err))
+				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
 			}
 		}
 
@@ -250,7 +261,7 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 
 		if onRefreshed != nil {
 			if err := onRefreshed(ctx, fresh); err != nil {
-				log.Warn(ctx, "failed to persist refreshed credentials", log.Cause(err))
+				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
 			}
 		}
 
@@ -269,9 +280,7 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 }
 
 func (p *TokenProvider) StartAutoRefresh(ctx context.Context, opts AutoRefreshOptions) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	slog.DebugContext(ctx, "start auto refresh token provider")
 
 	fallbackInterval := opts.Interval
 	if fallbackInterval <= 0 {
@@ -300,6 +309,8 @@ func (p *TokenProvider) StartAutoRefresh(ctx context.Context, opts AutoRefreshOp
 }
 
 func (p *TokenProvider) StopAutoRefresh() {
+	slog.DebugContext(context.Background(), "stop auto refresh token provider")
+
 	p.autoMu.Lock()
 	cancel := p.autoCancel
 	exec := p.autoExecutor
@@ -319,7 +330,7 @@ func (p *TokenProvider) StopAutoRefresh() {
 
 	if exec != nil {
 		if err := exec.Shutdown(context.Background()); err != nil {
-			log.Warn(context.Background(), "failed to shutdown token provider auto refresh executor", log.Cause(err))
+			slog.WarnContext(context.Background(), "failed to shutdown token provider auto refresh executor", slog.Any("error", err))
 		}
 	}
 }
@@ -358,7 +369,7 @@ func (p *TokenProvider) scheduleNextAutoRefresh(
 	cancelFunc, err := exec.ScheduleFunc(func(_ context.Context) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Error(autoCtx, "auto refresh token provider panicked", log.Any("cause", r))
+				slog.ErrorContext(autoCtx, "auto refresh token provider panicked", slog.Any("cause", r))
 			}
 		}()
 
@@ -367,7 +378,7 @@ func (p *TokenProvider) scheduleNextAutoRefresh(
 		}
 
 		if _, err := p.EnsureFresh(autoCtx, refreshBefore); err != nil {
-			log.Warn(autoCtx, "failed to auto refresh token", log.Cause(err))
+			slog.WarnContext(autoCtx, "failed to auto refresh token", slog.Any("error", err))
 		}
 
 		if autoCtx.Err() != nil {
@@ -430,6 +441,36 @@ func (p *StaticTokenProvider) Get(ctx context.Context) (*OAuthCredentials, error
 	return p.creds, nil
 }
 
+// APIKeyProviderFunc is a function type that implements auth.APIKeyProvider interface.
+type APIKeyProviderFunc func(ctx context.Context) string
+
+func (f APIKeyProviderFunc) Get(ctx context.Context) string {
+	return f(ctx)
+}
+
+// APIKeyTokenProvider adapts an APIKeyProvider to a TokenGetter.
+// This allows transformers that expect OAuth tokens to work with regular API keys.
+type APIKeyTokenProvider struct {
+	provider APIKeyProviderFunc
+}
+
+// NewAPIKeyTokenProvider creates a new APIKeyTokenProvider from an APIKeyProvider function.
+func NewAPIKeyTokenProvider(provider APIKeyProviderFunc) *APIKeyTokenProvider {
+	return &APIKeyTokenProvider{provider: provider}
+}
+
+// Get implements TokenGetter by returning the API key as an OAuthCredentials.
+func (p *APIKeyTokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
+	apiKey := p.provider(ctx)
+	if apiKey == "" {
+		return nil, errors.New("api key is empty")
+	}
+
+	return &OAuthCredentials{
+		AccessToken: apiKey,
+	}, nil
+}
+
 // refresh performs the OAuth2 token refresh flow.
 func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*OAuthCredentials, error) {
 	if creds == nil {
@@ -444,6 +485,10 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		return nil, errors.New("token URL is empty")
 	}
 
+	if p.httpClient == nil {
+		return nil, errors.New("http client is nil")
+	}
+
 	req, err := p.strategy.BuildRefreshRequest(creds, p.oauthUrls.TokenUrl)
 	if err != nil {
 		return nil, fmt.Errorf("build refresh request: %w", err)
@@ -451,7 +496,7 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 
 	resp, err := p.httpClient.Do(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, wrapHttpError(err)
 	}
 
 	refreshed, err := ParseTokenResponse(resp.Body, creds.ClientID)
@@ -464,7 +509,7 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		refreshed.RefreshToken = creds.RefreshToken
 	}
 
-	log.Debug(ctx, "oauth token refreshed", log.String("expires_at", refreshed.ExpiresAt.Format(time.RFC3339)))
+	slog.DebugContext(ctx, "oauth token refreshed", slog.String("expires_at", refreshed.ExpiresAt.Format(time.RFC3339)))
 
 	return refreshed, nil
 }

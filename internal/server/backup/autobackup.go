@@ -12,7 +12,6 @@ import (
 	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -41,7 +40,7 @@ func (svc *BackupService) runBackupPeriodic(ctx context.Context) error {
 	cronExpr := "0 2 * * *" // Always run daily at 2 AM
 
 	cancelFunc, err := svc.executor.ScheduleFuncAtCronRate(
-		svc.runBackup,
+		svc.runBackupPeriodically,
 		executors.CRONRule{Expr: cronExpr},
 	)
 	if err != nil {
@@ -55,11 +54,8 @@ func (svc *BackupService) runBackupPeriodic(ctx context.Context) error {
 	return nil
 }
 
-func (svc *BackupService) runBackup(ctx context.Context) {
-	log.Info(ctx, "Checking if backup is needed")
-
+func (svc *BackupService) triggerAutoBackup(ctx context.Context) {
 	ctx = ent.NewContext(ctx, svc.db)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
 
 	settings, err := svc.systemService.AutoBackupSettings(ctx)
 	if err != nil {
@@ -74,8 +70,9 @@ func (svc *BackupService) runBackup(ctx context.Context) {
 
 	if !svc.shouldRunBackup(time.Now(), settings) {
 		log.Info(ctx, "Backup not needed based on frequency",
-			log.String("frequency", string(settings.Frequency)))
-
+			log.String("frequency",
+				string(settings.Frequency)),
+		)
 		return
 	}
 
@@ -196,6 +193,10 @@ func (svc *BackupService) cleanupOldBackups(ctx context.Context, ds *ent.DataSto
 
 // RunBackupNow triggers an immediate backup.
 func (svc *BackupService) RunBackupNow(ctx context.Context) error {
+	// Inject a fresh ent client so callers using a transactional context (e.g. HTTP resolvers)
+	// don't break when their transaction is closed before the backup finishes.
+	ctx = ent.NewContext(ctx, svc.db)
+
 	settings, err := svc.systemService.AutoBackupSettings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get auto backup settings: %w", err)

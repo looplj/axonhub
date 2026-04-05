@@ -1,14 +1,19 @@
 package anthropic
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
@@ -40,14 +45,28 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, _ := NewOutboundTransformer("https://example.com", string(tt.platformType))
+			baseURL := "https://example.com"
+			apiKey := string(tt.platformType)
+			accountIdentity := "channel-1"
+			transformer, err := NewOutboundTransformerWithConfig(&Config{
+				Type:            tt.platformType,
+				BaseURL:         baseURL,
+				AccountIdentity: accountIdentity,
+				APIKeyProvider:  auth.NewStaticKeyProvider(apiKey),
+			})
+			require.NoError(t, err)
 
 			streamEvents, err := xtest.LoadStreamChunks(t, tt.streamFile)
 			require.NoError(t, err)
 
 			mockStream := streams.SliceStream(streamEvents)
 
-			transformedStream, err := transformer.TransformStream(t.Context(), mockStream)
+			ot := transformer.(*OutboundTransformer)
+			ctx := shared.ContextWithTransportScope(t.Context(), shared.TransportScope{
+				BaseURL:         ot.config.BaseURL,
+				AccountIdentity: accountIdentity,
+			})
+			transformedStream, err := transformer.TransformStream(ctx, mockStream)
 			require.NoError(t, err)
 
 			var actualResponses []*llm.Response
@@ -79,7 +98,7 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 					require.Equal(t, expectedChoice.Index, actualChoice.Index, "Response %d: Choice index should match", i)
 					require.Equal(t, expectedChoice.FinishReason, actualChoice.FinishReason, "Response %d: Finish reason should match", i)
 
-					if !xtest.Equal(expectedChoice.Delta, actualChoice.Delta) {
+					if !xtest.Equal(expectedChoice.Delta, actualChoice.Delta, cmpopts.IgnoreFields(llm.Message{}, "ReasoningSignature")) {
 						t.Fatalf("diff: %s  at index %d", cmp.Diff(expectedChoice.Delta, actualChoice.Delta), i)
 					}
 				}
@@ -90,4 +109,102 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
+	baseURL := "https://example.com"
+	apiKey := string(PlatformDirect)
+	accountIdentity := "channel-1"
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		Type:            PlatformDirect,
+		BaseURL:         baseURL,
+		AccountIdentity: accountIdentity,
+		APIKeyProvider:  auth.NewStaticKeyProvider(apiKey),
+	})
+	require.NoError(t, err)
+
+	streamEvents, err := xtest.LoadStreamChunks(t, "anthropic-error.stream.jsonl")
+	require.NoError(t, err)
+
+	mockStream := streams.SliceStream(streamEvents)
+
+	ot := transformer.(*OutboundTransformer)
+	ctx := shared.ContextWithTransportScope(t.Context(), shared.TransportScope{
+		BaseURL:         ot.config.BaseURL,
+		AccountIdentity: accountIdentity,
+	})
+	transformedStream, err := transformer.TransformStream(ctx, mockStream)
+	require.NoError(t, err)
+
+	_, err = streams.All(transformedStream)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "当前订阅套餐暂未开放GPT-6权限")
+}
+
+func TestOutboundTransformer_StreamTransformation_UsesFinalPromptTokensWhenPresent(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		Type:           PlatformZhipu,
+		BaseURL:        "https://example.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+	stopReason := "end_turn"
+
+	messageStartData, err := json.Marshal(StreamEvent{
+		Type: "message_start",
+		Message: &StreamMessage{
+			ID:    "msg_1",
+			Type:  "message",
+			Role:  "assistant",
+			Model: "glm-5.1",
+			Usage: &Usage{
+				InputTokens:  0,
+				OutputTokens: 0,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	messageDeltaData, err := json.Marshal(StreamEvent{
+		Type: "message_delta",
+		Delta: &StreamDelta{
+			StopReason: &stopReason,
+		},
+		Usage: &Usage{
+			InputTokens:  10,
+			OutputTokens: 3,
+		},
+	})
+	require.NoError(t, err)
+
+	messageStopData, err := json.Marshal(StreamEvent{
+		Type: "message_stop",
+	})
+	require.NoError(t, err)
+
+	streamEvents := []*httpclient.StreamEvent{
+		{Type: "message_start", Data: messageStartData},
+		{Type: "message_delta", Data: messageDeltaData},
+		{Type: "message_stop", Data: messageStopData},
+	}
+
+	mockStream := streams.SliceStream(streamEvents)
+	ot := transformer.(*OutboundTransformer)
+	ctx := shared.ContextWithTransportScope(t.Context(), shared.TransportScope{
+		BaseURL: ot.config.BaseURL,
+	})
+	transformedStream, err := transformer.TransformStream(ctx, mockStream)
+	require.NoError(t, err)
+
+	var actualResponses []*llm.Response
+	for transformedStream.Next() {
+		actualResponses = append(actualResponses, transformedStream.Current())
+	}
+
+	require.NoError(t, transformedStream.Err())
+	require.Len(t, actualResponses, 4)
+	require.NotNil(t, actualResponses[2].Usage)
+	require.EqualValues(t, 10, actualResponses[2].Usage.PromptTokens)
+	require.EqualValues(t, 3, actualResponses[2].Usage.CompletionTokens)
+	require.EqualValues(t, 13, actualResponses[2].Usage.TotalTokens)
 }

@@ -15,20 +15,25 @@ func unitsInMillionTokens(units int64) decimal.Decimal {
 	return decimal.NewFromInt(units).Div(decimal.NewFromInt(1_000_000))
 }
 
-func computeItemSubtotal(quantity int64, pricing objects.Pricing) (objects.CostItem, decimal.Decimal) {
+func computeItemSubtotal(quantity int64, pricing objects.Pricing, itemCode objects.PriceItemCode) (objects.CostItem, decimal.Decimal) {
 	item := objects.CostItem{
 		Quantity: quantity,
+		ItemCode: itemCode,
 	}
 
 	switch pricing.Mode {
 	case objects.PricingModeFlatFee:
-		if pricing.FlatFee != nil {
-			item.Subtotal = *pricing.FlatFee
-
-			return item, *pricing.FlatFee
+		if pricing.FlatFee == nil {
+			return item, decimal.Zero
 		}
 
-		return item, decimal.Zero
+		if itemCode == objects.PriceItemCodeRequests {
+			item.Subtotal = decimal.NewFromInt(quantity).Mul(*pricing.FlatFee)
+			return item, item.Subtotal
+		}
+		// Compatible with legacy llm flat fee, the quantity should be 1 fixed.
+		item.Subtotal = *pricing.FlatFee
+		return item, item.Subtotal
 	case objects.PricingModeUsagePerUnit:
 		if pricing.UsagePerUnit != nil {
 			sub := pricing.UsagePerUnit.Mul(unitsInMillionTokens(quantity))
@@ -141,7 +146,7 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.Cos
 					// Process 5m variant if present
 					if usage.PromptTokensDetails.WriteCached5MinTokens > 0 {
 						pricing := it.FindPromptWriteCacheVariantPricing(objects.PromptWriteCacheVariantCode5Min)
-						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached5MinTokens, pricing)
+						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached5MinTokens, pricing, it.ItemCode)
 						item.ItemCode = it.ItemCode
 						item.PromptWriteCacheVariantCode = objects.PromptWriteCacheVariantCode5Min
 						items = append(items, item)
@@ -151,7 +156,7 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.Cos
 					// Process 1h variant if present
 					if usage.PromptTokensDetails.WriteCached1HourTokens > 0 {
 						pricing := it.FindPromptWriteCacheVariantPricing(objects.PromptWriteCacheVariantCode1Hour)
-						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached1HourTokens, pricing)
+						item, sub := computeItemSubtotal(usage.PromptTokensDetails.WriteCached1HourTokens, pricing, it.ItemCode)
 						item.ItemCode = it.ItemCode
 						item.PromptWriteCacheVariantCode = objects.PromptWriteCacheVariantCode1Hour
 						items = append(items, item)
@@ -165,11 +170,17 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice) ([]objects.Cos
 				// Fallback to shared WriteCachedTokens if no variants present
 				quantity = usage.PromptTokensDetails.WriteCachedTokens
 			}
+		case objects.PriceItemCodeRequests:
+			quantity = usage.Quantity
+			if quantity == 0 {
+				// Compatible with llm request count, the quantity should be at least 1.
+				quantity = 1
+			}
 		default:
 			quantity = 0
 		}
 
-		item, sub := computeItemSubtotal(quantity, it.Pricing)
+		item, sub := computeItemSubtotal(quantity, it.Pricing, it.ItemCode)
 		item.ItemCode = it.ItemCode
 		items = append(items, item)
 		total = total.Add(sub)

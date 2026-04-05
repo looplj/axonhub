@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -28,8 +30,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -47,8 +49,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -72,15 +74,15 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
 
 		// Verify all Claude Code headers
-		assert.Contains(t, httpReq.Headers.Get("Anthropic-Beta"), "claude-code-20250219")
+		assert.Contains(t, httpReq.Headers.Get("Anthropic-Beta"), "interleaved-thinking-2025-05-14")
 		assert.Equal(t, "2023-06-01", httpReq.Headers.Get("Anthropic-Version"))
 		assert.Equal(t, "true", httpReq.Headers.Get("Anthropic-Dangerous-Direct-Browser-Access"))
 		assert.Equal(t, "cli", httpReq.Headers.Get("X-App"))
@@ -95,8 +97,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -107,13 +109,16 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 	t.Run("applies tool prefix for OAuth tokens from non-CLI clients", func(t *testing.T) {
 
-		transformer, err := NewOutboundTransformer(Params{TokenProvider: newMockTokenProvider("sk-ant-oat01-test-oauth-token")})
+		transformer, err := NewOutboundTransformer(Params{
+			TokenProvider: newMockTokenProvider("sk-ant-oat01-test-oauth-token"),
+			IsOfficial:    true,
+		})
 		require.NoError(t, err)
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 			Tools: []llm.Tool{
 				{
 					Type:     "function",
@@ -140,8 +145,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 			Tools: []llm.Tool{
 				{
 					Type:     "function",
@@ -171,8 +176,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
@@ -181,7 +186,77 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		// Should have generated user ID
 		userID := gjson.GetBytes(httpReq.Body, "metadata.user_id").String()
 		assert.NotEmpty(t, userID)
-		assert.True(t, isValidUserID(userID))
+		assert.NotNil(t, ParseUserID(userID))
+	})
+
+	t.Run("does not add billing cch when not official", func(t *testing.T) {
+
+		transformer, err := NewOutboundTransformer(Params{
+			TokenProvider: newMockTokenProvider("test-api-key"),
+			IsOfficial:    false,
+		})
+		require.NoError(t, err)
+
+		billingMsg := "x-anthropic-billing-header: cc_version=2.1.37.fbe; cc_entrypoint=cli;"
+		req := &llm.Request{
+			Model: "claude-sonnet-4-5",
+			Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: &billingMsg}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+			},
+			MaxTokens: lo.ToPtr(int64(1024)),
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// The billing system message should not contain cch (it's stripped by pipeline middleware).
+		system := gjson.GetBytes(httpReq.Body, "system")
+		require.True(t, system.Exists())
+
+		for _, item := range system.Array() {
+			if strings.Contains(item.Get("text").String(), "x-anthropic-billing-header") {
+				assert.NotContains(t, item.Get("text").String(), "cch=")
+			}
+		}
+	})
+
+	t.Run("restores billing cch when official and stripped", func(t *testing.T) {
+
+		transformer, err := NewOutboundTransformer(Params{
+			TokenProvider: newMockTokenProvider("test-api-key"),
+			IsOfficial:    true,
+		})
+		require.NoError(t, err)
+
+		billingMsg := "x-anthropic-billing-header: cc_version=2.1.42.c31; cc_entrypoint=cli;"
+		req := &llm.Request{
+			Model: "claude-sonnet-4-5",
+			Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: &billingMsg}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+			},
+			MaxTokens: lo.ToPtr(int64(1024)),
+			TransformerMetadata: map[string]any{
+				"claudecode_billing_cch": "38a80",
+			},
+		}
+
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		// The billing system message should include the restored cch.
+		system := gjson.GetBytes(httpReq.Body, "system")
+		require.True(t, system.Exists())
+
+		foundCCH := false
+		for _, item := range system.Array() {
+			if strings.Contains(item.Get("text").String(), "x-anthropic-billing-header") &&
+				strings.Contains(item.Get("text").String(), "cch=38a80;") {
+				foundCCH = true
+			}
+		}
+		assert.True(t, foundCCH, "billing system message should restore cch for official channels")
 	})
 
 	t.Run("disables thinking when tool_choice forces tool use", func(t *testing.T) {
@@ -192,8 +267,8 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		toolChoiceAny := "any"
 		req := &llm.Request{
 			Model:     "claude-sonnet-4-5",
-			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: strPtr("Hello")}}},
-			MaxTokens: int64Ptr(1024),
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+			MaxTokens: lo.ToPtr(int64(1024)),
 			Tools: []llm.Tool{
 				{
 					Type:     "function",
@@ -406,16 +481,6 @@ func TestClaudeCodeTransformer_APIFormat(t *testing.T) {
 	assert.Equal(t, llm.APIFormatAnthropicMessage, transformer.APIFormat())
 }
 
-// Helper functions
-
-func strPtr(s string) *string {
-	return &s
-}
-
-func int64Ptr(i int64) *int64 {
-	return &i
-}
-
 func mustMarshal(v any) []byte {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -508,4 +573,3 @@ func (m *mockHTTPStream) Err() error {
 func (m *mockHTTPStream) Close() error {
 	return nil
 }
-

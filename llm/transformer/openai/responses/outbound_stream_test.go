@@ -6,8 +6,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -26,6 +26,18 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			inputStreamFile:      "tool-2.stream.jsonl",
 			expectedStreamFile:   "llm-tool-2.stream.jsonl",
 			expectedResponseFile: "llm-tool-2.response.json",
+		},
+		{
+			name:                 "stream transformation with encrypted reasoning",
+			inputStreamFile:      "encrypted_content.stream.jsonl",
+			expectedStreamFile:   "llm-encrypted_content.stream.jsonl",
+			expectedResponseFile: "llm-encrypted_content.response.json",
+		},
+		{
+			name:                 "stream transformation with custom tool call",
+			inputStreamFile:      "custom_tool.stream.jsonl",
+			expectedStreamFile:   "llm-custom_tool.stream.jsonl",
+			expectedResponseFile: "llm-custom_tool.stream.response.json",
 		},
 	}
 
@@ -101,4 +113,19 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	responsesAPIEvents, err := xtest.LoadStreamChunks(t, "error.response.stream.jsonl")
+	require.NoError(t, err)
+
+	transformedStream, err := trans.TransformStream(t.Context(), streams.SliceStream(responsesAPIEvents))
+	require.NoError(t, err)
+
+	_, err = streams.All(transformedStream)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Something went wrong")
 }

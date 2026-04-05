@@ -7,12 +7,11 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xjson"
-	"github.com/looplj/axonhub/internal/pkg/xmap"
-	"github.com/looplj/axonhub/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
+	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // convertGeminiToLLMRequest converts Gemini GenerateContentRequest to unified Request.
@@ -96,8 +95,13 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 			chatReq.Modalities = convertGeminiModalitiesToLLM(gc.ResponseModalities)
 		}
 
-		// Convert ResponseSchema to ResponseFormat json_schema
-		if len(gc.ResponseSchema) > 0 {
+		// Convert ResponseSchema/ResponseJsonSchema to ResponseFormat json_schema
+		if len(gc.ResponseJsonSchema) > 0 {
+			chatReq.ResponseFormat = &llm.ResponseFormat{
+				Type:       "json_schema",
+				JSONSchema: gc.ResponseJsonSchema,
+			}
+		} else if len(gc.ResponseSchema) > 0 {
 			chatReq.ResponseFormat = &llm.ResponseFormat{
 				Type:       "json_schema",
 				JSONSchema: gc.ResponseSchema,
@@ -230,6 +234,24 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 		chatReq.ToolChoice = convertGeminiFunctionCallingConfigToToolChoice(fcc)
 	}
 
+	// Convert safety settings to TransformerMetadata
+	if len(geminiReq.SafetySettings) > 0 {
+		if chatReq.TransformerMetadata == nil {
+			chatReq.TransformerMetadata = make(map[string]any)
+		}
+
+		chatReq.TransformerMetadata[TransformerMetadataKeySafetySettings] = geminiReq.SafetySettings
+	}
+
+	// Convert image config to TransformerMetadata
+	if geminiReq.GenerationConfig != nil && geminiReq.GenerationConfig.ImageConfig != nil {
+		if chatReq.TransformerMetadata == nil {
+			chatReq.TransformerMetadata = make(map[string]any)
+		}
+
+		chatReq.TransformerMetadata[TransformerMetadataKeyImageConfig] = geminiReq.GenerationConfig.ImageConfig
+	}
+
 	return chatReq, nil
 }
 
@@ -281,8 +303,8 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 	)
 
 	for _, part := range content.Parts {
-		if msg.RedactedReasoningContent == nil && part.ThoughtSignature != "" {
-			msg.RedactedReasoningContent = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
+		if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
+			msg.ReasoningSignature = lo.ToPtr(part.ThoughtSignature)
 		}
 
 		switch {
@@ -309,6 +331,21 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 						MIMEType: part.InlineData.MIMEType,
 					},
 				})
+			} else if isVideoMIMEType(part.InlineData.MIMEType) {
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "video_url",
+					VideoURL: &llm.VideoURL{
+						URL: dataURL,
+					},
+				})
+			} else if isAudioMIMEType(part.InlineData.MIMEType) {
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "input_audio",
+					InputAudio: &llm.InputAudio{
+						Format: audioMIMETypeToFormat(part.InlineData.MIMEType),
+						Data:   part.InlineData.Data,
+					},
+				})
 			} else {
 				// Image type
 				textParts = append(textParts, llm.MessageContentPart{
@@ -331,6 +368,20 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 						MIMEType: mimeType,
 					},
 				})
+			} else if isVideoMIMEType(mimeType) {
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "video_url",
+					VideoURL: &llm.VideoURL{
+						URL: part.FileData.FileURI,
+					},
+				})
+			} else if isAudioMIMEType(mimeType) {
+				textParts = append(textParts, llm.MessageContentPart{
+					Type: "input_audio",
+					InputAudio: &llm.InputAudio{
+						Format: audioMIMETypeToFormat(mimeType),
+					},
+				})
 			} else {
 				// Image type
 				textParts = append(textParts, llm.MessageContentPart{
@@ -342,7 +393,10 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 			}
 
 		case part.FunctionCall != nil:
-			argsJSON, _ := json.Marshal(part.FunctionCall.Args)
+			argsJSON := []byte("{}")
+			if part.FunctionCall.Args != nil {
+				argsJSON, _ = json.Marshal(part.FunctionCall.Args)
+			}
 			tc := llm.ToolCall{
 				ID:   part.FunctionCall.ID,
 				Type: "function",
@@ -351,7 +405,7 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 					Arguments: string(argsJSON),
 				},
 			}
-
+			setInboundToolCallThoughtSignature(&tc, part.ThoughtSignature)
 			toolCalls = append(toolCalls, tc)
 
 		case part.FunctionResponse != nil:
@@ -496,6 +550,14 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 							lastPart = geminiPart
 						}
 					}
+				case "video_url":
+					if part.VideoURL != nil && part.VideoURL.URL != "" {
+						geminiPart := convertVideoURLToGeminiPart(part.VideoURL)
+						if geminiPart != nil {
+							parts = append(parts, geminiPart)
+							lastPart = geminiPart
+						}
+					}
 				case "document":
 					// Handle document type (PDF, Word, etc.)
 					if part.Document != nil && part.Document.URL != "" {
@@ -508,6 +570,8 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 				}
 			}
 		}
+
+		hasToolCallThoughtSignature := false
 
 		for _, toolCall := range msg.ToolCalls {
 			var args map[string]any
@@ -522,6 +586,10 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 					Args: args,
 				},
 			}
+			if signature := getInboundGeminiToolCallThoughtSignature(toolCall); signature != nil {
+				part.ThoughtSignature = *signature
+				hasToolCallThoughtSignature = true
+			}
 
 			parts = append(parts, part)
 
@@ -531,16 +599,11 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 			}
 		}
 
-		msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.RedactedReasoningContent)
-		if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil {
-			msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
-		}
-
-		if msgThoughtSignature != nil && lastPart != nil {
+		if !hasToolCallThoughtSignature && msg.ReasoningSignature != nil {
 			if firstFunctionCallPart != nil {
-				firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
-			} else {
-				lastPart.ThoughtSignature = *msgThoughtSignature
+				firstFunctionCallPart.ThoughtSignature = *msg.ReasoningSignature
+			} else if lastPart != nil {
+				lastPart.ThoughtSignature = *msg.ReasoningSignature
 			}
 		}
 

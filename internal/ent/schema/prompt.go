@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -40,8 +41,15 @@ func (Prompt) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("project_id").
 			Immutable().
-			Comment("Project ID that this prompt belongs to").Annotations(
-			entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput)),
+			Comment("Project ID that this prompt belongs to").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
+		field.Enum("type").
+			Values("agent", "system").
+			Optional().
+			Default("system").
+			Comment("Prompt type"),
 		field.String("name").
 			Comment("prompt name"),
 		field.String("description").
@@ -50,12 +58,33 @@ func (Prompt) Fields() []ent.Field {
 		field.String("role").
 			Comment("prompt role"),
 		field.String("content").
+			SchemaType(map[string]string{
+				dialect.MySQL: "mediumtext",
+			}).
 			Comment("prompt content"),
 		field.Enum("status").
 			Values("enabled", "disabled").
 			Default("disabled"),
+		field.Int("order").
+			Default(0).
+			Comment("prompt insertion order, smaller values are inserted first").
+			Annotations(entgql.OrderField("ORDER")),
 		field.JSON("settings", objects.PromptSettings{}).
 			Comment("prompt settings in JSON format"),
+		field.Int("active_version_id").
+			Optional().
+			Nillable().
+			Comment("Active prompt version ID").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
+		field.Int("draft_version_id").
+			Optional().
+			Nillable().
+			Comment("Draft prompt version ID").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 	}
 }
 
@@ -65,6 +94,24 @@ func (Prompt) Edges() []ent.Edge {
 		edge.From("projects", Project.Type).
 			Ref("prompts").
 			Annotations(
+				entgql.RelayConnection(),
+			),
+		edge.To("versions", PromptVersion.Type).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entgql.RelayConnection(),
+			),
+		edge.From("active_version", PromptVersion.Type).
+			Ref("active_for_prompts").
+			Field("active_version_id").
+			Unique(),
+		edge.From("draft_version", PromptVersion.Type).
+			Ref("draft_for_prompts").
+			Field("draft_version_id").
+			Unique(),
+		edge.To("agents", Agent.Type).
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
 	}

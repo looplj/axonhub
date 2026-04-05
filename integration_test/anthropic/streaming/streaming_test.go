@@ -499,10 +499,3 @@ func TestStreamingWithSystemPrompt(t *testing.T) {
 
 	t.Logf("System prompt streaming response: %s", responseText)
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

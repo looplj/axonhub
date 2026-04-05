@@ -2,12 +2,14 @@ import React from 'react';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive } from '@tabler/icons-react';
+import { BarChart3 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { ApiKey } from '../data/schema';
+import { ApiKeyTokenChartDialog } from './api-key-token-chart-dialog';
 
 interface DataTableRowActionsProps {
   row: Row<ApiKey>;
@@ -19,9 +21,10 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { apiKeyPermissions } = usePermissions();
   const apiKey = row.original;
   const [open, setOpen] = React.useState(false);
+  const [chartOpen, setChartOpen] = React.useState(false);
 
   // Don't show menu if user has no permissions
-  if (!apiKeyPermissions.canWrite) {
+  if (!apiKeyPermissions.canRead && !apiKeyPermissions.canWrite) {
     return null;
   }
 
@@ -49,50 +52,67 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     setTimeout(() => openDialog('profiles', apiKey), 0);
   };
 
+  const handleViewChart = () => {
+    setOpen(false);
+    setTimeout(() => setChartOpen(true), 0);
+  };
+
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant='ghost' className='data-[state=open]:bg-muted flex h-8 w-8 p-0'>
-          <DotsHorizontalIcon className='h-4 w-4' />
-          <span className='sr-only'>Open menu</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' className='w-[160px]'>
-        <DropdownMenuItem onClick={() => handleEdit(apiKey)}>
-          <IconEdit className='mr-2 h-4 w-4' />
-          {t('common.actions.edit')}
-        </DropdownMenuItem>
-        {apiKey.type !== 'service_account' && (
-          <DropdownMenuItem onClick={() => handleProfiles(apiKey)}>
-            <IconSettings className='mr-2 h-4 w-4' />
-            {t('apikeys.actions.profiles')}
+    <>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant='ghost' className='data-[state=open]:bg-muted flex h-8 w-8 p-0'>
+            <DotsHorizontalIcon className='h-4 w-4' />
+            <span className='sr-only'>Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='end' className='w-[160px]'>
+          <DropdownMenuItem onClick={handleViewChart}>
+            <BarChart3 className='mr-2 h-4 w-4' />
+            {t('apikeys.actions.viewTokenChart')}
           </DropdownMenuItem>
-        )}
-        {apiKey.status !== 'archived' && (
-          <DropdownMenuItem
-            onClick={() => handleStatusChange(apiKey)}
-            className={apiKey.status === 'enabled' ? 'text-orange-600' : 'text-green-600'}
-          >
-            {apiKey.status === 'enabled' ? (
-              <>
-                <IconUserOff className='mr-2 h-4 w-4' />
-                {t('common.buttons.disable')}
-              </>
-            ) : (
-              <>
-                <IconUserCheck className='mr-2 h-4 w-4' />
-                {t('common.buttons.enable')}
-              </>
-            )}
-          </DropdownMenuItem>
-        )}
-        {apiKey.status !== 'archived' && (
-          <DropdownMenuItem onClick={() => handleArchive(apiKey)} className='text-orange-600'>
-            <IconArchive className='mr-2 h-4 w-4' />
-            {t('common.buttons.archive')}
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {apiKeyPermissions.canWrite && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleEdit(apiKey)}>
+                <IconEdit className='mr-2 h-4 w-4' />
+                {t('common.actions.edit')}
+              </DropdownMenuItem>
+              {apiKey.type !== 'service_account' && (
+                <DropdownMenuItem onClick={() => handleProfiles(apiKey)}>
+                  <IconSettings className='mr-2 h-4 w-4' />
+                  {t('apikeys.actions.profiles')}
+                </DropdownMenuItem>
+              )}
+              {apiKey.status !== 'archived' && (
+                <DropdownMenuItem
+                  onClick={() => handleStatusChange(apiKey)}
+                  className={apiKey.status === 'enabled' ? 'text-orange-600' : 'text-green-600'}
+                >
+                  {apiKey.status === 'enabled' ? (
+                    <>
+                      <IconUserOff className='mr-2 h-4 w-4' />
+                      {t('common.buttons.disable')}
+                    </>
+                  ) : (
+                    <>
+                      <IconUserCheck className='mr-2 h-4 w-4' />
+                      {t('common.buttons.enable')}
+                    </>
+                  )}
+                </DropdownMenuItem>
+              )}
+              {apiKey.status !== 'archived' && (
+                <DropdownMenuItem onClick={() => handleArchive(apiKey)} className='text-orange-600'>
+                  <IconArchive className='mr-2 h-4 w-4' />
+                  {t('common.buttons.archive')}
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ApiKeyTokenChartDialog apiKey={apiKey} open={chartOpen} onOpenChange={setChartOpen} />
+    </>
   );
 }

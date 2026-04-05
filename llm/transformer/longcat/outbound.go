@@ -2,6 +2,7 @@ package longcat
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/samber/lo"
@@ -14,7 +15,8 @@ import (
 )
 
 // OutboundTransformer implements transformer.Outbound for Longcat format.
-// It inherits from OpenAI transformer but ensures Message Content is never nil.
+// It inherits from OpenAI transformer but ensures Message Content always uses
+// the multiple content (array) format, as required by models like LongCat-Flash-Omni.
 type OutboundTransformer struct {
 	transformer.Outbound
 }
@@ -48,7 +50,8 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 }
 
 // TransformRequest transforms ChatCompletionRequest to Request.
-// It ensures Message Content is never nil (Longcat requires the content field to exist).
+// It forces all message content into the multiple content (array) format,
+// because Longcat models reject plain string content with "json format error".
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,
 	chatReq *llm.Request,
@@ -64,5 +67,30 @@ func (t *OutboundTransformer) TransformRequest(
 		}
 	}
 
-	return t.Outbound.TransformRequest(ctx, chatReq)
+	httpReq, err := t.Outbound.TransformRequest(ctx, chatReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal into OpenAI request, then convert to longcat request
+	// so that MessageContent.MarshalJSON always produces array format.
+	var oaiReq openai.Request
+	if err := json.Unmarshal(httpReq.Body, &oaiReq); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal openai request: %w", err)
+	}
+
+	lcReq := Request{Request: oaiReq}
+	lcReq.Messages = lo.Map(oaiReq.Messages, func(m openai.Message, _ int) Message {
+		return Message{
+			Message: m,
+			Content: MessageContent{MessageContent: m.Content},
+		}
+	})
+
+	httpReq.Body, err = json.Marshal(lcReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal longcat request: %w", err)
+	}
+
+	return httpReq, nil
 }

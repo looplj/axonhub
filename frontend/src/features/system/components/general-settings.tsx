@@ -1,15 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useSystemContext } from '../context/system-context';
 import { currencyCodes } from '../data/currencies';
-import { useGeneralSettings, useUpdateGeneralSettings } from '../data/system';
+import {
+  useGeneralSettings,
+  useUpdateGeneralSettings,
+  useUserAgentPassThroughSettings,
+  useUpdateUserAgentPassThroughSettings,
+} from '../data/system';
 import { GMTTimeZoneOptions } from '../data/timezones';
 
 export function GeneralSettings() {
@@ -17,6 +23,11 @@ export function GeneralSettings() {
   const { data: settings, isLoading: isLoadingSettings } = useGeneralSettings();
   const updateSettings = useUpdateGeneralSettings();
   const { isLoading, setIsLoading } = useSystemContext();
+
+  // User-Agent Pass-Through settings
+  const { data: uaSettings, isLoading: isLoadingUASettings } = useUserAgentPassThroughSettings();
+  const updateUASettings = useUpdateUserAgentPassThroughSettings();
+  const [uaPassThroughEnabled, setUaPassThroughEnabled] = useState(false);
 
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [timezone, setTimezone] = useState('UTC');
@@ -33,12 +44,19 @@ export function GeneralSettings() {
   const timezoneItems = React.useMemo(() => GMTTimeZoneOptions, []);
 
   // Update local state when settings are loaded
-  React.useEffect(() => {
+  useEffect(() => {
     if (settings) {
       setCurrencyCode(settings.currencyCode || 'USD');
       setTimezone(settings.timezone || 'UTC');
     }
   }, [settings]);
+
+  // Update UA pass-through state when loaded
+  useEffect(() => {
+    if (uaSettings) {
+      setUaPassThroughEnabled(uaSettings.enabled);
+    }
+  }, [uaSettings]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -52,7 +70,20 @@ export function GeneralSettings() {
     }
   };
 
-  const hasChanges = settings ? settings.currencyCode !== currencyCode || settings.timezone !== timezone : false;
+  const handleUAPassThroughChange = async (enabled: boolean) => {
+    const previousValue = uaPassThroughEnabled;
+    setUaPassThroughEnabled(enabled);
+    try {
+      await updateUASettings.mutateAsync({ enabled });
+    } catch {
+      // Revert state on error
+      setUaPassThroughEnabled(previousValue);
+    }
+  };
+
+  const hasChanges = settings
+    ? settings.currencyCode !== currencyCode || settings.timezone !== timezone
+    : false;
 
   if (isLoadingSettings) {
     return (
@@ -97,6 +128,27 @@ export function GeneralSettings() {
               />
             </div>
             <div className='text-muted-foreground text-sm'>{t('system.general.timezone.description')}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('system.userAgentPassThrough.title')}</CardTitle>
+          <CardDescription>{t('system.userAgentPassThrough.description')}</CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-6'>
+          <div className='flex items-center justify-between'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='ua-pass-through'>{t('system.userAgentPassThrough.label')}</Label>
+              <div className='text-muted-foreground text-sm'>{t('system.userAgentPassThrough.helpText')}</div>
+            </div>
+            <Switch
+              id='ua-pass-through'
+              checked={uaPassThroughEnabled}
+              onCheckedChange={handleUAPassThroughChange}
+              disabled={isLoadingUASettings || updateUASettings.isPending}
+            />
           </div>
         </CardContent>
       </Card>

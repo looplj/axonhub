@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
@@ -43,6 +44,7 @@ func (UserRole) Fields() []ent.Field {
 			Annotations(
 				entgql.OrderField("CREATED_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entsql.DefaultExpr("CURRENT_TIMESTAMP"),
 			),
 		field.Time("updated_at").
 			Optional().
@@ -52,6 +54,7 @@ func (UserRole) Fields() []ent.Field {
 			Annotations(
 				entgql.OrderField("UPDATED_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entsql.DefaultExpr("CURRENT_TIMESTAMP"),
 			),
 	}
 }

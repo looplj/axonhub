@@ -20,6 +20,13 @@
 
 ---
 
+> 注意
+>
+> 1. 本项目为个人维护，作者不对使用风险作任何保证，请审慎评估。
+> 2. 本项目核心范围不包括 2api（订阅转 API）；如有此类需求，建议使用其他专注于 2api 的开源项目。
+
+---
+
 ## 📖 项目介绍
 
 ### All-in-one AI 开发平台
@@ -138,6 +145,7 @@
 | **图片生成（Image Generation）** | ✅ Done | 图片生成 | [Image Generation](docs/zh/api-reference/image-generation.md) |
 | **重排序（Rerank）** | ✅ Done | 结果排序 | [Rerank API](docs/zh/api-reference/rerank-api.md) |
 | **嵌入（Embedding）** | ✅ Done | 向量嵌入生成 | [Embedding API](docs/zh/api-reference/embedding-api.md) |
+| **网络搜索（Web Search）** | ✅ Done | 统一网络搜索网关 | [Search API](docs/zh/api-reference/search-api.md) |
 | **实时对话（Realtime）** | 📝 Todo | 实时对话功能 | - |
 
 ---
@@ -158,6 +166,10 @@
 | **ZAI**                | ✅ 已完成   | -                            | Image Generation |
 | **AWS Bedrock**        | 🔄 测试中  | Claude on AWS                | OpenAI, Anthropic, Gemini |
 | **Google Cloud**       | 🔄 测试中  | Claude on GCP                | OpenAI, Anthropic, Gemini |
+| **NanoGPT**            | ✅ 已完成  | 多种模型、图像生成             | OpenAI, Anthropic, Gemini, Image Generation |
+| **Tavily**             | ✅ 已完成   | Web 搜索                     | Search |
+| **Brave Search**       | ✅ 已完成   | Web 搜索                     | Search |
+| **Exa**                | ✅ 已完成   | 神经语义搜索                  | Search |
 
 ---
 
@@ -175,7 +187,7 @@ cd axonhub_*
 ./axonhub
 
 # 打开 http://localhost:8090
-# 默认登录：admin@axonhub.com / admin
+# 首次运行：按照初始化向导设置系统（创建管理员账号，密码至少需要 6 位）
 ```
 
 就这样！现在配置你的第一个 AI 渠道，开始通过 AxonHub 调用模型。
@@ -307,6 +319,36 @@ docker-compose up -d
 docker-compose ps
 ```
 
+#### Helm Kubernetes 部署 | Helm Kubernetes Deployment
+
+使用官方 Helm Chart 在 Kubernetes 上部署 AxonHub：
+
+```bash
+# Quick installation
+git clone https://github.com/looplj/axonhub.git
+cd axonhub
+helm install axonhub ./deploy/helm
+
+# Production deployment
+helm install axonhub ./deploy/helm -f ./deploy/helm/values-production.yaml
+
+# Access AxonHub
+kubectl port-forward svc/axonhub 8090:8090
+# Visit http://localhost:8090
+```
+
+**关键配置选项：**
+
+| 参数 | 描述 | 默认 |
+|-----------|-------------|---------|
+| `axonhub.replicaCount` | 副本数 | `1` |
+| `axonhub.dbPassword` | 数据库密码 | `axonhub_password` |
+| `postgresql.enabled` | 是否启用内嵌 PostgreSQL | `true` |
+| `ingress.enabled` | 是否启用 Ingress | `false` |
+| `persistence.enabled` | 是否启用持久化存储 | `false` |
+
+有关详细配置和故障排查，请参阅 [Helm Chart 文档](deploy/helm/README.md)。
+
 #### 虚拟机部署 | Virtual Machine Deployment
 
 下载最新版本从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
@@ -397,11 +439,32 @@ AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模
 - [OpenAI API](docs/zh/api-reference/openai-api.md)
 - [Anthropic API](docs/zh/api-reference/anthropic-api.md)
 - [Gemini API](docs/zh/api-reference/gemini-api.md)
+- [Search API](docs/zh/api-reference/search-api.md)
+
+#### 网络搜索示例 | Web Search Example
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/v1/search",
+    headers={"Authorization": "Bearer your-axonhub-api-key"},
+    json={
+        "query": "量子计算最新进展",
+        "model": "__search",
+        "max_results": 5
+    }
+)
+
+results = response.json()
+for r in results["results"]:
+    print(f"{r['title']}: {r['url']}")
+```
 
 
 ## 🛠️ 开发指南
 
-详细的开发说明、架构设计和贡献指南，请查看 [docs/zh/guides/development.md](docs/zh/guides/development.md)。
+详细的开发说明、架构设计和贡献指南，请查看 [docs/zh/development/development.md](docs/zh/development/development.md)。
 
 ---
 

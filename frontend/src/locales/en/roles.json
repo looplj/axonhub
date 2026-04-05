@@ -1,6 +1,6 @@
 {
-  "roles.title": "Role Management",
-  "roles.description": "Manage system roles and permission configurations.",
+  "roles.title": "Roles",
+  "roles.description": "Define permission scopes and assign to users.",
   "roles.createRole": "Create Role",
   "roles.searchRoles": "Search roles by name",
   "roles.columns.scopes": "Scopes",

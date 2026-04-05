@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestConvertToChatCompletionResponse(t *testing.T) {
@@ -28,7 +29,7 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 			OutputTokens: 20,
 		},
 	}
-	result := convertToLlmResponse(anthropicResp, PlatformDirect)
+	result := convertToLlmResponse(anthropicResp, PlatformDirect, shared.TransportScope{})
 
 	require.Equal(t, "msg_123", result.ID)
 	require.Equal(t, "chat.completion", result.Object)
@@ -40,6 +41,99 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	require.Equal(t, int64(10), result.Usage.PromptTokens)
 	require.Equal(t, int64(20), result.Usage.CompletionTokens)
 	require.Equal(t, int64(30), result.Usage.TotalTokens)
+}
+
+func TestConvertToolChoiceToAnthropic(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *llm.ToolChoice
+		validate func(t *testing.T, got *ToolChoice)
+	}{
+		{
+			name: "auto -> auto",
+			input: &llm.ToolChoice{
+				ToolChoice: lo.ToPtr("auto"),
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "auto", got.Type)
+				require.Nil(t, got.Name)
+			},
+		},
+		{
+			name: "none -> none",
+			input: &llm.ToolChoice{
+				ToolChoice: lo.ToPtr("none"),
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "none", got.Type)
+				require.Nil(t, got.Name)
+			},
+		},
+		{
+			name: "required -> any",
+			input: &llm.ToolChoice{
+				ToolChoice: lo.ToPtr("required"),
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "any", got.Type)
+				require.Nil(t, got.Name)
+			},
+		},
+		{
+			name: "named function -> tool + name",
+			input: &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type: "function",
+					Function: llm.ToolFunction{
+						Name: "calculator",
+					},
+				},
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "tool", got.Type)
+				require.NotNil(t, got.Name)
+				require.Equal(t, "calculator", *got.Name)
+			},
+		},
+		{
+			name:  "nil -> nil",
+			input: nil,
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.Nil(t, got)
+			},
+		},
+		{
+			name: "named function with empty name -> nil",
+			input: &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type: "function",
+					Function: llm.ToolFunction{
+						Name: "",
+					},
+				},
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.Nil(t, got)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := convertToolChoiceToAnthropic(tt.input)
+			tt.validate(t, got)
+		})
+	}
 }
 
 func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
@@ -305,7 +399,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 						StopReason: lo.ToPtr(anthropicReason),
 					}
 
-					result := convertToLlmResponse(msg, PlatformDirect)
+					result := convertToLlmResponse(msg, PlatformDirect, shared.TransportScope{})
 					if expectedReason == "stop" {
 						require.Equal(t, expectedReason, *result.Choices[0].FinishReason)
 					} else {
@@ -418,7 +512,7 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertToLlmResponse(tt.input, PlatformDirect)
+			result := convertToLlmResponse(tt.input, PlatformDirect, shared.TransportScope{})
 			tt.validate(t, result)
 		})
 	}
@@ -788,6 +882,170 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 								},
 							},
 						},
+					},
+				},
+			},
+		},
+		{
+			name: "system message with MultipleContent single text part",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: new(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: new("You are helpful.")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: new("Hello!"),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					Prompt: new("You are helpful."),
+				},
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: new("Hello!")},
+					},
+				},
+			},
+		},
+		{
+			name: "system message with MultipleContent multiple text parts",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: new(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: new("You are helpful.")},
+								{Type: "text", Text: new("Be concise.")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: new("Hello!"),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					MultiplePrompts: []SystemPromptPart{
+						{Type: "text", Text: "You are helpful."},
+						{Type: "text", Text: "Be concise."},
+					},
+				},
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: new("Hello!")},
+					},
+				},
+			},
+		},
+		{
+			name: "system message with MultipleContent and wasArrayFormat",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: new(int64(1024)),
+				TransformOptions: llm.TransformOptions{
+					ArrayInstructions: new(true),
+				},
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: new("You are helpful.")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: new("Hello!"),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					MultiplePrompts: []SystemPromptPart{
+						{Type: "text", Text: "You are helpful."},
+					},
+				},
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: new("Hello!")},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple system messages with mixed Content and MultipleContent",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: new(int64(1024)),
+				Messages: []llm.Message{
+					{
+						Role: "system",
+						Content: llm.MessageContent{
+							Content: new("System instruction."),
+						},
+					},
+					{
+						Role: "developer",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{Type: "text", Text: new("Dev instruction 1.")},
+								{Type: "text", Text: new("Dev instruction 2.")},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: new("Hello!"),
+						},
+					},
+				},
+			},
+			expected: &MessageRequest{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: 1024,
+				System: &SystemPrompt{
+					MultiplePrompts: []SystemPromptPart{
+						{Type: "text", Text: "System instruction."},
+						{Type: "text", Text: "Dev instruction 1."},
+						{Type: "text", Text: "Dev instruction 2."},
+					},
+				},
+				Messages: []MessageParam{
+					{
+						Role:    "user",
+						Content: MessageContent{Content: new("Hello!")},
 					},
 				},
 			},

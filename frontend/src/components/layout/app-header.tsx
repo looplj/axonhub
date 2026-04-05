@@ -3,13 +3,12 @@ import { Link } from '@tanstack/react-router';
 import { IconSettings } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { LanguageSwitch } from '@/components/language-switch';
-import { PermissionGuard } from '@/components/permission-guard';
-import { ProfileDropdown } from '@/components/profile-dropdown';
 import { ThemeSwitch } from '@/components/theme-switch';
 import { QuotaBadges } from '@/components/quota-badges';
+import { PermissionGuard } from '@/components/permission-guard';
 import { checkProviderQuotas } from '@/features/system/data/quotas';
 import { useBrandSettings } from '@/features/system/data/system';
 import { ProjectSwitcher } from './project-switcher';
@@ -20,6 +19,7 @@ export function AppHeader() {
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
+  const { isMobile } = useSidebar();
   const displayName = brandSettings?.brandName || 'AxonHub';
 
   const refreshMutation = useMutation({
@@ -27,7 +27,7 @@ export function AppHeader() {
       return checkProviderQuotas();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
+      void queryClient.refetchQueries({ queryKey: ['provider-quotas'] });
       toast.success(t('system.providerQuota.refresh.success'));
     },
     onError: (error: any) => {
@@ -80,19 +80,23 @@ export function AppHeader() {
 
         {/* 右侧控件 */}
         <div className='flex items-center gap-2 pr-6'>
-          {/* Quota Badges */}
+          {/* Quota Badges - always visible */}
           <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
-          <PermissionGuard requiredSystemScope='read_system'>
-            <Link to='/system'>
-              <Button variant='ghost' size='icon' className='size-8'>
-                <IconSettings className='h-4 w-4' />
-              </Button>
-            </Link>
-          </PermissionGuard>
-          <LanguageSwitch />
-          <ThemeSwitch />
-          <ProfileDropdown />
+          {/* Desktop-only controls - hidden on mobile */}
+          {!isMobile && (
+            <>
+              <PermissionGuard requiredSystemScope='read_system'>
+                <Link to='/system'>
+                  <Button variant='ghost' size='icon' className='size-8'>
+                    <IconSettings className='h-4 w-4' />
+                  </Button>
+                </Link>
+              </PermissionGuard>
+              <LanguageSwitch />
+              <ThemeSwitch />
+            </>
+          )}
         </div>
       </div>
     </header>

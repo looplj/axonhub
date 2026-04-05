@@ -6,6 +6,14 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmemory"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agentthread"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
@@ -13,13 +21,18 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelagentinstance"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -55,7 +68,7 @@ func (_m *APIKey) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "APIKey",
 		Fields: make([]*Field, 10),
-		Edges:  make([]*Edge, 3),
+		Edges:  make([]*Edge, 4),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -168,6 +181,1022 @@ func (_m *APIKey) Node(ctx context.Context) (node *Node, err error) {
 	if err != nil {
 		return nil, err
 	}
+	node.Edges[3] = &Edge{
+		Type: "AgentInstance",
+		Name: "agent_instance",
+	}
+	err = _m.QueryAgentInstance().
+		Select(agentinstance.FieldID).
+		Scan(ctx, &node.Edges[3].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *Agent) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "Agent",
+		Fields: make([]*Field, 13),
+		Edges:  make([]*Edge, 9),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.CreatedByUserID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "created_by_user_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Description); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "string",
+		Name:  "description",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "agent.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.PromptID); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "int",
+		Name:  "prompt_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Model); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "string",
+		Name:  "model",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ReasoningEffort); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "agent.ReasoningEffort",
+		Name:  "reasoning_effort",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentBuiltinTools); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "[]objects.AgentBuiltinTool",
+		Name:  "agent_builtin_tools",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentBuiltinSkills); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "[]objects.AgentBuiltinSkill",
+		Name:  "agent_builtin_skills",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SkillsPolicy); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
+		Type:  "objects.AgentSkillsPolicy",
+		Name:  "skills_policy",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Project",
+		Name: "project",
+	}
+	err = _m.QueryProject().
+		Select(project.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "User",
+		Name: "created_by_user",
+	}
+	err = _m.QueryCreatedByUser().
+		Select(user.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "Prompt",
+		Name: "prompt",
+	}
+	err = _m.QueryPrompt().
+		Select(prompt.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[3] = &Edge{
+		Type: "AgentTool",
+		Name: "tool_bindings",
+	}
+	err = _m.QueryToolBindings().
+		Select(agenttool.FieldID).
+		Scan(ctx, &node.Edges[3].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[4] = &Edge{
+		Type: "AgentSkill",
+		Name: "skill_bindings",
+	}
+	err = _m.QuerySkillBindings().
+		Select(agentskill.FieldID).
+		Scan(ctx, &node.Edges[4].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[5] = &Edge{
+		Type: "AgentInstance",
+		Name: "instances",
+	}
+	err = _m.QueryInstances().
+		Select(agentinstance.FieldID).
+		Scan(ctx, &node.Edges[5].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[6] = &Edge{
+		Type: "AgentThread",
+		Name: "threads",
+	}
+	err = _m.QueryThreads().
+		Select(agentthread.FieldID).
+		Scan(ctx, &node.Edges[6].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[7] = &Edge{
+		Type: "AgentMessage",
+		Name: "messages",
+	}
+	err = _m.QueryMessages().
+		Select(agentmessage.FieldID).
+		Scan(ctx, &node.Edges[7].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[8] = &Edge{
+		Type: "AgentMemory",
+		Name: "memories",
+	}
+	err = _m.QueryMemories().
+		Select(agentmemory.FieldID).
+		Scan(ctx, &node.Edges[8].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *AgentHost) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "AgentHost",
+		Fields: make([]*Field, 11),
+		Edges:  make([]*Edge, 1),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Type); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "agenthost.Type",
+		Name:  "type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "agenthost.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Addr); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "string",
+		Name:  "addr",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.User); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "string",
+		Name:  "user",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AuthMethod); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "agenthost.AuthMethod",
+		Name:  "auth_method",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Password); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "string",
+		Name:  "password",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SSHPrivateKey); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "string",
+		Name:  "ssh_private_key",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Directory); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "string",
+		Name:  "directory",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "AgentInstance",
+		Name: "instances",
+	}
+	err = _m.QueryInstances().
+		Select(agentinstance.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *AgentInstance) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "AgentInstance",
+		Fields: make([]*Field, 12),
+		Edges:  make([]*Edge, 5),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "agent_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentHostID); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "int",
+		Name:  "agent_host_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Description); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "string",
+		Name:  "description",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Platform); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "string",
+		Name:  "platform",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.APIKeyID); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "int",
+		Name:  "api_key_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastHeartbeatAt); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "time.Time",
+		Name:  "last_heartbeat_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AxonhubBaseURL); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "string",
+		Name:  "axonhub_base_url",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "agentinstance.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Agent",
+		Name: "agent",
+	}
+	err = _m.QueryAgent().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "AgentHost",
+		Name: "host",
+	}
+	err = _m.QueryHost().
+		Select(agenthost.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "APIKey",
+		Name: "api_key",
+	}
+	err = _m.QueryAPIKey().
+		Select(apikey.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[3] = &Edge{
+		Type: "AgentMessage",
+		Name: "messages",
+	}
+	err = _m.QueryMessages().
+		Select(agentmessage.FieldID).
+		Scan(ctx, &node.Edges[3].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[4] = &Edge{
+		Type: "MessageChannelAgentInstance",
+		Name: "message_channel_bindings",
+	}
+	err = _m.QueryMessageChannelBindings().
+		Select(messagechannelagentinstance.FieldID).
+		Scan(ctx, &node.Edges[4].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *AgentMemory) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "AgentMemory",
+		Fields: make([]*Field, 7),
+		Edges:  make([]*Edge, 1),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "agent_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Path); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "path",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Content); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "string",
+		Name:  "content",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Source); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "string",
+		Name:  "source",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Agent",
+		Name: "agent",
+	}
+	err = _m.QueryAgent().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *AgentMessage) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "AgentMessage",
+		Fields: make([]*Field, 16),
+		Edges:  make([]*Edge, 3),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "agent_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentInstanceID); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "int",
+		Name:  "agent_instance_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Direction); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "agentmessage.Direction",
+		Name:  "direction",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SenderType); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "agentmessage.SenderType",
+		Name:  "sender_type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SenderID); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "int",
+		Name:  "sender_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Type); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "agentmessage.Type",
+		Name:  "type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.CorrelationID); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "string",
+		Name:  "correlation_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Content); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "objects.JSONRawMessage",
+		Name:  "content",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "agentmessage.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Sequence); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
+		Type:  "int64",
+		Name:  "sequence",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ExpiresAt); err != nil {
+		return nil, err
+	}
+	node.Fields[13] = &Field{
+		Type:  "time.Time",
+		Name:  "expires_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ExternalMessageID); err != nil {
+		return nil, err
+	}
+	node.Fields[14] = &Field{
+		Type:  "string",
+		Name:  "external_message_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ReplyToMessageID); err != nil {
+		return nil, err
+	}
+	node.Fields[15] = &Field{
+		Type:  "int",
+		Name:  "reply_to_message_id",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Agent",
+		Name: "agent",
+	}
+	err = _m.QueryAgent().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "AgentInstance",
+		Name: "agent_instance",
+	}
+	err = _m.QueryAgentInstance().
+		Select(agentinstance.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "MessageChannel",
+		Name: "message_channel",
+	}
+	err = _m.QueryMessageChannel().
+		Select(messagechannel.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *AgentSkill) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "AgentSkill",
+		Fields: make([]*Field, 8),
+		Edges:  make([]*Edge, 3),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "agent_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SkillID); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "int",
+		Name:  "skill_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Enabled); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "bool",
+		Name:  "enabled",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Order); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "int",
+		Name:  "order",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Args); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "string",
+		Name:  "args",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Agent",
+		Name: "agent",
+	}
+	err = _m.QueryAgent().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "Skill",
+		Name: "skill",
+	}
+	err = _m.QuerySkill().
+		Select(skill.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "Project",
+		Name: "project",
+	}
+	err = _m.QueryProject().
+		Select(project.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *AgentThread) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "AgentThread",
+		Fields: make([]*Field, 5),
+		Edges:  make([]*Edge, 2),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "agent_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ThreadID); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "int",
+		Name:  "thread_id",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Agent",
+		Name: "agent",
+	}
+	err = _m.QueryAgent().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "Thread",
+		Name: "thread",
+	}
+	err = _m.QueryThread().
+		Select(thread.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *AgentTool) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "AgentTool",
+		Fields: make([]*Field, 8),
+		Edges:  make([]*Edge, 3),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "agent_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ToolID); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "int",
+		Name:  "tool_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Enabled); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "bool",
+		Name:  "enabled",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Order); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "int",
+		Name:  "order",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Config); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "objects.JSONRawMessage",
+		Name:  "config",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Agent",
+		Name: "agent",
+	}
+	err = _m.QueryAgent().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "Tool",
+		Name: "tool",
+	}
+	err = _m.QueryTool().
+		Select(tool.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "Project",
+		Name: "project",
+	}
+	err = _m.QueryProject().
+		Select(project.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
@@ -176,7 +1205,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Channel",
-		Fields: make([]*Field, 16),
+		Fields: make([]*Field, 19),
 		Edges:  make([]*Edge, 6),
 	}
 	var buf []byte
@@ -236,26 +1265,50 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "credentials",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.SupportedModels); err != nil {
+	if buf, err = json.Marshal(_m.DisabledAPIKeys); err != nil {
 		return nil, err
 	}
 	node.Fields[7] = &Field{
+		Type:  "[]objects.DisabledAPIKey",
+		Name:  "disabled_api_keys",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.SupportedModels); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
 		Type:  "[]string",
 		Name:  "supported_models",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ManualModels); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "[]string",
+		Name:  "manual_models",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.AutoSyncSupportedModels); err != nil {
 		return nil, err
 	}
-	node.Fields[8] = &Field{
+	node.Fields[10] = &Field{
 		Type:  "bool",
 		Name:  "auto_sync_supported_models",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AutoSyncModelPattern); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "string",
+		Name:  "auto_sync_model_pattern",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.Tags); err != nil {
 		return nil, err
 	}
-	node.Fields[9] = &Field{
+	node.Fields[12] = &Field{
 		Type:  "[]string",
 		Name:  "tags",
 		Value: string(buf),
@@ -263,7 +1316,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.DefaultTestModel); err != nil {
 		return nil, err
 	}
-	node.Fields[10] = &Field{
+	node.Fields[13] = &Field{
 		Type:  "string",
 		Name:  "default_test_model",
 		Value: string(buf),
@@ -271,7 +1324,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Policies); err != nil {
 		return nil, err
 	}
-	node.Fields[11] = &Field{
+	node.Fields[14] = &Field{
 		Type:  "objects.ChannelPolicies",
 		Name:  "policies",
 		Value: string(buf),
@@ -279,7 +1332,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Settings); err != nil {
 		return nil, err
 	}
-	node.Fields[12] = &Field{
+	node.Fields[15] = &Field{
 		Type:  "*objects.ChannelSettings",
 		Name:  "settings",
 		Value: string(buf),
@@ -287,7 +1340,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.OrderingWeight); err != nil {
 		return nil, err
 	}
-	node.Fields[13] = &Field{
+	node.Fields[16] = &Field{
 		Type:  "int",
 		Name:  "ordering_weight",
 		Value: string(buf),
@@ -295,7 +1348,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.ErrorMessage); err != nil {
 		return nil, err
 	}
-	node.Fields[14] = &Field{
+	node.Fields[17] = &Field{
 		Type:  "string",
 		Name:  "error_message",
 		Value: string(buf),
@@ -303,7 +1356,7 @@ func (_m *Channel) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Remark); err != nil {
 		return nil, err
 	}
-	node.Fields[15] = &Field{
+	node.Fields[18] = &Field{
 		Type:  "string",
 		Name:  "remark",
 		Value: string(buf),
@@ -558,7 +1611,7 @@ func (_m *ChannelOverrideTemplate) Node(ctx context.Context) (node *Node, err er
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "ChannelOverrideTemplate",
-		Fields: make([]*Field, 8),
+		Fields: make([]*Field, 9),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -602,18 +1655,10 @@ func (_m *ChannelOverrideTemplate) Node(ctx context.Context) (node *Node, err er
 		Name:  "description",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.ChannelType); err != nil {
-		return nil, err
-	}
-	node.Fields[5] = &Field{
-		Type:  "string",
-		Name:  "channel_type",
-		Value: string(buf),
-	}
 	if buf, err = json.Marshal(_m.OverrideParameters); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[5] = &Field{
 		Type:  "string",
 		Name:  "override_parameters",
 		Value: string(buf),
@@ -621,9 +1666,25 @@ func (_m *ChannelOverrideTemplate) Node(ctx context.Context) (node *Node, err er
 	if buf, err = json.Marshal(_m.OverrideHeaders); err != nil {
 		return nil, err
 	}
-	node.Fields[7] = &Field{
+	node.Fields[6] = &Field{
 		Type:  "[]objects.HeaderEntry",
 		Name:  "override_headers",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.HeaderOverrideOperations); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "[]objects.OverrideOperation",
+		Name:  "header_override_operations",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.BodyOverrideOperations); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "[]objects.OverrideOperation",
+		Name:  "body_override_operations",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{
@@ -806,6 +1867,268 @@ func (_m *DataStorage) Node(ctx context.Context) (node *Node, err error) {
 }
 
 // Node implements Noder interface
+func (_m *MessageChannel) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "MessageChannel",
+		Fields: make([]*Field, 8),
+		Edges:  make([]*Edge, 3),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Description); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "description",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Type); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "messagechannel.Type",
+		Name:  "type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "messagechannel.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Settings); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "objects.MessageChannelSettings",
+		Name:  "settings",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Project",
+		Name: "project",
+	}
+	err = _m.QueryProject().
+		Select(project.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "MessageChannelAgentInstance",
+		Name: "agent_instance_bindings",
+	}
+	err = _m.QueryAgentInstanceBindings().
+		Select(messagechannelagentinstance.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "AgentMessage",
+		Name: "messages",
+	}
+	err = _m.QueryMessages().
+		Select(agentmessage.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *MessageChannelAgentInstance) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "MessageChannelAgentInstance",
+		Fields: make([]*Field, 6),
+		Edges:  make([]*Edge, 2),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.MessageChannelID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "message_channel_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentInstanceID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "agent_instance_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Enabled); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "bool",
+		Name:  "enabled",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Config); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "objects.MessageChannelAgentInstanceBinding",
+		Name:  "config",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "MessageChannel",
+		Name: "message_channel",
+	}
+	err = _m.QueryMessageChannel().
+		Select(messagechannel.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "AgentInstance",
+		Name: "agent_instance",
+	}
+	err = _m.QueryAgentInstance().
+		Select(agentinstance.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *MessageChannelBindingRequest) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "MessageChannelBindingRequest",
+		Fields: make([]*Field, 8),
+		Edges:  make([]*Edge, 0),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.MessageChannelID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "message_channel_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AgentInstanceID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "agent_instance_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Type); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "messagechannelbindingrequest.Type",
+		Name:  "type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.PairCode); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "string",
+		Name:  "pair_code",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "messagechannelbindingrequest.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ExpiresAt); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "time.Time",
+		Name:  "expires_at",
+		Value: string(buf),
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
 func (_m *Model) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
@@ -919,7 +2242,7 @@ func (_m *Project) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "Project",
 		Fields: make([]*Field, 5),
-		Edges:  make([]*Edge, 9),
+		Edges:  make([]*Edge, 16),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -1043,12 +2366,82 @@ func (_m *Project) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Edges[8] = &Edge{
+		Type: "PromptVersion",
+		Name: "prompt_versions",
+	}
+	err = _m.QueryPromptVersions().
+		Select(promptversion.FieldID).
+		Scan(ctx, &node.Edges[8].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[9] = &Edge{
+		Type: "Agent",
+		Name: "agents",
+	}
+	err = _m.QueryAgents().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[9].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[10] = &Edge{
+		Type: "Tool",
+		Name: "tools",
+	}
+	err = _m.QueryTools().
+		Select(tool.FieldID).
+		Scan(ctx, &node.Edges[10].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[11] = &Edge{
+		Type: "Skill",
+		Name: "skills",
+	}
+	err = _m.QuerySkills().
+		Select(skill.FieldID).
+		Scan(ctx, &node.Edges[11].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[12] = &Edge{
+		Type: "AgentTool",
+		Name: "agent_tool_bindings",
+	}
+	err = _m.QueryAgentToolBindings().
+		Select(agenttool.FieldID).
+		Scan(ctx, &node.Edges[12].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[13] = &Edge{
+		Type: "AgentSkill",
+		Name: "agent_skill_bindings",
+	}
+	err = _m.QueryAgentSkillBindings().
+		Select(agentskill.FieldID).
+		Scan(ctx, &node.Edges[13].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[14] = &Edge{
+		Type: "MessageChannel",
+		Name: "message_channels",
+	}
+	err = _m.QueryMessageChannels().
+		Select(messagechannel.FieldID).
+		Scan(ctx, &node.Edges[14].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[15] = &Edge{
 		Type: "UserProject",
 		Name: "project_users",
 	}
 	err = _m.QueryProjectUsers().
 		Select(userproject.FieldID).
-		Scan(ctx, &node.Edges[8].IDs)
+		Scan(ctx, &node.Edges[15].IDs)
 	if err != nil {
 		return nil, err
 	}
@@ -1060,8 +2453,8 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Prompt",
-		Fields: make([]*Field, 9),
-		Edges:  make([]*Edge, 1),
+		Fields: make([]*Field, 13),
+		Edges:  make([]*Edge, 5),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -1088,10 +2481,18 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "project_id",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Name); err != nil {
+	if buf, err = json.Marshal(_m.Type); err != nil {
 		return nil, err
 	}
 	node.Fields[3] = &Field{
+		Type:  "prompt.Type",
+		Name:  "type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
 		Type:  "string",
 		Name:  "name",
 		Value: string(buf),
@@ -1099,7 +2500,7 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Description); err != nil {
 		return nil, err
 	}
-	node.Fields[4] = &Field{
+	node.Fields[5] = &Field{
 		Type:  "string",
 		Name:  "description",
 		Value: string(buf),
@@ -1107,7 +2508,7 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Role); err != nil {
 		return nil, err
 	}
-	node.Fields[5] = &Field{
+	node.Fields[6] = &Field{
 		Type:  "string",
 		Name:  "role",
 		Value: string(buf),
@@ -1115,7 +2516,7 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Content); err != nil {
 		return nil, err
 	}
-	node.Fields[6] = &Field{
+	node.Fields[7] = &Field{
 		Type:  "string",
 		Name:  "content",
 		Value: string(buf),
@@ -1123,17 +2524,41 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Status); err != nil {
 		return nil, err
 	}
-	node.Fields[7] = &Field{
+	node.Fields[8] = &Field{
 		Type:  "prompt.Status",
 		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Order); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "int",
+		Name:  "order",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.Settings); err != nil {
 		return nil, err
 	}
-	node.Fields[8] = &Field{
+	node.Fields[10] = &Field{
 		Type:  "objects.PromptSettings",
 		Name:  "settings",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ActiveVersionID); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "int",
+		Name:  "active_version_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.DraftVersionID); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
+		Type:  "int",
+		Name:  "draft_version_id",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{
@@ -1143,6 +2568,248 @@ func (_m *Prompt) Node(ctx context.Context) (node *Node, err error) {
 	err = _m.QueryProjects().
 		Select(project.FieldID).
 		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "PromptVersion",
+		Name: "versions",
+	}
+	err = _m.QueryVersions().
+		Select(promptversion.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "PromptVersion",
+		Name: "active_version",
+	}
+	err = _m.QueryActiveVersion().
+		Select(promptversion.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[3] = &Edge{
+		Type: "PromptVersion",
+		Name: "draft_version",
+	}
+	err = _m.QueryDraftVersion().
+		Select(promptversion.FieldID).
+		Scan(ctx, &node.Edges[3].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[4] = &Edge{
+		Type: "Agent",
+		Name: "agents",
+	}
+	err = _m.QueryAgents().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[4].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *PromptProtectionRule) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "PromptProtectionRule",
+		Fields: make([]*Field, 7),
+		Edges:  make([]*Edge, 0),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Description); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "string",
+		Name:  "description",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Pattern); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "pattern",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "promptprotectionrule.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Settings); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "*objects.PromptProtectionSettings",
+		Name:  "settings",
+		Value: string(buf),
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *PromptVersion) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "PromptVersion",
+		Fields: make([]*Field, 9),
+		Edges:  make([]*Edge, 5),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.PromptID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "prompt_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Version); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "int",
+		Name:  "version",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Content); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "string",
+		Name:  "content",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "promptversion.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ChangeLog); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "string",
+		Name:  "change_log",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.CreatedByUserID); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "int",
+		Name:  "created_by_user_id",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Prompt",
+		Name: "prompt",
+	}
+	err = _m.QueryPrompt().
+		Select(prompt.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "Project",
+		Name: "project",
+	}
+	err = _m.QueryProject().
+		Select(project.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "User",
+		Name: "created_by_user",
+	}
+	err = _m.QueryCreatedByUser().
+		Select(user.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[3] = &Edge{
+		Type: "Prompt",
+		Name: "active_for_prompts",
+	}
+	err = _m.QueryActiveForPrompts().
+		Select(prompt.FieldID).
+		Scan(ctx, &node.Edges[3].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[4] = &Edge{
+		Type: "Prompt",
+		Name: "draft_for_prompts",
+	}
+	err = _m.QueryDraftForPrompts().
+		Select(prompt.FieldID).
+		Scan(ctx, &node.Edges[4].IDs)
 	if err != nil {
 		return nil, err
 	}
@@ -1248,7 +2915,7 @@ func (_m *Request) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Request",
-		Fields: make([]*Field, 20),
+		Fields: make([]*Field, 24),
 		Edges:  make([]*Edge, 7),
 	}
 	var buf []byte
@@ -1412,6 +3079,38 @@ func (_m *Request) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "metrics_first_token_latency_ms",
 		Value: string(buf),
 	}
+	if buf, err = json.Marshal(_m.ContentSaved); err != nil {
+		return nil, err
+	}
+	node.Fields[20] = &Field{
+		Type:  "bool",
+		Name:  "content_saved",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ContentStorageID); err != nil {
+		return nil, err
+	}
+	node.Fields[21] = &Field{
+		Type:  "int",
+		Name:  "content_storage_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ContentStorageKey); err != nil {
+		return nil, err
+	}
+	node.Fields[22] = &Field{
+		Type:  "string",
+		Name:  "content_storage_key",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ContentSavedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[23] = &Field{
+		Type:  "time.Time",
+		Name:  "content_saved_at",
+		Value: string(buf),
+	}
 	node.Edges[0] = &Edge{
 		Type: "APIKey",
 		Name: "api_key",
@@ -1490,7 +3189,7 @@ func (_m *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "RequestExecution",
-		Fields: make([]*Field, 18),
+		Fields: make([]*Field, 19),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -1598,10 +3297,18 @@ func (_m *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "error_message",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.Status); err != nil {
+	if buf, err = json.Marshal(_m.ResponseStatusCode); err != nil {
 		return nil, err
 	}
 	node.Fields[13] = &Field{
+		Type:  "int",
+		Name:  "response_status_code",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[14] = &Field{
 		Type:  "requestexecution.Status",
 		Name:  "status",
 		Value: string(buf),
@@ -1609,7 +3316,7 @@ func (_m *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.Stream); err != nil {
 		return nil, err
 	}
-	node.Fields[14] = &Field{
+	node.Fields[15] = &Field{
 		Type:  "bool",
 		Name:  "stream",
 		Value: string(buf),
@@ -1617,7 +3324,7 @@ func (_m *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.MetricsLatencyMs); err != nil {
 		return nil, err
 	}
-	node.Fields[15] = &Field{
+	node.Fields[16] = &Field{
 		Type:  "int64",
 		Name:  "metrics_latency_ms",
 		Value: string(buf),
@@ -1625,7 +3332,7 @@ func (_m *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.MetricsFirstTokenLatencyMs); err != nil {
 		return nil, err
 	}
-	node.Fields[16] = &Field{
+	node.Fields[17] = &Field{
 		Type:  "int64",
 		Name:  "metrics_first_token_latency_ms",
 		Value: string(buf),
@@ -1633,7 +3340,7 @@ func (_m *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 	if buf, err = json.Marshal(_m.RequestHeaders); err != nil {
 		return nil, err
 	}
-	node.Fields[17] = &Field{
+	node.Fields[18] = &Field{
 		Type:  "objects.JSONRawMessage",
 		Name:  "request_headers",
 		Value: string(buf),
@@ -1762,6 +3469,136 @@ func (_m *Role) Node(ctx context.Context) (node *Node, err error) {
 }
 
 // Node implements Noder interface
+func (_m *Skill) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "Skill",
+		Fields: make([]*Field, 11),
+		Edges:  make([]*Edge, 3),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Description); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "description",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Kind); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "skill.Kind",
+		Name:  "kind",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Content); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "string",
+		Name:  "content",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Entrypoint); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "string",
+		Name:  "entrypoint",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Bundle); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "objects.JSONRawMessage",
+		Name:  "bundle",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "skill.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.CreatedByUserID); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "int",
+		Name:  "created_by_user_id",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Project",
+		Name: "project",
+	}
+	err = _m.QueryProject().
+		Select(project.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "User",
+		Name: "created_by_user",
+	}
+	err = _m.QueryCreatedByUser().
+		Select(user.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "AgentSkill",
+		Name: "agent_bindings",
+	}
+	err = _m.QueryAgentBindings().
+		Select(agentskill.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
 func (_m *System) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
@@ -1811,7 +3648,7 @@ func (_m *Thread) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "Thread",
 		Fields: make([]*Field, 4),
-		Edges:  make([]*Edge, 2),
+		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -1863,6 +3700,138 @@ func (_m *Thread) Node(ctx context.Context) (node *Node, err error) {
 	err = _m.QueryTraces().
 		Select(trace.FieldID).
 		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "AgentThread",
+		Name: "agent_threads",
+	}
+	err = _m.QueryAgentThreads().
+		Select(agentthread.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
+func (_m *Tool) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "Tool",
+		Fields: make([]*Field, 10),
+		Edges:  make([]*Edge, 3),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "time.Time",
+		Name:  "created_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "time.Time",
+		Name:  "updated_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Description); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "description",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Type); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "tool.Type",
+		Name:  "type",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Schema); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "objects.JSONRawMessage",
+		Name:  "schema",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.DefaultPolicy); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "objects.JSONRawMessage",
+		Name:  "default_policy",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.Status); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "tool.Status",
+		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.CreatedByUserID); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "int",
+		Name:  "created_by_user_id",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Project",
+		Name: "project",
+	}
+	err = _m.QueryProject().
+		Select(project.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[1] = &Edge{
+		Type: "User",
+		Name: "created_by_user",
+	}
+	err = _m.QueryCreatedByUser().
+		Select(user.FieldID).
+		Scan(ctx, &node.Edges[1].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[2] = &Edge{
+		Type: "AgentTool",
+		Name: "agent_bindings",
+	}
+	err = _m.QueryAgentBindings().
+		Select(agenttool.FieldID).
+		Scan(ctx, &node.Edges[2].IDs)
 	if err != nil {
 		return nil, err
 	}
@@ -2191,7 +4160,7 @@ func (_m *User) Node(ctx context.Context) (node *Node, err error) {
 		ID:     _m.ID,
 		Type:   "User",
 		Fields: make([]*Field, 11),
-		Edges:  make([]*Edge, 6),
+		Edges:  make([]*Edge, 10),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
@@ -2323,22 +4292,62 @@ func (_m *User) Node(ctx context.Context) (node *Node, err error) {
 		return nil, err
 	}
 	node.Edges[4] = &Edge{
-		Type: "UserProject",
-		Name: "project_users",
+		Type: "PromptVersion",
+		Name: "prompt_versions",
 	}
-	err = _m.QueryProjectUsers().
-		Select(userproject.FieldID).
+	err = _m.QueryPromptVersions().
+		Select(promptversion.FieldID).
 		Scan(ctx, &node.Edges[4].IDs)
 	if err != nil {
 		return nil, err
 	}
 	node.Edges[5] = &Edge{
+		Type: "Agent",
+		Name: "agents",
+	}
+	err = _m.QueryAgents().
+		Select(agent.FieldID).
+		Scan(ctx, &node.Edges[5].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[6] = &Edge{
+		Type: "Tool",
+		Name: "tools",
+	}
+	err = _m.QueryTools().
+		Select(tool.FieldID).
+		Scan(ctx, &node.Edges[6].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[7] = &Edge{
+		Type: "Skill",
+		Name: "skills",
+	}
+	err = _m.QuerySkills().
+		Select(skill.FieldID).
+		Scan(ctx, &node.Edges[7].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[8] = &Edge{
+		Type: "UserProject",
+		Name: "project_users",
+	}
+	err = _m.QueryProjectUsers().
+		Select(userproject.FieldID).
+		Scan(ctx, &node.Edges[8].IDs)
+	if err != nil {
+		return nil, err
+	}
+	node.Edges[9] = &Edge{
 		Type: "UserRole",
 		Name: "user_roles",
 	}
 	err = _m.QueryUserRoles().
 		Select(userrole.FieldID).
-		Scan(ctx, &node.Edges[5].IDs)
+		Scan(ctx, &node.Edges[9].IDs)
 	if err != nil {
 		return nil, err
 	}

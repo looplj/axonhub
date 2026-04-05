@@ -7,9 +7,9 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -24,7 +24,7 @@ func TestUsageLogService_CreateUsageLog_PromptWriteCachedTokens(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	p, err := client.Project.Create().
 		SetName("test-project").
@@ -80,7 +80,7 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create project
 	p, err := client.Project.Create().
@@ -143,7 +143,7 @@ func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 	channelService := NewChannelServiceForTest(client)
 
 	// Preload the channel with model prices
-	enabledCh, err := channelService.buildChannel(ch)
+	enabledCh, err := channelService.buildChannelWithTransformer(ch)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, enabledCh)
 
@@ -193,7 +193,7 @@ func TestUsageLogService_CreateUsageLog_WithCachedTokens(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create project
 	p, err := client.Project.Create().
@@ -266,7 +266,7 @@ func TestUsageLogService_CreateUsageLog_WithCachedTokens(t *testing.T) {
 	channelService := NewChannelServiceForTest(client)
 
 	// Preload the channel with model prices
-	enabledCh, err := channelService.buildChannel(ch)
+	enabledCh, err := channelService.buildChannelWithTransformer(ch)
 	require.NoError(t, err)
 	channelService.preloadModelPrices(ctx, enabledCh)
 

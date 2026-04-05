@@ -15,19 +15,32 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/agent"
+	"github.com/looplj/axonhub/internal/ent/agenthost"
+	"github.com/looplj/axonhub/internal/ent/agentinstance"
+	"github.com/looplj/axonhub/internal/ent/agentmemory"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
+	"github.com/looplj/axonhub/internal/ent/agentskill"
+	"github.com/looplj/axonhub/internal/ent/agenttool"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
+	"github.com/looplj/axonhub/internal/ent/messagechannel"
+	"github.com/looplj/axonhub/internal/ent/messagechannelbindingrequest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
+	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
+	"github.com/looplj/axonhub/internal/ent/promptversion"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/skill"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/thread"
+	"github.com/looplj/axonhub/internal/ent/tool"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -35,6 +48,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/userrole"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
+	"github.com/looplj/axonhub/internal/server/gql/logging"
 )
 
 type Dependencies struct {
@@ -58,7 +73,14 @@ type Dependencies struct {
 	BackupService                  *backup.BackupService
 	ChannelProbeService            *biz.ChannelProbeService
 	PromptService                  *biz.PromptService
+	AgentService                   *biz.AgentService
+	AgentHostService               *biz.AgentHostService
+	AgentDeployService             *biz.AgentDeployService
+	AgentBootstrapService          *biz.AgentBootstrapService
 	ProviderQuotaService           *biz.ProviderQuotaService
+	MessageChannelService          *biz.MessageChannelService
+	PromptProtectionRuleService    *biz.PromptProtectionRuleService
+	GCWorker                       *gc.Worker
 }
 
 type GraphqlHandler struct {
@@ -87,7 +109,14 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.BackupService,
 			deps.ChannelProbeService,
 			deps.PromptService,
+			deps.AgentService,
+			deps.AgentHostService,
+			deps.AgentDeployService,
+			deps.AgentBootstrapService,
 			deps.ProviderQuotaService,
+			deps.MessageChannelService,
+			deps.PromptProtectionRuleService,
+			deps.GCWorker,
 		),
 	)
 
@@ -102,14 +131,21 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](1024),
 	})
-	gqlSrv.Use(&loggingTracer{})
+	gqlSrv.Use(&logging.LoggingTracer{})
 	gqlSrv.Use(entgql.Transactioner{
 		TxOpener: deps.Ent,
 		// Skip transaction for TestChannel mutation to avoid transaction conflicts
 		// when multiple test requests are sent in parallel from the frontend.
 		// TestChannel performs LLM API calls which can be long-running, and the
 		// database operations within don't require transactional consistency.
-		SkipTxFunc: entgql.SkipOperations("TestChannel"),
+		SkipTxFunc: entgql.SkipOperations(
+			"TestChannel",
+			"DeployAxonclaw",
+			"StopAxonclawInstance",
+			"StartAxonclawInstance",
+			"RestartAxonclawInstance",
+			"RedeployAxonclawInstance",
+		),
 	})
 
 	return &GraphqlHandler{
@@ -119,24 +155,37 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 }
 
 var guidTypeToNodeType = map[string]string{
-	ent.TypeUser:                    user.Table,
-	ent.TypeAPIKey:                  apikey.Table,
-	ent.TypeModel:                   model.Table,
-	ent.TypeChannel:                 channel.Table,
-	ent.TypeChannelProbe:            channelprobe.Table,
-	ent.TypeChannelOverrideTemplate: channeloverridetemplate.Table,
-	ent.TypeRequest:                 request.Table,
-	ent.TypeRequestExecution:        requestexecution.Table,
-	ent.TypeRole:                    role.Table,
-	ent.TypeSystem:                  system.Table,
-	ent.TypeUsageLog:                usagelog.Table,
-	ent.TypeProject:                 project.Table,
-	ent.TypeUserProject:             userproject.Table,
-	ent.TypeUserRole:                userrole.Table,
-	ent.TypeThread:                  thread.Table,
-	ent.TypeTrace:                   trace.Table,
-	ent.TypeDataStorage:             datastorage.Table,
-	ent.TypePrompt:                  prompt.Table,
+	ent.TypeUser:                         user.Table,
+	ent.TypeAPIKey:                       apikey.Table,
+	ent.TypeModel:                        model.Table,
+	ent.TypeChannel:                      channel.Table,
+	ent.TypeChannelProbe:                 channelprobe.Table,
+	ent.TypeChannelOverrideTemplate:      channeloverridetemplate.Table,
+	ent.TypeRequest:                      request.Table,
+	ent.TypeRequestExecution:             requestexecution.Table,
+	ent.TypeRole:                         role.Table,
+	ent.TypeSystem:                       system.Table,
+	ent.TypeUsageLog:                     usagelog.Table,
+	ent.TypeProject:                      project.Table,
+	ent.TypeUserProject:                  userproject.Table,
+	ent.TypeUserRole:                     userrole.Table,
+	ent.TypeThread:                       thread.Table,
+	ent.TypeTrace:                        trace.Table,
+	ent.TypeDataStorage:                  datastorage.Table,
+	ent.TypePrompt:                       prompt.Table,
+	ent.TypePromptVersion:                promptversion.Table,
+	ent.TypeAgent:                        agent.Table,
+	ent.TypeTool:                         tool.Table,
+	ent.TypeSkill:                        skill.Table,
+	ent.TypeAgentTool:                    agenttool.Table,
+	ent.TypeAgentSkill:                   agentskill.Table,
+	ent.TypeAgentInstance:                agentinstance.Table,
+	ent.TypeAgentMessage:                 agentmessage.Table,
+	ent.TypeAgentMemory:                  agentmemory.Table,
+	ent.TypeAgentHost:                    agenthost.Table,
+	ent.TypeMessageChannelBindingRequest: messagechannelbindingrequest.Table,
+	ent.TypeMessageChannel:               messagechannel.Table,
+	ent.TypePromptProtectionRule:         promptprotectionrule.Table,
 }
 
 func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (*ent.Channel, error) {

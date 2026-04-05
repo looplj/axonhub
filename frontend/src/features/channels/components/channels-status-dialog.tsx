@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useUpdateChannelStatus, useTestChannel } from '../data/channels';
 import { Channel } from '../data/schema';
+import { ErrorDisplay } from '../utils/error-formatter';
 
 interface Props {
   open: boolean;
@@ -121,7 +122,7 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
                     <div className='text-xs'>
                       <span className='font-medium'>{t('channels.dialogs.status.enable.errorDetails')}:</span>
                       <div className='mt-1 rounded border-l-2 border-red-400 bg-red-100 p-2 dark:border-red-600 dark:bg-red-900/30'>
-                        {testResult.error}
+                        <ErrorDisplay error={testResult.error} messageClassName='text-xs font-medium text-red-800 dark:text-red-200' />
                       </div>
                     </div>
                   )}

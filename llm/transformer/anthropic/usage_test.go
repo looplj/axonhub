@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 )
 
 func Test_convertUsage(t *testing.T) {
@@ -280,6 +280,50 @@ func Test_convertUsage(t *testing.T) {
 					WriteCachedTokens:      20,
 					WriteCached5MinTokens:  10,
 					WriteCached1HourTokens: 10,
+				},
+			},
+		},
+		{
+			name: "Moonshot - negative input tokens with cache discount",
+			args: args{
+				usage: &Usage{
+					InputTokens:          -126648,
+					OutputTokens:         52,
+					CacheReadInputTokens: 126976,
+					ServiceTier:          "standard",
+				},
+				platformType: PlatformMoonshot,
+			},
+			want: &llm.Usage{
+				// nonCached = -126648 + 126976 = 328
+				// total = 328 + 126976 = 127304
+				PromptTokens:     127304,
+				CompletionTokens: 52,
+				TotalTokens:      127356,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 126976,
+				},
+			},
+		},
+		{
+			name: "Moonshot - future format where InputTokens doesn't include cached",
+			args: args{
+				usage: &Usage{
+					InputTokens:          100,
+					OutputTokens:         50,
+					CacheReadInputTokens: 150,
+					ServiceTier:          "standard",
+				},
+				platformType: PlatformMoonshot,
+			},
+			want: &llm.Usage{
+				// InputTokens (100) < CacheReadInputTokens (150), so we add them
+				// Total = 100 + 150 = 250
+				PromptTokens:     250,
+				CompletionTokens: 50,
+				TotalTokens:      300,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 150,
 				},
 			},
 		},

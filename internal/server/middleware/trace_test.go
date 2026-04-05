@@ -11,15 +11,17 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zhenzou/executors"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/tracing"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func setupTestTraceMiddleware(t *testing.T) (*gin.Engine, *ent.Client, *biz.TraceService) {
@@ -60,8 +62,13 @@ func TestExtractClaudeTraceID(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "valid claude user id",
+			name:     "valid claude user id (legacy)",
 			userID:   "user_20836b5653ed68aa981604f502c0a491397f6053826a93c953423632578d38ad_account__session_f25958b8-e75c-455d-8b40-f006d87cc2a4",
+			expected: "f25958b8-e75c-455d-8b40-f006d87cc2a4",
+		},
+		{
+			name:     "valid claude user id (v2 json)",
+			userID:   `{"device_id":"67bad5aabbccdd1122334455667788990011223344556677889900aabbccddee","account_uuid":"","session_id":"f25958b8-e75c-455d-8b40-f006d87cc2a4"}`,
 			expected: "f25958b8-e75c-455d-8b40-f006d87cc2a4",
 		},
 		{
@@ -77,7 +84,12 @@ func TestExtractClaudeTraceID(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		result := extractClaudeTraceID(tc.userID)
+		uid := claudecode.ParseUserID(tc.userID)
+
+		var result string
+		if uid != nil {
+			result = uid.SessionID
+		}
 		require.Equal(t, tc.expected, result, tc.name)
 	}
 }
@@ -93,7 +105,7 @@ func TestWithTrace_ClaudeCodeDisabled(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -104,7 +116,7 @@ func TestWithTrace_ClaudeCodeDisabled(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -167,7 +179,7 @@ func TestWithTrace_ClaudeCodeSetsTraceHeader(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -178,7 +190,7 @@ func TestWithTrace_ClaudeCodeSetsTraceHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -247,7 +259,7 @@ func TestWithTrace_ClaudeCodePreservesExistingTraceHeader(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -258,7 +270,7 @@ func TestWithTrace_ClaudeCodePreservesExistingTraceHeader(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -327,7 +339,7 @@ func TestWithTrace_CodexDisabled(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -338,7 +350,7 @@ func TestWithTrace_CodexDisabled(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -377,7 +389,7 @@ func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -388,7 +400,7 @@ func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -396,13 +408,21 @@ func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
 	})
 	router.Use(WithTrace(config, traceService))
 
-	var capturedTraceID string
+	var (
+		capturedTraceID   string
+		capturedSessionID string
+	)
 
 	router.POST("/v1/chat/completions", func(c *gin.Context) {
 		trace, ok := contexts.GetTrace(c.Request.Context())
 		require.True(t, ok)
 
 		capturedTraceID = trace.TraceID
+
+		sessionID, ok := shared.GetSessionID(c.Request.Context())
+		require.True(t, ok)
+
+		capturedSessionID = sessionID
 
 		c.Status(http.StatusOK)
 	})
@@ -416,6 +436,58 @@ func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "codex-session-123", capturedTraceID)
+	require.Equal(t, "codex-session-123", capturedSessionID)
+}
+
+func TestWithTrace_CodexSessionMissingDoesNotSetTrace(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	config := tracing.Config{
+		TraceHeader:       "AH-Trace-Id",
+		CodexTraceEnabled: true,
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	ctx = ent.NewContext(ctx, client)
+
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	var (
+		hasTrace   bool
+		hasSession bool
+	)
+
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		_, hasTrace = contexts.GetTrace(c.Request.Context())
+		_, hasSession = shared.GetSessionID(c.Request.Context())
+
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader([]byte("{}")))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.False(t, hasTrace)
+	require.False(t, hasSession)
 }
 
 func TestWithTraceID_Success(t *testing.T) {
@@ -424,7 +496,7 @@ func TestWithTraceID_Success(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -436,7 +508,7 @@ func TestWithTraceID_Success(t *testing.T) {
 
 	// Setup middleware and test endpoint
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -475,7 +547,7 @@ func TestWithTraceID_WithThread(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -494,7 +566,7 @@ func TestWithTraceID_WithThread(t *testing.T) {
 
 	// Setup middleware and test endpoint
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		ctx = contexts.WithThread(ctx, testThread)
@@ -582,7 +654,7 @@ func TestWithTraceID_Idempotent(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -593,7 +665,7 @@ func TestWithTraceID_Idempotent(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -648,7 +720,7 @@ func TestWithTrace_ExtraTraceBodyFields(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -659,7 +731,7 @@ func TestWithTrace_ExtraTraceBodyFields(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -708,7 +780,7 @@ func TestWithTrace_ExtraTraceBodyFields_Nested(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -719,7 +791,7 @@ func TestWithTrace_ExtraTraceBodyFields_Nested(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -771,7 +843,7 @@ func TestWithTrace_ExtraTraceBodyFields_Priority(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -782,7 +854,7 @@ func TestWithTrace_ExtraTraceBodyFields_Priority(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)
@@ -825,7 +897,7 @@ func TestWithTrace_ExtraTraceBodyFields_InvalidJSON(t *testing.T) {
 	router, client, traceService := setupTestTraceMiddleware(t)
 	defer client.Close()
 
-	ctx := privacy.DecisionContext(httptest.NewRequest(http.MethodGet, "/", nil).Context(), privacy.Allow)
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	ctx = ent.NewContext(ctx, client)
 
 	// Create a test project
@@ -836,7 +908,7 @@ func TestWithTrace_ExtraTraceBodyFields_InvalidJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	router.Use(func(c *gin.Context) {
-		ctx := privacy.DecisionContext(c.Request.Context(), privacy.Allow)
+		ctx := authz.WithTestBypass(c.Request.Context())
 		ctx = ent.NewContext(ctx, client)
 		ctx = contexts.WithProjectID(ctx, testProject.ID)
 		c.Request = c.Request.WithContext(ctx)

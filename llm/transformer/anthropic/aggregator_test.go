@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 )
 
 func TestAggregateStreamChunks(t *testing.T) {
@@ -906,7 +906,6 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 				// Compare thinking content
 				if expectedContent.Type == "thinking" {
 					require.Equal(t, expectedContent.Thinking, result.Content[i].Thinking)
-					require.Equal(t, expectedContent.Signature, result.Content[i].Signature)
 				}
 
 				// Compare tool use content

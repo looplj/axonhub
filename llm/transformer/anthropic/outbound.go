@@ -10,13 +10,14 @@ import (
 	// Import bedrock package to register its decoder.
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/vertex"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	_ "github.com/looplj/axonhub/llm/bedrock"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
+	"github.com/looplj/axonhub/llm/vertex"
 )
 
 func init() {
@@ -47,14 +48,13 @@ type Config struct {
 	Region string `json:"region,omitempty"` // For Vertex
 
 	ProjectID string `json:"project_id,omitempty"` // For Vertex
-	JSONData  string `json:"json_data,omitempty"`  // For Vertex
+
+	JSONData string `json:"json_data,omitempty"` // For Vertex
 
 	// BaseURL is the base URL for the Anthropic API, required.
 	BaseURL string `json:"base_url,omitempty"`
 
-	// RawURL is whether to use raw URL for requests, default is false.
-	// If true, the base URL will be used as is, without appending the version.
-	RawURL bool `json:"raw_url,omitempty"`
+	AccountIdentity string `json:"account_identity,omitempty"`
 
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
@@ -99,14 +99,6 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		}
 	}
 
-	// Note: ClaudeCode transformer is now in a separate package to avoid import cycles
-	// It should be created directly using claudecode.NewOutboundTransformer() with OAuth TokenProvider
-	// The channel builder handles this special case
-
-	if strings.HasSuffix(config.BaseURL, "#") {
-		config.RawURL = true
-	}
-
 	// For Vertex/Bedrock, don't normalize with version - they have special URL formats
 	//nolint:exhaustive // Checked.
 	switch config.Type {
@@ -133,9 +125,9 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
 
-	// Get API key from provider
+	// Get API key from provider (Vertex/ClaudeCode use OAuth, not API keys)
 	var apiKey string
-	if t.config.APIKeyProvider != nil && t.config.Type != PlatformVertex {
+	if t.config.APIKeyProvider != nil {
 		apiKey = t.config.APIKeyProvider.Get(ctx)
 	}
 
@@ -143,6 +135,8 @@ func (t *OutboundTransformer) TransformRequest(
 	switch llmReq.RequestType {
 	case llm.RequestTypeChat, "":
 		// continue
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
@@ -162,7 +156,16 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert to Anthropic request format
-	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
+	scope := shared.TransportScope{
+		BaseURL:         t.config.BaseURL,
+		AccountIdentity: t.config.AccountIdentity,
+	}
+	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config, scope)
+
+	// Apply cache_control breakpoint policy to optimize cache control if client requests with cache_control.
+	if countCacheControls(anthropicReq) > 0 {
+		optimizeCacheControl(anthropicReq)
+	}
 
 	// Determine endpoint based on platform
 	url, err := t.buildFullRequestURL(llmReq)
@@ -230,11 +233,12 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	return &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     url,
-		Headers: headers,
-		Body:    body,
-		Auth:    authConfig,
+		Method:   http.MethodPost,
+		URL:      url,
+		Headers:  headers,
+		Body:     body,
+		Auth:     authConfig,
+		Metadata: scope.Metadata(),
 	}, nil
 }
 
@@ -308,7 +312,8 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to ChatCompletionResponse
-	chatResp := convertToLlmResponse(&anthropicResp, t.config.Type)
+	scope, _ := shared.GetTransportScope(ctx)
+	chatResp := convertToLlmResponse(&anthropicResp, t.config.Type, scope)
 
 	return chatResp, nil
 }

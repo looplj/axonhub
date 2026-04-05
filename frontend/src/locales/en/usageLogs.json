@@ -41,7 +41,5 @@
   "usageLogs.dialogs.usageDetail.fields.format": "Format",
   "usageLogs.dialogs.usageDetail.fields.createdAt": "Created At",
   "usageLogs.dialogs.usageDetail.tokenDetails.basic": "Basic Token Usage",
-  "usageLogs.dialogs.usageDetail.notFound": "Usage log not found",
-  "usageLogs.errors.loadUsageLogsFailed": "Failed to load usage logs",
-  "usageLogs.errors.loadUsageLogDetailFailed": "Failed to load usage log details"
+  "usageLogs.dialogs.usageDetail.notFound": "Usage log not found"
 }

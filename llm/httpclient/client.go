@@ -3,15 +3,16 @@ package httpclient
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -19,10 +20,30 @@ import (
 type HttpClient struct {
 	client      *http.Client
 	proxyConfig *ProxyConfig
+	opts        []ClientOption
+}
+
+// ClientOption configures an HttpClient.
+type ClientOption func(*clientOptions)
+
+type clientOptions struct {
+	insecureSkipVerify bool
+}
+
+// WithInsecureSkipVerify disables TLS certificate verification.
+func WithInsecureSkipVerify(skip bool) ClientOption {
+	return func(o *clientOptions) {
+		o.insecureSkipVerify = skip
+	}
 }
 
 // NewHttpClientWithProxy creates a new HTTP client with proxy configuration.
-func NewHttpClientWithProxy(proxyConfig *ProxyConfig) *HttpClient {
+func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *HttpClient {
+	var options clientOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	transport := &http.Transport{
 		Proxy: getProxyFunc(proxyConfig),
 		DialContext: (&net.Dialer{
@@ -36,12 +57,30 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig) *HttpClient {
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
+	if options.insecureSkipVerify {
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // User-configured option for self-signed certificates
+		}
+	}
+
 	return &HttpClient{
 		client: &http.Client{
 			Transport: transport,
 		},
 		proxyConfig: proxyConfig,
+		opts:        opts,
 	}
+}
+
+// WithProxy returns a new HttpClient that uses the given proxy configuration,
+// while preserving all other options (e.g., InsecureSkipVerify) from the original client.
+func (hc *HttpClient) WithProxy(proxyConfig *ProxyConfig) *HttpClient {
+	return NewHttpClientWithProxy(proxyConfig, hc.opts...)
+}
+
+// GetNativeClient returns the underlying *http.Client for advanced use cases.
+func (hc *HttpClient) GetNativeClient() *http.Client {
+	return hc.client
 }
 
 // getProxyFunc returns a proxy function based on the proxy configuration.
@@ -81,7 +120,7 @@ func getProxyFunc(config *ProxyConfig) func(*http.Request) (*url.URL, error) {
 			proxyURL.User = url.UserPassword(config.Username, config.Password)
 		}
 
-		log.Debug(context.Background(), "use custom proxy", log.Any("proxy_url", proxyURL.Redacted()))
+		slog.DebugContext(context.Background(), "use custom proxy", slog.Any("proxy_url", proxyURL.Redacted()))
 
 		return http.ProxyURL(proxyURL)
 
@@ -92,9 +131,47 @@ func getProxyFunc(config *ProxyConfig) func(*http.Request) (*url.URL, error) {
 }
 
 // NewHttpClient creates a new HTTP client.
-func NewHttpClient() *HttpClient {
+func NewHttpClient(opts ...ClientOption) *HttpClient {
+	var options clientOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	client := &http.Client{}
+
+	if options.insecureSkipVerify {
+		var transport *http.Transport
+		if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
+			transport = defaultTransport.Clone()
+		} else {
+			// Fall back to a transport close to http.DefaultTransport when it has been replaced.
+			transport = (&http.Transport{
+				Proxy: getProxyFunc(nil),
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          100,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			})
+		}
+
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{}
+		} else {
+			transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+		}
+
+		transport.TLSClientConfig.InsecureSkipVerify = true //nolint:gosec // User-configured option for self-signed certificates
+		client.Transport = transport
+	}
+
 	return &HttpClient{
-		client: &http.Client{},
+		client: client,
+		opts:   opts,
 	}
 }
 
@@ -107,7 +184,7 @@ func NewHttpClientWithClient(client *http.Client) *HttpClient {
 
 // Do executes the HTTP request.
 func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, error) {
-	log.Debug(ctx, "execute http request", log.Any("request", request), log.Any("proxy", hc.proxyConfig))
+	slog.DebugContext(ctx, "execute http request", slog.Any("request", request), slog.Any("proxy", hc.proxyConfig))
 
 	rawReq, err := hc.BuildHttpRequest(ctx, request)
 	if err != nil {
@@ -124,7 +201,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	defer func() {
 		err := rawResp.Body.Close()
 		if err != nil {
-			log.Warn(ctx, "failed to close HTTP response body", log.Cause(err))
+			slog.WarnContext(ctx, "failed to close HTTP response body", slog.Any("error", err))
 		}
 	}()
 
@@ -134,12 +211,12 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	}
 
 	if rawResp.StatusCode >= 400 {
-		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "HTTP request failed",
-				log.String("method", rawReq.Method),
-				log.String("url", rawReq.URL.String()),
-				log.Any("status_code", rawResp.StatusCode),
-				log.String("body", string(body)))
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.DebugContext(ctx, "HTTP request failed",
+				slog.String("method", rawReq.Method),
+				slog.String("url", rawReq.URL.String()),
+				slog.Int("status_code", rawResp.StatusCode),
+				slog.String("body", string(body)))
 		}
 
 		return nil, &Error{
@@ -151,12 +228,12 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}
 
-	if log.DebugEnabled(ctx) {
-		log.Debug(ctx, "HTTP request success",
-			log.String("method", rawReq.Method),
-			log.String("url", rawReq.URL.String()),
-			log.Any("status_code", rawResp.StatusCode),
-			log.String("body", string(body)))
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
+		slog.DebugContext(ctx, "HTTP request success",
+			slog.String("method", rawReq.Method),
+			slog.String("url", rawReq.URL.String()),
+			slog.Int("status_code", rawResp.StatusCode),
+			slog.String("body", string(body)))
 	}
 
 	// Build generic response
@@ -175,7 +252,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 
 // DoStream executes a streaming HTTP request using Server-Sent Events.
 func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.Stream[*StreamEvent], error) {
-	log.Debug(ctx, "execute stream request", log.Any("request", request))
+	slog.DebugContext(ctx, "execute stream request", slog.Any("request", request))
 
 	rawReq, err := hc.BuildHttpRequest(ctx, request)
 	if err != nil {
@@ -198,7 +275,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		defer func() {
 			err := rawResp.Body.Close()
 			if err != nil {
-				log.Warn(ctx, "failed to close HTTP response body", log.Cause(err))
+				slog.WarnContext(ctx, "failed to close HTTP response body", slog.Any("error", err))
 			}
 		}()
 
@@ -208,12 +285,12 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 			return nil, err
 		}
 
-		if log.DebugEnabled(ctx) {
-			log.Debug(ctx, "HTTP stream request failed",
-				log.String("method", rawReq.Method),
-				log.String("url", rawReq.URL.String()),
-				log.Any("status_code", rawResp.StatusCode),
-				log.String("body", string(body)))
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.DebugContext(ctx, "HTTP stream request failed",
+				slog.String("method", rawReq.Method),
+				slog.String("url", rawReq.URL.String()),
+				slog.Int("status_code", rawResp.StatusCode),
+				slog.String("body", string(body)))
 		}
 
 		return nil, &Error{
@@ -235,7 +312,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	decoderFactory, exists := GetDecoder(contentType)
 	if !exists {
 		// Fallback to default SSE decoder
-		log.Debug(ctx, "no decoder found for content type, using default SSE", log.String("content_type", contentType))
+		slog.DebugContext(ctx, "no decoder found for content type, using default SSE", slog.String("content_type", contentType))
 
 		decoderFactory = NewDefaultSSEDecoder
 	}
@@ -264,13 +341,19 @@ func BuildHttpRequest(
 	if httpReq.Header == nil {
 		httpReq.Header = make(http.Header)
 	}
-
+	// Handle User-Agent header - only set default if not already present
 	if httpReq.Header.Get("User-Agent") == "" {
+		// No User-Agent set, use default
 		httpReq.Header.Set("User-Agent", "axonhub/1.0")
 	}
 
 	for k := range libManagedHeaders {
 		httpReq.Header.Del(k)
+	}
+
+	// Set Content-Type header if specified in request
+	if request.ContentType != "" {
+		httpReq.Header.Set("Content-Type", request.ContentType)
 	}
 
 	if request.Auth != nil {

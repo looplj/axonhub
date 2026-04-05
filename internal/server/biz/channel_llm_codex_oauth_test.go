@@ -4,19 +4,21 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestCodexRefreshPersistsChannelCredentials(t *testing.T) {
@@ -35,7 +37,7 @@ func TestCodexRefreshPersistsChannelCredentials(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	ctx := ent.NewContext(context.Background(), db)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	created, err := db.Channel.Create().
 		SetType(channel.TypeCodex).
@@ -54,20 +56,24 @@ func TestCodexRefreshPersistsChannelCredentials(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	svc := &ChannelService{AbstractService: &AbstractService{db: db}}
+	svc := NewChannelServiceForTest(db)
 
-	ch, err := svc.buildChannel(created)
+	ch, err := svc.buildChannelWithTransformer(created)
 	require.NoError(t, err)
 
 	req := &llm.Request{
 		Model: "gpt-4o-mini",
 		Messages: []llm.Message{
-			{Role: "user", Content: llm.MessageContent{Content: loPtr("hi")}},
+			{Role: "user", Content: llm.MessageContent{Content: new("hi")}},
 		},
 	}
 
-	_, err = ch.Outbound.TransformRequest(ctx, req)
+	hreq, err := ch.Outbound.TransformRequest(ctx, req)
 	require.NoError(t, err)
+	require.NotNil(t, hreq.Metadata)
+
+	require.Equal(t, "https://chatgpt.com/backend-api/codex", hreq.Metadata[shared.MetadataKeyBaseURL])
+	require.Equal(t, strconv.Itoa(created.ID), hreq.Metadata[shared.MetadataKeyAccountIdentity])
 
 	reloaded, err := db.Channel.Get(ctx, created.ID)
 	require.NoError(t, err)
@@ -77,10 +83,6 @@ func TestCodexRefreshPersistsChannelCredentials(t *testing.T) {
 	require.Equal(t, "new-refresh", reloaded.Credentials.OAuth.RefreshToken)
 	require.False(t, reloaded.Credentials.OAuth.ExpiresAt.IsZero())
 	require.Equal(t, "new-access", extractAccessTokenFromAPIKeyJSON(t, reloaded.Credentials.APIKey))
-}
-
-func loPtr(s string) *string {
-	return &s
 }
 
 func extractAccessTokenFromAPIKeyJSON(t *testing.T, raw string) string {

@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateRangePicker } from '@/components/date-range-picker';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
 import { useMe } from '@/features/auth/data/auth';
 import { useUsers } from '@/features/users/data/users';
@@ -12,12 +14,15 @@ import { ApiKeyStatus } from '../data/schema';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
+  dateRange?: DateTimeRangeValue;
+  onDateRangeChange?: (range: DateTimeRangeValue | undefined) => void;
   onResetFilters?: () => void;
 }
 
-export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onResetFilters }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
-  const isFiltered = table.getState().columnFilters.length > 0;
+  const hasDateRange = !!dateRange?.from || !!dateRange?.to;
+  const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
 
   const { user: authUser } = useAuthStore((state) => state.auth);
   const { data: meData } = useMe();
@@ -76,11 +81,13 @@ export function DataTableToolbar<TData>({ table, onResetFilters }: DataTableTool
         {canViewUsers && table.getColumn('creator') && userOptions.length > 0 && usersData?.edges && (
           <DataTableFacetedFilter column={table.getColumn('creator')} title={t('apikeys.filters.creator')} options={userOptions} />
         )}
+        <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
         {isFiltered && (
           <Button
             variant='ghost'
             onClick={() => {
               table.resetColumnFilters();
+              onDateRangeChange?.(undefined);
               onResetFilters?.();
             }}
             className='h-8 px-2 lg:px-3'

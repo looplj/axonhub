@@ -172,18 +172,18 @@ export function useUsers(
         return {
           edges: transformedUsers.map((user) => ({ node: user })),
           pageInfo: {
-            hasNextPage: false,
-            hasPreviousPage: false,
-            startCursor: null,
-            endCursor: null,
-          },
-        };
-      } catch (error) {
-        handleError(error, t('users.messages.loadUsersError'));
-        throw error;
-      }
-    },
-    enabled: !options?.disableAutoFetch && !!selectedProjectId,
+hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+      };
+    } catch (error) {
+      handleError(error, t('common.errors.loadFailed'));
+      throw error;
+    }
+  },
+  enabled: !options?.disableAutoFetch && !!selectedProjectId,
   });
 }
 
@@ -204,7 +204,7 @@ export function useUser(id: string) {
         }
         return userSchema.parse(user);
       } catch (error) {
-        handleError(error, t('users.messages.loadUserError'));
+        handleError(error, t('common.errors.loadFailed'));
         throw error;
       }
     },
@@ -228,8 +228,8 @@ export function useCreateUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.createSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.createError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -249,8 +249,8 @@ export function useUpdateUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.updateSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.updateError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -272,8 +272,8 @@ export function useUpdateUserStatus() {
       const statusText = variables.status === 'activated' ? t('users.status.activated') : t('users.status.deactivated');
       toast.success(t('users.messages.statusUpdateSuccess', { status: statusText }));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.statusUpdateError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -291,8 +291,8 @@ export function useDeleteUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.deleteSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.deleteError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -328,8 +328,8 @@ export function useAddUserToProject() {
       queryClient.invalidateQueries({ queryKey: ['project-users', selectedProjectId] });
       toast.success(t('users.messages.addToProjectSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.addToProjectError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -362,8 +362,8 @@ export function useRemoveUserFromProject() {
       queryClient.invalidateQueries({ queryKey: ['project-users', selectedProjectId] });
       toast.success(t('users.messages.removeFromProjectSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.removeFromProjectError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -406,8 +406,8 @@ export function useUpdateProjectUser() {
       queryClient.invalidateQueries({ queryKey: ['project-users', selectedProjectId] });
       toast.success(t('users.messages.updateSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.updateError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -424,7 +424,7 @@ export function useAllUsers(variables?: { first?: number; after?: string; where?
         const data = await graphqlRequest<{ users: UserConnection }>(ALL_USERS_QUERY, variables);
         return data.users;
       } catch (error) {
-        handleError(error, t('users.messages.loadUsersError'));
+        handleError(error, t('common.errors.loadFailed'));
         throw error;
       }
     },

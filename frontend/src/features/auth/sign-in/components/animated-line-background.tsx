@@ -1,220 +1,326 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import { type FC, useCallback, useEffect, useRef } from 'react';
+import type { FormBounds, MouseArea, Particle } from './animated-line-background.engine';
+import {
+  animationConfig,
+  getFormBounds,
+  initParticles,
+  renderParticles,
+  updateParticles,
+} from './animated-line-background.engine';
 
-interface Particle {
-  x: number;
-  y: number;
-  xa: number;
-  ya: number;
-  max: number;
+interface AnimationDiagnosticsSnapshot {
+  targetFps: number;
+  frameIntervalMs: number;
+  maxCatchUpMs: number;
+  maxStepsPerFrame: number;
+  frameCount: number;
+  simulationStepCount: number;
+  renderCount: number;
+  simulatedMs: number;
+  accumulatorMs: number;
+  lastFrameDeltaMs: number;
+  lastClampedDeltaMs: number;
+  lastFrameStepCount: number;
+  lastAppliedDeltaMs: number;
+  particleChecksum: number;
 }
 
-interface MouseArea {
-  x: number | null;
-  y: number | null;
-  max: number;
+interface AnimationDiagnostics {
+  reset(): void;
+  snapshot(): AnimationDiagnosticsSnapshot;
+  simulate(stepMs: number, steps: number): void;
+  simulateLargeGap(deltaMs: number): void;
 }
 
-const AnimatedLineBackground: React.FC = () => {
+declare global {
+  interface Window {
+    __AXONHUB_SIGNIN_ANIMATION__?: AnimationDiagnostics;
+  }
+}
+
+const DEBUG_QUERY_PARAM = '__axonhub_debug_animation';
+
+const createMouseArea = (): MouseArea => ({ x: null, y: null, max: 20000 });
+
+const cloneParticles = (particles: Particle[]): Particle[] => particles.map((particle) => ({ ...particle }));
+
+const getParticleChecksum = (particles: Particle[]): number => {
+  return particles.reduce((checksum, particle, index) => {
+    const x = Math.round(particle.x * 1000);
+    const y = Math.round(particle.y * 1000);
+    const factor = index + 1;
+
+    return checksum + x * factor * 31 + y * factor * 17;
+  }, 0);
+};
+
+const shouldExposeAnimationDiagnostics = (): boolean => {
+  if (!import.meta.env.DEV || typeof window === 'undefined') {
+    return false;
+  }
+
+  return new URLSearchParams(window.location.search).get(DEBUG_QUERY_PARAM) === '1';
+};
+
+const AnimatedLineBackground: FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const animationRef = useRef<number | null>(null);
   const particlesRef = useRef<Particle[]>([]);
-  const mouseAreaRef = useRef<MouseArea>({ x: null, y: null, max: 20000 });
+  const diagnosticsInitialParticlesRef = useRef<Particle[] | null>(null);
+  const diagnosticsCanvasSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const formBoundsRef = useRef<FormBounds | null>(null);
+  const mouseAreaRef = useRef<MouseArea>(createMouseArea());
+  const frameCountRef = useRef(0);
+  const simulationStepCountRef = useRef(0);
+  const renderCountRef = useRef(0);
+  const simulatedMsRef = useRef(0);
+  const accumulatorRef = useRef(0);
+  const lastTimestampRef = useRef<number | null>(null);
+  const lastFrameDeltaMsRef = useRef(0);
+  const lastClampedDeltaMsRef = useRef(0);
+  const lastFrameStepCountRef = useRef(0);
+  const lastAppliedDeltaMsRef = useRef(0);
+  const lastRenderedMouseAreaRef = useRef<MouseArea>(createMouseArea());
+  const lastRenderedFormBoundsRef = useRef<FormBounds | null>(null);
+
+  const getMeasuredFormBounds = useCallback((): FormBounds | null => {
+    const el = document.getElementById('auth-card-wrapper');
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return {
+      formCenterX: rect.left + rect.width / 2,
+      formCenterY: rect.top + rect.height / 2,
+      formLeft: rect.left,
+      formRight: rect.right,
+      formTop: rect.top,
+      formBottom: rect.bottom,
+    };
+  }, []);
+
+  const updateFormBounds = useCallback((canvasWidth: number, canvasHeight: number) => {
+    const newBounds = getMeasuredFormBounds() ?? getFormBounds(canvasWidth, canvasHeight);
+    const prev = formBoundsRef.current;
+    
+    if (!prev || 
+        prev.formLeft !== newBounds.formLeft || 
+        prev.formRight !== newBounds.formRight || 
+        prev.formTop !== newBounds.formTop || 
+        prev.formBottom !== newBounds.formBottom) {
+      formBoundsRef.current = newBounds;
+      return true;
+    }
+    return false;
+  }, [getMeasuredFormBounds]);
 
   const resize = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return { sizeChanged: false, boundsChanged: false };
+
+    const prevWidth = canvas.width;
+    const prevHeight = canvas.height;
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-  }, [canvasRef]);
 
-  const initParticles = useCallback(() => {
+    ctxRef.current = ctxRef.current ?? canvas.getContext('2d');
+    const boundsChanged = updateFormBounds(canvas.width, canvas.height);
+    const sizeChanged = prevWidth !== canvas.width || prevHeight !== canvas.height;
+
+    return { sizeChanged, boundsChanged };
+  }, [updateFormBounds]);
+
+  const handleResize = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    particlesRef.current = [];
-    const particleCount = 120; // Reduced for better performance with split layout
+    const { sizeChanged } = resize();
 
-    // 定义表单区域 (与animate函数中的定义保持一致)
-    const rightSideStart = canvas.width / 2;
-    const formCenterX = rightSideStart + canvas.width / 2 / 2; // 右侧区域的中心
-    const formCenterY = canvas.height / 2;
-    const formWidth = 360;
-    const formHeight = 500;
-    const formLeft = formCenterX - formWidth / 2;
-    const formRight = formCenterX + formWidth / 2;
-    const formTop = formCenterY - formHeight / 2;
-    const formBottom = formCenterY + formHeight / 2;
-
-    const isInFormArea = (x: number, y: number) => {
-      return x >= formLeft && x <= formRight && y >= formTop && y <= formBottom;
-    };
-
-    // 分别为左右两侧生成粒子
-    const leftSideCount = Math.floor(particleCount * 0.6); // 左侧更多粒子
-    const rightSideCount = particleCount - leftSideCount;
-
-    // 左侧粒子 (品牌区域)
-    for (let i = 0; i < leftSideCount; i++) {
-      const x = Math.random() * (canvas.width / 2 - 20); // 避免太靠近中线
-      const y = Math.random() * canvas.height;
-      const xa = (Math.random() * 1 - 0.5) * 0.6;
-      const ya = (Math.random() * 1 - 0.5) * 0.6;
-
-      particlesRef.current.push({
-        x,
-        y,
-        xa,
-        ya,
-        max: 7000,
-      });
+    if (sizeChanged || particlesRef.current.length === 0) {
+      const formBounds = formBoundsRef.current ?? getFormBounds(canvas.width, canvas.height);
+      particlesRef.current = initParticles(canvas.width, canvas.height, formBounds);
     }
+  }, [resize]);
 
-    // 右侧粒子 (表单区域) - 避开表单区域
-    for (let i = 0; i < rightSideCount; i++) {
-      let x, y;
-      let attempts = 0;
+  const resetFrameTimingState = useCallback(() => {
+    accumulatorRef.current = 0;
+    lastTimestampRef.current = null;
+    lastFrameDeltaMsRef.current = 0;
+    lastClampedDeltaMsRef.current = 0;
+    lastFrameStepCountRef.current = 0;
+    lastAppliedDeltaMsRef.current = 0;
+  }, []);
 
-      do {
-        x = canvas.width / 2 + 20 + Math.random() * (canvas.width / 2 - 20);
-        y = Math.random() * canvas.height;
-        attempts++;
-      } while (isInFormArea(x, y) && attempts < 30);
+  const renderFrame = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    const formBounds = formBoundsRef.current;
+    if (!canvas || !ctx || !formBounds) return;
 
-      // 如果仍在表单区域，放置在表单区域外
-      if (isInFormArea(x, y)) {
-        if (Math.random() > 0.5) {
-          x =
-            Math.random() > 0.5
-              ? canvas.width / 2 + 20 + Math.random() * (formLeft - canvas.width / 2 - 20)
-              : formRight + Math.random() * (canvas.width - formRight - 20);
-        } else {
-          y = Math.random() > 0.5 ? Math.random() * formTop : formBottom + Math.random() * (canvas.height - formBottom);
-        }
+    renderParticles(ctx, canvas.width, canvas.height, particlesRef.current, mouseAreaRef.current, formBounds);
+
+    renderCountRef.current += 1;
+  }, []);
+
+  const applyAnimationStep = useCallback((deltaMs: number) => {
+    const canvas = canvasRef.current;
+    const formBounds = formBoundsRef.current;
+    if (!canvas || !formBounds) return;
+
+    updateParticles(canvas.width, canvas.height, particlesRef.current, mouseAreaRef.current, formBounds);
+
+    simulationStepCountRef.current += 1;
+    simulatedMsRef.current += deltaMs;
+    lastAppliedDeltaMsRef.current = deltaMs;
+  }, []);
+
+  const processAnimationFrame = useCallback(
+    (deltaMs: number) => {
+      const safeDeltaMs = Number.isFinite(deltaMs) ? Math.max(0, deltaMs) : 0;
+      const clampedDeltaMs = Math.min(safeDeltaMs, animationConfig.maxCatchUpMs);
+
+      lastFrameDeltaMsRef.current = safeDeltaMs;
+      lastClampedDeltaMsRef.current = clampedDeltaMs;
+      accumulatorRef.current += clampedDeltaMs;
+
+      let steps = 0;
+      while (accumulatorRef.current >= animationConfig.frameIntervalMs && steps < animationConfig.maxStepsPerFrame) {
+        accumulatorRef.current -= animationConfig.frameIntervalMs;
+        applyAnimationStep(animationConfig.frameIntervalMs);
+        steps += 1;
       }
 
-      const xa = (Math.random() * 1 - 0.5) * 0.5;
-      const ya = (Math.random() * 1 - 0.5) * 0.5;
+      lastFrameStepCountRef.current = steps;
+      if (steps === 0) {
+        lastAppliedDeltaMsRef.current = 0;
+      }
 
-      particlesRef.current.push({
-        x,
-        y,
-        xa,
-        ya,
-        max: 5000,
-      });
-    }
-  }, [canvasRef]);
+      const mouseMoved =
+        lastRenderedMouseAreaRef.current.x !== mouseAreaRef.current.x ||
+        lastRenderedMouseAreaRef.current.y !== mouseAreaRef.current.y;
+      const formBoundsChanged = lastRenderedFormBoundsRef.current !== formBoundsRef.current;
 
-  const animate = useCallback(() => {
+      if (steps > 0 || mouseMoved || formBoundsChanged) {
+        renderFrame();
+        lastRenderedMouseAreaRef.current.x = mouseAreaRef.current.x;
+        lastRenderedMouseAreaRef.current.y = mouseAreaRef.current.y;
+        lastRenderedFormBoundsRef.current = formBoundsRef.current;
+      }
+    },
+    [applyAnimationStep, renderFrame]
+  );
+
+  const resetDiagnosticsState = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    frameCountRef.current = 0;
+    simulationStepCountRef.current = 0;
+    renderCountRef.current = 0;
+    simulatedMsRef.current = 0;
+    resetFrameTimingState();
+    mouseAreaRef.current = createMouseArea();
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const { sizeChanged, boundsChanged } = resize();
 
-    // 定义登录表单区域 (右侧区域，适应新的左右布局)
-    const rightSideStart = canvas.width / 2;
-    const formCenterX = rightSideStart + canvas.width / 2 / 2; // 右侧区域的中心
-    const formCenterY = canvas.height / 2;
-    const formWidth = 360;
-    const formHeight = 500;
-    const formLeft = formCenterX - formWidth / 2;
-    const formRight = formCenterX + formWidth / 2;
-    const formTop = formCenterY - formHeight / 2;
-    const formBottom = formCenterY + formHeight / 2;
+    const nextCanvasSize = { width: canvas.width, height: canvas.height };
+    const needsNewInitialParticles =
+      sizeChanged ||
+      boundsChanged ||
+      diagnosticsInitialParticlesRef.current === null ||
+      diagnosticsCanvasSizeRef.current?.width !== nextCanvasSize.width ||
+      diagnosticsCanvasSizeRef.current?.height !== nextCanvasSize.height;
 
-    // 检查点是否在表单区域内
-    const isInFormArea = (x: number, y: number) => {
-      return x >= formLeft && x <= formRight && y >= formTop && y <= formBottom;
+    if (needsNewInitialParticles) {
+      const formBounds = formBoundsRef.current ?? getFormBounds(nextCanvasSize.width, nextCanvasSize.height);
+      diagnosticsInitialParticlesRef.current = initParticles(nextCanvasSize.width, nextCanvasSize.height, formBounds);
+      diagnosticsCanvasSizeRef.current = nextCanvasSize;
+    }
+
+    particlesRef.current = cloneParticles(diagnosticsInitialParticlesRef.current);
+    renderFrame();
+    renderCountRef.current = 0;
+  }, [renderFrame, resize, resetFrameTimingState]);
+
+  const snapshotDiagnostics = useCallback<() => AnimationDiagnosticsSnapshot>(() => {
+    return {
+      targetFps: animationConfig.targetFps,
+      frameIntervalMs: animationConfig.frameIntervalMs,
+      maxCatchUpMs: animationConfig.maxCatchUpMs,
+      maxStepsPerFrame: animationConfig.maxStepsPerFrame,
+      frameCount: frameCountRef.current,
+      simulationStepCount: simulationStepCountRef.current,
+      renderCount: renderCountRef.current,
+      simulatedMs: simulatedMsRef.current,
+      accumulatorMs: accumulatorRef.current,
+      lastFrameDeltaMs: lastFrameDeltaMsRef.current,
+      lastClampedDeltaMs: lastClampedDeltaMsRef.current,
+      lastFrameStepCount: lastFrameStepCountRef.current,
+      lastAppliedDeltaMs: lastAppliedDeltaMsRef.current,
+      particleChecksum: getParticleChecksum(particlesRef.current),
     };
+  }, []);
 
-    const ndots = [mouseAreaRef.current, ...particlesRef.current];
+  const simulateDiagnostics = useCallback(
+    (stepMs: number, steps: number) => {
+      const safeStepMs = Number.isFinite(stepMs) ? stepMs : 0;
+      const safeSteps = Number.isFinite(steps) ? Math.max(0, Math.floor(steps)) : 0;
 
-    particlesRef.current.forEach((dot) => {
-      // 粒子位移
-      dot.x += dot.xa;
-      dot.y += dot.ya;
+      for (let index = 0; index < safeSteps; index += 1) {
+        frameCountRef.current += 1;
+        processAnimationFrame(safeStepMs);
+      }
+    },
+    [processAnimationFrame]
+  );
 
-      // 遇到边界将加速度反向
-      dot.xa *= dot.x > canvas.width || dot.x < 0 ? -1 : 1;
-      dot.ya *= dot.y > canvas.height || dot.y < 0 ? -1 : 1;
+  const simulateLargeGapDiagnostics = useCallback(
+    (deltaMs: number) => {
+      const safeDeltaMs = Number.isFinite(deltaMs) ? Math.max(0, deltaMs) : 0;
 
-      // 如果粒子进入表单区域，推开它们
-      if (isInFormArea(dot.x, dot.y)) {
-        const pushForce = 0.5;
-        if (dot.x < formCenterX) {
-          dot.xa -= pushForce;
-        } else {
-          dot.xa += pushForce;
-        }
-        if (dot.y < formCenterY) {
-          dot.ya -= pushForce;
-        } else {
-          dot.ya += pushForce;
-        }
+      frameCountRef.current += 1;
+      processAnimationFrame(safeDeltaMs);
+    },
+    [processAnimationFrame]
+  );
+
+  const animate = useCallback(
+    (timestamp: number) => {
+      if (document.visibilityState !== 'visible') {
+        animationRef.current = null;
+        return;
       }
 
-      // 只在表单区域外绘制点，使用不同颜色
-      if (!isInFormArea(dot.x, dot.y)) {
-        // Use different colors for left and right sides
-        const isLeftSide = dot.x < canvas.width / 2;
-        ctx.fillStyle = isLeftSide ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.3)';
-        ctx.fillRect(dot.x - 1.5, dot.y - 1.5, 3, 3);
+      frameCountRef.current += 1;
+
+      if (lastTimestampRef.current === null) {
+        lastTimestampRef.current = timestamp;
       }
 
-      // 循环比对粒子间的距离
-      for (let i = 0; i < ndots.length; i++) {
-        const d2 = ndots[i];
-        if (dot === d2 || d2.x === null || d2.y === null) continue;
+      processAnimationFrame(timestamp - lastTimestampRef.current);
+      lastTimestampRef.current = timestamp;
 
-        const xc = dot.x - d2.x;
-        const yc = dot.y - d2.y;
-        const dis = xc * xc + yc * yc;
+      animationRef.current = requestAnimationFrame(animate);
+    },
+    [processAnimationFrame]
+  );
 
-        if (dis < d2.max) {
-          // 如果是鼠标，则让粒子向鼠标的位置移动
-          if (d2 === mouseAreaRef.current && dis > d2.max / 2) {
-            dot.x -= xc * 0.015; // 降低鼠标吸引力
-            dot.y -= yc * 0.015;
-          }
+  const stopAnimation = useCallback(() => {
+    if (animationRef.current === null) {
+      return;
+    }
 
-          // 计算距离比
-          const ratio = (d2.max - dis) / d2.max;
+    cancelAnimationFrame(animationRef.current);
+    animationRef.current = null;
+  }, []);
 
-          // 检查连线是否穿过表单区域，如果是则不绘制
-          const lineIntersectsForm =
-            (dot.x < formLeft && d2.x > formRight) ||
-            (dot.x > formRight && d2.x < formLeft) ||
-            (dot.y < formTop && d2.y > formBottom) ||
-            (dot.y > formBottom && d2.y < formTop) ||
-            isInFormArea(dot.x, dot.y) ||
-            isInFormArea(d2.x, d2.y);
-
-          // 只在不穿过表单区域时画线
-          if (!lineIntersectsForm) {
-            ctx.beginPath();
-            ctx.lineWidth = ratio / 2 + 0.5;
-            // Use elegant colors for lines based on position
-            const avgX = (dot.x + d2.x) / 2;
-            const isLeftSide = avgX < canvas.width / 2;
-            const lineColor = isLeftSide ? `rgba(148, 163, 184, ${ratio * 0.4 + 0.1})` : `rgba(100, 116, 139, ${ratio * 0.3 + 0.1})`;
-            ctx.strokeStyle = lineColor;
-            ctx.moveTo(dot.x, dot.y);
-            ctx.lineTo(d2.x, d2.y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      // 将已经计算过的粒子从数组中删除
-      ndots.splice(ndots.indexOf(dot), 1);
-    });
+  const startAnimation = useCallback(() => {
+    if (animationRef.current !== null || document.visibilityState !== 'visible') {
+      return;
+    }
 
     animationRef.current = requestAnimationFrame(animate);
-  }, []);
+  }, [animate]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     mouseAreaRef.current.x = e.clientX;
@@ -227,43 +333,70 @@ const AnimatedLineBackground: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    resize();
-    // 强制重新初始化粒子
-    setTimeout(() => {
-      initParticles();
-    }, 50);
+    handleResize();
 
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', handleResize);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseout', handleMouseOut);
 
-    // 延迟200ms开始动画，确保粒子初始化完成
-    const timer = setTimeout(() => {
-      animate();
-    }, 200);
+    const el = document.getElementById('auth-card-wrapper');
+    let observer: ResizeObserver | null = null;
+    if (el) {
+      observer = new ResizeObserver(() => {
+        handleResize();
+      });
+      observer.observe(el);
+    }
+
+    startAnimation();
 
     return () => {
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseout', handleMouseOut);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+      if (observer) {
+        observer.disconnect();
       }
-      clearTimeout(timer);
+      stopAnimation();
     };
-  }, [resize, initParticles, animate, handleMouseMove, handleMouseOut]);
+  }, [handleResize, handleMouseMove, handleMouseOut, startAnimation, stopAnimation]);
 
   useEffect(() => {
-    const handleResize = () => {
-      resize();
-      initParticles();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        stopAnimation();
+        return;
+      }
+
+      resetFrameTimingState();
+      startAnimation();
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [resize, initParticles]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [resetFrameTimingState, startAnimation, stopAnimation]);
 
-  return <canvas ref={canvasRef} className='pointer-events-none fixed inset-0' style={{ zIndex: 0 }} />;
+  useEffect(() => {
+    if (!shouldExposeAnimationDiagnostics()) {
+      delete window.__AXONHUB_SIGNIN_ANIMATION__;
+      return;
+    }
+
+    window.__AXONHUB_SIGNIN_ANIMATION__ = {
+      reset: resetDiagnosticsState,
+      snapshot: snapshotDiagnostics,
+      simulate: simulateDiagnostics,
+      simulateLargeGap: simulateLargeGapDiagnostics,
+    };
+
+    return () => {
+      delete window.__AXONHUB_SIGNIN_ANIMATION__;
+    };
+  }, [resetDiagnosticsState, simulateDiagnostics, simulateLargeGapDiagnostics, snapshotDiagnostics]);
+
+  return (
+    <canvas ref={canvasRef} data-testid='sign-in-animation-canvas' className='pointer-events-none fixed inset-0' style={{ zIndex: 0 }} />
+  );
 };
 
 export default AnimatedLineBackground;

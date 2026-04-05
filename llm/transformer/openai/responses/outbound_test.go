@@ -10,10 +10,11 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestNewOutboundTransformer(t *testing.T) {
@@ -134,6 +135,48 @@ func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 func TestOutboundTransformer_APIFormat(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.Equal(t, llm.APIFormatOpenAIResponse, transformer.APIFormat())
+}
+
+func TestOutboundTransformer_TransformRequest_AccountIdentityFootprint(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:         "https://api.openai.com",
+		APIKeyProvider:  auth.NewStaticKeyProvider("test-api-key"),
+		AccountIdentity: "channel-1",
+	})
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: new("hi")}},
+		},
+	}
+
+	hreq, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, hreq.Metadata)
+
+	require.Equal(t, transformer.config.BaseURL, hreq.Metadata[shared.MetadataKeyBaseURL])
+	require.Equal(t, "channel-1", hreq.Metadata[shared.MetadataKeyAccountIdentity])
+}
+
+func TestOutboundTransformer_TransformRequest_OmitsFootprintWhenEmpty(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://api.openai.com",
+		APIKeyProvider: auth.NewStaticKeyProvider(""),
+	})
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: new("hi")}},
+		},
+	}
+
+	hreq, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.True(t, hreq.Metadata == nil || (hreq.Metadata[shared.MetadataKeyBaseURL] == "" && hreq.Metadata[shared.MetadataKeyAccountIdentity] == ""))
 }
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -736,6 +779,34 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 				require.Equal(t, "image_url", result.Choices[0].Message.Content.MultipleContent[0].Type)
 				require.NotNil(t, result.Choices[0].Message.Content.MultipleContent[0].ImageURL)
 				require.Contains(t, result.Choices[0].Message.Content.MultipleContent[0].ImageURL.URL, "data:image/png;base64,")
+			},
+		},
+		{
+			name: "response with encrypted reasoning",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"id": "resp_789",
+					"object": "response",
+					"created_at": 1759161016,
+					"status": "completed",
+					"model": "gpt-4o",
+					"output": [
+						{
+							"id": "rs_123",
+							"type": "reasoning",
+							"summary": [],
+							"encrypted_content": "encrypted_data_here"
+						}
+					]
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Response) {
+				require.Len(t, result.Choices, 1)
+				require.NotNil(t, result.Choices[0].Message)
+				require.NotNil(t, result.Choices[0].Message.ReasoningSignature)
+				require.Equal(t, "encrypted_data_here", *result.Choices[0].Message.ReasoningSignature)
 			},
 		},
 	}

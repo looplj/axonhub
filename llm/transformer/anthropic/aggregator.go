@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 
 	"github.com/kaptinlin/jsonrepair"
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -161,7 +161,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				block := contentBlocks[index]
 				if block.Type == "tool_use" {
 					if !json.Valid(block.Input) {
-						log.Warn(ctx, "invalid tool use input", log.String("input", string(block.Input)))
+						slog.WarnContext(ctx, "invalid tool use input", slog.String("input", string(block.Input)))
 
 						repaired, err := jsonrepair.JSONRepair(string(block.Input))
 						if err == nil {

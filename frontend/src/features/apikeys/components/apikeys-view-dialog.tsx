@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Copy, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Copy, Eye, EyeOff, AlertTriangle, Link, CheckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -7,7 +7,31 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { MaskedCodeBlock, MaskedCodeBlockCopyButton, highlightMaskedCode } from '@/components/ai-elements/masked-code-block';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useApiKeysContext } from '../context/apikeys-context';
+
+function CopyBaseUrlButton({ baseUrl }: { baseUrl: string }) {
+  const { t } = useTranslation();
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(baseUrl);
+    setIsCopied(true);
+    toast.success(t('apikeys.messages.baseUrlCopied'));
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button size='icon' variant='ghost' className='shrink-0' onClick={handleCopy}>
+          {isCopied ? <CheckIcon className='h-3.5 w-3.5 text-green-500' /> : <Link className='h-3.5 w-3.5' />}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{baseUrl}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 export function ApiKeysViewDialog() {
   const { t } = useTranslation();
@@ -16,7 +40,7 @@ export function ApiKeysViewDialog() {
   const [preRenderedCode, setPreRenderedCode] = useState<Record<string, { light: string; dark: string }>>({});
 
   const apiKey = selectedApiKey?.key || '';
-  const maskedApiKey = selectedApiKey?.key ? 'sk-...' + selectedApiKey.key.slice(-4) : '';
+  const maskedApiKey = selectedApiKey?.key ? selectedApiKey.key.slice(0, 3) + '...' + selectedApiKey.key.slice(-4) : '';
 
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8090';
 
@@ -25,6 +49,7 @@ export function ApiKeysViewDialog() {
 
     return {
       codex: {
+        baseUrl: `${currentOrigin}/v1`,
         display: `# Set your API key as an environment variable
 export AXONHUB_API_KEY="${maskedApiKey}"
 
@@ -57,6 +82,7 @@ query_params = {}
 # Restart Codex to apply the configuration`
       },
       claudeCode: {
+        baseUrl: `${currentOrigin}/anthropic`,
         display: `# In your terminal, set the API key
 export ANTHROPIC_AUTH_TOKEN="${maskedApiKey}"
 export ANTHROPIC_BASE_URL="${currentOrigin}/anthropic"
@@ -81,6 +107,7 @@ claude --api-key "${apiKey}" --base-url "${currentOrigin}/anthropic" "Hello, Cla
 # The configuration will be stored in ~/.config/claude/config.json`
       },
       anthropicSDK: {
+        baseUrl: `${currentOrigin}/anthropic`,
         display: `from anthropic import Anthropic
 
 client = Anthropic(
@@ -121,6 +148,7 @@ message = client.messages.create(
 print(message.content)`
       },
       openAISDK: {
+        baseUrl: `${currentOrigin}/v1`,
         display: `from openai import OpenAI
 
 client = OpenAI(
@@ -149,6 +177,7 @@ response = client.responses.create(
 print(response.output_text)`
       },
       geminiSDK: {
+        baseUrl: `${currentOrigin}/gemini`,
         display: `from google import genai
 from google.genai import types
 
@@ -273,26 +302,31 @@ print(response.text)`
               </TabsList>
               <TabsContent value='anthropicSDK' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
                 <MaskedCodeBlock displayCode={codeExamples?.anthropicSDK?.display || ''} realCode={codeExamples?.anthropicSDK?.real || ''} language='python' className='overflow-visible' preRenderedHtml={preRenderedCode.anthropicSDK}>
+                  <CopyBaseUrlButton baseUrl={codeExamples?.anthropicSDK?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
               <TabsContent value='openAISDK' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
                 <MaskedCodeBlock displayCode={codeExamples?.openAISDK?.display || ''} realCode={codeExamples?.openAISDK?.real || ''} language='python' className='overflow-visible' preRenderedHtml={preRenderedCode.openAISDK}>
+                  <CopyBaseUrlButton baseUrl={codeExamples?.openAISDK?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
               <TabsContent value='codex' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
                 <MaskedCodeBlock displayCode={codeExamples?.codex?.display || ''} realCode={codeExamples?.codex?.real || ''} language='bash' className='overflow-visible' preRenderedHtml={preRenderedCode.codex}>
+                  <CopyBaseUrlButton baseUrl={codeExamples?.codex?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
               <TabsContent value='claudeCode' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
                 <MaskedCodeBlock displayCode={codeExamples?.claudeCode?.display || ''} realCode={codeExamples?.claudeCode?.real || ''} language='bash' className='overflow-visible' preRenderedHtml={preRenderedCode.claudeCode}>
+                  <CopyBaseUrlButton baseUrl={codeExamples?.claudeCode?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
               <TabsContent value='geminiSDK' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
                 <MaskedCodeBlock displayCode={codeExamples?.geminiSDK?.display || ''} realCode={codeExamples?.geminiSDK?.real || ''} language='python' className='overflow-visible' preRenderedHtml={preRenderedCode.geminiSDK}>
+                  <CopyBaseUrlButton baseUrl={codeExamples?.geminiSDK?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>

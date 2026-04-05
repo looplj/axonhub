@@ -23,8 +23,9 @@ func (RequestExecution) Mixin() []ent.Mixin {
 
 func (RequestExecution) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("request_id").
-			StorageKey("request_executions_by_request_id"),
+		// Index for window function: find latest execution per request
+		index.Fields("request_id", "status", "created_at").
+			StorageKey("request_executions_by_request_id_status_created_at"),
 		index.Fields("channel_id").
 			StorageKey("request_executions_by_channel_id_created_at"),
 	}
@@ -60,6 +61,8 @@ func (RequestExecution) Fields() []ent.Field {
 			entgql.Directives(forceResolver()),
 		),
 		field.String("error_message").Optional(),
+		field.Int("response_status_code").Optional().Nillable().
+			Comment("HTTP status code from the upstream provider"),
 		// The status of the request execution.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
 		// Whether the request is a streaming request

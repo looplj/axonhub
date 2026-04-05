@@ -10,11 +10,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/enttest"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -64,7 +64,7 @@ func TestAPIKeyService_GetAPIKey(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a test user
 	hashedPassword, err := HashPassword("test-password")
@@ -180,7 +180,7 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 
 			ctx := context.Background()
 			ctx = ent.NewContext(ctx, client)
-			ctx = privacy.DecisionContext(ctx, privacy.Allow)
+			ctx = authz.WithTestBypass(ctx)
 
 			// Create test user
 			hashedPassword, err := HashPassword("test-password")
@@ -234,7 +234,7 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 
 			// Update API key to invalidate cache
 			_, err = apiKeyService.UpdateAPIKey(ctx, apiKey.ID, ent.UpdateAPIKeyInput{
-				Name: stringPtr("Updated API Key"),
+				Name: new("Updated API Key"),
 			})
 			require.NoError(t, err)
 
@@ -248,10 +248,6 @@ func TestAPIKeyService_GetAPIKey_WithDifferentCaches(t *testing.T) {
 	}
 }
 
-func stringPtr(s string) *string {
-	return &s
-}
-
 func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
 	defer apiKeyService.Stop()
@@ -259,7 +255,7 @@ func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create test user
 	hashedPassword, err := HashPassword("test-password")
@@ -441,6 +437,23 @@ func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 		require.Contains(t, err.Error(), "does not exist in the profiles list")
 	})
 
+	t.Run("Invalid channel tags match mode", func(t *testing.T) {
+		profiles := objects.APIKeyProfiles{
+			ActiveProfile: "production",
+			Profiles: []objects.APIKeyProfile{
+				{
+					Name:                 "production",
+					ChannelTags:          []string{"official"},
+					ChannelTagsMatchMode: objects.APIKeyMatchMode("invalid"),
+				},
+			},
+		}
+
+		_, err := apiKeyService.UpdateAPIKeyProfiles(ctx, apiKey.ID, profiles)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "channelTagsMatchMode is invalid")
+	})
+
 	t.Run("Multiple profiles with unique names", func(t *testing.T) {
 		profiles := objects.APIKeyProfiles{
 			ActiveProfile: "staging",
@@ -482,7 +495,7 @@ func TestAPIKeyService_BulkEnableAPIKeys(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	hashedPassword, err := HashPassword("test-password")
 	require.NoError(t, err)
@@ -601,7 +614,7 @@ func TestAPIKeyService_BulkDisableAPIKeys(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	hashedPassword, err := HashPassword("test-password")
 	require.NoError(t, err)
@@ -711,7 +724,7 @@ func TestAPIKeyService_BulkArchiveAPIKeys(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	hashedPassword, err := HashPassword("test-password")
 	require.NoError(t, err)
@@ -824,7 +837,7 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	hashedPassword, err := HashPassword("test-password")
 	require.NoError(t, err)
@@ -993,9 +1006,8 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 	defer client.Close()
 
 	// Setup context with privacy.Allow for data preparation
-	setupCtx := context.Background()
-	setupCtx = ent.NewContext(setupCtx, client)
-	setupCtx = privacy.DecisionContext(setupCtx, privacy.Allow)
+	setupCtx := ent.NewContext(context.Background(), client)
+	setupCtx = authz.WithTestBypass(setupCtx)
 
 	hashedPassword, err := HashPassword("test-password")
 	require.NoError(t, err)

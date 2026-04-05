@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Workflow, ChevronsDownUp, ExternalLink, Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -355,6 +355,12 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
   const spanKindLabel = t(`traces.common.badges.${spanSource.spanKind}`);
   const normalizedSpanType = normalizeSpanType(spanSource.span.type);
   const SpanIcon = getSpanIcon(normalizedSpanType);
+  const toolType = spanSource.span.value?.toolUse?.type;
+  const isResponsesCustomTool = normalizeSpanType(toolType) === 'responses_custom_tool';
+
+  const imageUrl = spanSource.span.value?.userImageUrl?.url || spanSource.span.value?.imageUrl?.url;
+  const videoUrl = spanSource.span.value?.userVideoUrl?.url || spanSource.span.value?.videoUrl?.url;
+  const summaryText = spanDisplay?.secondary;
 
   return (
     <div className='border-border/40 border-b'>
@@ -374,14 +380,36 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
           <SpanIcon className='text-muted-foreground h-4 w-4' />
         </div>
 
-        <div className='flex min-w-0 flex-1 items-center gap-2'>
-          <span className='truncate text-sm font-medium'>{spanDisplay?.primary ?? span.name}</span>
+        <div className='flex min-w-0 flex-1 items-center gap-3'>
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt=''
+              className='h-8 w-8 flex-shrink-0 rounded border object-cover'
+            />
+          )}
+          {!imageUrl && videoUrl && (
+            <video
+              src={videoUrl}
+              className='h-8 w-8 flex-shrink-0 rounded border object-cover'
+              muted
+              preload='metadata'
+            />
+          )}
+          <span className='truncate text-sm font-medium'>{spanDisplay?.primary || span.name}</span>
           {spanKindLabel && (
             <Badge variant='secondary' className='text-[10px] tracking-wide uppercase'>
               {spanKindLabel}
             </Badge>
           )}
-          {spanDisplay?.secondary && <span className='text-muted-foreground truncate text-xs'>{spanDisplay.secondary}</span>}
+          {isResponsesCustomTool && toolType && (
+            <Badge variant='outline' className='text-[10px]'>
+              {toolType}
+            </Badge>
+          )}
+          <div className='text-muted-foreground ml-auto min-w-0 flex-1 text-right text-xs'>
+            {summaryText && <span className='block truncate'>{summaryText}</span>}
+          </div>
         </div>
 
         <div className='bg-muted/30 relative h-5 w-[180px] min-w-[180px] rounded'>
@@ -440,6 +468,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(true);
   const [selectedSpanTypes, setSelectedSpanTypes] = useState<Set<string>>(new Set());
+  const initializedTraceIdRef = useRef<string | null>(null);
 
   const timelineData = useMemo(() => {
     const earliestStart = findEarliestStart(trace);
@@ -492,15 +521,6 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     const totalTokens = tokenSum > 0 ? tokenSum : null;
     const totalCachedTokens = cachedTokenSum > 0 ? cachedTokenSum : null;
 
-    // Initialize expanded segments for first 10 items
-    const initialExpanded = new Set<string>();
-    flatSegments.slice(0, 10).forEach((seg) => {
-      if (seg.spans.length > 0) {
-        initialExpanded.add(seg.segment.id);
-      }
-    });
-    setExpandedSegments(initialExpanded);
-
     return {
       flatSegments,
       totalDuration: Math.max(totalDuration, 1),
@@ -511,18 +531,68 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     };
   }, [trace]);
 
+  useEffect(() => {
+    if (!timelineData) return;
+    if (initializedTraceIdRef.current === trace.id) return;
+
+    initializedTraceIdRef.current = trace.id;
+
+    const storageKey = `axonhub_traces_flat_timeline_expanded_segments_${trace.id}`;
+    const expandableSegments = timelineData.flatSegments.filter((seg) => seg.spans.length > 0).map((seg) => seg.segment.id);
+    const expandableSegmentSet = new Set(expandableSegments);
+
+    let nextExpanded = new Set<string>();
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed)) {
+        nextExpanded = new Set(parsed.filter((id) => typeof id === 'string' && expandableSegmentSet.has(id)));
+      }
+    } catch (_error) {
+      void _error;
+    }
+
+    if (nextExpanded.size === 0) {
+      timelineData.flatSegments.slice(0, 10).forEach((seg) => {
+        if (seg.spans.length > 0) {
+          nextExpanded.add(seg.segment.id);
+        }
+      });
+    }
+
+    setExpandedSegments(nextExpanded);
+    setAllExpanded(nextExpanded.size === expandableSegments.length && expandableSegments.length > 0);
+  }, [timelineData, trace.id]);
+
+  useEffect(() => {
+    if (!timelineData) return;
+    if (initializedTraceIdRef.current !== trace.id) return;
+
+    const storageKey = `axonhub_traces_flat_timeline_expanded_segments_${trace.id}`;
+    const next = Array.from(expandedSegments);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(next));
+    } catch (_error) {
+      void _error;
+    }
+  }, [expandedSegments, timelineData, trace.id]);
+
+  useEffect(() => {
+    if (!timelineData) return;
+    const expandableCount = timelineData.flatSegments.filter((seg) => seg.spans.length > 0).length;
+    setAllExpanded(expandableCount > 0 && expandedSegments.size === expandableCount);
+  }, [expandedSegments, timelineData]);
+
   const handleToggleAll = () => {
     if (!timelineData) return;
 
     if (allExpanded) {
       // Collapse all
       setExpandedSegments(new Set());
-      setAllExpanded(false);
     } else {
       // Expand all
       const allSegmentIds = new Set(timelineData.flatSegments.filter((seg) => seg.spans.length > 0).map((seg) => seg.segment.id));
       setExpandedSegments(allSegmentIds);
-      setAllExpanded(true);
     }
   };
 
@@ -590,7 +660,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
     );
   }
 
-  const { flatSegments, totalDuration, totalItems, totalTokens, totalCachedTokens, allSpanTypes } = timelineData;
+  const { totalDuration, totalItems, totalTokens, totalCachedTokens, allSpanTypes } = timelineData;
   const activeFilterCount = selectedSpanTypes.size;
 
   return (

@@ -4,8 +4,11 @@ import { Channel } from '../data/schema';
 
 type ChannelsDialogType =
   | 'add'
+  | 'addSearch'
   | 'duplicate'
+  | 'duplicateSearch'
   | 'edit'
+  | 'editSearch'
   | 'delete'
   | 'settings'
   | 'channelSettings'
@@ -20,12 +23,15 @@ type ChannelsDialogType =
   | 'bulkArchive'
   | 'bulkDisable'
   | 'bulkEnable'
+  | 'bulkTest'
   | 'bulkDelete'
   | 'bulkApplyTemplate'
   | 'errorResolved'
   | 'viewModels'
   | 'price'
-  | 'transformOptions';
+  | 'searchPrice'
+  | 'transformOptions'
+  | 'disabledAPIKeys';
 
 interface ChannelsContextType {
   open: ChannelsDialogType | null;

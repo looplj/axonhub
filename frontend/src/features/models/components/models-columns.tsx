@@ -15,6 +15,7 @@ import { useModels } from '../context/models-context';
 import { Model } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
 import { ModelsStatusDialog } from './models-status-dialog';
+import { useDeveloperLabel } from './models-table';
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
 function StatusSwitchCell({ row }: { row: Row<Model> }) {
@@ -36,6 +37,12 @@ function StatusSwitchCell({ row }: { row: Row<Model> }) {
       {dialogOpen && <ModelsStatusDialog open={dialogOpen} onOpenChange={setDialogOpen} currentRow={model} />}
     </>
   );
+}
+
+// Developer Cell Component to show translated developer name
+function DeveloperCell({ row }: { row: Row<Model> }) {
+  const getDeveloperLabel = useDeveloperLabel();
+  return <Badge variant='outline'>{getDeveloperLabel(row.getValue('developer'))}</Badge>;
 }
 
 // Association Rules Cell Component to handle permission check
@@ -164,9 +171,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     {
       accessorKey: 'developer',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.developer')} />,
-      cell: ({ row }) => {
-        return <Badge variant='outline'>{row.getValue('developer')}</Badge>;
-      },
+      cell: DeveloperCell,
       enableSorting: false,
     },
     {
@@ -328,7 +333,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
           header: t('common.columns.actions'),
           cell: DataTableRowActions,
           meta: {
-            className: 'w-[56px] min-w-[56px] pr-3 pl-0',
+            className: 'w-[88px] min-w-[88px] pr-3 pl-0',
           },
           enableSorting: false,
           enableHiding: false,

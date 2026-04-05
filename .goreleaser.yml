@@ -8,6 +8,7 @@ before:
   hooks:
     - /bin/sh -c 'cd deploy && chmod +x *.sh'
     - make build-frontend
+    - make generate-schema
     - go mod tidy
 
 builds:
@@ -26,6 +27,7 @@ builds:
       - linux
       - windows
       - darwin
+      - freebsd
     goarch:
       - amd64
       - arm64
@@ -45,9 +47,17 @@ builds:
         goarch: s390x
       - goos: darwin
         goarch: loong64
+      - goos: freebsd
+        goarch: arm
+      - goos: freebsd
+        goarch: s390x
+      - goos: freebsd
+        goarch: loong64
 
 release:
   draft: true
+  extra_files:
+    - glob: ./config.schema.json
 
 archives:
   - id: archive
@@ -62,18 +72,69 @@ archives:
         dst: start.sh
       - src: deploy/stop.sh
         dst: stop.sh
+      - src: deploy/restart.sh
+        dst: restart.sh
+      - src: deploy/upgrade.sh
+        dst: upgrade.sh
+        
       - src: deploy/install.ps1
         dst: install.ps1
       - src: deploy/start.ps1
         dst: start.ps1
       - src: deploy/stop.ps1
         dst: stop.ps1
+      - src: deploy/restart.ps1
+        dst: restart.ps1
+      - src: deploy/upgrade.ps1
+        dst: upgrade.ps1
+
       - src: deploy/install.bat
         dst: install.bat
       - src: deploy/start.bat
         dst: start.bat
       - src: deploy/stop.bat
         dst: stop.bat
+      - src: deploy/restart.bat
+        dst: restart.bat
+      - src: deploy/upgrade.bat
+        dst: upgrade.bat
+
+brews:
+  - name: axonhub
+    ids: [archive]
+    repository:
+      owner: looplj
+      name: homebrew-axonhub
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/looplj/axonhub"
+    description: "All-in-one AI development platform. Use any SDK, access any model."
+    license: "Apache-2.0"
+    url_template: "https://github.com/looplj/axonhub/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    commit_author:
+      name: "github-actions[bot]"
+      email: "github-actions[bot]@users.noreply.github.com"
+    install: |
+      libexec.install "axonhub"
+      (etc/"axonhub").mkpath
+      (bin/"axonhub").write <<~SH
+        #!/bin/sh
+        cd "#{etc}/axonhub" || exit 1
+        exec "#{libexec}/axonhub" "$@"
+      SH
+    service: |
+      run [opt_bin/"axonhub"]
+      keep_alive true
+    test: |
+      system "#{bin}/axonhub", "version"
+    caveats: |
+      AxonHub runs with default configuration.
+      To customize, create a config file at: #{etc}/axonhub/config.yml
+
+      View current configuration:
+        axonhub config preview
+
+      The wrapper starts AxonHub from #{etc}/axonhub automatically.
 
 checksum:
   name_template: 'checksums.txt'

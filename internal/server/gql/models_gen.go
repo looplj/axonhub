@@ -10,11 +10,46 @@ import (
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/agentmessage"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/shopspring/decimal"
 )
+
+type APIKeyProfileQuotaUsage struct {
+	ProfileName string               `json:"profileName"`
+	Quota       *objects.APIKeyQuota `json:"quota"`
+	Window      *APIKeyQuotaWindow   `json:"window"`
+	Usage       *APIKeyQuotaUsage    `json:"usage"`
+}
+
+type APIKeyQuotaUsage struct {
+	RequestCount int             `json:"requestCount"`
+	TotalTokens  int             `json:"totalTokens"`
+	TotalCost    decimal.Decimal `json:"totalCost"`
+}
+
+type APIKeyQuotaWindow struct {
+	Start *time.Time `json:"start,omitempty"`
+	End   *time.Time `json:"end,omitempty"`
+}
+
+type APIKeyTokenUsageStats struct {
+	APIKeyID        objects.GUID            `json:"apiKeyId"`
+	InputTokens     int                     `json:"inputTokens"`
+	OutputTokens    int                     `json:"outputTokens"`
+	CachedTokens    int                     `json:"cachedTokens"`
+	ReasoningTokens int                     `json:"reasoningTokens"`
+	TopModels       []*ModelTokenUsageStats `json:"topModels"`
+}
+
+type APIKeyTokenUsageStatsInput struct {
+	APIKeyIds    []*objects.GUID `json:"apiKeyIds,omitempty"`
+	CreatedAtGTE *time.Time      `json:"createdAtGTE,omitempty"`
+	CreatedAtLTE *time.Time      `json:"createdAtLTE,omitempty"`
+}
 
 type AddUserToProjectInput struct {
 	ProjectID objects.GUID    `json:"projectId"`
@@ -22,6 +57,49 @@ type AddUserToProjectInput struct {
 	IsOwner   *bool           `json:"isOwner,omitempty"`
 	Scopes    []string        `json:"scopes,omitempty"`
 	RoleIDs   []*objects.GUID `json:"roleIDs,omitempty"`
+}
+
+// Approval request view for IM/Web operator surfaces.
+//
+// Backed by agent_messages(kind=approval_request, direction=to_user, status=pending).
+type AgentApprovalRequestMessage struct {
+	ID              objects.GUID           `json:"id"`
+	AgentID         objects.GUID           `json:"agentID"`
+	AgentInstanceID objects.GUID           `json:"agentInstanceID"`
+	CorrelationID   string                 `json:"correlationID"`
+	Content         objects.JSONRawMessage `json:"content"`
+	Sequence        int                    `json:"sequence"`
+	CreatedAt       time.Time              `json:"createdAt"`
+}
+
+type AgentBuiltinSkill struct {
+	Name    string                 `json:"name"`
+	Enabled bool                   `json:"enabled"`
+	Order   int                    `json:"order"`
+	Config  objects.JSONRawMessage `json:"config,omitempty"`
+}
+
+type AgentBuiltinSkillInput struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+	Order   int    `json:"order"`
+}
+
+// Minimal message view for Agent thread chat in Web UI.
+type AgentChatMessage struct {
+	ID              objects.GUID            `json:"id"`
+	AgentID         objects.GUID            `json:"agentID"`
+	AgentInstanceID objects.GUID            `json:"agentInstanceID"`
+	Direction       agentmessage.Direction  `json:"direction"`
+	SenderType      agentmessage.SenderType `json:"senderType"`
+	SenderID        *int                    `json:"senderID,omitempty"`
+	Type            agentmessage.Type       `json:"type"`
+	CorrelationID   string                  `json:"correlationID"`
+	Content         objects.JSONRawMessage  `json:"content"`
+	Text            string                  `json:"text"`
+	Sequence        int                     `json:"sequence"`
+	Status          agentmessage.Status     `json:"status"`
+	CreatedAt       time.Time               `json:"createdAt"`
 }
 
 type ApplyChannelOverrideTemplateInput struct {
@@ -36,10 +114,31 @@ type ApplyChannelOverrideTemplatePayload struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+type AutoDisableAPIKey struct {
+	Enabled  bool                       `json:"enabled"`
+	Statuses []*AutoDisableAPIKeyStatus `json:"statuses"`
+}
+
+type AutoDisableAPIKeyStatus struct {
+	Status int `json:"status"`
+	Times  int `json:"times"`
+}
+
+type AutoDisableChannelOnboarding struct {
+	Onboarded   bool       `json:"onboarded"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+}
+
 type BackupPayload struct {
 	Success bool    `json:"success"`
 	Data    *string `json:"data,omitempty"`
 	Message *string `json:"message,omitempty"`
+}
+
+type BatchMessageChannelAgentInstanceBindingInput struct {
+	AgentInstanceID objects.GUID                                `json:"agentInstanceID"`
+	Enabled         bool                                        `json:"enabled"`
+	Config          *objects.MessageChannelAgentInstanceBinding `json:"config"`
 }
 
 type BrandSettings struct {
@@ -61,6 +160,16 @@ type BulkUpdateChannelOrderingResult struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+// Performance statistics for a specific channel on a given date
+type ChannelPerformanceStat struct {
+	Date         string   `json:"date"`
+	ChannelID    string   `json:"channelId"`
+	ChannelName  string   `json:"channelName"`
+	Throughput   *float64 `json:"throughput,omitempty"`
+	TtftMs       *float64 `json:"ttftMs,omitempty"`
+	RequestCount int      `json:"requestCount"`
+}
+
 type ChannelSuccessRate struct {
 	ChannelID    objects.GUID `json:"channelId"`
 	ChannelName  string       `json:"channelName"`
@@ -76,12 +185,35 @@ type ChannelTypeCount struct {
 	Count int    `json:"count"`
 }
 
+type CompleteAutoDisableChannelOnboardingInput struct {
+	Dummy *string `json:"dummy,omitempty"`
+}
+
 type CompleteOnboardingInput struct {
 	Dummy *string `json:"dummy,omitempty"`
 }
 
 type CompleteSystemModelSettingOnboardingInput struct {
 	Dummy *string `json:"dummy,omitempty"`
+}
+
+// Cost statistics grouped by API key
+type CostStatsByAPIKey struct {
+	APIKeyID   objects.GUID `json:"apiKeyId"`
+	APIKeyName string       `json:"apiKeyName"`
+	Cost       float64      `json:"cost"`
+}
+
+// Cost statistics grouped by channel
+type CostStatsByChannel struct {
+	ChannelName string  `json:"channelName"`
+	Cost        float64 `json:"cost"`
+}
+
+// Cost statistics grouped by model
+type CostStatsByModel struct {
+	ModelID string  `json:"modelId"`
+	Cost    float64 `json:"cost"`
 }
 
 type CountChannelsByTypeInput struct {
@@ -101,6 +233,32 @@ type DashboardOverview struct {
 	RequestStats        *RequestStats `json:"requestStats"`
 	FailedRequests      int           `json:"failedRequests"`
 	AverageResponseTime *float64      `json:"averageResponseTime,omitempty"`
+}
+
+type FastestChannel struct {
+	ChannelID       objects.GUID `json:"channelId"`
+	ChannelName     string       `json:"channelName"`
+	ChannelType     string       `json:"channelType"`
+	Throughput      float64      `json:"throughput"`
+	TokensCount     int          `json:"tokensCount"`
+	LatencyMs       int          `json:"latencyMs"`
+	RequestCount    int          `json:"requestCount"`
+	ConfidenceLevel string       `json:"confidenceLevel"`
+}
+
+type FastestChannelsInput struct {
+	TimeWindow string `json:"timeWindow"`
+	Limit      *int   `json:"limit,omitempty"`
+}
+
+type FastestModel struct {
+	ModelID         string  `json:"modelId"`
+	ModelName       string  `json:"modelName"`
+	Throughput      float64 `json:"throughput"`
+	TokensCount     int     `json:"tokensCount"`
+	LatencyMs       int     `json:"latencyMs"`
+	RequestCount    int     `json:"requestCount"`
+	ConfidenceLevel string  `json:"confidenceLevel"`
 }
 
 type FetchModelsPayload struct {
@@ -128,17 +286,35 @@ type InitializeSystemPayload struct {
 	Token   *string   `json:"token,omitempty"`
 }
 
+// Performance statistics for a specific model on a given date
+type ModelPerformanceStat struct {
+	Date         string   `json:"date"`
+	ModelID      string   `json:"modelId"`
+	Throughput   *float64 `json:"throughput,omitempty"`
+	TtftMs       *float64 `json:"ttftMs,omitempty"`
+	RequestCount int      `json:"requestCount"`
+}
+
+type ModelTokenUsageStats struct {
+	ModelID         string `json:"modelId"`
+	InputTokens     int    `json:"inputTokens"`
+	OutputTokens    int    `json:"outputTokens"`
+	CachedTokens    int    `json:"cachedTokens"`
+	ReasoningTokens int    `json:"reasoningTokens"`
+}
+
 type OnboardingInfo struct {
 	Onboarded          bool                          `json:"onboarded"`
-	Version            string                        `json:"version"`
 	CompletedAt        *time.Time                    `json:"completedAt,omitempty"`
 	SystemModelSetting *SystemModelSettingOnboarding `json:"systemModelSetting,omitempty"`
+	AutoDisableChannel *AutoDisableChannelOnboarding `json:"autoDisableChannel,omitempty"`
 }
 
 type QueryModelsInput struct {
-	StatusIn       []channel.Status `json:"statusIn,omitempty"`
-	IncludeMapping *bool            `json:"includeMapping,omitempty"`
-	IncludePrefix  *bool            `json:"includePrefix,omitempty"`
+	StatusIn                []channel.Status `json:"statusIn,omitempty"`
+	IncludeMapping          *bool            `json:"includeMapping,omitempty"`
+	IncludePrefix           *bool            `json:"includePrefix,omitempty"`
+	IncludeAllChannelModels *bool            `json:"includeAllChannelModels,omitempty"`
 }
 
 type RemoveUserFromProjectInput struct {
@@ -169,6 +345,16 @@ type RequestStatsByModel struct {
 	Count   int    `json:"count"`
 }
 
+type ResolveApprovalInput struct {
+	AgentID         objects.GUID   `json:"agentID"`
+	AgentInstanceID *objects.GUID  `json:"agentInstanceID,omitempty"`
+	RequestID       string         `json:"requestID"`
+	Granted         bool           `json:"granted"`
+	Scope           *ApprovalScope `json:"scope,omitempty"`
+	Reason          *string        `json:"reason,omitempty"`
+	ResourceIndices []int          `json:"resourceIndices,omitempty"`
+}
+
 type RestorePayload struct {
 	Success bool    `json:"success"`
 	Message *string `json:"message,omitempty"`
@@ -188,6 +374,11 @@ type SignInInput struct {
 type SignInPayload struct {
 	User  *ent.User `json:"user"`
 	Token string    `json:"token"`
+}
+
+type SyncChannelModelsPayload struct {
+	ChannelID       objects.GUID `json:"channelID"`
+	SupportedModels []string     `json:"supportedModels"`
 }
 
 type SystemModelSettingOnboarding struct {
@@ -213,15 +404,19 @@ type TestChannelPayload struct {
 }
 
 type TokenStats struct {
-	TotalInputTokensToday      int `json:"totalInputTokensToday"`
-	TotalOutputTokensToday     int `json:"totalOutputTokensToday"`
-	TotalCachedTokensToday     int `json:"totalCachedTokensToday"`
-	TotalInputTokensThisWeek   int `json:"totalInputTokensThisWeek"`
-	TotalOutputTokensThisWeek  int `json:"totalOutputTokensThisWeek"`
-	TotalCachedTokensThisWeek  int `json:"totalCachedTokensThisWeek"`
-	TotalInputTokensThisMonth  int `json:"totalInputTokensThisMonth"`
-	TotalOutputTokensThisMonth int `json:"totalOutputTokensThisMonth"`
-	TotalCachedTokensThisMonth int `json:"totalCachedTokensThisMonth"`
+	TotalInputTokensToday      int        `json:"totalInputTokensToday"`
+	TotalOutputTokensToday     int        `json:"totalOutputTokensToday"`
+	TotalCachedTokensToday     int        `json:"totalCachedTokensToday"`
+	TotalInputTokensThisWeek   int        `json:"totalInputTokensThisWeek"`
+	TotalOutputTokensThisWeek  int        `json:"totalOutputTokensThisWeek"`
+	TotalCachedTokensThisWeek  int        `json:"totalCachedTokensThisWeek"`
+	TotalInputTokensThisMonth  int        `json:"totalInputTokensThisMonth"`
+	TotalOutputTokensThisMonth int        `json:"totalOutputTokensThisMonth"`
+	TotalCachedTokensThisMonth int        `json:"totalCachedTokensThisMonth"`
+	TotalInputTokensAllTime    int        `json:"totalInputTokensAllTime"`
+	TotalOutputTokensAllTime   int        `json:"totalOutputTokensAllTime"`
+	TotalCachedTokensAllTime   int        `json:"totalCachedTokensAllTime"`
+	LastUpdated                *time.Time `json:"lastUpdated,omitempty"`
 }
 
 type TokenStatsByAPIKey struct {
@@ -232,6 +427,26 @@ type TokenStatsByAPIKey struct {
 	CachedTokens    int          `json:"cachedTokens"`
 	ReasoningTokens int          `json:"reasoningTokens"`
 	TotalTokens     int          `json:"totalTokens"`
+}
+
+// Token usage statistics grouped by channel
+type TokenStatsByChannel struct {
+	ChannelName     string `json:"channelName"`
+	InputTokens     int    `json:"inputTokens"`
+	OutputTokens    int    `json:"outputTokens"`
+	CachedTokens    int    `json:"cachedTokens"`
+	ReasoningTokens int    `json:"reasoningTokens"`
+	TotalTokens     int    `json:"totalTokens"`
+}
+
+// Token usage statistics grouped by model
+type TokenStatsByModel struct {
+	ModelID         string `json:"modelId"`
+	InputTokens     int    `json:"inputTokens"`
+	OutputTokens    int    `json:"outputTokens"`
+	CachedTokens    int    `json:"cachedTokens"`
+	ReasoningTokens int    `json:"reasoningTokens"`
+	TotalTokens     int    `json:"totalTokens"`
 }
 
 type TopRequestsProjects struct {
@@ -286,11 +501,78 @@ type UpdateProjectUserInput struct {
 	RemoveRoleIDs []*objects.GUID `json:"removeRoleIDs,omitempty"`
 }
 
+type UpdateUserAgentPassThroughSettingsInput struct {
+	Enabled bool `json:"enabled"`
+}
+
+type UserAgentPassThroughSettings struct {
+	Enabled bool `json:"enabled"`
+}
+
 type VersionCheck struct {
 	CurrentVersion string `json:"currentVersion"`
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type ApprovalScope string
+
+const (
+	ApprovalScopeOnce      ApprovalScope = "once"
+	ApprovalScopeThread    ApprovalScope = "thread"
+	ApprovalScopeWorkspace ApprovalScope = "workspace"
+	ApprovalScopeGlobal    ApprovalScope = "global"
+)
+
+var AllApprovalScope = []ApprovalScope{
+	ApprovalScopeOnce,
+	ApprovalScopeThread,
+	ApprovalScopeWorkspace,
+	ApprovalScopeGlobal,
+}
+
+func (e ApprovalScope) IsValid() bool {
+	switch e {
+	case ApprovalScopeOnce, ApprovalScopeThread, ApprovalScopeWorkspace, ApprovalScopeGlobal:
+		return true
+	}
+	return false
+}
+
+func (e ApprovalScope) String() string {
+	return string(e)
+}
+
+func (e *ApprovalScope) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ApprovalScope(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ApprovalScope", str)
+	}
+	return nil
+}
+
+func (e ApprovalScope) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ApprovalScope) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ApprovalScope) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type OverrideApplyMode string
@@ -341,6 +623,66 @@ func (e *OverrideApplyMode) UnmarshalJSON(b []byte) error {
 }
 
 func (e OverrideApplyMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Agent management (admin GraphQL).
+type ReasoningEffort string
+
+const (
+	ReasoningEffortNone   ReasoningEffort = "none"
+	ReasoningEffortLow    ReasoningEffort = "low"
+	ReasoningEffortMedium ReasoningEffort = "medium"
+	ReasoningEffortHigh   ReasoningEffort = "high"
+)
+
+var AllReasoningEffort = []ReasoningEffort{
+	ReasoningEffortNone,
+	ReasoningEffortLow,
+	ReasoningEffortMedium,
+	ReasoningEffortHigh,
+}
+
+func (e ReasoningEffort) IsValid() bool {
+	switch e {
+	case ReasoningEffortNone, ReasoningEffortLow, ReasoningEffortMedium, ReasoningEffortHigh:
+		return true
+	}
+	return false
+}
+
+func (e ReasoningEffort) String() string {
+	return string(e)
+}
+
+func (e *ReasoningEffort) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ReasoningEffort(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ReasoningEffort", str)
+	}
+	return nil
+}
+
+func (e ReasoningEffort) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ReasoningEffort) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ReasoningEffort) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

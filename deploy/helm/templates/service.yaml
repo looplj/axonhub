@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "axonhub.fullname" . }}
+  labels:
+    {{- include "axonhub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: axonhub
+spec:
+  type: {{ .Values.axonhub.service.type }}
+  ports:
+    - port: {{ .Values.axonhub.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "axonhub.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: axonhub

@@ -177,6 +177,7 @@ func ParseTokenResponse(respBody []byte, clientID string) (*OAuthCredentials, er
 	creds := &OAuthCredentials{
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: tokenResp.RefreshToken,
+		IDToken:      tokenResp.IDToken,
 		ClientID:     clientID,
 		TokenType:    tokenResp.TokenType,
 	}

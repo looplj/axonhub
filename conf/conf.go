@@ -25,13 +25,15 @@ import (
 type Config struct {
 	fx.Out `yaml:"-" json:"-"`
 
-	DB            db.Config           `conf:"db" yaml:"db" json:"db"`
-	Log           log.Config          `conf:"log" yaml:"log" json:"log"`
-	APIServer     server.Config       `conf:"server" yaml:"server" json:"server"`
-	Metrics       metrics.Config      `conf:"metrics" yaml:"metrics" json:"metrics"`
-	GC            gc.Config           `conf:"gc" yaml:"gc" json:"gc"`
-	Cache         xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
-	ProviderQuota providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
+	DB               db.Config           `conf:"db" yaml:"db" json:"db"`
+	Log              log.Config          `conf:"log" yaml:"log" json:"log"`
+	APIServer        server.Config       `conf:"server" yaml:"server" json:"server"`
+	Metrics          metrics.Config      `conf:"metrics" yaml:"metrics" json:"metrics"`
+	GC               gc.Config           `conf:"gc" yaml:"gc" json:"gc"`
+	Cache            xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
+	ProviderQuota    providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
+	DisableSSLVerify bool                `name:"disable_ssl_verify" yaml:"-" json:"-"`
+	AllowNoAuth      bool                `name:"allow_no_auth" yaml:"-" json:"-"`
 }
 
 type providerQuotaConfig struct {
@@ -86,6 +88,9 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	config.DisableSSLVerify = config.APIServer.DisableSSLVerify
+	config.AllowNoAuth = config.APIServer.API.Auth.AllowNoAuth
+
 	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
 
 	return config, nil
@@ -137,7 +142,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.trace.extra_trace_body_fields", []string{})
 	v.SetDefault("server.trace.claude_code_trace_enabled", false)
 	v.SetDefault("server.trace.codex_trace_enabled", false)
+
+	// Dashboard defaults
+	v.SetDefault("server.dashboard.all_time_token_stats_soft_ttl", "1h")
+	v.SetDefault("server.dashboard.all_time_token_stats_hard_ttl", "24h")
+
 	v.SetDefault("server.debug", false)
+	v.SetDefault("server.disable_ssl_verify", false)
 
 	// CORS defaults
 	v.SetDefault("server.cors.enabled", false)
@@ -148,10 +159,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.cors.exposed_headers", []string{})
 	v.SetDefault("server.cors.allow_credentials", false)
 	v.SetDefault("server.cors.max_age", "30m")
+	v.SetDefault("server.api.auth.allow_no_auth", false)
 
 	// Database defaults
 	v.SetDefault("db.dialect", "sqlite3")
-	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&journal_mode=WAL")
+	v.SetDefault("db.dsn", "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)")
 	v.SetDefault("db.debug", false)
 
 	// Log defaults
@@ -179,6 +191,8 @@ func setDefaults(v *viper.Viper) {
 
 	// GC defaults
 	v.SetDefault("gc.cron", "0 2 * * *") // Daily at 2:00 AM
+	v.SetDefault("gc.vacuum_enabled", false)
+	v.SetDefault("gc.vacuum_full", false)
 
 	// Provider quota defaults
 	v.SetDefault("provider_quota.check_interval", "20m") // Check every 20 minutes

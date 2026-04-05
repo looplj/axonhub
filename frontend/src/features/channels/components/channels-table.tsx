@@ -15,7 +15,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IconArchive, IconBan, IconCheck, IconTrash, IconTemplate, IconX } from '@tabler/icons-react';
+import { IconArchive, IconBan, IconCheck, IconFlask, IconTrash, IconTemplate, IconX } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -66,6 +66,11 @@ interface DataTableProps {
   canWrite?: boolean;
 }
 
+const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
+  tags: false,
+  proxy: false,
+};
+
 export function ChannelsTable({
   columns,
   loading,
@@ -106,12 +111,12 @@ export function ChannelsTable({
     const stored = localStorage.getItem('channels-table-column-visibility');
     if (stored) {
       try {
-        return JSON.parse(stored);
+        return { ...DEFAULT_COLUMN_VISIBILITY, ...JSON.parse(stored) };
       } catch {
-        return { tags: false };
+        return DEFAULT_COLUMN_VISIBILITY;
       }
     }
-    return { tags: false }; // Hide tags column by default but keep it for filtering
+    return DEFAULT_COLUMN_VISIBILITY; // Hide optional columns by default but keep them available in column settings
   });
 
   // Sync server state to local column filters using useMemo instead of useEffect
@@ -400,6 +405,15 @@ export function ChannelsTable({
               title={t('channels.templates.bulk.applyButton')}
             >
               <IconTemplate className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-8 w-8 text-sky-600 hover:bg-sky-100 hover:text-sky-700'
+              onClick={() => setOpen('bulkTest')}
+              title={t('channels.actions.bulkTest')}
+            >
+              <IconFlask className='h-4 w-4' />
             </Button>
             <Button
               variant='ghost'

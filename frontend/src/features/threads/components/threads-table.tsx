@@ -76,7 +76,7 @@ export function ThreadsTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
-  const displayedData = useAnimatedList(data, autoRefresh);
+  const displayedData = useAnimatedList(data, autoRefresh, pageSize);
 
   const table = useReactTable({
     data: displayedData,

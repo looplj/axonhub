@@ -8,7 +8,7 @@ import (
 
 // ToLLMToolCall converts OpenAI ToolCall to unified llm.ToolCall.
 func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
-	return llm.ToolCall{
+	toolCall := llm.ToolCall{
 		ID:   tc.ID,
 		Type: tc.Type,
 		Function: llm.FunctionCall{
@@ -17,6 +17,21 @@ func (tc ToolCall) ToLLMToolCall() llm.ToolCall {
 		},
 		Index: tc.Index,
 	}
+
+	extraContent := tc.ExtraContent
+	if extraContent == nil && tc.ExtraFields != nil {
+		extraContent = tc.ExtraFields.ExtraContent
+	}
+
+	if extraContent != nil &&
+		extraContent.Google != nil &&
+		extraContent.Google.ThoughtSignature != "" {
+		toolCall.TransformerMetadata = map[string]any{
+			TransformerMetadataKeyGoogleThoughtSignature: extraContent.Google.ThoughtSignature,
+		}
+	}
+
+	return toolCall
 }
 
 // ToLLMRequest converts OpenAI Request to unified llm.Request.
@@ -95,7 +110,8 @@ func (r *Request) ToLLMRequest() *llm.Request {
 	// Convert ResponseFormat
 	if r.ResponseFormat != nil {
 		req.ResponseFormat = &llm.ResponseFormat{
-			Type: r.ResponseFormat.Type,
+			Type:       r.ResponseFormat.Type,
+			JSONSchema: r.ResponseFormat.JSONSchema,
 		}
 	}
 
@@ -110,6 +126,21 @@ func (m Message) ToLLMMessage() llm.Message {
 		Refusal:          m.Refusal,
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: m.ReasoningContent,
+		Reasoning:        m.Reasoning,
+	}
+
+	if m.Audio != nil {
+		msg.Audio = &llm.OutputAudio{
+			ID:         m.Audio.ID,
+			Data:       m.Audio.Data,
+			ExpiresAt:  m.Audio.ExpiresAt,
+			Transcript: m.Audio.Transcript,
+		}
+	}
+
+	// Fallback: if ReasoningContent is empty but Reasoning has value, use Reasoning
+	if msg.ReasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
+		msg.ReasoningContent = m.Reasoning
 	}
 
 	// Convert Content
@@ -120,6 +151,15 @@ func (m Message) ToLLMMessage() llm.Message {
 		msg.ToolCalls = lo.Map(m.ToolCalls, func(tc ToolCall, _ int) llm.ToolCall {
 			return tc.ToLLMToolCall()
 		})
+
+		firstThoughtSignature := lo.FindOrElse(msg.ToolCalls, llm.ToolCall{}, func(tc llm.ToolCall) bool {
+			raw, ok := tc.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string)
+			return ok && raw != ""
+		})
+
+		if raw, ok := firstThoughtSignature.TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature].(string); ok {
+			msg.ReasoningSignature = lo.ToPtr(raw)
+		}
 	}
 
 	// Convert Annotations
@@ -177,10 +217,16 @@ func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 		}
 	}
 
-	if p.Audio != nil {
-		part.Audio = &llm.Audio{
-			Format: p.Audio.Format,
-			Data:   p.Audio.Data,
+	if p.VideoURL != nil {
+		part.VideoURL = &llm.VideoURL{
+			URL: p.VideoURL.URL,
+		}
+	}
+
+	if p.InputAudio != nil {
+		part.InputAudio = &llm.InputAudio{
+			Format: p.InputAudio.Format,
+			Data:   p.InputAudio.Data,
 		}
 	}
 

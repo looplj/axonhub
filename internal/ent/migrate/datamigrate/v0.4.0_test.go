@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
-	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -23,7 +23,7 @@ func TestV0_4_0_CreatePrimaryDataStorage(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Run migration
 	err := datamigrate.NewV0_4_0().Migrate(ctx, client)
@@ -55,7 +55,7 @@ func TestV0_4_0_PrimaryDataStorageAlreadyExists(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create a primary data storage before migration
 	existingDS, err := client.DataStorage.Create().
@@ -93,7 +93,7 @@ func TestV0_4_0_Idempotency(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Run migration first time
 	err := datamigrate.NewV0_4_0().Migrate(ctx, client)
@@ -129,7 +129,7 @@ func TestV0_4_0_VerifyDataStorageFields(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Run migration
 	err := datamigrate.NewV0_4_0().Migrate(ctx, client)
@@ -159,7 +159,7 @@ func TestV0_4_0_DefaultDataStorageSystemSetting(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Run migration
 	err := datamigrate.NewV0_4_0().Migrate(ctx, client)
@@ -183,7 +183,7 @@ func TestV0_4_0_MultipleNonPrimaryDataStorages(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+	ctx = authz.WithTestBypass(ctx)
 
 	// Create multiple non-primary data storages before migration
 	_, err := client.DataStorage.Create().

@@ -200,7 +200,7 @@ case "${1:-}" in
     else
       # Check if binary is older than 30 minutes (1800 seconds)
       CURRENT_TIME=$(date +%s)
-      BINARY_TIME=$(stat -f %m "$BINARY_PATH" 2>/dev/null || stat -c %Y "$BINARY_PATH" 2>/dev/null)
+      BINARY_TIME=$(stat -c %Y "$BINARY_PATH" 2>/dev/null || stat -f %m "$BINARY_PATH" 2>/dev/null)
       AGE=$((CURRENT_TIME - BINARY_TIME))
       
       if [ $AGE -gt 1800 ]; then

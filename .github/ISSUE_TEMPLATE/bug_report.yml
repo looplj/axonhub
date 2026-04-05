@@ -56,13 +56,14 @@ body:
       required: true
 
   - type: textarea
-    id: actual
+    id: error-message
     attributes:
-      label: Actual Behavior / 实际行为
-      description: What actually happened / 实际发生了什么
-      placeholder: Describe what actually happened... / 描述实际行为...
-    validations:
-      required: true
+      label: Error Message / 错误消息
+      description: Paste the exact error message you received (if any) / 粘贴你收到的完整错误消息（如有）
+      placeholder: |
+        e.g. / 例如：
+        Error: upstream provider returned 429: rate limit exceeded
+      render: shell
 
   - type: dropdown
     id: os

@@ -64,6 +64,16 @@ type AutoDisableChannel {
   statuses: [AutoDisableChannelStatus!]!
 }
 
+type AutoDisableAPIKeyStatus {
+  status: Int!
+  times: Int!
+}
+
+type AutoDisableAPIKey {
+  enabled: Boolean!
+  statuses: [AutoDisableAPIKeyStatus!]!
+}
+
 type RetryPolicy {
   maxChannelRetries: Int!
   maxSingleChannelRetries: Int!
@@ -111,11 +121,16 @@ type SystemModelSettingOnboarding {
   completedAt: Time
 }
 
+type AutoDisableChannelOnboarding {
+  onboarded: Boolean!
+  completedAt: Time
+}
+
 type OnboardingInfo {
   onboarded: Boolean!
-  version: String!
   completedAt: Time
   systemModelSetting: SystemModelSettingOnboarding
+  autoDisableChannel: AutoDisableChannelOnboarding
 }
 
 input CompleteOnboardingInput {
@@ -126,6 +141,10 @@ input CompleteSystemModelSettingOnboardingInput {
   dummy: String
 }
 
+input CompleteAutoDisableChannelOnboardingInput {
+  dummy: String
+}
+
 enum ProbeFrequency {
   ONE_MINUTE
   FIVE_MINUTES
@@ -133,13 +152,24 @@ enum ProbeFrequency {
   ONE_HOUR
 }
 
+enum AutoSyncFrequency {
+  ONE_HOUR
+  SIX_HOURS
+  ONE_DAY
+}
+
 type ChannelProbeSetting {
   enabled: Boolean!
   frequency: ProbeFrequency!
 }
 
+type ChannelModelAutoSyncSetting {
+  frequency: AutoSyncFrequency!
+}
+
 type SystemChannelSettings {
   probe: ChannelProbeSetting!
+  autoSync: ChannelModelAutoSyncSetting!
 }
 
 input UpdateChannelProbeSettingInput {
@@ -147,8 +177,13 @@ input UpdateChannelProbeSettingInput {
   frequency: ProbeFrequency!
 }
 
+input UpdateChannelModelAutoSyncSettingInput {
+  frequency: AutoSyncFrequency!
+}
+
 input UpdateSystemChannelSettingsInput {
   probe: UpdateChannelProbeSettingInput
+  autoSync: UpdateChannelModelAutoSyncSettingInput
 }
 
 type SystemGeneralSettings {
@@ -161,6 +196,42 @@ input UpdateSystemGeneralSettingsInput {
   timezone: String
 }
 
+type VideoStorageSettings {
+  enabled: Boolean!
+  dataStorageID: Int!
+  scanIntervalMinutes: Int!
+  scanLimit: Int!
+}
+
+input UpdateVideoStorageSettingsInput {
+  enabled: Boolean
+  dataStorageID: Int
+  scanIntervalMinutes: Int
+  scanLimit: Int
+}
+type UserAgentPassThroughSettings {
+  enabled: Boolean!
+}
+
+input UpdateUserAgentPassThroughSettingsInput {
+  enabled: Boolean!
+}
+
+
+type ProxyPreset {
+  name: String
+  url: String!
+  username: String
+  password: String
+}
+
+input SaveProxyPresetInput {
+  name: String
+  url: String!
+  username: String
+  password: String
+}
+
 extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
@@ -169,9 +240,15 @@ extend type Mutation {
   updateDefaultDataStorage(input: UpdateDefaultDataStorageInput!): Boolean!
   completeOnboarding(input: CompleteOnboardingInput!): Boolean!
   completeSystemModelSettingOnboarding(input: CompleteSystemModelSettingOnboardingInput!): Boolean!
+  completeAutoDisableChannelOnboarding(input: CompleteAutoDisableChannelOnboardingInput!): Boolean!
   updateSystemChannelSettings(input: UpdateSystemChannelSettingsInput!): Boolean!
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
+  updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
+  triggerGcCleanup: Boolean!
+  saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
+  deleteProxyPreset(url: String!): Boolean!
+  updateUserAgentPassThroughSettings(input: UpdateUserAgentPassThroughSettingsInput!): Boolean!
 }
 
 type SystemVersion {
@@ -202,4 +279,7 @@ extend type Query {
   checkForUpdate: VersionCheck!
   systemChannelSettings: SystemChannelSettings!
   systemGeneralSettings: SystemGeneralSettings!
+  videoStorageSettings: VideoStorageSettings!
+  proxyPresets: [ProxyPreset!]!
+  userAgentPassThroughSettings: UserAgentPassThroughSettings!
 }

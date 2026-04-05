@@ -85,6 +85,11 @@ func AutoSyncSupportedModels(v bool) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldAutoSyncSupportedModels, v))
 }
 
+// AutoSyncModelPattern applies equality check predicate on the "auto_sync_model_pattern" field. It's identical to AutoSyncModelPatternEQ.
+func AutoSyncModelPattern(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldAutoSyncModelPattern, v))
+}
+
 // DefaultTestModel applies equality check predicate on the "default_test_model" field. It's identical to DefaultTestModelEQ.
 func DefaultTestModel(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldDefaultTestModel, v))
@@ -405,6 +410,26 @@ func StatusNotIn(vs ...Status) predicate.Channel {
 	return predicate.Channel(sql.FieldNotIn(FieldStatus, vs...))
 }
 
+// DisabledAPIKeysIsNil applies the IsNil predicate on the "disabled_api_keys" field.
+func DisabledAPIKeysIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldDisabledAPIKeys))
+}
+
+// DisabledAPIKeysNotNil applies the NotNil predicate on the "disabled_api_keys" field.
+func DisabledAPIKeysNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldDisabledAPIKeys))
+}
+
+// ManualModelsIsNil applies the IsNil predicate on the "manual_models" field.
+func ManualModelsIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldManualModels))
+}
+
+// ManualModelsNotNil applies the NotNil predicate on the "manual_models" field.
+func ManualModelsNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldManualModels))
+}
+
 // AutoSyncSupportedModelsEQ applies the EQ predicate on the "auto_sync_supported_models" field.
 func AutoSyncSupportedModelsEQ(v bool) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldAutoSyncSupportedModels, v))
@@ -413,6 +438,81 @@ func AutoSyncSupportedModelsEQ(v bool) predicate.Channel {
 // AutoSyncSupportedModelsNEQ applies the NEQ predicate on the "auto_sync_supported_models" field.
 func AutoSyncSupportedModelsNEQ(v bool) predicate.Channel {
 	return predicate.Channel(sql.FieldNEQ(FieldAutoSyncSupportedModels, v))
+}
+
+// AutoSyncModelPatternEQ applies the EQ predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternEQ(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldEQ(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternNEQ applies the NEQ predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternNEQ(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldNEQ(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternIn applies the In predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternIn(vs ...string) predicate.Channel {
+	return predicate.Channel(sql.FieldIn(FieldAutoSyncModelPattern, vs...))
+}
+
+// AutoSyncModelPatternNotIn applies the NotIn predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternNotIn(vs ...string) predicate.Channel {
+	return predicate.Channel(sql.FieldNotIn(FieldAutoSyncModelPattern, vs...))
+}
+
+// AutoSyncModelPatternGT applies the GT predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternGT(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldGT(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternGTE applies the GTE predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternGTE(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldGTE(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternLT applies the LT predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternLT(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldLT(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternLTE applies the LTE predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternLTE(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldLTE(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternContains applies the Contains predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternContains(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldContains(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternHasPrefix applies the HasPrefix predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternHasPrefix(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldHasPrefix(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternHasSuffix applies the HasSuffix predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternHasSuffix(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldHasSuffix(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternIsNil applies the IsNil predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldAutoSyncModelPattern))
+}
+
+// AutoSyncModelPatternNotNil applies the NotNil predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldAutoSyncModelPattern))
+}
+
+// AutoSyncModelPatternEqualFold applies the EqualFold predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternEqualFold(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldEqualFold(FieldAutoSyncModelPattern, v))
+}
+
+// AutoSyncModelPatternContainsFold applies the ContainsFold predicate on the "auto_sync_model_pattern" field.
+func AutoSyncModelPatternContainsFold(v string) predicate.Channel {
+	return predicate.Channel(sql.FieldContainsFold(FieldAutoSyncModelPattern, v))
 }
 
 // TagsIsNil applies the IsNil predicate on the "tags" field.

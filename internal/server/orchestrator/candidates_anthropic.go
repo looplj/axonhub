@@ -7,6 +7,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 // AnthropicNativeToolsSelector is a decorator that prioritizes candidates supporting Anthropic native tools.
@@ -30,8 +31,13 @@ func (s *AnthropicNativeToolsSelector) Select(ctx context.Context, req *llm.Requ
 		return nil, err
 	}
 
+	// The Anthropic native tools filter are applied only when the API format is Anthropic message.
+	if req.APIFormat != llm.APIFormatAnthropicMessage {
+		return candidates, nil
+	}
+
 	// If request doesn't contain Anthropic native tools, return all candidates
-	if !llm.ContainsAnthropicNativeTools(req.Tools) {
+	if !anthropic.ContainsAnthropicNativeTools(req.Tools) {
 		return candidates, nil
 	}
 

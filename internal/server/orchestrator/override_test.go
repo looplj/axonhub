@@ -110,8 +110,8 @@ func TestOverrideParametersComplex(t *testing.T) {
 					"clear_me": "__AXONHUB_CLEAR__"
 				}`,
 				OverrideHeaders: []objects.HeaderEntry{
-					{Key: "X-Clear-Header", Value: "__AXONHUB_CLEAR__"},
 					{Key: "X-Logic-Header", Value: "{{if .Metadata.env}}env-{{.Metadata.env}}{{else}}no-env{{end}}"},
+					{Key: "X-Clear-Header", Value: "__AXONHUB_CLEAR__"},
 				},
 			},
 		},
@@ -246,6 +246,42 @@ func TestOverrideParametersNumeric(t *testing.T) {
 
 	require.Equal(t, "500", processedRequestWithHeaders.Headers.Get("X-Int-Header"))
 	require.Equal(t, "0.8", processedRequestWithHeaders.Headers.Get("X-Float-Header"))
+}
+
+func TestOverrideHeadersKeepJSONLikeString(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{Model: "gpt-4"}
+
+	expectedValue := `{"session_id":"843634473","camelCase":"AbC","xTraceId":"XyZ-001"}`
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "header-json-string-test",
+			Settings: &objects.ChannelSettings{
+				HeaderOverrideOperations: []objects.OverrideOperation{
+					{Op: objects.OverrideOpSet, Path: "Extra", Value: expectedValue},
+				},
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmRequest,
+		},
+	}
+
+	headerMiddleware := applyOverrideRequestHeaders(outbound)
+	rawRequest := &httpclient.Request{Headers: make(http.Header)}
+
+	processedRequest, err := headerMiddleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+	require.Equal(t, expectedValue, processedRequest.Headers.Get("Extra"))
 }
 
 // TestOverrideParameters tests that TransformRequest works correctly.
@@ -744,10 +780,8 @@ func TestOverrideHeadersMiddleware(t *testing.T) {
 		expectedHeaders http.Header
 	}{
 		{
-			name: "override single header",
-			overrideHeaders: []objects.HeaderEntry{
-				{Key: "User-Agent", Value: "AxonHub/1.0"},
-			},
+			name:            "override single header",
+			overrideHeaders: []objects.HeaderEntry{{Key: "User-Agent", Value: "AxonHub/1.0"}},
 			existingHeaders: http.Header{
 				"Content-Type": []string{"application/json"},
 			},
@@ -761,7 +795,7 @@ func TestOverrideHeadersMiddleware(t *testing.T) {
 			overrideHeaders: []objects.HeaderEntry{
 				{Key: "User-Agent", Value: "AxonHub/1.0"},
 				{Key: "X-Custom-Header", Value: "custom-value"},
-				{Key: "Authorization", Value: "Bearer token123"}, // This will be blocked
+				{Key: "Authorization", Value: "Bearer token123"},
 			},
 			existingHeaders: http.Header{
 				"Content-Type": []string{"application/json"},
@@ -769,9 +803,8 @@ func TestOverrideHeadersMiddleware(t *testing.T) {
 			},
 			expectedHeaders: http.Header{
 				"Content-Type":    []string{"application/json"},
-				"User-Agent":      []string{"AxonHub/1.0"}, // Should be overridden
+				"User-Agent":      []string{"AxonHub/1.0"},
 				"X-Custom-Header": []string{"custom-value"},
-				// Authorization header should be blocked and not present
 			},
 		},
 		{
@@ -785,7 +818,7 @@ func TestOverrideHeadersMiddleware(t *testing.T) {
 			},
 		},
 		{
-			name: "override with empty key should be ignored",
+			name: "override with empty path should be ignored",
 			overrideHeaders: []objects.HeaderEntry{
 				{Key: "", Value: "should-be-ignored"},
 				{Key: "Valid-Header", Value: "valid-value"},
@@ -802,12 +835,11 @@ func TestOverrideHeadersMiddleware(t *testing.T) {
 			name: "no existing headers",
 			overrideHeaders: []objects.HeaderEntry{
 				{Key: "User-Agent", Value: "AxonHub/1.0"},
-				{Key: "X-API-Key", Value: "secret-key"}, // This will be blocked
+				{Key: "X-API-Key", Value: "secret-key"},
 			},
 			existingHeaders: nil,
 			expectedHeaders: http.Header{
 				"User-Agent": []string{"AxonHub/1.0"},
-				// X-API-Key header should be blocked and not present
 			},
 		},
 	}
@@ -1248,6 +1280,448 @@ func TestOverrideParametersRenderClear(t *testing.T) {
 	require.Equal(t, "keep-me", processedRequestWithHeaders.Headers.Get("X-Keep-Header"))
 }
 
+func TestOverrideOperationsNewFormat(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{
+		Model:           "claude-3.5-sonnet",
+		ReasoningEffort: "high",
+		Metadata: map[string]string{
+			"user_id": "u-42",
+		},
+	}
+
+	t.Run("set and delete operations", func(t *testing.T) {
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "ops-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: `[
+						{"op": "set", "path": "temperature", "value": "0.7"},
+						{"op": "set", "path": "custom", "value": "model-{{.Model}}"},
+						{"op": "delete", "path": "frequency_penalty"}
+					]`,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    "claude-3.5-sonnet",
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+		rawRequest := &httpclient.Request{
+			Body: []byte(`{"frequency_penalty": 0.5, "existing": "keep"}`),
+		}
+
+		result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+		require.NoError(t, err)
+
+		bodyStr := string(result.Body)
+		require.Equal(t, 0.7, gjson.Get(bodyStr, "temperature").Float())
+		require.Equal(t, "model-claude-3.5-sonnet", gjson.Get(bodyStr, "custom").String())
+		require.False(t, gjson.Get(bodyStr, "frequency_penalty").Exists())
+		require.Equal(t, "keep", gjson.Get(bodyStr, "existing").String())
+	})
+
+	t.Run("rename operation", func(t *testing.T) {
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "rename-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: `[
+						{"op": "rename", "from": "max_tokens", "to": "max_completion_tokens"}
+					]`,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    "claude-3.5-sonnet",
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+		rawRequest := &httpclient.Request{
+			Body: []byte(`{"max_tokens": 4096, "model": "test"}`),
+		}
+
+		result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+		require.NoError(t, err)
+
+		bodyStr := string(result.Body)
+		require.False(t, gjson.Get(bodyStr, "max_tokens").Exists())
+		require.Equal(t, int64(4096), gjson.Get(bodyStr, "max_completion_tokens").Int())
+		require.Equal(t, "test", gjson.Get(bodyStr, "model").String())
+	})
+
+	t.Run("copy operation", func(t *testing.T) {
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "copy-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: `[
+						{"op": "copy", "from": "model", "to": "metadata.original_model"}
+					]`,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    "claude-3.5-sonnet",
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+		rawRequest := &httpclient.Request{
+			Body: []byte(`{"model": "gpt-4"}`),
+		}
+
+		result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+		require.NoError(t, err)
+
+		bodyStr := string(result.Body)
+		require.Equal(t, "gpt-4", gjson.Get(bodyStr, "model").String())
+		require.Equal(t, "gpt-4", gjson.Get(bodyStr, "metadata.original_model").String())
+	})
+
+	t.Run("rename non-existent field is no-op", func(t *testing.T) {
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "rename-noop-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: `[
+						{"op": "rename", "from": "nonexistent", "to": "target"}
+					]`,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    "claude-3.5-sonnet",
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+		rawRequest := &httpclient.Request{
+			Body: []byte(`{"model": "gpt-4"}`),
+		}
+
+		result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+		require.NoError(t, err)
+
+		bodyStr := string(result.Body)
+		require.Equal(t, "gpt-4", gjson.Get(bodyStr, "model").String())
+		require.False(t, gjson.Get(bodyStr, "target").Exists())
+	})
+}
+
+func TestOverrideOperationsWithCondition(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("condition true executes operation", func(t *testing.T) {
+		llmRequest := &llm.Request{
+			Model:           "claude-3.5-sonnet",
+			ReasoningEffort: "high",
+		}
+
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "cond-true-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: `[
+						{"op": "delete", "path": "reasoning_effort", "condition": "{{if eq .ReasoningEffort \"high\"}}true{{end}}"},
+						{"op": "set", "path": "thinking.type", "value": "enabled", "condition": "{{if .ReasoningEffort}}true{{end}}"}
+					]`,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    "claude-3.5-sonnet",
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+		rawRequest := &httpclient.Request{
+			Body: []byte(`{"reasoning_effort": "high", "model": "test"}`),
+		}
+
+		result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+		require.NoError(t, err)
+
+		bodyStr := string(result.Body)
+		require.False(t, gjson.Get(bodyStr, "reasoning_effort").Exists())
+		require.Equal(t, "enabled", gjson.Get(bodyStr, "thinking.type").String())
+	})
+
+	t.Run("condition false skips operation", func(t *testing.T) {
+		llmRequest := &llm.Request{
+			Model:           "gpt-4",
+			ReasoningEffort: "low",
+		}
+
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "cond-false-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: `[
+						{"op": "delete", "path": "reasoning_effort", "condition": "{{if eq .ReasoningEffort \"high\"}}true{{end}}"},
+						{"op": "rename", "from": "max_tokens", "to": "max_output_tokens", "condition": "{{if eq .Model \"claude-3.5-sonnet\"}}true{{end}}"}
+					]`,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    "gpt-4",
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+		rawRequest := &httpclient.Request{
+			Body: []byte(`{"reasoning_effort": "low", "max_tokens": 1000}`),
+		}
+
+		result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+		require.NoError(t, err)
+
+		bodyStr := string(result.Body)
+		require.Equal(t, "low", gjson.Get(bodyStr, "reasoning_effort").String())
+		require.Equal(t, int64(1000), gjson.Get(bodyStr, "max_tokens").Int())
+		require.False(t, gjson.Get(bodyStr, "max_output_tokens").Exists())
+	})
+
+	t.Run("conditional rename with reasoning effort mapping", func(t *testing.T) {
+		llmRequest := &llm.Request{
+			Model:           "claude-3.5-sonnet",
+			ReasoningEffort: "high",
+		}
+
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "thinking-map-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: `[
+						{"op": "rename", "from": "reasoning_effort", "to": "thinking.budget_tokens", "condition": "{{if .ReasoningEffort}}true{{end}}"},
+						{"op": "set", "path": "thinking.type", "value": "enabled", "condition": "{{if .ReasoningEffort}}true{{end}}"},
+						{"op": "set", "path": "thinking.budget_tokens", "value": "{{if eq .ReasoningEffort \"high\"}}16384{{else if eq .ReasoningEffort \"medium\"}}8192{{else}}4096{{end}}", "condition": "{{if .ReasoningEffort}}true{{end}}"}
+					]`,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    "claude-3.5-sonnet",
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+		rawRequest := &httpclient.Request{
+			Body: []byte(`{"reasoning_effort": "high", "model": "test"}`),
+		}
+
+		result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+		require.NoError(t, err)
+
+		bodyStr := string(result.Body)
+		require.False(t, gjson.Get(bodyStr, "reasoning_effort").Exists())
+		require.Equal(t, "enabled", gjson.Get(bodyStr, "thinking.type").String())
+		require.Equal(t, int64(16384), gjson.Get(bodyStr, "thinking.budget_tokens").Int())
+	})
+
+	t.Run("no condition means always execute", func(t *testing.T) {
+		llmRequest := &llm.Request{
+			Model: "gpt-4",
+		}
+
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "no-cond-test",
+				Settings: &objects.ChannelSettings{
+					OverrideParameters: `[
+						{"op": "set", "path": "temperature", "value": "0.5"},
+						{"op": "delete", "path": "top_p"}
+					]`,
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:       llmRequest,
+				OriginalModel:    "gpt-4",
+			},
+		}
+
+		middleware := applyOverrideRequestBody(outbound)
+		rawRequest := &httpclient.Request{
+			Body: []byte(`{"top_p": 0.9, "model": "test"}`),
+		}
+
+		result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+		require.NoError(t, err)
+
+		bodyStr := string(result.Body)
+		require.Equal(t, 0.5, gjson.Get(bodyStr, "temperature").Float())
+		require.False(t, gjson.Get(bodyStr, "top_p").Exists())
+	})
+}
+
+func TestOverrideLegacyFormatCompatibility(t *testing.T) {
+	ctx := context.Background()
+
+	llmRequest := &llm.Request{
+		Model:           "gpt-4",
+		ReasoningEffort: "high",
+	}
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "legacy-test",
+			Settings: &objects.ChannelSettings{
+				OverrideParameters: `{"temperature": 0.7, "max_tokens": 2000, "remove_me": "__AXONHUB_CLEAR__"}`,
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       llmRequest,
+			OriginalModel:    "gpt-4",
+		},
+	}
+
+	middleware := applyOverrideRequestBody(outbound)
+	rawRequest := &httpclient.Request{
+		Body: []byte(`{"remove_me": "old_value", "keep": "yes"}`),
+	}
+
+	result, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+
+	bodyStr := string(result.Body)
+	require.Equal(t, 0.7, gjson.Get(bodyStr, "temperature").Float())
+	require.Equal(t, int64(2000), gjson.Get(bodyStr, "max_tokens").Int())
+	require.False(t, gjson.Get(bodyStr, "remove_me").Exists())
+	require.Equal(t, "yes", gjson.Get(bodyStr, "keep").String())
+}
+
+func TestParseOverrideOperations(t *testing.T) {
+	t.Run("empty input", func(t *testing.T) {
+		ops, err := objects.ParseOverrideOperations("")
+		require.NoError(t, err)
+		require.Nil(t, ops)
+	})
+
+	t.Run("empty object", func(t *testing.T) {
+		ops, err := objects.ParseOverrideOperations("{}")
+		require.NoError(t, err)
+		require.Nil(t, ops)
+	})
+
+	t.Run("empty array", func(t *testing.T) {
+		ops, err := objects.ParseOverrideOperations("[]")
+		require.NoError(t, err)
+		require.Nil(t, ops)
+	})
+
+	t.Run("new format array", func(t *testing.T) {
+		ops, err := objects.ParseOverrideOperations(`[
+			{"op": "set", "path": "temp", "value": "0.7"},
+			{"op": "delete", "path": "top_p"},
+			{"op": "rename", "from": "a", "to": "b", "condition": "{{if .Model}}true{{end}}"}
+		]`)
+		require.NoError(t, err)
+		require.Len(t, ops, 3)
+		require.Equal(t, objects.OverrideOpSet, ops[0].Op)
+		require.Equal(t, "temp", ops[0].Path)
+		require.Equal(t, objects.OverrideOpDelete, ops[1].Op)
+		require.Equal(t, objects.OverrideOpRename, ops[2].Op)
+		require.Equal(t, "a", ops[2].From)
+		require.Equal(t, "b", ops[2].To)
+		require.NotEmpty(t, ops[2].Condition)
+	})
+
+	t.Run("legacy map format", func(t *testing.T) {
+		ops, err := objects.ParseOverrideOperations(`{"temperature": 0.7, "remove": "__AXONHUB_CLEAR__"}`)
+		require.NoError(t, err)
+		require.Len(t, ops, 2)
+
+		setFound := false
+		deleteFound := false
+
+		for _, op := range ops {
+			if op.Op == objects.OverrideOpSet && op.Path == "temperature" {
+				setFound = true
+			}
+
+			if op.Op == objects.OverrideOpDelete && op.Path == "remove" {
+				deleteFound = true
+			}
+		}
+
+		require.True(t, setFound)
+		require.True(t, deleteFound)
+	})
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		_, err := objects.ParseOverrideOperations(`{invalid}`)
+		require.Error(t, err)
+	})
+}
+
 func TestIssue632Override(t *testing.T) {
 	ctx := context.Background()
 
@@ -1322,4 +1796,146 @@ func TestIssue632Override(t *testing.T) {
 			require.Equal(t, tt.expectedEnabled, kwargs.Get("enable_thinking").Bool(), "enable_thinking mismatch for effort %s", tt.reasoningEffort)
 		})
 	}
+}
+
+// TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
+func TestApplyUserAgentPassThrough(t *testing.T) {
+	tests := []struct {
+		name             string
+		channelUASetting *bool // Channel-level override
+		globalUAEnabled  bool  // System-level setting
+		clientUA         string
+		wantUAHeader     string
+	}{
+		{
+			name:             "channel_disabled_ignores_global",
+			channelUASetting: new(false),
+			globalUAEnabled:  true,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
+		},
+		{
+			name:             "channel_enabled_ignores_global",
+			channelUASetting: new(true),
+			globalUAEnabled:  false,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "Client/1.0",
+		},
+		{
+			name:             "channel_nil_inherits_global_disabled",
+			channelUASetting: nil,
+			globalUAEnabled:  false,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "axonhub/1.0", // Pass-through disabled: middleware sets default UA
+		},
+		{
+			name:             "channel_nil_inherits_global_enabled",
+			channelUASetting: nil,
+			globalUAEnabled:  true,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "Client/1.0",
+		},
+		{
+			name:             "enabled_but_no_client_ua",
+			channelUASetting: new(true),
+			globalUAEnabled:  true,
+			clientUA:         "",
+			wantUAHeader:     "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, client := setupTest(t)
+
+			// Create real system service with test database
+			systemService := newTestSystemService(client)
+
+			// Set global User-Agent pass-through setting
+			err := systemService.SetUserAgentPassThrough(ctx, tt.globalUAEnabled)
+			require.NoError(t, err)
+
+			// Create mock channel with optional pass-through setting
+			channelSettings := &objects.ChannelSettings{}
+			if tt.channelUASetting != nil {
+				channelSettings.PassThroughUserAgent = tt.channelUASetting
+			}
+
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:       1,
+					Name:     "test-channel",
+					Settings: channelSettings,
+				},
+				Outbound: &mockTransformer{},
+			}
+
+			// Create raw request with client UA - RawRequest is *httpclient.Request in llm.Request
+			rawHeaders := make(http.Header)
+			if tt.clientUA != "" {
+				rawHeaders.Set("User-Agent", tt.clientUA)
+			}
+
+			llmRequest := &llm.Request{
+				Model: "gpt-4",
+				RawRequest: &httpclient.Request{
+					Headers: rawHeaders,
+				},
+			}
+
+			// Create outbound transformer
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					LlmRequest:       llmRequest,
+				},
+			}
+
+			// Create middleware
+			middleware := applyUserAgentPassThrough(outbound, systemService)
+
+			// Execute middleware
+			rawRequest := &httpclient.Request{
+				Headers: make(http.Header),
+			}
+			processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+
+			require.NoError(t, err)
+			require.NotNil(t, processedRequest)
+
+			// Verify User-Agent header is set correctly
+			if tt.wantUAHeader != "" {
+				require.Equal(t, tt.wantUAHeader, processedRequest.Headers.Get("User-Agent"))
+			} else {
+				// When no User-Agent expected, header should be empty
+				require.Empty(t, processedRequest.Headers.Get("User-Agent"))
+			}
+		})
+	}
+}
+
+// TestApplyUserAgentPassThrough_NoChannel tests the middleware when no channel is selected.
+func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	// Create real system service with test database
+	systemService := newTestSystemService(client)
+
+	// Create outbound without a channel
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state:   &PersistenceState{},
+	}
+
+	// Create middleware
+	middleware := applyUserAgentPassThrough(outbound, systemService)
+
+	// Execute middleware
+	rawRequest := &httpclient.Request{
+		Headers: make(http.Header),
+	}
+	processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
+	require.NoError(t, err)
+	require.NotNil(t, processedRequest)
 }

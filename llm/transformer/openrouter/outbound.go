@@ -88,6 +88,8 @@ func (t *OutboundTransformer) TransformRequest(
 		// continue
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationRequest(llmReq)
+	case llm.RequestTypeCompact:
+		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
@@ -369,15 +371,6 @@ func (t *OutboundTransformer) transformImageGenerationResponse(httpResp *httpcli
 		}
 	}
 
-	// Set usage info for image generation
-	if resp.Usage != nil {
-		imageResponse.Usage = &llm.ImageUsage{
-			InputTokens:  resp.Usage.PromptTokens,
-			OutputTokens: resp.Usage.CompletionTokens,
-			TotalTokens:  resp.Usage.TotalTokens,
-		}
-	}
-
 	resp.Image = imageResponse
 
 	return resp, nil
@@ -401,16 +394,21 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, chunks 
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	// Filter out upstream DONE events
+	filteredStream := streams.Filter(stream, func(event *httpclient.StreamEvent) bool {
+		return !bytes.HasPrefix(event.Data, []byte("[DONE]"))
+	})
+
+	// Transform remaining events
+	transformedStream := streams.MapErr(filteredStream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	}), nil
+	})
+
+	// Always append our own DONE event at the end
+	return streams.AppendStream(transformedStream, llm.DoneResponse), nil
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
-	if bytes.HasPrefix(event.Data, []byte("[DONE]")) {
-		return llm.DoneResponse, nil
-	}
-
 	ep := gjson.GetBytes(event.Data, "error")
 	if ep.Exists() {
 		return nil, &llm.ResponseError{

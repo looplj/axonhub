@@ -439,9 +439,9 @@ func TestOutboundTransformer_TransformResponse_Embedding(t *testing.T) {
 		require.NotNil(t, llmResp)
 		require.Equal(t, "list", llmResp.Embedding.Object)
 		require.Equal(t, "jina-embeddings-v3", llmResp.Model)
-		require.NotNil(t, llmResp.Embedding.Usage)
-		require.Equal(t, int64(5), llmResp.Embedding.Usage.PromptTokens)
-		require.Equal(t, int64(5), llmResp.Embedding.Usage.TotalTokens)
+		require.NotNil(t, llmResp.Usage)
+		require.Equal(t, int64(5), llmResp.Usage.PromptTokens)
+		require.Equal(t, int64(5), llmResp.Usage.TotalTokens)
 	})
 
 	t.Run("embedding response nil http response", func(t *testing.T) {
@@ -508,10 +508,10 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 						Index:     0,
 					},
 				},
-				Usage: &llm.EmbeddingUsage{
-					PromptTokens: 5,
-					TotalTokens:  5,
-				},
+			},
+			Usage: &llm.Usage{
+				PromptTokens: 5,
+				TotalTokens:  5,
 			},
 		}
 

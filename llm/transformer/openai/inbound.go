@@ -8,10 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/looplj/axonhub/internal/pkg/xerrors"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/streams"
 	transformer "github.com/looplj/axonhub/llm/transformer"
 )
@@ -150,10 +149,12 @@ func (t *InboundTransformer) TransformStreamChunk(
 	}, nil
 }
 
-// isReasoningSignatureEvent checks if the response contains ReasoningSignature.
-// This is a help func to adapt the Anthropic thinking signature to OpenAI format.
-// In the real world, the signature will use a separate event, so if the response contains
-// ReasoningSignature, it means the event is for signature_delta, we should ignore it.
+// isReasoningSignatureEvent checks if the response contains ONLY ReasoningSignature.
+// This is a helper function to filter out reasoning signature events when transforming
+// to OpenAI format, since OpenAI format doesn't support ReasoningSignature in streaming.
+// If the response contains ONLY ReasoningSignature (pure signature event), we skip it.
+// If the chunk also contains other content (text, reasoning_content, tool_calls, etc.),
+// we should NOT skip it (e.g., thinking chunks with both signature and content).
 func isReasoningSignatureEvent(resp *llm.Response) bool {
 	if len(resp.Choices) != 1 {
 		return false
@@ -165,11 +166,18 @@ func isReasoningSignatureEvent(resp *llm.Response) bool {
 	}
 
 	// Check if ReasoningSignature is set
-	if delta.ReasoningSignature != nil && *delta.ReasoningSignature != "" {
-		return true
+	if delta.ReasoningSignature == nil || *delta.ReasoningSignature == "" {
+		return false
 	}
 
-	return false
+	// Check if there's any other content besides the signature
+	hasContent := delta.Content.Content != nil || len(delta.Content.MultipleContent) > 0
+	hasReasoningContent := delta.ReasoningContent != nil && *delta.ReasoningContent != ""
+	hasToolCalls := len(delta.ToolCalls) > 0
+	hasRefusal := delta.Refusal != ""
+
+	// Only skip if ONLY ReasoningSignature is present (pure signature event)
+	return !hasContent && !hasReasoningContent && !hasToolCalls && !hasRefusal
 }
 
 func (t *InboundTransformer) AggregateStreamChunks(
@@ -197,7 +205,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if httpErr, ok := xerrors.As[*httpclient.Error](rawErr); ok {
+	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
 		return httpErr
 	}
 
@@ -210,7 +218,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if llmErr, ok := xerrors.As[*llm.ResponseError](rawErr); ok {
+	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
 		return &httpclient.Error{
 			StatusCode: llmErr.StatusCode,
 			Status:     http.StatusText(llmErr.StatusCode),

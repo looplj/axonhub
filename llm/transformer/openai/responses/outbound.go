@@ -9,11 +9,12 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xmap"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
@@ -23,8 +24,10 @@ type Config struct {
 	// BaseURL is the base URL for the OpenAI API, required.
 	BaseURL string `json:"base_url,omitempty"`
 
+	AccountIdentity string `json:"account_identity,omitempty"`
+
 	// RawURL is whether to use raw URL for requests, default is false.
-	// If true, the base URL will be used as is, without appending the version.
+	// If true, the request URL will be used as is, without appending the response endpoint.
 	RawURL bool `json:"raw_url,omitempty"`
 
 	// APIKeyProvider provides API keys for authentication, required.
@@ -53,11 +56,12 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 		return nil, fmt.Errorf("API key provider is required")
 	}
 
-	if strings.HasSuffix(config.BaseURL, "#") {
+	if strings.HasSuffix(config.BaseURL, "##") {
 		config.RawURL = true
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
+	} else {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 	}
-
-	config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
 
 	return &OutboundTransformer{
 		config: config,
@@ -112,21 +116,29 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("chat request is nil")
 	}
 
+	scope := shared.TransportScope{
+		BaseURL:         t.config.BaseURL,
+		AccountIdentity: t.config.AccountIdentity,
+	}
+
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
+	case llm.RequestTypeCompact:
+		return t.transformCompactRequest(ctx, llmReq, scope)
 	case llm.RequestTypeChat, "":
 		// continue
 	default:
 		return nil, fmt.Errorf("%w: %s is not supported", transformer.ErrInvalidRequest, llmReq.RequestType)
 	}
 
-	var tools []Tool
-
 	// Initialize TransformerMetadata if nil
 	if llmReq.TransformerMetadata == nil {
 		llmReq.TransformerMetadata = map[string]any{}
 	}
 
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+
+	var tools []Tool
 	// Convert tools to Responses API format
 	for _, item := range llmReq.Tools {
 		switch item.Type {
@@ -135,6 +147,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			tools = append(tools, tool)
 			// Store image output format in TransformerMetadata
 			llmReq.TransformerMetadata["image_output_format"] = tool.OutputFormat
+		case llm.ToolTypeResponsesCustomTool:
+			tool := convertCustomToTool(item)
+			tools = append(tools, tool)
 		case "function":
 			tool := convertFunctionToTool(item)
 			tools = append(tools, tool)
@@ -146,7 +161,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	payload := Request{
 		Model:                llmReq.Model,
-		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions),
+		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions, scope),
 		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,
@@ -170,7 +185,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
-	// Set ParallelToolCalls to nil if no tools are specified
+	// Clear `parallel_tool_calls` when no tools are sent (Responses API compatibility).
 	if len(payload.Tools) == 0 {
 		payload.ParallelToolCalls = nil
 	}
@@ -201,15 +216,19 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Body:    body,
 		Auth: &httpclient.AuthConfig{
 			Type:   "bearer",
-			APIKey: t.config.APIKeyProvider.Get(ctx),
+			APIKey: apiKey,
 		},
-		TransformerMetadata: llmReq.TransformerMetadata,
+		TransformerMetadata:   llmReq.TransformerMetadata,
+		SkipInboundQueryMerge: true,
+		Metadata:              scope.Metadata(),
 	}, nil
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
 func (t *OutboundTransformer) buildFullRequestURL(_ *llm.Request) (string, error) {
-	// BaseURL is already normalized with version in NewOutboundTransformerWithConfig
+	if t.config.RawURL {
+		return t.config.BaseURL, nil
+	}
 	return t.config.BaseURL + "/responses", nil
 }
 
@@ -224,6 +243,24 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("http response is nil")
 	}
 
+	// Route compact responses to specialized handler
+	if httpResp.Request != nil && httpResp.Request.RequestType == string(llm.RequestTypeCompact) {
+		return t.transformCompactResponse(ctx, httpResp)
+	}
+
+	return t.transformStandardResponse(ctx, httpResp)
+}
+
+func (t *OutboundTransformer) transformStandardResponse(
+	ctx context.Context,
+	httpResp *httpclient.Response,
+) (*llm.Response, error) {
+	if httpResp == nil {
+		return nil, fmt.Errorf("http response is nil")
+	}
+
+	scope, _ := shared.GetTransportScope(ctx)
+
 	if httpResp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
 	}
@@ -237,7 +274,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal responses api response: %w", err)
 	}
 
-	// Convert to unified llm.Response format
+	// Validate that we got a valid response
+	if resp.ID == "" && resp.Model == "" && len(resp.Output) == 0 {
+		return nil, fmt.Errorf("responses api returned empty response: body=%s", string(httpResp.Body))
+	}
+
 	llmResp := &llm.Response{
 		Object:  "chat.completion",
 		ID:      resp.ID,
@@ -251,120 +292,19 @@ func (t *OutboundTransformer) TransformResponse(
 		llmResp.Usage = resp.Usage.ToUsage()
 	}
 
-	// Process output items - aggregate all into a single choice (Chat Completions format)
-	var (
-		contentParts     []llm.MessageContentPart
-		textContent      strings.Builder
-		reasoningContent strings.Builder
-		toolCalls        []llm.ToolCall
-	)
-
-	for _, outputItem := range resp.Output {
-		switch outputItem.Type {
-		case "message":
-			// Extract text content from message content array
-			for _, contentItem := range outputItem.GetContentItems() {
-				if contentItem.Type == "output_text" {
-					textContent.WriteString(contentItem.Text)
-				}
-			}
-		case "output_text":
-			// Direct text output
-			if outputItem.Text != nil {
-				textContent.WriteString(*outputItem.Text)
-			}
-		case "function_call":
-			// Function call output - aggregate all tool calls
-			toolCalls = append(toolCalls, llm.ToolCall{
-				ID:   outputItem.CallID,
-				Type: "function",
-				Function: llm.FunctionCall{
-					Name:      outputItem.Name,
-					Arguments: outputItem.Arguments,
-				},
-			})
-		case "reasoning":
-			// Handle reasoning output - convert to ReasoningContent
-			for _, summary := range outputItem.Summary {
-				reasoningContent.WriteString(summary.Text)
-			}
-		case "image_generation_call":
-			imageOutputFormat := "png"
-
-			if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-				if fmt, ok := httpResp.Request.TransformerMetadata["image_output_format"].(string); ok && fmt != "" {
-					imageOutputFormat = fmt
-				}
-			}
-			// Image generation result
-			if outputItem.Result != nil && *outputItem.Result != "" {
-				contentParts = append(contentParts, llm.MessageContentPart{
-					Type: "image_url",
-					ImageURL: &llm.ImageURL{
-						URL: `data:image/` + imageOutputFormat + `;base64,` + *outputItem.Result,
-					},
-					TransformerMetadata: map[string]any{
-						"background":    outputItem.Background,
-						"output_format": outputItem.OutputFormat,
-						"quality":       outputItem.Quality,
-						"size":          outputItem.Size,
-					},
-				})
-			}
-		case "input_image":
-			// Input image (for reference)
-			if outputItem.ImageURL != nil && *outputItem.ImageURL != "" {
-				contentParts = append(contentParts, llm.MessageContentPart{
-					Type: "image_url",
-					ImageURL: &llm.ImageURL{
-						URL: *outputItem.ImageURL,
-					},
-				})
-			}
-		}
+	var transformerMetadata map[string]any
+	if httpResp.Request != nil {
+		transformerMetadata = httpResp.Request.TransformerMetadata
 	}
 
-	// Build the single choice
+	msg := convertOutputToMessage(resp.Output, scope, transformerMetadata)
+
 	choice := llm.Choice{
-		Index: 0,
-		Message: &llm.Message{
-			Role:      "assistant",
-			ToolCalls: toolCalls,
-		},
+		Index:   0,
+		Message: &msg,
 	}
 
-	// Set reasoning content if present
-	if reasoningContent.Len() > 0 {
-		choice.Message.ReasoningContent = lo.ToPtr(reasoningContent.String())
-	}
-
-	// Set message content
-	if textContent.Len() > 0 {
-		if len(contentParts) > 0 {
-			// Mixed content: text + images
-			textPart := llm.MessageContentPart{
-				Type: "text",
-				Text: lo.ToPtr(textContent.String()),
-			}
-			contentParts = append([]llm.MessageContentPart{textPart}, contentParts...)
-			choice.Message.Content = llm.MessageContent{
-				MultipleContent: contentParts,
-			}
-		} else {
-			// Text only
-			choice.Message.Content = llm.MessageContent{
-				Content: lo.ToPtr(textContent.String()),
-			}
-		}
-	} else if len(contentParts) > 0 {
-		// Images only
-		choice.Message.Content = llm.MessageContent{
-			MultipleContent: contentParts,
-		}
-	}
-
-	// Set finish reason based on status and content
-	if len(toolCalls) > 0 {
+	if len(msg.ToolCalls) > 0 {
 		choice.FinishReason = lo.ToPtr("tool_calls")
 	} else if resp.Status != nil {
 		switch *resp.Status {

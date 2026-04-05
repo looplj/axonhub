@@ -16,6 +16,7 @@ export function DailyRequestStats() {
   const isLoading = isStatsLoading || isSettingsLoading;
 
   const currencyCode = generalSettings?.currencyCode || 'USD';
+  const timezone = generalSettings?.timezone || 'UTC';
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
 
   const formatCurrency = useCallback(
@@ -60,15 +61,21 @@ export function DailyRequestStats() {
 
   // Transform data for the chart
   const chartData =
-    dailyStats?.map((stat) => ({
-      name: new Date(stat.date).toLocaleDateString(i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US', {
-        month: '2-digit',
-        day: '2-digit',
-      }),
-      requests: stat.count,
-      tokens: stat.tokens,
-      cost: stat.cost,
-    })) || [];
+    dailyStats?.map((stat) => {
+      // Parse YYYY-MM-DD as local date to avoid UTC interpretation
+      const [year, month, day] = stat.date.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return {
+        name: date.toLocaleDateString(locale, {
+          month: '2-digit',
+          day: '2-digit',
+          timeZone: timezone,
+        }),
+        requests: stat.count,
+        tokens: stat.tokens,
+        cost: stat.cost,
+      };
+    }) || [];
 
   // Calculate max values for Y-axis domains
   const maxRequests = Math.max(...chartData.map((d) => d.requests), 0);

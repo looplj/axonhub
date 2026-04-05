@@ -83,9 +83,14 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 	return candidates, nil
 }
 
-// selectChannelCadidates performs the original channel selection logic.
+// selectChannelCadidates performs the legacy channel selection logic for non-search requests.
+// Search requests use SearchSelector instead.
 func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	channels := s.ChannelService.GetEnabledChannels()
+
+	channels = lo.Filter(channels, func(ch *biz.Channel, _ int) bool {
+		return !ch.Channel.Type.IsSearch()
+	})
 
 	candidates := make([]*ChannelModelsCandidate, 0, len(channels))
 	for _, ch := range channels {
@@ -157,6 +162,9 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 // Results are cached per model ID and invalidated when channel count, latest update time, or model update time changes.
 func (s *DefaultSelector) resolveAssociations(ctx context.Context, model *ent.Model, associations []*objects.ModelAssociation) ([]*ChannelModelsCandidate, error) {
 	channels := s.ChannelService.GetEnabledChannels()
+	channels = lo.Filter(channels, func(ch *biz.Channel, _ int) bool {
+		return !ch.Channel.Type.IsSearch()
+	})
 	if len(channels) == 0 {
 		return []*ChannelModelsCandidate{}, nil
 	}
@@ -448,18 +456,17 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 }
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.
-// Uses OR logic: a candidate passes if its channel contains any of the allowed tags.
 type TagsFilterSelector struct {
-	wrapped     CandidateSelector
-	allowedTags []string
+	wrapped CandidateSelector
+	profile *objects.APIKeyProfile
 }
 
 // WithTagsFilterSelector creates a selector that filters by tags.
-// If allowedTags is empty, all candidates from the wrapped selector are returned.
-func WithTagsFilterSelector(wrapped CandidateSelector, allowedTags []string) *TagsFilterSelector {
+// If the profile does not specify channel tags, all candidates from the wrapped selector are returned.
+func WithTagsFilterSelector(wrapped CandidateSelector, profile *objects.APIKeyProfile) *TagsFilterSelector {
 	return &TagsFilterSelector{
-		wrapped:     wrapped,
-		allowedTags: allowedTags,
+		wrapped: wrapped,
+		profile: profile,
 	}
 }
 
@@ -469,25 +476,12 @@ func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*C
 		return nil, err
 	}
 
-	// If no allowed tags specified, return all candidates
-	if len(s.allowedTags) == 0 {
+	if s.profile == nil || len(s.profile.ChannelTags) == 0 {
 		return candidates, nil
 	}
 
-	// Build allowed set for O(1) lookup
-	allowedSet := lo.SliceToMap(s.allowedTags, func(tag string) (string, struct{}) {
-		return tag, struct{}{}
-	})
-
-	// Filter candidates: keep only those whose channel has at least one allowed tag (OR logic)
 	candidates = lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
-		for _, tag := range c.Channel.Tags {
-			if _, ok := allowedSet[tag]; ok {
-				return true
-			}
-		}
-
-		return false
+		return s.profile.MatchChannelTags(c.Channel.Tags)
 	})
 
 	return candidates, nil

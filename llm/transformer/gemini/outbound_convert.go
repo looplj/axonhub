@@ -2,28 +2,28 @@ package gemini
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/pkg/xjson"
-	"github.com/looplj/axonhub/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	geminioai "github.com/looplj/axonhub/llm/transformer/gemini/openai"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // convertLLMToGeminiRequest converts unified Request to Gemini GenerateContentRequest.
 func convertLLMToGeminiRequest(chatReq *llm.Request) *GenerateContentRequest {
-	return convertLLMToGeminiRequestWithConfig(chatReq, nil)
+	return convertLLMToGeminiRequestWithConfig(chatReq, nil, shared.TransportScope{})
 }
 
 // convertLLMToGeminiRequestWithConfig converts unified Request to Gemini GenerateContentRequest with config.
 //
 //nolint:maintidx // Checked.
-func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *GenerateContentRequest {
+func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config, scope shared.TransportScope) *GenerateContentRequest {
 	req := &GenerateContentRequest{}
 
 	// Convert generation config
@@ -157,6 +157,9 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 			switch strings.ToLower(chatReq.ReasoningEffort) {
 			case "none", "low", "medium", "high":
 				thinkingConfig.ThinkingLevel = chatReq.ReasoningEffort
+			case "xhigh":
+				// "xhigh" comes from Anthropic "max"; Gemini's highest level is "high".
+				thinkingConfig.ThinkingLevel = "high"
 			default:
 				// For non-standard effort values, convert to budget
 				thinkingBudget := reasoningEffortToThinkingBudgetWithConfig(chatReq.ReasoningEffort, config)
@@ -177,7 +180,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	// Convert ResponseFormat to ResponseSchema and ResponseMIMEType
 	if chatReq.ResponseFormat != nil {
 		if chatReq.ResponseFormat.Type == "json_schema" && len(chatReq.ResponseFormat.JSONSchema) > 0 {
-			gc.ResponseSchema = chatReq.ResponseFormat.JSONSchema
+			gc.ResponseJsonSchema = extractJSONSchema(chatReq.ResponseFormat.JSONSchema)
 			gc.ResponseMIMEType = "application/json"
 			hasGenerationConfig = true
 		} else if chatReq.ResponseFormat.Type == "json_object" {
@@ -213,13 +216,16 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 		case "tool":
 			// Tool response - need to find the corresponding function call
-			content := convertLLMToolResultToGeminiContent(&msg, contents)
-			if content != nil {
-				contents = append(contents, content)
+			// Group consecutive tool messages into a single Content entry
+			toolContent := convertLLMToolResultToGeminiContent(&msg, contents)
+			if isPreviousContentToolResponse(contents) {
+				contents[len(contents)-1].Parts = append(contents[len(contents)-1].Parts, toolContent.Parts...)
+			} else {
+				contents = append(contents, toolContent)
 			}
 
 		default:
-			content := convertLLMMessageToGeminiContent(&msg)
+			content := convertLLMMessageToGeminiContent(&msg, scope)
 			if content != nil {
 				contents = append(contents, content)
 			}
@@ -288,22 +294,25 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 		req.ToolConfig = convertLLMToolChoiceToGeminiToolConfig(chatReq.ToolChoice)
 	}
 
+	// Convert safety settings from TransformerMetadata
+	if safetySettings := extractSafetySettingsFromMetadata(chatReq.TransformerMetadata); len(safetySettings) > 0 {
+		req.SafetySettings = safetySettings
+	}
+
+	// Convert image config from TransformerMetadata
+	if imageConfig := extractImageConfigFromMetadata(chatReq.TransformerMetadata); imageConfig != nil {
+		if req.GenerationConfig == nil {
+			req.GenerationConfig = &GenerationConfig{}
+		}
+
+		req.GenerationConfig.ImageConfig = imageConfig
+	}
+
 	return req
 }
 
-// Handle both parameter formats
-// Priority: if ParametersJsonSchema is present, use it; otherwise use Parameters.
-func cleanSchema(schema json.RawMessage) json.RawMessage {
-	cleaned, err := xjson.CleanSchema(schema, "$schema", "additionalProperties", "")
-	if err != nil {
-		return schema // ignore error and use original
-	}
-
-	return cleaned
-}
-
 // convertLLMMessageToGeminiContent converts an LLM Message to Gemini Content.
-func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
+func convertLLMMessageToGeminiContent(msg *llm.Message, scope shared.TransportScope) *Content {
 	if msg == nil {
 		return nil
 	}
@@ -319,11 +328,12 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		lastPart              *Part
 	)
 
-	// Add reasoning content (thinking) first if present
+	// Add reasoning content (thinking) first if present.
+	reasoningContent := msg.ReasoningContent
 
-	if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
+	if reasoningContent != nil && *reasoningContent != "" {
 		p := &Part{
-			Text:    *msg.ReasoningContent,
+			Text:    *reasoningContent,
 			Thought: true,
 		}
 		parts = append(parts, p)
@@ -353,10 +363,26 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 						lastPart = geminiPart
 					}
 				}
+			case "video_url":
+				if part.VideoURL != nil && part.VideoURL.URL != "" {
+					geminiPart := convertVideoURLToGeminiPart(part.VideoURL)
+					if geminiPart != nil {
+						parts = append(parts, geminiPart)
+						lastPart = geminiPart
+					}
+				}
 			case "document":
 				// Handle document type (PDF, Word, etc.)
 				if part.Document != nil && part.Document.URL != "" {
 					geminiPart := convertDocumentURLToGeminiPart(part.Document)
+					if geminiPart != nil {
+						parts = append(parts, geminiPart)
+						lastPart = geminiPart
+					}
+				}
+			case "input_audio":
+				if part.InputAudio != nil && part.InputAudio.Data != "" {
+					geminiPart := convertAudioToGeminiPart(part.InputAudio)
 					if geminiPart != nil {
 						parts = append(parts, geminiPart)
 						lastPart = geminiPart
@@ -377,6 +403,8 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 	//         Gemini 3 Pro will have the signature on the last part if the model generates a thought.
 	//         Gemini 2.5 won't have a signature in any part.
 
+	hasToolCallThoughtSignature := false
+
 	// Add tool calls
 	for _, toolCall := range msg.ToolCalls {
 		var args map[string]any
@@ -391,6 +419,10 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 				Args: args,
 			},
 		}
+		if signature := getOutbountGeminiToolCallThoughtSignature(toolCall, scope); signature != nil {
+			part.ThoughtSignature = *signature
+			hasToolCallThoughtSignature = true
+		}
 
 		parts = append(parts, part)
 
@@ -400,21 +432,26 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		}
 	}
 
-	// https://ai.google.dev/gemini-api/docs/gemini-3#migrating_from_other_models
-	// If there are tool calls but no thought signature, use a default one.
-	// This field is not compatible with OpenAI sdk, so we use the default value.
-	// We try the best to support this fields to keep this fields in the chat conversions, so we use the RedactedReasoningContent to hold the field,
-	// And this field will be preserved during claude code trace, will not degrade the gemini model performance.
-	msgThoughtSignature := shared.DecodeGeminiThoughtSignature(msg.RedactedReasoningContent)
-	if len(msg.ToolCalls) > 0 && msgThoughtSignature == nil {
-		msgThoughtSignature = lo.ToPtr("context_engineering_is_the_way_to_go")
-	}
+	if !hasToolCallThoughtSignature {
+		// https://ai.google.dev/gemini-api/docs/gemini-3#migrating_from_other_models
+		// If there are tool calls but no thought signature, use a default one.
+		// This field is not compatible with OpenAI sdk, so we use the default value.
+		// We try the best to support this fields to keep this fields in the chat conversions, so we use the ReasoningSignature to hold the field,
+		// And this field will be preserved during claude code trace, will not degrade the gemini model performance.
+		msgThoughtSignature := shared.DecodeGeminiThoughtSignatureInScope(msg.ReasoningSignature, scope)
+		if msgThoughtSignature == nil && scope.Footprint() == "" && msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
+			msgThoughtSignature = msg.ReasoningSignature
+		}
 
-	if msgThoughtSignature != nil && lastPart != nil {
-		if firstFunctionCallPart != nil {
-			firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
-		} else {
-			lastPart.ThoughtSignature = *msgThoughtSignature
+		if (len(msg.ToolCalls) > 0 || msg.ReasoningContent != nil) && msgThoughtSignature == nil {
+			msgThoughtSignature = lo.ToPtr(ContextEngineeringThoughtSignature)
+		}
+		if msgThoughtSignature != nil && (firstFunctionCallPart != nil || lastPart != nil) {
+			if firstFunctionCallPart != nil {
+				firstFunctionCallPart.ThoughtSignature = *msgThoughtSignature
+			} else {
+				lastPart.ThoughtSignature = *msgThoughtSignature
+			}
 		}
 	}
 
@@ -442,15 +479,18 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
 	}
 
-	fp := &FunctionResponse{
-		ID:       lo.FromPtr(msg.ToolCallID),
-		Name:     lo.FromPtr(msg.ToolCallName),
-		Response: responseData,
+	toolCallID := lo.FromPtr(msg.ToolCallID)
+
+	// Anthropic's tool result doesn't have name, so we need to find it by tool call id.
+	toolCallName := lo.FromPtr(msg.ToolCallName)
+	if toolCallName == "" {
+		toolCallName = findToolNameByToolCallID(contents, toolCallID)
 	}
 
-	// Anthropic‘s tool result doesn't have name, so we need to find it by tool call id.
-	if fp.Name == "" && fp.ID != "" {
-		fp.Name = findToolNameByToolCallID(contents, fp.ID)
+	fp := &FunctionResponse{
+		ID:       toolCallID,
+		Name:     toolCallName,
+		Response: responseData,
 	}
 
 	content.Parts = []*Part{
@@ -472,10 +512,23 @@ func findToolNameByToolCallID(contents []*Content, id string) string {
 	return ""
 }
 
+// isPreviousContentToolResponse checks if the last content entry is a tool response
+// (user role with functionResponse parts) for grouping consecutive tool messages.
+func isPreviousContentToolResponse(contents []*Content) bool {
+	if len(contents) == 0 {
+		return false
+	}
+	lastContent := contents[len(contents)-1]
+	if lastContent.Role != "user" || len(lastContent.Parts) == 0 {
+		return false
+	}
+	return lastContent.Parts[0].FunctionResponse != nil
+}
+
 // convertGeminiToLLMResponse converts Gemini GenerateContentResponse to unified Response.
 // When isStream is true, it sets Delta instead of Message in choices.
-func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bool) *llm.Response {
-	resp, _ := convertGeminiToLLMResponseWithState(geminiResp, isStream, 0)
+func convertGeminiToLLMResponse(geminiResp *GenerateContentResponse, isStream bool, scope shared.TransportScope) *llm.Response {
+	resp, _ := convertGeminiToLLMResponseWithState(geminiResp, isStream, 0, scope)
 	return resp
 }
 
@@ -484,7 +537,7 @@ const TransformerMetadataKeyGroundingMetadata = "gemini_grounding_metadata"
 
 // convertGeminiToLLMResponseWithState converts Gemini response with tool call index tracking.
 // Returns the response and the next tool call index to use.
-func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int) (*llm.Response, int) {
+func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, isStream bool, toolCallIndexOffset int, scope shared.TransportScope) (*llm.Response, int) {
 	resp := &llm.Response{
 		ID:          geminiResp.ResponseID,
 		Model:       geminiResp.ModelVersion,
@@ -512,7 +565,7 @@ func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, is
 	for _, candidate := range geminiResp.Candidates {
 		var choice llm.Choice
 
-		choice, nextToolCallIndex = convertGeminiCandidateToLLMChoiceWithState(candidate, isStream, nextToolCallIndex)
+		choice, nextToolCallIndex = convertGeminiCandidateToLLMChoiceWithState(candidate, isStream, nextToolCallIndex, scope)
 
 		// Store GroundingMetadata in Choice.TransformerMetadata if present
 		if candidate.GroundingMetadata != nil {
@@ -534,7 +587,7 @@ func convertGeminiToLLMResponseWithState(geminiResp *GenerateContentResponse, is
 
 // convertGeminiCandidateToLLMChoiceWithState converts a Gemini Candidate to an LLM Choice with tool call index tracking.
 // Returns the choice and the next tool call index to use.
-func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream bool, toolCallIndexOffset int) (llm.Choice, int) {
+func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream bool, toolCallIndexOffset int, scope shared.TransportScope) (llm.Choice, int) {
 	choice := llm.Choice{
 		Index: int(candidate.Index),
 	}
@@ -556,8 +609,8 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 		)
 
 		for _, part := range candidate.Content.Parts {
-			if msg.RedactedReasoningContent == nil && part.ThoughtSignature != "" {
-				msg.RedactedReasoningContent = shared.EncodeGeminiThoughtSignature(&part.ThoughtSignature)
+			if msg.ReasoningSignature == nil && part.ThoughtSignature != "" {
+				msg.ReasoningSignature = shared.EncodeGeminiThoughtSignatureInScope(&part.ThoughtSignature, scope)
 			}
 
 			switch {
@@ -604,9 +657,10 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 				}
 				// Gemini may response empty tool call ID.
 				if tc.ID == "" {
-					tc.ID = uuid.NewString()
+					tc.ID = fmt.Sprintf("tc_%s", uuid.NewString())
 				}
 
+				setOutboundToolCallThoughtSignature(&tc, part.ThoughtSignature, scope)
 				toolCalls = append(toolCalls, tc)
 				nextToolCallIndex++
 			}
@@ -655,4 +709,18 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 	choice.FinishReason = convertGeminiFinishReasonToLLM(candidate.FinishReason, hasToolCall)
 
 	return choice, nextToolCallIndex
+}
+
+// extractJSONSchema extracts the inner "schema" field from an OpenAI json_schema object.
+// OpenAI format: {"name": "...", "schema": {...}, "strict": ...}
+// Gemini expects the schema content directly without the wrapper.
+func extractJSONSchema(raw json.RawMessage) json.RawMessage {
+	var wrapper struct {
+		Schema json.RawMessage `json:"schema,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.Schema) > 0 {
+		return wrapper.Schema
+	}
+
+	return raw
 }

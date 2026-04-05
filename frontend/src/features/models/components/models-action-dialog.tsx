@@ -23,7 +23,7 @@ import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
 import { useCreateModel, useUpdateModel } from '../data/models';
 import { useDevelopersData } from '../data/providers';
 import { type Provider, type ProviderModel } from '../data/providers.schema';
-import { CreateModelInput, createModelInputSchema, UpdateModelInput, ModelCard, updateModelInputSchema } from '../data/schema';
+import { CreateModelInput, createModelInputSchema, UpdateModelInput, ModelCard, ModelType, modelTypeSchema, updateModelInputSchema } from '../data/schema';
 
 function isDeveloper(provider: string) {
   return DEVELOPER_IDS.includes(provider);
@@ -150,17 +150,19 @@ export function ModelsActionDialog() {
       setSelectedProvider(providerId);
       setDeveloperSearchValue(providerId);
       form.setValue('developer', providerId);
-      const icon = DEVELOPER_ICONS[providerId] || providerId;
-      form.setValue('icon', icon);
-      setModelIdInput('');
-      setModelIdSearchValue('');
-      form.setValue('modelID', '');
-      form.setValue('name', '');
-      form.setValue('group', '');
-      form.setValue('modelCard', {});
-      setSelectedModelCard({});
+      if (!isEdit) {
+        const icon = DEVELOPER_ICONS[providerId] || providerId;
+        form.setValue('icon', icon);
+        setModelIdInput('');
+        setModelIdSearchValue('');
+        form.setValue('modelID', '');
+        form.setValue('name', '');
+        form.setValue('group', '');
+        form.setValue('modelCard', {});
+        setSelectedModelCard({});
+      }
     },
-    [form]
+    [form, isEdit]
   );
 
   const handleModelIdChange = useCallback(
@@ -168,12 +170,16 @@ export function ModelsActionDialog() {
       setModelIdInput(modelId);
       setModelIdSearchValue(modelId);
       form.setValue('modelID', modelId);
-  
+
       const selectedModel = selectedProviderModels.find((m: ProviderModel) => m.id === modelId);
-  
-      if (selectedModel) {
+
+      if (selectedModel && !isEdit) {
         form.setValue('name', selectedModel.display_name || selectedModel.name || '');
         form.setValue('group', selectedModel.family || selectedProvider);
+        const normalizedType = selectedModel.type?.replace(/-/g, '_');
+        if (normalizedType && modelTypeSchema.safeParse(normalizedType).success) {
+          form.setValue('type', normalizedType as ModelType);
+        }
         const modelCard: ModelCard = {
           reasoning: {
             supported: selectedModel.reasoning?.supported || false,
@@ -207,13 +213,16 @@ export function ModelsActionDialog() {
         setSelectedModelCard(currentModelCard || {});
       }
     },
-    [selectedProviderModels, selectedProvider, form]
+    [selectedProviderModels, selectedProvider, form, isEdit]
   );
 
   const onSubmit = async (data: CreateModelInput) => {
     try {
       if (isEdit && currentRow) {
         const updateData: UpdateModelInput = {
+          developer: data.developer,
+          modelID: data.modelID,
+          type: data.type,
           name: data.name,
           icon: data.icon,
           group: data.group,
@@ -251,9 +260,9 @@ export function ModelsActionDialog() {
 
         <Form {...form}>
           <form id='model-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col overflow-hidden'>
-            <div className='flex min-h-0 flex-1 gap-6 overflow-hidden'>
+            <div className='flex min-h-0 flex-1 gap-6 overflow-x-auto overflow-y-hidden md:overflow-hidden'>
               {/* Left Panel - Basic Information */}
-              <div className='min-h-0 w-1/3 flex-shrink-0 overflow-y-auto pr-4'>
+              <div className='min-h-0 w-1/2 md:w-1/3 flex-shrink-0 overflow-y-auto pr-4'>
                 <div className='space-y-4'>
                   <FormField
                     control={form.control}
@@ -262,20 +271,16 @@ export function ModelsActionDialog() {
                       <FormItem>
                         <FormLabel>{t('models.fields.developer')}</FormLabel>
                         <FormControl>
-                          {isEdit ? (
-                            <Input value={field.value} disabled={true} className='bg-muted' />
-                          ) : (
-                            <AutoComplete
-                              selectedValue={selectedProvider}
-                              onSelectedValueChange={handleProviderChange}
-                              searchValue={developerSearchValue}
-                              onSearchValueChange={setDeveloperSearchValue}
-                              items={developerOptions}
-                              placeholder={t('models.fields.selectDeveloper')}
-                              emptyMessage={t('models.fields.noModels')}
-                              portalContainer={dialogContent}
-                            />
-                          )}
+                          <AutoComplete
+                            selectedValue={selectedProvider}
+                            onSelectedValueChange={handleProviderChange}
+                            searchValue={developerSearchValue}
+                            onSearchValueChange={setDeveloperSearchValue}
+                            items={developerOptions}
+                            placeholder={t('models.fields.selectDeveloper')}
+                            emptyMessage={t('models.fields.noModels')}
+                            portalContainer={dialogContent}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -289,9 +294,7 @@ export function ModelsActionDialog() {
                       <FormItem>
                         <FormLabel>{t('models.fields.modelId')}</FormLabel>
                         <FormControl>
-                          {isEdit ? (
-                            <Input value={field.value} disabled={true} className='bg-muted' />
-                          ) : selectedProvider && modelIdOptions.length > 0 ? (
+                          {selectedProvider && modelIdOptions.length > 0 ? (
                             <AutoComplete
                               selectedValue={modelIdInput}
                               onSelectedValueChange={handleModelIdChange}
@@ -375,7 +378,7 @@ export function ModelsActionDialog() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t('models.fields.type')}</FormLabel>
-                        <Select disabled={isEdit} value={field.value} onValueChange={field.onChange}>
+                        <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -385,6 +388,8 @@ export function ModelsActionDialog() {
                             <SelectItem value='chat'>{t('models.types.chat')}</SelectItem>
                             <SelectItem value='embedding'>{t('models.types.embedding')}</SelectItem>
                             <SelectItem value='rerank'>{t('models.types.rerank')}</SelectItem>
+                            <SelectItem value='image_generation'>{t('models.types.image_generation')}</SelectItem>
+                            <SelectItem value='video_generation'>{t('models.types.video_generation')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -409,7 +414,7 @@ export function ModelsActionDialog() {
               </div>
 
               {/* Right Panel - Model Card Fields */}
-              <div className='min-h-0 flex-1 overflow-y-auto border-l pl-6'>
+              <div className='min-h-0 min-w-full md:min-w-0 flex-1 overflow-y-auto border-l pl-6'>
                 <div className='space-y-4 pb-4'>
                   <h3 className='text-lg font-semibold'>{t('models.modelCard.title')}</h3>
 

@@ -49,6 +49,7 @@ func (Channel) Fields() []ent.Field {
 				"deepseek",
 				"deepseek_anthropic",
 				"deepinfra",
+				"fireworks",
 				"doubao",
 				"doubao_anthropic",
 				"moonshot",
@@ -60,6 +61,7 @@ func (Channel) Fields() []ent.Field {
 				"anthropic_fake",
 				"openai_fake",
 				"openrouter",
+				"xiaomi",
 				"xai",
 				"ppio",
 				"siliconflow",
@@ -74,11 +76,15 @@ func (Channel) Fields() []ent.Field {
 				"bailian",
 				"jina",
 				"github",
+				"github_copilot",
 				"claudecode",
 				"cerebras",
 				"antigravity",
+				"nanogpt",
+				"search_tavily",
+				"search_brave",
+				"search_exa",
 			).
-			Immutable().
 			Annotations(
 				entgql.OrderField("TYPE"),
 			),
@@ -93,8 +99,19 @@ func (Channel) Fields() []ent.Field {
 				entgql.OrderField("STATUS"),
 			),
 		field.JSON("credentials", objects.ChannelCredentials{}).Sensitive(),
+		field.JSON("disabled_api_keys", []objects.DisabledAPIKey{}).
+			Default([]objects.DisabledAPIKey{}).
+			Optional().
+			Sensitive().
+			Comment("Disabled API keys with metadata (sensitive; requires channel write permission)").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 		field.Strings("supported_models"),
+		field.Strings("manual_models").Optional().Default([]string{}),
 		field.Bool("auto_sync_supported_models").Default(false),
+		field.String("auto_sync_model_pattern").Optional().Default("").
+			Comment("Regex pattern to filter models during auto-sync. Empty string means no filtering."),
 		field.Strings("tags").Optional().Default([]string{}),
 		field.String("default_test_model"),
 		field.JSON("policies", objects.ChannelPolicies{}).

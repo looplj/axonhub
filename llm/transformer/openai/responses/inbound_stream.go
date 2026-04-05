@@ -8,7 +8,6 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/dumper"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -38,6 +37,7 @@ type responsesInboundStream struct {
 	hasResponseCreated      bool
 	hasMessageItemStarted   bool
 	hasReasoningItemStarted bool
+	hasReasoningSummaryPart bool
 	hasContentPartStarted   bool
 	hasFinished             bool
 	responseCompleted       bool
@@ -72,9 +72,6 @@ type responsesInboundStream struct {
 	eventQueue []*httpclient.StreamEvent
 	queueIndex int
 	err        error
-
-	// For dumping
-	sourceEvents []*llm.Response
 }
 
 func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
@@ -122,10 +119,6 @@ func (s *responsesInboundStream) Next() bool {
 	chunk := s.source.Current()
 	if chunk == nil {
 		return s.Next() // Try next chunk
-	}
-
-	if dumper.Enabled() {
-		s.sourceEvents = append(s.sourceEvents, chunk)
 	}
 
 	// Handle [DONE] marker
@@ -201,8 +194,14 @@ func (s *responsesInboundStream) Next() bool {
 			}
 		}
 
-		// Handle reasoning signature delta
+		// Handle encrypted reasoning content delta (stored in ReasoningSignature)
 		if choice.Delta != nil && choice.Delta.ReasoningSignature != nil && *choice.Delta.ReasoningSignature != "" {
+			// Encrypted reasoning may appear without any summary text. Ensure we still
+			// create a reasoning output item so encrypted_content isn't silently dropped.
+			if err := s.ensureReasoningItemStarted(); err != nil {
+				s.err = err
+				return false
+			}
 			s.accumulatedReasoningSignature.WriteString(*choice.Delta.ReasoningSignature)
 		}
 
@@ -265,33 +264,15 @@ func (s *responsesInboundStream) Next() bool {
 }
 
 func (s *responsesInboundStream) handleReasoningContent(content *string) error {
-	// Start reasoning output item if not started
-	if !s.hasReasoningItemStarted {
-		// Close any previous output item
-		if err := s.closeCurrentOutputItem(); err != nil {
-			return err
-		}
+	if err := s.ensureReasoningItemStarted(); err != nil {
+		return err
+	}
 
-		s.hasReasoningItemStarted = true
-
-		s.currentItemID = generateItemID()
-		item := &Item{
-			ID:      s.currentItemID,
-			Type:    "reasoning",
-			Status:  lo.ToPtr("in_progress"),
-			Summary: []ReasoningSummary{},
-		}
+	// Start reasoning summary part only when we actually have summary text.
+	if !s.hasReasoningSummaryPart {
+		s.hasReasoningSummaryPart = true
 
 		err := s.enqueueEvent(&StreamEvent{
-			Type:        StreamEventTypeOutputItemAdded,
-			OutputIndex: s.outputIndex,
-			Item:        item,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
-		}
-
-		err = s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeReasoningSummaryPartAdded,
 			ItemID:       &s.currentItemID,
 			OutputIndex:  s.outputIndex,
@@ -316,6 +297,40 @@ func (s *responsesInboundStream) handleReasoningContent(content *string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to enqueue reasoning_summary_text.delta event: %w", err)
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) ensureReasoningItemStarted() error {
+	// Start reasoning output item if not started.
+	if s.hasReasoningItemStarted {
+		return nil
+	}
+
+	// Close any previous output item.
+	if err := s.closeCurrentOutputItem(); err != nil {
+		return err
+	}
+
+	s.hasReasoningItemStarted = true
+	s.hasReasoningSummaryPart = false
+
+	s.currentItemID = generateItemID()
+	item := &Item{
+		ID:      s.currentItemID,
+		Type:    "reasoning",
+		Status:  lo.ToPtr("in_progress"),
+		Summary: []ReasoningSummary{},
+	}
+
+	err := s.enqueueEvent(&StreamEvent{
+		Type:        StreamEventTypeOutputItemAdded,
+		OutputIndex: s.outputIndex,
+		Item:        item,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
 	}
 
 	return nil
@@ -416,73 +431,144 @@ func (s *responsesInboundStream) handleToolCalls(toolCalls []llm.ToolCall) error
 
 		// Initialize tool call tracking if needed
 		if _, ok := s.toolCalls[toolCallIndex]; !ok {
-			if err := s.closeCurrentContentPart(); err != nil {
+			if err := s.initToolCall(tc); err != nil {
 				return err
 			}
-
-			if err := s.closeCurrentOutputItem(); err != nil {
-				return err
-			}
-
-			s.toolCalls[toolCallIndex] = &llm.ToolCall{
-				Index: toolCallIndex,
-				ID:    tc.ID,
-				Type:  tc.Type,
-				Function: llm.FunctionCall{
-					Name:      tc.Function.Name,
-					Arguments: "",
-				},
-			}
-
-			// Emit output_item.added for function_call
-			itemID := tc.ID
-			if itemID == "" {
-				itemID = generateItemID()
-			}
-
-			item := &Item{
-				ID:     itemID,
-				Type:   "function_call",
-				Status: lo.ToPtr("in_progress"),
-				CallID: tc.ID,
-				Name:   tc.Function.Name,
-			}
-
-			err := s.enqueueEvent(&StreamEvent{
-				Type:        StreamEventTypeOutputItemAdded,
-				OutputIndex: s.outputIndex,
-				Item:        item,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
-			}
-
-			s.toolCallItemStarted[toolCallIndex] = true
-			s.toolCallOutputIndex[toolCallIndex] = s.outputIndex
-			s.currentItemID = itemID
-			s.outputIndex++
 		}
 
-		// Accumulate arguments
-		s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
-
-		// Emit function_call_arguments.delta
-		if tc.Function.Arguments != "" {
-			itemID := s.toolCalls[toolCallIndex].ID
-			if itemID == "" {
-				itemID = s.currentItemID
+		// Process delta based on tool type
+		switch {
+		case tc.ResponseCustomToolCall != nil:
+			if err := s.handleCustomToolCallDelta(tc); err != nil {
+				return err
 			}
-
-			err := s.enqueueEvent(&StreamEvent{
-				Type:         StreamEventTypeFunctionCallArgumentsDelta,
-				ItemID:       &itemID,
-				OutputIndex:  s.outputIndex - 1,
-				ContentIndex: lo.ToPtr(0),
-				Delta:        tc.Function.Arguments,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to enqueue function_call_arguments.delta event: %w", err)
+		default:
+			if err := s.handleFunctionCallDelta(tc); err != nil {
+				return err
 			}
+		}
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
+	toolCallIndex := tc.Index
+
+	if err := s.closeCurrentContentPart(); err != nil {
+		return err
+	}
+
+	if err := s.closeCurrentOutputItem(); err != nil {
+		return err
+	}
+
+	s.toolCalls[toolCallIndex] = &llm.ToolCall{
+		Index:                  toolCallIndex,
+		ID:                     tc.ID,
+		Type:                   tc.Type,
+		ResponseCustomToolCall: tc.ResponseCustomToolCall,
+		Function: llm.FunctionCall{
+			Name:      tc.Function.Name,
+			Arguments: "",
+		},
+	}
+
+	itemID := tc.ID
+	if itemID == "" {
+		itemID = generateItemID()
+	}
+
+	switch {
+	case tc.ResponseCustomToolCall != nil:
+		item := &Item{
+			ID:     itemID,
+			Type:   "custom_tool_call",
+			Status: lo.ToPtr("in_progress"),
+			CallID: tc.ResponseCustomToolCall.CallID,
+			Name:   tc.ResponseCustomToolCall.Name,
+			Input:  lo.ToPtr(""),
+		}
+
+		err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeOutputItemAdded,
+			OutputIndex: s.outputIndex,
+			Item:        item,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
+		}
+
+	default:
+		item := &Item{
+			ID:     itemID,
+			Type:   "function_call",
+			Status: lo.ToPtr("in_progress"),
+			CallID: tc.ID,
+			Name:   tc.Function.Name,
+		}
+
+		err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeOutputItemAdded,
+			OutputIndex: s.outputIndex,
+			Item:        item,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue output_item.added event: %w", err)
+		}
+	}
+
+	s.toolCallItemStarted[toolCallIndex] = true
+	s.toolCallOutputIndex[toolCallIndex] = s.outputIndex
+	s.currentItemID = itemID
+	s.outputIndex++
+
+	return nil
+}
+
+func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error {
+	toolCallIndex := tc.Index
+	s.toolCalls[toolCallIndex].Function.Arguments += tc.Function.Arguments
+
+	if tc.Function.Arguments != "" {
+		itemID := s.toolCalls[toolCallIndex].ID
+		if itemID == "" {
+			itemID = s.currentItemID
+		}
+
+		err := s.enqueueEvent(&StreamEvent{
+			Type:         StreamEventTypeFunctionCallArgumentsDelta,
+			ItemID:       &itemID,
+			OutputIndex:  s.toolCallOutputIndex[toolCallIndex],
+			ContentIndex: lo.ToPtr(0),
+			Delta:        tc.Function.Arguments,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue function_call_arguments.delta event: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) error {
+	toolCallIndex := tc.Index
+	s.toolCalls[toolCallIndex].ResponseCustomToolCall.Input += tc.ResponseCustomToolCall.Input
+
+	if tc.ResponseCustomToolCall.Input != "" {
+		itemID := s.toolCalls[toolCallIndex].ID
+		if itemID == "" {
+			itemID = s.currentItemID
+		}
+
+		err := s.enqueueEvent(&StreamEvent{
+			Type:        StreamEventTypeCustomToolCallInputDelta,
+			ItemID:      &itemID,
+			OutputIndex: s.toolCallOutputIndex[toolCallIndex],
+			Delta:       tc.ResponseCustomToolCall.Input,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue custom_tool_call_input.delta event: %w", err)
 		}
 	}
 
@@ -496,51 +582,64 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 
 	s.hasReasoningItemStarted = false
 	fullReasoning := s.accumulatedReasoning.String()
+	hadSummaryPart := s.hasReasoningSummaryPart
 
-	// Emit reasoning_summary_text.done with accumulated text
-	err := s.enqueueEvent(&StreamEvent{
-		Type:         StreamEventTypeReasoningSummaryTextDone,
-		ItemID:       &s.currentItemID,
-		OutputIndex:  s.outputIndex,
-		SummaryIndex: lo.ToPtr(0),
-		Text:         fullReasoning,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to enqueue reasoning_summary_text.done event: %w", err)
-	}
+	// Emit reasoning summary done events only if we started the summary part.
+	if hadSummaryPart {
+		// Emit reasoning_summary_text.done with accumulated text
+		err := s.enqueueEvent(&StreamEvent{
+			Type:         StreamEventTypeReasoningSummaryTextDone,
+			ItemID:       &s.currentItemID,
+			OutputIndex:  s.outputIndex,
+			SummaryIndex: lo.ToPtr(0),
+			Text:         fullReasoning,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue reasoning_summary_text.done event: %w", err)
+		}
 
-	// Emit reasoning_summary_part.done
-	err = s.enqueueEvent(&StreamEvent{
-		Type:         StreamEventTypeReasoningSummaryPartDone,
-		ItemID:       &s.currentItemID,
-		OutputIndex:  s.outputIndex,
-		SummaryIndex: lo.ToPtr(0),
-		Part: &StreamEventContentPart{
-			Type: "summary_text",
-			Text: &fullReasoning,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to enqueue reasoning_summary_part.done event: %w", err)
+		// Emit reasoning_summary_part.done
+		err = s.enqueueEvent(&StreamEvent{
+			Type:         StreamEventTypeReasoningSummaryPartDone,
+			ItemID:       &s.currentItemID,
+			OutputIndex:  s.outputIndex,
+			SummaryIndex: lo.ToPtr(0),
+			Part: &StreamEventContentPart{
+				Type: "summary_text",
+				Text: &fullReasoning,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enqueue reasoning_summary_part.done event: %w", err)
+		}
 	}
+	s.hasReasoningSummaryPart = false
 
 	// Emit output_item.done with complete reasoning item
 	var encryptedContent *string
 	if s.accumulatedReasoningSignature.Len() > 0 {
-		encryptedContent = lo.ToPtr(s.accumulatedReasoningSignature.String())
+		encoded := s.accumulatedReasoningSignature.String()
+		encryptedContent = lo.ToPtr(encoded)
+	}
+
+	var summary []ReasoningSummary
+	if hadSummaryPart {
+		summary = []ReasoningSummary{{
+			Type: "summary_text",
+			Text: fullReasoning,
+		}}
+	} else {
+		summary = []ReasoningSummary{}
 	}
 
 	item := Item{
-		ID:   s.currentItemID,
-		Type: "reasoning",
-		Summary: []ReasoningSummary{{
-			Type: "summary_text",
-			Text: fullReasoning,
-		}},
+		ID:               s.currentItemID,
+		Type:             "reasoning",
+		Summary:          summary,
 		EncryptedContent: encryptedContent,
 	}
 
-	err = s.enqueueEvent(&StreamEvent{
+	err := s.enqueueEvent(&StreamEvent{
 		Type:        StreamEventTypeOutputItemDone,
 		OutputIndex: s.outputIndex,
 		Item:        &item,
@@ -655,13 +754,50 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 
 	// Close any open tool call items
 	for idx, tc := range s.toolCalls {
-		if s.toolCallItemStarted[idx] {
-			// Emit function_call_arguments.done
-			itemID := tc.ID
-			if itemID == "" {
-				itemID = s.currentItemID
+		if !s.toolCallItemStarted[idx] {
+			continue
+		}
+
+		itemID := tc.ID
+		if itemID == "" {
+			itemID = s.currentItemID
+		}
+
+		switch {
+		case tc.ResponseCustomToolCall != nil:
+			// Custom tool call - emit custom_tool_call_input.done then output_item.done
+			fullInput := tc.ResponseCustomToolCall.Input
+
+			err := s.enqueueEvent(&StreamEvent{
+				Type:        StreamEventTypeCustomToolCallInputDone,
+				ItemID:      &itemID,
+				OutputIndex: s.toolCallOutputIndex[idx],
+				Input:       fullInput,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to enqueue custom_tool_call_input.done event: %w", err)
 			}
 
+			item := Item{
+				ID:     itemID,
+				Type:   "custom_tool_call",
+				Status: lo.ToPtr("completed"),
+				CallID: tc.ResponseCustomToolCall.CallID,
+				Name:   tc.ResponseCustomToolCall.Name,
+				Input:  lo.ToPtr(fullInput),
+			}
+
+			err = s.enqueueEvent(&StreamEvent{
+				Type:        StreamEventTypeOutputItemDone,
+				OutputIndex: s.toolCallOutputIndex[idx],
+				Item:        &item,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to enqueue output_item.done event: %w", err)
+			}
+
+		default:
+			// Function call - emit function_call_arguments.done then output_item.done
 			err := s.enqueueEvent(&StreamEvent{
 				Type:        StreamEventTypeFunctionCallArgumentsDone,
 				ItemID:      &itemID,
@@ -672,7 +808,6 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				return fmt.Errorf("failed to enqueue function_call_arguments.done event: %w", err)
 			}
 
-			// Emit output_item.done
 			item := Item{
 				ID:        itemID,
 				Type:      "function_call",
@@ -690,9 +825,9 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 			if err != nil {
 				return fmt.Errorf("failed to enqueue output_item.done event: %w", err)
 			}
-
-			s.toolCallItemStarted[idx] = false
 		}
+
+		s.toolCallItemStarted[idx] = false
 	}
 
 	return nil
@@ -718,10 +853,6 @@ func (s *responsesInboundStream) Err() error {
 }
 
 func (s *responsesInboundStream) Close() error {
-	if dumper.Enabled() {
-		dumper.DumpObject(s.ctx, s.sourceEvents, "responses-inbound-stream")
-	}
-
 	return s.source.Close()
 }
 

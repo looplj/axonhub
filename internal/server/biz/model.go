@@ -9,12 +9,14 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type ModelServiceParams struct {
@@ -216,6 +218,9 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 	}
 
 	mut := svc.entFromContext(ctx).Model.UpdateOneID(id).
+		SetNillableDeveloper(input.Developer).
+		SetNillableModelID(input.ModelID).
+		SetNillableType(input.Type).
 		SetNillableName(input.Name).
 		SetNillableGroup(input.Group).
 		SetNillableStatus(input.Status).
@@ -353,9 +358,9 @@ func (svc *ModelService) GetModelByModelID(ctx context.Context, modelID string, 
 		First(ctx)
 }
 
-// ListConfiguredModels retrieves all models that have explicit Model entity configuration.
+// ListModels retrieves all models that have explicit Model entity configuration.
 // Returns models with their status.
-func (svc *ModelService) ListConfiguredModels(ctx context.Context, statusIn []model.Status) ([]*ModelIdentityWithStatus, error) {
+func (svc *ModelService) ListModels(ctx context.Context, statusIn []model.Status) ([]*ModelIdentityWithStatus, error) {
 	query := svc.entFromContext(ctx).Model.Query()
 
 	// Apply status filter if provided
@@ -395,6 +400,8 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		profile  *objects.APIKeyProfile
 	)
 
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadChannels)
+
 	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
 		profile = apiKey.GetActiveProfile()
 
@@ -406,58 +413,41 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 
 		if profile != nil && len(profile.ChannelTags) > 0 {
 			channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
-				return len(lo.Intersect(profile.ChannelTags, ch.Tags)) > 0
+				return profile.MatchChannelTags(ch.Tags)
 			})
 		}
 	}
 
-	settings := svc.systemService.ModelSettingsOrDefault(ctx)
-	if !settings.QueryAllChannelModels {
-		query := svc.entFromContext(ctx).
-			Model.
-			Query().
-			Where(model.StatusEQ(model.StatusEnabled))
-		if profile != nil && len(profile.ModelIDs) > 0 {
-			query = query.Where(model.ModelIDIn(profile.ModelIDs...))
-		}
-
-		enabledModels, err := query.All(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list configured models: %w", err)
-		}
-
-		var models []ModelFacade
-
-		for _, model := range enabledModels {
-			if model.Settings == nil {
-				continue
-			}
-
-			associations := MatchAssociations(model.Settings.Associations, channels)
-			if len(associations) > 0 {
-				models = append(models, ModelFacade{
-					ID:          model.ModelID,
-					DisplayName: model.ModelID,
-					CreatedAt:   model.CreatedAt,
-					Created:     model.CreatedAt.Unix(),
-					OwnedBy:     "configured",
-				})
-			}
-		}
-
-		return models, nil
+	// Query configured Model entities (used in both modes)
+	configuredModels, err := svc.queryConfiguredModelFacades(ctx, profile, channels)
+	if err != nil {
+		return nil, err
 	}
 
+	settings := svc.systemService.ModelSettingsOrDefault(ctx)
+	if !settings.QueryAllChannelModels {
+		return configuredModels, nil
+	}
+
+	// QueryAllChannelModels=true: merge configured models (higher priority) with channel models
 	var (
-		models   []ModelFacade
-		modelSet = make(map[string]bool)
+		models   = configuredModels
+		modelSet = make(map[string]bool, len(configuredModels))
 	)
 
+	for _, m := range configuredModels {
+		modelSet[m.ID] = true
+	}
+
 	for _, ch := range channels {
+		if ch.Channel.Type.IsSearch() {
+			continue
+		}
+
 		entries := ch.GetModelEntries()
 
 		for requestModel := range entries {
-			if _, ok := modelSet[requestModel]; ok {
+			if modelSet[requestModel] {
 				continue
 			}
 
@@ -477,6 +467,44 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		models = lo.Filter(models, func(m ModelFacade, _ int) bool {
 			return lo.Contains(profile.ModelIDs, m.ID)
 		})
+	}
+
+	return models, nil
+}
+
+// queryConfiguredModelFacades queries enabled Model entities and returns them as ModelFacades
+// filtered by profile modelIDs and channel associations.
+func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, profile *objects.APIKeyProfile, channels []*Channel) ([]ModelFacade, error) {
+	query := svc.entFromContext(ctx).
+		Model.
+		Query().
+		Where(model.StatusEQ(model.StatusEnabled))
+	if profile != nil && len(profile.ModelIDs) > 0 {
+		query = query.Where(model.ModelIDIn(profile.ModelIDs...))
+	}
+
+	enabledModels, err := query.All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list configured models: %w", err)
+	}
+
+	var models []ModelFacade
+
+	for _, m := range enabledModels {
+		if m.Settings == nil {
+			continue
+		}
+
+		associations := MatchAssociations(m.Settings.Associations, channels)
+		if len(associations) > 0 {
+			models = append(models, ModelFacade{
+				ID:          m.ModelID,
+				DisplayName: m.ModelID,
+				CreatedAt:   m.CreatedAt,
+				Created:     m.CreatedAt.Unix(),
+				OwnedBy:     "configured",
+			})
+		}
 	}
 
 	return models, nil
@@ -544,6 +572,14 @@ func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*Unas
 }
 
 func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.ModelAssociation) []*UnassociatedChannel {
+	if len(channels) == 0 {
+		return []*UnassociatedChannel{}
+	}
+
+	channels = lo.Filter(channels, func(ch *ent.Channel, _ int) bool {
+		return !ch.Type.IsSearch()
+	})
+
 	if len(channels) == 0 {
 		return []*UnassociatedChannel{}
 	}

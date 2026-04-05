@@ -1,0 +1,100 @@
+
+query AgentBootstrap {
+  agentBootstrap {
+    agentID
+    agentName
+    agentInstanceName
+    createdByUserName
+    model
+    reasoningEffort
+    systemPrompt
+    tools { name description parameters config }
+    skills { name content entrypoint args }
+    builtinTools { name enabled order config }
+    builtinSkills { name enabled order config }
+  }
+}
+
+mutation RegisterAgentInstance($input: RegisterAgentInstanceInput!) {
+  registerAgentInstance(input: $input) {
+    id
+  }
+}
+
+mutation HeartbeatAgentInstance($input: HeartbeatAgentInstanceInput!) {
+  heartbeatAgentInstance(input: $input)
+}
+
+query PullAgentMessages($input: PullAgentMessagesInput!) {
+  pullAgentMessages(input: $input) {
+    id
+    text
+    type
+    correlationID
+    content
+    externalMessageID
+    sequence
+  }
+}
+
+mutation AckAgentMessages($input: AckAgentMessagesInput!) {
+  ackAgentMessages(input: $input)
+}
+
+mutation ReplyMessage($input: ReplyMessageInput!) {
+  replyMessage(input: $input) {
+    id
+  }
+}
+
+query PeerAgents {
+  peerAgents {
+    agentID
+    agentInstanceID
+    name
+    description
+    status
+  }
+}
+
+mutation SendAgentMessage($input: SendAgentMessageInput!) {
+  sendAgentMessage(input: $input) {
+    id
+  }
+}
+
+mutation DeployAxonClaw($input: DeployAxonClawInput!) {
+  deployAxonClaw(input: $input) {
+    success
+    error
+    instance {
+      id
+      agentID
+      lastHeartbeatAt
+    }
+  }
+}
+
+query AvailableModels {
+  availableModels {
+    id
+    name
+    ownedBy
+    type
+    icon
+    description
+    contextLength
+    maxOutputTokens
+    capabilities {
+      vision
+      toolCall
+      reasoning
+    }
+    pricing {
+      input
+      output
+      cacheRead
+      cacheWrite
+    }
+  }
+}

@@ -19,6 +19,7 @@ import {
   IconCopy,
   IconCoin,
   IconLoader2,
+  IconKeyOff,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -26,7 +27,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
@@ -82,7 +83,10 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const { setOpen, setCurrentRow } = useChannels();
   const { channelPermissions } = usePermissions();
   const testChannel = useTestChannel();
+  const isArchived = channel.status === 'archived';
   const hasError = !!channel.errorMessage;
+  const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
+  const isSearch = channel.type.startsWith('search_');
 
   const handleDefaultTest = async () => {
     try {
@@ -100,8 +104,8 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
 
   const handleEdit = useCallback(() => {
     setCurrentRow(channel);
-    setOpen('edit');
-  }, [channel, setCurrentRow, setOpen]);
+    setOpen(isSearch ? 'editSearch' : 'edit');
+  }, [channel, isSearch, setCurrentRow, setOpen]);
 
   return (
     <div className='flex items-center justify-center gap-1'>
@@ -113,44 +117,61 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size='sm' variant='outline' className='h-8 w-8 p-0'>
+          <Button size='sm' variant='outline' className='h-8 w-8 p-0' data-testid='row-actions'>
             <DotsHorizontalIcon className='h-3 w-3' />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-[160px]'>
-          <DropdownMenuItem onClick={handleOpenTestDialog}>
-            <IconPlayerPlay size={16} className='mr-2' />
-            {t('channels.actions.test')}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {!isSearch && (
+            <DropdownMenuItem onClick={handleOpenTestDialog}>
+              <IconPlayerPlay size={16} className='mr-2' />
+              {t('channels.actions.test')}
+            </DropdownMenuItem>
+          )}
+          {!isSearch && <DropdownMenuSeparator />}
 
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(channel);
-              setOpen('duplicate');
+              setOpen(isSearch ? 'duplicateSearch' : 'duplicate');
             }}
           >
             <IconCopy size={16} className='mr-2' />
             {t('common.actions.duplicate')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('modelMapping');
-            }}
-          >
-            <IconRoute size={16} className='mr-2' />
-            {t('channels.dialogs.settings.modelMapping.title')}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('price');
-            }}
-          >
-            <IconCoin size={16} className='mr-2' />
-            {t('channels.actions.modelPrice')}
-          </DropdownMenuItem>
+          {!isSearch && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('modelMapping');
+              }}
+            >
+              <IconRoute size={16} className='mr-2' />
+              {t('channels.dialogs.settings.modelMapping.title')}
+            </DropdownMenuItem>
+          )}
+          {!isSearch && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('price');
+              }}
+            >
+              <IconCoin size={16} className='mr-2' />
+              {t('channels.actions.modelPrice')}
+            </DropdownMenuItem>
+          )}
+          {isSearch && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('searchPrice');
+              }}
+            >
+              <IconCoin size={16} className='mr-2' />
+              {t('channels.actions.searchPrice')}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(channel);
@@ -170,35 +191,51 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconNetwork size={16} className='mr-2' />
             {t('channels.dialogs.proxy.action')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('transformOptions');
-            }}
-          >
-            <IconTransform size={16} className='mr-2' />
-            {t('channels.dialogs.transformOptions.action')}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('errorResolved');
-            }}
-            className='text-green-500!'
-          >
-            <IconCheck size={16} className='mr-2' />
-            {t('channels.actions.errorResolved')}
-          </DropdownMenuItem>
+          {!isSearch && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('transformOptions');
+              }}
+            >
+              <IconTransform size={16} className='mr-2' />
+              {t('channels.dialogs.transformOptions.action')}
+            </DropdownMenuItem>
+          )}
+          {hasDisabledAPIKeys && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('disabledAPIKeys');
+              }}
+              className='text-orange-500!'
+            >
+              <IconKeyOff size={16} className='mr-2' />
+              {t('channels.actions.disabledAPIKeys', { count: channel.disabledAPIKeys?.length ?? 0 })}
+            </DropdownMenuItem>
+          )}
+          {hasError && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('errorResolved');
+              }}
+              className='text-green-600!'
+            >
+              <IconCheck size={16} className='mr-2' />
+              {t('channels.actions.markErrorResolved')}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => {
               setCurrentRow(channel);
               setOpen('archive');
             }}
-            className='text-orange-500!'
+            className={isArchived ? 'text-green-600!' : 'text-orange-500!'}
           >
-            <IconArchive size={16} className='mr-2' />
-            {t('common.buttons.archive')}
+            {isArchived ? <IconCheck size={16} className='mr-2' /> : <IconArchive size={16} className='mr-2' />}
+            {t(isArchived ? 'common.buttons.restore' : 'common.buttons.archive')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -236,17 +273,57 @@ const ExpandCell = ({ row }: { row: any }) => (
 
 // ExpandCell.displayName = 'ExpandCell'; // Removed since it's not memoized now, but can keep if desired
 
+function getChannelWebsiteURL(baseURL: string): string | null {
+  try {
+    const url = new URL(baseURL);
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function getProxyURLSummary(proxyURL: string): { label: string; detail?: string } {
+  try {
+    const url = new URL(proxyURL);
+    const pathname = url.pathname === '/' ? '' : url.pathname;
+    return {
+      label: url.host || proxyURL,
+      detail: `${url.protocol}//${url.host}${pathname}`,
+    };
+  } catch {
+    return { label: proxyURL };
+  }
+}
+
 // Memoized cell components to avoid recreating on every render
 const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
   const channel = row.original;
   const hasError = !!channel.errorMessage;
+  const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
+  const hasDisabledKeys = disabledKeysCount > 0;
+  const websiteURL = getChannelWebsiteURL(channel.baseURL);
+
+  const nameElement = websiteURL ? (
+    <a
+      href={websiteURL}
+      target='_blank'
+      rel='noopener noreferrer'
+      className={cn('truncate font-medium hover:underline', hasError ? 'text-destructive' : '')}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {row.getValue('name')}
+    </a>
+  ) : (
+    <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+  );
 
   const content = (
     <div className='flex justify-center'>
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-        <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+        {!hasError && hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
+        {nameElement}
       </div>
     </div>
   );
@@ -259,10 +336,21 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
           <div className='space-y-1'>
             <p className='text-destructive text-sm'>
               {t(`channels.messages.${channel.errorMessage}`, {
-                fallback: channel.errorMessage,
+                defaultValue: channel.errorMessage,
               })}
             </p>
           </div>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (hasDisabledKeys) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent>
+          <p className='text-sm text-amber-500'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
         </TooltipContent>
       </Tooltip>
     );
@@ -319,6 +407,56 @@ const TagsCell = memo(({ row }: { row: Row<Channel> }) => {
 });
 
 TagsCell.displayName = 'TagsCell';
+
+const ProxyCell = memo(({ row }: { row: Row<Channel> }) => {
+  const { t } = useTranslation();
+  const proxy = row.original.settings?.proxy;
+
+  if (!proxy || proxy.type === 'disabled') {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  if (proxy.type === 'environment') {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>{t('channels.dialogs.proxy.types.environment')}</span>
+      </div>
+    );
+  }
+
+  const proxyURL = proxy.url?.trim();
+  if (!proxyURL) {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  const { label, detail } = getProxyURLSummary(proxyURL);
+  const content = (
+    <div className='flex justify-center'>
+      <span className='max-w-40 truncate font-mono text-xs'>{label}</span>
+    </div>
+  );
+
+  if (detail && detail !== label) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent>{detail}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+});
+
+ProxyCell.displayName = 'ProxyCell';
 
 const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
@@ -428,11 +566,9 @@ const OrderingWeightCell = memo(({ row }: { row: Row<Channel> }) => {
   }
 
   return (
-    <div className='flex items-center justify-center gap-2 group cursor-pointer' onDoubleClick={handleDoubleClick}>
-      <span className={cn('font-mono text-sm', initialWeight == null && 'text-muted-foreground')}>
-        {initialWeight ?? '-'}
-      </span>
-      {updateChannel.isPending && <IconLoader2 className='h-3 w-3 animate-spin text-muted-foreground' />}
+    <div className='group flex cursor-pointer items-center justify-center gap-2' onDoubleClick={handleDoubleClick}>
+      <span className={cn('font-mono text-sm', initialWeight == null && 'text-muted-foreground')}>{initialWeight ?? '-'}</span>
+      {updateChannel.isPending && <IconLoader2 className='text-muted-foreground h-3 w-3 animate-spin' />}
     </div>
   );
 });
@@ -580,6 +716,17 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         className: 'max-w-64 text-center',
       },
       enableSorting: false,
+    },
+    {
+      id: 'proxy',
+      accessorFn: (row) => row.settings?.proxy?.url ?? row.settings?.proxy?.type ?? '',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
+      cell: ProxyCell,
+      meta: {
+        className: 'w-32 min-w-32 text-center',
+      },
+      enableSorting: false,
+      enableHiding: true,
     },
     {
       id: 'health',

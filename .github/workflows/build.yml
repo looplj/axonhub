@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - unstable
+      - development
+      - 'release/**'
+  pull_request:
+    branches:
+      - unstable
+      - development
+      - 'release/**'
+
+env:
+  GO111MODULE: on
+
+jobs:
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          stable: true
+          cache: true
+
+      - name: Build main binary
+        run: go build -ldflags "-s -w" -tags=nomsgpack -o axonhub ./cmd/axonhub
+
+      - name: Build schema generator
+        run: cd cmd/schema && go build -o schema
+
+      - name: Build llm module packages
+        run: cd llm && go build ./...
+
+      - name: Verify all packages compile
+        run: go build ./...
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm build

@@ -22,6 +22,7 @@ interface BaseNavItem {
 type NavLink = BaseNavItem & {
   url: LinkProps['to'];
   items?: never;
+  mobileOnly?: boolean;
 };
 
 type NavCollapsible = BaseNavItem & {

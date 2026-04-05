@@ -8,9 +8,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 )
 
 func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
@@ -32,13 +32,21 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				require.Equal(t, llm.APIFormatOpenAIResponse, result.APIFormat)
 
 				// Verify messages
-				require.Len(t, result.Messages, 7)
+				require.Len(t, result.Messages, 8)
 				require.Equal(t, "user", result.Messages[0].Role)
 
 				// For single input_text, content should be a simple string (optimized path)
 				require.NotNil(t, result.Messages[0].Content.Content)
 				require.Equal(t, "My name is Alice.", *result.Messages[0].Content.Content)
 				require.Nil(t, result.Messages[0].Content.MultipleContent)
+
+				// Verify compaction message (index 6, between last assistant and last user)
+				compactionMsg := result.Messages[6]
+				require.Equal(t, "assistant", compactionMsg.Role)
+				require.Len(t, compactionMsg.Content.MultipleContent, 1)
+				require.Equal(t, "compaction", compactionMsg.Content.MultipleContent[0].Type)
+				require.NotNil(t, compactionMsg.Content.MultipleContent[0].Compact)
+				require.Equal(t, "gAAAAABpxygtxqpBeKM2Wvlv2Owja3cpZk2rbpgr8iXCl9Zhl7JAJCVy7nIP===", compactionMsg.Content.MultipleContent[0].Compact.EncryptedContent)
 			},
 		},
 		{
@@ -46,6 +54,60 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 			requestFile:  "tool.request.json",
 			expectedFile: "llm-tool.request.json",
 			validate: func(t *testing.T, result *llm.Request, httpReq *httpclient.Request) {
+			},
+		},
+		{
+			name:         "custom tool request transformation",
+			requestFile:  "custom_tool.request.json",
+			expectedFile: "llm-custom_tool.request.json",
+			validate: func(t *testing.T, result *llm.Request, httpReq *httpclient.Request) {
+				t.Helper()
+
+				require.Equal(t, "gpt-5.1-codex-mini", result.Model)
+				require.Equal(t, llm.APIFormatOpenAIResponse, result.APIFormat)
+
+				// Verify messages: system (instructions) + user + assistant (custom_tool_call) + tool
+				require.Len(t, result.Messages, 4)
+
+				// First message: system from instructions
+				require.Equal(t, "system", result.Messages[0].Role)
+				require.NotNil(t, result.Messages[0].Content.Content)
+				require.Equal(t, "You are a helpful coding assistant.", *result.Messages[0].Content.Content)
+
+				// Second message: user
+				require.Equal(t, "user", result.Messages[1].Role)
+				require.NotNil(t, result.Messages[1].Content.Content)
+				require.Equal(t, "Add a hello world function to main.py", *result.Messages[1].Content.Content)
+
+				// Third message: assistant with custom_tool_call
+				require.Equal(t, "assistant", result.Messages[2].Role)
+				require.Len(t, result.Messages[2].ToolCalls, 1)
+				tc := result.Messages[2].ToolCalls[0]
+				require.Equal(t, "call_patch_001", tc.ID)
+				require.Equal(t, llm.ToolTypeResponsesCustomTool, tc.Type)
+				require.NotNil(t, tc.ResponseCustomToolCall)
+				require.Equal(t, "call_patch_001", tc.ResponseCustomToolCall.CallID)
+				require.Equal(t, "apply_patch", tc.ResponseCustomToolCall.Name)
+				require.Contains(t, tc.ResponseCustomToolCall.Input, "*** Begin Patch")
+
+				// Fourth message: tool response
+				require.Equal(t, "tool", result.Messages[3].Role)
+				require.NotNil(t, result.Messages[3].ToolCallID)
+				require.Equal(t, "call_patch_001", *result.Messages[3].ToolCallID)
+				require.NotNil(t, result.Messages[3].Content.Content)
+				require.Equal(t, "Patch applied successfully.", *result.Messages[3].Content.Content)
+
+				// Verify tools: custom tool + function tool
+				require.Len(t, result.Tools, 2)
+				require.Equal(t, llm.ToolTypeResponsesCustomTool, result.Tools[0].Type)
+				require.NotNil(t, result.Tools[0].ResponseCustomTool)
+				require.Equal(t, "apply_patch", result.Tools[0].ResponseCustomTool.Name)
+				require.NotNil(t, result.Tools[0].ResponseCustomTool.Format)
+				require.Equal(t, "grammar", result.Tools[0].ResponseCustomTool.Format.Type)
+				require.Equal(t, "lark", result.Tools[0].ResponseCustomTool.Format.Syntax)
+
+				require.Equal(t, "function", result.Tools[1].Type)
+				require.Equal(t, "shell_command", result.Tools[1].Function.Name)
 			},
 		},
 		{
@@ -74,6 +136,7 @@ func TestInboundTransformer_TransformRequest_WithTestData(t *testing.T) {
 				require.Equal(t, "assistant", result.Messages[2].Role)
 				require.NotNil(t, result.Messages[2].ReasoningContent)
 				require.Contains(t, *result.Messages[2].ReasoningContent, "我需要检查暂存区的内容")
+				require.NotNil(t, result.Messages[2].ReasoningSignature)
 				require.Contains(t, *result.Messages[2].ReasoningSignature, "encrypted_content")
 				require.Len(t, result.Messages[2].ToolCalls, 1)
 				require.Equal(t, "call_00_bVbIarCdMYjXCUsTd9MEJVia", result.Messages[2].ToolCalls[0].ID)
@@ -190,6 +253,32 @@ func TestInboundTransformer_TransformResponse_WithTestData(t *testing.T) {
 				output1 := resp.Output[1]
 				require.Equal(t, "function_call", output1.Type)
 				require.Equal(t, "call_bd313747960f44af8bef50dc27f0f07e", output1.ID)
+			},
+		},
+		{
+			name:         "custom tool call response transformation",
+			responseFile: "llm-custom_tool.response.json",
+			expectedFile: "custom_tool.response.json",
+			validate: func(t *testing.T, result *httpclient.Response, resp *Response) {
+				t.Helper()
+
+				require.Equal(t, http.StatusOK, result.StatusCode)
+
+				// Verify response properties
+				require.Equal(t, "response", resp.Object)
+				require.Equal(t, "gpt-5.1-codex-mini", resp.Model)
+				require.NotNil(t, resp.Status)
+				require.Equal(t, "completed", *resp.Status)
+
+				// Verify custom tool call output
+				require.Len(t, resp.Output, 1)
+				output := resp.Output[0]
+				require.Equal(t, "custom_tool_call", output.Type)
+				require.Equal(t, "call_patch_002", output.CallID)
+				require.Equal(t, "apply_patch", output.Name)
+				require.NotNil(t, output.Input)
+				require.Contains(t, *output.Input, "*** Begin Patch")
+				require.Contains(t, *output.Input, "*** Update File: main.py")
 			},
 		},
 	}

@@ -65,7 +65,7 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
       toast.success(t('channels.messages.updateSuccess'));
       onOpenChange(false);
     } catch (_error) {
-      toast.error(t('channels.messages.updateError'));
+      toast.error(t('common.errors.internalServerError'));
     }
   };
 

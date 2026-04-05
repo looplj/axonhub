@@ -36,10 +36,16 @@ type Channel struct {
 	Status channel.Status `json:"status,omitempty"`
 	// Credentials holds the value of the "credentials" field.
 	Credentials objects.ChannelCredentials `json:"-"`
+	// Disabled API keys with metadata (sensitive; requires channel write permission)
+	DisabledAPIKeys []objects.DisabledAPIKey `json:"-"`
 	// SupportedModels holds the value of the "supported_models" field.
 	SupportedModels []string `json:"supported_models,omitempty"`
+	// ManualModels holds the value of the "manual_models" field.
+	ManualModels []string `json:"manual_models,omitempty"`
 	// AutoSyncSupportedModels holds the value of the "auto_sync_supported_models" field.
 	AutoSyncSupportedModels bool `json:"auto_sync_supported_models,omitempty"`
+	// Regex pattern to filter models during auto-sync. Empty string means no filtering.
+	AutoSyncModelPattern string `json:"auto_sync_model_pattern,omitempty"`
 	// Tags holds the value of the "tags" field.
 	Tags []string `json:"tags,omitempty"`
 	// DefaultTestModel holds the value of the "default_test_model" field.
@@ -148,13 +154,13 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channel.FieldCredentials, channel.FieldSupportedModels, channel.FieldTags, channel.FieldPolicies, channel.FieldSettings:
+		case channel.FieldCredentials, channel.FieldDisabledAPIKeys, channel.FieldSupportedModels, channel.FieldManualModels, channel.FieldTags, channel.FieldPolicies, channel.FieldSettings:
 			values[i] = new([]byte)
 		case channel.FieldAutoSyncSupportedModels:
 			values[i] = new(sql.NullBool)
 		case channel.FieldID, channel.FieldDeletedAt, channel.FieldOrderingWeight:
 			values[i] = new(sql.NullInt64)
-		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark:
+		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldAutoSyncModelPattern, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark:
 			values[i] = new(sql.NullString)
 		case channel.FieldCreatedAt, channel.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -229,6 +235,14 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field credentials: %w", err)
 				}
 			}
+		case channel.FieldDisabledAPIKeys:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field disabled_api_keys", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.DisabledAPIKeys); err != nil {
+					return fmt.Errorf("unmarshal field disabled_api_keys: %w", err)
+				}
+			}
 		case channel.FieldSupportedModels:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field supported_models", values[i])
@@ -237,11 +251,25 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field supported_models: %w", err)
 				}
 			}
+		case channel.FieldManualModels:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field manual_models", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.ManualModels); err != nil {
+					return fmt.Errorf("unmarshal field manual_models: %w", err)
+				}
+			}
 		case channel.FieldAutoSyncSupportedModels:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field auto_sync_supported_models", values[i])
 			} else if value.Valid {
 				_m.AutoSyncSupportedModels = value.Bool
+			}
+		case channel.FieldAutoSyncModelPattern:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field auto_sync_model_pattern", values[i])
+			} else if value.Valid {
+				_m.AutoSyncModelPattern = value.String
 			}
 		case channel.FieldTags:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -382,11 +410,19 @@ func (_m *Channel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("credentials=<sensitive>")
 	builder.WriteString(", ")
+	builder.WriteString("disabled_api_keys=<sensitive>")
+	builder.WriteString(", ")
 	builder.WriteString("supported_models=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SupportedModels))
 	builder.WriteString(", ")
+	builder.WriteString("manual_models=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ManualModels))
+	builder.WriteString(", ")
 	builder.WriteString("auto_sync_supported_models=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AutoSyncSupportedModels))
+	builder.WriteString(", ")
+	builder.WriteString("auto_sync_model_pattern=")
+	builder.WriteString(_m.AutoSyncModelPattern)
 	builder.WriteString(", ")
 	builder.WriteString("tags=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Tags))

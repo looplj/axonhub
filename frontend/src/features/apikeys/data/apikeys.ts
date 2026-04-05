@@ -1,12 +1,22 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
-import type { ApiKey, ApiKeyConnection, CreateApiKeyInput, UpdateApiKeyInput, UpdateApiKeyProfilesInput } from './schema';
-import { apiKeyConnectionSchema, apiKeySchema } from './schema';
+import type {
+  ApiKey,
+  ApiKeyConnection,
+  ApiKeyProfileQuotaUsage,
+  ApiKeyTokenUsageStats,
+  CreateApiKeyInput,
+  UpdateApiKeyInput,
+  UpdateApiKeyProfilesInput,
+} from './schema';
+import { apiKeyConnectionSchema, apiKeyProfileQuotaUsageSchema, apiKeySchema, apiKeyTokenUsageStatsSchema } from './schema';
+
+const NOAUTH_API_KEY_TYPE = 'noauth';
 
 // Dynamic GraphQL query builders
 function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
@@ -76,6 +86,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
             modelMappings { from to }
             channelIDs
             channelTags
+            channelTagsMatchMode
             modelIDs
             loadBalanceStrategy
             quota {
@@ -173,6 +184,7 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
           }
           channelIDs
           channelTags
+          channelTagsMatchMode
           modelIDs
           loadBalanceStrategy
           quota {
@@ -209,6 +221,45 @@ const BULK_ARCHIVE_APIKEYS_MUTATION = `
   }
 `;
 
+const APIKEY_QUOTA_USAGES_QUERY = `
+  query APIKeyQuotaUsages($apiKeyId: ID!) {
+    apiKeyQuotaUsages(apiKeyId: $apiKeyId) {
+      profileName
+      quota {
+        requests
+        totalTokens
+        cost
+        period {
+          type
+          pastDuration { value unit }
+          calendarDuration { unit }
+        }
+      }
+      window { start end }
+      usage { requestCount totalTokens totalCost }
+    }
+  }
+`;
+
+const APIKEY_TOKEN_USAGE_STATS_QUERY = `
+  query APIKeyTokenUsageStats($input: APIKeyTokenUsageStatsInput) {
+    apiKeyTokenUsageStats(input: $input) {
+      apiKeyId
+      inputTokens
+      outputTokens
+      cachedTokens
+      reasoningTokens
+      topModels {
+        modelId
+        inputTokens
+        outputTokens
+        cachedTokens
+        reasoningTokens
+      }
+    }
+  }
+`;
+
 // React Query hooks
 export function useApiKeys(
   variables?: {
@@ -238,7 +289,14 @@ export function useApiKeys(
       try {
         const query = buildApiKeysQuery(permissions);
         const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, variables, headers);
+        const mergedVariables = {
+          ...variables,
+          where: {
+            ...variables?.where,
+            typeNotIn: [NOAUTH_API_KEY_TYPE],
+          },
+        };
+        const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, mergedVariables, headers);
         return apiKeyConnectionSchema.parse(data?.apiKeys);
       } catch (error) {
         handleError(error, t('apikeys.errors.fetchData'));
@@ -272,6 +330,74 @@ export function useApiKey(id: string) {
   });
 }
 
+export function useApiKeyQuotaUsages(
+  apiKeyId: string,
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number;
+  }
+) {
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
+
+  return useQuery({
+    queryKey: ['apiKeyQuotaUsages', apiKeyId, selectedProjectId],
+    queryFn: async () => {
+      try {
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ apiKeyQuotaUsages: ApiKeyProfileQuotaUsage[] }>(
+          APIKEY_QUOTA_USAGES_QUERY,
+          { apiKeyId },
+          headers
+        );
+        return apiKeyProfileQuotaUsageSchema.array().parse(data.apiKeyQuotaUsages);
+      } catch (error) {
+        handleError(error, t('apikeys.errors.fetchDetails'));
+        throw error;
+      }
+    },
+    enabled: !!apiKeyId && (options?.enabled ?? true),
+    refetchInterval: options?.refetchInterval,
+  });
+}
+
+export function useApiKeyTokenUsageStats(
+  variables?: {
+    apiKeyIds?: string[];
+    createdAtGTE?: string;
+    createdAtLTE?: string;
+  },
+  options?: {
+    enabled?: boolean;
+  }
+) {
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
+
+  return useQuery({
+    queryKey: ['apiKeyTokenUsageStats', variables, selectedProjectId],
+    queryFn: async () => {
+      try {
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ apiKeyTokenUsageStats: ApiKeyTokenUsageStats[] }>(
+          APIKEY_TOKEN_USAGE_STATS_QUERY,
+          { input: variables && Object.keys(variables).length > 0 ? variables : undefined },
+          headers
+        );
+        return apiKeyTokenUsageStatsSchema.array().parse(data.apiKeyTokenUsageStats);
+      } catch (error) {
+        handleError(error, t('apikeys.errors.fetchUsageStats'));
+        throw error;
+      }
+    },
+    enabled: !!selectedProjectId && (options?.enabled ?? true),
+    placeholderData: keepPreviousData,
+    staleTime: 30000, // Consider data fresh for 30 seconds
+  });
+}
+
 export function useCreateApiKey() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -293,8 +419,8 @@ export function useCreateApiKey() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.createSuccess'));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.createError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -316,8 +442,8 @@ export function useUpdateApiKey() {
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] });
       toast.success(t('apikeys.messages.updateSuccess'));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.updateError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -343,8 +469,8 @@ export function useUpdateApiKeyStatus() {
             : t('apikeys.status.archived');
       toast.success(t('apikeys.messages.statusUpdateSuccess', { status: statusText }));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.statusUpdateError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -364,8 +490,8 @@ export function useUpdateApiKeyProfiles() {
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] });
       toast.success(t('apikeys.messages.profilesUpdateSuccess'));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.profilesUpdateError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -385,8 +511,8 @@ export function useBulkDisableApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkDisableSuccess', { count: variables.length }));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.bulkDisableError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -406,8 +532,8 @@ export function useBulkEnableApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkEnableSuccess', { count: variables.length }));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.bulkEnableError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -427,8 +553,8 @@ export function useBulkArchiveApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkArchiveSuccess', { count: variables.length }));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.bulkArchiveError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

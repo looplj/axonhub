@@ -180,3 +180,7 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 - **No trace recorded** – Ensure the request is authenticated and the project ID is resolved (API Key must belong to a project).
 - **Missing thread linkage** – Provide `AH-Thread-Id` or create threads via the API before sending requests.
 - **Unexpected trace IDs** – Check for upstream reverse proxies overriding headers.
+
+### Related Documentation
+- [Request Processing Guide](request-processing.md)
+- [Load Balancing Guide](load-balance.md)

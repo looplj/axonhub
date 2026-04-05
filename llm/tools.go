@@ -10,14 +10,25 @@ import (
 // Tool represents a function tool.
 type Tool struct {
 	// Type is the type of the tool.
-	// Any of "function", "image_generation", or "google" (for Google-specific tools).
-	Type            string           `json:"type"`
-	Function        Function         `json:"function"`
+	// Any of "function", "image_generation", "web_search", or "google" (for Google-specific tools).
+	Type string `json:"type"`
+
+	// Function is the function definition, will be used when Type is "function".
+	Function Function `json:"function"`
+
+	// ImageGeneration is the image generation definition, will be used when Type is "image_generation".
 	ImageGeneration *ImageGeneration `json:"image_generation,omitempty"`
+
+	// WebSearch is the web search definition, will be used when Type is "web_search".
+	WebSearch *WebSearch `json:"web_search,omitempty"`
 
 	// Google contains Google/Gemini-specific grounding tools.
 	// This namespace isolates Google's tools from other providers.
 	Google *GoogleTools `json:"google,omitempty"`
+
+	// ResponseCustomTool is the custom tool definition for OpenAI Responses API.
+	// Will be used when Type is "custom".
+	ResponseCustomTool *ResponseCustomTool `json:"response_custom_tool,omitempty"`
 
 	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
 	// This field is not serialized in JSON.
@@ -55,6 +66,10 @@ type ToolCall struct {
 	Type string `json:"type,omitempty"`
 
 	Function FunctionCall `json:"function"`
+
+	// ResponseCustomToolCall holds the custom tool call data for OpenAI Responses API.
+	// Will be used when Type is "custom".
+	ResponseCustomToolCall *ResponseCustomToolCall `json:"response_custom_tool_call,omitempty"`
 
 	// Index is the index of the tool call in the list of tool calls.
 	// Cannot use omitempty, as an index of 0 would be omitted, which can break consumers.
@@ -202,44 +217,58 @@ func FilterGoogleNativeTools(tools []Tool) []Tool {
 	return filtered
 }
 
-// ContainsAnthropicNativeTools checks if the tools slice contains any Anthropic native tools.
-// Currently, this checks for the web_search function which maps to Anthropic's native
-// web_search_20250305 tool type.
-func ContainsAnthropicNativeTools(tools []Tool) bool {
-	return slices.ContainsFunc(tools, IsAnthropicNativeTool)
+type WebSearch struct {
+	MaxUses        *int64                    `json:"max_uses,omitempty"`
+	Strict         *bool                     `json:"strict,omitempty"`
+	AllowedDomains []string                  `json:"allowed_domains,omitzero"`
+	BlockedDomains []string                  `json:"blocked_domains,omitzero"`
+	UserLocation   WebSearchToolUserLocation `json:"user_location,omitzero"`
 }
 
-// IsAnthropicNativeTool checks if a single tool is an Anthropic native tool.
-// A tool is considered Anthropic native if:
-// 1. It's a function tool with name "web_search" (OpenAI format input), OR
-// 2. It's already transformed to type "web_search_20250305" (Anthropic native format).
-func IsAnthropicNativeTool(tool Tool) bool {
-	// Match function tool with web_search name (OpenAI format input)
-	if tool.Type == ToolTypeFunction && tool.Function.Name == AnthropicWebSearchFunctionName {
-		return true
-	}
-	// Match already-transformed Anthropic native tool type
-	if tool.Type == ToolTypeAnthropicWebSearch {
-		return true
-	}
-
-	return false
+type WebSearchToolUserLocation struct {
+	// The city of the user.
+	City string `json:"city,omitempty"`
+	// The two letter
+	// [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) of the
+	// user.
+	Country string `json:"country,omitempty"`
+	// The region of the user.
+	Region string `json:"region,omitempty"`
+	// The [IANA timezone](https://nodatime.org/TimeZones) of the user.
+	Timezone string `json:"timezone,omitempty"`
+	// This field can be elided, and will marshal its zero value as "approximate".
+	Type string `json:"type"`
 }
 
-// FilterAnthropicNativeTools removes Anthropic native tools from the tools slice.
-// This is useful as a fallback when routing to channels that don't support native tools.
-func FilterAnthropicNativeTools(tools []Tool) []Tool {
-	if len(tools) == 0 {
-		return tools
-	}
+// ResponseCustomTool represents a custom tool definition for the OpenAI Responses API.
+// Custom tools use freeform input (not JSON arguments) and a grammar-based format definition.
+// This is a Responses API-specific tool type.
+type ResponseCustomTool struct {
+	// Name is the name of the custom tool.
+	Name string `json:"name"`
+	// Description is the description of the custom tool.
+	Description string `json:"description,omitempty"`
+	// Format defines the grammar-based format for the custom tool's input.
+	Format *ResponseCustomToolFormat `json:"format,omitempty"`
+}
 
-	filtered := make([]Tool, 0, len(tools))
+// ResponseCustomToolFormat represents the format definition for a custom tool.
+type ResponseCustomToolFormat struct {
+	// Type is the format type, e.g. "grammar".
+	Type string `json:"type"`
+	// Syntax is the grammar syntax, e.g. "lark".
+	Syntax string `json:"syntax,omitempty"`
+	// Definition is the grammar definition string.
+	Definition string `json:"definition,omitempty"`
+}
 
-	for _, tool := range tools {
-		if !IsAnthropicNativeTool(tool) {
-			filtered = append(filtered, tool)
-		}
-	}
-
-	return filtered
+// ResponseCustomToolCall represents a custom tool call from the OpenAI Responses API.
+// Unlike function calls which use JSON arguments, custom tool calls use freeform input text.
+type ResponseCustomToolCall struct {
+	// CallID is the identifier used to map this custom tool call to a tool call output.
+	CallID string `json:"call_id"`
+	// Name is the name of the custom tool being called.
+	Name string `json:"name"`
+	// Input is the freeform input for the custom tool call generated by the model.
+	Input string `json:"input"`
 }

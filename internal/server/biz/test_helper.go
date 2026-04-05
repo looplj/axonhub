@@ -5,6 +5,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func NewChannelServiceForTest(client *ent.Client) *ChannelService {
@@ -20,6 +21,7 @@ func NewChannelServiceForTest(client *ent.Client) *ChannelService {
 		Executor:      executors.NewPoolScheduleExecutor(),
 		Ent:           client,
 		SystemService: mockSysSvc,
+		HttpClient:    httpclient.NewHttpClient(),
 	})
 
 	svc.SetEnabledChannelsForTest([]*Channel{})

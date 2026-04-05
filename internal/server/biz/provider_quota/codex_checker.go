@@ -4,15 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
-	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
 // CodexUsageResponse matches ChatGPT backend API response.
@@ -37,12 +35,12 @@ type CodeUsageWindow struct {
 }
 
 type CodexQuotaChecker struct {
-	httpClient *http.Client
+	httpClient *httpclient.HttpClient
 }
 
-func NewCodexQuotaChecker() *CodexQuotaChecker {
+func NewCodexQuotaChecker(httpClient *httpclient.HttpClient) *CodexQuotaChecker {
 	return &CodexQuotaChecker{
-		httpClient: &http.Client{},
+		httpClient: httpClient,
 	}
 }
 
@@ -69,43 +67,25 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 		return QuotaData{}, fmt.Errorf("OAuth missing access_token")
 	}
 
-	// Extract chatgpt_account_id from access_token JWT
-	// The access_token contains the account ID in the https://api.openai.com/auth claim
-	accountID := codex.ExtractChatGPTAccountIDFromJWT(accessToken)
-	if accountID == "" {
-		return QuotaData{}, fmt.Errorf("failed to extract account ID from access_token (invalid JWT format or missing claim)")
+	httpRequest := httpclient.NewRequestBuilder().
+		WithMethod("GET").
+		WithURL("https://chatgpt.com/backend-api/wham/usage").
+		WithBearerToken(accessToken).
+		WithHeader("Content-Type", "application/json").
+		Build()
+
+	// Use proxy-configured HTTP client if available
+	hc := c.httpClient
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
 	}
 
-	// Build request
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://chatgpt.com/backend-api/wham/usage", nil)
-	if err != nil {
-		return QuotaData{}, err
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "codex_cli_rs/0.76.0 (Debian 13.0.0; x86_64) WindowsTerminal")
-	req.Header.Set("Chatgpt-Account-Id", accountID)
-
-	// Execute request
-	resp, err := c.httpClient.Do(req)
+	resp, err := hc.Do(ctx, httpRequest)
 	if err != nil {
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
 	}
 
-	defer func() { _ = resp.Body.Close() }()
-
-	// Read body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return QuotaData{}, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return QuotaData{}, fmt.Errorf("quota request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	return c.parseResponse(body)
+	return c.parseResponse(resp.Body)
 }
 
 func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {

@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/agentthread"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
@@ -84,6 +85,21 @@ func (_c *ThreadCreate) AddTraces(v ...*Trace) *ThreadCreate {
 	return _c.AddTraceIDs(ids...)
 }
 
+// AddAgentThreadIDs adds the "agent_threads" edge to the AgentThread entity by IDs.
+func (_c *ThreadCreate) AddAgentThreadIDs(ids ...int) *ThreadCreate {
+	_c.mutation.AddAgentThreadIDs(ids...)
+	return _c
+}
+
+// AddAgentThreads adds the "agent_threads" edges to the AgentThread entity.
+func (_c *ThreadCreate) AddAgentThreads(v ...*AgentThread) *ThreadCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddAgentThreadIDs(ids...)
+}
+
 // Mutation returns the ThreadMutation object of the builder.
 func (_c *ThreadCreate) Mutation() *ThreadMutation {
 	return _c.mutation
@@ -140,12 +156,6 @@ func (_c *ThreadCreate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *ThreadCreate) check() error {
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Thread.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Thread.updated_at"`)}
-	}
 	if _, ok := _c.mutation.ProjectID(); !ok {
 		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Thread.project_id"`)}
 	}
@@ -220,6 +230,22 @@ func (_c *ThreadCreate) createSpec() (*Thread, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(trace.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.AgentThreadsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   thread.AgentThreadsTable,
+			Columns: []string{thread.AgentThreadsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(agentthread.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

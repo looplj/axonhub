@@ -15,10 +15,12 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 )
 
-type ClaudeCodeQuotaChecker struct{}
+type ClaudeCodeQuotaChecker struct {
+	httpClient *httpclient.HttpClient
+}
 
-func NewClaudeCodeQuotaChecker() *ClaudeCodeQuotaChecker {
-	return &ClaudeCodeQuotaChecker{}
+func NewClaudeCodeQuotaChecker(httpClient *httpclient.HttpClient) *ClaudeCodeQuotaChecker {
+	return &ClaudeCodeQuotaChecker{httpClient: httpClient}
 }
 
 func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
@@ -69,8 +71,11 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 		}).
 		Build()
 
-	// Execute HTTP request
-	httpClient := httpclient.NewHttpClient()
+	// Use proxy-configured HTTP client if available
+	httpClient := c.httpClient
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		httpClient = c.httpClient.WithProxy(ch.Settings.Proxy)
+	}
 
 	httpResponse, err := httpClient.Do(ctx, httpRequest)
 	if err != nil {
@@ -88,7 +93,7 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, error) {
 	// Guard clause - early return if no quota headers
 	if headers.Get("Anthropic-Ratelimit-Unified-Status") == "" {
-		return QuotaData{}, nil
+		return QuotaData{}, fmt.Errorf("missing quota headers")
 	}
 
 	unifiedStatus := headers.Get("Anthropic-Ratelimit-Unified-Status")

@@ -18,6 +18,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 - 缓存控制
 - 图像生成
 - 嵌入和重排序
+- 搜索（Web Search）
 
 ### 统一响应（LLMResponse）
 标准化输出，包含：
@@ -27,6 +28,7 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 - 完成原因
 - 嵌入向量
 - 重排序结果
+- 搜索结果
 
 ---
 
@@ -163,6 +165,9 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 | **Gemini** | Gemini → 统一格式 | 统一格式 → Gemini | Google 原生工具、思考内容支持 |
 | **AI SDK** | AI SDK → 统一格式 | 统一格式 → AI SDK | 兼容 Vercel AI SDK（TextStream/DataStream） |
 | **Jina** | Jina → 统一格式 | 统一格式 → Jina | 嵌入和重排序支持 |
+| **Tavily** | — | 统一格式 → Tavily | Web 搜索（LLM 优化） |
+| **Brave** | — | 统一格式 → Brave | Web 搜索（独立索引） |
+| **Exa** | — | 统一格式 → Exa | 神经语义搜索 |
 
 ### 渠道类型
 
@@ -171,7 +176,6 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 **OpenAI 兼容**：
 - `openai` - OpenAI 官方 API
 - `openai_responses` - OpenAI Responses API
-- `openai_fake` - 测试用模拟渠道
 - `vercel` - Vercel AI SDK
 - `deepseek` - DeepSeek
 - `deepinfra` - DeepInfra
@@ -184,13 +188,16 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 - `aihubmix` - AIHubMix
 - `burncloud` - BurnCloud
 - `github` - GitHub Models
+- `github_copilot` - GitHub Copilot
+- `codex` - GitHub Copilot (Codex API)
 - `claudecode` - Claude Code
+- `cerebras` - Cerebras
+- `nanogpt` - NanoGPT
 
 **Anthropic 兼容**：
 - `anthropic` - Anthropic 官方 API
 - `anthropic_aws` - AWS Bedrock (Claude)
 - `anthropic_gcp` - Google Vertex AI (Claude)
-- `anthropic_fake` - 测试用模拟渠道
 - `deepseek_anthropic` - DeepSeek (Anthropic 格式)
 - `doubao_anthropic` - 豆包 (Anthropic 格式)
 - `moonshot_anthropic` - Moonshot (Anthropic 格式)
@@ -209,10 +216,16 @@ AxonHub 的 LLM Pipeline 采用**转换器链（Transformer Chain）**模式，�
 - `zai` - Zai
 - `xai` - xAI (Grok)
 - `openrouter` - OpenRouter
+- `xiaomi` - Xiaomi MIMO (OpenAI 兼容格式)
 - `longcat` - Longcat
 - `modelscope` - ModelScope
 - `bailian` - 阿里百炼
 - `jina` - Jina AI
+
+**搜索（Search）**：
+- `search_tavily` - Tavily Search（LLM 优化搜索）
+- `search_brave` - Brave Search（独立索引）
+- `search_exa` - Exa Search（神经语义搜索）
 
 ### 多平台支持
 
@@ -489,6 +502,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, response *h
 - `llm/transformer/longcat/` - Longcat Transformer
 - `llm/transformer/modelscope/` - ModelScope Transformer
 - `llm/transformer/bailian/` - 阿里百炼 Transformer
+- `llm/transformer/tavily/` - Tavily Transformer（Web 搜索）
+- `llm/transformer/brave/` - Brave Transformer（Web 搜索）
+- `llm/transformer/exa/` - Exa Transformer（Web 搜索）
 
 ### Pipeline
 - `llm/pipeline/pipeline.go` - 主 Pipeline 实现
@@ -559,6 +575,7 @@ type Retryable interface {
 - `RequestTypeChat` - 聊天完成
 - `RequestTypeEmbedding` - 嵌入
 - `RequestTypeRerank` - 重排序
+- `RequestTypeSearch` - 搜索
 
 ### 4. API 格式支持
 
@@ -573,6 +590,9 @@ type Retryable interface {
 - `APIFormatAiSDKDataStream` - AI SDK 数据流
 - `APIFormatJinaRerank` - Jina 重排序
 - `APIFormatJinaEmbedding` - Jina 嵌入
+- `APIFormatTavilySearch` - Tavily 搜索
+- `APIFormatBraveSearch` - Brave 搜索
+- `APIFormatExaSearch` - Exa 搜索
 
 ### 5. 工具类型支持
 
@@ -591,7 +611,6 @@ type Retryable interface {
 每个 Transformer 都有完整的测试套件：
 - 单元测试（`*_test.go`）
 - 集成测试（`*_integration_test.go`）
-- 假数据测试（`fake.go`, `fake_test.go`）
 
 运行测试：
 ```bash
@@ -622,4 +641,4 @@ go test -tags=integration ./llm/transformer/anthropic/...
 
 ## 许可证
 
-本项目采用 MIT 许可证。详见 LICENSE 文件。
+本目录采用 LGPL 许可证。详见 LICENSE 文件。

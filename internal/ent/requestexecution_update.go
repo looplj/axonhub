@@ -113,6 +113,33 @@ func (_u *RequestExecutionUpdate) ClearErrorMessage() *RequestExecutionUpdate {
 	return _u
 }
 
+// SetResponseStatusCode sets the "response_status_code" field.
+func (_u *RequestExecutionUpdate) SetResponseStatusCode(v int) *RequestExecutionUpdate {
+	_u.mutation.ResetResponseStatusCode()
+	_u.mutation.SetResponseStatusCode(v)
+	return _u
+}
+
+// SetNillableResponseStatusCode sets the "response_status_code" field if the given value is not nil.
+func (_u *RequestExecutionUpdate) SetNillableResponseStatusCode(v *int) *RequestExecutionUpdate {
+	if v != nil {
+		_u.SetResponseStatusCode(*v)
+	}
+	return _u
+}
+
+// AddResponseStatusCode adds value to the "response_status_code" field.
+func (_u *RequestExecutionUpdate) AddResponseStatusCode(v int) *RequestExecutionUpdate {
+	_u.mutation.AddResponseStatusCode(v)
+	return _u
+}
+
+// ClearResponseStatusCode clears the value of the "response_status_code" field.
+func (_u *RequestExecutionUpdate) ClearResponseStatusCode() *RequestExecutionUpdate {
+	_u.mutation.ClearResponseStatusCode()
+	return _u
+}
+
 // SetStatus sets the "status" field.
 func (_u *RequestExecutionUpdate) SetStatus(v requestexecution.Status) *RequestExecutionUpdate {
 	_u.mutation.SetStatus(v)
@@ -308,6 +335,15 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(requestexecution.FieldErrorMessage, field.TypeString)
 	}
+	if value, ok := _u.mutation.ResponseStatusCode(); ok {
+		_spec.SetField(requestexecution.FieldResponseStatusCode, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedResponseStatusCode(); ok {
+		_spec.AddField(requestexecution.FieldResponseStatusCode, field.TypeInt, value)
+	}
+	if _u.mutation.ResponseStatusCodeCleared() {
+		_spec.ClearField(requestexecution.FieldResponseStatusCode, field.TypeInt)
+	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
@@ -441,6 +477,33 @@ func (_u *RequestExecutionUpdateOne) SetNillableErrorMessage(v *string) *Request
 // ClearErrorMessage clears the value of the "error_message" field.
 func (_u *RequestExecutionUpdateOne) ClearErrorMessage() *RequestExecutionUpdateOne {
 	_u.mutation.ClearErrorMessage()
+	return _u
+}
+
+// SetResponseStatusCode sets the "response_status_code" field.
+func (_u *RequestExecutionUpdateOne) SetResponseStatusCode(v int) *RequestExecutionUpdateOne {
+	_u.mutation.ResetResponseStatusCode()
+	_u.mutation.SetResponseStatusCode(v)
+	return _u
+}
+
+// SetNillableResponseStatusCode sets the "response_status_code" field if the given value is not nil.
+func (_u *RequestExecutionUpdateOne) SetNillableResponseStatusCode(v *int) *RequestExecutionUpdateOne {
+	if v != nil {
+		_u.SetResponseStatusCode(*v)
+	}
+	return _u
+}
+
+// AddResponseStatusCode adds value to the "response_status_code" field.
+func (_u *RequestExecutionUpdateOne) AddResponseStatusCode(v int) *RequestExecutionUpdateOne {
+	_u.mutation.AddResponseStatusCode(v)
+	return _u
+}
+
+// ClearResponseStatusCode clears the value of the "response_status_code" field.
+func (_u *RequestExecutionUpdateOne) ClearResponseStatusCode() *RequestExecutionUpdateOne {
+	_u.mutation.ClearResponseStatusCode()
 	return _u
 }
 
@@ -668,6 +731,15 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	}
 	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(requestexecution.FieldErrorMessage, field.TypeString)
+	}
+	if value, ok := _u.mutation.ResponseStatusCode(); ok {
+		_spec.SetField(requestexecution.FieldResponseStatusCode, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedResponseStatusCode(); ok {
+		_spec.AddField(requestexecution.FieldResponseStatusCode, field.TypeInt, value)
+	}
+	if _u.mutation.ResponseStatusCodeCleared() {
+		_spec.ClearField(requestexecution.FieldResponseStatusCode, field.TypeInt)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)

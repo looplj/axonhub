@@ -19,21 +19,24 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/stream"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/search"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 // TestChannelOrchestrator handles channel testing functionality.
 // It is stateless and can be reused across multiple test requests.
 type TestChannelOrchestrator struct {
-	channelService      *biz.ChannelService
-	requestService      *biz.RequestService
-	systemService       *biz.SystemService
-	usageLogService     *biz.UsageLogService
-	httpClient          *httpclient.HttpClient
-	modelCircuitBreaker *biz.ModelCircuitBreaker
-	modelMapper         *ModelMapper
-	loadBalancer        *LoadBalancer
-	connectionTracking  ConnectionTracker
+	channelService              *biz.ChannelService
+	requestService              *biz.RequestService
+	systemService               *biz.SystemService
+	usageLogService             *biz.UsageLogService
+	promptProtectionRuleService *biz.PromptProtectionRuleService
+	httpClient                  *httpclient.HttpClient
+	modelCircuitBreaker         *biz.ModelCircuitBreaker
+	modelMapper                 *ModelMapper
+	loadBalancer                *LoadBalancer
+	connectionTracking          ConnectionTracker
 }
 
 // NewTestChannelOrchestrator creates a new TestChannelOrchestrator.
@@ -42,18 +45,20 @@ func NewTestChannelOrchestrator(
 	requestService *biz.RequestService,
 	systemService *biz.SystemService,
 	usageLogService *biz.UsageLogService,
+	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	httpClient *httpclient.HttpClient,
 ) *TestChannelOrchestrator {
 	return &TestChannelOrchestrator{
-		channelService:      channelService,
-		requestService:      requestService,
-		systemService:       systemService,
-		usageLogService:     usageLogService,
-		httpClient:          httpClient,
-		modelCircuitBreaker: biz.NewModelCircuitBreaker(),
-		modelMapper:         NewModelMapper(),
-		loadBalancer:        NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
-		connectionTracking:  NewDefaultConnectionTracker(100),
+		channelService:              channelService,
+		requestService:              requestService,
+		systemService:               systemService,
+		usageLogService:             usageLogService,
+		promptProtectionRuleService: promptProtectionRuleService,
+		httpClient:                  httpClient,
+		modelCircuitBreaker:         biz.NewModelCircuitBreaker(),
+		modelMapper:                 NewModelMapper(),
+		loadBalancer:                NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
+		connectionTracking:          NewDefaultConnectionTracker(100),
 	}
 }
 
@@ -78,13 +83,78 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
 ) (*TestChannelResult, error) {
-	inbound := openai.NewInboundTransformer()
+	channel, err := processor.channelService.GetChannel(ctx, channelID.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	testModel := lo.FromPtr(modelID)
+	if testModel == "" {
+		testModel = channel.DefaultTestModel
+	}
+
+	isSearch := channel != nil && channel.Type.IsSearch()
+	var inbound transformer.Inbound
+	var requestBody []byte
+
+	if isSearch {
+		inbound = search.NewInboundTransformer()
+		requestBody, err = json.Marshal(map[string]any{
+			"query":       "Hello world, I'm AxonHub.",
+			"model":       testModel,
+			"max_results": 3,
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		inbound = openai.NewInboundTransformer()
+		// Check if the channel requires streaming
+		useStream := channel.Policies.Stream == objects.CapabilityPolicyRequire
+
+		// Create a simple test request
+		llmRequest := &llm.Request{
+			Model: testModel,
+			Messages: []llm.Message{
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("You are a helpful assistant."),
+					},
+				},
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						MultipleContent: []llm.MessageContentPart{
+							{
+								Type: "text",
+								Text: lo.ToPtr("Hello world, I'm AxonHub."),
+							},
+							{
+								Type: "text",
+								Text: lo.ToPtr("Please tell me who you are?"),
+							},
+						},
+					},
+				},
+			},
+			MaxCompletionTokens: lo.ToPtr(int64(256)),
+			Stream:              lo.ToPtr(useStream),
+		}
+
+		requestBody, err = json.Marshal(llmRequest)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Create ChatCompletionOrchestrator for this test request
 	chatProcessor := &ChatCompletionOrchestrator{
 		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
 		RequestService:  processor.requestService,
 		ChannelService:  processor.channelService,
 		PromptProvider:  &stubPromptProvider{},
+		PromptProtecter: processor.promptProtectionRuleService,
 		PipelineFactory: pipeline.NewFactory(processor.httpClient),
 		Middlewares: []pipeline.Middleware{
 			stream.EnsureUsage(),
@@ -101,73 +171,18 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		connectionTracker:          processor.connectionTracking,
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}
-
-	// Create a simple test request
-	testModel := lo.FromPtr(modelID)
-	if testModel == "" {
-		channels, err := chatProcessor.channelSelector.Select(ctx, &llm.Request{})
-		if err != nil {
-			return nil, err
-		}
-
-		if len(channels) == 0 {
-			return nil, fmt.Errorf("%w: no channels available", biz.ErrInvalidModel)
-		}
-
-		testModel = channels[0].Channel.DefaultTestModel
-	}
-
-	// Check if the channel requires streaming
-	channel := processor.channelService.GetEnabledChannel(channelID.ID)
-	useStream := channel != nil && channel.Policies.Stream == objects.CapabilityPolicyRequire
-
-	llmRequest := &llm.Request{
-		Model: testModel,
-		Messages: []llm.Message{
-			{
-				Role: "system",
-				Content: llm.MessageContent{
-					Content: lo.ToPtr("You are a helpful assistant."),
-				},
-			},
-			{
-				Role: "user",
-				Content: llm.MessageContent{
-					MultipleContent: []llm.MessageContentPart{
-						{
-							Type: "text",
-							Text: lo.ToPtr("Hello world, I'm AxonHub."),
-						},
-						{
-							Type: "text",
-							Text: lo.ToPtr("Please tell me who you are?"),
-						},
-					},
-				},
-			},
-		},
-		MaxCompletionTokens: lo.ToPtr(int64(256)),
-		Stream:              lo.ToPtr(useStream),
-	}
-
-	body, err := json.Marshal(llmRequest)
-	if err != nil {
-		return nil, err
-	}
-
 	// Measure latency
 	startTime := time.Now()
 	rawResponse, err := chatProcessor.Process(ctx, &httpclient.Request{
 		Headers: http.Header{
 			"Content-Type": []string{"application/json"},
 		},
-		Body: body,
+		Body: requestBody,
 	})
 
 	rawErr := inbound.TransformError(ctx, err)
 	message := gjson.GetBytes(rawErr.Body, "error.message").String()
 
-	//nolint:nilerr // Checked.
 	if err != nil {
 		return &TestChannelResult{
 			Latency: time.Since(startTime).Seconds(),
@@ -183,6 +198,27 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	}
 
 	latency := time.Since(startTime).Seconds()
+
+	if isSearch {
+		response, err := xjson.To[llm.SearchResponse](rawResponse.ChatCompletion.Body)
+		if err != nil {
+			return &TestChannelResult{
+				Latency: latency,
+				Success: false,
+				Message: lo.ToPtr(""),
+				Error:   lo.ToPtr(err.Error()),
+			}, nil
+		}
+
+		msg := fmt.Sprintf("Search OK: %d result(s)", len(response.Results))
+
+		return &TestChannelResult{
+			Latency: latency,
+			Success: true,
+			Message: lo.ToPtr(msg),
+			Error:   nil,
+		}, nil
+	}
 
 	// Handle non-streaming response
 	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)

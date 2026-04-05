@@ -1,0 +1,73 @@
+{
+  "model": "gpt-5.1-codex-mini",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful coding assistant."
+    },
+    {
+      "role": "user",
+      "content": "Add a hello world function to main.py"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_patch_001",
+          "type": "responses_custom_tool",
+          "function": {
+            "name": ""
+          },
+          "response_custom_tool_call": {
+            "call_id": "call_patch_001",
+            "name": "apply_patch",
+            "input": "*** Begin Patch\n*** Add File: main.py\n+def hello():\n+    print(\"Hello, world!\")\n*** End Patch\n"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_patch_001",
+      "content": "Patch applied successfully."
+    }
+  ],
+  "stream": true,
+  "store": false,
+  "tools": [
+    {
+      "type": "responses_custom_tool",
+      "function": {
+        "name": ""
+      },
+      "response_custom_tool": {
+        "name": "apply_patch",
+        "description": "Use the `apply_patch` tool to edit files.",
+        "format": {
+          "type": "grammar",
+          "syntax": "lark",
+          "definition": "start: begin_patch hunk+ end_patch\nbegin_patch: \"*** Begin Patch\" LF\nend_patch: \"*** End Patch\" LF?\n"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "shell_command",
+        "description": "Run a shell command",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "The command to run"
+            }
+          },
+          "required": ["command"],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    }
+  ]
+}

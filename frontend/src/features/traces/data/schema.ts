@@ -63,6 +63,21 @@ const spanUserImageURLSchema = z
   .nullable()
   .optional();
 
+const spanUserVideoURLSchema = z
+  .object({
+    url: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
+const spanUserInputAudioSchema = z
+  .object({
+    format: z.string().nullable().optional(),
+    data: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
 const spanTextSchema = z
   .object({
     text: z.string().nullable().optional(),
@@ -77,6 +92,23 @@ const spanImageURLSchema = z
   .nullable()
   .optional();
 
+const spanVideoURLSchema = z
+  .object({
+    url: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
+const spanAudioSchema = z
+  .object({
+    id: z.string().nullable().optional(),
+    format: z.string().nullable().optional(),
+    data: z.string().nullable().optional(),
+    transcript: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
 const spanThinkingSchema = z
   .object({
     thinking: z.string().nullable().optional(),
@@ -87,6 +119,7 @@ const spanThinkingSchema = z
 const spanToolUseSchema = z
   .object({
     id: z.string().nullable().optional(),
+    type: z.string().nullable().optional(),
     name: z.string(),
     arguments: z.string().nullable().optional(),
   })
@@ -102,16 +135,28 @@ const spanToolResultSchema = z
   .nullable()
   .optional();
 
+const spanCompactionSchema = z
+  .object({
+    summary: z.string().nullable().optional(),
+  })
+  .nullable()
+  .optional();
+
 const spanValueSchema = z
   .object({
     systemInstruction: spanSystemInstructionSchema,
     userQuery: spanUserQuerySchema,
     userImageUrl: spanUserImageURLSchema,
+    userVideoUrl: spanUserVideoURLSchema,
+    userInputAudio: spanUserInputAudioSchema,
     text: spanTextSchema,
     thinking: spanThinkingSchema,
     imageUrl: spanImageURLSchema,
+    videoUrl: spanVideoURLSchema,
+    audio: spanAudioSchema,
     toolUse: spanToolUseSchema,
     toolResult: spanToolResultSchema,
+    compaction: spanCompactionSchema,
   })
   .nullable()
   .optional();

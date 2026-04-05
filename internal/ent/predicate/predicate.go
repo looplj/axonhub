@@ -9,6 +9,30 @@ import (
 // APIKey is the predicate function for apikey builders.
 type APIKey func(*sql.Selector)
 
+// Agent is the predicate function for agent builders.
+type Agent func(*sql.Selector)
+
+// AgentHost is the predicate function for agenthost builders.
+type AgentHost func(*sql.Selector)
+
+// AgentInstance is the predicate function for agentinstance builders.
+type AgentInstance func(*sql.Selector)
+
+// AgentMemory is the predicate function for agentmemory builders.
+type AgentMemory func(*sql.Selector)
+
+// AgentMessage is the predicate function for agentmessage builders.
+type AgentMessage func(*sql.Selector)
+
+// AgentSkill is the predicate function for agentskill builders.
+type AgentSkill func(*sql.Selector)
+
+// AgentThread is the predicate function for agentthread builders.
+type AgentThread func(*sql.Selector)
+
+// AgentTool is the predicate function for agenttool builders.
+type AgentTool func(*sql.Selector)
+
 // Channel is the predicate function for channel builders.
 type Channel func(*sql.Selector)
 
@@ -27,6 +51,15 @@ type ChannelProbe func(*sql.Selector)
 // DataStorage is the predicate function for datastorage builders.
 type DataStorage func(*sql.Selector)
 
+// MessageChannel is the predicate function for messagechannel builders.
+type MessageChannel func(*sql.Selector)
+
+// MessageChannelAgentInstance is the predicate function for messagechannelagentinstance builders.
+type MessageChannelAgentInstance func(*sql.Selector)
+
+// MessageChannelBindingRequest is the predicate function for messagechannelbindingrequest builders.
+type MessageChannelBindingRequest func(*sql.Selector)
+
 // Model is the predicate function for model builders.
 type Model func(*sql.Selector)
 
@@ -35,6 +68,12 @@ type Project func(*sql.Selector)
 
 // Prompt is the predicate function for prompt builders.
 type Prompt func(*sql.Selector)
+
+// PromptProtectionRule is the predicate function for promptprotectionrule builders.
+type PromptProtectionRule func(*sql.Selector)
+
+// PromptVersion is the predicate function for promptversion builders.
+type PromptVersion func(*sql.Selector)
 
 // ProviderQuotaStatus is the predicate function for providerquotastatus builders.
 type ProviderQuotaStatus func(*sql.Selector)
@@ -48,11 +87,17 @@ type RequestExecution func(*sql.Selector)
 // Role is the predicate function for role builders.
 type Role func(*sql.Selector)
 
+// Skill is the predicate function for skill builders.
+type Skill func(*sql.Selector)
+
 // System is the predicate function for system builders.
 type System func(*sql.Selector)
 
 // Thread is the predicate function for thread builders.
 type Thread func(*sql.Selector)
+
+// Tool is the predicate function for tool builders.
+type Tool func(*sql.Selector)
 
 // Trace is the predicate function for trace builders.
 type Trace func(*sql.Selector)

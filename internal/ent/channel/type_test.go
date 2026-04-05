@@ -84,6 +84,10 @@ func TestType_SupportsGoogleNativeTools(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "xiaomi",
+			want: false,
+		},
+		{
 			name: "anthropic",
 			want: false,
 		},
@@ -112,11 +116,11 @@ func TestType_SupportsAnthropicNativeTools(t *testing.T) {
 		},
 		{
 			name: "anthropic_aws",
-			want: false, // Bedrock does not support web search beta
+			want: true,
 		},
 		{
 			name: "anthropic_gcp",
-			want: false, // Vertex does not support web search beta
+			want: true,
 		},
 		{
 			name: "deepseek_anthropic",

@@ -1,6 +1,6 @@
 {
-  "threads.title": "线程管理",
-  "threads.description": "查看和管理 AI 会话线程及相关追踪",
+  "threads.title": "线程",
+  "threads.description": "浏览会话线程及其关联的追踪。",
   "threads.filters.filterThreadId": "按线程 ID 筛选...",
   "threads.columns.threadId": "线程 ID",
   "threads.columns.project": "项目",
@@ -20,7 +20,5 @@
   "threads.detail.tracesSubtitle": "查看该线程的最新追踪与执行记录",
   "threads.detail.noTraces": "暂无追踪记录",
   "threads.detail.traces": "条追踪",
-  "threads.errors.fetchList": "获取线程列表失败",
-  "threads.errors.fetchDetail": "获取线程详情失败",
   "threads.errors.notFound": "未找到线程"
 }

@@ -509,6 +509,29 @@ func HasRequestsWith(preds ...predicate.Request) predicate.APIKey {
 	})
 }
 
+// HasAgentInstance applies the HasEdge predicate on the "agent_instance" edge.
+func HasAgentInstance() predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, AgentInstanceTable, AgentInstanceColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAgentInstanceWith applies the HasEdge predicate on the "agent_instance" edge with a given conditions (other predicates).
+func HasAgentInstanceWith(preds ...predicate.AgentInstance) predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := newAgentInstanceStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.APIKey) predicate.APIKey {
 	return predicate.APIKey(sql.AndPredicates(predicates...))

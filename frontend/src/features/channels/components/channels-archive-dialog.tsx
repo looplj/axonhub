@@ -1,6 +1,6 @@
 'use client';
 
-import { IconArchive, IconInfoCircle } from '@tabler/icons-react';
+import { IconArchive, IconCheck, IconInfoCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useUpdateChannelStatus } from '../data/channels';
@@ -15,12 +15,13 @@ interface Props {
 export function ChannelsArchiveDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannelStatus = useUpdateChannelStatus();
+  const isArchived = currentRow.status === 'archived';
 
-  const handleArchive = async () => {
+  const handleStatusChange = async () => {
     try {
       await updateChannelStatus.mutateAsync({
         id: currentRow.id,
-        status: 'archived',
+        status: isArchived ? 'enabled' : 'archived',
       });
       onOpenChange(false);
     } catch (_error) {
@@ -29,8 +30,10 @@ export function ChannelsArchiveDialog({ open, onOpenChange, currentRow }: Props)
   };
 
   const getDescription = () => {
-    const baseDescription = t('channels.dialogs.status.archive.description', { name: currentRow.name });
-    const warningText = t('channels.dialogs.status.archive.warning');
+    const baseDescription = t(isArchived ? 'channels.dialogs.status.restore.description' : 'channels.dialogs.status.archive.description', {
+      name: currentRow.name,
+    });
+    const infoText = t(isArchived ? 'channels.dialogs.status.restore.info' : 'channels.dialogs.status.archive.warning');
 
     return (
       <div className='space-y-3'>
@@ -39,7 +42,7 @@ export function ChannelsArchiveDialog({ open, onOpenChange, currentRow }: Props)
           <div className='flex items-start space-x-2'>
             <IconInfoCircle className='mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400' />
             <div className='text-sm text-blue-800 dark:text-blue-200'>
-              <p>{warningText}</p>
+              <p>{infoText}</p>
             </div>
           </div>
         </div>
@@ -51,16 +54,16 @@ export function ChannelsArchiveDialog({ open, onOpenChange, currentRow }: Props)
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      handleConfirm={handleArchive}
+      handleConfirm={handleStatusChange}
       disabled={updateChannelStatus.isPending}
       title={
-        <span className='text-orange-600'>
-          <IconArchive className='mr-1 inline-block stroke-orange-600' size={18} />
-          {t('channels.dialogs.status.archive.title')}
+        <span className={isArchived ? 'text-green-600' : 'text-orange-600'}>
+          {isArchived ? <IconCheck className='mr-1 inline-block stroke-green-600' size={18} /> : <IconArchive className='mr-1 inline-block stroke-orange-600' size={18} />}
+          {t(isArchived ? 'channels.dialogs.status.restore.title' : 'channels.dialogs.status.archive.title')}
         </span>
       }
       desc={getDescription()}
-      confirmText={t('common.buttons.archive')}
+      confirmText={t(isArchived ? 'common.buttons.restore' : 'common.buttons.archive')}
       cancelBtnText={t('common.buttons.cancel')}
     />
   );

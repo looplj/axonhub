@@ -126,12 +126,13 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 	// Check the QueryAllChannelModels setting
 	settings := r.systemService.ModelSettingsOrDefault(ctx)
 
-	if settings.QueryAllChannelModels {
+	if settings.QueryAllChannelModels || lo.FromPtrOr(input.IncludeAllChannelModels, false) {
 		// Convert GraphQL input to biz layer input
 		bizInput := biz.ListModelsInput{
-			StatusIn:       input.StatusIn,
-			IncludeMapping: lo.FromPtrOr(input.IncludeMapping, false),
-			IncludePrefix:  lo.FromPtrOr(input.IncludePrefix, false),
+			StatusIn:                input.StatusIn,
+			IncludeMapping:          lo.FromPtrOr(input.IncludeMapping, false),
+			IncludePrefix:           lo.FromPtrOr(input.IncludePrefix, false),
+			IncludeAllChannelModels: lo.FromPtrOr(input.IncludeAllChannelModels, false),
 		}
 
 		// Return all models from channels
@@ -148,7 +149,7 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 		}
 	}
 
-	return r.modelService.ListConfiguredModels(ctx, modelStatusIn)
+	return r.modelService.ListModels(ctx, modelStatusIn)
 }
 
 // QueryModelChannelConnections is the resolver for the queryModelChannelConnections field.

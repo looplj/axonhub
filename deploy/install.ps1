@@ -175,11 +175,11 @@ server:
 
 db:
   dialect: "sqlite3"
-  dsn: "$baseForDSN/axonhub.db?cache=shared&_fk=1&journal_mode=WAL"
+  dsn: "$baseForDSN/axonhub.db?cache=shared&_fk=1"
 
 cache:
   mode: "memory"
-  cache:
+  memory:
     expiration: "5s"
     cleanup_interval: "5s"
     
@@ -215,3 +215,4 @@ Write-Host "  2. Start AxonHub: start.bat"
 Write-Host "  3. Stop AxonHub: stop.bat"
 Write-Host "  4. View logs: $BaseDir\axonhub.log (or logs\axonhub.log in config)"
 Write-Host "  5. Access web interface: http://localhost:$port"
+Write-Host "  6. Setup auto-start: setup.bat install-autostart"

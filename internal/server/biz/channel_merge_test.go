@@ -9,229 +9,121 @@ import (
 )
 
 func TestMergeOverrideHeaders(t *testing.T) {
+	setOp := func(path string, value string) objects.OverrideOperation {
+		return objects.OverrideOperation{Op: objects.OverrideOpSet, Path: path, Value: value}
+	}
+	deleteOp := func(path string) objects.OverrideOperation {
+		return objects.OverrideOperation{Op: objects.OverrideOpDelete, Path: path}
+	}
+	renameOp := func(from, to string) objects.OverrideOperation {
+		return objects.OverrideOperation{Op: objects.OverrideOpRename, From: from, To: to}
+	}
+
 	tests := []struct {
 		name     string
-		existing []objects.HeaderEntry
-		template []objects.HeaderEntry
-		expected []objects.HeaderEntry
+		existing []objects.OverrideOperation
+		template []objects.OverrideOperation
+		expected []objects.OverrideOperation
 	}{
 		{
 			name:     "empty existing and template",
-			existing: []objects.HeaderEntry{},
-			template: []objects.HeaderEntry{},
-			expected: []objects.HeaderEntry{},
+			existing: []objects.OverrideOperation{},
+			template: []objects.OverrideOperation{},
+			expected: []objects.OverrideOperation{},
 		},
 		{
-			name: "add new header",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-			},
-			template: []objects.HeaderEntry{
-				{Key: "X-API-Key", Value: "key123"},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "X-API-Key", Value: "key123"},
+			name:     "add new set op",
+			existing: []objects.OverrideOperation{setOp("Authorization", "Bearer token1")},
+			template: []objects.OverrideOperation{setOp("X-API-Key", "key123")},
+			expected: []objects.OverrideOperation{
+				setOp("Authorization", "Bearer token1"),
+				setOp("X-API-Key", "key123"),
 			},
 		},
 		{
-			name: "override existing header case-insensitive",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "Content-Type", Value: "application/json"},
+			name: "override existing set op case-insensitive",
+			existing: []objects.OverrideOperation{
+				setOp("Authorization", "Bearer token1"),
+				setOp("Content-Type", "application/json"),
 			},
-			template: []objects.HeaderEntry{
-				{Key: "authorization", Value: "Bearer token2"},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "authorization", Value: "Bearer token2"},
-				{Key: "Content-Type", Value: "application/json"},
+			template: []objects.OverrideOperation{setOp("authorization", "Bearer token2")},
+			expected: []objects.OverrideOperation{
+				setOp("authorization", "Bearer token2"),
+				setOp("Content-Type", "application/json"),
 			},
 		},
 		{
-			name: "clear header directive treated as regular override",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "X-API-Key", Value: "key123"},
+			name: "delete op replaces existing set with same path",
+			existing: []objects.OverrideOperation{
+				setOp("Authorization", "Bearer token1"),
+				setOp("X-API-Key", "key123"),
 			},
-			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-				{Key: "X-API-Key", Value: "key123"},
+			template: []objects.OverrideOperation{deleteOp("Authorization")},
+			expected: []objects.OverrideOperation{
+				deleteOp("Authorization"),
+				setOp("X-API-Key", "key123"),
 			},
 		},
 		{
-			name: "clear non-existent header adds it with directive",
-			existing: []objects.HeaderEntry{
-				{Key: "X-API-Key", Value: "key123"},
-			},
-			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "X-API-Key", Value: "key123"},
-				{Key: "Authorization", Value: ClearHeaderDirective},
+			name:     "delete non-existent header adds delete op",
+			existing: []objects.OverrideOperation{setOp("X-API-Key", "key123")},
+			template: []objects.OverrideOperation{deleteOp("Authorization")},
+			expected: []objects.OverrideOperation{
+				setOp("X-API-Key", "key123"),
+				deleteOp("Authorization"),
 			},
 		},
 		{
-			name: "complex merge with add, override, and directive as value",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "X-API-Key", Value: "key123"},
-				{Key: "Content-Type", Value: "application/json"},
-			},
-			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-				{Key: "X-API-Key", Value: "newkey456"},
-				{Key: "X-Custom-Header", Value: "custom"},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-				{Key: "X-API-Key", Value: "newkey456"},
-				{Key: "Content-Type", Value: "application/json"},
-				{Key: "X-Custom-Header", Value: "custom"},
+			name:     "rename/copy ops always appended",
+			existing: []objects.OverrideOperation{setOp("Authorization", "Bearer token1")},
+			template: []objects.OverrideOperation{renameOp("Authorization", "X-Auth")},
+			expected: []objects.OverrideOperation{
+				setOp("Authorization", "Bearer token1"),
+				renameOp("Authorization", "X-Auth"),
 			},
 		},
 		{
-			name: "multiple directive overrides",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "X-API-Key", Value: "key123"},
-				{Key: "Content-Type", Value: "application/json"},
-				{Key: "User-Agent", Value: "test-agent"},
+			name: "preserve order of non-overridden ops",
+			existing: []objects.OverrideOperation{
+				setOp("Header1", "value1"),
+				setOp("Header2", "value2"),
+				setOp("Header3", "value3"),
 			},
-			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-				{Key: "Content-Type", Value: ClearHeaderDirective},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-				{Key: "X-API-Key", Value: "key123"},
-				{Key: "Content-Type", Value: ClearHeaderDirective},
-				{Key: "User-Agent", Value: "test-agent"},
+			template: []objects.OverrideOperation{setOp("Header2", "newvalue2")},
+			expected: []objects.OverrideOperation{
+				setOp("Header1", "value1"),
+				setOp("Header2", "newvalue2"),
+				setOp("Header3", "value3"),
 			},
 		},
 		{
-			name: "directive override case-insensitive",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "X-API-Key", Value: "key123"},
+			name: "mixed case header paths",
+			existing: []objects.OverrideOperation{
+				setOp("Content-Type", "application/json"),
+				setOp("x-api-key", "key123"),
 			},
-			template: []objects.HeaderEntry{
-				{Key: "authorization", Value: ClearHeaderDirective},
+			template: []objects.OverrideOperation{
+				setOp("CONTENT-TYPE", "text/plain"),
+				setOp("X-API-KEY", "newkey"),
 			},
-			expected: []objects.HeaderEntry{
-				{Key: "authorization", Value: ClearHeaderDirective},
-				{Key: "X-API-Key", Value: "key123"},
-			},
-		},
-		{
-			name: "multiple overrides of same header",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-			},
-			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-				{Key: "Authorization", Value: "Bearer token2"},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token2"},
+			expected: []objects.OverrideOperation{
+				setOp("CONTENT-TYPE", "text/plain"),
+				setOp("X-API-KEY", "newkey"),
 			},
 		},
 		{
-			name: "empty string values are preserved",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
+			name: "large number of ops merge",
+			existing: []objects.OverrideOperation{
+				setOp("H1", "v1"), setOp("H2", "v2"), setOp("H3", "v3"),
+				setOp("H4", "v4"), setOp("H5", "v5"),
 			},
-			template: []objects.HeaderEntry{
-				{Key: "X-Empty-Header", Value: ""},
+			template: []objects.OverrideOperation{
+				setOp("H3", "newv3"), setOp("H6", "v6"), setOp("H7", "v7"),
 			},
-			expected: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "X-Empty-Header", Value: ""},
-			},
-		},
-		{
-			name: "all headers with directive values",
-			existing: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "X-API-Key", Value: "key123"},
-				{Key: "Content-Type", Value: "application/json"},
-			},
-			template: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-				{Key: "X-API-Key", Value: ClearHeaderDirective},
-				{Key: "Content-Type", Value: ClearHeaderDirective},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "Authorization", Value: ClearHeaderDirective},
-				{Key: "X-API-Key", Value: ClearHeaderDirective},
-				{Key: "Content-Type", Value: ClearHeaderDirective},
-			},
-		},
-		{
-			name:     "template with only directives adds new headers",
-			existing: []objects.HeaderEntry{},
-			template: []objects.HeaderEntry{
-				{Key: "NewHeader", Value: ClearHeaderDirective},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "NewHeader", Value: ClearHeaderDirective},
-			},
-		},
-		{
-			name: "preserve order of non-overridden headers",
-			existing: []objects.HeaderEntry{
-				{Key: "Header1", Value: "value1"},
-				{Key: "Header2", Value: "value2"},
-				{Key: "Header3", Value: "value3"},
-			},
-			template: []objects.HeaderEntry{
-				{Key: "Header2", Value: "newvalue2"},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "Header1", Value: "value1"},
-				{Key: "Header2", Value: "newvalue2"},
-				{Key: "Header3", Value: "value3"},
-			},
-		},
-		{
-			name: "mixed case header keys",
-			existing: []objects.HeaderEntry{
-				{Key: "Content-Type", Value: "application/json"},
-				{Key: "x-api-key", Value: "key123"},
-			},
-			template: []objects.HeaderEntry{
-				{Key: "CONTENT-TYPE", Value: "text/plain"},
-				{Key: "X-API-KEY", Value: "newkey"},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "CONTENT-TYPE", Value: "text/plain"},
-				{Key: "X-API-KEY", Value: "newkey"},
-			},
-		},
-		{
-			name: "large number of headers merge",
-			existing: []objects.HeaderEntry{
-				{Key: "H1", Value: "v1"},
-				{Key: "H2", Value: "v2"},
-				{Key: "H3", Value: "v3"},
-				{Key: "H4", Value: "v4"},
-				{Key: "H5", Value: "v5"},
-			},
-			template: []objects.HeaderEntry{
-				{Key: "H3", Value: "newv3"}, {Key: "H6", Value: "v6"}, {Key: "H7", Value: "v7"},
-			},
-			expected: []objects.HeaderEntry{
-				{Key: "H1", Value: "v1"},
-				{Key: "H2", Value: "v2"},
-				{Key: "H3", Value: "newv3"},
-				{Key: "H4", Value: "v4"},
-				{Key: "H5", Value: "v5"},
-				{Key: "H6", Value: "v6"},
-				{Key: "H7", Value: "v7"},
+			expected: []objects.OverrideOperation{
+				setOp("H1", "v1"), setOp("H2", "v2"), setOp("H3", "newv3"),
+				setOp("H4", "v4"), setOp("H5", "v5"),
+				setOp("H6", "v6"), setOp("H7", "v7"),
 			},
 		},
 	}
@@ -391,49 +283,82 @@ func TestValidateOverrideParameters(t *testing.T) {
 func TestValidateOverrideHeaders(t *testing.T) {
 	tests := []struct {
 		name        string
-		headers     []objects.HeaderEntry
+		ops         []objects.OverrideOperation
 		expectError bool
 	}{
 		{
-			name:        "empty headers is valid",
-			headers:     []objects.HeaderEntry{},
+			name:        "empty ops is valid",
+			ops:         []objects.OverrideOperation{},
 			expectError: false,
 		},
 		{
-			name: "valid headers",
-			headers: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token"},
-				{Key: "X-API-Key", Value: "key123"},
+			name: "valid set ops",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpSet, Path: "Authorization", Value: "Bearer token"},
+				{Op: objects.OverrideOpSet, Path: "X-API-Key", Value: "key123"},
 			},
 			expectError: false,
 		},
 		{
-			name: "empty key",
-			headers: []objects.HeaderEntry{
-				{Key: "", Value: "value"},
+			name: "set with empty path",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpSet, Path: "", Value: "value"},
 			},
 			expectError: true,
 		},
 		{
-			name: "whitespace key",
-			headers: []objects.HeaderEntry{
-				{Key: "   ", Value: "value"},
+			name: "set with whitespace path",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpSet, Path: "   ", Value: "value"},
 			},
 			expectError: true,
 		},
 		{
-			name: "duplicate keys case-insensitive",
-			headers: []objects.HeaderEntry{
-				{Key: "Authorization", Value: "Bearer token1"},
-				{Key: "authorization", Value: "Bearer token2"},
+			name: "delete with empty path",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpDelete, Path: ""},
 			},
 			expectError: true,
 		},
 		{
-			name: "duplicate keys different case",
-			headers: []objects.HeaderEntry{
-				{Key: "X-API-Key", Value: "key1"},
-				{Key: "x-api-key", Value: "key2"},
+			name: "valid delete op",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpDelete, Path: "Authorization"},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid rename op",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpRename, From: "Old-Header", To: "New-Header"},
+			},
+			expectError: false,
+		},
+		{
+			name: "rename with empty from",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpRename, From: "", To: "New-Header"},
+			},
+			expectError: true,
+		},
+		{
+			name: "rename with empty to",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpRename, From: "Old-Header", To: ""},
+			},
+			expectError: true,
+		},
+		{
+			name: "valid copy op",
+			ops: []objects.OverrideOperation{
+				{Op: objects.OverrideOpCopy, From: "Source", To: "Dest"},
+			},
+			expectError: false,
+		},
+		{
+			name: "unknown op",
+			ops: []objects.OverrideOperation{
+				{Op: "unknown", Path: "X-Header"},
 			},
 			expectError: true,
 		},
@@ -441,7 +366,7 @@ func TestValidateOverrideHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateOverrideHeaders(tt.headers)
+			err := ValidateOverrideHeaders(tt.ops)
 			if tt.expectError {
 				require.Error(t, err)
 			} else {

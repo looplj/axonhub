@@ -20,6 +20,13 @@
 
 ---
 
+> NOTE
+>
+> 1. This project is maintained by an individual. The author makes no warranties and assumes no liability for risks arising from its use. Please evaluate carefully.
+> 2. The core scope of this project does not include 2api (subscription-to-API conversion). If you need that, consider other open-source projects focused on 2api.
+
+---
+
 ## 📖 Project Introduction
 
 ### All-in-one AI Development Platform
@@ -136,6 +143,7 @@ Here are some screenshots of AxonHub in action:
 | **Image Generation** | ✅ Done | Image generation               | [Image Generation](docs/en/api-reference/image-generation.md) |
 | **Rerank**           | ✅ Done    | Results ranking                | [Rerank API](docs/en/api-reference/rerank-api.md) |
 | **Embedding**        | ✅ Done    | Vector embedding generation    | [Embedding API](docs/en/api-reference/embedding-api.md) |
+| **Web Search**       | ✅ Done    | Unified web search gateway     | [Search API](docs/en/api-reference/search-api.md) |
 | **Realtime**         | 📝 Todo    | Live conversation capabilities | -                                            |
 
 ---
@@ -151,11 +159,16 @@ Here are some screenshots of AxonHub in action:
 | **DeepSeek**           | ✅ Done    | DeepSeek-V3.1, etc.          | OpenAI, Anthropic, Gemini |
 | **ByteDance Doubao**   | ✅ Done    | doubao-1.6, etc.             | OpenAI, Anthropic, Gemini, Image Generation |
 | **Gemini**             | ✅ Done    | Gemini 2.5, etc.             | OpenAI, Anthropic, Gemini, Image Generation |
+| **Fireworks**          | ✅ Done    | MiniMax-M2.5, GLM-5, Kimi K2.5, etc. | OpenAI |
 | **Jina AI**            | ✅ Done    | Embeddings, Reranker, etc.   | Jina Embedding, Jina Rerank |
 | **OpenRouter**         | ✅ Done    | Various models               | OpenAI, Anthropic, Gemini, Image Generation |
 | **ZAI**                | ✅ Done    | -                            | Image Generation |
 | **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | OpenAI, Anthropic, Gemini |
 | **Google Cloud**       | 🔄 Testing | Claude on GCP                | OpenAI, Anthropic, Gemini |
+| **NanoGPT**            | ✅ Done    | Various models, Image Gen    | OpenAI, Anthropic, Gemini, Image Generation |
+| **Tavily**             | ✅ Done    | Web Search                   | Search |
+| **Brave Search**       | ✅ Done    | Web Search                   | Search |
+| **Exa**                | ✅ Done    | Neural Search                | Search |
 
 ---
 
@@ -172,7 +185,7 @@ cd axonhub_*
 ./axonhub
 
 # Open http://localhost:8090
-# Default login: admin@axonhub.com / admin
+# First run: Follow the setup wizard to initialize the system (create admin account, password must be at least 6 characters)
 ```
 
 That's it! Now configure your first AI channel and start calling models through AxonHub.
@@ -320,6 +333,36 @@ docker-compose up -d
 docker-compose ps
 ```
 
+#### Helm Kubernetes Deployment
+
+Deploy AxonHub on Kubernetes using the official Helm chart:
+
+```bash
+# Quick installation
+git clone https://github.com/looplj/axonhub.git
+cd axonhub
+helm install axonhub ./deploy/helm
+
+# Production deployment
+helm install axonhub ./deploy/helm -f ./deploy/helm/values-production.yaml
+
+# Access AxonHub
+kubectl port-forward svc/axonhub 8090:8090
+# Visit http://localhost:8090
+```
+
+**Key Configuration Options:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `axonhub.replicaCount` | Replicas | `1` |
+| `axonhub.dbPassword` | DB password | `axonhub_password` |
+| `postgresql.enabled` | Embedded PostgreSQL | `true` |
+| `ingress.enabled` | Enable ingress | `false` |
+| `persistence.enabled` | Data persistence | `false` |
+
+For detailed configuration and troubleshooting, see [Helm Chart Documentation](deploy/helm/README.md).
+
 #### Virtual Machine Deployment
 
 Download the latest release from [GitHub Releases](https://github.com/looplj/axonhub/releases)
@@ -420,10 +463,31 @@ For detailed SDK usage examples and code samples, please refer to the API docume
 - [OpenAI API](docs/en/api-reference/openai-api.md)
 - [Anthropic API](docs/en/api-reference/anthropic-api.md)
 - [Gemini API](docs/en/api-reference/gemini-api.md)
+- [Search API](docs/en/api-reference/search-api.md)
+
+#### Web Search Example
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8090/v1/search",
+    headers={"Authorization": "Bearer your-axonhub-api-key"},
+    json={
+        "query": "latest developments in quantum computing",
+        "model": "__search",
+        "max_results": 5
+    }
+)
+
+results = response.json()
+for r in results["results"]:
+    print(f"{r['title']}: {r['url']}")
+```
 
 ## 🛠️ Development Guide
 
-For detailed development instructions, architecture design, and contribution guidelines, please see [docs/en/guides/development.md](docs/en/guides/development.md).
+For detailed development instructions, architecture design, and contribution guidelines, please see [docs/en/development/development.md](docs/en/development/development.md).
 
 ---
 

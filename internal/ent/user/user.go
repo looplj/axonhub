@@ -50,6 +50,14 @@ const (
 	EdgeRoles = "roles"
 	// EdgeChannelOverrideTemplates holds the string denoting the channel_override_templates edge name in mutations.
 	EdgeChannelOverrideTemplates = "channel_override_templates"
+	// EdgePromptVersions holds the string denoting the prompt_versions edge name in mutations.
+	EdgePromptVersions = "prompt_versions"
+	// EdgeAgents holds the string denoting the agents edge name in mutations.
+	EdgeAgents = "agents"
+	// EdgeTools holds the string denoting the tools edge name in mutations.
+	EdgeTools = "tools"
+	// EdgeSkills holds the string denoting the skills edge name in mutations.
+	EdgeSkills = "skills"
 	// EdgeProjectUsers holds the string denoting the project_users edge name in mutations.
 	EdgeProjectUsers = "project_users"
 	// EdgeUserRoles holds the string denoting the user_roles edge name in mutations.
@@ -80,6 +88,34 @@ const (
 	ChannelOverrideTemplatesInverseTable = "channel_override_templates"
 	// ChannelOverrideTemplatesColumn is the table column denoting the channel_override_templates relation/edge.
 	ChannelOverrideTemplatesColumn = "user_id"
+	// PromptVersionsTable is the table that holds the prompt_versions relation/edge.
+	PromptVersionsTable = "prompt_versions"
+	// PromptVersionsInverseTable is the table name for the PromptVersion entity.
+	// It exists in this package in order to avoid circular dependency with the "promptversion" package.
+	PromptVersionsInverseTable = "prompt_versions"
+	// PromptVersionsColumn is the table column denoting the prompt_versions relation/edge.
+	PromptVersionsColumn = "created_by_user_id"
+	// AgentsTable is the table that holds the agents relation/edge.
+	AgentsTable = "agents"
+	// AgentsInverseTable is the table name for the Agent entity.
+	// It exists in this package in order to avoid circular dependency with the "agent" package.
+	AgentsInverseTable = "agents"
+	// AgentsColumn is the table column denoting the agents relation/edge.
+	AgentsColumn = "created_by_user_id"
+	// ToolsTable is the table that holds the tools relation/edge.
+	ToolsTable = "tools"
+	// ToolsInverseTable is the table name for the Tool entity.
+	// It exists in this package in order to avoid circular dependency with the "tool" package.
+	ToolsInverseTable = "tools"
+	// ToolsColumn is the table column denoting the tools relation/edge.
+	ToolsColumn = "created_by_user_id"
+	// SkillsTable is the table that holds the skills relation/edge.
+	SkillsTable = "skills"
+	// SkillsInverseTable is the table name for the Skill entity.
+	// It exists in this package in order to avoid circular dependency with the "skill" package.
+	SkillsInverseTable = "skills"
+	// SkillsColumn is the table column denoting the skills relation/edge.
+	SkillsColumn = "created_by_user_id"
 	// ProjectUsersTable is the table that holds the project_users relation/edge.
 	ProjectUsersTable = "user_projects"
 	// ProjectUsersInverseTable is the table name for the UserProject entity.
@@ -306,6 +342,62 @@ func ByChannelOverrideTemplates(term sql.OrderTerm, terms ...sql.OrderTerm) Orde
 	}
 }
 
+// ByPromptVersionsCount orders the results by prompt_versions count.
+func ByPromptVersionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPromptVersionsStep(), opts...)
+	}
+}
+
+// ByPromptVersions orders the results by prompt_versions terms.
+func ByPromptVersions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPromptVersionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByAgentsCount orders the results by agents count.
+func ByAgentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAgentsStep(), opts...)
+	}
+}
+
+// ByAgents orders the results by agents terms.
+func ByAgents(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAgentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByToolsCount orders the results by tools count.
+func ByToolsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newToolsStep(), opts...)
+	}
+}
+
+// ByTools orders the results by tools terms.
+func ByTools(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newToolsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// BySkillsCount orders the results by skills count.
+func BySkillsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newSkillsStep(), opts...)
+	}
+}
+
+// BySkills orders the results by skills terms.
+func BySkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByProjectUsersCount orders the results by project_users count.
 func ByProjectUsersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -359,6 +451,34 @@ func newChannelOverrideTemplatesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ChannelOverrideTemplatesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ChannelOverrideTemplatesTable, ChannelOverrideTemplatesColumn),
+	)
+}
+func newPromptVersionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PromptVersionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, PromptVersionsTable, PromptVersionsColumn),
+	)
+}
+func newAgentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AgentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, AgentsTable, AgentsColumn),
+	)
+}
+func newToolsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ToolsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ToolsTable, ToolsColumn),
+	)
+}
+func newSkillsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SkillsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, SkillsTable, SkillsColumn),
 	)
 }
 func newProjectUsersStep() *sqlgraph.Step {

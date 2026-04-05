@@ -3,6 +3,7 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/mixin"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
@@ -24,6 +25,7 @@ func (TimeMixin) Fields() []ent.Field {
 			Annotations(
 				entgql.OrderField("CREATED_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entsql.DefaultExpr("CURRENT_TIMESTAMP"),
 			),
 		field.Time("updated_at").
 			Default(xtime.UTCNow).
@@ -31,6 +33,7 @@ func (TimeMixin) Fields() []ent.Field {
 			Annotations(
 				entgql.OrderField("UPDATED_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entsql.DefaultExpr("CURRENT_TIMESTAMP"),
 			),
 	}
 }
