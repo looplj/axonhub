@@ -882,49 +882,41 @@ func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, reque
 	return s.UpdateRequestStatus(ctx, requestID, request.StatusFailed)
 }
 
-// clearProcessingRecords is a helper that wraps the common pattern of clearing
-// processing records. It runs with system bypass, handles error wrapping,
-// and logs the number of records affected.
-func (s *RequestService) clearProcessingRecords(
+// cancelStaleRecords updates records older than maxAge to canceled status.
+func (s *RequestService) cancelStaleRecords(
 	ctx context.Context,
-	authzReason string,
+	maxAge time.Duration,
 	entityName string,
-	updateFn func(ctx context.Context) (int, error),
+	updateFn func(ctx context.Context, cutoff time.Time) (int, error),
 ) error {
-	return authz.RunWithSystemBypassVoid(ctx, authzReason, func(ctx context.Context) error {
-		count, err := updateFn(ctx)
+	cutoff := time.Now().UTC().Add(-maxAge)
+	return authz.RunWithSystemBypassVoid(ctx, "cleanup-"+entityName, func(ctx context.Context) error {
+		count, err := updateFn(ctx, cutoff)
 		if err != nil {
-			return fmt.Errorf("failed to clear processing %s: %w", entityName, err)
+			return fmt.Errorf("failed to cancel stale %s: %w", entityName, err)
 		}
-
 		if count > 0 {
-			log.Info(ctx, "cleared stale processing records",
+			log.Info(ctx, "canceled stale processing records",
 				log.String("entity", entityName),
-				log.Int("count", count))
+				log.Int("count", count),
+				log.Duration("maxAge", maxAge))
 		}
-
 		return nil
 	})
 }
 
-// staleProcessingThreshold is how old a processing record must be to be considered stale.
-// 1 hour is conservative enough that no legitimate LLM request should exceed it,
-// ensuring multi-node safety while still recovering from crashes.
-const staleProcessingThreshold = 1 * time.Hour
+// maxProcessingDuration defines how long a record can be in "processing" state.
+// Records exceeding this are considered stuck and will be canceled on startup.
+const maxProcessingDuration = 1 * time.Hour
 
-// ClearStaleProcessingOnStartup cancels processing records older than staleProcessingThreshold.
-// Called during server initialization to recover records stuck from crashes.
 func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) error {
-	staleCutoff := time.Now().UTC().Add(-staleProcessingThreshold)
-
 	var errs []error
 
-	if err := s.clearProcessingRecords(ctx, "startup-cleanup-stale-requests", "stale requests", func(ctx context.Context) (int, error) {
-		client := s.entFromContext(ctx)
-		return client.Request.Update().
+	if err := s.cancelStaleRecords(ctx, maxProcessingDuration, "requests", func(ctx context.Context, cutoff time.Time) (int, error) {
+		return s.entFromContext(ctx).Request.Update().
 			Where(
 				request.StatusEQ(request.StatusProcessing),
-				request.CreatedAtLT(staleCutoff),
+				request.CreatedAtLT(cutoff),
 			).
 			SetStatus(request.StatusCanceled).
 			Save(ctx)
@@ -932,12 +924,11 @@ func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) erro
 		errs = append(errs, err)
 	}
 
-	if err := s.clearProcessingRecords(ctx, "startup-cleanup-stale-executions", "stale executions", func(ctx context.Context) (int, error) {
-		client := s.entFromContext(ctx)
-		return client.RequestExecution.Update().
+	if err := s.cancelStaleRecords(ctx, maxProcessingDuration, "executions", func(ctx context.Context, cutoff time.Time) (int, error) {
+		return s.entFromContext(ctx).RequestExecution.Update().
 			Where(
 				requestexecution.StatusEQ(requestexecution.StatusProcessing),
-				requestexecution.CreatedAtLT(staleCutoff),
+				requestexecution.CreatedAtLT(cutoff),
 			).
 			SetStatus(requestexecution.StatusCanceled).
 			Save(ctx)

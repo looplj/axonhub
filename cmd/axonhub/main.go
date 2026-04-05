@@ -80,9 +80,8 @@ func startServer() {
 			})
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
-					// Clear any stale processing records from previous crashes
 					if err := requestSvc.ClearStaleProcessingOnStartup(ctx); err != nil {
-						log.Warn(ctx, "failed to clear stale processing records on startup", log.Cause(err))
+						log.Warn(ctx, "failed to cancel stale processing records on startup", log.Cause(err))
 					}
 
 					go func() {
