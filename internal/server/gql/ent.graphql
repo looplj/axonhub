@@ -1565,10 +1565,6 @@ input CreateRequestInput {
   responseChunks: [JSONRawMessageInput!]
   externalID: String
   status: RequestStatus!
-  """
-  Fingerprint of the server processing this request, null if not yet assigned or completed
-  """
-  serverFingerprint: String
   stream: Boolean
   clientIP: String
   metricsLatencyMs: Int
@@ -3894,10 +3890,6 @@ type Request implements Node {
   channelID: ID
   externalID: String
   status: RequestStatus!
-  """
-  Fingerprint of the server processing this request, null if not yet assigned or completed
-  """
-  serverFingerprint: String
   stream: Boolean!
   clientIP: String!
   metricsLatencyMs: Int
@@ -4039,10 +4031,6 @@ type RequestExecution implements Node {
   """
   responseStatusCode: Int
   status: RequestExecutionStatus!
-  """
-  Fingerprint of the server processing this execution, null if not yet assigned or completed
-  """
-  serverFingerprint: String
   stream: Boolean!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
@@ -4280,24 +4268,6 @@ input RequestExecutionWhereInput {
   statusIn: [RequestExecutionStatus!]
   statusNotIn: [RequestExecutionStatus!]
   """
-  server_fingerprint field predicates
-  """
-  serverFingerprint: String
-  serverFingerprintNEQ: String
-  serverFingerprintIn: [String!]
-  serverFingerprintNotIn: [String!]
-  serverFingerprintGT: String
-  serverFingerprintGTE: String
-  serverFingerprintLT: String
-  serverFingerprintLTE: String
-  serverFingerprintContains: String
-  serverFingerprintHasPrefix: String
-  serverFingerprintHasSuffix: String
-  serverFingerprintIsNil: Boolean
-  serverFingerprintNotNil: Boolean
-  serverFingerprintEqualFold: String
-  serverFingerprintContainsFold: String
-  """
   stream field predicates
   """
   stream: Boolean
@@ -4530,24 +4500,6 @@ input RequestWhereInput {
   statusNEQ: RequestStatus
   statusIn: [RequestStatus!]
   statusNotIn: [RequestStatus!]
-  """
-  server_fingerprint field predicates
-  """
-  serverFingerprint: String
-  serverFingerprintNEQ: String
-  serverFingerprintIn: [String!]
-  serverFingerprintNotIn: [String!]
-  serverFingerprintGT: String
-  serverFingerprintGTE: String
-  serverFingerprintLT: String
-  serverFingerprintLTE: String
-  serverFingerprintContains: String
-  serverFingerprintHasPrefix: String
-  serverFingerprintHasSuffix: String
-  serverFingerprintIsNil: Boolean
-  serverFingerprintNotNil: Boolean
-  serverFingerprintEqualFold: String
-  serverFingerprintContainsFold: String
   """
   stream field predicates
   """
@@ -5611,11 +5563,6 @@ input UpdateRequestInput {
   externalID: String
   clearExternalID: Boolean
   status: RequestStatus
-  """
-  Fingerprint of the server processing this request, null if not yet assigned or completed
-  """
-  serverFingerprint: String
-  clearServerFingerprint: Boolean
   metricsLatencyMs: Int
   clearMetricsLatencyMs: Boolean
   metricsFirstTokenLatencyMs: Int

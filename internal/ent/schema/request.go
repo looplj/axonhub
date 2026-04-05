@@ -35,9 +35,6 @@ func (Request) Indexes() []ent.Index {
 		// Performance indexes for dashboard queries
 		index.Fields("created_at").
 			StorageKey("requests_by_created_at"),
-		// Index for server-specific processing status queries
-		index.Fields("server_fingerprint", "status").
-			StorageKey("requests_by_server_fingerprint_status"),
 	}
 }
 
@@ -88,12 +85,6 @@ func (Request) Fields() []ent.Field {
 		field.String("external_id").Optional(),
 		// The status of the request.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
-		// Server fingerprint tracks which server instance owns this request.
-		// Used for safe multi-node cleanup during shutdown/startup.
-		field.String("server_fingerprint").
-			Optional().
-			Nillable().
-			Comment("Fingerprint of the server processing this request, null if not yet assigned or completed"),
 		// Whether the request is a streaming request
 		field.Bool("stream").Default(false).Immutable(),
 		field.String("client_ip").Default("").Immutable(),

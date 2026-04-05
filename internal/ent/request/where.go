@@ -105,11 +105,6 @@ func ExternalID(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldExternalID, v))
 }
 
-// ServerFingerprint applies equality check predicate on the "server_fingerprint" field. It's identical to ServerFingerprintEQ.
-func ServerFingerprint(v string) predicate.Request {
-	return predicate.Request(sql.FieldEQ(FieldServerFingerprint, v))
-}
-
 // Stream applies equality check predicate on the "stream" field. It's identical to StreamEQ.
 func Stream(v bool) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldStream, v))
@@ -643,81 +638,6 @@ func StatusIn(vs ...Status) predicate.Request {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Request {
 	return predicate.Request(sql.FieldNotIn(FieldStatus, vs...))
-}
-
-// ServerFingerprintEQ applies the EQ predicate on the "server_fingerprint" field.
-func ServerFingerprintEQ(v string) predicate.Request {
-	return predicate.Request(sql.FieldEQ(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintNEQ applies the NEQ predicate on the "server_fingerprint" field.
-func ServerFingerprintNEQ(v string) predicate.Request {
-	return predicate.Request(sql.FieldNEQ(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintIn applies the In predicate on the "server_fingerprint" field.
-func ServerFingerprintIn(vs ...string) predicate.Request {
-	return predicate.Request(sql.FieldIn(FieldServerFingerprint, vs...))
-}
-
-// ServerFingerprintNotIn applies the NotIn predicate on the "server_fingerprint" field.
-func ServerFingerprintNotIn(vs ...string) predicate.Request {
-	return predicate.Request(sql.FieldNotIn(FieldServerFingerprint, vs...))
-}
-
-// ServerFingerprintGT applies the GT predicate on the "server_fingerprint" field.
-func ServerFingerprintGT(v string) predicate.Request {
-	return predicate.Request(sql.FieldGT(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintGTE applies the GTE predicate on the "server_fingerprint" field.
-func ServerFingerprintGTE(v string) predicate.Request {
-	return predicate.Request(sql.FieldGTE(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintLT applies the LT predicate on the "server_fingerprint" field.
-func ServerFingerprintLT(v string) predicate.Request {
-	return predicate.Request(sql.FieldLT(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintLTE applies the LTE predicate on the "server_fingerprint" field.
-func ServerFingerprintLTE(v string) predicate.Request {
-	return predicate.Request(sql.FieldLTE(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintContains applies the Contains predicate on the "server_fingerprint" field.
-func ServerFingerprintContains(v string) predicate.Request {
-	return predicate.Request(sql.FieldContains(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintHasPrefix applies the HasPrefix predicate on the "server_fingerprint" field.
-func ServerFingerprintHasPrefix(v string) predicate.Request {
-	return predicate.Request(sql.FieldHasPrefix(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintHasSuffix applies the HasSuffix predicate on the "server_fingerprint" field.
-func ServerFingerprintHasSuffix(v string) predicate.Request {
-	return predicate.Request(sql.FieldHasSuffix(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintIsNil applies the IsNil predicate on the "server_fingerprint" field.
-func ServerFingerprintIsNil() predicate.Request {
-	return predicate.Request(sql.FieldIsNull(FieldServerFingerprint))
-}
-
-// ServerFingerprintNotNil applies the NotNil predicate on the "server_fingerprint" field.
-func ServerFingerprintNotNil() predicate.Request {
-	return predicate.Request(sql.FieldNotNull(FieldServerFingerprint))
-}
-
-// ServerFingerprintEqualFold applies the EqualFold predicate on the "server_fingerprint" field.
-func ServerFingerprintEqualFold(v string) predicate.Request {
-	return predicate.Request(sql.FieldEqualFold(FieldServerFingerprint, v))
-}
-
-// ServerFingerprintContainsFold applies the ContainsFold predicate on the "server_fingerprint" field.
-func ServerFingerprintContainsFold(v string) predicate.Request {
-	return predicate.Request(sql.FieldContainsFold(FieldServerFingerprint, v))
 }
 
 // StreamEQ applies the EQ predicate on the "stream" field.

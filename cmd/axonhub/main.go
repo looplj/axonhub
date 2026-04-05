@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/andreazorzetto/yh/highlight"
 	"github.com/hokaccha/go-prettyjson"
@@ -98,28 +97,14 @@ func startServer() {
 					return nil
 				},
 				OnStop: func(ctx context.Context) error {
-					// First, gracefully shutdown the server to allow active requests to complete
 					err := server.Shutdown(ctx)
 					if err != nil {
-						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
-					}
-
-					// Use a fresh context for cleanup in case fx's context is already cancelled
-					cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-					defer cancel()
-
-					// After shutdown, clear any remaining processing records owned by this node
-					// that didn't complete during graceful shutdown
-					if err := requestSvc.ClearProcessingRequestsOnShutdown(cleanupCtx); err != nil {
-						log.Error(context.Background(), "failed to clear processing requests on shutdown", log.Cause(err))
-					}
-					if err := requestSvc.ClearProcessingExecutionsOnShutdown(cleanupCtx); err != nil {
-						log.Error(context.Background(), "failed to clear processing executions on shutdown", log.Cause(err))
+						log.Error(context.Background(), "server shutdown error", log.Cause(err))
 					}
 
 					err = ent.Close()
 					if err != nil {
-						log.Error(context.Background(), "ent close error:", log.Cause(err))
+						log.Error(context.Background(), "ent close error", log.Cause(err))
 					}
 
 					return nil

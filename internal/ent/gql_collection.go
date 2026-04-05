@@ -3510,11 +3510,6 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldStatus)
 				fieldSeen[request.FieldStatus] = struct{}{}
 			}
-		case "serverFingerprint":
-			if _, ok := fieldSeen[request.FieldServerFingerprint]; !ok {
-				selectedFields = append(selectedFields, request.FieldServerFingerprint)
-				fieldSeen[request.FieldServerFingerprint] = struct{}{}
-			}
 		case "stream":
 			if _, ok := fieldSeen[request.FieldStream]; !ok {
 				selectedFields = append(selectedFields, request.FieldStream)
@@ -3758,11 +3753,6 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 			if _, ok := fieldSeen[requestexecution.FieldStatus]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldStatus)
 				fieldSeen[requestexecution.FieldStatus] = struct{}{}
-			}
-		case "serverFingerprint":
-			if _, ok := fieldSeen[requestexecution.FieldServerFingerprint]; !ok {
-				selectedFields = append(selectedFields, requestexecution.FieldServerFingerprint)
-				fieldSeen[requestexecution.FieldServerFingerprint] = struct{}{}
 			}
 		case "stream":
 			if _, ok := fieldSeen[requestexecution.FieldStream]; !ok {

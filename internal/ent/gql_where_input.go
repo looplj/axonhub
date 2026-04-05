@@ -5670,23 +5670,6 @@ type RequestWhereInput struct {
 	StatusIn    []request.Status `json:"statusIn,omitempty"`
 	StatusNotIn []request.Status `json:"statusNotIn,omitempty"`
 
-	// "server_fingerprint" field predicates.
-	ServerFingerprint             *string  `json:"serverFingerprint,omitempty"`
-	ServerFingerprintNEQ          *string  `json:"serverFingerprintNEQ,omitempty"`
-	ServerFingerprintIn           []string `json:"serverFingerprintIn,omitempty"`
-	ServerFingerprintNotIn        []string `json:"serverFingerprintNotIn,omitempty"`
-	ServerFingerprintGT           *string  `json:"serverFingerprintGT,omitempty"`
-	ServerFingerprintGTE          *string  `json:"serverFingerprintGTE,omitempty"`
-	ServerFingerprintLT           *string  `json:"serverFingerprintLT,omitempty"`
-	ServerFingerprintLTE          *string  `json:"serverFingerprintLTE,omitempty"`
-	ServerFingerprintContains     *string  `json:"serverFingerprintContains,omitempty"`
-	ServerFingerprintHasPrefix    *string  `json:"serverFingerprintHasPrefix,omitempty"`
-	ServerFingerprintHasSuffix    *string  `json:"serverFingerprintHasSuffix,omitempty"`
-	ServerFingerprintIsNil        bool     `json:"serverFingerprintIsNil,omitempty"`
-	ServerFingerprintNotNil       bool     `json:"serverFingerprintNotNil,omitempty"`
-	ServerFingerprintEqualFold    *string  `json:"serverFingerprintEqualFold,omitempty"`
-	ServerFingerprintContainsFold *string  `json:"serverFingerprintContainsFold,omitempty"`
-
 	// "stream" field predicates.
 	Stream    *bool `json:"stream,omitempty"`
 	StreamNEQ *bool `json:"streamNEQ,omitempty"`
@@ -6177,51 +6160,6 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, request.StatusNotIn(i.StatusNotIn...))
-	}
-	if i.ServerFingerprint != nil {
-		predicates = append(predicates, request.ServerFingerprintEQ(*i.ServerFingerprint))
-	}
-	if i.ServerFingerprintNEQ != nil {
-		predicates = append(predicates, request.ServerFingerprintNEQ(*i.ServerFingerprintNEQ))
-	}
-	if len(i.ServerFingerprintIn) > 0 {
-		predicates = append(predicates, request.ServerFingerprintIn(i.ServerFingerprintIn...))
-	}
-	if len(i.ServerFingerprintNotIn) > 0 {
-		predicates = append(predicates, request.ServerFingerprintNotIn(i.ServerFingerprintNotIn...))
-	}
-	if i.ServerFingerprintGT != nil {
-		predicates = append(predicates, request.ServerFingerprintGT(*i.ServerFingerprintGT))
-	}
-	if i.ServerFingerprintGTE != nil {
-		predicates = append(predicates, request.ServerFingerprintGTE(*i.ServerFingerprintGTE))
-	}
-	if i.ServerFingerprintLT != nil {
-		predicates = append(predicates, request.ServerFingerprintLT(*i.ServerFingerprintLT))
-	}
-	if i.ServerFingerprintLTE != nil {
-		predicates = append(predicates, request.ServerFingerprintLTE(*i.ServerFingerprintLTE))
-	}
-	if i.ServerFingerprintContains != nil {
-		predicates = append(predicates, request.ServerFingerprintContains(*i.ServerFingerprintContains))
-	}
-	if i.ServerFingerprintHasPrefix != nil {
-		predicates = append(predicates, request.ServerFingerprintHasPrefix(*i.ServerFingerprintHasPrefix))
-	}
-	if i.ServerFingerprintHasSuffix != nil {
-		predicates = append(predicates, request.ServerFingerprintHasSuffix(*i.ServerFingerprintHasSuffix))
-	}
-	if i.ServerFingerprintIsNil {
-		predicates = append(predicates, request.ServerFingerprintIsNil())
-	}
-	if i.ServerFingerprintNotNil {
-		predicates = append(predicates, request.ServerFingerprintNotNil())
-	}
-	if i.ServerFingerprintEqualFold != nil {
-		predicates = append(predicates, request.ServerFingerprintEqualFold(*i.ServerFingerprintEqualFold))
-	}
-	if i.ServerFingerprintContainsFold != nil {
-		predicates = append(predicates, request.ServerFingerprintContainsFold(*i.ServerFingerprintContainsFold))
 	}
 	if i.Stream != nil {
 		predicates = append(predicates, request.StreamEQ(*i.Stream))
@@ -6727,23 +6665,6 @@ type RequestExecutionWhereInput struct {
 	StatusIn    []requestexecution.Status `json:"statusIn,omitempty"`
 	StatusNotIn []requestexecution.Status `json:"statusNotIn,omitempty"`
 
-	// "server_fingerprint" field predicates.
-	ServerFingerprint             *string  `json:"serverFingerprint,omitempty"`
-	ServerFingerprintNEQ          *string  `json:"serverFingerprintNEQ,omitempty"`
-	ServerFingerprintIn           []string `json:"serverFingerprintIn,omitempty"`
-	ServerFingerprintNotIn        []string `json:"serverFingerprintNotIn,omitempty"`
-	ServerFingerprintGT           *string  `json:"serverFingerprintGT,omitempty"`
-	ServerFingerprintGTE          *string  `json:"serverFingerprintGTE,omitempty"`
-	ServerFingerprintLT           *string  `json:"serverFingerprintLT,omitempty"`
-	ServerFingerprintLTE          *string  `json:"serverFingerprintLTE,omitempty"`
-	ServerFingerprintContains     *string  `json:"serverFingerprintContains,omitempty"`
-	ServerFingerprintHasPrefix    *string  `json:"serverFingerprintHasPrefix,omitempty"`
-	ServerFingerprintHasSuffix    *string  `json:"serverFingerprintHasSuffix,omitempty"`
-	ServerFingerprintIsNil        bool     `json:"serverFingerprintIsNil,omitempty"`
-	ServerFingerprintNotNil       bool     `json:"serverFingerprintNotNil,omitempty"`
-	ServerFingerprintEqualFold    *string  `json:"serverFingerprintEqualFold,omitempty"`
-	ServerFingerprintContainsFold *string  `json:"serverFingerprintContainsFold,omitempty"`
-
 	// "stream" field predicates.
 	Stream    *bool `json:"stream,omitempty"`
 	StreamNEQ *bool `json:"streamNEQ,omitempty"`
@@ -7209,51 +7130,6 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, requestexecution.StatusNotIn(i.StatusNotIn...))
-	}
-	if i.ServerFingerprint != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintEQ(*i.ServerFingerprint))
-	}
-	if i.ServerFingerprintNEQ != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintNEQ(*i.ServerFingerprintNEQ))
-	}
-	if len(i.ServerFingerprintIn) > 0 {
-		predicates = append(predicates, requestexecution.ServerFingerprintIn(i.ServerFingerprintIn...))
-	}
-	if len(i.ServerFingerprintNotIn) > 0 {
-		predicates = append(predicates, requestexecution.ServerFingerprintNotIn(i.ServerFingerprintNotIn...))
-	}
-	if i.ServerFingerprintGT != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintGT(*i.ServerFingerprintGT))
-	}
-	if i.ServerFingerprintGTE != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintGTE(*i.ServerFingerprintGTE))
-	}
-	if i.ServerFingerprintLT != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintLT(*i.ServerFingerprintLT))
-	}
-	if i.ServerFingerprintLTE != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintLTE(*i.ServerFingerprintLTE))
-	}
-	if i.ServerFingerprintContains != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintContains(*i.ServerFingerprintContains))
-	}
-	if i.ServerFingerprintHasPrefix != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintHasPrefix(*i.ServerFingerprintHasPrefix))
-	}
-	if i.ServerFingerprintHasSuffix != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintHasSuffix(*i.ServerFingerprintHasSuffix))
-	}
-	if i.ServerFingerprintIsNil {
-		predicates = append(predicates, requestexecution.ServerFingerprintIsNil())
-	}
-	if i.ServerFingerprintNotNil {
-		predicates = append(predicates, requestexecution.ServerFingerprintNotNil())
-	}
-	if i.ServerFingerprintEqualFold != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintEqualFold(*i.ServerFingerprintEqualFold))
-	}
-	if i.ServerFingerprintContainsFold != nil {
-		predicates = append(predicates, requestexecution.ServerFingerprintContainsFold(*i.ServerFingerprintContainsFold))
 	}
 	if i.Stream != nil {
 		predicates = append(predicates, requestexecution.StreamEQ(*i.Stream))

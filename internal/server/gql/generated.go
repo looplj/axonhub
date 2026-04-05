@@ -1128,7 +1128,6 @@ type ComplexityRoot struct {
 		RequestHeaders             func(childComplexity int) int
 		ResponseBody               func(childComplexity int) int
 		ResponseChunks             func(childComplexity int) int
-		ServerFingerprint          func(childComplexity int) int
 		Source                     func(childComplexity int) int
 		Status                     func(childComplexity int) int
 		Stream                     func(childComplexity int) int
@@ -1170,7 +1169,6 @@ type ComplexityRoot struct {
 		ResponseBody               func(childComplexity int) int
 		ResponseChunks             func(childComplexity int) int
 		ResponseStatusCode         func(childComplexity int) int
-		ServerFingerprint          func(childComplexity int) int
 		Status                     func(childComplexity int) int
 		Stream                     func(childComplexity int) int
 		UpdatedAt                  func(childComplexity int) int
@@ -6894,12 +6892,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.ResponseChunks(childComplexity), true
-	case "Request.serverFingerprint":
-		if e.complexity.Request.ServerFingerprint == nil {
-			break
-		}
-
-		return e.complexity.Request.ServerFingerprint(childComplexity), true
 	case "Request.source":
 		if e.complexity.Request.Source == nil {
 			break
@@ -7100,12 +7092,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.ResponseStatusCode(childComplexity), true
-	case "RequestExecution.serverFingerprint":
-		if e.complexity.RequestExecution.ServerFingerprint == nil {
-			break
-		}
-
-		return e.complexity.RequestExecution.ServerFingerprint(childComplexity), true
 	case "RequestExecution.status":
 		if e.complexity.RequestExecution.Status == nil {
 			break
@@ -36663,35 +36649,6 @@ func (ec *executionContext) fieldContext_Request_status(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Request_serverFingerprint(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Request_serverFingerprint,
-		func(ctx context.Context) (any, error) {
-			return obj.ServerFingerprint, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Request_serverFingerprint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Request",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Request_stream(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37500,8 +37457,6 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_externalID(ctx, field)
 			case "status":
 				return ec.fieldContext_Request_status(ctx, field)
-			case "serverFingerprint":
-				return ec.fieldContext_Request_serverFingerprint(ctx, field)
 			case "stream":
 				return ec.fieldContext_Request_stream(ctx, field)
 			case "clientIP":
@@ -38032,35 +37987,6 @@ func (ec *executionContext) fieldContext_RequestExecution_status(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _RequestExecution_serverFingerprint(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestExecution_serverFingerprint,
-		func(ctx context.Context) (any, error) {
-			return obj.ServerFingerprint, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestExecution_serverFingerprint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RequestExecution_stream(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -38235,8 +38161,6 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_externalID(ctx, field)
 			case "status":
 				return ec.fieldContext_Request_status(ctx, field)
-			case "serverFingerprint":
-				return ec.fieldContext_Request_serverFingerprint(ctx, field)
 			case "stream":
 				return ec.fieldContext_Request_stream(ctx, field)
 			case "clientIP":
@@ -38571,8 +38495,6 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_responseStatusCode(ctx, field)
 			case "status":
 				return ec.fieldContext_RequestExecution_status(ctx, field)
-			case "serverFingerprint":
-				return ec.fieldContext_RequestExecution_serverFingerprint(ctx, field)
 			case "stream":
 				return ec.fieldContext_RequestExecution_stream(ctx, field)
 			case "metricsLatencyMs":
@@ -45815,8 +45737,6 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_externalID(ctx, field)
 			case "status":
 				return ec.fieldContext_Request_status(ctx, field)
-			case "serverFingerprint":
-				return ec.fieldContext_Request_serverFingerprint(ctx, field)
 			case "stream":
 				return ec.fieldContext_Request_stream(ctx, field)
 			case "clientIP":
@@ -55994,7 +55914,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "serverFingerprint", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
+	fieldsInOrder := [...]string{"source", "modelID", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -56064,13 +55984,6 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.Status = data
-		case "serverFingerprint":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprint"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprint = data
 		case "stream":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stream"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -62211,7 +62124,7 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "serverFingerprint", "serverFingerprintNEQ", "serverFingerprintIn", "serverFingerprintNotIn", "serverFingerprintGT", "serverFingerprintGTE", "serverFingerprintLT", "serverFingerprintLTE", "serverFingerprintContains", "serverFingerprintHasPrefix", "serverFingerprintHasSuffix", "serverFingerprintIsNil", "serverFingerprintNotNil", "serverFingerprintEqualFold", "serverFingerprintContainsFold", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63145,111 +63058,6 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 				return it, err
 			}
 			it.StatusNotIn = data
-		case "serverFingerprint":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprint"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprint = data
-		case "serverFingerprintNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintNEQ = data
-		case "serverFingerprintIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintIn = data
-		case "serverFingerprintNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintNotIn = data
-		case "serverFingerprintGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintGT = data
-		case "serverFingerprintGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintGTE = data
-		case "serverFingerprintLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintLT = data
-		case "serverFingerprintLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintLTE = data
-		case "serverFingerprintContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintContains = data
-		case "serverFingerprintHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintHasPrefix = data
-		case "serverFingerprintHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintHasSuffix = data
-		case "serverFingerprintIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintIsNil"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintIsNil = data
-		case "serverFingerprintNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintNotNil"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintNotNil = data
-		case "serverFingerprintEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintEqualFold = data
-		case "serverFingerprintContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintContainsFold = data
 		case "stream":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stream"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -63497,7 +63305,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "serverFingerprint", "serverFingerprintNEQ", "serverFingerprintIn", "serverFingerprintNotIn", "serverFingerprintGT", "serverFingerprintGTE", "serverFingerprintLT", "serverFingerprintLTE", "serverFingerprintContains", "serverFingerprintHasPrefix", "serverFingerprintHasSuffix", "serverFingerprintIsNil", "serverFingerprintNotNil", "serverFingerprintEqualFold", "serverFingerprintContainsFold", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -64344,111 +64152,6 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.StatusNotIn = data
-		case "serverFingerprint":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprint"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprint = data
-		case "serverFingerprintNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintNEQ = data
-		case "serverFingerprintIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintIn = data
-		case "serverFingerprintNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintNotIn = data
-		case "serverFingerprintGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintGT = data
-		case "serverFingerprintGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintGTE = data
-		case "serverFingerprintLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintLT = data
-		case "serverFingerprintLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintLTE = data
-		case "serverFingerprintContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintContains = data
-		case "serverFingerprintHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintHasPrefix = data
-		case "serverFingerprintHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintHasSuffix = data
-		case "serverFingerprintIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintIsNil"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintIsNil = data
-		case "serverFingerprintNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintNotNil"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintNotNil = data
-		case "serverFingerprintEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintEqualFold = data
-		case "serverFingerprintContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprintContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprintContainsFold = data
 		case "stream":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("stream"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -68464,7 +68167,7 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "serverFingerprint", "clearServerFingerprint", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "contentSaved", "contentStorageID", "clearContentStorageID", "contentStorageKey", "clearContentStorageKey", "contentSavedAt", "clearContentSavedAt", "channelID", "clearChannel"}
+	fieldsInOrder := [...]string{"requestHeaders", "appendRequestHeaders", "clearRequestHeaders", "responseBody", "appendResponseBody", "clearResponseBody", "responseChunks", "appendResponseChunks", "clearResponseChunks", "externalID", "clearExternalID", "status", "metricsLatencyMs", "clearMetricsLatencyMs", "metricsFirstTokenLatencyMs", "clearMetricsFirstTokenLatencyMs", "contentSaved", "contentStorageID", "clearContentStorageID", "contentStorageKey", "clearContentStorageKey", "contentSavedAt", "clearContentSavedAt", "channelID", "clearChannel"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68555,20 +68258,6 @@ func (ec *executionContext) unmarshalInputUpdateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.Status = data
-		case "serverFingerprint":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serverFingerprint"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ServerFingerprint = data
-		case "clearServerFingerprint":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearServerFingerprint"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ClearServerFingerprint = data
 		case "metricsLatencyMs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricsLatencyMs"))
 			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
@@ -83128,8 +82817,6 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "serverFingerprint":
-			out.Values[i] = ec._Request_serverFingerprint(ctx, field, obj)
 		case "stream":
 			out.Values[i] = ec._Request_stream(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -83792,8 +83479,6 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "serverFingerprint":
-			out.Values[i] = ec._RequestExecution_serverFingerprint(ctx, field, obj)
 		case "stream":
 			out.Values[i] = ec._RequestExecution_stream(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

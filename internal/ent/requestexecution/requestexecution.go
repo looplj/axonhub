@@ -47,8 +47,6 @@ const (
 	FieldResponseStatusCode = "response_status_code"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-	// FieldServerFingerprint holds the string denoting the server_fingerprint field in the database.
-	FieldServerFingerprint = "server_fingerprint"
 	// FieldStream holds the string denoting the stream field in the database.
 	FieldStream = "stream"
 	// FieldMetricsLatencyMs holds the string denoting the metrics_latency_ms field in the database.
@@ -106,7 +104,6 @@ var Columns = []string{
 	FieldErrorMessage,
 	FieldResponseStatusCode,
 	FieldStatus,
-	FieldServerFingerprint,
 	FieldStream,
 	FieldMetricsLatencyMs,
 	FieldMetricsFirstTokenLatencyMs,
@@ -230,11 +227,6 @@ func ByResponseStatusCode(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
-}
-
-// ByServerFingerprint orders the results by the server_fingerprint field.
-func ByServerFingerprint(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldServerFingerprint, opts...).ToFunc()
 }
 
 // ByStream orders the results by the stream field.

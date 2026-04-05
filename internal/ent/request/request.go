@@ -50,8 +50,6 @@ const (
 	FieldExternalID = "external_id"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-	// FieldServerFingerprint holds the string denoting the server_fingerprint field in the database.
-	FieldServerFingerprint = "server_fingerprint"
 	// FieldStream holds the string denoting the stream field in the database.
 	FieldStream = "stream"
 	// FieldClientIP holds the string denoting the client_ip field in the database.
@@ -154,7 +152,6 @@ var Columns = []string{
 	FieldChannelID,
 	FieldExternalID,
 	FieldStatus,
-	FieldServerFingerprint,
 	FieldStream,
 	FieldClientIP,
 	FieldMetricsLatencyMs,
@@ -320,11 +317,6 @@ func ByExternalID(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
-}
-
-// ByServerFingerprint orders the results by the server_fingerprint field.
-func ByServerFingerprint(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldServerFingerprint, opts...).ToFunc()
 }
 
 // ByStream orders the results by the stream field.

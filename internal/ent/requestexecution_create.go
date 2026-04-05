@@ -188,20 +188,6 @@ func (_c *RequestExecutionCreate) SetStatus(v requestexecution.Status) *RequestE
 	return _c
 }
 
-// SetServerFingerprint sets the "server_fingerprint" field.
-func (_c *RequestExecutionCreate) SetServerFingerprint(v string) *RequestExecutionCreate {
-	_c.mutation.SetServerFingerprint(v)
-	return _c
-}
-
-// SetNillableServerFingerprint sets the "server_fingerprint" field if the given value is not nil.
-func (_c *RequestExecutionCreate) SetNillableServerFingerprint(v *string) *RequestExecutionCreate {
-	if v != nil {
-		_c.SetServerFingerprint(*v)
-	}
-	return _c
-}
-
 // SetStream sets the "stream" field.
 func (_c *RequestExecutionCreate) SetStream(v bool) *RequestExecutionCreate {
 	_c.mutation.SetStream(v)
@@ -427,10 +413,6 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
-	}
-	if value, ok := _c.mutation.ServerFingerprint(); ok {
-		_spec.SetField(requestexecution.FieldServerFingerprint, field.TypeString, value)
-		_node.ServerFingerprint = &value
 	}
 	if value, ok := _c.mutation.Stream(); ok {
 		_spec.SetField(requestexecution.FieldStream, field.TypeBool, value)
@@ -668,24 +650,6 @@ func (u *RequestExecutionUpsert) SetStatus(v requestexecution.Status) *RequestEx
 // UpdateStatus sets the "status" field to the value that was provided on create.
 func (u *RequestExecutionUpsert) UpdateStatus() *RequestExecutionUpsert {
 	u.SetExcluded(requestexecution.FieldStatus)
-	return u
-}
-
-// SetServerFingerprint sets the "server_fingerprint" field.
-func (u *RequestExecutionUpsert) SetServerFingerprint(v string) *RequestExecutionUpsert {
-	u.Set(requestexecution.FieldServerFingerprint, v)
-	return u
-}
-
-// UpdateServerFingerprint sets the "server_fingerprint" field to the value that was provided on create.
-func (u *RequestExecutionUpsert) UpdateServerFingerprint() *RequestExecutionUpsert {
-	u.SetExcluded(requestexecution.FieldServerFingerprint)
-	return u
-}
-
-// ClearServerFingerprint clears the value of the "server_fingerprint" field.
-func (u *RequestExecutionUpsert) ClearServerFingerprint() *RequestExecutionUpsert {
-	u.SetNull(requestexecution.FieldServerFingerprint)
 	return u
 }
 
@@ -961,27 +925,6 @@ func (u *RequestExecutionUpsertOne) SetStatus(v requestexecution.Status) *Reques
 func (u *RequestExecutionUpsertOne) UpdateStatus() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.UpdateStatus()
-	})
-}
-
-// SetServerFingerprint sets the "server_fingerprint" field.
-func (u *RequestExecutionUpsertOne) SetServerFingerprint(v string) *RequestExecutionUpsertOne {
-	return u.Update(func(s *RequestExecutionUpsert) {
-		s.SetServerFingerprint(v)
-	})
-}
-
-// UpdateServerFingerprint sets the "server_fingerprint" field to the value that was provided on create.
-func (u *RequestExecutionUpsertOne) UpdateServerFingerprint() *RequestExecutionUpsertOne {
-	return u.Update(func(s *RequestExecutionUpsert) {
-		s.UpdateServerFingerprint()
-	})
-}
-
-// ClearServerFingerprint clears the value of the "server_fingerprint" field.
-func (u *RequestExecutionUpsertOne) ClearServerFingerprint() *RequestExecutionUpsertOne {
-	return u.Update(func(s *RequestExecutionUpsert) {
-		s.ClearServerFingerprint()
 	})
 }
 
@@ -1434,27 +1377,6 @@ func (u *RequestExecutionUpsertBulk) SetStatus(v requestexecution.Status) *Reque
 func (u *RequestExecutionUpsertBulk) UpdateStatus() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.UpdateStatus()
-	})
-}
-
-// SetServerFingerprint sets the "server_fingerprint" field.
-func (u *RequestExecutionUpsertBulk) SetServerFingerprint(v string) *RequestExecutionUpsertBulk {
-	return u.Update(func(s *RequestExecutionUpsert) {
-		s.SetServerFingerprint(v)
-	})
-}
-
-// UpdateServerFingerprint sets the "server_fingerprint" field to the value that was provided on create.
-func (u *RequestExecutionUpsertBulk) UpdateServerFingerprint() *RequestExecutionUpsertBulk {
-	return u.Update(func(s *RequestExecutionUpsert) {
-		s.UpdateServerFingerprint()
-	})
-}
-
-// ClearServerFingerprint clears the value of the "server_fingerprint" field.
-func (u *RequestExecutionUpsertBulk) ClearServerFingerprint() *RequestExecutionUpsertBulk {
-	return u.Update(func(s *RequestExecutionUpsert) {
-		s.ClearServerFingerprint()
 	})
 }
 

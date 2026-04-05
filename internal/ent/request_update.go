@@ -148,26 +148,6 @@ func (_u *RequestUpdate) SetNillableStatus(v *request.Status) *RequestUpdate {
 	return _u
 }
 
-// SetServerFingerprint sets the "server_fingerprint" field.
-func (_u *RequestUpdate) SetServerFingerprint(v string) *RequestUpdate {
-	_u.mutation.SetServerFingerprint(v)
-	return _u
-}
-
-// SetNillableServerFingerprint sets the "server_fingerprint" field if the given value is not nil.
-func (_u *RequestUpdate) SetNillableServerFingerprint(v *string) *RequestUpdate {
-	if v != nil {
-		_u.SetServerFingerprint(*v)
-	}
-	return _u
-}
-
-// ClearServerFingerprint clears the value of the "server_fingerprint" field.
-func (_u *RequestUpdate) ClearServerFingerprint() *RequestUpdate {
-	_u.mutation.ClearServerFingerprint()
-	return _u
-}
-
 // SetMetricsLatencyMs sets the "metrics_latency_ms" field.
 func (_u *RequestUpdate) SetMetricsLatencyMs(v int64) *RequestUpdate {
 	_u.mutation.ResetMetricsLatencyMs()
@@ -509,12 +489,6 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.ServerFingerprint(); ok {
-		_spec.SetField(request.FieldServerFingerprint, field.TypeString, value)
-	}
-	if _u.mutation.ServerFingerprintCleared() {
-		_spec.ClearField(request.FieldServerFingerprint, field.TypeString)
-	}
 	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
 	}
@@ -809,26 +783,6 @@ func (_u *RequestUpdateOne) SetNillableStatus(v *request.Status) *RequestUpdateO
 	if v != nil {
 		_u.SetStatus(*v)
 	}
-	return _u
-}
-
-// SetServerFingerprint sets the "server_fingerprint" field.
-func (_u *RequestUpdateOne) SetServerFingerprint(v string) *RequestUpdateOne {
-	_u.mutation.SetServerFingerprint(v)
-	return _u
-}
-
-// SetNillableServerFingerprint sets the "server_fingerprint" field if the given value is not nil.
-func (_u *RequestUpdateOne) SetNillableServerFingerprint(v *string) *RequestUpdateOne {
-	if v != nil {
-		_u.SetServerFingerprint(*v)
-	}
-	return _u
-}
-
-// ClearServerFingerprint clears the value of the "server_fingerprint" field.
-func (_u *RequestUpdateOne) ClearServerFingerprint() *RequestUpdateOne {
-	_u.mutation.ClearServerFingerprint()
 	return _u
 }
 
@@ -1202,12 +1156,6 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.ServerFingerprint(); ok {
-		_spec.SetField(request.FieldServerFingerprint, field.TypeString, value)
-	}
-	if _u.mutation.ServerFingerprintCleared() {
-		_spec.ClearField(request.FieldServerFingerprint, field.TypeString)
 	}
 	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)

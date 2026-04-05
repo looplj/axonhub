@@ -28,9 +28,6 @@ func (RequestExecution) Indexes() []ent.Index {
 			StorageKey("request_executions_by_request_id_status_created_at"),
 		index.Fields("channel_id").
 			StorageKey("request_executions_by_channel_id_created_at"),
-		// Index for server-specific processing status queries
-		index.Fields("server_fingerprint", "status").
-			StorageKey("request_executions_by_server_fingerprint_status"),
 	}
 }
 
@@ -68,12 +65,6 @@ func (RequestExecution) Fields() []ent.Field {
 			Comment("HTTP status code from the upstream provider"),
 		// The status of the request execution.
 		field.Enum("status").Values("pending", "processing", "completed", "failed", "canceled"),
-		// Server fingerprint tracks which server instance owns this execution.
-		// Used for safe multi-node cleanup during shutdown/startup.
-		field.String("server_fingerprint").
-			Optional().
-			Nillable().
-			Comment("Fingerprint of the server processing this execution, null if not yet assigned or completed"),
 		// Whether the request is a streaming request
 		field.Bool("stream").Default(false).Immutable(),
 		// Total latency in milliseconds from request start to completion
