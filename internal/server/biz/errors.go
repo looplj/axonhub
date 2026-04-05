@@ -18,4 +18,5 @@ var (
 	ErrAPIKeyScopeRequired    = errors.New("api key missing required scope")
 	ErrAPIKeyNameRequired     = errors.New("api key name is required")
 	ErrSystemNotInitialized   = errors.New("system not initialized")
+	ErrProjectNotFound        = errors.New("project not found")
 )

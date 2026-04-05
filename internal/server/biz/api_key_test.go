@@ -42,7 +42,7 @@ func setupTestAPIKeyService(t *testing.T, cacheConfig xcache.Config) (*APIKeySer
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	projectService := &ProjectService{
-		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),
+		ProjectCache: xcache.NewFromConfig[xcache.Entry[ent.Project]](cacheConfig),
 	}
 
 	apiKeyService := NewAPIKeyService(APIKeyServiceParams{

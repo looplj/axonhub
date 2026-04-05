@@ -290,7 +290,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}, Default: "active"},
 	}
@@ -303,7 +303,7 @@ var (
 			{
 				Name:    "projects_by_name",
 				Unique:  true,
-				Columns: []*schema.Column{ProjectsColumns[4]},
+				Columns: []*schema.Column{ProjectsColumns[4], ProjectsColumns[3]},
 			},
 		},
 	}

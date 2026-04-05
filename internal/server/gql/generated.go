@@ -801,6 +801,7 @@ type ComplexityRoot struct {
 		DeleteChannelOverrideTemplate        func(childComplexity int, id objects.GUID) int
 		DeleteDisabledChannelAPIKeys         func(childComplexity int, channelID objects.GUID, keys []string) int
 		DeleteModel                          func(childComplexity int, id objects.GUID) int
+		DeleteProject                        func(childComplexity int, id objects.GUID) int
 		DeletePrompt                         func(childComplexity int, id objects.GUID) int
 		DeletePromptProtectionRule           func(childComplexity int, id objects.GUID) int
 		DeleteProxyPreset                    func(childComplexity int, url string) int
@@ -1787,6 +1788,7 @@ type MutationResolver interface {
 	CreateProject(ctx context.Context, input ent.CreateProjectInput) (*ent.Project, error)
 	UpdateProject(ctx context.Context, id objects.GUID, input ent.UpdateProjectInput) (*ent.Project, error)
 	UpdateProjectStatus(ctx context.Context, id objects.GUID, status project.Status) (*ent.Project, error)
+	DeleteProject(ctx context.Context, id objects.GUID) (bool, error)
 	AddUserToProject(ctx context.Context, input AddUserToProjectInput) (*ent.UserProject, error)
 	RemoveUserFromProject(ctx context.Context, input RemoveUserFromProjectInput) (bool, error)
 	UpdateProjectUser(ctx context.Context, input UpdateProjectUserInput) (*ent.UserProject, error)
@@ -4929,6 +4931,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteModel(childComplexity, args["id"].(objects.GUID)), true
+	case "Mutation.deleteProject":
+		if e.complexity.Mutation.DeleteProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteProject_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteProject(childComplexity, args["id"].(objects.GUID)), true
 	case "Mutation.deletePrompt":
 		if e.complexity.Mutation.DeletePrompt == nil {
 			break
@@ -10053,6 +10066,17 @@ func (ec *executionContext) field_Mutation_deleteDisabledChannelAPIKeys_args(ctx
 }
 
 func (ec *executionContext) field_Mutation_deleteModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
@@ -26871,6 +26895,47 @@ func (ec *executionContext) fieldContext_Mutation_updateProjectStatus(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateProjectStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deleteProject,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DeleteProject(ctx, fc.Args["id"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -78832,6 +78897,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateProjectStatus":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateProjectStatus(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteProject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteProject(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

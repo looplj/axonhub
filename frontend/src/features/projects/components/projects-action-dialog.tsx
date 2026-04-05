@@ -5,14 +5,18 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectsContext } from '../context/projects-context';
-import { useCreateProject, useUpdateProject, useArchiveProject, useActivateProject } from '../data/projects';
+import { useCreateProject, useUpdateProject, useArchiveProject, useActivateProject, useDeleteProject } from '../data/projects';
 import { createProjectInputSchema, updateProjectInputSchema } from '../data/schema';
 
 // Create Project Dialog
@@ -272,6 +276,68 @@ export function ActivateProjectDialog() {
   );
 }
 
+// Delete Project Dialog
+export function DeleteProjectDialog() {
+  const { t } = useTranslation();
+  const { deletingProject, setDeletingProject } = useProjectsContext();
+  const deleteProject = useDeleteProject();
+  const [value, setValue] = React.useState('');
+
+  const handleDelete = async () => {
+    if (!deletingProject || value.trim() !== deletingProject.name) return;
+
+    try {
+      await deleteProject.mutateAsync(deletingProject.id);
+      setDeletingProject(null);
+      setValue('');
+    } catch (error) {
+      // Error is handled by the mutation
+    }
+  };
+
+  return (
+    <ConfirmDialog
+      open={!!deletingProject}
+      onOpenChange={(state) => {
+        if (!state) setValue('');
+        setDeletingProject(state ? deletingProject : null);
+      }}
+      handleConfirm={handleDelete}
+      disabled={!deletingProject || value.trim() !== deletingProject.name || deleteProject.isPending}
+      title={
+        <span className='text-destructive'>
+          <IconAlertTriangle className='stroke-destructive mr-1 inline-block' size={18} /> {t('projects.dialogs.delete.title')}
+        </span>
+      }
+      desc={
+        <div className='space-y-4'>
+          <Alert variant='destructive'>
+            <IconAlertTriangle className='h-4 w-4' />
+            <AlertTitle>{t('projects.dialogs.delete.warning')}</AlertTitle>
+            <AlertDescription>{t('projects.dialogs.delete.warningTitle')}</AlertDescription>
+          </Alert>
+          <div className='space-y-2'>
+            <Label htmlFor='project-name'>
+              {t('projects.dialogs.delete.confirmLabel')} <strong>{deletingProject?.name}</strong> {t('projects.dialogs.delete.confirmLabelSuffix')}
+            </Label>
+            <Input
+              id='project-name'
+              placeholder={deletingProject?.name}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              data-testid='delete-confirmation-input'
+            />
+          </div>
+        </div>
+      }
+      confirmText={deleteProject.isPending ? t('projects.dialogs.delete.deletingButton') : t('projects.dialogs.delete.confirmButton')}
+      cancelBtnText={t('common.buttons.cancel')}
+      destructive
+      data-testid='delete-dialog'
+    />
+  );
+}
+
 // Combined Dialogs Component
 export function ProjectsDialogs() {
   return (
@@ -280,6 +346,7 @@ export function ProjectsDialogs() {
       <EditProjectDialog />
       <ArchiveProjectDialog />
       <ActivateProjectDialog />
+      <DeleteProjectDialog />
     </>
   );
 }

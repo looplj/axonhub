@@ -219,6 +219,7 @@
   "common.success.projectUpdated": "项目更新成功",
   "common.success.projectArchived": "项目归档成功",
   "common.success.projectActivated": "项目激活成功",
+  "common.success.projectDeleted": "项目删除成功",
   "common.success.signedIn": "登录成功！",
   "common.success.signedOut": "退出登录成功！",
   "common.success.userDeleted": "用户删除成功",
