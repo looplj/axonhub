@@ -52,13 +52,17 @@ interface FlatSegment {
   sequentialOffset: number; // Offset in sequential layout
 }
 
-const segmentHueCache = new Map<string, number>();
-
 type ColorVariant = 'segment' | 'request' | 'response';
 
+// 使用 WeakMap 缓存，避免内存泄漏（如果 key 是对象）
+// 这里使用普通 Map，但限制缓存大小
+const MAX_HUE_CACHE_SIZE = 100;
+const segmentHueCache = new Map<string, number>();
+
 function hashStringToHue(value: string): number {
-  if (segmentHueCache.has(value)) {
-    return segmentHueCache.get(value) as number;
+  const cached = segmentHueCache.get(value);
+  if (cached !== undefined) {
+    return cached;
   }
 
   let hash = 0;
@@ -67,6 +71,15 @@ function hashStringToHue(value: string): number {
   }
 
   const hue = (hash + 360) % 360;
+  
+  // LRU 缓存策略：超过限制时清除最早的
+  if (segmentHueCache.size >= MAX_HUE_CACHE_SIZE) {
+    const firstKey = segmentHueCache.keys().next().value;
+    if (firstKey) {
+      segmentHueCache.delete(firstKey);
+    }
+  }
+  
   segmentHueCache.set(value, hue);
   return hue;
 }
@@ -83,11 +96,35 @@ function getSegmentTimelineColor(segmentId: string, variant: ColorVariant): stri
   return `hsla(${hue}, 70%, ${lightness}%, ${alpha})`;
 }
 
-function safeTime(value?: Date | string | null) {
+function safeTime(value?: Date | string | null): number | null {
   if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  const time = date.getTime();
-  return Number.isFinite(time) ? time : null;
+  
+  try {
+    const date = value instanceof Date ? value : new Date(value);
+    const time = date.getTime();
+    return Number.isFinite(time) ? time : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 计算时间条的位置和宽度
+ * @param startRatio 开始位置的比率 (0-1)
+ * @param widthRatio 宽度的比率 (0-1)
+ * @returns { left: number, width: number } 返回百分比数值
+ */
+function calculateBarPosition(startRatio: number, widthRatio: number): { left: number; width: number } {
+  const leftOffset = Math.min(Math.max(startRatio * 100, 0), 100);
+  const maxAvailableWidth = Math.max(100 - leftOffset, 0);
+
+  let width = Math.min(Math.max(widthRatio * 100, 0), maxAvailableWidth);
+  // 确保至少有最小宽度（如果 widthRatio > 0）
+  if (widthRatio > 0 && width < 0.5) {
+    width = Math.min(0.5, maxAvailableWidth);
+  }
+
+  return { left: leftOffset, width };
 }
 
 function buildSpanNode(trace: Segment, span: Span, spanKind: SpanKind, rootStart: number): TimelineNode | null {
@@ -215,13 +252,7 @@ function SegmentRow({
   const leftOffsetRatio = totalDuration > 0 ? sequentialOffset / totalDuration : 0;
   const widthRatio = totalDuration > 0 ? segment.duration / totalDuration : 0;
 
-  const leftOffset = Math.min(Math.max(leftOffsetRatio * 100, 0), 100);
-  const maxAvailableWidth = Math.max(100 - leftOffset, 0);
-
-  let width = Math.min(Math.max(widthRatio * 100, 0), maxAvailableWidth);
-  if (widthRatio > 0 && width < 0.5) {
-    width = Math.min(0.5, maxAvailableWidth);
-  }
+  const { left: leftOffset, width } = calculateBarPosition(leftOffsetRatio, widthRatio);
 
   return (
     <>
@@ -254,20 +285,10 @@ function SegmentRow({
                 {segment.name}
               </Badge>
               <span className='text-muted-foreground text-[11px]'>
-                {t('traces.timeline.summary.duration', {
+              {t('traces.timeline.summary.duration', {
                   value: formatDuration(segment.duration),
                 })}
               </span>
-              {/* {segment.metadata?.totalTokens != null && (
-                <span className='text-muted-foreground text-[11px]'>
-                  {formatNumber(segment.metadata.totalTokens)} tokens
-                </span>
-              )}
-              {segment.metadata?.cachedTokens != null && segment.metadata.cachedTokens > 0 && (
-                <span className='text-muted-foreground text-[11px]'>
-                  ({formatNumber(segment.metadata.cachedTokens)} cached)
-                </span>
-              )} */}
               <Button variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={handleViewRequest}>
                 <ExternalLink className='h-3 w-3' />
               </Button>
@@ -343,13 +364,7 @@ function SpanRow({ span, totalDuration, segmentSequentialOffset, onSelectSpan, s
   const leftOffsetRatio = totalDuration > 0 ? spanAbsoluteOffset / totalDuration : 0;
   const widthRatio = totalDuration > 0 ? span.duration / totalDuration : 0;
 
-  const leftOffset = Math.min(Math.max(leftOffsetRatio * 100, 0), 100);
-  const maxAvailableWidth = Math.max(100 - leftOffset, 0);
-
-  let width = Math.min(Math.max(widthRatio * 100, 0), maxAvailableWidth);
-  if (widthRatio > 0 && width < 0.5) {
-    width = Math.min(0.5, maxAvailableWidth);
-  }
+  const { left: leftOffset, width } = calculateBarPosition(leftOffsetRatio, widthRatio);
 
   const spanDisplay = getSpanDisplayLabels(spanSource.span, t);
   const spanKindLabel = t(`traces.common.badges.${spanSource.spanKind}`);

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeft, Activity } from 'lucide-react';
+import { ArrowLeft, Activity, RefreshCw, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { ServerSidePagination } from '@/components/server-side-pagination';
 import type { Trace } from '@/features/traces/data/schema';
 import { useGeneralSettings } from '@/features/system/data/system';
 import { useThreadDetail } from '../data/threads';
@@ -32,12 +33,16 @@ export default function ThreadDetailPage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
-  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  
+  // 合并 Drawer 相关状态
+  const [drawerState, setDrawerState] = useState<{
+    open: boolean;
+    traceId: string | null;
+  }>({ open: false, traceId: null });
 
   const { data: settings } = useGeneralSettings();
 
-  const { pageSize, setCursors, paginationArgs, getSearchParams } = usePaginationSearch({
+  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, getSearchParams } = usePaginationSearch({
     defaultPageSize: 20,
     ...THREAD_CURSOR_OPTIONS,
   });
@@ -76,13 +81,17 @@ export default function ThreadDetailPage() {
     }
   };
 
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    resetCursor();
+  };
+
   const handleBack = () => {
     navigate({ to: '/project/threads' as any, search: getSearchParams() as any });
   };
 
   const handleViewTrace = (traceId: string) => {
-    setSelectedTraceId(traceId);
-    setIsDrawerOpen(true);
+    setDrawerState({ open: true, traceId });
   };
 
   if (isLoading) {
@@ -124,156 +133,132 @@ export default function ThreadDetailPage() {
   }
 
   const createdAtLabel = format(thread.createdAt, 'yyyy-MM-dd HH:mm:ss', { locale });
-  const updatedAtLabel = format(thread.updatedAt, 'yyyy-MM-dd HH:mm:ss', { locale });
 
   return (
     <div className='flex h-screen flex-col'>
-      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'>
-        <div className='flex items-center space-x-4'>
-          <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
-            <ArrowLeft className='mr-2 h-4 w-4' />
-            {t('common.back')}
-          </Button>
-          <Separator orientation='vertical' className='h-6' />
-          <div className='flex items-center space-x-3'>
-            <div className='bg-primary/10 flex h-8 w-8 items-center justify-center rounded-lg'>
-              <Activity className='text-primary h-4 w-4' />
-            </div>
-            <div>
-              <h1 className='text-lg leading-none font-semibold'>
-                {t('threads.detail.title')} #{extractNumberID(thread.id) || thread.threadID}
-              </h1>
-              <div className='mt-1 flex items-center gap-2'>
-                <p className='text-muted-foreground text-sm'>{thread.threadID}</p>
-                <span className='text-muted-foreground text-xs'>•</span>
-                <p className='text-muted-foreground text-xs'>{createdAtLabel}</p>
+      <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 w-full border-b backdrop-blur'>
+        <div className='flex w-full items-center justify-between'>
+          <div className='flex items-center space-x-4'>
+            <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
+              <ArrowLeft className='mr-2 h-4 w-4' />
+              {t('common.back')}
+            </Button>
+            <Separator orientation='vertical' className='h-6' />
+            <div className='flex items-center space-x-3'>
+              <div className='bg-primary/10 flex h-8 w-8 items-center justify-center rounded-lg'>
+                <Activity className='text-primary h-4 w-4' />
+              </div>
+              <div>
+                <h1 className='text-lg leading-none font-semibold'>
+                  {t('threads.detail.title')} #{extractNumberID(thread.id) || thread.threadID}
+                </h1>
+                <div className='mt-1 flex items-center gap-2'>
+                  <p className='text-muted-foreground text-sm'>{thread.threadID}</p>
+                  <span className='text-muted-foreground text-xs'>•</span>
+                  <p className='text-muted-foreground text-xs'>{createdAtLabel}</p>
+                </div>
               </div>
             </div>
+          </div>
+          <div className='flex items-center space-x-2'>
+            <Button variant='outline' size='sm' onClick={() => refetch()} disabled={isLoading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {t('common.refresh')}
+            </Button>
           </div>
         </div>
       </Header>
 
-      <Main className='flex-1 overflow-hidden'>
-        <div className='flex h-full flex-col gap-4 overflow-y-auto p-6'>
-          <Card className='border-0 shadow-sm'>
-            <CardContent className='grid gap-4 p-6 md:grid-cols-6'>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('traces.detail.totalTokensLabel')}</p>
-                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalTokens ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('traces.detail.inputTokensLabel')}</p>
-                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalInputTokens ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('traces.detail.outputTokensLabel')}</p>
-                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalOutputTokens ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedTokensLabel')}</p>
-                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalCachedTokens ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedWriteTokensLabel')}</p>
-                <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalCachedWriteTokens ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('usageLogs.columns.totalCost')}</p>
-                {thread.usageMetadata?.totalCost ? (
-                  <p className='text-lg font-semibold'>
-                    {t('currencies.format', {
-                      val: thread.usageMetadata.totalCost,
-                      currency: settings?.currencyCode,
-                      locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
-                      minimumFractionDigits: 6,
-                    })}
-                  </p>
-                ) : (
-                  <p className='text-muted-foreground text-lg font-semibold'>-</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* <Card className='border-0 shadow-sm'>
-            <CardContent className='grid gap-4 p-6 md:grid-cols-3'>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('threads.detail.project')}</p>
-                <p className='font-medium'>{thread.project?.name || t('threads.detail.unknownProject')}</p>
-              </div>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('threads.detail.createdAt')}</p>
-                <p className='font-medium'>{createdAtLabel}</p>
-              </div>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('threads.detail.updatedAt')}</p>
-                <p className='font-medium'>{updatedAtLabel}</p>
-              </div>
-              <div>
-                <p className='text-muted-foreground text-sm'>{t('threads.detail.traceCount')}</p>
-                <p className='font-medium'>{thread.tracesSummary?.totalCount ?? 0}</p>
-              </div>
-            </CardContent>
-          </Card> */}
-
-          <div className='flex flex-col gap-6'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <h2 className='text-xl font-semibold'>{t('threads.detail.tracesTitle')}</h2>
-                <p className='text-muted-foreground text-sm'>{t('threads.detail.tracesSubtitle')}</p>
-              </div>
-              <div className='flex items-center gap-2'>
-                <Button variant='outline' size='sm' onClick={() => refetch()} disabled={isLoading}>
-                  {t('common.refresh')}
-                </Button>
-              </div>
+      <Main className='flex-1 overflow-hidden flex flex-col p-0'>
+        {/* Top: Usage Metadata */}
+        <div className='px-6 py-4 border-b bg-background'>
+          <div className='grid gap-4 md:grid-cols-6'>
+            <div>
+              <p className='text-muted-foreground text-sm'>{t('traces.detail.totalTokensLabel')}</p>
+              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalTokens ?? 0).toLocaleString()}</p>
             </div>
-
-            {/* Traces as Cards */}
-            <div className='space-y-4'>
-              {traces.length > 0 ? (
-                traces.map((trace, index) => (
-                  <div key={trace.id}>
-                    <TraceCard trace={trace} onViewTrace={handleViewTrace} />
-                    {index < traces.length - 1 && <Separator className='mt-4' />}
-                  </div>
-                ))
+            <div>
+              <p className='text-muted-foreground text-sm'>{t('traces.detail.inputTokensLabel')}</p>
+              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalInputTokens ?? 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className='text-muted-foreground text-sm'>{t('traces.detail.outputTokensLabel')}</p>
+              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalOutputTokens ?? 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedTokensLabel')}</p>
+              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalCachedTokens ?? 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className='text-muted-foreground text-sm'>{t('traces.detail.cachedWriteTokensLabel')}</p>
+              <p className='text-lg font-semibold'>{(thread.usageMetadata?.totalCachedWriteTokens ?? 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className='text-muted-foreground text-sm'>{t('usageLogs.columns.totalCost')}</p>
+              {thread.usageMetadata?.totalCost ? (
+                <p className='text-lg font-semibold'>
+                  {t('currencies.format', {
+                    val: thread.usageMetadata.totalCost,
+                    currency: settings?.currencyCode,
+                    locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                    minimumFractionDigits: 6,
+                  })}
+                </p>
               ) : (
-                <Card className='border-0 shadow-sm'>
-                  <CardContent className='py-16'>
-                    <div className='flex h-full items-center justify-center'>
-                      <div className='space-y-4 text-center'>
-                        <Activity className='text-muted-foreground mx-auto h-16 w-16' />
-                        <p className='text-muted-foreground text-lg'>{t('threads.detail.noTraces')}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <p className='text-muted-foreground text-lg font-semibold'>-</p>
               )}
             </div>
-
-            {/* Pagination */}
-            {totalCount && totalCount > 0 && (
-              <div className='flex items-center justify-between'>
-                <div className='text-muted-foreground text-sm'>
-                  {t('common.showing')} {traces.length} {t('common.of')} {totalCount} {t('threads.detail.traces')}
-                </div>
-                <div className='flex items-center gap-2'>
-                  <Button variant='outline' size='sm' onClick={handlePreviousPage} disabled={!pageInfo?.hasPreviousPage}>
-                    {t('common.previous')}
-                  </Button>
-                  <Button variant='outline' size='sm' onClick={handleNextPage} disabled={!pageInfo?.hasNextPage}>
-                    {t('common.next')}
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Traces List */}
+        <div className='flex-1 overflow-auto p-6'>
+          {traces.length > 0 ? (
+            <div className='space-y-4'>
+              {traces.map((trace, index) => (
+                <TraceCard key={trace.id} trace={trace} onViewTrace={handleViewTrace} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div className='flex h-full items-center justify-center p-6'>
+              <Card className='border-0 shadow-sm'>
+                <CardContent className='py-16'>
+                  <div className='flex h-full items-center justify-center'>
+                    <div className='space-y-4 text-center'>
+                      <FileText className='text-muted-foreground mx-auto h-16 w-16' />
+                      <p className='text-muted-foreground text-lg'>{t('threads.detail.noTraces')}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalCount !== undefined && totalCount > 0 && (
+          <div className='border-t bg-background px-6 py-3'>
+            <ServerSidePagination
+              pageInfo={pageInfo}
+              pageSize={pageSize}
+              dataLength={traces.length}
+              totalCount={totalCount}
+              selectedRows={0}
+              onNextPage={handleNextPage}
+              onPreviousPage={handlePreviousPage}
+              onPageSizeChange={handlePageSizeChange}
+              onResetCursor={resetCursor}
+            />
+          </div>
+        )}
       </Main>
 
       {/* Trace Detail Drawer */}
-      <TraceDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} traceId={selectedTraceId} />
+      <TraceDrawer
+        open={drawerState.open}
+        onOpenChange={(open) => setDrawerState((prev) => ({ ...prev, open }))}
+        traceId={drawerState.traceId}
+      />
     </div>
   );
 }

@@ -20,5 +20,6 @@
   "threads.detail.tracesSubtitle": "查看该线程的最新追踪与执行记录",
   "threads.detail.noTraces": "暂无追踪记录",
   "threads.detail.traces": "条追踪",
+  "threads.detail.viewTrace": "查看追踪",
   "threads.errors.notFound": "未找到线程"
 }

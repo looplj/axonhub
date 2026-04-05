@@ -57,7 +57,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side='right' className='w-full p-0 sm:max-w-[min(90vw,calc(100vw-400px))]'>
+      <SheetContent side='right' className='w-full p-0 sm:max-w-[900px] lg:max-w-[1100px]'>
         <SheetHeader className='border-b px-6 py-4'>
           <SheetTitle>{t('traces.detail.title')}</SheetTitle>
         </SheetHeader>
@@ -72,7 +72,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
         ) : effectiveRootSegment ? (
           <div className='flex h-[calc(100vh-80px)]'>
             {/* Left: Timeline */}
-            <div className='flex-1 overflow-auto p-6'>
+            <div className='flex-1 min-w-0 overflow-auto p-6'>
               <TraceFlatTimeline
                 trace={effectiveRootSegment}
                 onSelectSpan={(selectedTrace, span, type) => handleSpanSelect(selectedTrace, span, type)}
@@ -81,7 +81,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
             </div>
 
             {/* Right: Span Detail */}
-            <div className='border-border bg-background w-[500px] overflow-y-auto border-l'>
+            <div className='border-border bg-background w-[380px] lg:w-[420px] shrink-0 overflow-y-auto border-l'>
               <SpanSection selectedTrace={selectedTrace} selectedSpan={selectedSpan} selectedSpanType={selectedSpanType} />
             </div>
           </div>

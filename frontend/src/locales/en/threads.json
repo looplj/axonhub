@@ -20,5 +20,6 @@
   "threads.detail.tracesSubtitle": "Review recent traces and executions for this thread",
   "threads.detail.noTraces": "No traces found",
   "threads.detail.traces": "traces",
+  "threads.detail.viewTrace": "View trace",
   "threads.errors.notFound": "Thread not found"
 }
