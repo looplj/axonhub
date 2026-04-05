@@ -19,6 +19,7 @@
   "traces.detail.title": "追踪详情",
   "traces.detail.notFound": "未找到追踪",
   "traces.detail.noTraceData": "暂无追踪数据",
+  "traces.detail.checkTraceIdHint": "请检查 Trace ID 或稍后重试",
   "traces.detail.levelBadge": "层级 {{level}}",
   "traces.detail.durationLabel": "持续时间",
   "traces.detail.itemsLabel": "项目数",
@@ -89,5 +90,10 @@
   "traces.timeline.summary.duration": "持续时间 {{value}}",
   "traces.timeline.summary.tokenCount": "词元数：{{value}}",
   "traces.timeline.collapseAll": "全部收起",
-  "traces.timeline.expandAll": "全部展开"
+  "traces.timeline.expandAll": "全部展开",
+  "traces.flowTimeline.title": "流程",
+  "traces.treeTimeline.title": "树形",
+  "traces.detail.viewMode.flat": "平铺",
+  "traces.detail.viewMode.flow": "流程",
+  "traces.detail.viewMode.tree": "树形"
 }

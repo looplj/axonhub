@@ -54,8 +54,7 @@ interface FlatSegment {
 
 type ColorVariant = 'segment' | 'request' | 'response';
 
-// 使用 WeakMap 缓存，避免内存泄漏（如果 key 是对象）
-// 这里使用普通 Map，但限制缓存大小
+// 使用普通 Map 缓存，并限制缓存大小以防止内存占用过高
 const MAX_HUE_CACHE_SIZE = 100;
 const segmentHueCache = new Map<string, number>();
 

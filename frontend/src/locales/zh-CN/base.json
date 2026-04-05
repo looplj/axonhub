@@ -112,6 +112,8 @@
   "price.apply.bulkSuccess": "已更新 {{applied}} 个，新增 {{added}} 个",
   "price.apply.bulkMissed": "有 {{missed}} 个模型未匹配到价格",
   "common.close": "关闭",
+  "common.fullscreen": "全屏",
+  "common.exitFullscreen": "退出全屏",
   "common.refresh": "刷新",
   "common.autoRefresh": "自动刷新",
   "common.showArchived": "显示已归档",
