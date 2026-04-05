@@ -3510,10 +3510,10 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldStatus)
 				fieldSeen[request.FieldStatus] = struct{}{}
 			}
-		case "nodeID":
-			if _, ok := fieldSeen[request.FieldNodeID]; !ok {
-				selectedFields = append(selectedFields, request.FieldNodeID)
-				fieldSeen[request.FieldNodeID] = struct{}{}
+		case "serverFingerprint":
+			if _, ok := fieldSeen[request.FieldServerFingerprint]; !ok {
+				selectedFields = append(selectedFields, request.FieldServerFingerprint)
+				fieldSeen[request.FieldServerFingerprint] = struct{}{}
 			}
 		case "stream":
 			if _, ok := fieldSeen[request.FieldStream]; !ok {
@@ -3759,10 +3759,10 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 				selectedFields = append(selectedFields, requestexecution.FieldStatus)
 				fieldSeen[requestexecution.FieldStatus] = struct{}{}
 			}
-		case "nodeID":
-			if _, ok := fieldSeen[requestexecution.FieldNodeID]; !ok {
-				selectedFields = append(selectedFields, requestexecution.FieldNodeID)
-				fieldSeen[requestexecution.FieldNodeID] = struct{}{}
+		case "serverFingerprint":
+			if _, ok := fieldSeen[requestexecution.FieldServerFingerprint]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldServerFingerprint)
+				fieldSeen[requestexecution.FieldServerFingerprint] = struct{}{}
 			}
 		case "stream":
 			if _, ok := fieldSeen[requestexecution.FieldStream]; !ok {

@@ -148,23 +148,23 @@ func (_u *RequestUpdate) SetNillableStatus(v *request.Status) *RequestUpdate {
 	return _u
 }
 
-// SetNodeID sets the "node_id" field.
-func (_u *RequestUpdate) SetNodeID(v string) *RequestUpdate {
-	_u.mutation.SetNodeID(v)
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (_u *RequestUpdate) SetServerFingerprint(v string) *RequestUpdate {
+	_u.mutation.SetServerFingerprint(v)
 	return _u
 }
 
-// SetNillableNodeID sets the "node_id" field if the given value is not nil.
-func (_u *RequestUpdate) SetNillableNodeID(v *string) *RequestUpdate {
+// SetNillableServerFingerprint sets the "server_fingerprint" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableServerFingerprint(v *string) *RequestUpdate {
 	if v != nil {
-		_u.SetNodeID(*v)
+		_u.SetServerFingerprint(*v)
 	}
 	return _u
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (_u *RequestUpdate) ClearNodeID() *RequestUpdate {
-	_u.mutation.ClearNodeID()
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (_u *RequestUpdate) ClearServerFingerprint() *RequestUpdate {
+	_u.mutation.ClearServerFingerprint()
 	return _u
 }
 
@@ -509,11 +509,11 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.NodeID(); ok {
-		_spec.SetField(request.FieldNodeID, field.TypeString, value)
+	if value, ok := _u.mutation.ServerFingerprint(); ok {
+		_spec.SetField(request.FieldServerFingerprint, field.TypeString, value)
 	}
-	if _u.mutation.NodeIDCleared() {
-		_spec.ClearField(request.FieldNodeID, field.TypeString)
+	if _u.mutation.ServerFingerprintCleared() {
+		_spec.ClearField(request.FieldServerFingerprint, field.TypeString)
 	}
 	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
@@ -812,23 +812,23 @@ func (_u *RequestUpdateOne) SetNillableStatus(v *request.Status) *RequestUpdateO
 	return _u
 }
 
-// SetNodeID sets the "node_id" field.
-func (_u *RequestUpdateOne) SetNodeID(v string) *RequestUpdateOne {
-	_u.mutation.SetNodeID(v)
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (_u *RequestUpdateOne) SetServerFingerprint(v string) *RequestUpdateOne {
+	_u.mutation.SetServerFingerprint(v)
 	return _u
 }
 
-// SetNillableNodeID sets the "node_id" field if the given value is not nil.
-func (_u *RequestUpdateOne) SetNillableNodeID(v *string) *RequestUpdateOne {
+// SetNillableServerFingerprint sets the "server_fingerprint" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableServerFingerprint(v *string) *RequestUpdateOne {
 	if v != nil {
-		_u.SetNodeID(*v)
+		_u.SetServerFingerprint(*v)
 	}
 	return _u
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (_u *RequestUpdateOne) ClearNodeID() *RequestUpdateOne {
-	_u.mutation.ClearNodeID()
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (_u *RequestUpdateOne) ClearServerFingerprint() *RequestUpdateOne {
+	_u.mutation.ClearServerFingerprint()
 	return _u
 }
 
@@ -1203,11 +1203,11 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(request.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.NodeID(); ok {
-		_spec.SetField(request.FieldNodeID, field.TypeString, value)
+	if value, ok := _u.mutation.ServerFingerprint(); ok {
+		_spec.SetField(request.FieldServerFingerprint, field.TypeString, value)
 	}
-	if _u.mutation.NodeIDCleared() {
-		_spec.ClearField(request.FieldNodeID, field.TypeString)
+	if _u.mutation.ServerFingerprintCleared() {
+		_spec.ClearField(request.FieldServerFingerprint, field.TypeString)
 	}
 	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)

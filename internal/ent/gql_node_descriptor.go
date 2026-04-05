@@ -1488,12 +1488,12 @@ func (_m *Request) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "status",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.NodeID); err != nil {
+	if buf, err = json.Marshal(_m.ServerFingerprint); err != nil {
 		return nil, err
 	}
 	node.Fields[16] = &Field{
 		Type:  "string",
-		Name:  "node_id",
+		Name:  "server_fingerprint",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.Stream); err != nil {
@@ -1762,12 +1762,12 @@ func (_m *RequestExecution) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "status",
 		Value: string(buf),
 	}
-	if buf, err = json.Marshal(_m.NodeID); err != nil {
+	if buf, err = json.Marshal(_m.ServerFingerprint); err != nil {
 		return nil, err
 	}
 	node.Fields[15] = &Field{
 		Type:  "string",
-		Name:  "node_id",
+		Name:  "server_fingerprint",
 		Value: string(buf),
 	}
 	if buf, err = json.Marshal(_m.Stream); err != nil {

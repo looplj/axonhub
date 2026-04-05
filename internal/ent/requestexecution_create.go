@@ -188,16 +188,16 @@ func (_c *RequestExecutionCreate) SetStatus(v requestexecution.Status) *RequestE
 	return _c
 }
 
-// SetNodeID sets the "node_id" field.
-func (_c *RequestExecutionCreate) SetNodeID(v string) *RequestExecutionCreate {
-	_c.mutation.SetNodeID(v)
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (_c *RequestExecutionCreate) SetServerFingerprint(v string) *RequestExecutionCreate {
+	_c.mutation.SetServerFingerprint(v)
 	return _c
 }
 
-// SetNillableNodeID sets the "node_id" field if the given value is not nil.
-func (_c *RequestExecutionCreate) SetNillableNodeID(v *string) *RequestExecutionCreate {
+// SetNillableServerFingerprint sets the "server_fingerprint" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableServerFingerprint(v *string) *RequestExecutionCreate {
 	if v != nil {
-		_c.SetNodeID(*v)
+		_c.SetServerFingerprint(*v)
 	}
 	return _c
 }
@@ -428,9 +428,9 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
-	if value, ok := _c.mutation.NodeID(); ok {
-		_spec.SetField(requestexecution.FieldNodeID, field.TypeString, value)
-		_node.NodeID = &value
+	if value, ok := _c.mutation.ServerFingerprint(); ok {
+		_spec.SetField(requestexecution.FieldServerFingerprint, field.TypeString, value)
+		_node.ServerFingerprint = &value
 	}
 	if value, ok := _c.mutation.Stream(); ok {
 		_spec.SetField(requestexecution.FieldStream, field.TypeBool, value)
@@ -671,21 +671,21 @@ func (u *RequestExecutionUpsert) UpdateStatus() *RequestExecutionUpsert {
 	return u
 }
 
-// SetNodeID sets the "node_id" field.
-func (u *RequestExecutionUpsert) SetNodeID(v string) *RequestExecutionUpsert {
-	u.Set(requestexecution.FieldNodeID, v)
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (u *RequestExecutionUpsert) SetServerFingerprint(v string) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldServerFingerprint, v)
 	return u
 }
 
-// UpdateNodeID sets the "node_id" field to the value that was provided on create.
-func (u *RequestExecutionUpsert) UpdateNodeID() *RequestExecutionUpsert {
-	u.SetExcluded(requestexecution.FieldNodeID)
+// UpdateServerFingerprint sets the "server_fingerprint" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateServerFingerprint() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldServerFingerprint)
 	return u
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (u *RequestExecutionUpsert) ClearNodeID() *RequestExecutionUpsert {
-	u.SetNull(requestexecution.FieldNodeID)
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (u *RequestExecutionUpsert) ClearServerFingerprint() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldServerFingerprint)
 	return u
 }
 
@@ -964,24 +964,24 @@ func (u *RequestExecutionUpsertOne) UpdateStatus() *RequestExecutionUpsertOne {
 	})
 }
 
-// SetNodeID sets the "node_id" field.
-func (u *RequestExecutionUpsertOne) SetNodeID(v string) *RequestExecutionUpsertOne {
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (u *RequestExecutionUpsertOne) SetServerFingerprint(v string) *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
-		s.SetNodeID(v)
+		s.SetServerFingerprint(v)
 	})
 }
 
-// UpdateNodeID sets the "node_id" field to the value that was provided on create.
-func (u *RequestExecutionUpsertOne) UpdateNodeID() *RequestExecutionUpsertOne {
+// UpdateServerFingerprint sets the "server_fingerprint" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateServerFingerprint() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
-		s.UpdateNodeID()
+		s.UpdateServerFingerprint()
 	})
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (u *RequestExecutionUpsertOne) ClearNodeID() *RequestExecutionUpsertOne {
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (u *RequestExecutionUpsertOne) ClearServerFingerprint() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
-		s.ClearNodeID()
+		s.ClearServerFingerprint()
 	})
 }
 
@@ -1437,24 +1437,24 @@ func (u *RequestExecutionUpsertBulk) UpdateStatus() *RequestExecutionUpsertBulk 
 	})
 }
 
-// SetNodeID sets the "node_id" field.
-func (u *RequestExecutionUpsertBulk) SetNodeID(v string) *RequestExecutionUpsertBulk {
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (u *RequestExecutionUpsertBulk) SetServerFingerprint(v string) *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
-		s.SetNodeID(v)
+		s.SetServerFingerprint(v)
 	})
 }
 
-// UpdateNodeID sets the "node_id" field to the value that was provided on create.
-func (u *RequestExecutionUpsertBulk) UpdateNodeID() *RequestExecutionUpsertBulk {
+// UpdateServerFingerprint sets the "server_fingerprint" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateServerFingerprint() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
-		s.UpdateNodeID()
+		s.UpdateServerFingerprint()
 	})
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (u *RequestExecutionUpsertBulk) ClearNodeID() *RequestExecutionUpsertBulk {
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (u *RequestExecutionUpsertBulk) ClearServerFingerprint() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
-		s.ClearNodeID()
+		s.ClearServerFingerprint()
 	})
 }
 

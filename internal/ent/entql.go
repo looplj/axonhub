@@ -340,7 +340,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldChannelID:                  {Type: field.TypeInt, Column: request.FieldChannelID},
 			request.FieldExternalID:                 {Type: field.TypeString, Column: request.FieldExternalID},
 			request.FieldStatus:                     {Type: field.TypeEnum, Column: request.FieldStatus},
-			request.FieldNodeID:                     {Type: field.TypeString, Column: request.FieldNodeID},
+			request.FieldServerFingerprint:          {Type: field.TypeString, Column: request.FieldServerFingerprint},
 			request.FieldStream:                     {Type: field.TypeBool, Column: request.FieldStream},
 			request.FieldClientIP:                   {Type: field.TypeString, Column: request.FieldClientIP},
 			request.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: request.FieldMetricsLatencyMs},
@@ -377,7 +377,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldErrorMessage:               {Type: field.TypeString, Column: requestexecution.FieldErrorMessage},
 			requestexecution.FieldResponseStatusCode:         {Type: field.TypeInt, Column: requestexecution.FieldResponseStatusCode},
 			requestexecution.FieldStatus:                     {Type: field.TypeEnum, Column: requestexecution.FieldStatus},
-			requestexecution.FieldNodeID:                     {Type: field.TypeString, Column: requestexecution.FieldNodeID},
+			requestexecution.FieldServerFingerprint:          {Type: field.TypeString, Column: requestexecution.FieldServerFingerprint},
 			requestexecution.FieldStream:                     {Type: field.TypeBool, Column: requestexecution.FieldStream},
 			requestexecution.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: requestexecution.FieldMetricsLatencyMs},
 			requestexecution.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: requestexecution.FieldMetricsFirstTokenLatencyMs},
@@ -2843,9 +2843,9 @@ func (f *RequestFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(request.FieldStatus))
 }
 
-// WhereNodeID applies the entql string predicate on the node_id field.
-func (f *RequestFilter) WhereNodeID(p entql.StringP) {
-	f.Where(p.Field(request.FieldNodeID))
+// WhereServerFingerprint applies the entql string predicate on the server_fingerprint field.
+func (f *RequestFilter) WhereServerFingerprint(p entql.StringP) {
+	f.Where(p.Field(request.FieldServerFingerprint))
 }
 
 // WhereStream applies the entql bool predicate on the stream field.
@@ -3101,9 +3101,9 @@ func (f *RequestExecutionFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(requestexecution.FieldStatus))
 }
 
-// WhereNodeID applies the entql string predicate on the node_id field.
-func (f *RequestExecutionFilter) WhereNodeID(p entql.StringP) {
-	f.Where(p.Field(requestexecution.FieldNodeID))
+// WhereServerFingerprint applies the entql string predicate on the server_fingerprint field.
+func (f *RequestExecutionFilter) WhereServerFingerprint(p entql.StringP) {
+	f.Where(p.Field(requestexecution.FieldServerFingerprint))
 }
 
 // WhereStream applies the entql bool predicate on the stream field.

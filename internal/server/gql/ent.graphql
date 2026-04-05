@@ -1566,9 +1566,9 @@ input CreateRequestInput {
   externalID: String
   status: RequestStatus!
   """
-  ID of the node processing this request, null if not yet assigned or completed
+  Fingerprint of the server processing this request, null if not yet assigned or completed
   """
-  nodeID: String
+  serverFingerprint: String
   stream: Boolean
   clientIP: String
   metricsLatencyMs: Int
@@ -3895,9 +3895,9 @@ type Request implements Node {
   externalID: String
   status: RequestStatus!
   """
-  ID of the node processing this request, null if not yet assigned or completed
+  Fingerprint of the server processing this request, null if not yet assigned or completed
   """
-  nodeID: String
+  serverFingerprint: String
   stream: Boolean!
   clientIP: String!
   metricsLatencyMs: Int
@@ -4040,9 +4040,9 @@ type RequestExecution implements Node {
   responseStatusCode: Int
   status: RequestExecutionStatus!
   """
-  ID of the node processing this execution, null if not yet assigned or completed
+  Fingerprint of the server processing this execution, null if not yet assigned or completed
   """
-  nodeID: String
+  serverFingerprint: String
   stream: Boolean!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
@@ -4280,23 +4280,23 @@ input RequestExecutionWhereInput {
   statusIn: [RequestExecutionStatus!]
   statusNotIn: [RequestExecutionStatus!]
   """
-  node_id field predicates
+  server_fingerprint field predicates
   """
-  nodeID: String
-  nodeIDNEQ: String
-  nodeIDIn: [String!]
-  nodeIDNotIn: [String!]
-  nodeIDGT: String
-  nodeIDGTE: String
-  nodeIDLT: String
-  nodeIDLTE: String
-  nodeIDContains: String
-  nodeIDHasPrefix: String
-  nodeIDHasSuffix: String
-  nodeIDIsNil: Boolean
-  nodeIDNotNil: Boolean
-  nodeIDEqualFold: String
-  nodeIDContainsFold: String
+  serverFingerprint: String
+  serverFingerprintNEQ: String
+  serverFingerprintIn: [String!]
+  serverFingerprintNotIn: [String!]
+  serverFingerprintGT: String
+  serverFingerprintGTE: String
+  serverFingerprintLT: String
+  serverFingerprintLTE: String
+  serverFingerprintContains: String
+  serverFingerprintHasPrefix: String
+  serverFingerprintHasSuffix: String
+  serverFingerprintIsNil: Boolean
+  serverFingerprintNotNil: Boolean
+  serverFingerprintEqualFold: String
+  serverFingerprintContainsFold: String
   """
   stream field predicates
   """
@@ -4531,23 +4531,23 @@ input RequestWhereInput {
   statusIn: [RequestStatus!]
   statusNotIn: [RequestStatus!]
   """
-  node_id field predicates
+  server_fingerprint field predicates
   """
-  nodeID: String
-  nodeIDNEQ: String
-  nodeIDIn: [String!]
-  nodeIDNotIn: [String!]
-  nodeIDGT: String
-  nodeIDGTE: String
-  nodeIDLT: String
-  nodeIDLTE: String
-  nodeIDContains: String
-  nodeIDHasPrefix: String
-  nodeIDHasSuffix: String
-  nodeIDIsNil: Boolean
-  nodeIDNotNil: Boolean
-  nodeIDEqualFold: String
-  nodeIDContainsFold: String
+  serverFingerprint: String
+  serverFingerprintNEQ: String
+  serverFingerprintIn: [String!]
+  serverFingerprintNotIn: [String!]
+  serverFingerprintGT: String
+  serverFingerprintGTE: String
+  serverFingerprintLT: String
+  serverFingerprintLTE: String
+  serverFingerprintContains: String
+  serverFingerprintHasPrefix: String
+  serverFingerprintHasSuffix: String
+  serverFingerprintIsNil: Boolean
+  serverFingerprintNotNil: Boolean
+  serverFingerprintEqualFold: String
+  serverFingerprintContainsFold: String
   """
   stream field predicates
   """
@@ -5612,10 +5612,10 @@ input UpdateRequestInput {
   clearExternalID: Boolean
   status: RequestStatus
   """
-  ID of the node processing this request, null if not yet assigned or completed
+  Fingerprint of the server processing this request, null if not yet assigned or completed
   """
-  nodeID: String
-  clearNodeID: Boolean
+  serverFingerprint: String
+  clearServerFingerprint: Boolean
   metricsLatencyMs: Int
   clearMetricsLatencyMs: Boolean
   metricsFirstTokenLatencyMs: Int

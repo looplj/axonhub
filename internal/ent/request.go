@@ -56,8 +56,8 @@ type Request struct {
 	ExternalID string `json:"external_id,omitempty"`
 	// Status holds the value of the "status" field.
 	Status request.Status `json:"status,omitempty"`
-	// ID of the node processing this request, null if not yet assigned or completed
-	NodeID *string `json:"node_id,omitempty"`
+	// Fingerprint of the server processing this request, null if not yet assigned or completed
+	ServerFingerprint *string `json:"server_fingerprint,omitempty"`
 	// Stream holds the value of the "stream" field.
 	Stream bool `json:"stream,omitempty"`
 	// ClientIP holds the value of the "client_ip" field.
@@ -190,7 +190,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldContentStorageID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldNodeID, request.FieldClientIP, request.FieldContentStorageKey:
+		case request.FieldSource, request.FieldModelID, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldServerFingerprint, request.FieldClientIP, request.FieldContentStorageKey:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldContentSavedAt:
 			values[i] = new(sql.NullTime)
@@ -319,12 +319,12 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = request.Status(value.String)
 			}
-		case request.FieldNodeID:
+		case request.FieldServerFingerprint:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field node_id", values[i])
+				return fmt.Errorf("unexpected type %T for field server_fingerprint", values[i])
 			} else if value.Valid {
-				_m.NodeID = new(string)
-				*_m.NodeID = value.String
+				_m.ServerFingerprint = new(string)
+				*_m.ServerFingerprint = value.String
 			}
 		case request.FieldStream:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -498,8 +498,8 @@ func (_m *Request) String() string {
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
-	if v := _m.NodeID; v != nil {
-		builder.WriteString("node_id=")
+	if v := _m.ServerFingerprint; v != nil {
+		builder.WriteString("server_fingerprint=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

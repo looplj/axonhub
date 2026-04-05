@@ -13158,7 +13158,7 @@ type RequestMutation struct {
 	appendresponse_chunks             []objects.JSONRawMessage
 	external_id                       *string
 	status                            *request.Status
-	node_id                           *string
+	server_fingerprint                *string
 	stream                            *bool
 	client_ip                         *string
 	metrics_latency_ms                *int64
@@ -14033,53 +14033,53 @@ func (m *RequestMutation) ResetStatus() {
 	m.status = nil
 }
 
-// SetNodeID sets the "node_id" field.
-func (m *RequestMutation) SetNodeID(s string) {
-	m.node_id = &s
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (m *RequestMutation) SetServerFingerprint(s string) {
+	m.server_fingerprint = &s
 }
 
-// NodeID returns the value of the "node_id" field in the mutation.
-func (m *RequestMutation) NodeID() (r string, exists bool) {
-	v := m.node_id
+// ServerFingerprint returns the value of the "server_fingerprint" field in the mutation.
+func (m *RequestMutation) ServerFingerprint() (r string, exists bool) {
+	v := m.server_fingerprint
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldNodeID returns the old "node_id" field's value of the Request entity.
+// OldServerFingerprint returns the old "server_fingerprint" field's value of the Request entity.
 // If the Request object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestMutation) OldNodeID(ctx context.Context) (v *string, err error) {
+func (m *RequestMutation) OldServerFingerprint(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldNodeID is only allowed on UpdateOne operations")
+		return v, errors.New("OldServerFingerprint is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldNodeID requires an ID field in the mutation")
+		return v, errors.New("OldServerFingerprint requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldNodeID: %w", err)
+		return v, fmt.Errorf("querying old value for OldServerFingerprint: %w", err)
 	}
-	return oldValue.NodeID, nil
+	return oldValue.ServerFingerprint, nil
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (m *RequestMutation) ClearNodeID() {
-	m.node_id = nil
-	m.clearedFields[request.FieldNodeID] = struct{}{}
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (m *RequestMutation) ClearServerFingerprint() {
+	m.server_fingerprint = nil
+	m.clearedFields[request.FieldServerFingerprint] = struct{}{}
 }
 
-// NodeIDCleared returns if the "node_id" field was cleared in this mutation.
-func (m *RequestMutation) NodeIDCleared() bool {
-	_, ok := m.clearedFields[request.FieldNodeID]
+// ServerFingerprintCleared returns if the "server_fingerprint" field was cleared in this mutation.
+func (m *RequestMutation) ServerFingerprintCleared() bool {
+	_, ok := m.clearedFields[request.FieldServerFingerprint]
 	return ok
 }
 
-// ResetNodeID resets all changes to the "node_id" field.
-func (m *RequestMutation) ResetNodeID() {
-	m.node_id = nil
-	delete(m.clearedFields, request.FieldNodeID)
+// ResetServerFingerprint resets all changes to the "server_fingerprint" field.
+func (m *RequestMutation) ResetServerFingerprint() {
+	m.server_fingerprint = nil
+	delete(m.clearedFields, request.FieldServerFingerprint)
 }
 
 // SetStream sets the "stream" field.
@@ -14824,8 +14824,8 @@ func (m *RequestMutation) Fields() []string {
 	if m.status != nil {
 		fields = append(fields, request.FieldStatus)
 	}
-	if m.node_id != nil {
-		fields = append(fields, request.FieldNodeID)
+	if m.server_fingerprint != nil {
+		fields = append(fields, request.FieldServerFingerprint)
 	}
 	if m.stream != nil {
 		fields = append(fields, request.FieldStream)
@@ -14891,8 +14891,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.ExternalID()
 	case request.FieldStatus:
 		return m.Status()
-	case request.FieldNodeID:
-		return m.NodeID()
+	case request.FieldServerFingerprint:
+		return m.ServerFingerprint()
 	case request.FieldStream:
 		return m.Stream()
 	case request.FieldClientIP:
@@ -14950,8 +14950,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldExternalID(ctx)
 	case request.FieldStatus:
 		return m.OldStatus(ctx)
-	case request.FieldNodeID:
-		return m.OldNodeID(ctx)
+	case request.FieldServerFingerprint:
+		return m.OldServerFingerprint(ctx)
 	case request.FieldStream:
 		return m.OldStream(ctx)
 	case request.FieldClientIP:
@@ -15089,12 +15089,12 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
-	case request.FieldNodeID:
+	case request.FieldServerFingerprint:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetNodeID(v)
+		m.SetServerFingerprint(v)
 		return nil
 	case request.FieldStream:
 		v, ok := value.(bool)
@@ -15245,8 +15245,8 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldExternalID) {
 		fields = append(fields, request.FieldExternalID)
 	}
-	if m.FieldCleared(request.FieldNodeID) {
-		fields = append(fields, request.FieldNodeID)
+	if m.FieldCleared(request.FieldServerFingerprint) {
+		fields = append(fields, request.FieldServerFingerprint)
 	}
 	if m.FieldCleared(request.FieldMetricsLatencyMs) {
 		fields = append(fields, request.FieldMetricsLatencyMs)
@@ -15301,8 +15301,8 @@ func (m *RequestMutation) ClearField(name string) error {
 	case request.FieldExternalID:
 		m.ClearExternalID()
 		return nil
-	case request.FieldNodeID:
-		m.ClearNodeID()
+	case request.FieldServerFingerprint:
+		m.ClearServerFingerprint()
 		return nil
 	case request.FieldMetricsLatencyMs:
 		m.ClearMetricsLatencyMs()
@@ -15375,8 +15375,8 @@ func (m *RequestMutation) ResetField(name string) error {
 	case request.FieldStatus:
 		m.ResetStatus()
 		return nil
-	case request.FieldNodeID:
-		m.ResetNodeID()
+	case request.FieldServerFingerprint:
+		m.ResetServerFingerprint()
 		return nil
 	case request.FieldStream:
 		m.ResetStream()
@@ -15629,7 +15629,7 @@ type RequestExecutionMutation struct {
 	response_status_code              *int
 	addresponse_status_code           *int
 	status                            *requestexecution.Status
-	node_id                           *string
+	server_fingerprint                *string
 	stream                            *bool
 	metrics_latency_ms                *int64
 	addmetrics_latency_ms             *int64
@@ -16466,53 +16466,53 @@ func (m *RequestExecutionMutation) ResetStatus() {
 	m.status = nil
 }
 
-// SetNodeID sets the "node_id" field.
-func (m *RequestExecutionMutation) SetNodeID(s string) {
-	m.node_id = &s
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (m *RequestExecutionMutation) SetServerFingerprint(s string) {
+	m.server_fingerprint = &s
 }
 
-// NodeID returns the value of the "node_id" field in the mutation.
-func (m *RequestExecutionMutation) NodeID() (r string, exists bool) {
-	v := m.node_id
+// ServerFingerprint returns the value of the "server_fingerprint" field in the mutation.
+func (m *RequestExecutionMutation) ServerFingerprint() (r string, exists bool) {
+	v := m.server_fingerprint
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldNodeID returns the old "node_id" field's value of the RequestExecution entity.
+// OldServerFingerprint returns the old "server_fingerprint" field's value of the RequestExecution entity.
 // If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RequestExecutionMutation) OldNodeID(ctx context.Context) (v *string, err error) {
+func (m *RequestExecutionMutation) OldServerFingerprint(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldNodeID is only allowed on UpdateOne operations")
+		return v, errors.New("OldServerFingerprint is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldNodeID requires an ID field in the mutation")
+		return v, errors.New("OldServerFingerprint requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldNodeID: %w", err)
+		return v, fmt.Errorf("querying old value for OldServerFingerprint: %w", err)
 	}
-	return oldValue.NodeID, nil
+	return oldValue.ServerFingerprint, nil
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (m *RequestExecutionMutation) ClearNodeID() {
-	m.node_id = nil
-	m.clearedFields[requestexecution.FieldNodeID] = struct{}{}
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (m *RequestExecutionMutation) ClearServerFingerprint() {
+	m.server_fingerprint = nil
+	m.clearedFields[requestexecution.FieldServerFingerprint] = struct{}{}
 }
 
-// NodeIDCleared returns if the "node_id" field was cleared in this mutation.
-func (m *RequestExecutionMutation) NodeIDCleared() bool {
-	_, ok := m.clearedFields[requestexecution.FieldNodeID]
+// ServerFingerprintCleared returns if the "server_fingerprint" field was cleared in this mutation.
+func (m *RequestExecutionMutation) ServerFingerprintCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldServerFingerprint]
 	return ok
 }
 
-// ResetNodeID resets all changes to the "node_id" field.
-func (m *RequestExecutionMutation) ResetNodeID() {
-	m.node_id = nil
-	delete(m.clearedFields, requestexecution.FieldNodeID)
+// ResetServerFingerprint resets all changes to the "server_fingerprint" field.
+func (m *RequestExecutionMutation) ResetServerFingerprint() {
+	m.server_fingerprint = nil
+	delete(m.clearedFields, requestexecution.FieldServerFingerprint)
 }
 
 // SetStream sets the "stream" field.
@@ -16917,8 +16917,8 @@ func (m *RequestExecutionMutation) Fields() []string {
 	if m.status != nil {
 		fields = append(fields, requestexecution.FieldStatus)
 	}
-	if m.node_id != nil {
-		fields = append(fields, requestexecution.FieldNodeID)
+	if m.server_fingerprint != nil {
+		fields = append(fields, requestexecution.FieldServerFingerprint)
 	}
 	if m.stream != nil {
 		fields = append(fields, requestexecution.FieldStream)
@@ -16970,8 +16970,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ResponseStatusCode()
 	case requestexecution.FieldStatus:
 		return m.Status()
-	case requestexecution.FieldNodeID:
-		return m.NodeID()
+	case requestexecution.FieldServerFingerprint:
+		return m.ServerFingerprint()
 	case requestexecution.FieldStream:
 		return m.Stream()
 	case requestexecution.FieldMetricsLatencyMs:
@@ -17019,8 +17019,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldResponseStatusCode(ctx)
 	case requestexecution.FieldStatus:
 		return m.OldStatus(ctx)
-	case requestexecution.FieldNodeID:
-		return m.OldNodeID(ctx)
+	case requestexecution.FieldServerFingerprint:
+		return m.OldServerFingerprint(ctx)
 	case requestexecution.FieldStream:
 		return m.OldStream(ctx)
 	case requestexecution.FieldMetricsLatencyMs:
@@ -17143,12 +17143,12 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetStatus(v)
 		return nil
-	case requestexecution.FieldNodeID:
+	case requestexecution.FieldServerFingerprint:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetNodeID(v)
+		m.SetServerFingerprint(v)
 		return nil
 	case requestexecution.FieldStream:
 		v, ok := value.(bool)
@@ -17280,8 +17280,8 @@ func (m *RequestExecutionMutation) ClearedFields() []string {
 	if m.FieldCleared(requestexecution.FieldResponseStatusCode) {
 		fields = append(fields, requestexecution.FieldResponseStatusCode)
 	}
-	if m.FieldCleared(requestexecution.FieldNodeID) {
-		fields = append(fields, requestexecution.FieldNodeID)
+	if m.FieldCleared(requestexecution.FieldServerFingerprint) {
+		fields = append(fields, requestexecution.FieldServerFingerprint)
 	}
 	if m.FieldCleared(requestexecution.FieldMetricsLatencyMs) {
 		fields = append(fields, requestexecution.FieldMetricsLatencyMs)
@@ -17327,8 +17327,8 @@ func (m *RequestExecutionMutation) ClearField(name string) error {
 	case requestexecution.FieldResponseStatusCode:
 		m.ClearResponseStatusCode()
 		return nil
-	case requestexecution.FieldNodeID:
-		m.ClearNodeID()
+	case requestexecution.FieldServerFingerprint:
+		m.ClearServerFingerprint()
 		return nil
 	case requestexecution.FieldMetricsLatencyMs:
 		m.ClearMetricsLatencyMs()
@@ -17392,8 +17392,8 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 	case requestexecution.FieldStatus:
 		m.ResetStatus()
 		return nil
-	case requestexecution.FieldNodeID:
-		m.ResetNodeID()
+	case requestexecution.FieldServerFingerprint:
+		m.ResetServerFingerprint()
 		return nil
 	case requestexecution.FieldStream:
 		m.ResetStream()

@@ -4,6 +4,7 @@ package biz
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,16 +26,22 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-// getNodeID returns a unique identifier for this node instance.
+// getServerFingerprint returns a unique identifier for this server instance.
 // This is used for multi-node safe cleanup of processing records.
-func getNodeID() string {
+// The fingerprint includes a hash for better uniqueness and to avoid confusion with GraphQL node IDs.
+func getServerFingerprint() string {
 	hostname, err := os.Hostname()
 	if err != nil || hostname == "" {
-		// Fallback to timestamp+PID if hostname is unavailable
-		return fmt.Sprintf("node-%d-%d", time.Now().UnixNano(), os.Getpid())
+		// Fallback to PID if hostname is unavailable
+		hostname = fmt.Sprintf("server-%d", os.Getpid())
 	}
-	// Include PID for uniqueness in containerized environments
-	return fmt.Sprintf("%s-%d", hostname, os.Getpid())
+
+	// Combine hostname and PID for uniqueness in containerized environments
+	data := fmt.Sprintf("%s-%d", hostname, os.Getpid())
+
+	// Add cryptographic hash for better uniqueness
+	hash := sha256.Sum256([]byte(data))
+	return fmt.Sprintf("%s-%x", data, hash[:8])
 }
 
 // RequestService handles request and request execution operations.
@@ -45,8 +52,8 @@ type RequestService struct {
 	UsageLogService    *UsageLogService
 	DataStorageService *DataStorageService
 	channelCache       xcache.Cache[int]
-	// nodeID identifies this node instance for multi-node safe cleanup.
-	nodeID string
+	// serverFingerprint identifies this server instance for multi-node safe cleanup.
+	serverFingerprint string
 }
 
 // NewRequestService creates a new RequestService.
@@ -64,7 +71,7 @@ func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogSe
 				Expiration: 30 * time.Minute,
 			},
 		}),
-		nodeID: getNodeID(),
+		serverFingerprint: getServerFingerprint(),
 	}
 }
 
@@ -187,7 +194,7 @@ func (s *RequestService) CreateRequest(
 		SetFormat(string(format)).
 		SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
 		SetStatus(request.StatusProcessing).
-		SetNodeID(s.nodeID).
+		SetServerFingerprint(s.serverFingerprint).
 		SetStream(isStream).
 		SetRequestHeaders(requestHeadersBytes)
 
@@ -324,7 +331,7 @@ func (s *RequestService) CreateRequestExecution(
 		SetModelID(modelID).
 		SetRequestBody(requestBodyForDB).
 		SetStatus(requestexecution.StatusProcessing).
-		SetNodeID(s.nodeID).
+		SetServerFingerprint(s.serverFingerprint).
 		SetStream(request.Stream).
 		SetRequestHeaders(requestHeadersBytes)
 
@@ -926,7 +933,7 @@ func (s *RequestService) ClearProcessingRequestsOnShutdown(ctx context.Context) 
 		return client.Request.Update().
 			Where(
 				request.StatusEQ(request.StatusProcessing),
-				request.NodeIDEQ(s.nodeID),
+				request.ServerFingerprintEQ(s.serverFingerprint),
 			).
 			SetStatus(request.StatusCanceled).
 			Save(ctx)
@@ -941,17 +948,17 @@ func (s *RequestService) ClearProcessingExecutionsOnShutdown(ctx context.Context
 		return client.RequestExecution.Update().
 			Where(
 				requestexecution.StatusEQ(requestexecution.StatusProcessing),
-				requestexecution.NodeIDEQ(s.nodeID),
+				requestexecution.ServerFingerprintEQ(s.serverFingerprint),
 			).SetStatus(requestexecution.StatusCanceled).
 			Save(ctx)
 	})
 }
 
-// ClearStaleProcessingOnStartup clears stale processing records from previous runs of this node.
+// ClearStaleProcessingOnStartup clears stale processing records from previous runs of this server.
 // This handles cases where the server crashed or was forcefully terminated, leaving
 // records stuck in 'processing' state. It should be called during server initialization.
-// Only records from this node's previous runs are cleared to ensure multi-node safety.
-// Also clears orphaned records with NULL node_id (from before this feature was implemented).
+// Only records from this server's previous runs are cleared to ensure multi-node safety.
+// Also clears orphaned records with NULL server_fingerprint (from before this feature was implemented).
 func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) error {
 	var errs []error
 
@@ -964,13 +971,13 @@ func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) erro
 		errs = append(errs, err)
 	}
 
-	// Clear orphaned records with NULL node_id (from before this feature)
+	// Clear orphaned records with NULL server_fingerprint (from before this feature)
 	if err := s.clearProcessingRecords(ctx, "startup-cleanup-orphaned-requests", "orphaned requests", func(ctx context.Context) (int, error) {
 		client := s.entFromContext(ctx)
 		return client.Request.Update().
 			Where(
 				request.StatusEQ(request.StatusProcessing),
-				request.NodeIDIsNil(),
+				request.ServerFingerprintIsNil(),
 			).
 			SetStatus(request.StatusCanceled).
 			Save(ctx)
@@ -983,7 +990,7 @@ func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) erro
 		return client.RequestExecution.Update().
 			Where(
 				requestexecution.StatusEQ(requestexecution.StatusProcessing),
-				requestexecution.NodeIDIsNil(),
+				requestexecution.ServerFingerprintIsNil(),
 			).SetStatus(requestexecution.StatusCanceled).
 			Save(ctx)
 	}); err != nil {

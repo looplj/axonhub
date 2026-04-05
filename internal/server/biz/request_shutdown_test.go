@@ -61,8 +61,8 @@ func TestRequestService_ClearProcessingRequestsOnShutdown(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create processing records with this node's ID (should be canceled)
-	thisNodeID := svc.nodeID
+	// Create processing records with this server's fingerprint (should be canceled)
+	thisServerFingerprint := svc.serverFingerprint
 	var processingIDs []int
 	for i := 0; i < 2; i++ {
 		req, err := client.Request.Create().
@@ -72,14 +72,14 @@ func TestRequestService_ClearProcessingRequestsOnShutdown(t *testing.T) {
 			SetFormat("openai/chat_completions").
 			SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 			SetStatus(request.StatusProcessing).
-			SetNodeID(thisNodeID).
+			SetServerFingerprint(thisServerFingerprint).
 			SetStream(false).
 			Save(ctx)
 		require.NoError(t, err)
 		processingIDs = append(processingIDs, req.ID)
 	}
 
-	// Create a completed record with this node's ID (should remain unchanged)
+	// Create a completed record with this server's fingerprint (should remain unchanged)
 	completedReq, err := client.Request.Create().
 		SetProjectID(proj.ID).
 		SetTraceID(tr.ID).
@@ -87,7 +87,7 @@ func TestRequestService_ClearProcessingRequestsOnShutdown(t *testing.T) {
 		SetFormat("openai/chat_completions").
 		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 		SetStatus(request.StatusCompleted).
-		SetNodeID(thisNodeID).
+		SetServerFingerprint(thisServerFingerprint).
 		SetStream(false).
 		Save(ctx)
 	require.NoError(t, err)
@@ -127,28 +127,28 @@ func TestRequestService_ClearProcessingRequestsOnShutdown_MultiNode(t *testing.T
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create processing record for DIFFERENT node (should NOT be canceled)
-	otherNodeReq, err := client.Request.Create().
+	// Create processing record for DIFFERENT server (should NOT be canceled)
+	otherServerReq, err := client.Request.Create().
 		SetProjectID(proj.ID).
 		SetTraceID(tr.ID).
 		SetModelID("gpt-4").
 		SetFormat("openai/chat_completions").
 		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 		SetStatus(request.StatusProcessing).
-		SetNodeID("other-node-123").
+		SetServerFingerprint("other-server-123").
 		SetStream(false).
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create processing record for THIS node (should be canceled)
-	thisNodeReq, err := client.Request.Create().
+	// Create processing record for THIS server (should be canceled)
+	thisServerReq, err := client.Request.Create().
 		SetProjectID(proj.ID).
 		SetTraceID(tr.ID).
 		SetModelID("gpt-4").
 		SetFormat("openai/chat_completions").
 		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 		SetStatus(request.StatusProcessing).
-		SetNodeID(svc.nodeID).
+		SetServerFingerprint(svc.serverFingerprint).
 		SetStream(false).
 		Save(ctx)
 	require.NoError(t, err)
@@ -157,15 +157,15 @@ func TestRequestService_ClearProcessingRequestsOnShutdown_MultiNode(t *testing.T
 	err = svc.ClearProcessingRequestsOnShutdown(ctx)
 	require.NoError(t, err)
 
-	// Verify other node's request is still processing
-	req, err := client.Request.Get(ctx, otherNodeReq.ID)
+	// Verify other server's request is still processing
+	req, err := client.Request.Get(ctx, otherServerReq.ID)
 	require.NoError(t, err)
-	require.Equal(t, request.StatusProcessing, req.Status, "other node's request should still be processing")
+	require.Equal(t, request.StatusProcessing, req.Status, "other server's request should still be processing")
 
-	// Verify this node's request is canceled
-	req, err = client.Request.Get(ctx, thisNodeReq.ID)
+	// Verify this server's request is canceled
+	req, err = client.Request.Get(ctx, thisServerReq.ID)
 	require.NoError(t, err)
-	require.Equal(t, request.StatusCanceled, req.Status, "this node's request should be canceled")
+	require.Equal(t, request.StatusCanceled, req.Status, "this server's request should be canceled")
 }
 
 func TestRequestService_ClearProcessingRequestsOnShutdown_NoProcessingRequests(t *testing.T) {
@@ -202,13 +202,13 @@ func TestRequestService_ClearProcessingExecutionsOnShutdown(t *testing.T) {
 		SetFormat("openai/chat_completions").
 		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 		SetStatus(request.StatusProcessing).
-		SetNodeID(svc.nodeID).
+		SetServerFingerprint(svc.serverFingerprint).
 		SetStream(false).
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create processing executions with this node's ID
-	thisNodeID := svc.nodeID
+	// Create processing executions with this server's fingerprint
+	thisServerFingerprint := svc.serverFingerprint
 	var processingIDs []int
 	for i := 0; i < 2; i++ {
 		exec, err := client.RequestExecution.Create().
@@ -218,7 +218,7 @@ func TestRequestService_ClearProcessingExecutionsOnShutdown(t *testing.T) {
 			SetFormat("openai/chat_completions").
 			SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 			SetStatus(requestexecution.StatusProcessing).
-			SetNodeID(thisNodeID).
+			SetServerFingerprint(thisServerFingerprint).
 			SetStream(false).
 			Save(ctx)
 		require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestRequestService_ClearProcessingExecutionsOnShutdown(t *testing.T) {
 		SetFormat("openai/chat_completions").
 		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 		SetStatus(requestexecution.StatusCompleted).
-		SetNodeID(thisNodeID).
+		SetServerFingerprint(thisServerFingerprint).
 		SetStream(false).
 		Save(ctx)
 	require.NoError(t, err)
@@ -281,33 +281,33 @@ func TestRequestService_ClearProcessingExecutionsOnShutdown_MultiNode(t *testing
 		SetFormat("openai/chat_completions").
 		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 		SetStatus(request.StatusProcessing).
-		SetNodeID(svc.nodeID).
+		SetServerFingerprint(svc.serverFingerprint).
 		SetStream(false).
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create execution for DIFFERENT node
-	otherNodeExec, err := client.RequestExecution.Create().
+	// Create execution for DIFFERENT server
+	otherServerExec, err := client.RequestExecution.Create().
 		SetProjectID(proj.ID).
 		SetRequestID(req.ID).
 		SetModelID("gpt-4").
 		SetFormat("openai/chat_completions").
 		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 		SetStatus(requestexecution.StatusProcessing).
-		SetNodeID("other-node-456").
+		SetServerFingerprint("other-server-456").
 		SetStream(false).
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create execution for THIS node
-	thisNodeExec, err := client.RequestExecution.Create().
+	// Create execution for THIS server
+	thisServerExec, err := client.RequestExecution.Create().
 		SetProjectID(proj.ID).
 		SetRequestID(req.ID).
 		SetModelID("gpt-4").
 		SetFormat("openai/chat_completions").
 		SetRequestBody([]byte(`{"model":"gpt-4"}`)).
 		SetStatus(requestexecution.StatusProcessing).
-		SetNodeID(svc.nodeID).
+		SetServerFingerprint(svc.serverFingerprint).
 		SetStream(false).
 		Save(ctx)
 	require.NoError(t, err)
@@ -316,15 +316,15 @@ func TestRequestService_ClearProcessingExecutionsOnShutdown_MultiNode(t *testing
 	err = svc.ClearProcessingExecutionsOnShutdown(ctx)
 	require.NoError(t, err)
 
-	// Verify other node's execution is still processing
-	exec, err := client.RequestExecution.Get(ctx, otherNodeExec.ID)
+	// Verify other server's execution is still processing
+	exec, err := client.RequestExecution.Get(ctx, otherServerExec.ID)
 	require.NoError(t, err)
-	require.Equal(t, requestexecution.StatusProcessing, exec.Status, "other node's execution should still be processing")
+	require.Equal(t, requestexecution.StatusProcessing, exec.Status, "other server's execution should still be processing")
 
-	// Verify this node's execution is canceled
-	exec, err = client.RequestExecution.Get(ctx, thisNodeExec.ID)
+	// Verify this server's execution is canceled
+	exec, err = client.RequestExecution.Get(ctx, thisServerExec.ID)
 	require.NoError(t, err)
-	require.Equal(t, requestexecution.StatusCanceled, exec.Status, "this node's execution should be canceled")
+	require.Equal(t, requestexecution.StatusCanceled, exec.Status, "this server's execution should be canceled")
 }
 
 func TestRequestService_ClearProcessingExecutionsOnShutdown_NoProcessingExecutions(t *testing.T) {

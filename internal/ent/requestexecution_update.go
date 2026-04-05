@@ -154,23 +154,23 @@ func (_u *RequestExecutionUpdate) SetNillableStatus(v *requestexecution.Status) 
 	return _u
 }
 
-// SetNodeID sets the "node_id" field.
-func (_u *RequestExecutionUpdate) SetNodeID(v string) *RequestExecutionUpdate {
-	_u.mutation.SetNodeID(v)
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (_u *RequestExecutionUpdate) SetServerFingerprint(v string) *RequestExecutionUpdate {
+	_u.mutation.SetServerFingerprint(v)
 	return _u
 }
 
-// SetNillableNodeID sets the "node_id" field if the given value is not nil.
-func (_u *RequestExecutionUpdate) SetNillableNodeID(v *string) *RequestExecutionUpdate {
+// SetNillableServerFingerprint sets the "server_fingerprint" field if the given value is not nil.
+func (_u *RequestExecutionUpdate) SetNillableServerFingerprint(v *string) *RequestExecutionUpdate {
 	if v != nil {
-		_u.SetNodeID(*v)
+		_u.SetServerFingerprint(*v)
 	}
 	return _u
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (_u *RequestExecutionUpdate) ClearNodeID() *RequestExecutionUpdate {
-	_u.mutation.ClearNodeID()
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (_u *RequestExecutionUpdate) ClearServerFingerprint() *RequestExecutionUpdate {
+	_u.mutation.ClearServerFingerprint()
 	return _u
 }
 
@@ -367,11 +367,11 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.NodeID(); ok {
-		_spec.SetField(requestexecution.FieldNodeID, field.TypeString, value)
+	if value, ok := _u.mutation.ServerFingerprint(); ok {
+		_spec.SetField(requestexecution.FieldServerFingerprint, field.TypeString, value)
 	}
-	if _u.mutation.NodeIDCleared() {
-		_spec.ClearField(requestexecution.FieldNodeID, field.TypeString)
+	if _u.mutation.ServerFingerprintCleared() {
+		_spec.ClearField(requestexecution.FieldServerFingerprint, field.TypeString)
 	}
 	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(requestexecution.FieldMetricsLatencyMs, field.TypeInt64, value)
@@ -547,23 +547,23 @@ func (_u *RequestExecutionUpdateOne) SetNillableStatus(v *requestexecution.Statu
 	return _u
 }
 
-// SetNodeID sets the "node_id" field.
-func (_u *RequestExecutionUpdateOne) SetNodeID(v string) *RequestExecutionUpdateOne {
-	_u.mutation.SetNodeID(v)
+// SetServerFingerprint sets the "server_fingerprint" field.
+func (_u *RequestExecutionUpdateOne) SetServerFingerprint(v string) *RequestExecutionUpdateOne {
+	_u.mutation.SetServerFingerprint(v)
 	return _u
 }
 
-// SetNillableNodeID sets the "node_id" field if the given value is not nil.
-func (_u *RequestExecutionUpdateOne) SetNillableNodeID(v *string) *RequestExecutionUpdateOne {
+// SetNillableServerFingerprint sets the "server_fingerprint" field if the given value is not nil.
+func (_u *RequestExecutionUpdateOne) SetNillableServerFingerprint(v *string) *RequestExecutionUpdateOne {
 	if v != nil {
-		_u.SetNodeID(*v)
+		_u.SetServerFingerprint(*v)
 	}
 	return _u
 }
 
-// ClearNodeID clears the value of the "node_id" field.
-func (_u *RequestExecutionUpdateOne) ClearNodeID() *RequestExecutionUpdateOne {
-	_u.mutation.ClearNodeID()
+// ClearServerFingerprint clears the value of the "server_fingerprint" field.
+func (_u *RequestExecutionUpdateOne) ClearServerFingerprint() *RequestExecutionUpdateOne {
+	_u.mutation.ClearServerFingerprint()
 	return _u
 }
 
@@ -790,11 +790,11 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(requestexecution.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.NodeID(); ok {
-		_spec.SetField(requestexecution.FieldNodeID, field.TypeString, value)
+	if value, ok := _u.mutation.ServerFingerprint(); ok {
+		_spec.SetField(requestexecution.FieldServerFingerprint, field.TypeString, value)
 	}
-	if _u.mutation.NodeIDCleared() {
-		_spec.ClearField(requestexecution.FieldNodeID, field.TypeString)
+	if _u.mutation.ServerFingerprintCleared() {
+		_spec.ClearField(requestexecution.FieldServerFingerprint, field.TypeString)
 	}
 	if value, ok := _u.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(requestexecution.FieldMetricsLatencyMs, field.TypeInt64, value)

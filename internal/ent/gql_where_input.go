@@ -5670,22 +5670,22 @@ type RequestWhereInput struct {
 	StatusIn    []request.Status `json:"statusIn,omitempty"`
 	StatusNotIn []request.Status `json:"statusNotIn,omitempty"`
 
-	// "node_id" field predicates.
-	NodeID             *string  `json:"nodeID,omitempty"`
-	NodeIDNEQ          *string  `json:"nodeIDNEQ,omitempty"`
-	NodeIDIn           []string `json:"nodeIDIn,omitempty"`
-	NodeIDNotIn        []string `json:"nodeIDNotIn,omitempty"`
-	NodeIDGT           *string  `json:"nodeIDGT,omitempty"`
-	NodeIDGTE          *string  `json:"nodeIDGTE,omitempty"`
-	NodeIDLT           *string  `json:"nodeIDLT,omitempty"`
-	NodeIDLTE          *string  `json:"nodeIDLTE,omitempty"`
-	NodeIDContains     *string  `json:"nodeIDContains,omitempty"`
-	NodeIDHasPrefix    *string  `json:"nodeIDHasPrefix,omitempty"`
-	NodeIDHasSuffix    *string  `json:"nodeIDHasSuffix,omitempty"`
-	NodeIDIsNil        bool     `json:"nodeIDIsNil,omitempty"`
-	NodeIDNotNil       bool     `json:"nodeIDNotNil,omitempty"`
-	NodeIDEqualFold    *string  `json:"nodeIDEqualFold,omitempty"`
-	NodeIDContainsFold *string  `json:"nodeIDContainsFold,omitempty"`
+	// "server_fingerprint" field predicates.
+	ServerFingerprint             *string  `json:"serverFingerprint,omitempty"`
+	ServerFingerprintNEQ          *string  `json:"serverFingerprintNEQ,omitempty"`
+	ServerFingerprintIn           []string `json:"serverFingerprintIn,omitempty"`
+	ServerFingerprintNotIn        []string `json:"serverFingerprintNotIn,omitempty"`
+	ServerFingerprintGT           *string  `json:"serverFingerprintGT,omitempty"`
+	ServerFingerprintGTE          *string  `json:"serverFingerprintGTE,omitempty"`
+	ServerFingerprintLT           *string  `json:"serverFingerprintLT,omitempty"`
+	ServerFingerprintLTE          *string  `json:"serverFingerprintLTE,omitempty"`
+	ServerFingerprintContains     *string  `json:"serverFingerprintContains,omitempty"`
+	ServerFingerprintHasPrefix    *string  `json:"serverFingerprintHasPrefix,omitempty"`
+	ServerFingerprintHasSuffix    *string  `json:"serverFingerprintHasSuffix,omitempty"`
+	ServerFingerprintIsNil        bool     `json:"serverFingerprintIsNil,omitempty"`
+	ServerFingerprintNotNil       bool     `json:"serverFingerprintNotNil,omitempty"`
+	ServerFingerprintEqualFold    *string  `json:"serverFingerprintEqualFold,omitempty"`
+	ServerFingerprintContainsFold *string  `json:"serverFingerprintContainsFold,omitempty"`
 
 	// "stream" field predicates.
 	Stream    *bool `json:"stream,omitempty"`
@@ -6178,50 +6178,50 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, request.StatusNotIn(i.StatusNotIn...))
 	}
-	if i.NodeID != nil {
-		predicates = append(predicates, request.NodeIDEQ(*i.NodeID))
+	if i.ServerFingerprint != nil {
+		predicates = append(predicates, request.ServerFingerprintEQ(*i.ServerFingerprint))
 	}
-	if i.NodeIDNEQ != nil {
-		predicates = append(predicates, request.NodeIDNEQ(*i.NodeIDNEQ))
+	if i.ServerFingerprintNEQ != nil {
+		predicates = append(predicates, request.ServerFingerprintNEQ(*i.ServerFingerprintNEQ))
 	}
-	if len(i.NodeIDIn) > 0 {
-		predicates = append(predicates, request.NodeIDIn(i.NodeIDIn...))
+	if len(i.ServerFingerprintIn) > 0 {
+		predicates = append(predicates, request.ServerFingerprintIn(i.ServerFingerprintIn...))
 	}
-	if len(i.NodeIDNotIn) > 0 {
-		predicates = append(predicates, request.NodeIDNotIn(i.NodeIDNotIn...))
+	if len(i.ServerFingerprintNotIn) > 0 {
+		predicates = append(predicates, request.ServerFingerprintNotIn(i.ServerFingerprintNotIn...))
 	}
-	if i.NodeIDGT != nil {
-		predicates = append(predicates, request.NodeIDGT(*i.NodeIDGT))
+	if i.ServerFingerprintGT != nil {
+		predicates = append(predicates, request.ServerFingerprintGT(*i.ServerFingerprintGT))
 	}
-	if i.NodeIDGTE != nil {
-		predicates = append(predicates, request.NodeIDGTE(*i.NodeIDGTE))
+	if i.ServerFingerprintGTE != nil {
+		predicates = append(predicates, request.ServerFingerprintGTE(*i.ServerFingerprintGTE))
 	}
-	if i.NodeIDLT != nil {
-		predicates = append(predicates, request.NodeIDLT(*i.NodeIDLT))
+	if i.ServerFingerprintLT != nil {
+		predicates = append(predicates, request.ServerFingerprintLT(*i.ServerFingerprintLT))
 	}
-	if i.NodeIDLTE != nil {
-		predicates = append(predicates, request.NodeIDLTE(*i.NodeIDLTE))
+	if i.ServerFingerprintLTE != nil {
+		predicates = append(predicates, request.ServerFingerprintLTE(*i.ServerFingerprintLTE))
 	}
-	if i.NodeIDContains != nil {
-		predicates = append(predicates, request.NodeIDContains(*i.NodeIDContains))
+	if i.ServerFingerprintContains != nil {
+		predicates = append(predicates, request.ServerFingerprintContains(*i.ServerFingerprintContains))
 	}
-	if i.NodeIDHasPrefix != nil {
-		predicates = append(predicates, request.NodeIDHasPrefix(*i.NodeIDHasPrefix))
+	if i.ServerFingerprintHasPrefix != nil {
+		predicates = append(predicates, request.ServerFingerprintHasPrefix(*i.ServerFingerprintHasPrefix))
 	}
-	if i.NodeIDHasSuffix != nil {
-		predicates = append(predicates, request.NodeIDHasSuffix(*i.NodeIDHasSuffix))
+	if i.ServerFingerprintHasSuffix != nil {
+		predicates = append(predicates, request.ServerFingerprintHasSuffix(*i.ServerFingerprintHasSuffix))
 	}
-	if i.NodeIDIsNil {
-		predicates = append(predicates, request.NodeIDIsNil())
+	if i.ServerFingerprintIsNil {
+		predicates = append(predicates, request.ServerFingerprintIsNil())
 	}
-	if i.NodeIDNotNil {
-		predicates = append(predicates, request.NodeIDNotNil())
+	if i.ServerFingerprintNotNil {
+		predicates = append(predicates, request.ServerFingerprintNotNil())
 	}
-	if i.NodeIDEqualFold != nil {
-		predicates = append(predicates, request.NodeIDEqualFold(*i.NodeIDEqualFold))
+	if i.ServerFingerprintEqualFold != nil {
+		predicates = append(predicates, request.ServerFingerprintEqualFold(*i.ServerFingerprintEqualFold))
 	}
-	if i.NodeIDContainsFold != nil {
-		predicates = append(predicates, request.NodeIDContainsFold(*i.NodeIDContainsFold))
+	if i.ServerFingerprintContainsFold != nil {
+		predicates = append(predicates, request.ServerFingerprintContainsFold(*i.ServerFingerprintContainsFold))
 	}
 	if i.Stream != nil {
 		predicates = append(predicates, request.StreamEQ(*i.Stream))
@@ -6727,22 +6727,22 @@ type RequestExecutionWhereInput struct {
 	StatusIn    []requestexecution.Status `json:"statusIn,omitempty"`
 	StatusNotIn []requestexecution.Status `json:"statusNotIn,omitempty"`
 
-	// "node_id" field predicates.
-	NodeID             *string  `json:"nodeID,omitempty"`
-	NodeIDNEQ          *string  `json:"nodeIDNEQ,omitempty"`
-	NodeIDIn           []string `json:"nodeIDIn,omitempty"`
-	NodeIDNotIn        []string `json:"nodeIDNotIn,omitempty"`
-	NodeIDGT           *string  `json:"nodeIDGT,omitempty"`
-	NodeIDGTE          *string  `json:"nodeIDGTE,omitempty"`
-	NodeIDLT           *string  `json:"nodeIDLT,omitempty"`
-	NodeIDLTE          *string  `json:"nodeIDLTE,omitempty"`
-	NodeIDContains     *string  `json:"nodeIDContains,omitempty"`
-	NodeIDHasPrefix    *string  `json:"nodeIDHasPrefix,omitempty"`
-	NodeIDHasSuffix    *string  `json:"nodeIDHasSuffix,omitempty"`
-	NodeIDIsNil        bool     `json:"nodeIDIsNil,omitempty"`
-	NodeIDNotNil       bool     `json:"nodeIDNotNil,omitempty"`
-	NodeIDEqualFold    *string  `json:"nodeIDEqualFold,omitempty"`
-	NodeIDContainsFold *string  `json:"nodeIDContainsFold,omitempty"`
+	// "server_fingerprint" field predicates.
+	ServerFingerprint             *string  `json:"serverFingerprint,omitempty"`
+	ServerFingerprintNEQ          *string  `json:"serverFingerprintNEQ,omitempty"`
+	ServerFingerprintIn           []string `json:"serverFingerprintIn,omitempty"`
+	ServerFingerprintNotIn        []string `json:"serverFingerprintNotIn,omitempty"`
+	ServerFingerprintGT           *string  `json:"serverFingerprintGT,omitempty"`
+	ServerFingerprintGTE          *string  `json:"serverFingerprintGTE,omitempty"`
+	ServerFingerprintLT           *string  `json:"serverFingerprintLT,omitempty"`
+	ServerFingerprintLTE          *string  `json:"serverFingerprintLTE,omitempty"`
+	ServerFingerprintContains     *string  `json:"serverFingerprintContains,omitempty"`
+	ServerFingerprintHasPrefix    *string  `json:"serverFingerprintHasPrefix,omitempty"`
+	ServerFingerprintHasSuffix    *string  `json:"serverFingerprintHasSuffix,omitempty"`
+	ServerFingerprintIsNil        bool     `json:"serverFingerprintIsNil,omitempty"`
+	ServerFingerprintNotNil       bool     `json:"serverFingerprintNotNil,omitempty"`
+	ServerFingerprintEqualFold    *string  `json:"serverFingerprintEqualFold,omitempty"`
+	ServerFingerprintContainsFold *string  `json:"serverFingerprintContainsFold,omitempty"`
 
 	// "stream" field predicates.
 	Stream    *bool `json:"stream,omitempty"`
@@ -7210,50 +7210,50 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, requestexecution.StatusNotIn(i.StatusNotIn...))
 	}
-	if i.NodeID != nil {
-		predicates = append(predicates, requestexecution.NodeIDEQ(*i.NodeID))
+	if i.ServerFingerprint != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintEQ(*i.ServerFingerprint))
 	}
-	if i.NodeIDNEQ != nil {
-		predicates = append(predicates, requestexecution.NodeIDNEQ(*i.NodeIDNEQ))
+	if i.ServerFingerprintNEQ != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintNEQ(*i.ServerFingerprintNEQ))
 	}
-	if len(i.NodeIDIn) > 0 {
-		predicates = append(predicates, requestexecution.NodeIDIn(i.NodeIDIn...))
+	if len(i.ServerFingerprintIn) > 0 {
+		predicates = append(predicates, requestexecution.ServerFingerprintIn(i.ServerFingerprintIn...))
 	}
-	if len(i.NodeIDNotIn) > 0 {
-		predicates = append(predicates, requestexecution.NodeIDNotIn(i.NodeIDNotIn...))
+	if len(i.ServerFingerprintNotIn) > 0 {
+		predicates = append(predicates, requestexecution.ServerFingerprintNotIn(i.ServerFingerprintNotIn...))
 	}
-	if i.NodeIDGT != nil {
-		predicates = append(predicates, requestexecution.NodeIDGT(*i.NodeIDGT))
+	if i.ServerFingerprintGT != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintGT(*i.ServerFingerprintGT))
 	}
-	if i.NodeIDGTE != nil {
-		predicates = append(predicates, requestexecution.NodeIDGTE(*i.NodeIDGTE))
+	if i.ServerFingerprintGTE != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintGTE(*i.ServerFingerprintGTE))
 	}
-	if i.NodeIDLT != nil {
-		predicates = append(predicates, requestexecution.NodeIDLT(*i.NodeIDLT))
+	if i.ServerFingerprintLT != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintLT(*i.ServerFingerprintLT))
 	}
-	if i.NodeIDLTE != nil {
-		predicates = append(predicates, requestexecution.NodeIDLTE(*i.NodeIDLTE))
+	if i.ServerFingerprintLTE != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintLTE(*i.ServerFingerprintLTE))
 	}
-	if i.NodeIDContains != nil {
-		predicates = append(predicates, requestexecution.NodeIDContains(*i.NodeIDContains))
+	if i.ServerFingerprintContains != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintContains(*i.ServerFingerprintContains))
 	}
-	if i.NodeIDHasPrefix != nil {
-		predicates = append(predicates, requestexecution.NodeIDHasPrefix(*i.NodeIDHasPrefix))
+	if i.ServerFingerprintHasPrefix != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintHasPrefix(*i.ServerFingerprintHasPrefix))
 	}
-	if i.NodeIDHasSuffix != nil {
-		predicates = append(predicates, requestexecution.NodeIDHasSuffix(*i.NodeIDHasSuffix))
+	if i.ServerFingerprintHasSuffix != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintHasSuffix(*i.ServerFingerprintHasSuffix))
 	}
-	if i.NodeIDIsNil {
-		predicates = append(predicates, requestexecution.NodeIDIsNil())
+	if i.ServerFingerprintIsNil {
+		predicates = append(predicates, requestexecution.ServerFingerprintIsNil())
 	}
-	if i.NodeIDNotNil {
-		predicates = append(predicates, requestexecution.NodeIDNotNil())
+	if i.ServerFingerprintNotNil {
+		predicates = append(predicates, requestexecution.ServerFingerprintNotNil())
 	}
-	if i.NodeIDEqualFold != nil {
-		predicates = append(predicates, requestexecution.NodeIDEqualFold(*i.NodeIDEqualFold))
+	if i.ServerFingerprintEqualFold != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintEqualFold(*i.ServerFingerprintEqualFold))
 	}
-	if i.NodeIDContainsFold != nil {
-		predicates = append(predicates, requestexecution.NodeIDContainsFold(*i.NodeIDContainsFold))
+	if i.ServerFingerprintContainsFold != nil {
+		predicates = append(predicates, requestexecution.ServerFingerprintContainsFold(*i.ServerFingerprintContainsFold))
 	}
 	if i.Stream != nil {
 		predicates = append(predicates, requestexecution.StreamEQ(*i.Stream))

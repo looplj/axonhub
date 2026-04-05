@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -23,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/samber/lo"
 )
 
 // AllModelEntries is the resolver for the allModelEntries field.

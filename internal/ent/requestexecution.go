@@ -52,8 +52,8 @@ type RequestExecution struct {
 	ResponseStatusCode *int `json:"response_status_code,omitempty"`
 	// Status holds the value of the "status" field.
 	Status requestexecution.Status `json:"status,omitempty"`
-	// ID of the node processing this execution, null if not yet assigned or completed
-	NodeID *string `json:"node_id,omitempty"`
+	// Fingerprint of the server processing this execution, null if not yet assigned or completed
+	ServerFingerprint *string `json:"server_fingerprint,omitempty"`
 	// Stream holds the value of the "stream" field.
 	Stream bool `json:"stream,omitempty"`
 	// MetricsLatencyMs holds the value of the "metrics_latency_ms" field.
@@ -127,7 +127,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldNodeID:
+		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldServerFingerprint:
 			values[i] = new(sql.NullString)
 		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -249,12 +249,12 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = requestexecution.Status(value.String)
 			}
-		case requestexecution.FieldNodeID:
+		case requestexecution.FieldServerFingerprint:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field node_id", values[i])
+				return fmt.Errorf("unexpected type %T for field server_fingerprint", values[i])
 			} else if value.Valid {
-				_m.NodeID = new(string)
-				*_m.NodeID = value.String
+				_m.ServerFingerprint = new(string)
+				*_m.ServerFingerprint = value.String
 			}
 		case requestexecution.FieldStream:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -382,8 +382,8 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
-	if v := _m.NodeID; v != nil {
-		builder.WriteString("node_id=")
+	if v := _m.ServerFingerprint; v != nil {
+		builder.WriteString("server_fingerprint=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")
