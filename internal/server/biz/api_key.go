@@ -24,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/watcher"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -213,6 +214,21 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 
 	client := s.entFromContext(ctx)
 
+	// Check for duplicate API key name in the same project
+	exists, err := client.APIKey.Query().
+		Where(
+			apikey.NameEQ(input.Name),
+			apikey.ProjectIDEQ(input.ProjectID),
+		).
+		Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check API key name uniqueness: %w", err)
+	}
+
+	if exists {
+		return nil, xerrors.DuplicateNameError("API Key", input.Name)
+	}
+
 	// Generate API key with ah- prefix (similar to OpenAI format)
 	generatedKey, err := GenerateAPIKey()
 	if err != nil {
@@ -273,6 +289,24 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 
 	if apiKey.Type == apikey.TypeNoauth {
 		return nil, fmt.Errorf("noauth type API key cannot be updated")
+	}
+
+	// Check for duplicate name if name is being updated
+	if input.Name != nil && *input.Name != apiKey.Name {
+		exists, err := client.APIKey.Query().
+			Where(
+				apikey.NameEQ(*input.Name),
+				apikey.ProjectIDEQ(apiKey.ProjectID),
+				apikey.IDNEQ(id),
+			).
+			Exist(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check API key name uniqueness: %w", err)
+		}
+
+		if exists {
+			return nil, xerrors.DuplicateNameError("API Key", *input.Name)
+		}
 	}
 
 	update := client.APIKey.UpdateOneID(id).SetNillableName(input.Name)

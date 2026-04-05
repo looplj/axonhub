@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -64,7 +65,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 	}
 
 	if exists {
-		return nil, fmt.Errorf("project name '%s' already exists", input.Name)
+		return nil, xerrors.DuplicateNameError("project", input.Name)
 	}
 
 	// Create the project

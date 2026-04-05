@@ -1,8 +1,4 @@
 {
-  "profile.dropdown.user": "用户",
-  "profile.dropdown.defaultEmail": "user@example.com",
-  "profile.dropdown.settings": "设置",
-  "profile.dropdown.logOut": "退出登录",
   "profile.title": "个人资料",
   "profile.description": "这是其他人在网站上看到您的方式。",
   "profile.form.fields.firstName.label": "名",
@@ -13,7 +9,6 @@
   "profile.form.fields.lastName.description": "您的姓氏，将显示给其他用户。",
   "profile.form.fields.email.label": "邮箱",
   "profile.form.fields.email.placeholder": "输入您的邮箱地址",
-  "profile.form.fields.email.description": "用于账户通知和登录的邮箱地址。",
   "profile.form.fields.email.disabled_description": "邮箱地址不可更改。",
   "profile.form.fields.preferLanguage.label": "首选语言",
   "profile.form.fields.preferLanguage.placeholder": "选择您的首选语言",

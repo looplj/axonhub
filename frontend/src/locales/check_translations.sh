@@ -3,7 +3,9 @@
 # 翻译文件对比脚本
 # 检查中英文翻译是否有遗漏
 
-LOCALE_DIR="$(dirname "$0")"
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCALE_DIR="$SCRIPT_DIR"
 EN_DIR="$LOCALE_DIR/en"
 ZH_DIR="$LOCALE_DIR/zh-CN"
 

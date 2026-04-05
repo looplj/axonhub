@@ -97,7 +97,7 @@ export function useRoles(
         });
         return roleConnectionSchema.parse(data?.node?.roles);
       } catch (error) {
-        handleError(error, t('projectRoles.errors.loadProjectRolesFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -127,7 +127,7 @@ export function useRole(id: string) {
         }
         return roleSchema.parse(role);
       } catch (error) {
-        handleError(error, t('projectRoles.errors.loadProjectRoleDetailFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -140,6 +140,7 @@ export function useCreateRole() {
   const queryClient = useQueryClient();
   const { handleError } = useErrorHandler();
   const selectedProjectId = useSelectedProjectId();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (input: CreateRoleInput) => {
@@ -153,7 +154,7 @@ export function useCreateRole() {
         const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input: inputWithProjectId });
         return roleSchema.parse(data.createRole);
       } catch (error) {
-        handleError(error, i18n.t('projectRoles.errors.createProjectRoleFailed'));
+        handleError(error, { context: t('roles.dialogs.create.title') });
         throw error;
       }
     },
@@ -167,6 +168,7 @@ export function useCreateRole() {
 export function useUpdateRole() {
   const queryClient = useQueryClient();
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateRoleInput }) => {
@@ -174,7 +176,7 @@ export function useUpdateRole() {
         const data = await graphqlRequest<{ updateRole: Role }>(UPDATE_ROLE_MUTATION, { id, input });
         return roleSchema.parse(data.updateRole);
       } catch (error) {
-        handleError(error, i18n.t('projectRoles.errors.updateProjectRoleFailed'));
+        handleError(error, { context: t('roles.dialogs.edit.title') });
         throw error;
       }
     },
@@ -195,7 +197,7 @@ export function useDeleteRole() {
       try {
         await graphqlRequest(DELETE_ROLE_MUTATION, { id });
       } catch (error) {
-        handleError(error, i18n.t('projectRoles.errors.deleteProjectRoleFailed'));
+        handleError(error, i18n.t('common.errors.internalServerError'));
         throw error;
       }
     },

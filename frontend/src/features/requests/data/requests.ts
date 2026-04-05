@@ -258,7 +258,7 @@ export function useRequests(variables?: {
         const data = await graphqlRequest<{ requests: RequestConnection }>(query, finalVariables, headers);
         return requestConnectionSchema.parse(data?.requests);
       } catch (error) {
-        handleError(error, t('requests.errors.loadRequestsFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -284,7 +284,7 @@ export function useRequest(id: string) {
         }
         return requestSchema.parse(data.node);
       } catch (error) {
-        handleError(error, t('requests.errors.loadRequestDetailFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -351,7 +351,7 @@ export function useRequestExecutions(
         const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(query, finalVariables, headers);
         return requestExecutionConnectionSchema.parse(data?.node?.executions);
       } catch (error) {
-        handleError(error, t('requests.errors.loadRequestDetailFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },

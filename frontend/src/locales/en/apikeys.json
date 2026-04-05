@@ -22,12 +22,10 @@
   "apikeys.actions.hide": "Hide",
   "apikeys.actions.viewTokenChart": "Token Usage",
   "apikeys.tokenUsageChart.title": "Token Usage Statistics",
-  "apikeys.tokenUsageChart.description": "Token Usage Statistics ({{name}})",
   "apikeys.tokenUsageChart.today": "Today",
   "apikeys.tokenUsageChart.last7days": "Last 7 Days",
   "apikeys.tokenUsageChart.all": "All",
   "apikeys.tokenUsageChart.noData": "No data available",
-  "apikeys.tokenUsageChart.filterByDate": "Filter by date",
   "apikeys.tokenUsageChart.tokenType": "Token Type",
   "apikeys.tokenUsageChart.count": "Count",
   "apikeys.tokenUsageChart.percentage": "Percentage",
@@ -145,6 +143,5 @@
   "apikeys.validation.quotaAtLeastOneLimit": "Quota must set at least one limit",
   "apikeys.validation.quotaPastDurationRequired": "Past duration is required",
   "apikeys.validation.quotaCalendarDurationRequired": "Calendar duration is required",
-  "apikeys.validation.quotaCostInvalid": "Cost must be a valid number",
   "apikeys.user.deleted": "User Deleted"
 }

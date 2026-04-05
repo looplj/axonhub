@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { graphqlRequest } from '@/gql/graphql';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import {
   CreatePromptProtectionRuleInput,
   PromptProtectionRule,
@@ -142,18 +143,21 @@ export function useQueryPromptProtectionRules(args: QueryRulesArgs) {
 export function useCreatePromptProtectionRule() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: CreatePromptProtectionRuleInput) => {
-      const data = await graphqlRequest<{ createPromptProtectionRule: PromptProtectionRule }>(CREATE_RULE_MUTATION, { input });
-      return promptProtectionRuleSchema.parse(data.createPromptProtectionRule);
+      try {
+        const data = await graphqlRequest<{ createPromptProtectionRule: PromptProtectionRule }>(CREATE_RULE_MUTATION, { input });
+        return promptProtectionRuleSchema.parse(data.createPromptProtectionRule);
+      } catch (error) {
+        handleError(error, { context: t('promptProtectionRules.dialogs.create.title') });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.createSuccess'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -161,18 +165,21 @@ export function useCreatePromptProtectionRule() {
 export function useUpdatePromptProtectionRule() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdatePromptProtectionRuleInput }) => {
-      const data = await graphqlRequest<{ updatePromptProtectionRule: PromptProtectionRule }>(UPDATE_RULE_MUTATION, { id, input });
-      return promptProtectionRuleSchema.parse(data.updatePromptProtectionRule);
+      try {
+        const data = await graphqlRequest<{ updatePromptProtectionRule: PromptProtectionRule }>(UPDATE_RULE_MUTATION, { id, input });
+        return promptProtectionRuleSchema.parse(data.updatePromptProtectionRule);
+      } catch (error) {
+        handleError(error, { context: t('promptProtectionRules.dialogs.edit.title') });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.updateSuccess'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -180,17 +187,20 @@ export function useUpdatePromptProtectionRule() {
 export function useDeletePromptProtectionRule() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await graphqlRequest(DELETE_RULE_MUTATION, { id });
+      try {
+        await graphqlRequest(DELETE_RULE_MUTATION, { id });
+      } catch (error) {
+        handleError(error, { context: 'Delete Prompt Protection Rule' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.deleteSuccess'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -198,17 +208,20 @@ export function useDeletePromptProtectionRule() {
 export function useUpdatePromptProtectionRuleStatus() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: 'enabled' | 'disabled' }) => {
-      await graphqlRequest(UPDATE_RULE_STATUS_MUTATION, { id, status });
+      try {
+        await graphqlRequest(UPDATE_RULE_STATUS_MUTATION, { id, status });
+      } catch (error) {
+        handleError(error, { context: 'Update Prompt Protection Rule Status' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.statusUpdateSuccess'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -216,17 +229,20 @@ export function useUpdatePromptProtectionRuleStatus() {
 export function useBulkDeletePromptProtectionRules() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      await graphqlRequest(BULK_DELETE_RULES_MUTATION, { ids });
+      try {
+        await graphqlRequest(BULK_DELETE_RULES_MUTATION, { ids });
+      } catch (error) {
+        handleError(error, { context: 'Bulk Delete Prompt Protection Rules' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.bulkDeleteSuccess'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -234,17 +250,20 @@ export function useBulkDeletePromptProtectionRules() {
 export function useBulkEnablePromptProtectionRules() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      await graphqlRequest(BULK_ENABLE_RULES_MUTATION, { ids });
+      try {
+        await graphqlRequest(BULK_ENABLE_RULES_MUTATION, { ids });
+      } catch (error) {
+        handleError(error, { context: 'Bulk Enable Prompt Protection Rules' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.bulkEnableSuccess'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -252,17 +271,20 @@ export function useBulkEnablePromptProtectionRules() {
 export function useBulkDisablePromptProtectionRules() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      await graphqlRequest(BULK_DISABLE_RULES_MUTATION, { ids });
+      try {
+        await graphqlRequest(BULK_DISABLE_RULES_MUTATION, { ids });
+      } catch (error) {
+        handleError(error, { context: 'Bulk Disable Prompt Protection Rules' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt-protection-rules'] });
       toast.success(t('promptProtectionRules.messages.bulkDisableSuccess'));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

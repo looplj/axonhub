@@ -3,6 +3,7 @@ import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useErrorHandler } from '@/hooks/use-error-handler';
 import { Prompt, PromptConnection, CreatePromptInput, UpdatePromptInput, promptConnectionSchema, promptSchema } from './schema';
 
 const PROMPTS_QUERY = `
@@ -174,6 +175,7 @@ export function useCreatePrompt() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: CreatePromptInput) => {
@@ -185,8 +187,8 @@ export function useCreatePrompt() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.createSuccess'));
     },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
+    onError: (error) => {
+      handleError(error, { context: t('prompts.dialogs.create.title') });
     },
   });
 }
@@ -195,6 +197,7 @@ export function useUpdatePrompt() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdatePromptInput }) => {
@@ -206,8 +209,8 @@ export function useUpdatePrompt() {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.updateSuccess'));
     },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
+    onError: (error) => {
+      handleError(error, { context: t('prompts.dialogs.edit.title') });
     },
   });
 }
@@ -298,19 +301,22 @@ export function useBulkEnablePrompts() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const data = await graphqlRequest<{ bulkEnablePrompts: boolean }>(BULK_ENABLE_PROMPTS_MUTATION, { ids }, headers);
-      return data.bulkEnablePrompts;
+      try {
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ bulkEnablePrompts: boolean }>(BULK_ENABLE_PROMPTS_MUTATION, { ids }, headers);
+        return data.bulkEnablePrompts;
+      } catch (error) {
+        handleError(error, { context: 'Bulk Enable Prompts' });
+        throw error;
+      }
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
       toast.success(t('prompts.messages.bulkEnableSuccess', { count: variables.length }));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

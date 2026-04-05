@@ -73,7 +73,7 @@ function ModelAutoCompleteWrapper({ field, modelOptions,  portalContainer }: Mod
       onSearchValueChange={setSearchValue}
       items={modelOptions}
       placeholder={t('prompts.fields.conditionValuePlaceholder')}
-      emptyMessage={t('prompts.fields.noModels')}
+      emptyMessage={t('common.noData')}
       portalContainer={portalContainer}
     />
   );

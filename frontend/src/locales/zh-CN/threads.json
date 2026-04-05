@@ -11,15 +11,7 @@
   "threads.actions.viewDetails": "查看详情",
   "threads.detail.title": "线程详情",
   "threads.detail.notFound": "未找到线程",
-  "threads.detail.project": "项目",
-  "threads.detail.unknownProject": "未知项目",
-  "threads.detail.createdAt": "创建时间",
-  "threads.detail.updatedAt": "更新时间",
-  "threads.detail.traceCount": "追踪数量",
-  "threads.detail.tracesTitle": "追踪列表",
-  "threads.detail.tracesSubtitle": "查看该线程的最新追踪与执行记录",
   "threads.detail.noTraces": "暂无追踪记录",
-  "threads.detail.traces": "条追踪",
   "threads.detail.viewTrace": "查看追踪",
   "threads.errors.notFound": "未找到线程"
 }

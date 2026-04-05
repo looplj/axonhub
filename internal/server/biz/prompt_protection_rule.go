@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/watcher"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xmap"
 )
 
@@ -234,7 +235,7 @@ func (svc *PromptProtectionRuleService) CreateRule(ctx context.Context, input en
 	}
 
 	if existing != nil {
-		return nil, fmt.Errorf("prompt protection rule '%s' already exists", input.Name)
+		return nil, xerrors.DuplicateNameError("prompt protection rule", input.Name)
 	}
 
 	rule, err := svc.entFromContext(ctx).PromptProtectionRule.Create().

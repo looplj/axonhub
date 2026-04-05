@@ -24,6 +24,7 @@
   "dataStorages.dialogs.fields.s3AccessKey.editPlaceholder": "Leave empty to keep current value",
   "dataStorages.dialogs.fields.s3SecretKey.editPlaceholder": "Leave empty to keep current value",
   "dataStorages.dialogs.fields.gcsCredential.editPlaceholder": "Leave empty to keep current value",
+  "dataStorages.dialogs.fields.webdavPassword.editPlaceholder": "Leave empty to keep current value",
   "dataStorages.validation.nameRequired": "Name is required",
   "dataStorages.validation.directoryRequired": "Directory path is required",
   "dataStorages.validation.s3BucketRequired": "S3 bucket name is required",

@@ -96,7 +96,7 @@ export function useRoles(
         const data = await graphqlRequest<{ roles: RoleConnection }>(ROLES_QUERY, queryVariables);
         return roleConnectionSchema.parse(data?.roles);
       } catch (error) {
-        handleError(error, t('roles.errors.loadRolesFailed'));
+        handleError(error, { context: 'Load Roles' });
         throw error;
       }
     },
@@ -118,7 +118,7 @@ export function useRole(id: string) {
         }
         return roleSchema.parse(role);
       } catch (error) {
-        handleError(error, t('roles.errors.loadRoleDetailFailed'));
+        handleError(error, { context: 'Load Role Detail' });
         throw error;
       }
     },
@@ -130,6 +130,7 @@ export function useRole(id: string) {
 export function useCreateRole() {
   const queryClient = useQueryClient();
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (input: CreateRoleInput) => {
@@ -137,7 +138,7 @@ export function useCreateRole() {
         const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input });
         return roleSchema.parse(data.createRole);
       } catch (error) {
-        handleError(error, i18n.t('roles.errors.createRoleFailed'));
+        handleError(error, { context: t('roles.dialogs.create.title') });
         throw error;
       }
     },
@@ -151,6 +152,7 @@ export function useCreateRole() {
 export function useUpdateRole() {
   const queryClient = useQueryClient();
   const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateRoleInput }) => {
@@ -158,7 +160,7 @@ export function useUpdateRole() {
         const data = await graphqlRequest<{ updateRole: Role }>(UPDATE_ROLE_MUTATION, { id, input });
         return roleSchema.parse(data.updateRole);
       } catch (error) {
-        handleError(error, i18n.t('roles.errors.updateRoleFailed'));
+        handleError(error, { context: t('roles.dialogs.edit.title') });
         throw error;
       }
     },
@@ -179,7 +181,7 @@ export function useDeleteRole() {
       try {
         await graphqlRequest(DELETE_ROLE_MUTATION, { id });
       } catch (error) {
-        handleError(error, i18n.t('roles.errors.deleteRoleFailed'));
+        handleError(error, { context: 'Delete Role' });
         throw error;
       }
     },

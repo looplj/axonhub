@@ -22,12 +22,10 @@
   "apikeys.actions.hide": "隐藏",
   "apikeys.actions.viewTokenChart": "Token 使用",
   "apikeys.tokenUsageChart.title": "Token 使用统计",
-  "apikeys.tokenUsageChart.description": "Token 使用统计（{{name}}）",
   "apikeys.tokenUsageChart.today": "当天",
   "apikeys.tokenUsageChart.last7days": "近7天",
   "apikeys.tokenUsageChart.all": "全部",
   "apikeys.tokenUsageChart.noData": "暂无数据",
-  "apikeys.tokenUsageChart.filterByDate": "按时间筛选",
   "apikeys.tokenUsageChart.tokenType": "Token 类型",
   "apikeys.tokenUsageChart.count": "数量",
   "apikeys.tokenUsageChart.percentage": "占比",
@@ -93,8 +91,6 @@
   "apikeys.filters.filterName": "按名称筛选...",
   "apikeys.filters.status": "状态",
   "apikeys.filters.creator": "创建人",
-  "apikeys.filters.reset": "重置",
-  "apikeys.filters.noResults": "没有找到结果",
   "apikeys.profiles.title": "配置文件管理",
   "apikeys.profiles.expand": "展开配置",
   "apikeys.profiles.collapse": "收起配置",
@@ -147,6 +143,5 @@
   "apikeys.validation.quotaAtLeastOneLimit": "配额至少需要设置一个限制项",
   "apikeys.validation.quotaPastDurationRequired": "过去一段时间的配置不能为空",
   "apikeys.validation.quotaCalendarDurationRequired": "自然周期的配置不能为空",
-  "apikeys.validation.quotaCostInvalid": "Cost 必须是有效数字",
   "apikeys.user.deleted": "用户已删除"
 }

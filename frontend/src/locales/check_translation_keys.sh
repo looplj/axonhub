@@ -14,7 +14,9 @@ while [[ "$#" -gt 0 ]]; do
   shift
 done
 
-LOCALE_DIR="$(dirname "$0")"
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCALE_DIR="$SCRIPT_DIR"
 FRONTEND_DIR="$(dirname "$LOCALE_DIR")"
 EN_DIR="$LOCALE_DIR/en"
 ZH_DIR="$LOCALE_DIR/zh-CN"
@@ -75,11 +77,11 @@ echo ""
 # 2. 提取所有翻译文件中的 key
 echo "步骤 2: 扫描翻译文件中的所有 key..."
 
-# 使用 jq 递归提取所有 key（完整路径）
+# 使用 jq 提取所有 key（扁平化格式的 key 直接在顶层）
 extract_json_keys() {
   local file="$1"
-  # 使用 jq 递归提取所有叶子节点的路径
-  jq -r 'paths(scalars) | join(".")' "$file" 2>/dev/null | sort -u
+  # 扁平化格式：直接使用 keys[] 提取所有 key
+  jq -r 'keys[]' "$file" 2>/dev/null | sort -u
 }
 
 # 合并所有英文翻译文件的 key
@@ -134,24 +136,17 @@ if [ "$FIX_MODE" = true ] && [ "$UNUSED_KEYS_COUNT" -gt 0 ]; then
   echo "步骤 3.1: 正在自动删除 $UNUSED_KEYS_COUNT 个多余的翻译 key..."
   
   while read -r key; do
-    # 将 a.b.c 转换为 .["a"]["b"]["c"]
-    IFS='.' read -ra ADDR <<< "$key"
-    JQ_PATH="."
-    for part in "${ADDR[@]}"; do
-      JQ_PATH="$JQ_PATH[\"$part\"]"
-    done
-    
     echo "  正在删除: $key"
     
-    # 在所有翻译文件中删除
+    # 在所有翻译文件中删除（扁平化格式直接使用 key 名）
     for locale_dir in "$EN_DIR" "$ZH_DIR"; do
       if [ -d "$locale_dir" ]; then
         for json_file in "$locale_dir"/*.json; do
           if [ -f "$json_file" ]; then
             # 使用 temp 文件避免原地修改的问题
             TEMP_JSON=$(mktemp)
-            # 删除 key
-            jq "del($JQ_PATH)" "$json_file" > "$TEMP_JSON"
+            # 删除 key（扁平化格式直接使用 .["keyname"]）
+            jq "del(.[\"$key\"])" "$json_file" > "$TEMP_JSON"
             mv "$TEMP_JSON" "$json_file"
           fi
         done

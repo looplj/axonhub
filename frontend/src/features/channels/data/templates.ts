@@ -211,7 +211,7 @@ export function useChannelOverrideTemplates(
         );
         return channelOverrideTemplateConnectionSchema.parse(data?.channelOverrideTemplates);
       } catch (error) {
-        handleError(error, t('channels.templates.errors.fetchList'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -221,20 +221,23 @@ export function useChannelOverrideTemplates(
 export function useCreateChannelOverrideTemplate() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: CreateChannelOverrideTemplateInput) => {
-      const data = await graphqlRequest<{ createChannelOverrideTemplate: ChannelOverrideTemplate }>(CREATE_CHANNEL_OVERRIDE_TEMPLATE, {
-        input,
-      });
-      return channelOverrideTemplateSchema.parse(data.createChannelOverrideTemplate);
+      try {
+        const data = await graphqlRequest<{ createChannelOverrideTemplate: ChannelOverrideTemplate }>(CREATE_CHANNEL_OVERRIDE_TEMPLATE, {
+          input,
+        });
+        return channelOverrideTemplateSchema.parse(data.createChannelOverrideTemplate);
+      } catch (error) {
+        handleError(error, { context: 'Create Channel Template' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] });
       toast.success(t('channels.templates.messages.createSuccess'));
-    },
-    onError: (error) => {
-      toast.error(t('channels.templates.messages.createError', { error: error.message }));
     },
   });
 }
@@ -242,21 +245,24 @@ export function useCreateChannelOverrideTemplate() {
 export function useUpdateChannelOverrideTemplate() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateChannelOverrideTemplateInput }) => {
-      const data = await graphqlRequest<{ updateChannelOverrideTemplate: ChannelOverrideTemplate }>(UPDATE_CHANNEL_OVERRIDE_TEMPLATE, {
-        id,
-        input,
-      });
-      return channelOverrideTemplateSchema.parse(data.updateChannelOverrideTemplate);
+      try {
+        const data = await graphqlRequest<{ updateChannelOverrideTemplate: ChannelOverrideTemplate }>(UPDATE_CHANNEL_OVERRIDE_TEMPLATE, {
+          id,
+          input,
+        });
+        return channelOverrideTemplateSchema.parse(data.updateChannelOverrideTemplate);
+      } catch (error) {
+        handleError(error, { context: 'Update Channel Template' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] });
       toast.success(t('channels.templates.messages.updateSuccess'));
-    },
-    onError: (error) => {
-      toast.error(t('channels.templates.messages.updateError', { error: error.message }));
     },
   });
 }
@@ -264,18 +270,21 @@ export function useUpdateChannelOverrideTemplate() {
 export function useDeleteChannelOverrideTemplate() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const data = await graphqlRequest<{ deleteChannelOverrideTemplate: boolean }>(DELETE_CHANNEL_OVERRIDE_TEMPLATE, { id });
-      return data.deleteChannelOverrideTemplate;
+      try {
+        const data = await graphqlRequest<{ deleteChannelOverrideTemplate: boolean }>(DELETE_CHANNEL_OVERRIDE_TEMPLATE, { id });
+        return data.deleteChannelOverrideTemplate;
+      } catch (error) {
+        handleError(error, { context: 'Delete Channel Template' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channelOverrideTemplates'] });
       toast.success(t('channels.templates.messages.deleteSuccess'));
-    },
-    onError: (error) => {
-      toast.error(t('channels.templates.messages.deleteError', { error: error.message }));
     },
   });
 }
@@ -283,21 +292,24 @@ export function useDeleteChannelOverrideTemplate() {
 export function useApplyChannelOverrideTemplate() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: ApplyChannelOverrideTemplateInput) => {
-      const data = await graphqlRequest<{ applyChannelOverrideTemplate: ApplyChannelOverrideTemplatePayload }>(
-        APPLY_CHANNEL_OVERRIDE_TEMPLATE,
-        { input }
-      );
-      return applyChannelOverrideTemplatePayloadSchema.parse(data.applyChannelOverrideTemplate);
+      try {
+        const data = await graphqlRequest<{ applyChannelOverrideTemplate: ApplyChannelOverrideTemplatePayload }>(
+          APPLY_CHANNEL_OVERRIDE_TEMPLATE,
+          { input }
+        );
+        return applyChannelOverrideTemplatePayloadSchema.parse(data.applyChannelOverrideTemplate);
+      } catch (error) {
+        handleError(error, { context: 'Apply Channel Template' });
+        throw error;
+      }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.templates.messages.applySuccess', { count: data.updated }));
-    },
-    onError: () => {
-      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

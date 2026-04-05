@@ -78,7 +78,6 @@
   "users.validation.lastNameRequired": "姓氏不能为空",
   "users.validation.emailRequired": "邮箱不能为空",
   "users.validation.passwordsNotMatch": "密码不匹配",
-  "users.validation.passwordPattern": "密码必须包含至少一个大写字母、一个小写字母和一个数字",
   "users.validation.projectRequired": "项目不能为空",
   "users.validation.userRequired": "用户不能为空",
   "users.buttons.changePassword": "修改密码",

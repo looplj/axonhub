@@ -11,15 +11,7 @@
   "threads.actions.viewDetails": "View Details",
   "threads.detail.title": "Thread Details",
   "threads.detail.notFound": "Thread not found",
-  "threads.detail.project": "Project",
-  "threads.detail.unknownProject": "Unknown Project",
-  "threads.detail.createdAt": "Created At",
-  "threads.detail.updatedAt": "Updated At",
-  "threads.detail.traceCount": "Trace Count",
-  "threads.detail.tracesTitle": "Traces",
-  "threads.detail.tracesSubtitle": "Review recent traces and executions for this thread",
   "threads.detail.noTraces": "No traces found",
-  "threads.detail.traces": "traces",
   "threads.detail.viewTrace": "View trace",
   "threads.errors.notFound": "Thread not found"
 }
