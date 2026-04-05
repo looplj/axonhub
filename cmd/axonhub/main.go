@@ -13,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	sdk "go.opentelemetry.io/otel/sdk/metric"
+
 	"github.com/looplj/axonhub/conf"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
@@ -98,12 +99,12 @@ func startServer() {
 				OnStop: func(ctx context.Context) error {
 					err := server.Shutdown(ctx)
 					if err != nil {
-						log.Error(context.Background(), "server shutdown error", log.Cause(err))
+						log.Error(context.Background(), "server shutdown error:", log.Cause(err))
 					}
 
 					err = ent.Close()
 					if err != nil {
-						log.Error(context.Background(), "ent close error", log.Cause(err))
+						log.Error(context.Background(), "ent close error:", log.Cause(err))
 					}
 
 					return nil
