@@ -117,16 +117,18 @@ func executeReset(ctx context.Context, r *Runner, args []string) (string, error)
 	}
 
 	switch resetType {
-	case "all", "":
+	case "all":
 		return executeResetAll(ctx, r)
 	case "prompts":
 		return executeResetPrompts(ctx, r, prompts.ResetOptions{
-			Soul:      true,
-			Identity:  true,
-			User:      true,
-			System:    true,
-			Memory:    true,
-			Heartbeat: true,
+			Soul:     true,
+			Identity: true,
+			User:     true,
+			System:   true,
+			// Memory need to be reset separately.
+			Memory: false,
+			// Heartbeat need to be reset separately.¬
+			Heartbeat: false,
 		})
 	case "tasks":
 		return executeResetTasks(ctx, r)

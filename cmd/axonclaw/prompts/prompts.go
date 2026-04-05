@@ -79,10 +79,6 @@ func BuildSystemPrompts(env PromptEnv, p *Bootstrap) []string {
 	return out
 }
 
-func BuildHeartbeatTaskSystemPrompts() []string {
-	return []string{DefaultHeartbeatTaskPrompt}
-}
-
 func buildMemoryPrompt(p *Bootstrap) string {
 	var sections []string
 

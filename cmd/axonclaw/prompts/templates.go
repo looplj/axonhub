@@ -15,7 +15,6 @@ var (
 	DefaultSystemTemplate      = mustLoadTemplate("templates/AGENTS.md")
 	DefaultUserTemplate        = mustLoadTemplate("templates/USER.md")
 	DefaultHeartbeatTemplate   = mustLoadTemplate("templates/HEARTBEAT.md")
-	DefaultHeartbeatTaskPrompt = mustLoadTemplate("templates/HEARTBEAT.md")
 	DefaultEnvironmentTemplate = mustLoadTemplate("templates/ENVIRONMENT.md")
 )
 

@@ -7,6 +7,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"github.com/stretchr/testify/require"
+	"github.com/zhenzou/executors"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -15,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
-	"github.com/zhenzou/executors"
 )
 
 func setupTestRequestService(t *testing.T) (*RequestService, *ent.Client, context.Context) {
@@ -61,7 +61,8 @@ func TestRequestService_ClearStaleProcessingOnStartup(t *testing.T) {
 
 	// Create stale requests (>1 hour old)
 	var staleRequestIDs []int
-	for i := 0; i < 2; i++ {
+
+	for range 2 {
 		req, err := client.Request.Create().
 			SetProjectID(proj.ID).
 			SetTraceID(tr.ID).
@@ -73,12 +74,14 @@ func TestRequestService_ClearStaleProcessingOnStartup(t *testing.T) {
 			SetCreatedAt(time.Now().UTC().Add(-2 * time.Hour)).
 			Save(ctx)
 		require.NoError(t, err)
+
 		staleRequestIDs = append(staleRequestIDs, req.ID)
 	}
 
 	// Create recent requests (<1 hour old)
 	var recentRequestIDs []int
-	for i := 0; i < 2; i++ {
+
+	for range 2 {
 		req, err := client.Request.Create().
 			SetProjectID(proj.ID).
 			SetTraceID(tr.ID).
@@ -90,11 +93,13 @@ func TestRequestService_ClearStaleProcessingOnStartup(t *testing.T) {
 			SetCreatedAt(time.Now().UTC().Add(-30 * time.Minute)).
 			Save(ctx)
 		require.NoError(t, err)
+
 		recentRequestIDs = append(recentRequestIDs, req.ID)
 	}
 
 	// Create stale executions
 	var staleExecIDs []int
+
 	for _, reqID := range staleRequestIDs {
 		exec, err := client.RequestExecution.Create().
 			SetProjectID(proj.ID).
@@ -107,11 +112,13 @@ func TestRequestService_ClearStaleProcessingOnStartup(t *testing.T) {
 			SetCreatedAt(time.Now().UTC().Add(-2 * time.Hour)).
 			Save(ctx)
 		require.NoError(t, err)
+
 		staleExecIDs = append(staleExecIDs, exec.ID)
 	}
 
 	// Create recent executions (<1 hour old)
 	var recentExecIDs []int
+
 	for _, reqID := range recentRequestIDs {
 		exec, err := client.RequestExecution.Create().
 			SetProjectID(proj.ID).
@@ -124,6 +131,7 @@ func TestRequestService_ClearStaleProcessingOnStartup(t *testing.T) {
 			SetCreatedAt(time.Now().UTC().Add(-30 * time.Minute)).
 			Save(ctx)
 		require.NoError(t, err)
+
 		recentExecIDs = append(recentExecIDs, exec.ID)
 	}
 

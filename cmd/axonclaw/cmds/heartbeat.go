@@ -65,7 +65,7 @@ func newHeartbeatStatusCmd(out *os.File) *cobra.Command {
 				status = "enabled"
 			}
 
-			settings := claw.DefaultHeartbeatSettings()
+			settings := claw.DefaultHeartbeatAction()
 			if t != nil {
 				settings = claw.HeartbeatSettingsFromTask(*t)
 			}

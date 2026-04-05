@@ -10,49 +10,49 @@ func TestHeartbeatSettingsInActiveHours(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		cfg    HeartbeatSettings
+		cfg    HeartbeatAction
 		hour   int
 		minute int
 		want   bool
 	}{
 		{
 			name: "within hours",
-			cfg:  HeartbeatSettings{ActiveStart: "08:00", ActiveEnd: "23:00", Timezone: "UTC"},
+			cfg:  HeartbeatAction{ActiveStart: "08:00", ActiveEnd: "23:00", Timezone: "UTC"},
 			hour: 12, minute: 0, want: true,
 		},
 		{
 			name: "before start",
-			cfg:  HeartbeatSettings{ActiveStart: "08:00", ActiveEnd: "23:00", Timezone: "UTC"},
+			cfg:  HeartbeatAction{ActiveStart: "08:00", ActiveEnd: "23:00", Timezone: "UTC"},
 			hour: 7, minute: 30, want: false,
 		},
 		{
 			name: "at start",
-			cfg:  HeartbeatSettings{ActiveStart: "08:00", ActiveEnd: "23:00", Timezone: "UTC"},
+			cfg:  HeartbeatAction{ActiveStart: "08:00", ActiveEnd: "23:00", Timezone: "UTC"},
 			hour: 8, minute: 0, want: true,
 		},
 		{
 			name: "at end",
-			cfg:  HeartbeatSettings{ActiveStart: "08:00", ActiveEnd: "23:00", Timezone: "UTC"},
+			cfg:  HeartbeatAction{ActiveStart: "08:00", ActiveEnd: "23:00", Timezone: "UTC"},
 			hour: 23, minute: 0, want: false,
 		},
 		{
 			name: "no config (always active)",
-			cfg:  HeartbeatSettings{},
+			cfg:  HeartbeatAction{},
 			hour: 3, minute: 0, want: true,
 		},
 		{
 			name: "wrap midnight - in range",
-			cfg:  HeartbeatSettings{ActiveStart: "22:00", ActiveEnd: "06:00", Timezone: "UTC"},
+			cfg:  HeartbeatAction{ActiveStart: "22:00", ActiveEnd: "06:00", Timezone: "UTC"},
 			hour: 23, minute: 30, want: true,
 		},
 		{
 			name: "wrap midnight - in range early morning",
-			cfg:  HeartbeatSettings{ActiveStart: "22:00", ActiveEnd: "06:00", Timezone: "UTC"},
+			cfg:  HeartbeatAction{ActiveStart: "22:00", ActiveEnd: "06:00", Timezone: "UTC"},
 			hour: 3, minute: 0, want: true,
 		},
 		{
 			name: "wrap midnight - out of range",
-			cfg:  HeartbeatSettings{ActiveStart: "22:00", ActiveEnd: "06:00", Timezone: "UTC"},
+			cfg:  HeartbeatAction{ActiveStart: "22:00", ActiveEnd: "06:00", Timezone: "UTC"},
 			hour: 12, minute: 0, want: false,
 		},
 	}

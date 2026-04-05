@@ -92,6 +92,11 @@ func LoadOrSaveConfig() (claw.Config, error) {
 		return claw.Config{}, newMissingConfigError(cfg.BaseURL, cfg.APIKey)
 	}
 
+	// Save config if it's valid (from environment variables or merged sources)
+	if err := SaveConfig(cfg); err != nil {
+		return claw.Config{}, fmt.Errorf("save config: %w", err)
+	}
+
 	return cfg, nil
 }
 

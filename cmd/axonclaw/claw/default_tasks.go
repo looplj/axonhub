@@ -29,14 +29,14 @@ func EnsureDefaultTasks(store *task.Store) error {
 			Hidden:  true,
 			Trigger: task.Trigger{
 				Type:     task.TriggerTypeInterval,
-				Interval: DefaultHeartbeatSettings().Interval,
+				Interval: DefaultHeartbeatAction().Interval,
 			},
 			Action: map[string]any{
-				"active_start":  DefaultHeartbeatSettings().ActiveStart,
-				"active_end":    DefaultHeartbeatSettings().ActiveEnd,
-				"timezone":      DefaultHeartbeatSettings().Timezone,
-				"light_context": DefaultHeartbeatSettings().LightContext,
-				"ack_max_chars": DefaultHeartbeatSettings().AckMaxChars,
+				"active_start":  DefaultHeartbeatAction().ActiveStart,
+				"active_end":    DefaultHeartbeatAction().ActiveEnd,
+				"timezone":      DefaultHeartbeatAction().Timezone,
+				"light_context": DefaultHeartbeatAction().LightContext,
+				"ack_max_chars": DefaultHeartbeatAction().AckMaxChars,
 			},
 		},
 		{

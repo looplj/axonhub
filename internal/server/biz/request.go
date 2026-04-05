@@ -890,17 +890,20 @@ func (s *RequestService) cancelStaleRecords(
 	updateFn func(ctx context.Context, cutoff time.Time) (int, error),
 ) error {
 	cutoff := time.Now().UTC().Add(-maxAge)
+
 	return authz.RunWithSystemBypassVoid(ctx, "cleanup-"+entityName, func(ctx context.Context) error {
 		count, err := updateFn(ctx, cutoff)
 		if err != nil {
 			return fmt.Errorf("failed to cancel stale %s: %w", entityName, err)
 		}
+
 		if count > 0 {
 			log.Info(ctx, "canceled stale processing records",
 				log.String("entity", entityName),
 				log.Int("count", count),
 				log.Duration("maxAge", maxAge))
 		}
+
 		return nil
 	})
 }
@@ -939,6 +942,7 @@ func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) erro
 	if len(errs) > 0 {
 		return fmt.Errorf("startup cleanup failed: %w", errors.Join(errs...))
 	}
+
 	return nil
 }
 

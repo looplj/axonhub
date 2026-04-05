@@ -17,10 +17,17 @@ ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux
 
+ARG VERSION=dev
+ARG BUILD_TIME
+ARG GIT_COMMIT
+
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     GOTOOLCHAIN=auto go build \
-    -ldflags "-s -w" \
+    -ldflags "-X github.com/looplj/axonhub/cmd/axonclaw/build.Version=${VERSION} \
+              -X github.com/looplj/axonhub/cmd/axonclaw/build.BuildTime=${BUILD_TIME} \
+              -X github.com/looplj/axonhub/cmd/axonclaw/build.GitCommit=${GIT_COMMIT} \
+              -s -w" \
     -o axonclaw \
     .
 

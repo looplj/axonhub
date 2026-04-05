@@ -16,7 +16,7 @@ const (
 	HeartbeatOKToken = "HEARTBEAT_OK"
 )
 
-type HeartbeatSettings struct {
+type HeartbeatAction struct {
 	Interval     string `json:"-"`
 	ActiveStart  string `json:"active_start"`
 	ActiveEnd    string `json:"active_end"`
@@ -24,20 +24,29 @@ type HeartbeatSettings struct {
 	LightContext bool   `json:"light_context"`
 	AckMaxChars  int    `json:"ack_max_chars"`
 	Model        string `json:"model,omitempty"`
+	Prompt       string `json:"prompt,omitempty"`
 }
 
-func DefaultHeartbeatSettings() HeartbeatSettings {
-	return HeartbeatSettings{
+func DefaultHeartbeatAction() HeartbeatAction {
+	return HeartbeatAction{
 		Interval:     "30m",
 		ActiveStart:  "08:00",
 		ActiveEnd:    "23:00",
 		Timezone:     "",
 		LightContext: false,
 		AckMaxChars:  300,
+		Prompt: `You are running the scheduled heartbeat task.
+
+## Instructions
+
+- Read HEARTBEAT.md to check if anything needs attention.
+- If nothing needs attention, DO NOT CALL any notification function, JUST respond with exactly "HEARTBEAT_OK".
+- If something needs attention, output a concise list of the items that need handling.
+- Do not include "HEARTBEAT_OK" if you have anything to report.`,
 	}
 }
 
-func (s HeartbeatSettings) HeartbeatInterval() time.Duration {
+func (s HeartbeatAction) HeartbeatInterval() time.Duration {
 	d, err := time.ParseDuration(s.Interval)
 	if err != nil {
 		return 30 * time.Minute
@@ -46,7 +55,7 @@ func (s HeartbeatSettings) HeartbeatInterval() time.Duration {
 	return d
 }
 
-func (s HeartbeatSettings) Location() *time.Location {
+func (s HeartbeatAction) Location() *time.Location {
 	if s.Timezone == "" {
 		return time.Local
 	}
@@ -59,7 +68,7 @@ func (s HeartbeatSettings) Location() *time.Location {
 	return loc
 }
 
-func (s HeartbeatSettings) InActiveHours(now time.Time) bool {
+func (s HeartbeatAction) InActiveHours(now time.Time) bool {
 	if s.ActiveStart == "" && s.ActiveEnd == "" {
 		return true
 	}
@@ -88,13 +97,13 @@ func (s HeartbeatSettings) InActiveHours(now time.Time) bool {
 	return current >= startMin || current < endMin
 }
 
-func HeartbeatSettingsFromTask(t task.Task) HeartbeatSettings {
-	settings := DefaultHeartbeatSettings()
+func HeartbeatSettingsFromTask(t task.Task) HeartbeatAction {
+	settings := DefaultHeartbeatAction()
 	if strings.TrimSpace(t.Trigger.Interval) != "" {
 		settings.Interval = strings.TrimSpace(t.Trigger.Interval)
 	}
 
-	actionSettings, err := parseAction[HeartbeatSettings](t.Action)
+	actionSettings, err := parseAction[HeartbeatAction](t.Action)
 	if err != nil {
 		return settings
 	}
@@ -118,6 +127,10 @@ func HeartbeatSettingsFromTask(t task.Task) HeartbeatSettings {
 
 	if strings.TrimSpace(actionSettings.Model) != "" {
 		settings.Model = strings.TrimSpace(actionSettings.Model)
+	}
+
+	if strings.TrimSpace(actionSettings.Prompt) != "" {
+		settings.Prompt = strings.TrimSpace(actionSettings.Prompt)
 	}
 
 	return settings
@@ -155,8 +168,10 @@ func ApplyHeartbeatSetting(t *task.Task, key, value string) error {
 		t.Action["ack_max_chars"] = n
 	case "model":
 		t.Action["model"] = value
+	case "prompt":
+		t.Action["prompt"] = value
 	default:
-		return fmt.Errorf("unknown key %q (available: interval, active_start, active_end, timezone, light_context, ack_max_chars, model)", key)
+		return fmt.Errorf("unknown key %q (available: interval, active_start, active_end, timezone, light_context, ack_max_chars, model, prompt)", key)
 	}
 
 	return nil
@@ -201,13 +216,18 @@ func (h *TaskHandler) handleHeartbeat(ctx context.Context, t task.Task) error {
 	return nil
 }
 
-func buildHeartbeatPrompt(settings HeartbeatSettings, now time.Time) (string, []string, error) {
+func buildHeartbeatPrompt(settings HeartbeatAction, now time.Time) (string, []string, error) {
 	loc := settings.Location()
 	localNow := now.In(loc)
 
-	text := fmt.Sprintf("Run the heartbeat task now.\nCurrent time: %s", localNow.Format("2006-01-02 15:04:05 MST"))
+	userMessage := fmt.Sprintf("%s\n\nCurrent time: %s", prompts.DefaultHeartbeatTemplate, localNow.Format("2006-01-02 15:04:05 MST"))
 
-	return text, prompts.BuildHeartbeatTaskSystemPrompts(), nil
+	systemPrompt := settings.Prompt
+	if strings.TrimSpace(systemPrompt) == "" {
+		systemPrompt = DefaultHeartbeatAction().Prompt
+	}
+
+	return userMessage, []string{systemPrompt}, nil
 }
 
 func ContainsHeartbeatOK(message string) (stripped string, isOK bool) {

@@ -146,6 +146,10 @@ Git Commit: %s`, build.GetVersion(), build.GetBuildTime(), build.GetGitCommit())
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}))
+	rootCmd.AddCommand(cmds.NewVersionCommand(cmds.StdioOptions{
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	}))
 
 	return rootCmd
 }
