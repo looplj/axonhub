@@ -26,6 +26,8 @@ interface DataTableToolbarProps<TData> {
   showRefresh?: boolean;
   apiKeyFilter?: string[];
   onApiKeyFilterChange?: (filters: string[]) => void;
+  sourceFilter?: string[];
+  onSourceFilterChange?: (filters: string[]) => void;
   autoRefresh?: boolean;
   onAutoRefreshChange?: (enabled: boolean) => void;
 }
@@ -38,6 +40,8 @@ export function DataTableToolbar<TData>({
   showRefresh = false,
   apiKeyFilter,
   onApiKeyFilterChange,
+  sourceFilter,
+  onSourceFilterChange,
   autoRefresh = false,
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
@@ -198,13 +202,13 @@ export function DataTableToolbar<TData>({
         {table.getColumn('status') && (
           <DataTableFacetedFilter column={table.getColumn('status')} title={t('requests.filters.status')} options={requestStatuses} />
         )}
-        {/* {table.getColumn('source') && (
+        {table.getColumn('source') && (
           <DataTableFacetedFilter
             column={table.getColumn('source')}
             title={t('requests.filters.source')}
             options={requestSources}
           />
-        )} */}
+        )}
          {canViewChannels && table.getColumn('channel') && (channelOptions.length > 0 || isFetchingChannels) && (
           <DataTableFacetedFilter
             column={table.getColumn('channel')}
