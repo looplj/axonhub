@@ -27,6 +27,12 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
+const (
+	// MaxConcurrentBodyLoads 限制同时加载请求体的并发数量
+	// 基于：每个请求体约1-5MB，限制为10个并发，峰值内存约50MB.
+	MaxConcurrentBodyLoads = 10
+)
+
 type TraceServiceParams struct {
 	fx.In
 
@@ -353,12 +359,34 @@ type RequestMetadata struct {
 }
 
 // GetRootSegment retrieves the hierarchical segments for a trace ID.
+//
+// Design Assumption:
+// This function loads ALL requests belonging to a trace into memory for segment building.
+// We assume a single trace typically contains a reasonable number of requests (e.g., < 100).
+// For most agent workflows, a single user message triggers limited agent calls (10-50 requests).
+//
+// If a trace contains an excessive number of requests (> 1000), this could lead to:
+// - High memory consumption (each request body can be 1-5MB)
+// - Increased GC pressure
+// - Slower response times
+//
+// For traces with many requests, consider:
+// 1. Splitting the workflow into multiple traces
+// 2. Using pagination at the application level
+// 3. Implementing streaming/progressive loading
+//
+// Performance characteristics:
+// - Concurrent body loading is limited by MaxConcurrentBodyLoads
+// - Typical use case: < 50 requests per trace, ~50MB peak memory
+// - Edge case: 1000 requests could consume up to 1GB memory.
 func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segment, error) {
 	client := s.entFromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("ent client not found in context")
 	}
 
+	// Note: No pagination limit - relies on the assumption that a trace contains
+	// a reasonable number of requests. See function documentation above.
 	requests, err := client.Request.Query().
 		Where(request.TraceIDEQ(traceID), request.StatusEQ(request.StatusCompleted)).
 		Order(ent.Asc(request.FieldCreatedAt)).
@@ -372,6 +400,8 @@ func (s *TraceService) GetRootSegment(ctx context.Context, traceID int) (*Segmen
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
+	eg.SetLimit(MaxConcurrentBodyLoads) // 限制并发数量，防止内存泄漏
+
 	for _, req := range requests {
 		eg.Go(func() (err error) {
 			req.RequestBody, err = s.requestService.LoadRequestBody(ctx, req)

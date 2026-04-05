@@ -176,6 +176,52 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
   </tr>
 </table>
 
+### 最佳实践
+
+#### Trace 设计建议
+
+**单个 Trace 应包含合理数量的 Request**
+
+虽然 AxonHub 理论上支持单个 Trace 包含无限数量的 Request，但在实际生产环境中，我们建议：
+
+- **推荐范围**：单个 Trace 包含 10-50 个 Request
+- **可接受范围**：最多 100 个 Request
+- **避免场景**：单个 Trace 超过 1000 个 Request
+
+**原因**：
+- **内存消耗**：每个 Request 的请求体和响应体大小通常在 1-5MB，100 个 Request 可能占用 500MB 内存
+- **性能影响**：过多 Request 会导致 Trace 页面加载缓慢，影响用户体验
+- **可读性**：包含大量 Request 的 Trace 难以阅读和调试
+
+**优化建议**：
+1. **拆分工作流**：将复杂的 agent 工作流拆分为多个 Trace，每个 Trace 代表一个逻辑单元
+2. **使用 Thread 关联**：通过 Thread ID 关联多个 Trace，保持会话完整性
+3. **控制 agent 迭代次数**：在 agent 循环中设置合理的最大迭代次数，避免无限循环
+4. **定期清理**：设置数据保留策略，定期清理过期的 Trace 数据
+
+**示例场景**：
+
+✅ **良好实践**：
+```
+Thread (用户会话)
+  ├── Trace 1: 用户问题分析 (5 个 Request)
+  ├── Trace 2: 方案设计 (10 个 Request)
+  ├── Trace 3: 代码生成 (20 个 Request)
+  └── Trace 4: 结果验证 (8 个 Request)
+```
+
+❌ **避免做法**：
+```
+Thread (用户会话)
+  └── Trace: 完整工作流 (500+ 个 Request)
+```
+
+#### Request Body 大小控制
+
+- 对于包含大量上下文的请求，考虑使用 Prompt Caching（如 Anthropic 的缓存功能）
+- 避免在 Request Body 中存储不必要的大文件（如完整的日志文件）
+- 对于图片、视频等大文件，使用 URL 引用而非 base64 编码
+
 ### 故障排查
 - **未生成追踪** – 确认请求已通过认证且项目 ID 正确解析（API Key 必须隶属于某个项目）。
 - **缺少线程关联** – 在请求中提供 `AH-Thread-Id`，或先通过 API 创建线程。

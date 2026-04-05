@@ -51,6 +51,7 @@ For detailed development guides, see:
 ## React
 
 1. Use `useCallback` to wrap callback functions to reduce re-renders.
+2. NO SSR compatibility required - the application is client-side only.
 
 ## UI Components
 
