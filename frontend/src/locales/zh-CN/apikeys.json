@@ -88,7 +88,7 @@
   "apikeys.validation.atLeastOneProfile": "至少需要一个配置",
   "apikeys.validation.activeProfileMustExist": "生效配置必须存在于配置列表中",
   "apikeys.validation.duplicateProfileName": "配置名称不能重复",
-  "apikeys.filters.filterName": "按名称筛选...",
+  "apikeys.filters.filterName": "按名称或 API Key 搜索...",
   "apikeys.filters.status": "状态",
   "apikeys.filters.creator": "创建人",
   "apikeys.profiles.title": "配置文件管理",
