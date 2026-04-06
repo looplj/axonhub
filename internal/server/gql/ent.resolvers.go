@@ -938,7 +938,13 @@ func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int],
 		orderBy.Field = ent.DefaultRequestOrder.Field
 	}
 
-	return r.client.Request.Query().Paginate(ctx, after, first, before, last,
+	query := r.client.Request.Query().
+		WithChannel().
+		WithExecutions(func(q *ent.RequestExecutionQuery) {
+			q.WithChannel()
+		})
+
+	return query.Paginate(ctx, after, first, before, last,
 		ent.WithRequestOrder(orderBy),
 		ent.WithRequestFilter(where.Filter),
 	)
@@ -1167,7 +1173,14 @@ func (r *requestResolver) ChannelID(ctx context.Context, obj *ent.Request) (*obj
 
 // Channel is the resolver for the channel field.
 func (r *requestResolver) Channel(ctx context.Context, obj *ent.Request) (*ent.Channel, error) {
-	return getNilableChannel(ctx, r.client, obj.ChannelID)
+	edge, edgeErr := obj.Edges.ChannelOrErr()
+	return getNilableChannelFromEdgeOrQuery(
+		ctx,
+		r.client,
+		obj.ChannelID,
+		edgeErr,
+		edge,
+	)
 }
 
 // ID is the resolver for the id field.
@@ -1246,7 +1259,14 @@ func (r *requestExecutionResolver) ResponseChunks(ctx context.Context, obj *ent.
 
 // Channel is the resolver for the channel field.
 func (r *requestExecutionResolver) Channel(ctx context.Context, obj *ent.RequestExecution) (*ent.Channel, error) {
-	return getNilableChannel(ctx, r.client, obj.ChannelID)
+	edge, edgeErr := obj.Edges.ChannelOrErr()
+	return getNilableChannelFromEdgeOrQuery(
+		ctx,
+		r.client,
+		obj.ChannelID,
+		edgeErr,
+		edge,
+	)
 }
 
 // ID is the resolver for the id field.

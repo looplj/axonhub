@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -203,4 +204,27 @@ func getNilableChannel(ctx context.Context, client *ent.Client, channelID int) (
 	}
 
 	return ch, nil
+}
+
+func getNilableChannelFromEdgeOrQuery(
+	ctx context.Context,
+	client *ent.Client,
+	channelID int,
+	edgeErr error,
+	edge *ent.Channel,
+) (*ent.Channel, error) {
+	if channelID == 0 {
+		return nil, nil
+	}
+
+	if edgeErr == nil || ent.IsNotFound(edgeErr) {
+		return edge, nil
+	}
+
+	var notLoaded *ent.NotLoadedError
+	if errors.As(edgeErr, &notLoaded) {
+		return getNilableChannel(ctx, client, channelID)
+	}
+
+	return nil, edgeErr
 }
