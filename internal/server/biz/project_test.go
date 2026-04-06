@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
 )
@@ -215,6 +216,120 @@ func TestBuildProjectCacheKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := buildProjectCacheKey(tc.id)
 			require.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestValidateProjectProfiles(t *testing.T) {
+	testCases := []struct {
+		name        string
+		profiles    objects.ProjectProfiles
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid profiles",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "Profile1", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny},
+					{Name: "Profile2", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAll},
+				},
+				ActiveProfile: "Profile1",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid profiles without active profile",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "Profile1", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "empty profile name",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny},
+				},
+			},
+			expectError: true,
+			errorMsg:    "profile name cannot be empty",
+		},
+		{
+			name: "empty profile name with spaces",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "   ", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny},
+				},
+			},
+			expectError: true,
+			errorMsg:    "profile name cannot be empty",
+		},
+		{
+			name: "duplicate profile names",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "Profile1", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny},
+					{Name: "Profile1", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAll},
+				},
+			},
+			expectError: true,
+			errorMsg:    "duplicate profile name: Profile1",
+		},
+		{
+			name: "duplicate profile names case insensitive",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "Profile1", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny},
+					{Name: "PROFILE1", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAll},
+				},
+			},
+			expectError: true,
+			errorMsg:    "duplicate profile name: PROFILE1",
+		},
+		{
+			name: "invalid channelTagsMatchMode",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "Profile1", ChannelTagsMatchMode: "invalid"},
+				},
+			},
+			expectError: true,
+			errorMsg:    "profile 'Profile1' channelTagsMatchMode is invalid",
+		},
+		{
+			name: "active profile not found",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "Profile1", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny},
+				},
+				ActiveProfile: "NonExistent",
+			},
+			expectError: true,
+			errorMsg:    "active profile 'NonExistent' does not exist in the profiles list",
+		},
+		{
+			name: "empty channelTagsMatchMode is valid",
+			profiles: objects.ProjectProfiles{
+				Profiles: []objects.ProjectProfile{
+					{Name: "Profile1", ChannelTagsMatchMode: ""},
+				},
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateProjectProfiles(tc.profiles)
+			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMsg)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"entgo.io/ent/schema/index"
 
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -44,6 +45,12 @@ func (Project) Fields() []ent.Field {
 			Values("active", "archived").
 			Default("active").
 			Comment("project status"),
+		field.JSON("profiles", &objects.ProjectProfiles{}).
+			Default(&objects.ProjectProfiles{}).
+			Optional().
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 	}
 }
 

@@ -2337,6 +2337,7 @@ type Project implements Node {
   project status
   """
   status: ProjectStatus!
+  profiles: ProjectProfiles
   users(
     """
     Returns the elements in the list that come after the specified cursor.

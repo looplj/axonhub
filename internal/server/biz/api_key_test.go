@@ -444,7 +444,7 @@ func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 				{
 					Name:                 "production",
 					ChannelTags:          []string{"official"},
-					ChannelTagsMatchMode: objects.APIKeyMatchMode("invalid"),
+					ChannelTagsMatchMode: objects.ChannelTagsMatchMode("invalid"),
 				},
 			},
 		}

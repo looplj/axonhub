@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // ProjectUpdate is the builder for updating Project entities.
@@ -104,6 +105,18 @@ func (_u *ProjectUpdate) SetNillableStatus(v *project.Status) *ProjectUpdate {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetProfiles sets the "profiles" field.
+func (_u *ProjectUpdate) SetProfiles(v *objects.ProjectProfiles) *ProjectUpdate {
+	_u.mutation.SetProfiles(v)
+	return _u
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (_u *ProjectUpdate) ClearProfiles() *ProjectUpdate {
+	_u.mutation.ClearProfiles()
 	return _u
 }
 
@@ -523,6 +536,12 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(project.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Profiles(); ok {
+		_spec.SetField(project.FieldProfiles, field.TypeJSON, value)
+	}
+	if _u.mutation.ProfilesCleared() {
+		_spec.ClearField(project.FieldProfiles, field.TypeJSON)
 	}
 	if _u.mutation.UsersCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1032,6 +1051,18 @@ func (_u *ProjectUpdateOne) SetNillableStatus(v *project.Status) *ProjectUpdateO
 	return _u
 }
 
+// SetProfiles sets the "profiles" field.
+func (_u *ProjectUpdateOne) SetProfiles(v *objects.ProjectProfiles) *ProjectUpdateOne {
+	_u.mutation.SetProfiles(v)
+	return _u
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (_u *ProjectUpdateOne) ClearProfiles() *ProjectUpdateOne {
+	_u.mutation.ClearProfiles()
+	return _u
+}
+
 // AddUserIDs adds the "users" edge to the User entity by IDs.
 func (_u *ProjectUpdateOne) AddUserIDs(ids ...int) *ProjectUpdateOne {
 	_u.mutation.AddUserIDs(ids...)
@@ -1478,6 +1509,12 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(project.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Profiles(); ok {
+		_spec.SetField(project.FieldProfiles, field.TypeJSON, value)
+	}
+	if _u.mutation.ProfilesCleared() {
+		_spec.ClearField(project.FieldProfiles, field.TypeJSON)
 	}
 	if _u.mutation.UsersCleared() {
 		edge := &sqlgraph.EdgeSpec{

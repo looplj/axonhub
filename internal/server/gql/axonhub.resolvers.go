@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -21,7 +23,6 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/samber/lo"
 )
 
 // AllModelEntries is the resolver for the allModelEntries field.
@@ -414,6 +415,11 @@ func (r *mutationResolver) UpdateProjectStatus(ctx context.Context, id objects.G
 	return r.projectService.UpdateProjectStatus(ctx, id.ID, status)
 }
 
+// UpdateProjectProfiles is the resolver for the updateProjectProfiles field.
+func (r *mutationResolver) UpdateProjectProfiles(ctx context.Context, id objects.GUID, input objects.ProjectProfiles) (*ent.Project, error) {
+	return r.projectService.UpdateProjectProfiles(ctx, id.ID, input)
+}
+
 // DeleteProject is the resolver for the deleteProject field.
 func (r *mutationResolver) DeleteProject(ctx context.Context, id objects.GUID) (bool, error) {
 	if err := r.projectService.DeleteProject(ctx, id.ID); err != nil {
@@ -514,6 +520,36 @@ func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID obje
 	}, nil
 }
 
+// AllChannelSummarys is the resolver for the allChannelSummarys field.
+func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived *bool) ([]*ent.Channel, error) {
+	statusFilter := []channel.Status{channel.StatusEnabled, channel.StatusDisabled}
+	if includeArchived != nil && *includeArchived {
+		statusFilter = append(statusFilter, channel.StatusArchived)
+	}
+
+	channels, err := r.client.Channel.Query().
+		Where(channel.StatusIn(statusFilter...)).
+		Order(ent.Desc(channel.FieldOrderingWeight)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok || projectID == 0 {
+		return channels, nil
+	}
+
+	proj, err := r.client.Project.Get(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project: %w", err)
+	}
+
+	projectProfile := proj.GetActiveProfile()
+
+	return filterChannelsByProjectProfile(channels, projectProfile), nil
+}
+
 // AllChannelTags is the resolver for the allChannelTags field.
 func (r *queryResolver) AllChannelTags(ctx context.Context) ([]string, error) {
 	// Query all channels that are not archived
@@ -524,6 +560,16 @@ func (r *queryResolver) AllChannelTags(ctx context.Context) ([]string, error) {
 		All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if ok && projectID != 0 {
+		proj, err := r.client.Project.Get(ctx, projectID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get project: %w", err)
+		}
+
+		channels = filterChannelsByProjectProfile(channels, proj.GetActiveProfile())
 	}
 
 	tags := lo.Reduce(channels, func(acc []string, ch *ent.Channel, _ int) []string {
@@ -683,6 +729,8 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-type channelSettingsResolver struct{ *Resolver }
-type mutationResolver struct{ *Resolver }
-type segmentResolver struct{ *Resolver }
+type (
+	channelSettingsResolver struct{ *Resolver }
+	mutationResolver        struct{ *Resolver }
+	segmentResolver         struct{ *Resolver }
+)

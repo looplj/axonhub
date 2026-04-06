@@ -16,29 +16,29 @@ type APIKeyProfile struct {
 	ModelMappings        []ModelMapping  `json:"modelMappings"`
 	ChannelIDs           []int           `json:"channelIDs,omitempty"`
 	ChannelTags          []string        `json:"channelTags,omitempty"`
-	ChannelTagsMatchMode APIKeyMatchMode `json:"channelTagsMatchMode,omitempty"`
+	ChannelTagsMatchMode ChannelTagsMatchMode `json:"channelTagsMatchMode,omitempty"`
 	ModelIDs             []string        `json:"modelIDs,omitempty"`
 	Quota                *APIKeyQuota    `json:"quota,omitempty"`
 	LoadBalanceStrategy  *string         `json:"loadBalanceStrategy,omitempty"`
 }
 
-type APIKeyMatchMode string
+type ChannelTagsMatchMode string
 
 const (
-	APIKeyMatchModeAny APIKeyMatchMode = "any"
-	APIKeyMatchModeAll APIKeyMatchMode = "all"
+	ChannelTagsMatchModeAny ChannelTagsMatchMode = "any"
+	ChannelTagsMatchModeAll ChannelTagsMatchMode = "all"
 )
 
-func (m APIKeyMatchMode) IsValid() bool {
-	return m == "" || m == APIKeyMatchModeAny || m == APIKeyMatchModeAll
+func (m ChannelTagsMatchMode) IsValid() bool {
+	return m == "" || m == ChannelTagsMatchModeAny || m == ChannelTagsMatchModeAll
 }
 
-func (m APIKeyMatchMode) OrDefault() APIKeyMatchMode {
-	if m == APIKeyMatchModeAll {
-		return APIKeyMatchModeAll
+func (m ChannelTagsMatchMode) OrDefault() ChannelTagsMatchMode {
+	if m == ChannelTagsMatchModeAll {
+		return ChannelTagsMatchModeAll
 	}
 
-	return APIKeyMatchModeAny
+	return ChannelTagsMatchModeAny
 }
 
 func (p *APIKeyProfile) MatchChannelTags(tags []string) bool {
@@ -46,21 +46,23 @@ func (p *APIKeyProfile) MatchChannelTags(tags []string) bool {
 		return true
 	}
 
-	//nolint:exhaustive // Checked.
-	switch p.ChannelTagsMatchMode.OrDefault() {
-	case APIKeyMatchModeAll:
-		for _, allowedTag := range p.ChannelTags {
-			matched := slices.Contains(tags, allowedTag)
+	return matchChannelTags(p.ChannelTags, p.ChannelTagsMatchMode, tags)
+}
 
-			if !matched {
+func matchChannelTags(allowedTags []string, matchMode ChannelTagsMatchMode, channelTags []string) bool {
+	//nolint:exhaustive // Checked.
+	switch matchMode.OrDefault() {
+	case ChannelTagsMatchModeAll:
+		for _, allowedTag := range allowedTags {
+			if !slices.Contains(channelTags, allowedTag) {
 				return false
 			}
 		}
 
 		return true
 	default:
-		for _, tag := range tags {
-			if slices.Contains(p.ChannelTags, tag) {
+		for _, tag := range channelTags {
+			if slices.Contains(allowedTags, tag) {
 				return true
 			}
 		}

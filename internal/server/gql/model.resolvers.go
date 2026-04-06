@@ -136,7 +136,12 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 		}
 
 		// Return all models from channels
-		return r.channelService.ListModels(ctx, bizInput)
+		models, err := r.channelService.ListModels(ctx, bizInput)
+		if err != nil {
+			return nil, err
+		}
+
+		return models, nil
 	}
 
 	// Return only configured models
@@ -149,7 +154,12 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 		}
 	}
 
-	return r.modelService.ListModels(ctx, modelStatusIn)
+	models, err := r.modelService.ListModels(ctx, modelStatusIn)
+	if err != nil {
+		return nil, err
+	}
+
+	return models, nil
 }
 
 // QueryModelChannelConnections is the resolver for the queryModelChannelConnections field.

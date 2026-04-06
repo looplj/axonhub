@@ -182,9 +182,21 @@ models:
   APIKeyProfile:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfile
-  APIKeyMatchMode:
+  UpdateProjectProfilesInput:
     model:
-      - github.com/looplj/axonhub/internal/objects.APIKeyMatchMode
+      - github.com/looplj/axonhub/internal/objects.ProjectProfiles
+  ProjectProfileInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ProjectProfile
+  ProjectProfiles:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ProjectProfiles
+  ProjectProfile:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ProjectProfile
+  ChannelTagsMatchMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelTagsMatchMode
   APIKeyQuotaInput:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyQuota

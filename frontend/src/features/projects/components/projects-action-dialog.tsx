@@ -16,8 +16,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useProjectsContext } from '../context/projects-context';
-import { useCreateProject, useUpdateProject, useArchiveProject, useActivateProject, useDeleteProject } from '../data/projects';
-import { createProjectInputSchema, updateProjectInputSchema } from '../data/schema';
+import { useCreateProject, useUpdateProject, useArchiveProject, useActivateProject, useDeleteProject, useUpdateProjectProfiles } from '../data/projects';
+import { createProjectInputSchema, updateProjectInputSchema, type UpdateProjectProfilesInput } from '../data/schema';
+import { ProjectProfilesDialog } from './project-profiles-dialog';
 
 // Create Project Dialog
 export function CreateProjectDialog() {
@@ -338,6 +339,42 @@ export function DeleteProjectDialog() {
   );
 }
 
+// Project Profiles Dialog Wrapper
+function ProjectProfilesDialogWrapper() {
+  const { profilesProject, setProfilesProject } = useProjectsContext();
+  const updateProfilesMutation = useUpdateProjectProfiles();
+
+  const handleSubmit = (data: UpdateProjectProfilesInput) => {
+    if (!profilesProject?.id) return;
+
+    updateProfilesMutation.mutate(
+      { id: profilesProject.id, input: data },
+      {
+        onSuccess: () => {
+          setProfilesProject(null);
+        },
+      }
+    );
+  };
+
+  return (
+    <ProjectProfilesDialog
+      open={!!profilesProject}
+      onOpenChange={(open) => !open && setProfilesProject(null)}
+      onSubmit={handleSubmit}
+      loading={updateProfilesMutation.isPending}
+      initialData={
+        profilesProject?.profiles
+          ? {
+              activeProfile: profilesProject.profiles.activeProfile || '',
+              profiles: profilesProject.profiles.profiles || [],
+            }
+          : undefined
+      }
+    />
+  );
+}
+
 // Combined Dialogs Component
 export function ProjectsDialogs() {
   return (
@@ -347,6 +384,7 @@ export function ProjectsDialogs() {
       <ArchiveProjectDialog />
       <ActivateProjectDialog />
       <DeleteProjectDialog />
+      <ProjectProfilesDialogWrapper />
     </>
   );
 }

@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.uber.org/fx"
@@ -15,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
@@ -223,6 +225,70 @@ func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Proje
 	}
 
 	return proj, nil
+}
+
+// UpdateProjectProfiles updates the profiles of a project.
+func (s *ProjectService) UpdateProjectProfiles(ctx context.Context, id int, profiles objects.ProjectProfiles) (*ent.Project, error) {
+	// Validate profiles
+	if err := ValidateProjectProfiles(profiles); err != nil {
+		return nil, err
+	}
+
+	client := s.entFromContext(ctx)
+
+	proj, err := client.Project.UpdateOneID(id).
+		SetProfiles(&profiles).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update project profiles: %w", err)
+	}
+
+	// Invalidate cache
+	s.invalidateProjectCache(ctx, id)
+
+	return proj, nil
+}
+
+// ValidateProjectProfiles validates that profile names are unique and the active profile exists.
+func ValidateProjectProfiles(profiles objects.ProjectProfiles) error {
+	// Validate that profile names are unique (case-insensitive)
+	seen := make(map[string]bool)
+
+	for _, profile := range profiles.Profiles {
+		nameLower := strings.ToLower(strings.TrimSpace(profile.Name))
+		if nameLower == "" {
+			return fmt.Errorf("profile name cannot be empty")
+		}
+
+		if seen[nameLower] {
+			return fmt.Errorf("duplicate profile name: %s", profile.Name)
+		}
+
+		seen[nameLower] = true
+
+		if !profile.ChannelTagsMatchMode.IsValid() {
+			return fmt.Errorf("profile '%s' channelTagsMatchMode is invalid", profile.Name)
+		}
+	}
+
+	// Validate that active profile exists in the profiles list (if set)
+	if profiles.ActiveProfile != "" {
+		found := false
+
+		for _, profile := range profiles.Profiles {
+			if profile.Name == profiles.ActiveProfile {
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("active profile '%s' does not exist in the profiles list", profiles.ActiveProfile)
+		}
+	}
+
+	return nil
 }
 
 // UpdateProjectStatus updates the status of a project.

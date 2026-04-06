@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
-import { useAllChannelsForOrdering, useAllChannelTags } from '@/features/channels/data/channels';
+import { useAllChannelSummarys, useAllChannelTags } from '@/features/channels/data/channels';
 import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
@@ -90,7 +90,7 @@ export function ModelsAssociationDialog() {
   const { t } = useTranslation();
   const { open, setOpen, currentRow } = useModels();
   const updateModel = useUpdateModel();
-  const { data: channelsData } = useAllChannelsForOrdering({ enabled: open === 'association' });
+  const { data: channelsData } = useAllChannelSummarys(undefined, { enabled: open === 'association' });
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
   const { data: allTags = [] } = useAllChannelTags();
   const { mutateAsync: queryConnections } = useQueryModelChannelConnections();

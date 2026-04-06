@@ -1,7 +1,7 @@
 import React from 'react';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
-import { IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconEdit, IconSettings, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ interface DataTableRowActionsProps {
 export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation();
   const project = row.original;
-  const { setEditingProject, setArchivingProject, setActivatingProject, setDeletingProject } = useProjectsContext();
+  const { setEditingProject, setArchivingProject, setActivatingProject, setDeletingProject, setProfilesProject } = useProjectsContext();
   const { projectPermissions } = usePermissions();
   const [open, setOpen] = React.useState(false);
 
@@ -30,6 +30,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   if (!projectPermissions.canWrite && !projectPermissions.canDelete) {
     return null;
   }
+
+  const handleProfiles = () => {
+    setOpen(false);
+    setTimeout(() => setProfilesProject(project), 0);
+  };
 
   const handleEdit = () => {
     setOpen(false);
@@ -60,6 +65,14 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
+        {/* Profiles - requires write permission */}
+        {projectPermissions.canWrite && (
+          <DropdownMenuItem onClick={handleProfiles}>
+            <IconSettings className='mr-2 h-4 w-4' />
+            {t('projects.profiles.title')}
+          </DropdownMenuItem>
+        )}
+
         {/* Edit - requires write permission */}
         {projectPermissions.canEdit && (
           <DropdownMenuItem onClick={handleEdit}>

@@ -15,6 +15,9 @@ globs: "frontend/**/*.ts, frontend/**/*.tsx"
 6. Search filters should use debounce to avoid excessive requests.
 7. Add sidebar data and route when adding new feature pages.
 8. Use `extractNumberID` (from `src/lib/utils.ts`) to extract int ID from the GUID.
+9. Project scoping is determined by page semantics, not helper names:
+   Project-level pages must explicitly pass project context (`projectId`, `X-Project-ID`, etc.) to data requests that should be scoped to the current project.
+   Admin-level pages must not implicitly inherit the currently selected project and should request global data unless the feature is explicitly project-scoped.
 
 ## Development Commands
 

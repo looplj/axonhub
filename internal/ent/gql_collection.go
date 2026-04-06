@@ -2603,6 +2603,11 @@ func (_q *ProjectQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, project.FieldStatus)
 				fieldSeen[project.FieldStatus] = struct{}{}
 			}
+		case "profiles":
+			if _, ok := fieldSeen[project.FieldProfiles]; !ok {
+				selectedFields = append(selectedFields, project.FieldProfiles)
+				fieldSeen[project.FieldProfiles] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:

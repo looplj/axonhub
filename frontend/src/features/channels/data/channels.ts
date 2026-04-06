@@ -8,6 +8,7 @@ import { useErrorHandler } from '@/hooks/use-error-handler';
 import {
   Channel,
   ChannelConnection,
+  ChannelSummaryConnection,
   CreateChannelInput,
   UpdateChannelInput,
   channelConnectionSchema,
@@ -18,7 +19,7 @@ import {
   BulkUpdateChannelOrderingInput,
   BulkUpdateChannelOrderingResult,
   bulkUpdateChannelOrderingResultSchema,
-  channelOrderingConnectionSchema,
+  channelSummaryConnectionSchema,
   ChannelSettings,
   ChannelPolicies,
   ChannelModelPrice,
@@ -465,35 +466,20 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
   }
 `;
 
-const ALL_CHANNELS_QUERY = `
-  query GetAllChannels {
-    channels(
-      first: 1000,
-      orderBy: { field: ORDERING_WEIGHT, direction: DESC }
-      where: { statusIn: [enabled, disabled] }
-    ) {
-      totalCount
-      edges {
-        node {
-          id
-          name
-          type
-          status
-          policies {
-            stream
-          }
-          baseURL
-          orderingWeight
-          tags
-          supportedModels
-          autoSyncSupportedModels
-          manualModels
-          allModelEntries {
-            requestModel
-            actualModel
-            source
-          }
-        }
+const ALL_CHANNEL_SUMMARYS_QUERY = `
+  query GetAllChannelSummarys($includeArchived: Boolean) {
+    allChannelSummarys(includeArchived: $includeArchived) {
+      id
+      name
+      type
+      status
+      baseURL
+      orderingWeight
+      tags
+      allModelEntries {
+        requestModel
+        actualModel
+        source
       }
     }
   }
@@ -1113,22 +1099,30 @@ export function useBulkImportChannels() {
   });
 }
 
-export function useAllChannelsForOrdering(options?: { enabled?: boolean }) {
+export function useAllChannelSummarys(projectId?: string | null, options?: { enabled?: boolean; includeArchived?: boolean }) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: ['allChannelsForOrdering'],
+    queryKey: ['allChannelSummarys', projectId, options?.includeArchived],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ channels: ChannelConnection }>(ALL_CHANNELS_QUERY);
-        return channelOrderingConnectionSchema.parse(data?.channels);
+        const headers = projectId ? { 'X-Project-ID': projectId } : undefined;
+        const data = await graphqlRequest<{ allChannelSummarys: ChannelSummaryConnection['edges'][number]['node'][] }>(
+          ALL_CHANNEL_SUMMARYS_QUERY,
+          { includeArchived: options?.includeArchived },
+          headers
+        );
+        return channelSummaryConnectionSchema.parse({
+          edges: (data?.allChannelSummarys || []).map((node) => ({ node })),
+          totalCount: data?.allChannelSummarys?.length || 0,
+        });
       } catch (error) {
         handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
-    enabled: options?.enabled !== false, // Default to true, only disable if explicitly set to false
+    enabled: options?.enabled !== false,
   });
 }
 
@@ -1152,7 +1146,7 @@ export function useBulkUpdateChannelOrdering() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
-      queryClient.invalidateQueries({ queryKey: ['allChannelsForOrdering'] });
+      queryClient.invalidateQueries({ queryKey: ['allChannelSummarys'] });
       toast.success(
         t('channels.messages.orderingUpdateSuccess', {
           updated: data.updated,
@@ -1290,15 +1284,16 @@ export function useErrorChannelsCount() {
   });
 }
 
-export function useAllChannelTags() {
+export function useAllChannelTags(projectId?: string | null) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: ['allChannelTags'],
+    queryKey: ['allChannelTags', projectId],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ allChannelTags: string[] }>(ALL_CHANNEL_TAGS_QUERY);
+        const headers = projectId ? { 'X-Project-ID': projectId } : undefined;
+        const data = await graphqlRequest<{ allChannelTags: string[] }>(ALL_CHANNEL_TAGS_QUERY, undefined, headers);
         return data.allChannelTags || [];
       } catch (error) {
         handleError(error, t('common.errors.internalServerError'));
