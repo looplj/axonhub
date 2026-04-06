@@ -79,7 +79,7 @@ services:
   #   container_name: axonhub-sqlite-app
   #   environment:
   #     AXONHUB_DB_DIALECT: sqlite3
-  #     AXONHUB_DB_DSN: file:/data/axonhub.db?cache=shared&_fk=1
+  #     AXONHUB_DB_DSN: file:/data/axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)
   #   ports:
   #     - "8090:8090"
   #   volumes:

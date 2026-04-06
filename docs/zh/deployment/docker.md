@@ -31,7 +31,7 @@ server:
 
 db:
   dialect: "sqlite3"
-  dsn: "file:axonhub.db?cache=shared&_fk=1"
+  dsn: "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"
 
 log:
   level: "info"
@@ -74,7 +74,7 @@ services:
     environment:
       - AXONHUB_SERVER_PORT=8090
       - AXONHUB_DB_DIALECT=sqlite3
-      - AXONHUB_DB_DSN=file:axonhub.db?cache=shared&_fk=1
+      - AXONHUB_DB_DSN=file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)
     restart: unless-stopped
 
 volumes:
@@ -129,7 +129,7 @@ volumes:
 axonhub:
   environment:
     - AXONHUB_DB_DIALECT=sqlite3
-    - AXONHUB_DB_DSN=file:axonhub.db?cache=shared&_fk=1
+    - AXONHUB_DB_DSN=file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)
 ```
 
 ### PostgreSQL (生产环境)
