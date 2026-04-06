@@ -66,18 +66,20 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-[160px]'>
         {/* Profiles - requires write permission */}
-        {projectPermissions.canWrite && (
-          <DropdownMenuItem onClick={handleProfiles}>
-            <IconSettings className='mr-2 h-4 w-4' />
-            {t('projects.profiles.title')}
-          </DropdownMenuItem>
-        )}
+
 
         {/* Edit - requires write permission */}
         {projectPermissions.canEdit && (
           <DropdownMenuItem onClick={handleEdit}>
             <IconEdit className='mr-2 h-4 w-4' />
             {t('common.actions.edit')}
+          </DropdownMenuItem>
+        )}
+
+        {projectPermissions.canWrite && (
+          <DropdownMenuItem onClick={handleProfiles}>
+            <IconSettings className='mr-2 h-4 w-4' />
+            {t('projects.profiles.title')}
           </DropdownMenuItem>
         )}
 

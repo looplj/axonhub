@@ -8,7 +8,6 @@ import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useSelectedProjectId } from '@/stores/projectStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -217,7 +216,6 @@ function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string 
 
 export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation();
-  const selectedProjectId = useSelectedProjectId();
   const isEdit = !!currentRow;
   const isDuplicate = !!duplicateFromRow && !isEdit;
   const initialRow: Channel | undefined = currentRow || duplicateFromRow;
@@ -310,7 +308,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const codexOAuth = useOAuthFlow({
     startFn: codexOAuthStart,
     exchangeFn: codexOAuthExchange,
-    projectId: selectedProjectId,
     proxyConfig,
     onSuccess: (credentials) => {
       form.setValue('credentials.apiKey', credentials);
@@ -320,7 +317,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const claudecodeOAuth = useOAuthFlow({
     startFn: claudecodeOAuthStart,
     exchangeFn: claudecodeOAuthExchange,
-    projectId: selectedProjectId,
     proxyConfig,
     onSuccess: (credentials) => {
       form.setValue('credentials.apiKey', credentials);
@@ -330,7 +326,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const antigravityOAuth = useOAuthFlow({
     startFn: antigravityOAuthStart,
     exchangeFn: antigravityOAuthExchange,
-    projectId: selectedProjectId,
     proxyConfig,
     onSuccess: (credentials) => {
       form.setValue('credentials.apiKey', credentials);
