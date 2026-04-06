@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/andreazorzetto/yh/highlight"
 	"github.com/hokaccha/go-prettyjson"
@@ -57,6 +58,8 @@ func (l *logger) LogEvent(event fxevent.Event) {
 
 func startServer() {
 	server.Run(
+		fx.StartTimeout(60*time.Second),
+		fx.StopTimeout(30*time.Second),
 		fx.WithLogger(func() fxevent.Logger {
 			return &logger{}
 		}),
@@ -81,9 +84,15 @@ func startServer() {
 			})
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
-					if err := requestSvc.ClearStaleProcessingOnStartup(ctx); err != nil {
-						log.Warn(ctx, "failed to cancel stale processing records on startup", log.Cause(err))
-					}
+					// Run cleanup asynchronously with timeout to avoid blocking startup
+					go func() {
+						cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second) //nolint:gosec // intentional detached context
+						defer cancel()
+
+						if err := requestSvc.ClearStaleProcessingOnStartup(cleanupCtx); err != nil {
+							log.Warn(context.Background(), "failed to cancel stale processing records on startup", log.Cause(err))
+						}
+					}()
 
 					go func() {
 						err := server.Run()
