@@ -51,6 +51,7 @@ This architecture provides:
 - **`lb_strategy_weight.go`** - Weight-based strategy using channel ordering weight
 - **`lb_strategy_model_aware_circuit_breaker.go`** - Strategy that considers model health on specific channels
 - **`lb_strategy_random.go`** - Simple random strategy for tie-breaking
+- **`lb_strategy_performance.go`** - Performance-aware strategy using TTFT and TPS metrics
 
 ### Candidate Selection
 
@@ -86,7 +87,8 @@ The orchestrator supports multiple load balancing strategies that can be combine
 4. **Connection Aware** - Considers active connection count per channel
 5. **Weight** - Uses channel ordering weight for prioritization
 6. **Model Aware Circuit Breaker** - Dynamically penalizes channels where the requested model is currently failing
-7. **Random** - Adds a small random factor to break ties between channels with identical scores
+7. **Performance Aware** - Prioritizes channels based on TTFT and TPS performance metrics with cold start boost
+8. **Random** - Adds a small random factor to break ties between channels with identical scores
 
 The load balancer uses partial sorting for efficient top-k candidate selection based on retry policy configuration.
 

@@ -1037,3 +1037,61 @@ func TestSystemService_UserAgentPassThrough_WithCache(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, uaPassThrough3)
 }
+
+// TestPerformanceStrategyConfig tests the PerformanceStrategy configuration.
+func TestPerformanceStrategyConfig(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Test default values when not set
+	defaultConfig := service.PerformanceStrategyOrDefault(ctx)
+	require.NotNil(t, defaultConfig)
+	require.False(t, defaultConfig.Enabled)
+	require.Equal(t, 0.5, defaultConfig.TTFTWeight)
+	require.Equal(t, 0.5, defaultConfig.ThroughputWeight)
+	require.Equal(t, 1000.0, defaultConfig.TTFTThresholdMs)
+	require.Equal(t, 30.0, defaultConfig.ThroughputThresholdTokPerSec)
+	require.Equal(t, 5, defaultConfig.ColdStartDurationMinutes)
+	require.Equal(t, 120, defaultConfig.ColdStartBoostScore)
+	require.Equal(t, 10, defaultConfig.ColdStartMinRequests)
+
+	// Test setting custom performance strategy
+	customConfig := &PerformanceStrategyConfig{
+		Enabled:                      true,
+		TTFTWeight:                   0.7,
+		ThroughputWeight:             0.3,
+		TTFTThresholdMs:              500.0,
+		ThroughputThresholdTokPerSec: 50.0,
+		ColdStartDurationMinutes:     10,
+		ColdStartBoostScore:          150,
+		ColdStartMinRequests:         20,
+	}
+
+	err := service.SetPerformanceStrategy(ctx, customConfig)
+	require.NoError(t, err)
+
+	// Test retrieving the custom config
+	retrievedConfig, err := service.PerformanceStrategy(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, retrievedConfig)
+	require.True(t, retrievedConfig.Enabled)
+	require.Equal(t, 0.7, retrievedConfig.TTFTWeight)
+	require.Equal(t, 0.3, retrievedConfig.ThroughputWeight)
+	require.Equal(t, 500.0, retrievedConfig.TTFTThresholdMs)
+	require.Equal(t, 50.0, retrievedConfig.ThroughputThresholdTokPerSec)
+	require.Equal(t, 10, retrievedConfig.ColdStartDurationMinutes)
+	require.Equal(t, 150, retrievedConfig.ColdStartBoostScore)
+	require.Equal(t, 20, retrievedConfig.ColdStartMinRequests)
+
+	// Test PerformanceStrategyOrDefault returns stored config
+	orDefaultConfig := service.PerformanceStrategyOrDefault(ctx)
+	require.NotNil(t, orDefaultConfig)
+	require.True(t, orDefaultConfig.Enabled)
+	require.Equal(t, 0.7, orDefaultConfig.TTFTWeight)
+}

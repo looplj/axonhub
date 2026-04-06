@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,11 +14,55 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+// mockLLMResponseStream implements streams.Stream[*llm.Response] for testing
+type mockLLMResponseStream struct {
+	responses []*llm.Response
+	index     int
+}
+
+func newMockLLMResponseStream(responses []*llm.Response) *mockLLMResponseStream {
+	return &mockLLMResponseStream{
+		responses: responses,
+		index:     0,
+	}
+}
+
+func (s *mockLLMResponseStream) Next() bool {
+	return s.index < len(s.responses)
+}
+
+func (s *mockLLMResponseStream) Current() *llm.Response {
+	if s.index >= len(s.responses) {
+		return nil
+	}
+	resp := s.responses[s.index]
+	s.index++
+	return resp
+}
+
+func (s *mockLLMResponseStream) Err() error {
+	return nil
+}
+
+func (s *mockLLMResponseStream) Close() error {
+	return nil
+}
+
 // mockChannelService is a mock implementation of ChannelService for testing
-type mockChannelService struct{}
+type mockChannelService struct {
+	perfCh chan *biz.PerformanceRecord
+}
+
+func newMockChannelService() *mockChannelService {
+	return &mockChannelService{
+		perfCh: make(chan *biz.PerformanceRecord, 10),
+	}
+}
 
 func (m *mockChannelService) AsyncRecordPerformance(ctx context.Context, perf *biz.PerformanceRecord) {
-	// No-op for testing
+	if m.perfCh != nil {
+		m.perfCh <- perf
+	}
 }
 
 // TestPerformanceRecording_OnInboundLlmRequest_SetsStreamFlag verifies that
@@ -30,12 +75,12 @@ func TestPerformanceRecording_OnInboundLlmRequest_SetsStreamFlag(t *testing.T) {
 	}{
 		{
 			name:         "streaming request - Stream is true",
-			streamValue:  new(true),
+			streamValue:  func() *bool { v := true; return &v }(),
 			expectedFlag: true,
 		},
 		{
 			name:         "non-streaming request - Stream is false",
-			streamValue:  new(false),
+			streamValue:  func() *bool { v := false; return &v }(),
 			expectedFlag: false,
 		},
 		{
@@ -328,6 +373,77 @@ func TestPerformanceRecording_StreamFlagBugRegression(t *testing.T) {
 	assert.True(t, state.Perf.Stream,
 		"BUG REGRESSION DETECTED: Stream flag was lost in OnOutboundRawRequest. "+
 			"This indicates the fix from commit 8afd95c3 has been reverted.")
+}
+
+// TestRecordPerformanceStream_TotalTokens verifies that recordPerformanceStream
+// correctly extracts TotalTokens from response.Usage.
+func TestRecordPerformanceStream_TotalTokens(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	state := &PersistenceState{
+		Perf: &biz.PerformanceRecord{
+			ChannelID: channel.ID,
+			StartTime: time.Now(),
+			Stream:    true,
+		},
+		CurrentCandidate: &ChannelModelsCandidate{
+			Channel: channel,
+		},
+		ChannelService: nil,
+	}
+
+	stopReason := "stop"
+	responses := []*llm.Response{
+		{
+			ID:    "chatcmpl-1",
+			Model: "gpt-4",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: func() *string { v := "Hello"; return &v }(),
+					},
+				},
+			}},
+		},
+		{
+			ID:      "chatcmpl-1",
+			Model:   "gpt-4",
+			Choices: []llm.Choice{{Index: 0, FinishReason: &stopReason}},
+			Usage: &llm.Usage{
+				PromptTokens:     10,
+				CompletionTokens: 5,
+				TotalTokens:      15,
+			},
+		},
+	}
+
+	mockStream := newMockLLMResponseStream(responses)
+	ctx := context.Background()
+
+	recorder := &recordPerformanceStream{
+		ctx:    ctx,
+		stream: mockStream,
+		state:  state,
+	}
+
+	for recorder.Next() {
+		recorder.Current()
+	}
+
+	err := recorder.Close()
+	require.NoError(t, err)
+
+	require.NotNil(t, state.Perf)
+	assert.Equal(t, int64(15), state.Perf.TotalTokens)
+	assert.True(t, state.Perf.Success)
 }
 
 // TestRecordPerformanceStream_MarksFirstToken verifies that recordPerformanceStream

@@ -28,7 +28,11 @@ func NewChatCompletionOrchestrator(
 	promptService *biz.PromptService,
 	quotaService *biz.QuotaService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
+<<<<<<< HEAD
 	liveStreamRegistry *biz.LiveStreamRegistry,
+=======
+	channelProbeService *biz.ChannelProbeService,
+>>>>>>> ed8c8f46 (feat: add performance-aware load balancing strategy)
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 	rateLimitTracker := NewChannelRequestTracker()
@@ -44,6 +48,7 @@ func NewChatCompletionOrchestrator(
 		NewWeightRoundRobinStrategy(channelService),
 		NewLatencyAwareStrategy(channelService),
 		rateLimitStrategy,
+		NewPerformanceAwareStrategy(channelService, channelProbeService),
 	)
 
 	failoverLoadBalancer := NewLoadBalancer(systemService, channelService,

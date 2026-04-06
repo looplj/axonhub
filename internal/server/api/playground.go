@@ -32,6 +32,7 @@ type PlaygroundResponseError struct {
 type PlaygroundHandlersParams struct {
 	fx.In
 
+<<<<<<< HEAD
 	ChannelService  *biz.ChannelService
 	ModelService    *biz.ModelService
 	DefaultSelector *orchestrator.DefaultSelector
@@ -43,6 +44,18 @@ type PlaygroundHandlersParams struct {
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 	LiveStreamRegistry *biz.LiveStreamRegistry
+=======
+	ChannelService              *biz.ChannelService
+	ChannelProbeService         *biz.ChannelProbeService
+	ModelService                *biz.ModelService
+	RequestService              *biz.RequestService
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
+	PromptProtectionRuleService *biz.PromptProtectionRuleService
+	QuotaService                *biz.QuotaService
+	HttpClient                  *httpclient.HttpClient
+>>>>>>> ed8c8f46 (feat: add performance-aware load balancing strategy)
 }
 
 type PlaygroundHandlers struct {
@@ -65,6 +78,7 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 			params.QuotaService,
 			params.PromptProtectionRuleService,
 			params.LiveStreamRegistry,
+			params.ChannelProbeService,
 		),
 	}
 }

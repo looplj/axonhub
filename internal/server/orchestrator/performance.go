@@ -177,7 +177,9 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
 		s.state.Perf.CompletionTokens = *tokenCount
 		s.state.Perf.MarkSuccess()
-		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
+		if s.state.ChannelService != nil {
+			s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
+		}
 	}
 
 	return event

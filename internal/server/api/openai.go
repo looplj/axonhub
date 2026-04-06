@@ -28,6 +28,7 @@ type OpenAIHandlersParams struct {
 
 	VideoService                *biz.VideoService
 	ChannelService              *biz.ChannelService
+	ChannelProbeService         *biz.ChannelProbeService
 	ModelService                *biz.ModelService
 	DefaultSelector             *orchestrator.DefaultSelector
 	RequestService              *biz.RequestService
@@ -75,6 +76,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -90,6 +92,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 		},
 		CompactHandlers: &ChatCompletionHandlers{
@@ -105,6 +108,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -120,6 +124,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -135,6 +140,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -150,6 +156,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -165,6 +172,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -180,6 +188,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.QuotaService,
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 		},
 		VideoInboundTransformer: videoInbound,

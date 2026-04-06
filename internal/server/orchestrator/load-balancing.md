@@ -110,6 +110,86 @@ NewErrorAwareStrategy(channelService)
 - Connection tracking remains part of the runtime path even though `ConnectionAwareStrategy` is no longer in the default strategy chain.
 - This makes concurrency protection part of rate-limit scoring instead of a standalone production strategy.
 
+### 5. PerformanceAwareStrategy (Priority: 0-150 points)
+
+**Purpose**: Prioritizes channels based on real-time performance metrics (latency and throughput).
+
+**Scoring Algorithm**:
+
+The strategy combines two performance metrics with equal weights:
+
+1. **TTFT Score (Time To First Token)**: Uses exponential decay to favor lower latency
+   ```
+   TTFT Score = maxScore × e^(-TTFT_ms / 1000)
+   ```
+   - At 0ms: 150 points (maximum)
+   - At 500ms: ~90 points
+   - At 1000ms: ~55 points
+   - At 2000ms: ~20 points
+
+2. **TPS Score (Tokens Per Second)**: Uses logarithmic scaling to reward higher throughput
+   ```
+   TPS Score = maxScore × (1 - e^(-TPS / 30))
+   ```
+   - At 0 tokens/s: 0 points
+   - At 15 tokens/s: ~40 points
+   - At 30 tokens/s: ~95 points
+   - At 60 tokens/s: ~135 points
+   - At 120+ tokens/s: 150 points (maximum)
+
+3. **Combined Score**: 50% TTFT Score + 50% TPS Score, clamped to maxScore (150)
+
+**Cold Start Behavior**:
+
+New or recently reset channels receive a competitive boost during their warmup period:
+- **Boost Score**: 120 points (80% of maxScore)
+- **Boost Duration**: 5 minutes after last selection
+- **Minimum Requests**: Channels need at least 10 requests before exiting cold start
+
+A channel is considered in cold start if either condition is true:
+- Request count < 10
+- LastSelectedAt timestamp is within the last 5 minutes
+
+**Data Sources**:
+- Historical probe data from `ChannelProbeService` (weighted default: 50%)
+- Real-time metrics from `ChannelService.AvgFirstTokenLatencyMs` and `AvgTokensPerSecond` (weighted default: 50%)
+
+**Configuration Options**:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| maxScore | float64 | 150.0 | Maximum score for perfectly performing channel |
+| historicalWeight | float64 | 0.5 | Weight for historical probe data (0.0-1.0) |
+| realtimeWeight | float64 | 0.5 | Weight for real-time metrics (0.0-1.0) |
+
+**Example Configuration**:
+
+```json
+{
+  "load_balancing": {
+    "strategies": {
+      "performance_aware": {
+        "max_score": 150.0,
+        "historical_weight": 0.5,
+        "realtime_weight": 0.5
+      }
+    }
+  }
+}
+```
+
+**Pros**:
+- Dynamically routes to fastest channels based on actual performance
+- Combines historical probes with real-time metrics for accuracy
+- Cold start boost helps new channels gather metrics without being overwhelmed
+
+**Cons**:
+- Requires performance metrics collection (AvgFirstTokenLatencyMs, AvgTokensPerSecond)
+- May not have data for new channels until they process requests
+- Equal weighting of TTFT and TPS may not suit all use cases
+
+**Use Case**: Ideal for workloads where response latency and token throughput are critical. Best used alongside ErrorAwareStrategy to avoid routing to performant but error-prone channels.
+
 ## Default Configuration
 
 The `DefaultChannelSelector` uses these strategies in order:

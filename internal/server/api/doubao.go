@@ -19,6 +19,7 @@ import (
 type DoubaoHandlersParams struct {
 	fx.In
 
+<<<<<<< HEAD
 	VideoService    *biz.VideoService
 	ChannelService  *biz.ChannelService
 	ModelService    *biz.ModelService
@@ -31,6 +32,19 @@ type DoubaoHandlersParams struct {
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
 	LiveStreamRegistry *biz.LiveStreamRegistry
+=======
+	VideoService                *biz.VideoService
+	ChannelService              *biz.ChannelService
+	ChannelProbeService         *biz.ChannelProbeService
+	ModelService                *biz.ModelService
+	RequestService              *biz.RequestService
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
+	PromptProtectionRuleService *biz.PromptProtectionRuleService
+	QuotaService                *biz.QuotaService
+	HttpClient                  *httpclient.HttpClient
+>>>>>>> ed8c8f46 (feat: add performance-aware load balancing strategy)
 }
 
 type DoubaoHandlers struct {
@@ -56,6 +70,7 @@ func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 			params.QuotaService,
 			params.PromptProtectionRuleService,
 			params.LiveStreamRegistry,
+			params.ChannelProbeService,
 		),
 		InboundTransformer: inbound,
 	}

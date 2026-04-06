@@ -93,6 +93,10 @@ const (
 	// SystemKeyUserAgentPassThrough is the key used to store the user agent pass-through setting.
 	// When set to true, the system will pass through the original User-Agent header to upstream AI providers.
 	SystemKeyUserAgentPassThrough = "system_user_agent_pass_through"
+
+	// SystemKeyPerformanceStrategy is the key used to store the performance-aware load balancing strategy configuration.
+	// The value is JSON-encoded PerformanceStrategyConfig struct.
+	SystemKeyPerformanceStrategy = "performance_strategy"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -113,6 +117,26 @@ type VideoStorageSettings struct {
 	ScanIntervalMinutes int `json:"scan_interval_minutes"`
 	// ScanLimit is the max number of requests processed per scan.
 	ScanLimit int `json:"scan_limit"`
+}
+
+// PerformanceStrategyConfig represents configuration for the performance-aware load balancing strategy.
+type PerformanceStrategyConfig struct {
+	// Enabled controls whether the performance-aware strategy is active.
+	Enabled bool `json:"enabled"`
+	// TTFTWeight is the weight for time-to-first-token in the scoring algorithm.
+	TTFTWeight float64 `json:"ttft_weight"`
+	// ThroughputWeight is the weight for throughput in the scoring algorithm.
+	ThroughputWeight float64 `json:"throughput_weight"`
+	// TTFTThresholdMs is the threshold for time-to-first-token in milliseconds.
+	TTFTThresholdMs float64 `json:"ttft_threshold_ms"`
+	// ThroughputThresholdTokPerSec is the threshold for throughput in tokens per second.
+	ThroughputThresholdTokPerSec float64 `json:"throughput_threshold_tok_per_sec"`
+	// ColdStartDurationMinutes defines how long a channel is considered in cold start phase.
+	ColdStartDurationMinutes int `json:"cold_start_duration_minutes"`
+	// ColdStartBoostScore is the score boost applied during cold start phase.
+	ColdStartBoostScore int `json:"cold_start_boost_score"`
+	// ColdStartMinRequests is the minimum requests needed before cold start phase ends.
+	ColdStartMinRequests int `json:"cold_start_min_requests"`
 }
 
 // BackupFrequency represents how often automatic backups should run.
@@ -901,6 +925,53 @@ func (s *SystemService) SetWebhookNotifierConfig(ctx context.Context, cfg *Webho
 	}
 
 	return s.setSystemValue(ctx, SystemKeyWebhookNotifierConfig, string(jsonBytes))
+}
+
+// PerformanceStrategy retrieves the performance strategy configuration.
+func (s *SystemService) PerformanceStrategy(ctx context.Context) (*PerformanceStrategyConfig, error) {
+	value, err := authz.RunWithSystemBypass(ctx, "system-performance-strategy", func(bypassCtx context.Context) (string, error) {
+		return s.getSystemValue(bypassCtx, SystemKeyPerformanceStrategy)
+	})
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultPerformanceStrategyConfig), nil
+		}
+
+		return nil, fmt.Errorf("failed to get performance strategy: %w", err)
+	}
+
+	var config PerformanceStrategyConfig
+	if err := json.Unmarshal([]byte(value), &config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal performance strategy: %w", err)
+	}
+
+	return &config, nil
+}
+
+// PerformanceStrategyOrDefault retrieves the performance strategy or returns the default if not available.
+func (s *SystemService) PerformanceStrategyOrDefault(ctx context.Context) *PerformanceStrategyConfig {
+	config, err := s.PerformanceStrategy(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultPerformanceStrategyConfig)
+		}
+
+		log.Warn(ctx, "failed to get performance strategy", log.Cause(err))
+
+		return lo.ToPtr(defaultPerformanceStrategyConfig)
+	}
+
+	return config
+}
+
+// SetPerformanceStrategy sets the performance strategy configuration.
+func (s *SystemService) SetPerformanceStrategy(ctx context.Context, config *PerformanceStrategyConfig) error {
+	jsonBytes, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal performance strategy: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyPerformanceStrategy, string(jsonBytes))
 }
 
 // ModelSettings retrieves the model settings configuration.

@@ -64,3 +64,14 @@ var defaultVideoStorageSettings = VideoStorageSettings{
 	ScanIntervalMinutes: 1,
 	ScanLimit:           50,
 }
+
+var defaultPerformanceStrategyConfig = PerformanceStrategyConfig{
+	Enabled:                      false,
+	TTFTWeight:                   0.5,
+	ThroughputWeight:             0.5,
+	TTFTThresholdMs:              1000.0,
+	ThroughputThresholdTokPerSec: 30.0,
+	ColdStartDurationMinutes:     5,
+	ColdStartBoostScore:          120,
+	ColdStartMinRequests:         10,
+}

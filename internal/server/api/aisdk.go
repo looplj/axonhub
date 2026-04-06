@@ -16,6 +16,7 @@ type AiSdkHandlersParams struct {
 	fx.In
 
 	ChannelService              *biz.ChannelService
+	ChannelProbeService         *biz.ChannelProbeService
 	ModelService                *biz.ModelService
 	DefaultSelector             *orchestrator.DefaultSelector
 	RequestService              *biz.RequestService
@@ -46,7 +47,9 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.PromptService,
 				params.QuotaService,
 				params.PromptProtectionRuleService,
+<<<<<<< HEAD
 				params.LiveStreamRegistry,
+				params.ChannelProbeService,
 			),
 			StreamWriter: WriteJSONStream,
 		},
