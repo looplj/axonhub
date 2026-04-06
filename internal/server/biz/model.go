@@ -404,6 +404,22 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadChannels)
 
 	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
+		// Project-level profile filtering (upper boundary)
+		if projectProfile := apiKey.Edges.Project.GetActiveProfile(); projectProfile != nil {
+			if len(projectProfile.ChannelIDs) > 0 {
+				channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
+					return lo.Contains(projectProfile.ChannelIDs, ch.ID)
+				})
+			}
+
+			if len(projectProfile.ChannelTags) > 0 {
+				channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
+					return projectProfile.MatchChannelTags(ch.Tags)
+				})
+			}
+		}
+
+		// Key-level profile filtering (narrows further within project scope)
 		profile = apiKey.GetActiveProfile()
 
 		if profile != nil && len(profile.ChannelIDs) > 0 {
@@ -419,8 +435,13 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		}
 	}
 
+	var allowedModelIDs []string
+	if profile != nil && len(profile.ModelIDs) > 0 {
+		allowedModelIDs = profile.ModelIDs
+	}
+
 	// Query configured Model entities (used in both modes)
-	configuredModels, err := svc.queryConfiguredModelFacades(ctx, profile, channels)
+	configuredModels, err := svc.queryConfiguredModelFacades(ctx, allowedModelIDs, channels)
 	if err != nil {
 		return nil, err
 	}
@@ -460,9 +481,10 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 		}
 	}
 
-	if profile != nil && len(profile.ModelIDs) > 0 {
+	// Apply model filtering from key profile
+	if len(allowedModelIDs) > 0 {
 		models = lo.Filter(models, func(m ModelFacade, _ int) bool {
-			return lo.Contains(profile.ModelIDs, m.ID)
+			return lo.Contains(allowedModelIDs, m.ID)
 		})
 	}
 
@@ -470,14 +492,14 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 }
 
 // queryConfiguredModelFacades queries enabled Model entities and returns them as ModelFacades
-// filtered by profile modelIDs and channel associations.
-func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, profile *objects.APIKeyProfile, channels []*Channel) ([]ModelFacade, error) {
+// filtered by allowed model IDs and channel associations.
+func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowedModelIDs []string, channels []*Channel) ([]ModelFacade, error) {
 	query := svc.entFromContext(ctx).
 		Model.
 		Query().
 		Where(model.StatusEQ(model.StatusEnabled))
-	if profile != nil && len(profile.ModelIDs) > 0 {
-		query = query.Where(model.ModelIDIn(profile.ModelIDs...))
+	if len(allowedModelIDs) > 0 {
+		query = query.Where(model.ModelIDIn(allowedModelIDs...))
 	}
 
 	enabledModels, err := query.All(ctx)

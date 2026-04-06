@@ -33,9 +33,21 @@ func (svc *BackupService) BackupWithoutAuth(ctx context.Context, opts BackupOpti
 
 func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]byte, error) {
 	var (
+		projectDataList           []*BackupProject
 		channelDataList           []*BackupChannel
 		channelModelPriceDataList []*BackupChannelModelPrice
 	)
+
+	if opts.IncludeProjects {
+		projects, err := svc.db.Project.Query().All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		projectDataList = lo.Map(projects, func(proj *ent.Project, _ int) *BackupProject {
+			return &BackupProject{Project: *proj}
+		})
+	}
 
 	if opts.IncludeChannels {
 		channels, err := svc.db.Channel.Query().All(ctx)
@@ -112,6 +124,7 @@ func (svc *BackupService) doBackup(ctx context.Context, opts BackupOptions) ([]b
 	backupData := &BackupData{
 		Version:            BackupVersion,
 		Timestamp:          time.Now(),
+		Projects:           projectDataList,
 		Channels:           channelDataList,
 		Models:             modelDataList,
 		ChannelModelPrices: channelModelPriceDataList,

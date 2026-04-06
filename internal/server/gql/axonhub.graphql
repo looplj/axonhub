@@ -253,10 +253,34 @@ input APIKeyProfileInput {
   modelMappings: [ModelMappingInput!]
   channelIDs: [Int!]
   channelTags: [String!]
-  channelTagsMatchMode: APIKeyMatchMode
+  channelTagsMatchMode: ChannelTagsMatchMode
   modelIDs: [String!]
   quota: APIKeyQuotaInput
   loadBalanceStrategy: String
+}
+
+input UpdateProjectProfilesInput {
+  activeProfile: String!
+  profiles: [ProjectProfileInput!]
+}
+
+input ProjectProfileInput {
+  name: String!
+  channelIDs: [Int!]
+  channelTags: [String!]
+  channelTagsMatchMode: ChannelTagsMatchMode
+}
+
+type ProjectProfiles {
+  activeProfile: String!
+  profiles: [ProjectProfile!]
+}
+
+type ProjectProfile {
+  name: String!
+  channelIDs: [Int!]
+  channelTags: [String!]
+  channelTagsMatchMode: ChannelTagsMatchMode
 }
 
 input UpdateAPIKeyScopesInput {
@@ -273,13 +297,13 @@ type APIKeyProfile {
   modelMappings: [ModelMapping!]
   channelIDs: [Int!]
   channelTags: [String!]
-  channelTagsMatchMode: APIKeyMatchMode
+  channelTagsMatchMode: ChannelTagsMatchMode
   modelIDs: [String!]
   quota: APIKeyQuota
   loadBalanceStrategy: String
 }
 
-enum APIKeyMatchMode {
+enum ChannelTagsMatchMode {
   any
   all
 }
@@ -660,6 +684,7 @@ type Mutation {
   createProject(input: CreateProjectInput!): Project!
   updateProject(id: ID!, input: UpdateProjectInput!): Project!
   updateProjectStatus(id: ID!, status: ProjectStatus!): Project!
+  updateProjectProfiles(id: ID!, input: UpdateProjectProfilesInput!): Project!
   deleteProject(id: ID!): Boolean!
 
   addUserToProject(input: AddUserToProjectInput!): UserProject!
@@ -736,6 +761,7 @@ input CountChannelsByTypeInput {
 }
 
 extend type Query {
+  allChannelSummarys(includeArchived: Boolean): [Channel!]!
   allChannelTags: [String!]!
   countChannelsByType(input: CountChannelsByTypeInput!): [ChannelTypeCount!]!
   """

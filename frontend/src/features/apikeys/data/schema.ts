@@ -10,16 +10,16 @@ export type ApiKeyType = z.infer<typeof apiKeyTypeSchema>;
 export const apiKeyStatusSchema = z.enum(['enabled', 'disabled', 'archived']);
 export type ApiKeyStatus = z.infer<typeof apiKeyStatusSchema>;
 
-export const apiKeyMatchModeSchema = z.enum(['any', 'all']);
-export type ApiKeyMatchMode = z.infer<typeof apiKeyMatchModeSchema>;
+export const channelTagsMatchModeSchema = z.enum(['any', 'all']);
+export type ChannelTagsMatchMode = z.infer<typeof channelTagsMatchModeSchema>;
 
-const apiKeyMatchModeFieldSchema = z.preprocess((value) => {
+const channelTagsMatchModeFieldSchema = z.preprocess((value) => {
   if (value == null || value === '') {
     return 'any';
   }
 
   return value;
-}, apiKeyMatchModeSchema);
+}, channelTagsMatchModeSchema);
 
 // API Key schema based on GraphQL schema
 export const apiKeySchema = z.object({
@@ -48,7 +48,7 @@ export const apiKeySchema = z.object({
             ),
             channelIDs: z.array(z.number()).optional().nullable(),
             channelTags: z.array(z.string()).optional().nullable(),
-            channelTagsMatchMode: apiKeyMatchModeFieldSchema,
+            channelTagsMatchMode: channelTagsMatchModeFieldSchema,
             modelIDs: z.array(z.string()).optional().nullable(),
             loadBalanceStrategy: z.string().optional().nullable(),
             quota: z
@@ -142,7 +142,7 @@ export const apiKeyProfileSchema = z.object({
   modelMappings: z.array(modelMappingSchema),
   channelIDs: z.array(z.number()).optional().nullable(),
   channelTags: z.array(z.string()).optional().nullable(),
-  channelTagsMatchMode: apiKeyMatchModeFieldSchema,
+  channelTagsMatchMode: channelTagsMatchModeFieldSchema,
   modelIDs: z.array(z.string()).optional().nullable(),
   loadBalanceStrategy: z.string().optional().nullable(),
   quota: z
@@ -196,7 +196,7 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
             ),
             channelIDs: z.array(z.number()).optional().nullable(),
             channelTags: z.array(z.string()).optional().nullable(),
-            channelTagsMatchMode: apiKeyMatchModeFieldSchema,
+            channelTagsMatchMode: channelTagsMatchModeFieldSchema,
             modelIDs: z.array(z.string()).optional().nullable(),
             loadBalanceStrategy: z.string().optional().nullable(),
             quota: z
@@ -296,7 +296,7 @@ export const updateApiKeyProfilesInputSchema = z.object({
       ),
       channelIDs: z.array(z.number()).optional().nullable(),
       channelTags: z.array(z.string()).optional().nullable(),
-      channelTagsMatchMode: apiKeyMatchModeFieldSchema,
+      channelTagsMatchMode: channelTagsMatchModeFieldSchema,
       modelIDs: z.array(z.string()).optional().nullable(),
       loadBalanceStrategy: z.string().optional().nullable(),
       quota: z

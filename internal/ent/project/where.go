@@ -350,6 +350,16 @@ func StatusNotIn(vs ...Status) predicate.Project {
 	return predicate.Project(sql.FieldNotIn(FieldStatus, vs...))
 }
 
+// ProfilesIsNil applies the IsNil predicate on the "profiles" field.
+func ProfilesIsNil() predicate.Project {
+	return predicate.Project(sql.FieldIsNull(FieldProfiles))
+}
+
+// ProfilesNotNil applies the NotNil predicate on the "profiles" field.
+func ProfilesNotNil() predicate.Project {
+	return predicate.Project(sql.FieldNotNull(FieldProfiles))
+}
+
 // HasUsers applies the HasEdge predicate on the "users" edge.
 func HasUsers() predicate.Project {
 	return predicate.Project(func(s *sql.Selector) {

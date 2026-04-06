@@ -10,10 +10,15 @@ import (
 type BackupData struct {
 	Version            string                     `json:"version"`
 	Timestamp          time.Time                  `json:"timestamp"`
+	Projects           []*BackupProject           `json:"projects,omitempty"`
 	Channels           []*BackupChannel           `json:"channels"`
 	Models             []*BackupModel             `json:"models"`
 	ChannelModelPrices []*BackupChannelModelPrice `json:"channel_model_prices,omitempty"`
 	APIKeys            []*BackupAPIKey            `json:"api_keys,omitempty"`
+}
+
+type BackupProject struct {
+	ent.Project
 }
 
 type BackupChannel struct {
@@ -45,6 +50,7 @@ const (
 )
 
 type BackupOptions struct {
+	IncludeProjects    bool
 	IncludeChannels    bool
 	IncludeModels      bool
 	IncludeAPIKeys     bool
@@ -60,10 +66,12 @@ const (
 )
 
 type RestoreOptions struct {
+	IncludeProjects            bool
 	IncludeChannels            bool
 	IncludeModels              bool
 	IncludeAPIKeys             bool
 	IncludeModelPrices         bool
+	ProjectConflictStrategy    ConflictStrategy
 	ChannelConflictStrategy    ConflictStrategy
 	ModelConflictStrategy      ConflictStrategy
 	ModelPriceConflictStrategy ConflictStrategy

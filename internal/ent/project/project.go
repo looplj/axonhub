@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 const (
@@ -30,6 +31,8 @@ const (
 	FieldDescription = "description"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldProfiles holds the string denoting the profiles field in the database.
+	FieldProfiles = "profiles"
 	// EdgeUsers holds the string denoting the users edge name in mutations.
 	EdgeUsers = "users"
 	// EdgeRoles holds the string denoting the roles edge name in mutations.
@@ -120,6 +123,7 @@ var Columns = []string{
 	FieldName,
 	FieldDescription,
 	FieldStatus,
+	FieldProfiles,
 }
 
 var (
@@ -160,6 +164,8 @@ var (
 	DefaultDeletedAt int
 	// DefaultDescription holds the default value on creation for the "description" field.
 	DefaultDescription string
+	// DefaultProfiles holds the default value on creation for the "profiles" field.
+	DefaultProfiles *objects.ProjectProfiles
 )
 
 // Status defines the type for the "status" enum field.

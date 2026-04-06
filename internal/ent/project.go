@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // Project is the model entity for the Project schema.
@@ -29,6 +31,8 @@ type Project struct {
 	Description string `json:"description,omitempty"`
 	// project status
 	Status project.Status `json:"status,omitempty"`
+	// Profiles holds the value of the "profiles" field.
+	Profiles *objects.ProjectProfiles `json:"profiles,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ProjectQuery when eager-loading is set.
 	Edges        ProjectEdges `json:"edges"`
@@ -158,6 +162,8 @@ func (*Project) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case project.FieldProfiles:
+			values[i] = new([]byte)
 		case project.FieldID, project.FieldDeletedAt:
 			values[i] = new(sql.NullInt64)
 		case project.FieldName, project.FieldDescription, project.FieldStatus:
@@ -220,6 +226,14 @@ func (_m *Project) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = project.Status(value.String)
+			}
+		case project.FieldProfiles:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field profiles", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.Profiles); err != nil {
+					return fmt.Errorf("unmarshal field profiles: %w", err)
+				}
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -319,6 +333,9 @@ func (_m *Project) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	builder.WriteString("profiles=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Profiles))
 	builder.WriteByte(')')
 	return builder.String()
 }

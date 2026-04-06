@@ -10,6 +10,8 @@ interface ProjectsContextType {
   setActivatingProject: (project: Project | null) => void;
   deletingProject: Project | null;
   setDeletingProject: (project: Project | null) => void;
+  profilesProject: Project | null;
+  setProfilesProject: (project: Project | null) => void;
   isCreateDialogOpen: boolean;
   setIsCreateDialogOpen: (open: boolean) => void;
 }
@@ -33,6 +35,7 @@ export default function ProjectsProvider({ children }: ProjectsProviderProps) {
   const [archivingProject, setArchivingProject] = useState<Project | null>(null);
   const [activatingProject, setActivatingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [profilesProject, setProfilesProject] = useState<Project | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   return (
@@ -46,6 +49,8 @@ export default function ProjectsProvider({ children }: ProjectsProviderProps) {
         setActivatingProject,
         deletingProject,
         setDeletingProject,
+        profilesProject,
+        setProfilesProject,
         isCreateDialogOpen,
         setIsCreateDialogOpen,
       }}

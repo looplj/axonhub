@@ -449,16 +449,18 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.
 type TagsFilterSelector struct {
-	wrapped CandidateSelector
-	profile *objects.APIKeyProfile
+	wrapped   CandidateSelector
+	tags      []string
+	matchMode objects.ChannelTagsMatchMode
 }
 
-// WithTagsFilterSelector creates a selector that filters by tags.
-// If the profile does not specify channel tags, all candidates from the wrapped selector are returned.
-func WithTagsFilterSelector(wrapped CandidateSelector, profile *objects.APIKeyProfile) *TagsFilterSelector {
+// WithChannelTagsFilterSelector creates a selector that filters by tags and match mode.
+// If tags is empty, all candidates from the wrapped selector are returned.
+func WithChannelTagsFilterSelector(wrapped CandidateSelector, tags []string, matchMode objects.ChannelTagsMatchMode) *TagsFilterSelector {
 	return &TagsFilterSelector{
-		wrapped: wrapped,
-		profile: profile,
+		wrapped:   wrapped,
+		tags:      tags,
+		matchMode: matchMode,
 	}
 }
 
@@ -468,15 +470,37 @@ func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*C
 		return nil, err
 	}
 
-	if s.profile == nil || len(s.profile.ChannelTags) == 0 {
+	if len(s.tags) == 0 {
 		return candidates, nil
 	}
 
 	candidates = lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
-		return s.profile.MatchChannelTags(c.Channel.Tags)
+		return matchChannelTagsFilter(s.tags, s.matchMode, c.Channel.Tags)
 	})
 
 	return candidates, nil
+}
+
+func matchChannelTagsFilter(allowedTags []string, matchMode objects.ChannelTagsMatchMode, channelTags []string) bool {
+	//nolint:exhaustive // Checked.
+	switch matchMode.OrDefault() {
+	case objects.ChannelTagsMatchModeAll:
+		for _, allowedTag := range allowedTags {
+			if !slices.Contains(channelTags, allowedTag) {
+				return false
+			}
+		}
+
+		return true
+	default:
+		for _, tag := range channelTags {
+			if slices.Contains(allowedTags, tag) {
+				return true
+			}
+		}
+
+		return false
+	}
 }
 
 // SpecifiedChannelSelector allows selecting specific channels (including disabled ones) for testing.
