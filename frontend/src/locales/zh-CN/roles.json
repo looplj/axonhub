@@ -22,10 +22,5 @@
   "roles.validation.nameRequired": "角色名称不能为空",
   "roles.validation.scopesRequired": "至少需要选择一个权限",
   "roles.validation.projectIdRequired": "项目 ID不能为空",
-  "roles.errors.loadRolesFailed": "加载角色失败",
-  "roles.errors.loadRoleDetailFailed": "加载角色详情失败",
-  "roles.errors.createRoleFailed": "创建角色失败",
-  "roles.errors.updateRoleFailed": "更新角色失败",
-  "roles.errors.deleteRoleFailed": "删除角色失败",
   "roles.errors.deleteRolesBulkFailed": "批量删除角色失败"
 }
