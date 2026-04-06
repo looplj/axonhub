@@ -165,34 +165,6 @@ func TestHybridDataSource(t *testing.T) {
 		wantNil          bool
 	}{
 		{
-			name: "both sources available - 50/50 weight",
-			probes: []*biz.ChannelProbePoint{
-				{AvgTimeToFirstTokenMs: floatPtr(100), AvgTokensPerSecond: floatPtr(50)},
-			},
-			metrics: &biz.AggregatedMetrics{
-				AvgFirstTokenLatencyMs: floatPtr(200),
-				AvgTokensPerSecond:     floatPtr(62.5),
-			},
-			historicalWeight: 0.5,
-			realtimeWeight:   0.5,
-			wantTTFT:         150.0, // (100 + 200) / 2 = 150
-			wantTPS:          56.25, // (50 + 62.5) / 2 = 56.25
-		},
-		{
-			name: "both sources available - 50/50 weight",
-			probes: []*biz.ChannelProbePoint{
-				{AvgTimeToFirstTokenMs: floatPtr(100), AvgTokensPerSecond: floatPtr(50)},
-			},
-			metrics: &biz.AggregatedMetrics{
-				AvgFirstTokenLatencyMs: floatPtr(200),
-				AvgTokensPerSecond:     floatPtr(62.5),
-			},
-			historicalWeight: 0.5,
-			realtimeWeight:   0.5,
-			wantTTFT:         150.0, // (100 + 200) / 2 = 150
-			wantTPS:          56.25, // (50 + 62.5) / 2 = 56.25
-		},
-		{
 			name: "both sources available - 70/30 weight",
 			probes: []*biz.ChannelProbePoint{
 				{AvgTimeToFirstTokenMs: floatPtr(100), AvgTokensPerSecond: floatPtr(50)},
@@ -241,9 +213,15 @@ func TestHybridDataSource(t *testing.T) {
 			strategy := &PerformanceAwareStrategy{
 				historicalWeight: tt.historicalWeight,
 				realtimeWeight:   tt.realtimeWeight,
+				getMetricsFunc: func(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
+					return tt.metrics, nil
+				},
+				getProbesFunc: func(ctx context.Context, channelID int) ([]*biz.ChannelProbePoint, error) {
+					return tt.probes, nil
+				},
 			}
 
-			result := strategy.calculatePerformance(tt.probes, tt.metrics)
+			result := strategy.getChannelPerformance(context.Background(), 1)
 
 			if tt.wantNil {
 				if result != nil {
@@ -282,9 +260,15 @@ func TestChannelProbeQuery(t *testing.T) {
 	strategy := &PerformanceAwareStrategy{
 		historicalWeight: 0.5,
 		realtimeWeight:   0.5,
+		getProbesFunc: func(ctx context.Context, channelID int) ([]*biz.ChannelProbePoint, error) {
+			return probes, nil
+		},
+		getMetricsFunc: func(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
+			return &biz.AggregatedMetrics{}, nil
+		},
 	}
 
-	result := strategy.calculatePerformance(probes, &biz.AggregatedMetrics{})
+	result := strategy.getChannelPerformance(context.Background(), 1)
 
 	if result == nil {
 		t.Fatal("expected non-nil result")
@@ -310,9 +294,15 @@ func TestRealtimeMetricsQuery(t *testing.T) {
 	strategy := &PerformanceAwareStrategy{
 		historicalWeight: 0.5,
 		realtimeWeight:   0.5,
+		getProbesFunc: func(ctx context.Context, channelID int) ([]*biz.ChannelProbePoint, error) {
+			return []*biz.ChannelProbePoint{}, nil
+		},
+		getMetricsFunc: func(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
+			return metrics, nil
+		},
 	}
 
-	result := strategy.calculatePerformance([]*biz.ChannelProbePoint{}, metrics)
+	result := strategy.getChannelPerformance(context.Background(), 1)
 
 	if result == nil {
 		t.Fatal("expected non-nil result")
@@ -373,9 +363,15 @@ func TestHybridDataSourceMissingData(t *testing.T) {
 			strategy := &PerformanceAwareStrategy{
 				historicalWeight: 0.5,
 				realtimeWeight:   0.5,
+				getMetricsFunc: func(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
+					return tt.metrics, nil
+				},
+				getProbesFunc: func(ctx context.Context, channelID int) ([]*biz.ChannelProbePoint, error) {
+					return tt.probes, nil
+				},
 			}
 
-			result := strategy.calculatePerformance(tt.probes, tt.metrics)
+			result := strategy.getChannelPerformance(context.Background(), 1)
 
 			if tt.wantNil && result != nil {
 				t.Errorf("expected nil, got %+v", result)
@@ -385,84 +381,6 @@ func TestHybridDataSourceMissingData(t *testing.T) {
 			}
 		})
 	}
-}
-
-// calculatePerformance is a helper method for testing that calculates performance
-// from probe data and metrics without requiring actual service calls
-func (s *PerformanceAwareStrategy) calculatePerformance(
-	probes []*biz.ChannelProbePoint,
-	metrics *biz.AggregatedMetrics,
-) *ChannelPerformance {
-	var historicalTTFT, historicalTPS *float64
-	var realtimeTTFT, realtimeTPS *float64
-
-	// Calculate averages from probe points that have data
-	if len(probes) > 0 {
-		var totalTTFT, totalTPS float64
-		var ttftCount, tpsCount int
-
-		for _, probe := range probes {
-			if probe.AvgTimeToFirstTokenMs != nil && *probe.AvgTimeToFirstTokenMs > 0 {
-				totalTTFT += *probe.AvgTimeToFirstTokenMs
-				ttftCount++
-			}
-			if probe.AvgTokensPerSecond != nil && *probe.AvgTokensPerSecond > 0 {
-				totalTPS += *probe.AvgTokensPerSecond
-				tpsCount++
-			}
-		}
-
-		if ttftCount > 0 {
-			avgTTFT := totalTTFT / float64(ttftCount)
-			historicalTTFT = &avgTTFT
-		}
-		if tpsCount > 0 {
-			avgTPS := totalTPS / float64(tpsCount)
-			historicalTPS = &avgTPS
-		}
-	}
-
-	// Extract real-time metrics
-	if metrics != nil {
-		if metrics.AvgFirstTokenLatencyMs != nil && *metrics.AvgFirstTokenLatencyMs > 0 {
-			realtimeTTFT = metrics.AvgFirstTokenLatencyMs
-		}
-		if metrics.AvgTokensPerSecond != nil && *metrics.AvgTokensPerSecond > 0 {
-			realtimeTPS = metrics.AvgTokensPerSecond
-		}
-	}
-
-	// Check if we have any data at all
-	if historicalTTFT == nil && realtimeTTFT == nil &&
-		historicalTPS == nil && realtimeTPS == nil {
-		return nil
-	}
-
-	// Combine data with weights
-	result := &ChannelPerformance{
-		HistoricalWeight: s.historicalWeight,
-		RealtimeWeight:   s.realtimeWeight,
-	}
-
-	// Calculate weighted average for TTFT
-	if historicalTTFT != nil && realtimeTTFT != nil {
-		result.AvgTTFTMs = s.historicalWeight*(*historicalTTFT) + s.realtimeWeight*(*realtimeTTFT)
-	} else if historicalTTFT != nil {
-		result.AvgTTFTMs = *historicalTTFT
-	} else if realtimeTTFT != nil {
-		result.AvgTTFTMs = *realtimeTTFT
-	}
-
-	// Calculate weighted average for TPS
-	if historicalTPS != nil && realtimeTPS != nil {
-		result.AvgTokensPerSecond = s.historicalWeight*(*historicalTPS) + s.realtimeWeight*(*realtimeTPS)
-	} else if historicalTPS != nil {
-		result.AvgTokensPerSecond = *historicalTPS
-	} else if realtimeTPS != nil {
-		result.AvgTokensPerSecond = *realtimeTPS
-	}
-
-	return result
 }
 
 // floatPtr is a helper function to create a *float64

@@ -172,6 +172,12 @@ type metricsRecord struct {
 	// ConsecutiveFailures tracks the number of consecutive failures
 	// Reset to 0 on success, incremented on failure
 	ConsecutiveFailures int64
+
+	// Cumulative sums for performance averages (computed from sliding window)
+	// TotalFirstTokenLatencyMs tracks the cumulative first token latency for all successful requests
+	TotalFirstTokenLatencyMs int64
+	// TotalTokensPerSecond tracks the cumulative tokens/second for all successful requests
+	TotalTokensPerSecond float64
 }
 
 // AggregatedMetrics holds accumulated metrics for the flush period.
@@ -433,6 +439,9 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 		cm.aggregatedMetrics.RequestCount -= metrics.RequestCount
 		cm.aggregatedMetrics.SuccessCount -= metrics.SuccessCount
 		cm.aggregatedMetrics.FailureCount -= metrics.FailureCount
+		// Subtract performance totals for sliding window averaging
+		cm.aggregatedMetrics.TotalFirstTokenLatencyMs -= metrics.TotalFirstTokenLatencyMs
+		cm.aggregatedMetrics.TotalTokensPerSecond -= metrics.TotalTokensPerSecond
 	}
 
 	// Cleanup old entries from ringbuffer

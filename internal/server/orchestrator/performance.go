@@ -99,7 +99,9 @@ func (m *performanceRecording) OnOutboundLlmResponse(ctx context.Context, respon
 	}
 
 	m.outbound.state.Perf.MarkSuccess()
-	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, m.outbound.state.Perf)
+	if m.outbound.state.ChannelService != nil {
+		m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, m.outbound.state.Perf)
+	}
 
 	return response, nil
 }
@@ -130,7 +132,9 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 		perf.MarkFailed(errorCode)
 	}
 
-	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
+	if m.outbound.state.ChannelService != nil {
+		m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
+	}
 }
 
 // recordPerformanceStream records performance metrics for a stream of responses.

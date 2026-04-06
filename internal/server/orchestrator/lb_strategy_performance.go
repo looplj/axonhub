@@ -2,10 +2,19 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"math"
 	"time"
 
 	"github.com/looplj/axonhub/internal/server/biz"
+)
+
+// Validation constants
+const (
+	defaultMaxScore         = 150.0
+	defaultHistoricalWeight = 0.5
+	defaultRealtimeWeight   = 0.5
+	weightEpsilon           = 0.001
 )
 
 // Cold start constants
@@ -53,15 +62,70 @@ type PerformanceAwareStrategy struct {
 	realtimeWeight float64
 }
 
+// Option is a functional option for configuring PerformanceAwareStrategy
+type Option func(*PerformanceAwareStrategy)
+
+// WithMaxScore sets the maximum score for the strategy
+func WithMaxScore(maxScore float64) Option {
+	return func(s *PerformanceAwareStrategy) {
+		s.maxScore = maxScore
+	}
+}
+
+// WithWeights sets the historical and realtime weights
+func WithWeights(historicalWeight, realtimeWeight float64) Option {
+	return func(s *PerformanceAwareStrategy) {
+		s.historicalWeight = historicalWeight
+		s.realtimeWeight = realtimeWeight
+	}
+}
+
+// Validation errors
+var (
+	ErrInvalidMaxScore         = errors.New("maxScore must be positive")
+	ErrInvalidHistoricalWeight = errors.New("historicalWeight must be in [0,1] range")
+	ErrInvalidRealtimeWeight   = errors.New("realtimeWeight must be in [0,1] range")
+	ErrWeightsMustSumToOne     = errors.New("historicalWeight and realtimeWeight must sum to 1.0 (within epsilon)")
+)
+
 // NewPerformanceAwareStrategy creates a new performance-aware load balancing strategy.
-func NewPerformanceAwareStrategy(channelService *biz.ChannelService, probeService *biz.ChannelProbeService) *PerformanceAwareStrategy {
-	return &PerformanceAwareStrategy{
+// It validates the provided weights and returns errors for invalid configurations.
+// If maxScore is not positive, weights are not in [0,1] range, or weights don't sum to 1.0,
+// an error is returned.
+func NewPerformanceAwareStrategy(channelService *biz.ChannelService, probeService *biz.ChannelProbeService, opts ...Option) (*PerformanceAwareStrategy, error) {
+	s := &PerformanceAwareStrategy{
 		channelService:   channelService,
 		probeService:     probeService,
-		maxScore:         150.0,
-		historicalWeight: 0.5,
-		realtimeWeight:   0.5,
+		maxScore:         defaultMaxScore,
+		historicalWeight: defaultHistoricalWeight,
+		realtimeWeight:   defaultRealtimeWeight,
 	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	// Validate maxScore
+	if s.maxScore <= 0 {
+		return nil, ErrInvalidMaxScore
+	}
+
+	// Validate weight ranges
+	if s.historicalWeight < 0 || s.historicalWeight > 1 {
+		return nil, ErrInvalidHistoricalWeight
+	}
+	if s.realtimeWeight < 0 || s.realtimeWeight > 1 {
+		return nil, ErrInvalidRealtimeWeight
+	}
+
+	// Validate weights sum to 1.0 (within epsilon)
+	weightSum := s.historicalWeight + s.realtimeWeight
+	if math.Abs(weightSum-1.0) > weightEpsilon {
+		return nil, ErrWeightsMustSumToOne
+	}
+
+	return s, nil
 }
 
 // Name returns the strategy name for debugging and logging.
@@ -74,8 +138,12 @@ func (s *PerformanceAwareStrategy) Name() string {
 // Returns a score between 0 and maxScore.
 // Cold start channels receive a boost score to give them opportunity to gather metrics.
 func (s *PerformanceAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+	if channel == nil {
+		return 0.0
+	}
+
 	if metrics, err := s.getChannelMetrics(ctx, channel.ID); err == nil && metrics != nil {
-		if err == nil && metrics != nil && s.isColdStart(metrics) {
+		if s.isColdStart(metrics) {
 			return ColdStartBoostScore
 		}
 	}
@@ -85,7 +153,9 @@ func (s *PerformanceAwareStrategy) Score(ctx context.Context, channel *biz.Chann
 		return 0.0
 	}
 
-	return s.calculateCombinedScore(performance)
+	// Score only needs the combined score, discard component scores
+	combinedScore, _, _ := s.calculateCombinedScore(performance)
+	return combinedScore
 }
 
 // isColdStart determines if a channel is in cold start state.
@@ -141,9 +211,7 @@ func (s *PerformanceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *
 		}
 	}
 
-	ttftScore := s.calculateTTFTScore(performance.AvgTTFTMs)
-	tpsScore := s.calculateTPSScore(performance.AvgTokensPerSecond)
-	combinedScore := s.calculateCombinedScore(performance)
+	combinedScore, ttftScore, tpsScore := s.calculateCombinedScore(performance)
 
 	details["avg_ttft_ms"] = performance.AvgTTFTMs
 	details["avg_tokens_per_second"] = performance.AvgTokensPerSecond
@@ -203,9 +271,9 @@ func (s *PerformanceAwareStrategy) calculateTPSScore(tps float64) float64 {
 	return score
 }
 
-func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPerformance) float64 {
+func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPerformance) (float64, float64, float64) {
 	if performance == nil {
-		return 0
+		return 0, 0, 0
 	}
 
 	ttftScore := s.calculateTTFTScore(performance.AvgTTFTMs)
@@ -213,13 +281,13 @@ func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPe
 	combinedScore := 0.5*ttftScore + 0.5*tpsScore
 
 	if combinedScore < 0 {
-		return 0
+		combinedScore = 0
 	}
 	if combinedScore > s.scoreMax() {
-		return s.scoreMax()
+		combinedScore = s.scoreMax()
 	}
 
-	return combinedScore
+	return combinedScore, ttftScore, tpsScore
 }
 
 func (s *PerformanceAwareStrategy) getChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {

@@ -42,13 +42,24 @@ func NewChatCompletionOrchestrator(
 
 	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker)
 
+	// Initialize performance-aware strategy with validated weights
+	performanceStrategy, err := NewPerformanceAwareStrategy(channelService, channelProbeService)
+	if err != nil {
+		log.Error(context.Background(), "failed to create performance-aware strategy", "error", err)
+		// Fall back to a basic strategy if validation fails
+		performanceStrategy = &PerformanceAwareStrategy{
+			channelService: channelService,
+			probeService:   channelProbeService,
+		}
+	}
+
 	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewTraceAwareStrategy(requestService),
 		NewErrorAwareStrategy(channelService),
 		NewWeightRoundRobinStrategy(channelService),
 		NewLatencyAwareStrategy(channelService),
 		rateLimitStrategy,
-		NewPerformanceAwareStrategy(channelService, channelProbeService),
+		performanceStrategy,
 	)
 
 	failoverLoadBalancer := NewLoadBalancer(systemService, channelService,
