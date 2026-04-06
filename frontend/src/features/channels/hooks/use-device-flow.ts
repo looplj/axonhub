@@ -10,11 +10,6 @@ import {
 
 export interface UseDeviceFlowOptions {
   /**
-   * Optional project ID to include in headers
-   */
-  projectId?: string | null;
-
-  /**
    * Callback when access token is successfully obtained
    */
   onSuccess?: (accessToken: string) => void;
@@ -45,7 +40,6 @@ export interface UseDeviceFlowActions {
  * @example
  * ```tsx
  * const deviceFlow = useDeviceFlow({
- *   projectId: selectedProjectId,
  *   onSuccess: (token) => form.setValue('credentials.apiKey', token),
  * });
  *
@@ -68,7 +62,7 @@ export interface UseDeviceFlowActions {
 export function useDeviceFlow(
   options: UseDeviceFlowOptions = {}
 ): UseDeviceFlowState & UseDeviceFlowActions {
-  const { projectId, onSuccess } = options;
+  const { onSuccess } = options;
   const { t } = useTranslation();
 
   const [userCode, setUserCode] = useState<string | null>(null);
@@ -97,11 +91,6 @@ export function useDeviceFlow(
   }, [onSuccess]);
 
   const start = useCallback(async () => {
-    if (!projectId) {
-      toast.error(t('channels.dialogs.oauth.errors.projectRequired'));
-      return;
-    }
-
     if (pollingTimeoutRef.current) {
       clearTimeout(pollingTimeoutRef.current);
       pollingTimeoutRef.current = null;
@@ -111,9 +100,7 @@ export function useDeviceFlow(
     setError(null);
 
     try {
-      const result: DeviceFlowStartResult = await copilotOAuthStart({
-        'X-Project-ID': projectId,
-      });
+      const result: DeviceFlowStartResult = await copilotOAuthStart();
 
       setUserCode(result.user_code);
       setVerificationUri(result.verification_uri);
@@ -128,14 +115,10 @@ export function useDeviceFlow(
       setError(errorMessage);
       setIsPolling(false);
     }
-  }, [projectId, t]);
+  }, [t]);
 
   const poll = useCallback(
     async (sessionId: string, expiry: number) => {
-      if (!projectId) {
-        return;
-      }
-
       if (Date.now() >= expiry) {
         setIsPolling(false);
         setError(t('channels.dialogs.oauth.errors.deviceFlowExpired'));
@@ -144,8 +127,7 @@ export function useDeviceFlow(
 
       try {
         const result: DeviceFlowPollResult = await copilotOAuthPoll(
-          { session_id: sessionId },
-          { 'X-Project-ID': projectId }
+          { session_id: sessionId }
         );
 
         if (result.access_token) {
@@ -181,7 +163,7 @@ export function useDeviceFlow(
         setError(errorMessage);
       }
     },
-    [projectId, t, onSuccessRef]
+    [t, onSuccessRef]
   );
 
   const reset = useCallback(() => {
