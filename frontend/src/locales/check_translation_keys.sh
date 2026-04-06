@@ -34,36 +34,24 @@ ALL_LOCALE_KEYS_FILE=$(mktemp)
 # 1. 提取前端代码中使用的翻译 key
 echo "步骤 1: 扫描前端代码中使用的翻译 key..."
 
-# 1.1 提取静态翻译 key (t('key') 或 t("key"))
-# 匹配 t('key') 或 t("key") 的模式
-# 排除注释行和字符串中的内容
-# 只匹配有效的翻译 key（排除路径、选择器、纯符号等）
+# 1.1 提取所有符合 i18n key 格式的字符串 (xxx.xxx 格式)
+# 不再依赖 t() 调用，直接扫描所有字符串
+# 这样可以覆盖映射表中的动态 key
 find "$FRONTEND_DIR" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.jsx" -o -name "*.js" \) \
   -not -path "*/node_modules/*" \
   -not -path "*/.next/*" \
   -not -path "*/dist/*" \
   -not -path "*/build/*" \
-  -exec grep -ozh "t([^;]*" {} \; 2>/dev/null | \
-  tr '\0' '\n' | \
-  grep -oE "['\"][a-zA-Z][a-zA-Z0-9._-]*['\"]" | \
+  -exec grep -ohE "['\"][a-zA-Z][a-zA-Z0-9._-]*\.[a-zA-Z0-9._-]+['\"]" {} \; 2>/dev/null | \
   sed -E "s/^['\"]//; s/['\"]$//" | \
-  grep -E '\.' | \
-  grep -vE '^(button|form|input|loading|message|text|sidebar_state|content-type|en-US|2d|copy)$' | \
+  grep -vE '(^test-|^data-test|^spec-|\.spec\.)' | \
+  grep -vE '\.(css|html|js|json|ts|tsx|svg|png|jpg|gif)$' | \
+  grep -vE '^(gpt-|claude-|gemini-|deepseek-|doubao-|llama|qwen|glm-|DeepSeek)' | \
+  grep -vE '^[a-z]+-[0-9]' | \
+  grep -vE '(translate-|rotate-|scale-|space-|size-|bg-|text-|border-|rounded-)' | \
+  grep -vE '^(modelCard\.|credentials\.|policies\.|variables\.)' | \
+  grep -vE '\.\.\.$' | \
   sort -u > "$USED_KEYS_FILE"
-
-# 1.1.1 添加白名单 key（通过映射表动态使用的翻译）
-WHITELIST_KEYS=(
-  "common.errors.duplicateKey"
-  "common.errors.duplicateName"
-  "common.errors.forbidden"
-  "common.errors.notFound"
-)
-for key in "${WHITELIST_KEYS[@]}"; do
-  echo "$key" >> "$USED_KEYS_FILE"
-done
-
-# 重新去重
-sort -u "$USED_KEYS_FILE" -o "$USED_KEYS_FILE"
 
 # 1.2 提取动态翻译 key 模式 (例如 t(`prefix.${var}`))
 echo "步骤 1.1: 扫描前端代码中的动态翻译 key 模式..."

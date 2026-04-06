@@ -271,6 +271,12 @@
   "auth.signIn.form.signInButton": "Sign in",
   "auth.signIn.form.signingIn": "Signing in...",
   "auth.signIn.validation.emailRequired": "Email is required",
+  "auth.signIn.validation.passwordRequired": "Password is required",
+  "auth.signIn.validation.passwordMinLength": "Password must be at least 8 characters",
+  "auth.signIn.validation.passwordPattern": "Password must contain uppercase, lowercase, and numbers",
   "auth.signIn.links.forgotPassword": "Forgot password?",
-  "auth.signIn.footer.agreement": "By signing in, you agree to our Terms of Service and Privacy Policy"
+  "auth.signIn.footer.agreement": "By signing in, you agree to our Terms of Service and Privacy Policy",
+  "settings.nav.appearance": "Appearance",
+  "settings.nav.display": "Display",
+  "settings.nav.notifications": "Notifications"
 }
