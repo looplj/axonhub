@@ -148,6 +148,7 @@
   "common.buttons.disable": "禁用",
   "common.buttons.archive": "归档",
   "common.buttons.archiving": "归档中...",
+  "common.buttons.restore": "恢复",
   "common.buttons.activate": "激活",
   "common.buttons.remove": "移除",
   "common.buttons.openMenu": "打开菜单",

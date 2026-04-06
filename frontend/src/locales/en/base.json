@@ -107,6 +107,7 @@
   "common.buttons.disable": "Disable",
   "common.buttons.archive": "Archive",
   "common.buttons.archiving": "Archiving...",
+  "common.buttons.restore": "Restore",
   "common.buttons.activate": "Activate",
   "common.buttons.remove": "Remove",
   "common.buttons.openMenu": "Open menu",

@@ -43,16 +43,27 @@ find "$FRONTEND_DIR" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.jsx" -
   -not -path "*/.next/*" \
   -not -path "*/dist/*" \
   -not -path "*/build/*" \
-  -exec grep -ohE "\bt\(['\"][^'\"]+['\"]" {} \; 2>/dev/null | \
-  sed -E "s/^t\(['\"]//; s/['\"]$//" | \
-  grep -E '[a-zA-Z]' | \
-  grep -vE '^/' | \
-  grep -vE '^\[' | \
-  grep -vE '\.$' | \
-  grep -vE '^[0-9]+$' | \
+  -exec grep -ozh "t([^;]*" {} \; 2>/dev/null | \
+  tr '\0' '\n' | \
+  grep -oE "['\"][a-zA-Z][a-zA-Z0-9._-]*['\"]" | \
+  sed -E "s/^['\"]//; s/['\"]$//" | \
+  grep -E '\.' | \
   grep -vE '^(button|form|input|loading|message|text|sidebar_state|content-type|en-US|2d|copy)$' | \
-  grep -vE '\\n' | \
   sort -u > "$USED_KEYS_FILE"
+
+# 1.1.1 添加白名单 key（通过映射表动态使用的翻译）
+WHITELIST_KEYS=(
+  "common.errors.duplicateKey"
+  "common.errors.duplicateName"
+  "common.errors.forbidden"
+  "common.errors.notFound"
+)
+for key in "${WHITELIST_KEYS[@]}"; do
+  echo "$key" >> "$USED_KEYS_FILE"
+done
+
+# 重新去重
+sort -u "$USED_KEYS_FILE" -o "$USED_KEYS_FILE"
 
 # 1.2 提取动态翻译 key 模式 (例如 t(`prefix.${var}`))
 echo "步骤 1.1: 扫描前端代码中的动态翻译 key 模式..."
