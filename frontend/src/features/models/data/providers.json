@@ -1382,7 +1382,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -1473,7 +1474,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -1509,7 +1511,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -1668,7 +1671,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -1857,7 +1861,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -1983,7 +1988,8 @@
           "modalities": {
             "input": [
               "text",
-              "image"
+              "image",
+              "pdf"
             ],
             "output": [
               "text"
@@ -3182,64 +3188,6 @@
             "output": 64000
           },
           "display_name": "Claude Sonnet 3.7",
-          "type": "chat",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": false,
-              "mode": "budget",
-              "budget": {
-                "min": 1024,
-                "unit": "tokens"
-              },
-              "interleaved": false,
-              "summaries": false,
-              "visibility": "full",
-              "continuation": [
-                "thinking_blocks"
-              ],
-              "notes": [
-                "Anthropic uses thinking budget tokens"
-              ]
-            }
-          }
-        },
-        {
-          "id": "claude-3-7-sonnet-latest",
-          "name": "Claude Sonnet 3.7 (latest)",
-          "family": "claude-sonnet",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10-31",
-          "release_date": "2025-02-19",
-          "last_updated": "2025-02-19",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "cost": {
-            "input": 3,
-            "output": 15,
-            "cache_read": 0.3,
-            "cache_write": 3.75
-          },
-          "limit": {
-            "context": 200000,
-            "output": 64000
-          },
-          "display_name": "Claude Sonnet 3.7 (latest)",
           "type": "chat",
           "extra_capabilities": {
             "reasoning": {
@@ -5175,12 +5123,546 @@
         }
       ]
     },
+    "nvidia": {
+      "id": "nvidia",
+      "api": "https://integrate.api.nvidia.com/v1",
+      "name": "Nvidia",
+      "doc": "https://docs.api.nvidia.com/nim/",
+      "display_name": "Nvidia",
+      "models": [
+        {
+          "id": "nvidia/nemotron-3-super-120b-a12b",
+          "name": "Nemotron 3 Super",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-04",
+          "release_date": "2026-03-11",
+          "last_updated": "2026-03-11",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0.2,
+            "output": 0.8
+          },
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "display_name": "Nemotron 3 Super",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/nvidia-nemotron-nano-9b-v2",
+          "name": "nvidia-nemotron-nano-9b-v2",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-09",
+          "release_date": "2025-08-18",
+          "last_updated": "2025-08-18",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "display_name": "nvidia-nemotron-nano-9b-v2",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-embed-nemotron-8b",
+          "name": "Llama Embed Nemotron 8B",
+          "family": "llama",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "knowledge": "2025-03",
+          "release_date": "2025-03-18",
+          "last_updated": "2025-03-18",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 32768,
+            "output": 2048
+          },
+          "display_name": "Llama Embed Nemotron 8B",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+          "name": "Llama 3.3 Nemotron Super 49b V1.5",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "structured_output": false,
+          "temperature": true,
+          "release_date": "2025-03-16",
+          "last_updated": "2025-03-16",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama 3.3 Nemotron Super 49b V1.5",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "name": "Llama 3.3 Nemotron Super 49b V1",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "structured_output": false,
+          "temperature": true,
+          "release_date": "2025-03-16",
+          "last_updated": "2025-03-16",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama 3.3 Nemotron Super 49b V1",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/nemotron-3-nano-30b-a3b",
+          "name": "nemotron-3-nano-30b-a3b",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-09",
+          "release_date": "2024-12",
+          "last_updated": "2024-12",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "display_name": "nemotron-3-nano-30b-a3b",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+          "name": "Llama 3.1 Nemotron 70b Instruct",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2024-10-12",
+          "last_updated": "2024-10-12",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama 3.1 Nemotron 70b Instruct",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.1-nemotron-51b-instruct",
+          "name": "Llama 3.1 Nemotron 51b Instruct",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2024-09-22",
+          "last_updated": "2024-09-22",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama 3.1 Nemotron 51b Instruct",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+          "name": "Llama-3.1-Nemotron-Ultra-253B-v1",
+          "family": "llama",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2024-07",
+          "release_date": "2024-07-01",
+          "last_updated": "2025-09-05",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Llama-3.1-Nemotron-Ultra-253B-v1",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/nemotron-4-340b-instruct",
+          "name": "Nemotron 4 340b Instruct",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2024-06-13",
+          "last_updated": "2024-06-13",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Nemotron 4 340b Instruct",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama3-chatqa-1.5-70b",
+          "name": "Llama3 Chatqa 1.5 70b",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2024-04-28",
+          "last_updated": "2024-04-28",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 4096
+          },
+          "display_name": "Llama3 Chatqa 1.5 70b",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/cosmos-nemotron-34b",
+          "name": "Cosmos Nemotron 34B",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": false,
+          "temperature": true,
+          "knowledge": "2024-01",
+          "release_date": "2024-01-01",
+          "last_updated": "2025-09-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 131072,
+            "output": 8192
+          },
+          "display_name": "Cosmos Nemotron 34B",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/nemoretriever-ocr-v1",
+          "name": "NeMo Retriever OCR v1",
+          "family": "nemoretriever",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "knowledge": "2024-01",
+          "release_date": "2024-01-01",
+          "last_updated": "2025-09-05",
+          "modalities": {
+            "input": [
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          },
+          "display_name": "NeMo Retriever OCR v1",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/parakeet-tdt-0.6b-v2",
+          "name": "Parakeet TDT 0.6B v2",
+          "family": "parakeet",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "knowledge": "2024-01",
+          "release_date": "2024-01-01",
+          "last_updated": "2025-09-05",
+          "modalities": {
+            "input": [
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "limit": {
+            "context": 8192,
+            "output": 4096
+          },
+          "display_name": "Parakeet TDT 0.6B v2",
+          "type": "chat"
+        }
+      ]
+    },
     "google": {
       "id": "google",
       "name": "google",
       "doc": "https://ai.google.dev/gemini-api/docs/pricing",
       "display_name": "google",
       "models": [
+        {
+          "id": "gemma-4-26b-it",
+          "name": "Gemma 4 26B",
+          "family": "gemma",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-02",
+          "last_updated": "2026-04-02",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "display_name": "Gemma 4 26B",
+          "type": "chat"
+        },
+        {
+          "id": "gemma-4-31b-it",
+          "name": "Gemma 4 31B",
+          "family": "gemma",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-02",
+          "last_updated": "2026-04-02",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "display_name": "Gemma 4 31B",
+          "type": "chat"
+        },
         {
           "id": "gemini-3.1-flash-lite-preview",
           "name": "Gemini 3.1 Flash Lite Preview",
@@ -7815,6 +8297,49 @@
       "doc": "https://www.alibabacloud.com/help/en/model-studio/models",
       "display_name": "alibaba",
       "models": [
+        {
+          "id": "qwen3.6-plus",
+          "name": "Qwen3.6 Plus",
+          "family": "qwen",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "knowledge": "2025-04",
+          "release_date": "2026-04-02",
+          "last_updated": "2026-04-02",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "cost": {
+            "input": 0.276,
+            "output": 1.651,
+            "cache_read": 0.028,
+            "cache_write": 0.344
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 65536
+          },
+          "display_name": "Qwen3.6 Plus",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          },
+          "type": "chat"
+        },
         {
           "id": "qwen3.5-plus",
           "name": "Qwen3.5 Plus",
