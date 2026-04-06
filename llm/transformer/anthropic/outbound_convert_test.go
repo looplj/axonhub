@@ -242,6 +242,103 @@ func TestOutboundTransformer_ToolArgsRepair(t *testing.T) {
 	})
 }
 
+func TestOutboundTransformer_CustomToolCallHistoryIsDowngraded(t *testing.T) {
+	transformer, _ := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+
+	req := &llm.Request{
+		Model:     "claude-opus-4-6",
+		MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_apply_patch_1",
+						Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID: "call_apply_patch_1",
+							Name:   "apply_patch",
+							Input:  "*** Begin Patch\n*** Add File: hello.txt\n+Hello\n*** End Patch\n",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+
+	err = json.Unmarshal(httpReq.Body, &anthropicReq)
+	require.NoError(t, err)
+	require.Len(t, anthropicReq.Messages, 1)
+	require.NotNil(t, anthropicReq.Messages[0].Content.Content)
+	require.Contains(t, *anthropicReq.Messages[0].Content.Content, "Previous tool interaction summary:")
+	require.Contains(t, *anthropicReq.Messages[0].Content.Content, "apply_patch")
+}
+
+func TestConvertMessages_DropsUnsignedReasoningFromResponsesHistory(t *testing.T) {
+	req := &llm.Request{
+		Model:     "claude-opus-4-6",
+		MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Let me inspect the file."),
+				},
+				ReasoningContent: lo.ToPtr("Hidden chain of thought from Responses history."),
+			},
+		},
+	}
+
+	messages := convertMessages(req, shared.TransportScope{}, nil)
+	require.Len(t, messages, 1)
+	require.NotNil(t, messages[0].Content.Content)
+	require.Equal(t, "Let me inspect the file.", lo.FromPtr(messages[0].Content.Content))
+	require.Empty(t, messages[0].Content.MultipleContent)
+}
+
+func TestConvertMessages_MergesAdjacentAssistantTextAndToolUse(t *testing.T) {
+	req := &llm.Request{
+		Model:     "claude-opus-4-6",
+		MaxTokens: func() *int64 { v := int64(1024); return &v }(),
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Let me read the file first."),
+				},
+			},
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "tooluse_read_file_1",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "read_file",
+							Arguments: `{"file_path":"D:\\test\\file.py"}`,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	messages := convertMessages(req, shared.TransportScope{}, nil)
+	require.Len(t, messages, 1)
+	require.Equal(t, "assistant", messages[0].Role)
+	require.Len(t, messages[0].Content.MultipleContent, 2)
+	require.Equal(t, "text", messages[0].Content.MultipleContent[0].Type)
+	require.Equal(t, "Let me read the file first.", lo.FromPtr(messages[0].Content.MultipleContent[0].Text))
+	require.Equal(t, "tool_use", messages[0].Content.MultipleContent[1].Type)
+	require.Equal(t, "tooluse_read_file_1", messages[0].Content.MultipleContent[1].ID)
+	require.Equal(t, "read_file", lo.FromPtr(messages[0].Content.MultipleContent[1].Name))
+}
+
 func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1061,4 +1158,72 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 			require.Equal(t, len(tt.expected.Messages), len(result.Messages))
 		})
 	}
+}
+
+func TestConvertMessages_DowngradesResponsesCustomToolHistory(t *testing.T) {
+	customCallID := "call_apply_patch_1"
+	toolResultIndex := 3
+
+	req := &llm.Request{
+		Model:     "claude-opus-4-6",
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{
+			{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("system"),
+				},
+			},
+			{
+				Role: "assistant",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("I updated the file."),
+				},
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   customCallID,
+						Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID: customCallID,
+							Name:   "apply_patch",
+							Input:  "*** Begin Patch\n*** Update File: hello.py\n@@\n-print('hi')\n+print('hello')\n*** End Patch\n",
+						},
+					},
+				},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr(customCallID),
+				MessageIndex: &toolResultIndex,
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Patch applied successfully."),
+				},
+			},
+			{
+				Role: "user",
+				MessageIndex: &toolResultIndex,
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("continue"),
+				},
+			},
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("next question"),
+				},
+			},
+		},
+	}
+
+	got := convertMessages(req, shared.TransportScope{}, nil)
+	require.Len(t, got, 2)
+	require.Equal(t, "assistant", got[0].Role)
+	require.NotNil(t, got[0].Content.Content)
+	require.Contains(t, *got[0].Content.Content, "Previous tool interaction summary:")
+	require.Contains(t, *got[0].Content.Content, "apply_patch")
+	require.Contains(t, *got[0].Content.Content, "Patch applied successfully.")
+	require.Contains(t, *got[0].Content.Content, "continue")
+	require.Equal(t, "user", got[1].Role)
+	require.NotNil(t, got[1].Content.Content)
+	require.Equal(t, "next question", *got[1].Content.Content)
 }

@@ -1,6 +1,9 @@
 package anthropic
 
 import (
+	"encoding/json"
+	"strings"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
@@ -276,6 +279,18 @@ func convertMessages(chatReq *llm.Request, scope shared.TransportScope, config *
 				messages = append(messages, converted...)
 			}
 		case "assistant":
+			if hasResponsesCustomToolCalls(msg.ToolCalls) {
+				if downgraded, ok := downgradeCustomToolAssistantMessage(
+					nonSystemMsgs,
+					msg,
+					processedToolCallIDs,
+					processedMessageIndexes,
+				); ok {
+					messages = append(messages, downgraded)
+					continue
+				}
+			}
+
 			// Convert the assistant message.
 			if assistantMsg, ok := convertAssistantMessage(msg, scope, config); ok {
 				messages = append(messages, assistantMsg...)
@@ -297,7 +312,170 @@ func convertMessages(chatReq *llm.Request, scope shared.TransportScope, config *
 		}
 	}
 
-	return messages
+	return normalizeAnthropicMessageSequence(messages)
+}
+
+func normalizeAnthropicMessageSequence(messages []MessageParam) []MessageParam {
+	if len(messages) < 2 {
+		return messages
+	}
+
+	normalized := make([]MessageParam, 0, len(messages))
+	for _, msg := range messages {
+		if len(normalized) == 0 {
+			normalized = append(normalized, msg)
+			continue
+		}
+
+		prev := &normalized[len(normalized)-1]
+		if prev.Role == "assistant" && msg.Role == "assistant" {
+			prev.Content = mergeAssistantContent(prev.Content, msg.Content)
+			continue
+		}
+
+		normalized = append(normalized, msg)
+	}
+
+	return normalized
+}
+
+func mergeAssistantContent(left, right MessageContent) MessageContent {
+	leftBlocks := messageContentToBlocks(left)
+	rightBlocks := messageContentToBlocks(right)
+	return buildContentFromBlocks(append(leftBlocks, rightBlocks...))
+}
+
+func messageContentToBlocks(content MessageContent) []MessageContentBlock {
+	if len(content.MultipleContent) > 0 {
+		return append([]MessageContentBlock(nil), content.MultipleContent...)
+	}
+
+	if content.Content != nil {
+		return []MessageContentBlock{{
+			Type: "text",
+			Text: content.Content,
+		}}
+	}
+
+	return nil
+}
+
+func hasResponsesCustomToolCalls(toolCalls []llm.ToolCall) bool {
+	for _, tc := range toolCalls {
+		if tc.ResponseCustomToolCall != nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+func downgradeCustomToolAssistantMessage(
+	messages []llm.Message,
+	msg llm.Message,
+	processedToolCallIDs map[string]bool,
+	processedMessageIndexes map[int]bool,
+) (MessageParam, bool) {
+	var summary strings.Builder
+
+	if msg.Content.Content != nil && *msg.Content.Content != "" {
+		summary.WriteString(*msg.Content.Content)
+		summary.WriteString("\n\n")
+	}
+
+	summary.WriteString("Previous tool interaction summary:\n")
+
+	toolMsgIndexes := make(map[int]struct{})
+	foundAny := false
+
+	for _, tc := range msg.ToolCalls {
+		if tc.ResponseCustomToolCall == nil {
+			continue
+		}
+
+		foundAny = true
+		call := tc.ResponseCustomToolCall
+		summary.WriteString("- Tool `")
+		summary.WriteString(call.Name)
+		summary.WriteString("` called with input:\n")
+		summary.WriteString(call.Input)
+		summary.WriteString("\n")
+
+		for i, candidate := range messages {
+			if candidate.Role == "tool" && candidate.ToolCallID != nil && *candidate.ToolCallID == tc.ID {
+				if text := anthropicToolResultSummaryText(candidate); text != "" {
+					summary.WriteString("- Tool result for `")
+					summary.WriteString(call.Name)
+					summary.WriteString("`:\n")
+					summary.WriteString(text)
+					summary.WriteString("\n")
+				}
+
+				processedToolCallIDs[tc.ID] = true
+				processedMessageIndexes[i] = true
+
+				if candidate.MessageIndex != nil {
+					toolMsgIndexes[*candidate.MessageIndex] = struct{}{}
+				}
+
+				break
+			}
+		}
+	}
+
+	if !foundAny {
+		return MessageParam{}, false
+	}
+
+	if len(toolMsgIndexes) > 0 {
+		for i, candidate := range messages {
+			if processedMessageIndexes[i] {
+				continue
+			}
+
+			if candidate.Role == "user" && candidate.MessageIndex != nil {
+				if _, ok := toolMsgIndexes[*candidate.MessageIndex]; ok {
+					if text := anthropicToolResultSummaryText(candidate); text != "" {
+						summary.WriteString("- Related user follow-up:\n")
+						summary.WriteString(text)
+						summary.WriteString("\n")
+					}
+					processedMessageIndexes[i] = true
+				}
+			}
+		}
+	}
+
+	summaryText := strings.TrimSpace(summary.String())
+	if summaryText == "" {
+		return MessageParam{}, false
+	}
+
+	return MessageParam{
+		Role: "assistant",
+		Content: MessageContent{
+			Content: lo.ToPtr(summaryText),
+		},
+	}, true
+}
+
+func anthropicToolResultSummaryText(msg llm.Message) string {
+	var summary strings.Builder
+
+	if msg.Content.Content != nil && *msg.Content.Content != "" {
+		summary.WriteString(*msg.Content.Content)
+	}
+
+	for _, part := range msg.Content.MultipleContent {
+		if part.Type == "text" && part.Text != nil && *part.Text != "" {
+			if summary.Len() > 0 {
+				summary.WriteString("\n")
+			}
+			summary.WriteString(*part.Text)
+		}
+	}
+
+	return strings.TrimSpace(summary.String())
 }
 
 // findToolResultsForAssistant looks for tool results matching the given tool calls.
@@ -597,6 +775,13 @@ func buildThinkingBlock(reasoningContent, reasoningSignature *string) *MessageCo
 		return nil
 	}
 
+	// Anthropic history replay requires signed thinking blocks. Unsigned reasoning
+	// commonly appears in OpenAI Responses history and must not be emitted as an
+	// Anthropic `thinking` block, or the upstream API rejects the request as malformed.
+	if reasoningSignature == nil || *reasoningSignature == "" {
+		return nil
+	}
+
 	block := &MessageContentBlock{
 		Type:      "thinking",
 		Thinking:  reasoningContent,
@@ -818,12 +1003,24 @@ func convertMultiplePartContent(msg llm.Message) (MessageContent, bool) {
 	}
 
 	for _, toolCall := range msg.ToolCalls {
-		// Use safe JSON repair/fallback for tool input
+		var (
+			toolName  string
+			toolInput json.RawMessage
+		)
+
+		if toolCall.ResponseCustomToolCall != nil {
+			toolName = toolCall.ResponseCustomToolCall.Name
+			toolInput = xjson.SafeJSONRawMessage(toolCall.ResponseCustomToolCall.Input)
+		} else {
+			toolName = toolCall.Function.Name
+			toolInput = xjson.SafeJSONRawMessage(toolCall.Function.Arguments)
+		}
+
 		blocks = append(blocks, MessageContentBlock{
 			Type:         "tool_use",
 			ID:           toolCall.ID,
-			Name:         &toolCall.Function.Name,
-			Input:        xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
+			Name:         &toolName,
+			Input:        toolInput,
 			CacheControl: convertToAnthropicCacheControl(toolCall.CacheControl),
 		})
 	}
