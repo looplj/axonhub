@@ -373,7 +373,7 @@ func convertFunctionToTool(src llm.Tool) Tool {
 			// OpenAI rejects object schemas that omit properties entirely.
 			// Anthropic clients may send {"type":"object"} for no-arg tools, so normalize that here.
 			if typeName, ok := params["type"].(string); ok && typeName == "object" {
-				if _, hasProperties := params["properties"]; !hasProperties {
+				if _, ok := params["properties"].(map[string]any); !ok {
 					params["properties"] = map[string]any{}
 				}
 			}
