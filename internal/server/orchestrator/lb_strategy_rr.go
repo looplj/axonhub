@@ -92,7 +92,8 @@ func NewRoundRobinStrategy(metricsProvider ChannelMetricsProvider) *RoundRobinSt
 // Production path without debug logging.
 // Channels with fewer requests receive higher scores to promote even distribution.
 func (s *RoundRobinStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	model := requestedModelFromContext(ctx)
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID, model)
 	if err != nil {
 		// If we can't get metrics, return a moderate score to be safe
 		return (s.maxScore + s.minScore) / 2
@@ -106,12 +107,13 @@ func (s *RoundRobinStrategy) Score(ctx context.Context, channel *biz.Channel) fl
 // ScoreWithDebug returns a priority score with detailed debug information.
 // Debug path with comprehensive logging.
 func (s *RoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+	model := requestedModelFromContext(ctx)
 	log.Info(ctx, "RoundRobinStrategy: starting score calculation",
 		log.Int("channel_id", channel.ID),
 		log.String("channel_name", channel.Name),
 	)
 
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID, model)
 	if err != nil {
 		// If we can't get metrics, return a moderate score to be safe
 		moderateScore := (s.maxScore + s.minScore) / 2
@@ -311,7 +313,8 @@ func (s *WeightRoundRobinStrategy) calculateScore(metrics *biz.AggregatedMetrics
 // Score returns a weighted round-robin score.
 // Production path without debug logging.
 func (s *WeightRoundRobinStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	model := requestedModelFromContext(ctx)
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID, model)
 	if err != nil {
 		// If we can't get metrics, return a moderate score
 		return (s.maxScore + s.minScore) / 2
@@ -325,13 +328,14 @@ func (s *WeightRoundRobinStrategy) Score(ctx context.Context, channel *biz.Chann
 // ScoreWithDebug returns a weighted round-robin score with detailed debug information.
 // Debug path with comprehensive logging.
 func (s *WeightRoundRobinStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+	model := requestedModelFromContext(ctx)
 	log.Info(ctx, "WeightRoundRobinStrategy: starting score calculation",
 		log.Int("channel_id", channel.ID),
 		log.String("channel_name", channel.Name),
 		log.Int("ordering_weight", channel.OrderingWeight),
 	)
 
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID, model)
 	if err != nil {
 		// If we can't get metrics, return a moderate score
 		moderateScore := (s.maxScore + s.minScore) / 2

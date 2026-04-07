@@ -60,10 +60,18 @@ func (m *performanceRecording) OnOutboundRawRequest(ctx context.Context, request
 		streamFlag = m.outbound.state.Perf.Stream
 	}
 
+	// Get the model being sent to the provider
+	// This is the actual model ID after all mappings (API key profile + channel model mapping)
+	var requestedModel string
+	if m.outbound.state.CurrentCandidate != nil && m.outbound.state.CurrentModelIndex < len(m.outbound.state.CurrentCandidate.Models) {
+		requestedModel = m.outbound.state.CurrentCandidate.Models[m.outbound.state.CurrentModelIndex].ActualModel
+	}
+
 	// Create a new PerformanceRecord instance for each request.
 	perf := biz.PerformanceRecord{}
 	perf.StartTime = time.Now()
 	perf.ChannelID = channel.ID
+	perf.Model = requestedModel
 	perf.Success = false
 	perf.RequestCompleted = false
 	perf.Stream = streamFlag
@@ -78,6 +86,7 @@ func (m *performanceRecording) OnOutboundRawRequest(ctx context.Context, request
 	log.Debug(ctx, "Started performance tracking",
 		log.Int("channel_id", channel.ID),
 		log.String("channel_name", channel.Name),
+		log.String("model", requestedModel),
 	)
 
 	return request, nil

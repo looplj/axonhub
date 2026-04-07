@@ -142,13 +142,14 @@ func (s *PerformanceAwareStrategy) Score(ctx context.Context, channel *biz.Chann
 		return 0.0
 	}
 
-	if metrics, err := s.getChannelMetrics(ctx, channel.ID); err == nil && metrics != nil {
+	model := requestedModelFromContext(ctx)
+	if metrics, err := s.getChannelMetrics(ctx, channel.ID, model); err == nil && metrics != nil {
 		if s.isColdStart(metrics) {
 			return ColdStartBoostScore
 		}
 	}
 
-	performance := s.getChannelPerformance(ctx, channel.ID)
+	performance := s.getChannelPerformance(ctx, channel.ID, model)
 	if performance == nil {
 		return 0.0
 	}
@@ -185,7 +186,8 @@ func (s *PerformanceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *
 	start := time.Now()
 	details := map[string]any{}
 
-	if metrics, err := s.getChannelMetrics(ctx, channel.ID); err == nil && metrics != nil {
+	model := requestedModelFromContext(ctx)
+	if metrics, err := s.getChannelMetrics(ctx, channel.ID, model); err == nil && metrics != nil {
 		details["request_count"] = metrics.RequestCount
 		details["last_selected_at"] = metrics.LastSelectedAt
 		if s.isColdStart(metrics) {
@@ -201,7 +203,7 @@ func (s *PerformanceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *
 		}
 	}
 
-	performance := s.getChannelPerformance(ctx, channel.ID)
+	performance := s.getChannelPerformance(ctx, channel.ID, model)
 	if performance == nil {
 		details["reason"] = "no_performance_data"
 
@@ -292,15 +294,24 @@ func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPe
 	return combinedScore, ttftScore, tpsScore
 }
 
-func (s *PerformanceAwareStrategy) getChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
-	if s.getMetricsFunc != nil {
-		return s.getMetricsFunc(ctx, channelID)
-	}
+func (s *PerformanceAwareStrategy) getChannelMetrics(ctx context.Context, channelID int, model string) (*biz.AggregatedMetrics, error) {
 	if s.channelService == nil {
 		return nil, nil
 	}
 
-	return s.channelService.GetChannelMetrics(ctx, channelID)
+	// First try model-specific metrics
+	metrics, err := s.channelService.GetChannelMetrics(ctx, channelID, model)
+	if err == nil && metrics != nil && metrics.RequestCount > 0 {
+		return metrics, nil
+	}
+
+	// Fall back to channel-wide metrics (all models)
+	metrics, err = s.channelService.GetChannelMetrics(ctx, channelID, "")
+	if err != nil || metrics == nil || metrics.RequestCount == 0 {
+		// Fall back to cold start
+		return nil, errors.New("no metrics available")
+	}
+	return metrics, nil
 }
 
 func (s *PerformanceAwareStrategy) getChannelProbes(ctx context.Context, channelID int) ([]*biz.ChannelProbePoint, error) {
@@ -318,7 +329,7 @@ func (s *PerformanceAwareStrategy) getChannelProbes(ctx context.Context, channel
 // It queries both historical probe data and real-time metrics, combining them
 // with configurable weights (default: 50% historical, 50% real-time).
 // Returns nil if no data is available from either source.
-func (s *PerformanceAwareStrategy) getChannelPerformance(ctx context.Context, channelID int) *ChannelPerformance {
+func (s *PerformanceAwareStrategy) getChannelPerformance(ctx context.Context, channelID int, model string) *ChannelPerformance {
 	var historicalTTFT, historicalTPS *float64
 	var realtimeTTFT, realtimeTPS *float64
 
@@ -350,7 +361,7 @@ func (s *PerformanceAwareStrategy) getChannelPerformance(ctx context.Context, ch
 	}
 
 	// Query real-time metrics from ChannelService
-	if metrics, err := s.getChannelMetrics(ctx, channelID); err == nil && metrics != nil {
+	if metrics, err := s.getChannelMetrics(ctx, channelID, model); err == nil && metrics != nil {
 		if metrics.AvgFirstTokenLatencyMs != nil && *metrics.AvgFirstTokenLatencyMs > 0 {
 			realtimeTTFT = metrics.AvgFirstTokenLatencyMs
 		}

@@ -47,7 +47,8 @@ func NewErrorAwareStrategy(metricsProvider ChannelMetricsProvider) *ErrorAwareSt
 // Score returns a health score based on recent errors.
 // Production path without debug logging.
 func (s *ErrorAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	model := requestedModelFromContext(ctx)
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID, model)
 	if err != nil {
 		// If we can't get metrics, give neutral score
 		return s.maxScore / 2
@@ -92,12 +93,13 @@ func (s *ErrorAwareStrategy) Score(ctx context.Context, channel *biz.Channel) fl
 // ScoreWithDebug returns a health score with detailed debug information.
 // Debug path with comprehensive logging.
 func (s *ErrorAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+	model := requestedModelFromContext(ctx)
 	log.Info(ctx, "ErrorAwareStrategy: starting score calculation",
 		log.Int("channel_id", channel.ID),
 		log.String("channel_name", channel.Name),
 	)
 
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID, model)
 	if err != nil {
 		// If we can't get metrics, give neutral score
 		neutralScore := s.maxScore / 2

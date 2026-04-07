@@ -89,7 +89,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		SystemService:      params.SystemService,
 		WebhookNotifier:    params.WebhookNotifier,
 		httpClient:         params.HttpClient,
-		channelPerfMetrics: make(map[int]*channelMetrics),
+		channelPerfMetrics: make(map[int]map[string]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
@@ -157,9 +157,10 @@ type ChannelService struct {
 	// If not set (0), uses defaultPerformanceWindowSize (600 seconds = 10 minutes)
 	perfWindowSeconds int64
 
-	// channelPerfMetrics stores the performance metrics for each channel
+	// channelPerfMetrics stores the performance metrics for each channel grouped by model
+	// channelID -> modelID -> metrics
 	// protected by channelPerfMetricsLock
-	channelPerfMetrics     map[int]*channelMetrics
+	channelPerfMetrics     map[int]map[string]*channelMetrics
 	channelPerfMetricsLock sync.RWMutex
 
 	// channelErrorCounts stores the error counts for each channel and status code

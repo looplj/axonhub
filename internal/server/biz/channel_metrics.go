@@ -48,13 +48,16 @@ type channelMetrics struct {
 // loadChannelPerformances loads channel performance metrics from request_execution table.
 // It queries the last 6 hours of data to initialize in-memory metrics for load balancing.
 // Uses a single GROUP BY query to fetch all channel metrics at once for better performance.
+// loadChannelPerformances loads channel performance metrics from request_execution table.
+// It queries the last 6 hours of data to initialize in-memory metrics for load balancing.
+// Uses a single GROUP BY query to fetch all channel-model metrics at once for better performance.
 func (svc *ChannelService) loadChannelPerformances(ctx context.Context) error {
 	client := svc.entFromContext(ctx)
 
 	// Query last 6 hours of request execution data
 	since := xtime.UTCNow().Add(-6 * time.Hour)
 
-	// Fetch all channel metrics in a single GROUP BY query
+	// Fetch all channel-model metrics in a single GROUP BY query
 	metrics, err := svc.loadAllChannelMetricsFromExecutions(ctx, client, since)
 	if err != nil {
 		return fmt.Errorf("failed to load channel metrics: %w", err)
@@ -69,13 +72,13 @@ func (svc *ChannelService) loadChannelPerformances(ctx context.Context) error {
 	defer svc.channelPerfMetricsLock.Unlock()
 
 	if svc.channelPerfMetrics == nil {
-		svc.channelPerfMetrics = make(map[int]*channelMetrics)
+		svc.channelPerfMetrics = make(map[int]map[string]*channelMetrics)
 	}
 
-	for channelID, m := range metrics {
-		cm := newChannelMetrics(channelID)
+	for key, m := range metrics {
+		channelID, modelID := key.ChannelID, key.ModelID
+		cm := svc.getOrCreateModelMetricsInternal(channelID, modelID)
 		svc.populateChannelMetrics(cm, m)
-		svc.channelPerfMetrics[channelID] = cm
 	}
 
 	log.Info(ctx, "Loaded channel performance metrics from request executions",
@@ -85,22 +88,71 @@ func (svc *ChannelService) loadChannelPerformances(ctx context.Context) error {
 	return nil
 }
 
-// channelMetricsResult holds aggregated metrics for a single channel.
+// getOrCreateModelMetrics initializes the nested map structure for channel-model metrics.
+// Uses empty string "" as default model key when modelID is empty.
+func (svc *ChannelService) getOrCreateModelMetrics(channelID int, modelID string) *channelMetrics {
+	svc.channelPerfMetricsLock.Lock()
+	defer svc.channelPerfMetricsLock.Unlock()
+
+	return svc.getOrCreateModelMetricsInternal(channelID, modelID)
+}
+
+// getOrCreateModelMetricsInternal is the unlocked version for internal use.
+// Must be called with channelPerfMetricsLock already held.
+func (svc *ChannelService) getOrCreateModelMetricsInternal(channelID int, modelID string) *channelMetrics {
+	if svc.channelPerfMetrics == nil {
+		svc.channelPerfMetrics = make(map[int]map[string]*channelMetrics)
+	}
+
+	channelMap, exists := svc.channelPerfMetrics[channelID]
+	if !exists {
+		channelMap = make(map[string]*channelMetrics)
+		svc.channelPerfMetrics[channelID] = channelMap
+	}
+
+	// Use empty string as default model key
+	modelKey := modelID
+	if modelKey == "" {
+		modelKey = ""
+	}
+
+	cm, exists := channelMap[modelKey]
+	if !exists {
+		cm = newChannelMetrics(channelID)
+		channelMap[modelKey] = cm
+	}
+
+	return cm
+}
+
+// channelMetricsResult holds aggregated metrics for a single channel-model combination.
 // Only includes fields needed for load balancing.
 type channelMetricsResult struct {
-	ChannelID     int        `json:"channel_id"`
-	RequestCount  int64      `json:"request_count"`
-	LastFailureAt *time.Time `json:"last_failure_at"`
+	ChannelID            int        `json:"channel_id"`
+	ModelID              string     `json:"model_id"`
+	RequestCount         int64      `json:"request_count"`
+	LastFailureAt        *time.Time `json:"last_failure_at"`
+	AvgFirstTokenLatency *float64   `json:"avg_first_token_latency"` // Average TTFT in milliseconds
+	AvgThroughput        *float64   `json:"avg_throughput"`          // Average tokens per second
+}
+
+// modelKey is a composite key for channel-model metrics lookup.
+type modelKey struct {
+	ChannelID int
+	ModelID   string
 }
 
 // loadAllChannelMetricsFromExecutions loads metrics for all channels using a single GROUP BY query.
 // Uses raw SQL via Modify to get request count and last failure time in one query.
-func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Context, client *ent.Client, since time.Time) (map[int]*channelMetricsResult, error) {
-	// Single query to get request count and last failure time for all channels
+func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Context, client *ent.Client, since time.Time) (map[modelKey]*channelMetricsResult, error) {
+	// Single query to get request count, last failure time, and performance metrics for all channels and models
 	type queryResult struct {
-		ChannelID     int       `json:"channel_id"`
-		RequestCount  int64     `json:"request_count"`
-		LastFailureAt time.Time `json:"last_failure_at"`
+		ChannelID            int       `json:"channel_id"`
+		ModelID              string    `json:"model_id"`
+		RequestCount         int64     `json:"request_count"`
+		LastFailureAt        time.Time `json:"last_failure_at"`
+		AvgFirstTokenLatency *float64  `json:"avg_first_token_latency"`
+		AvgThroughput        *float64  `json:"avg_throughput"`
 	}
 
 	var results []queryResult
@@ -112,32 +164,36 @@ func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Conte
 			requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
 		).
 		Modify(func(s *sql.Selector) {
-			// Use a subquery or join to get last failure time per channel
-			// For simplicity, we use MAX(CASE WHEN status = 'failed' THEN created_at END) to get last failure
+			// Use COALESCE to handle NULL model_id values - treat as empty string
 			s.Select(
 				s.C(requestexecution.FieldChannelID),
+				sql.As(fmt.Sprintf("COALESCE(%s, '')", s.C(requestexecution.FieldModelID)), "model_id"),
 				sql.As(sql.Count("*"), "request_count"),
 				sql.As(fmt.Sprintf("MAX(CASE WHEN status = '%s' THEN %s END)", requestexecution.StatusFailed, s.C(requestexecution.FieldCreatedAt)), "last_failure_at"),
-			).
-				GroupBy(s.C(requestexecution.FieldChannelID))
+				sql.As(fmt.Sprintf("AVG(%s)", s.C(requestexecution.FieldMetricsFirstTokenLatencyMs)), "avg_first_token_latency"),
+			).GroupBy(s.C(requestexecution.FieldChannelID), s.C(requestexecution.FieldModelID))
 		}).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channel metrics: %w", err)
 	}
 
-	metricsMap := make(map[int]*channelMetricsResult)
+	metricsMap := make(map[modelKey]*channelMetricsResult)
 
 	for _, r := range results {
 		m := &channelMetricsResult{
-			ChannelID:    r.ChannelID,
-			RequestCount: r.RequestCount,
+			ChannelID:            r.ChannelID,
+			ModelID:              r.ModelID,
+			RequestCount:         r.RequestCount,
+			AvgFirstTokenLatency: r.AvgFirstTokenLatency,
+			AvgThroughput:        r.AvgThroughput,
 		}
 		if !r.LastFailureAt.IsZero() {
 			m.LastFailureAt = &r.LastFailureAt
 		}
 
-		metricsMap[r.ChannelID] = m
+		key := modelKey{ChannelID: r.ChannelID, ModelID: r.ModelID}
+		metricsMap[key] = m
 	}
 
 	return metricsMap, nil
@@ -151,6 +207,14 @@ func (svc *ChannelService) populateChannelMetrics(cm *channelMetrics, m *channel
 
 	if m.LastFailureAt != nil {
 		cm.aggregatedMetrics.LastFailureAt = m.LastFailureAt
+	}
+
+	// Populate performance metrics from historical data
+	if m.AvgFirstTokenLatency != nil {
+		cm.aggregatedMetrics.AvgFirstTokenLatencyMs = m.AvgFirstTokenLatency
+	}
+	if m.AvgThroughput != nil {
+		cm.aggregatedMetrics.AvgTokensPerSecond = m.AvgThroughput
 	}
 
 	// Note: ConsecutiveFailures is not loaded from historical data.
@@ -353,16 +417,15 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		}
 	}
 
-	// Get or create channel metrics
-	svc.channelPerfMetricsLock.Lock()
-
-	cm, exists := svc.channelPerfMetrics[perf.ChannelID]
-	if !exists {
-		cm = newChannelMetrics(perf.ChannelID)
-		svc.channelPerfMetrics[perf.ChannelID] = cm
+	// Get or create channel-model metrics using composite key
+	// Use model from PerformanceRecord, default to empty string if not specified
+	modelKey := perf.Model
+	if modelKey == "" {
+		modelKey = ""
 	}
 
-	svc.channelPerfMetricsLock.Unlock()
+	// Get or create channel-model metrics
+	cm := svc.getOrCreateModelMetrics(perf.ChannelID, modelKey)
 
 	// Determine window size
 	var windowSize int64 = defaultPerformanceWindowSize
@@ -384,11 +447,8 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 	} else {
 		// If canceled, decrement the aggregated request count that was incremented at selection time.
 		// We don't increment slot.RequestCount, so it won't be subtracted later.
-		svc.channelPerfMetricsLock.Lock()
-
+		// Note: getOrCreateModelMetrics already holds the lock, so we access it directly
 		cm.aggregatedMetrics.RequestCount--
-
-		svc.channelPerfMetricsLock.Unlock()
 	}
 
 	// Record success or failure
@@ -448,13 +508,25 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 	cm.window.CleanupBefore(cutoffTs)
 }
 
-// GetChannelMetrics returns performance metrics for the channel.
+// GetChannelMetrics returns performance metrics for the channel and model.
 // If in-memory metrics are not available (e.g., after restart), it falls back to database values.
-func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int) (*AggregatedMetrics, error) {
-	svc.channelPerfMetricsLock.RLock()
-	cm, exists := svc.channelPerfMetrics[channelID]
-	svc.channelPerfMetricsLock.RUnlock()
+// Uses empty string as model key when model is not specified.
+func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int, model string) (*AggregatedMetrics, error) {
+	// Use empty string as default model key
+	modelKey := model
+	if modelKey == "" {
+		modelKey = ""
+	}
 
+	svc.channelPerfMetricsLock.RLock()
+	defer svc.channelPerfMetricsLock.RUnlock()
+
+	channelMap, exists := svc.channelPerfMetrics[channelID]
+	if !exists {
+		return &AggregatedMetrics{}, nil
+	}
+
+	cm, exists := channelMap[modelKey]
 	if !exists {
 		return &AggregatedMetrics{}, nil
 	}
@@ -464,19 +536,18 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int)
 	return cm.aggregatedMetrics.Clone(), nil
 }
 
-// IncrementChannelSelection increments the request count for a channel at selection time.
+// IncrementChannelSelection increments the request count for a channel-model at selection time.
 // This is called when a channel is selected by the load balancer to ensure immediate
 // impact on subsequent selections, preventing the same channel from being selected
 // repeatedly during burst/concurrent requests.
-func (svc *ChannelService) IncrementChannelSelection(channelID int) {
-	svc.channelPerfMetricsLock.Lock()
-	defer svc.channelPerfMetricsLock.Unlock()
-
-	cm, exists := svc.channelPerfMetrics[channelID]
-	if !exists {
-		cm = newChannelMetrics(channelID)
-		svc.channelPerfMetrics[channelID] = cm
+func (svc *ChannelService) IncrementChannelSelection(channelID int, model string) {
+	// Use empty string as default model key
+	modelKey := model
+	if modelKey == "" {
+		modelKey = ""
 	}
+
+	cm := svc.getOrCreateModelMetrics(channelID, modelKey)
 
 	oldCount := cm.aggregatedMetrics.RequestCount
 
@@ -493,6 +564,7 @@ func (svc *ChannelService) IncrementChannelSelection(channelID int) {
 	if log.DebugEnabled(context.Background()) {
 		log.Debug(context.Background(), "IncrementChannelSelection: incremented request count",
 			log.Int("channel_id", channelID),
+			log.String("model", modelKey),
 			log.Int64("old_count", oldCount),
 			log.Int64("new_count", cm.aggregatedMetrics.RequestCount),
 		)
@@ -510,6 +582,7 @@ func deriveErrorMessage(errorCode int) string {
 // PerformanceRecord contains performance metrics collected during request processing.
 type PerformanceRecord struct {
 	ChannelID        int
+	Model            string // Model ID for model-specific performance tracking
 	APIKey           string // API key used for the request (sensitive, do not log full value)
 	StartTime           time.Time
 	FirstTokenTime      *time.Time

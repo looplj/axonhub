@@ -15,14 +15,14 @@ import (
 
 // ChannelMetricsProvider provides channel performance metrics.
 type ChannelMetricsProvider interface {
-	GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
+	GetChannelMetrics(ctx context.Context, channelID int, model string) (*biz.AggregatedMetrics, error)
 }
 
 // ChannelSelectionTracker tracks channel selections for load balancing.
 // This is used to increment request count at selection time rather than completion time,
 // ensuring concurrent/burst requests don't all select the same channel.
 type ChannelSelectionTracker interface {
-	IncrementChannelSelection(channelID int)
+	IncrementChannelSelection(channelID int, model string)
 }
 
 // LoadBalanceStrategy defines the interface for load balancing strategies.
@@ -209,7 +209,7 @@ func (lb *LoadBalancer) sortProduction(ctx context.Context, candidates []*Channe
 	// Increment selection count for the top candidate to ensure subsequent
 	// concurrent requests see the updated count and select different channels
 	if len(result) > 0 && result[0] != nil && result[0].Channel != nil && lb.selectionTracker != nil {
-		lb.selectionTracker.IncrementChannelSelection(result[0].Channel.ID)
+		lb.selectionTracker.IncrementChannelSelection(result[0].Channel.ID, "")
 	}
 
 	return result
@@ -288,7 +288,7 @@ func (lb *LoadBalancer) sortWithDebug(ctx context.Context, candidates []*Channel
 	// Increment selection count for the top candidate to ensure subsequent
 	// concurrent requests see the updated count and select different channels
 	if len(result) > 0 && result[0] != nil && result[0].Channel != nil && lb.selectionTracker != nil {
-		lb.selectionTracker.IncrementChannelSelection(result[0].Channel.ID)
+		lb.selectionTracker.IncrementChannelSelection(result[0].Channel.ID, model)
 	}
 
 	return result

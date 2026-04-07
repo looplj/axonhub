@@ -221,7 +221,7 @@ func TestHybridDataSource(t *testing.T) {
 				},
 			}
 
-			result := strategy.getChannelPerformance(context.Background(), 1)
+			result := strategy.getChannelPerformance(context.Background(), 1, "")
 
 			if tt.wantNil {
 				if result != nil {
@@ -268,7 +268,7 @@ func TestChannelProbeQuery(t *testing.T) {
 		},
 	}
 
-	result := strategy.getChannelPerformance(context.Background(), 1)
+	result := strategy.getChannelPerformance(context.Background(), 1, "")
 
 	if result == nil {
 		t.Fatal("expected non-nil result")
@@ -302,7 +302,7 @@ func TestRealtimeMetricsQuery(t *testing.T) {
 		},
 	}
 
-	result := strategy.getChannelPerformance(context.Background(), 1)
+	result := strategy.getChannelPerformance(context.Background(), 1, "")
 
 	if result == nil {
 		t.Fatal("expected non-nil result")
@@ -371,7 +371,7 @@ func TestHybridDataSourceMissingData(t *testing.T) {
 				},
 			}
 
-			result := strategy.getChannelPerformance(context.Background(), 1)
+			result := strategy.getChannelPerformance(context.Background(), 1, "")
 
 			if tt.wantNil && result != nil {
 				t.Errorf("expected nil, got %+v", result)
