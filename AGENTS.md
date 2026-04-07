@@ -2,7 +2,7 @@
 
 This file provides guidance to AI coding assistants when working with code in this repository.
 
-> **Detailed rules are in `.agent/rules/`** — see [Rules Index](#rules-index) below.
+> **Detailed rules are split into focused files under `.agent/rules/`**. See [Rules Index](#rules-index) below.
 
 ## Global Rules
 
@@ -12,30 +12,17 @@ This file provides guidance to AI coding assistants when working with code in th
 
 ## Configuration
 
-- Uses SQLite database (axonhub.db) by default.
-- Configuration loaded from `conf/conf.go` with YAML and env var support.
 - Backend API: port 8090, Frontend dev server: port 5173 (proxies to backend).
-- Go version: 1.26.0+.
+- Configuration: `conf/conf.go` (YAML + env var), SQLite by default.
 
 ## Project Overview
 
 AxonHub is an all-in-one AI development platform that serves as a unified API gateway for multiple AI providers. It provides OpenAI and Anthropic-compatible API interfaces with automatic request transformation, enabling seamless communication between clients and various AI providers through a sophisticated bidirectional data transformation pipeline.
 
-### Core Architecture
-
-- **Transformation Pipeline**: Bidirectional data transformation between clients and AI providers
-- **Unified API Layer**: OpenAI/Anthropic-compatible interfaces with automatic translation
-- **Channel Management**: Multi-provider support with configurable channels
-- **Thread-aware Tracing**: Request tracing with thread linking capabilities
-- **Permission System**: RBAC with fine-grained access control
-- **System Management**: Web-based configuration interface
-
 ## Technology Stack
 
-- **Backend**: Go 1.26.0+ with Gin HTTP framework, Ent ORM, gqlgen GraphQL, FX dependency injection
-- **Frontend**: React 19 with TypeScript, TanStack Router, TanStack Query, Zustand, Tailwind CSS
-- **Database**: SQLite (development), PostgreSQL/MySQL/TiDB (production)
-- **Authentication**: JWT with role-based access control
+- **Backend**: Go 1.26.0+ with Gin, Ent ORM, gqlgen, FX
+- **Frontend**: React 19 + TypeScript, TanStack Router/Query, Zustand, Tailwind CSS
 
 ## Backend Structure
 
@@ -60,14 +47,8 @@ AxonHub is an all-in-one AI development platform that serves as a unified API ga
 
 ### `llm/` Module Notes
 
-- Do not assume root-level Go commands can see packages under `llm/...`.
-- When working on files under `llm/`, run Go commands from the `llm/` directory unless you explicitly know a workspace-level command is appropriate.
-- Typical examples:
-  - `cd llm && go test ./...`
-  - `cd llm && go test ./transformer/openai/responses -run TestName`
-  - `cd llm && go list ./...`
-- If you run `go test ./llm/...` or similar from the repo root, you may hit module boundary errors like `main module does not contain package ...`.
-- Apply the same rule to any other nested Go module: use the module root that owns the package you are testing or inspecting.
+- `llm/` is an independent module. Always run Go commands from the `llm/` directory (e.g., `cd llm && go test ./...`).
+- Running `go test ./llm/...` from repo root will fail with module boundary errors.
 
 ## Frontend Structure
 
@@ -89,8 +70,13 @@ All detailed rules are in `.agent/rules/`:
 
 | File | Scope | Description |
 |------|-------|-------------|
-| [backend.md](.agent/rules/backend.md) | `**/*.go` | Go, Ent, GraphQL, Biz service, error handling, dev commands |
-| [frontend.md](.agent/rules/frontend.md) | `frontend/**/*.ts,tsx` | React, i18n, UI components, dev commands |
+| [go-general.md](.agent/rules/go-general.md) | `**/*.go` | Go 通用约定、错误处理、依赖注入、开发命令约束 |
+| [ent-graphql.md](.agent/rules/ent-graphql.md) | `internal/ent/schema/**/*.go`, `internal/server/gql/**/*.go`, `internal/server/gql/**/*.graphql`, `gqlgen.yml` | Ent、GraphQL、代码生成、schema 变更规则 |
+| [biz-services.md](.agent/rules/biz-services.md) | `internal/server/biz/**/*.go` | Biz service、上下文取值、事务与级联删除规则 |
+| [cache-compat.md](.agent/rules/cache-compat.md) | `**/*.go` | 缓存结构兼容性与升级安全规则 |
+| [frontend-general.md](.agent/rules/frontend-general.md) | `frontend/**/*.ts`, `frontend/**/*.tsx` | 前端通用开发约定、GraphQL 数据约束、页面作用域 |
+| [frontend-i18n.md](.agent/rules/frontend-i18n.md) | `frontend/src/**/*.ts`, `frontend/src/**/*.tsx`, `frontend/src/locales/*.json` | i18n 与货币格式规则 |
+| [frontend-ui.md](.agent/rules/frontend-ui.md) | `frontend/**/*.tsx` | 前端 UI 组件使用规则 |
 | [e2e.md](.agent/rules/e2e.md) | `frontend/tests/**/*.ts` | E2E testing rules |
 | [docs.md](.agent/rules/docs.md) | `docs/**/*.md` | Documentation rules |
 | [workflows/add-channel.md](.agent/rules/workflows/add-channel.md) | Manual | Workflow for adding a new channel |
