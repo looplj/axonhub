@@ -370,6 +370,14 @@ func convertFunctionToTool(src llm.Tool) Tool {
 				params = map[string]any{}
 			}
 
+			// OpenAI rejects object schemas that omit properties entirely.
+			// Anthropic clients may send {"type":"object"} for no-arg tools, so normalize that here.
+			if typeName, ok := params["type"].(string); ok && typeName == "object" {
+				if _, ok := params["properties"].(map[string]any); !ok {
+					params["properties"] = map[string]any{}
+				}
+			}
+
 			// For strict mode, additionalProperties must be false and all properties must be required
 			// See: https://platform.openai.com/docs/guides/function-calling#strict-mode
 			if src.Function.Strict != nil && *src.Function.Strict {
