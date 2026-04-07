@@ -122,6 +122,12 @@ models:
   ChannelSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
+  ChannelRateLimit:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
+  ChannelRateLimitInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
   ChannelCredentials:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelCredentials

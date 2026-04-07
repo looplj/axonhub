@@ -20,6 +20,43 @@ globs: "internal/ent/schema/**/*.go, internal/server/gql/**/*.go, internal/serve
 4. Prefer GraphQL-side filtering inputs instead of moving filtering logic to the frontend.
 5. If a Go field uses a string enum type, prefer a GraphQL `enum` plus `gqlgen.yml` mapping instead of GraphQL `String` with manual conversions.
 6. For object or input fields backed by the same Go struct, prefer schema and `gqlgen.yml` mappings that let gqlgen bind directly before adding manual field resolvers.
+7. **Adding nested object fields**: When adding a nested object field (e.g., `settings.rateLimit`):
+   - Define both Input type (e.g., `ChannelRateLimitInput`) and Output type (e.g., `ChannelRateLimit`) in the GraphQL schema
+   - Add the field to both the Input type (e.g., `ChannelSettingsInput`) and Output type (e.g., `ChannelSettings`)
+   - Add type mappings in `gqlgen.yml` for both Input and Output types to map to the same Go struct
+   - Update frontend GraphQL queries to include the new field
+   - Run `make generate` to regenerate code
+   - Example workflow:
+     ```graphql
+     # 1. Define types in axonhub.graphql
+     input ChannelRateLimitInput {
+       rpm: Int
+       tpm: Int
+     }
+     type ChannelRateLimit {
+       rpm: Int
+       tpm: Int
+     }
+
+     # 2. Add to both Input and Output types
+     input ChannelSettingsInput {
+       # ... existing fields
+       rateLimit: ChannelRateLimitInput
+     }
+     type ChannelSettings {
+       # ... existing fields
+       rateLimit: ChannelRateLimit
+     }
+     ```
+     ```yaml
+     # 3. Add mappings in gqlgen.yml
+     ChannelRateLimit:
+       model:
+         - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
+     ChannelRateLimitInput:
+       model:
+         - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
+     ```
 
 ## Schema Changes
 

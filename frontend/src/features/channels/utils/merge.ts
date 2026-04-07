@@ -107,6 +107,7 @@ export function mergeChannelSettingsForUpdate(
     proxy: pick('proxy', existing?.proxy ?? null),
     transformOptions: pick('transformOptions', existing?.transformOptions ?? undefined),
     passThroughUserAgent: pick('passThroughUserAgent', existing?.passThroughUserAgent ?? null),
+    rateLimit: pick('rateLimit', existing?.rateLimit ?? null),
   };
 }
 

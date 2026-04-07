@@ -84,6 +84,7 @@ type ChannelSettings {
   headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
   bodyOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
   passThroughUserAgent: Boolean
+  rateLimit: ChannelRateLimit
 }
 
 enum CapabilityPolicy {
@@ -116,6 +117,17 @@ input ChannelSettingsInput {
   headerOverrideOperations: [OverrideOperationInput!]
   bodyOverrideOperations: [OverrideOperationInput!]
   passThroughUserAgent: Boolean
+  rateLimit: ChannelRateLimitInput
+}
+
+input ChannelRateLimitInput {
+  rpm: Int
+  tpm: Int
+}
+
+type ChannelRateLimit {
+  rpm: Int
+  tpm: Int
 }
 
 type ChannelCredentials {

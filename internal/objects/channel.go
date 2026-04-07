@@ -133,6 +133,15 @@ type ChannelSettings struct {
 	// When set to nil, it inherits from the global system setting.
 	// When set to true/false, it overrides the global setting.
 	PassThroughUserAgent *bool `json:"passThroughUserAgent,omitempty"`
+
+	// RateLimit configures the upstream rate limit for the channel.
+	// When configured, the load balancer will skip channels that have exceeded their rate limits.
+	RateLimit *ChannelRateLimit `json:"rateLimit,omitempty"`
+}
+
+type ChannelRateLimit struct {
+	RPM *int64 `json:"rpm,omitempty"` // Requests Per Minute, nil = unlimited
+	TPM *int64 `json:"tpm,omitempty"` // Tokens Per Minute, nil = unlimited
 }
 
 // DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）
