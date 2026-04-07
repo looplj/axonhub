@@ -22,6 +22,10 @@ const (
 	// MinLatencyMs is the minimum latency value (10ms) used for tokens/second calculations.
 	// This matches the frontend standard MINIMUM_LATENCY_MS_FOR_CACHE_HITS.
 	MinLatencyMs = 10
+
+	// metricsBatchSize is the number of records to fetch per batch when loading channel metrics.
+	// This prevents memory issues when loading large datasets (>10k records).
+	metricsBatchSize = 1000
 )
 
 // ClampLatency enforces the minimum latency value to prevent extreme TPS calculations.
@@ -46,16 +50,13 @@ type channelMetrics struct {
 }
 
 // loadChannelPerformances loads channel performance metrics from request_execution table.
-// It queries the last 6 hours of data to initialize in-memory metrics for load balancing.
-// Uses a single GROUP BY query to fetch all channel metrics at once for better performance.
-// loadChannelPerformances loads channel performance metrics from request_execution table.
-// It queries the last 6 hours of data to initialize in-memory metrics for load balancing.
+// It queries historical data based on windowDuration to initialize in-memory metrics for load balancing.
 // Uses a single GROUP BY query to fetch all channel-model metrics at once for better performance.
-func (svc *ChannelService) loadChannelPerformances(ctx context.Context) error {
+func (svc *ChannelService) loadChannelPerformances(ctx context.Context, windowDuration time.Duration) error {
 	client := svc.entFromContext(ctx)
 
-	// Query last 6 hours of request execution data
-	since := xtime.UTCNow().Add(-6 * time.Hour)
+	// Query request execution data based on configurable window duration
+	since := xtime.UTCNow().Add(-windowDuration)
 
 	// Fetch all channel-model metrics in a single GROUP BY query
 	metrics, err := svc.loadAllChannelMetricsFromExecutions(ctx, client, since)
@@ -64,7 +65,7 @@ func (svc *ChannelService) loadChannelPerformances(ctx context.Context) error {
 	}
 
 	if len(metrics) == 0 {
-		log.Info(ctx, "No request execution data found in the last 6 hours")
+		log.Info(ctx, "No request execution data found in the historical window")
 		return nil
 	}
 
@@ -110,16 +111,11 @@ func (svc *ChannelService) getOrCreateModelMetricsInternal(channelID int, modelI
 		svc.channelPerfMetrics[channelID] = channelMap
 	}
 
-	// Use empty string as default model key
-	modelKey := modelID
-	if modelKey == "" {
-		modelKey = ""
-	}
-
-	cm, exists := channelMap[modelKey]
+	// Use modelID directly as the key (empty string is valid for default)
+	cm, exists := channelMap[modelID]
 	if !exists {
 		cm = newChannelMetrics(channelID)
-		channelMap[modelKey] = cm
+		channelMap[modelID] = cm
 	}
 
 	return cm
@@ -142,10 +138,15 @@ type modelKey struct {
 	ModelID   string
 }
 
-// loadAllChannelMetricsFromExecutions loads metrics for all channels using a single GROUP BY query.
-// Uses raw SQL via Modify to get request count and last failure time in one query.
+// loadAllChannelMetricsFromExecutions loads metrics for all channels.
+// Uses a single GROUP BY query to fetch all channel-model metrics at once for accurate aggregation.
 func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Context, client *ent.Client, since time.Time) (map[modelKey]*channelMetricsResult, error) {
-	// Single query to get request count, last failure time, and performance metrics for all channels and models
+	return svc.loadAllChannelMetricsSingleQuery(ctx, client, since)
+}
+
+// loadAllChannelMetricsSingleQuery loads metrics using a single GROUP BY query.
+// Used for small datasets (<= metricsBatchSize records).
+func (svc *ChannelService) loadAllChannelMetricsSingleQuery(ctx context.Context, client *ent.Client, since time.Time) (map[modelKey]*channelMetricsResult, error) {
 	type queryResult struct {
 		ChannelID            int       `json:"channel_id"`
 		ModelID              string    `json:"model_id"`
@@ -164,7 +165,6 @@ func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Conte
 			requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
 		).
 		Modify(func(s *sql.Selector) {
-			// Use COALESCE to handle NULL model_id values - treat as empty string
 			s.Select(
 				s.C(requestexecution.FieldChannelID),
 				sql.As(fmt.Sprintf("COALESCE(%s, '')", s.C(requestexecution.FieldModelID)), "model_id"),
@@ -198,6 +198,7 @@ func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Conte
 
 	return metricsMap, nil
 }
+
 
 // populateChannelMetrics populates channelMetrics from the aggregated result.
 // Only populates fields needed for load balancing.
@@ -418,14 +419,8 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 	}
 
 	// Get or create channel-model metrics using composite key
-	// Use model from PerformanceRecord, default to empty string if not specified
-	modelKey := perf.Model
-	if modelKey == "" {
-		modelKey = ""
-	}
-
-	// Get or create channel-model metrics
-	cm := svc.getOrCreateModelMetrics(perf.ChannelID, modelKey)
+	// Get or create channel-model metrics using model from PerformanceRecord (empty string is valid for default)
+	cm := svc.getOrCreateModelMetrics(perf.ChannelID, perf.Model)
 
 	// Determine window size
 	var windowSize int64 = defaultPerformanceWindowSize
@@ -512,12 +507,6 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 // If in-memory metrics are not available (e.g., after restart), it falls back to database values.
 // Uses empty string as model key when model is not specified.
 func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int, model string) (*AggregatedMetrics, error) {
-	// Use empty string as default model key
-	modelKey := model
-	if modelKey == "" {
-		modelKey = ""
-	}
-
 	svc.channelPerfMetricsLock.RLock()
 	defer svc.channelPerfMetricsLock.RUnlock()
 
@@ -526,7 +515,7 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int,
 		return &AggregatedMetrics{}, nil
 	}
 
-	cm, exists := channelMap[modelKey]
+	cm, exists := channelMap[model]
 	if !exists {
 		return &AggregatedMetrics{}, nil
 	}
@@ -541,13 +530,8 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int,
 // impact on subsequent selections, preventing the same channel from being selected
 // repeatedly during burst/concurrent requests.
 func (svc *ChannelService) IncrementChannelSelection(channelID int, model string) {
-	// Use empty string as default model key
-	modelKey := model
-	if modelKey == "" {
-		modelKey = ""
-	}
-
-	cm := svc.getOrCreateModelMetrics(channelID, modelKey)
+	// Use model directly as the key (empty string is valid for default)
+	cm := svc.getOrCreateModelMetrics(channelID, model)
 
 	oldCount := cm.aggregatedMetrics.RequestCount
 
@@ -564,7 +548,7 @@ func (svc *ChannelService) IncrementChannelSelection(channelID int, model string
 	if log.DebugEnabled(context.Background()) {
 		log.Debug(context.Background(), "IncrementChannelSelection: incremented request count",
 			log.Int("channel_id", channelID),
-			log.String("model", modelKey),
+			log.String("model", model),
 			log.Int64("old_count", oldCount),
 			log.Int64("new_count", cm.aggregatedMetrics.RequestCount),
 		)

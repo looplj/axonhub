@@ -58,3 +58,11 @@ type API struct {
 type APIAuth struct {
 	AllowNoAuth bool `conf:"allow_no_auth" yaml:"allow_no_auth" json:"allow_no_auth"`
 }
+
+// PerformanceConfig holds configuration for performance-related settings.
+type PerformanceConfig struct {
+	HistoricalWindow          time.Duration `conf:"historical_window" yaml:"historical_window" json:"historical_window"`
+	HistoricalRefreshInterval time.Duration `conf:"historical_refresh_interval" yaml:"historical_refresh_interval" json:"historical_refresh_interval"`
+	HistoricalWeight          float64       `conf:"historical_weight" yaml:"historical_weight" json:"historical_weight"`
+	RealtimeWeight            float64       `conf:"realtime_weight" yaml:"realtime_weight" json:"realtime_weight"`
+}

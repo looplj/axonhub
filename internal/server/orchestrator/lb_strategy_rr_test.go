@@ -347,7 +347,7 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 	for i, ch := range channels {
 		for j := int64(0); j < requestCounts[i]; j++ {
 			// Simulate selection time increment (done by load balancer)
-			channelService.IncrementChannelSelection(ch.ID)
+			channelService.IncrementChannelSelection(ch.ID, "gpt-4")
 
 			perf := &biz.PerformanceRecord{
 				ChannelID:        ch.ID,
@@ -362,11 +362,12 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 
 	strategy := NewRoundRobinStrategy(channelService)
 
-	// Score all channels
+	// Score all channels with gpt-4 model context (matching the model used in IncrementChannelSelection)
+	ctxWithModel := contextWithRequestedModel(ctx, "gpt-4")
 	scores := make([]float64, len(channels))
 	for i, ch := range channels {
 		channel := &biz.Channel{Channel: ch}
-		scores[i] = strategy.Score(ctx, channel)
+		scores[i] = strategy.Score(ctxWithModel, channel)
 	}
 
 	// Verify ordering based on request counts

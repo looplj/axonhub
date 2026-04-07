@@ -84,7 +84,7 @@ func (f *fakeAdaptiveMetricsProvider) cleanupExpiredSlots(ch *fakeAdaptiveChanne
 	}
 }
 
-func (f *fakeAdaptiveMetricsProvider) GetChannelMetrics(_ context.Context, channelID int) (*biz.AggregatedMetrics, error) {
+func (f *fakeAdaptiveMetricsProvider) GetChannelMetrics(_ context.Context, channelID int, model string) (*biz.AggregatedMetrics, error) {
 	ch := f.getOrCreateChannel(channelID)
 	f.cleanupExpiredSlots(ch)
 

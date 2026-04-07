@@ -54,6 +54,8 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		ChannelService: params.ChannelService,

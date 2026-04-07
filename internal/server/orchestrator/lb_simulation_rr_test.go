@@ -24,7 +24,7 @@ func newFakeChannelMetricsProvider() *fakeChannelMetricsProvider {
 	}
 }
 
-func (f *fakeChannelMetricsProvider) GetChannelMetrics(_ context.Context, channelID int) (*biz.AggregatedMetrics, error) {
+func (f *fakeChannelMetricsProvider) GetChannelMetrics(_ context.Context, channelID int, model string) (*biz.AggregatedMetrics, error) {
 	if m, ok := f.metrics[channelID]; ok {
 		return m, nil
 	}

@@ -14,6 +14,8 @@ import (
 
 // startPerformanceProcess starts the background goroutine to flush metrics to database.
 func (svc *ChannelService) startPerformanceProcess() {
+	defer svc.perfWg.Done()
+
 	ctx := authz.WithSystemBypass(context.Background(), "channel-record-performance")
 	for perf := range svc.perfCh {
 		svc.RecordPerformance(ctx, perf)
@@ -72,7 +74,22 @@ func (svc *ChannelService) onTokenRefreshed(ch *ent.Channel) func(ctx context.Co
 
 func (svc *ChannelService) initChannelPerformances(ctx context.Context) {
 	ctx = authz.WithSystemBypass(ctx, "int-channel-load-performances")
-	if err := svc.loadChannelPerformances(ctx); err != nil {
+
+	// Use singleflight to prevent thundering herd if called from multiple goroutines
+	_, err, shared := svc.refreshSingleflight.Do("init-historical", func() (any, error) {
+		windowDays := svc.histWindowDays
+		if windowDays <= 0 {
+			windowDays = DefaultHistoricalWindowDays
+		}
+		windowDuration := time.Duration(windowDays) * 24 * time.Hour
+
+		return nil, svc.loadChannelPerformances(ctx, windowDuration)
+	})
+	if shared {
+		log.Debug(ctx, "init channel performances deduplicated via singleflight")
+		return
+	}
+	if err != nil {
 		log.Warn(ctx, "failed to load channel performances", log.Cause(err))
 	}
 }

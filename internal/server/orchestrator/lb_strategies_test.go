@@ -38,7 +38,7 @@ type mockMetricsProvider struct {
 	err     error
 }
 
-func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
+func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID int, model string) (*biz.AggregatedMetrics, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -62,7 +62,7 @@ type mockSelectionTracker struct {
 	selections map[int]int
 }
 
-func (m *mockSelectionTracker) IncrementChannelSelection(channelID int) {
+func (m *mockSelectionTracker) IncrementChannelSelection(channelID int, model string) {
 	if m.selections == nil {
 		m.selections = make(map[int]int)
 	}

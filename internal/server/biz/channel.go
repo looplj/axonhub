@@ -10,6 +10,7 @@ import (
 
 	"github.com/zhenzou/executors"
 	"go.uber.org/fx"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -23,6 +24,9 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 )
+
+// DefaultHistoricalWindowDays is the default number of days for historical performance metrics.
+const DefaultHistoricalWindowDays = 7
 
 // ChannelModelEntry represents a model that the channel can handle.
 type ChannelModelEntry struct {
@@ -78,9 +82,23 @@ type ChannelServiceParams struct {
 	SystemService   *SystemService
 	WebhookNotifier *WebhookNotifier
 	HttpClient      *httpclient.HttpClient
+
+	// HistoricalRefreshInterval is the interval for periodic historical performance refresh.
+	// Default is 2 hours. Set to 0 or negative to disable background refresh.
+	HistoricalRefreshInterval time.Duration `name:"performance_historical_refresh_interval"`
+
+	// HistoricalWindow is the configurable historical window duration for metrics.
+	// Default is 7 days (168 hours). Must be positive.
+	HistoricalWindow time.Duration `name:"historical_window"`
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
+	// Calculate historical window in days from duration
+	histWindowDays := int(params.HistoricalWindow.Hours() / 24)
+	if histWindowDays <= 0 {
+		histWindowDays = 7 // Default to 7 days
+	}
+
 	svc := &ChannelService{
 		AbstractService: &AbstractService{
 			db: params.Ent,
@@ -93,6 +111,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		channelErrorCounts: make(map[int]map[int]int),
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
 		perfCh:             make(chan *PerformanceRecord, 1024),
+		histWindowDays:     histWindowDays,
 	}
 	svc.initChannelPerformances(context.Background())
 
@@ -132,13 +151,27 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 	xerrors.NoErr2(svc.Executors.ScheduleFuncAtCronRate(svc.runSyncChannelModelsPeriodically, executors.CRONRule{Expr: "11 * * * *"}))
 
 	// Start performance metrics background flush
+	svc.perfWg.Add(1)
 	go svc.startPerformanceProcess()
+
+	// Start historical performance refresh goroutine (2-hour ticker)
+	svc.startHistoricalRefresh(params.HistoricalRefreshInterval)
 
 	return svc
 }
 
 func (svc *ChannelService) Stop() {
-	svc.enabledChannelsCache.Stop()
+	svc.stopOnce.Do(func() {
+		// Close perfCh to signal the performance processing goroutine to stop
+		if svc.perfCh != nil {
+			close(svc.perfCh)
+		}
+		// Wait for the performance processing goroutine to finish
+		svc.perfWg.Wait()
+
+		svc.enabledChannelsCache.Stop()
+		svc.stopHistoricalRefresh()
+	})
 }
 
 type ChannelService struct {
@@ -183,6 +216,27 @@ type ChannelService struct {
 
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
+
+	// histWindowDays is the configurable historical window duration in days
+	// Used by loadChannelPerformances to determine how far back to query request executions
+	histWindowDays int
+
+	// refreshTicker is the ticker for periodic historical performance refresh
+	refreshTicker *time.Ticker
+	// stopCh is the channel to signal the refresh goroutine to stop
+	refreshStopCh chan struct{}
+	// refreshWg waits for the refresh goroutine to finish
+	refreshWg sync.WaitGroup
+
+	// perfWg tracks the performance processing goroutine
+	perfWg sync.WaitGroup
+	// refreshMu prevents concurrent refreshes
+	refreshMu sync.Mutex
+	// refreshSingleflight prevents duplicate concurrent refreshes across goroutines
+	refreshSingleflight singleflight.Group
+
+	// stopOnce ensures Stop() is idempotent
+	stopOnce sync.Once
 }
 
 func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {

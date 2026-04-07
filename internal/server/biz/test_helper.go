@@ -17,11 +17,12 @@ func NewChannelServiceForTest(client *ent.Client) *ChannelService {
 	}
 
 	svc := NewChannelService(ChannelServiceParams{
-		CacheConfig:   xcache.Config{Mode: xcache.ModeMemory},
-		Executor:      executors.NewPoolScheduleExecutor(),
-		Ent:           client,
-		SystemService: mockSysSvc,
-		HttpClient:    httpclient.NewHttpClient(),
+		CacheConfig:               xcache.Config{Mode: xcache.ModeMemory},
+		Executor:                  executors.NewPoolScheduleExecutor(),
+		Ent:                       client,
+		SystemService:             mockSysSvc,
+		HttpClient:                httpclient.NewHttpClient(),
+		HistoricalRefreshInterval: 0, // Disable background refresh for tests
 	})
 
 	svc.SetEnabledChannelsForTest([]*Channel{})

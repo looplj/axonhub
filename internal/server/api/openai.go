@@ -40,6 +40,8 @@ type OpenAIHandlersParams struct {
 	HttpClient                  *httpclient.HttpClient
 	LiveStreamRegistry          *biz.LiveStreamRegistry
 	Client                      *ent.Client
+	HistoricalWeight            float64 `name:"historical_weight"`
+	RealtimeWeight              float64 `name:"realtime_weight"`
 }
 
 type OpenAIHandlers struct {
@@ -77,6 +79,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
@@ -93,6 +97,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		CompactHandlers: &ChatCompletionHandlers{
@@ -109,6 +115,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -125,6 +133,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
@@ -141,6 +151,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		ImageEditHandlers: &ChatCompletionHandlers{
@@ -157,6 +169,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		ImageVariationHandlers: &ChatCompletionHandlers{
@@ -173,6 +187,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		VideoHandlers: &ChatCompletionHandlers{
@@ -189,6 +205,8 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.PromptProtectionRuleService,
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 		},
 		VideoInboundTransformer: videoInbound,

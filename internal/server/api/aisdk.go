@@ -47,9 +47,10 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.PromptService,
 				params.QuotaService,
 				params.PromptProtectionRuleService,
-<<<<<<< HEAD
 				params.LiveStreamRegistry,
 				params.ChannelProbeService,
+				params.HistoricalWeight,
+				params.RealtimeWeight,
 			),
 			StreamWriter: WriteJSONStream,
 		},

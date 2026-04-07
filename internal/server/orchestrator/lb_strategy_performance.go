@@ -11,10 +11,26 @@ import (
 
 // Validation constants
 const (
-	defaultMaxScore         = 150.0
-	defaultHistoricalWeight = 0.5
-	defaultRealtimeWeight   = 0.5
-	weightEpsilon           = 0.001
+	defaultMaxScore = 150.0
+	weightEpsilon   = 0.001
+)
+
+// TTFT scoring thresholds
+const (
+	// TTFTGoodThreshold is the threshold below which TTFT is considered "very good"
+	// and receives full score (2 seconds)
+	TTFTGoodThreshold = 2000.0
+
+	// TTFTOkThreshold is the threshold below which TTFT is considered "fine"
+	// and receives partial score (5 seconds)
+	TTFTOkThreshold = 5000.0
+)
+
+// TPS scoring constant
+const (
+	// TPSCharacteristicK is the characteristic value for TPS exponential scoring
+	// Higher values make TPS scoring more linear across typical ranges
+	TPSCharacteristicK = 100.0
 )
 
 // Cold start constants
@@ -52,7 +68,7 @@ type ChannelPerformance struct {
 type PerformanceAwareStrategy struct {
 	channelService *biz.ChannelService
 	probeService   *biz.ChannelProbeService
-	getMetricsFunc func(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
+	getMetricsFunc func(ctx context.Context, channelID int, model string) (*biz.AggregatedMetrics, error)
 	getProbesFunc  func(ctx context.Context, channelID int) ([]*biz.ChannelProbePoint, error)
 	// maxScore is the maximum score for a perfectly performing channel (default: 150)
 	maxScore float64
@@ -97,8 +113,8 @@ func NewPerformanceAwareStrategy(channelService *biz.ChannelService, probeServic
 		channelService:   channelService,
 		probeService:     probeService,
 		maxScore:         defaultMaxScore,
-		historicalWeight: defaultHistoricalWeight,
-		realtimeWeight:   defaultRealtimeWeight,
+		historicalWeight: 0.0,
+		realtimeWeight:   0.0,
 	}
 
 	// Apply options
@@ -248,15 +264,24 @@ func (s *PerformanceAwareStrategy) calculateTTFTScore(ttftMs float64) float64 {
 		return 0
 	}
 
-	score := s.scoreMax() * math.Exp(-ttftMs/1000.0)
-	if score < 0 {
-		return 0
-	}
-	if score > s.scoreMax() {
-		return s.scoreMax()
-	}
+	maxScore := s.scoreMax()
 
-	return score
+	// Threshold-based scoring:
+	// - Under 2 seconds: full score (very good)
+	// - 2-5 seconds: partial score with linear decay (fine)
+	// - Above 5 seconds: exponential penalty
+	if ttftMs <= TTFTGoodThreshold {
+		// Under 2 seconds: full score - any latency here is "very good"
+		return maxScore
+	} else if ttftMs <= TTFTOkThreshold {
+		// 2-5 seconds: linear decay, lose up to 70% of score
+		ratio := (ttftMs - TTFTGoodThreshold) / (TTFTOkThreshold - TTFTGoodThreshold)
+		return maxScore * (1.0 - ratio*0.7)
+	} else {
+		// Above 5 seconds: exponential penalty
+		excess := ttftMs - TTFTOkThreshold
+		return maxScore * 0.3 * math.Exp(-excess/3000.0)
+	}
 }
 
 func (s *PerformanceAwareStrategy) calculateTPSScore(tps float64) float64 {
@@ -264,7 +289,9 @@ func (s *PerformanceAwareStrategy) calculateTPSScore(tps float64) float64 {
 		return 0
 	}
 
-	score := s.scoreMax() * (1.0 - math.Exp(-tps/30.0))
+	// Use k=100 for better TPS differentiation across typical ranges
+	// This prevents early saturation and makes TPS differences meaningful
+	score := s.scoreMax() * (1.0 - math.Exp(-tps/TPSCharacteristicK))
 	if score < 0 {
 		return 0
 	}
@@ -295,6 +322,9 @@ func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPe
 }
 
 func (s *PerformanceAwareStrategy) getChannelMetrics(ctx context.Context, channelID int, model string) (*biz.AggregatedMetrics, error) {
+	if s.getMetricsFunc != nil {
+		return s.getMetricsFunc(ctx, channelID, model)
+	}
 	if s.channelService == nil {
 		return nil, nil
 	}

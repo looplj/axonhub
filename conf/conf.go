@@ -25,15 +25,20 @@ import (
 type Config struct {
 	fx.Out `yaml:"-" json:"-"`
 
-	DB               db.Config           `conf:"db" yaml:"db" json:"db"`
-	Log              log.Config          `conf:"log" yaml:"log" json:"log"`
-	APIServer        server.Config       `conf:"server" yaml:"server" json:"server"`
-	Metrics          metrics.Config      `conf:"metrics" yaml:"metrics" json:"metrics"`
-	GC               gc.Config           `conf:"gc" yaml:"gc" json:"gc"`
-	Cache            xcache.Config       `conf:"cache" yaml:"cache" json:"cache"`
-	ProviderQuota    providerQuotaConfig `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
-	DisableSSLVerify bool                `name:"disable_ssl_verify" yaml:"-" json:"-"`
-	AllowNoAuth      bool                `name:"allow_no_auth" yaml:"-" json:"-"`
+	DB                                   db.Config                `conf:"db" yaml:"db" json:"db"`
+	Log                                  log.Config               `conf:"log" yaml:"log" json:"log"`
+	APIServer                            server.Config            `conf:"server" yaml:"server" json:"server"`
+	Metrics                              metrics.Config           `conf:"metrics" yaml:"metrics" json:"metrics"`
+	GC                                   gc.Config                `conf:"gc" yaml:"gc" json:"gc"`
+	Cache                                xcache.Config            `conf:"cache" yaml:"cache" json:"cache"`
+	ProviderQuota                        providerQuotaConfig      `conf:"provider_quota" yaml:"provider_quota" json:"provider_quota"`
+	Performance                          server.PerformanceConfig `conf:"performance" yaml:"performance" json:"performance"`
+	DisableSSLVerify                     bool                     `name:"disable_ssl_verify" yaml:"-" json:"-"`
+	AllowNoAuth                          bool                     `name:"allow_no_auth" yaml:"-" json:"-"`
+	PerformanceHistoricalRefreshInterval time.Duration            `name:"performance_historical_refresh_interval" yaml:"-" json:"-"`
+	HistoricalWeight                     float64                  `name:"historical_weight" yaml:"-" json:"-"`
+	RealtimeWeight                       float64                  `name:"realtime_weight" yaml:"-" json:"-"`
+	HistoricalWindow                     time.Duration            `name:"historical_window" yaml:"-" json:"-"`
 }
 
 type providerQuotaConfig struct {
@@ -90,6 +95,18 @@ func Load() (Config, error) {
 
 	config.DisableSSLVerify = config.APIServer.DisableSSLVerify
 	config.AllowNoAuth = config.APIServer.API.Auth.AllowNoAuth
+	config.PerformanceHistoricalRefreshInterval = config.Performance.HistoricalRefreshInterval
+	config.HistoricalWeight = config.Performance.HistoricalWeight
+	config.RealtimeWeight = config.Performance.RealtimeWeight
+	config.HistoricalWindow = config.Performance.HistoricalWindow
+	if config.HistoricalWindow <= 0 {
+		config.HistoricalWindow = 7 * 24 * time.Hour // Default to 7 days
+		config.Performance.HistoricalWindow = config.HistoricalWindow // Sync back to Performance struct
+	}
+
+	if err := validatePerformanceConfig(config.Performance); err != nil {
+		return Config{}, fmt.Errorf("invalid performance config: %w", err)
+	}
 
 	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
 
@@ -208,6 +225,12 @@ func setDefaults(v *viper.Viper) {
 	// Note: cache.redis.db has no default value to allow explicit override to 0
 	v.SetDefault("cache.redis.tls", false)
 	v.SetDefault("cache.redis.tls_insecure_skip_verify", false)
+
+	// Performance defaults
+	v.SetDefault("performance.historical_window", "168h")         // 7 days
+	v.SetDefault("performance.historical_refresh_interval", "2h") // 2 hours
+	v.SetDefault("performance.historical_weight", 0.4)            // 40% weight
+	v.SetDefault("performance.realtime_weight", 0.6)              // 60% weight
 }
 
 // parseLogLevel converts a string log level to zapcore.Level.
@@ -228,4 +251,38 @@ func parseLogLevel(level string) (zapcore.Level, error) {
 	default:
 		return zapcore.InfoLevel, fmt.Errorf("unknown log level: %s", level)
 	}
+}
+
+// validatePerformanceConfig validates the PerformanceConfig values.
+func validatePerformanceConfig(cfg server.PerformanceConfig) error {
+	const weightTolerance = 0.001
+
+	// Validate HistoricalWindow > 0
+	if cfg.HistoricalWindow <= 0 {
+		return fmt.Errorf("historical_window must be greater than 0, got %v", cfg.HistoricalWindow)
+	}
+
+	// Validate HistoricalRefreshInterval > 0
+	if cfg.HistoricalRefreshInterval <= 0 {
+		return fmt.Errorf("historical_refresh_interval must be greater than 0, got %v", cfg.HistoricalRefreshInterval)
+	}
+
+	// Validate HistoricalWeight in [0, 1]
+	if cfg.HistoricalWeight < 0 || cfg.HistoricalWeight > 1 {
+		return fmt.Errorf("historical_weight must be between 0 and 1, got %f", cfg.HistoricalWeight)
+	}
+
+	// Validate RealtimeWeight in [0, 1]
+	if cfg.RealtimeWeight < 0 || cfg.RealtimeWeight > 1 {
+		return fmt.Errorf("realtime_weight must be between 0 and 1, got %f", cfg.RealtimeWeight)
+	}
+
+	// Validate weights sum to 1.0 (within tolerance)
+	weightSum := cfg.HistoricalWeight + cfg.RealtimeWeight
+	if weightSum < 1.0-weightTolerance || weightSum > 1.0+weightTolerance {
+		return fmt.Errorf("weights must sum to 1.0, got %f (historical: %f, realtime: %f)",
+			weightSum, cfg.HistoricalWeight, cfg.RealtimeWeight)
+	}
+
+	return nil
 }

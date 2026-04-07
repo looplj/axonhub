@@ -30,9 +30,8 @@ func newTestChannelService(client *ent.Client) *ChannelService {
 		AbstractService: &AbstractService{
 			db: client,
 		},
-		SystemService:      mockSysSvc,
 		WebhookNotifier:    NewWebhookNotifier(mockSysSvc, httpclient.NewHttpClient()),
-		channelPerfMetrics: make(map[int]*channelMetrics),
+		channelPerfMetrics: make(map[int]map[string]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
 		perfWindowSeconds:  600,
@@ -436,7 +435,7 @@ func TestChannelService_SuccessClearsErrorCounts(t *testing.T) {
 		EndTime:          time.Now(),
 	}
 
-	svc.IncrementChannelSelection(ch.ID)
+	svc.IncrementChannelSelection(ch.ID, "")
 	svc.RecordPerformance(ctx, perf)
 
 	// Verify channel error counts are cleared

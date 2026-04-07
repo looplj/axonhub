@@ -29,28 +29,28 @@ func NewChatCompletionOrchestrator(
 	promptService *biz.PromptService,
 	quotaService *biz.QuotaService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
-<<<<<<< HEAD
 	liveStreamRegistry *biz.LiveStreamRegistry,
-=======
 	channelProbeService *biz.ChannelProbeService,
->>>>>>> ed8c8f46 (feat: add performance-aware load balancing strategy)
+=======
+	historicalWeight float64,
+	realtimeWeight float64,
+>>>>>>> 0e3d84a9 (feat: implement performance-aware load balancing strategy)
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 	rateLimitTracker := NewChannelRequestTracker()
 
-	// Initialize model circuit breaker
+	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker)
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
-	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker)
-
-	// Initialize performance-aware strategy with validated weights
-	performanceStrategy, err := NewPerformanceAwareStrategy(channelService, channelProbeService)
-	if err != nil {
+	performanceStrategy, err := NewPerformanceAwareStrategy(channelService, channelProbeService, WithWeights(historicalWeight, realtimeWeight))
 		log.Error(context.Background(), "failed to create performance-aware strategy", zap.Error(err))
-		// Fall back to a basic strategy if validation fails
+		// Fall back to a basic strategy if validation fails - use default weights (0.5, 0.5)
 		performanceStrategy = &PerformanceAwareStrategy{
-			channelService: channelService,
-			probeService:   channelProbeService,
+			channelService:   channelService,
+			probeService:     channelProbeService,
+			maxScore:         defaultMaxScore,
+			historicalWeight: 0.5,
+			realtimeWeight:   0.5,
 		}
 	}
 
@@ -68,7 +68,6 @@ func NewChatCompletionOrchestrator(
 
 	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy)
-
 	// Performance load balancer uses only the performance-aware strategy
 	performanceLoadBalancer := NewLoadBalancer(systemService, channelService,
 		performanceStrategy)
@@ -125,11 +124,8 @@ type ChatCompletionOrchestrator struct {
 	circuitBreakerLoadBalancer *LoadBalancer
 	// The connection tracker used for request lifetime tracking and rate-limit concurrency fallback.
 	connectionTracker ConnectionTracker
-	// The rate limit tracker for rate limit aware load balancing.
 	rateLimitTracker *ChannelRequestTracker
-	// The model circuit breaker for circuit-breaker load balancing.
 	modelCircuitBreaker *biz.ModelCircuitBreaker
-
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
 	proxy *httpclient.ProxyConfig
@@ -263,8 +259,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		persistRequestExecution(outbound),
 		withLivePreview(state, processor.SystemService, processor.LiveStreamRegistry),
 
-		// Rate limit tracking middleware for load balancing.
-		withRateLimitTracking(outbound, processor.rateLimitTracker),
 		// Connection tracking middleware for load balancing.
 		withConnectionTracking(outbound, processor.connectionTracker),
 	)
