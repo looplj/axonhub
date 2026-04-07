@@ -16,7 +16,7 @@ export type ProjectProfile = z.infer<typeof projectProfileSchema>;
 // Project Profiles schema
 export const projectProfilesSchema = z.object({
   activeProfile: z.string(),
-  profiles: z.array(projectProfileSchema),
+  profiles: z.array(projectProfileSchema).nullable(),
 });
 export type ProjectProfiles = z.infer<typeof projectProfilesSchema>;
 
