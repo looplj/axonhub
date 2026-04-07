@@ -137,6 +137,12 @@ cd cmd/axoncli && go test ./...  # Run CLI tests
    // DO NOT manually delete APIKey, ChannelOverrideTemplate, etc. before deleting User.
    ```
 5. **Do NOT write manual migration SQL files**. Ent handles schema migrations automatically:
-   - Schema changes are applied automatically when the server starts (in development mode).
-   - To add a field: update the ent schema in `internal/ent/schema/*.go`, then run `make generate`.
-   - DO NOT create files in `migrations/` directory for schema changes.
+    - Schema changes are applied automatically when the server starts (in development mode).
+    - To add a field: update the ent schema in `internal/ent/schema/*.go`, then run `make generate`.
+    - DO NOT create files in `migrations/` directory for schema changes.
+
+## Cache Compatibility Rules
+
+1. **Changing the type parameter of a cache breaks Redis/two-level cache on upgrade.** For example, changing `xcache.Cache[Foo]` to `xcache.Cache[Entry[Foo]]` means old JSON stored in Redis cannot deserialize into the new wrapper struct — all cached values silently become zero-valued, which downstream code may treat as invalid (e.g., `Status == ""` fails validation).
+2. **When wrapping or restructuring a cached value type**, always add a guard in the read path to detect stale entries (e.g., check `entry.Value.ID != 0`) and fall through to the database instead of returning a broken object.
+3. **Prefer cache key versioning** when making breaking cache structure changes: embed a version in the cache key prefix (e.g., `project:v2:%d`) so old entries are naturally ignored after upgrade.

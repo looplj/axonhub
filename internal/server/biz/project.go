@@ -195,7 +195,11 @@ func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Proje
 				return nil, fmt.Errorf("failed to get project: %w (id: %d)", ErrProjectNotFound, id)
 			}
 
-			return &entry.Value, nil
+			// Guard against stale cache entries from older versions
+			// (e.g., cache stored bare ent.Project instead of xcache.Entry[ent.Project]).
+			if entry.Value.ID != 0 {
+				return &entry.Value, nil
+			}
 		}
 	}
 
