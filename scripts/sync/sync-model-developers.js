@@ -15,9 +15,9 @@ function fetchJSON(url) {
   return new Promise((resolve, reject) => {
     const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy ||
                      process.env.HTTP_PROXY || process.env.http_proxy;
-    
+
     if (!proxyUrl) {
-      // 无代理，直接请求
+      // 无代理,直接请求
       https.get(url, (res) => {
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
@@ -31,12 +31,12 @@ function fetchJSON(url) {
       }).on('error', reject);
       return;
     }
-    
+
     // 使用代理
     console.log('Using proxy:', proxyUrl);
     const targetUrl = new URL(url);
     const proxy = new URL(proxyUrl);
-    
+
     const connectOptions = {
       method: 'CONNECT',
       host: proxy.hostname,
@@ -44,27 +44,27 @@ function fetchJSON(url) {
       path: `${targetUrl.hostname}:443`,
       headers: { Host: targetUrl.hostname }
     };
-    
-    // 添加代理认证（如果有）
+
+    // 添加代理认证(如果有)
     if (proxy.username || proxy.password) {
       const auth = Buffer.from(`${proxy.username}:${proxy.password}`).toString('base64');
       connectOptions.headers['Proxy-Authorization'] = `Basic ${auth}`;
     }
-    
+
     const connectReq = http.request(connectOptions);
-    
+
     connectReq.on('connect', (res, socket) => {
       if (res.statusCode !== 200) {
         return reject(new Error(`Proxy CONNECT failed: ${res.statusCode}`));
       }
-      
+
       const tlsOptions = {
         socket: socket,
         hostname: targetUrl.hostname,
         path: targetUrl.pathname + targetUrl.search,
         method: 'GET'
       };
-      
+
       const tlsReq = https.request(tlsOptions, (tlsRes) => {
         let data = '';
         tlsRes.on('data', (chunk) => { data += chunk; });
@@ -76,11 +76,11 @@ function fetchJSON(url) {
           }
         });
       });
-      
+
       tlsReq.on('error', reject);
       tlsReq.end();
     });
-    
+
     connectReq.on('error',reject);
     connectReq.end();
   });
@@ -89,18 +89,18 @@ function fetchJSON(url) {
 function extractDeveloperIds(constantsPath) {
   const content = fs.readFileSync(constantsPath, 'utf8');
   const match = content.match(/export const DEVELOPER_IDS = \[([\s\S]*?)\]/);
-  
+
   if (!match) {
     throw new Error('Could not find DEVELOPER_IDS in constants.ts');
   }
-  
+
   const idsString = match[1];
   const ids = idsString
     .split(',')
     .map(line => line.trim())
     .filter(line => line.startsWith("'") || line.startsWith('"'))
     .map(line => line.replace(/^['"]|['"]$/g, ''));
-  
+
   return ids;
 }
 
@@ -108,15 +108,15 @@ function filterProviders(data, allowedIds) {
   if (!data.providers) {
     throw new Error('Invalid data structure: missing providers field');
   }
-  
+
   const filtered = {};
-  
+
   for (const [key, value] of Object.entries(data.providers)) {
     if (allowedIds.includes(value.id)) {
       filtered[key] = value;
     }
   }
-  
+
   // Map doubao channel's doubao models to bytedance developer
   if (allowedIds.includes('bytedance') && data.providers['doubao']) {
     const doubaoProvider = data.providers['doubao'];
@@ -134,7 +134,22 @@ function filterProviders(data, allowedIds) {
       console.log(`Mapped ${doubaoModels.length} doubao models to bytedance developer`);
     }
   }
-  
+
+  // Filter NVIDIA models to only include NVIDIA-created models (nvidia/* prefix)
+  if (allowedIds.includes('nvidia') && filtered['nvidia']) {
+    const nvidiaProvider = filtered['nvidia'];
+    const nvidiaModels = (nvidiaProvider.models || []).filter(m =>
+      m.id && m.id.toLowerCase().startsWith('nvidia/')
+    );
+    if (nvidiaModels.length > 0) {
+      filtered['nvidia'] = {
+        ...nvidiaProvider,
+        models: nvidiaModels,
+      };
+      console.log(`Filtered ${nvidiaModels.length} NVIDIA-created models from ${nvidiaProvider.models.length} total`);
+    }
+  }
+
   return { providers: filtered };
 }
 
@@ -166,9 +181,9 @@ function mergeWithModelsJson(data, modelsJsonPath) {
       if (!existingProvider.models) {
         existingProvider.models = [];
       }
-      
+
       const existingIds = new Set(existingProvider.models.map(m => m.id));
-      
+
       for (const model of models) {
         if (!existingIds.has(model.id)) {
           existingProvider.models.push(model);
@@ -190,26 +205,26 @@ async function main() {
   try {
     console.log('Fetching model developers data from:', SOURCE_URL);
     const data = await fetchJSON(SOURCE_URL);
-    
+
     console.log('Extracting allowed developer IDs from:', CONSTANTS_PATH);
     const allowedIds = extractDeveloperIds(CONSTANTS_PATH);
     console.log('Allowed developer IDs:', allowedIds);
-    
+
     console.log('Filtering providers...');
     const filtered = filterProviders(data, allowedIds);
-    
+
     const providerCount = Object.keys(filtered.providers).length;
     console.log(`Filtered to ${providerCount} providers`);
-    
+
     console.log('Merging with models.json...');
     mergeWithModelsJson(filtered, MODELS_JSON_PATH);
-    
+
     console.log('Sorting models by release date...');
     sortModelsByDate(filtered);
-    
+
     console.log('Writing to:', OUTPUT_PATH);
     fs.writeFileSync(OUTPUT_PATH, JSON.stringify(filtered, null, 2) + '\n');
-    
+
     console.log('Sync completed successfully!');
   } catch (error) {
     console.error('Error during sync:', error.message);
