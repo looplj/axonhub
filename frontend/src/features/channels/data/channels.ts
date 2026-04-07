@@ -578,6 +578,10 @@ const QUERY_CHANNELS_QUERY = `
               replaceDeveloperRoleWithSystem
             }
             passThroughUserAgent
+            rateLimit {
+              rpm
+              tpm
+            }
           }
           orderingWeight
           errorMessage

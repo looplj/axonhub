@@ -436,6 +436,11 @@ type ComplexityRoot struct {
 		Frequency func(childComplexity int) int
 	}
 
+	ChannelRateLimit struct {
+		RPM func(childComplexity int) int
+		TPM func(childComplexity int) int
+	}
+
 	ChannelRegexAssociation struct {
 		ChannelID func(childComplexity int) int
 		Pattern   func(childComplexity int) int
@@ -451,6 +456,7 @@ type ComplexityRoot struct {
 		ModelMappings            func(childComplexity int) int
 		PassThroughUserAgent     func(childComplexity int) int
 		Proxy                    func(childComplexity int) int
+		RateLimit                func(childComplexity int) int
 		TransformOptions         func(childComplexity int) int
 	}
 
@@ -3338,6 +3344,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelProbeSetting.Frequency(childComplexity), true
 
+	case "ChannelRateLimit.rpm":
+		if e.complexity.ChannelRateLimit.RPM == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.RPM(childComplexity), true
+	case "ChannelRateLimit.tpm":
+		if e.complexity.ChannelRateLimit.TPM == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.TPM(childComplexity), true
+
 	case "ChannelRegexAssociation.channelId":
 		if e.complexity.ChannelRegexAssociation.ChannelID == nil {
 			break
@@ -3405,6 +3424,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.Proxy(childComplexity), true
+	case "ChannelSettings.rateLimit":
+		if e.complexity.ChannelSettings.RateLimit == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.RateLimit(childComplexity), true
 	case "ChannelSettings.transformOptions":
 		if e.complexity.ChannelSettings.TransformOptions == nil {
 			break
@@ -9203,6 +9228,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelOverrideTemplateWhereInput,
 		ec.unmarshalInputChannelPoliciesInput,
 		ec.unmarshalInputChannelProbeWhereInput,
+		ec.unmarshalInputChannelRateLimitInput,
 		ec.unmarshalInputChannelRegexAssociationInput,
 		ec.unmarshalInputChannelSettingsInput,
 		ec.unmarshalInputChannelTagsModelAssociationInput,
@@ -15781,6 +15807,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_bodyOverrideOperations(ctx, field)
 			case "passThroughUserAgent":
 				return ec.fieldContext_ChannelSettings_passThroughUserAgent(ctx, field)
+			case "rateLimit":
+				return ec.fieldContext_ChannelSettings_rateLimit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -19240,6 +19268,64 @@ func (ec *executionContext) fieldContext_ChannelProbeSetting_frequency(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelRateLimit_rpm(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_rpm,
+		func(ctx context.Context) (any, error) {
+			return obj.RPM, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_rpm(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelRateLimit_tpm(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_tpm,
+		func(ctx context.Context) (any, error) {
+			return obj.TPM, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_tpm(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelRegexAssociation_channelId(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRegexAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19635,6 +19721,41 @@ func (ec *executionContext) fieldContext_ChannelSettings_passThroughUserAgent(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_rateLimit(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_rateLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.RateLimit, nil
+		},
+		nil,
+		ec.marshalOChannelRateLimit2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRateLimit,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_rateLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "rpm":
+				return ec.fieldContext_ChannelRateLimit_rpm(ctx, field)
+			case "tpm":
+				return ec.fieldContext_ChannelRateLimit_tpm(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelRateLimit", field.Name)
 		},
 	}
 	return fc, nil
@@ -54521,6 +54642,40 @@ func (ec *executionContext) unmarshalInputChannelProbeWhereInput(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Context, obj any) (objects.ChannelRateLimit, error) {
+	var it objects.ChannelRateLimit
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"rpm", "tpm"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "rpm":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rpm"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RPM = data
+		case "tpm":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tpm"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TPM = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelRegexAssociationInput(ctx context.Context, obj any) (objects.ChannelRegexAssociation, error) {
 	var it objects.ChannelRegexAssociation
 	asMap := map[string]any{}
@@ -54562,7 +54717,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "rateLimit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54639,6 +54794,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.PassThroughUserAgent = data
+		case "rateLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rateLimit"))
+			data, err := ec.unmarshalOChannelRateLimitInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRateLimit(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RateLimit = data
 		}
 	}
 
@@ -76655,6 +76817,44 @@ func (ec *executionContext) _ChannelProbeSetting(ctx context.Context, sel ast.Se
 	return out
 }
 
+var channelRateLimitImplementors = []string{"ChannelRateLimit"}
+
+func (ec *executionContext) _ChannelRateLimit(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelRateLimit) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelRateLimitImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelRateLimit")
+		case "rpm":
+			out.Values[i] = ec._ChannelRateLimit_rpm(ctx, field, obj)
+		case "tpm":
+			out.Values[i] = ec._ChannelRateLimit_tpm(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelRegexAssociationImplementors = []string{"ChannelRegexAssociation"}
 
 func (ec *executionContext) _ChannelRegexAssociation(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelRegexAssociation) graphql.Marshaler {
@@ -76798,6 +76998,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "passThroughUserAgent":
 			out.Values[i] = ec._ChannelSettings_passThroughUserAgent(ctx, field, obj)
+		case "rateLimit":
+			out.Values[i] = ec._ChannelSettings_rateLimit(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -96301,6 +96503,21 @@ func (ec *executionContext) unmarshalOChannelProbeWhereInput2ᚖgithubᚗcomᚋl
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputChannelProbeWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOChannelRateLimit2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRateLimit(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelRateLimit) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelRateLimit(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelRateLimitInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelRateLimit(ctx context.Context, v any) (*objects.ChannelRateLimit, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelRateLimitInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
