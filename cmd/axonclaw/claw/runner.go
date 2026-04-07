@@ -440,11 +440,33 @@ func (r *Runner) ProcessIsolated(ctx context.Context, text string, systemPrompts
 	}, text, r.toolSource)
 }
 
+func (r *Runner) ProcessForked(ctx context.Context, text string, model string) (*agent.Result, error) {
+	ctx = newIsolatedContext(ctx)
+
+	if model == "" {
+		model = r.Agent.Config().Model
+	}
+
+	forked := r.Agent.Fork(agent.ForkConfig{
+		Model: model,
+		ExcludeTools: map[string]struct{}{
+			subagent.ForkAgentToolName:  {},
+			subagent.SpawnAgentToolName: {},
+		},
+	},
+		agent.WithLogger(r.Logger.With("component", "fork_prompt")),
+		agent.WithBus(r.bus),
+	)
+
+	return forked.Process(ctx, agent.Content{Text: &text})
+}
+
 func newIsolatedContext(ctx context.Context) context.Context {
 	threadID := fmt.Sprintf("th-%s", uuid.New().String())
 	traceID := uuid.New().String()
 	ctx = axoncontext.WithThreadID(ctx, threadID)
 	ctx = axoncontext.WithTraceID(ctx, traceID)
+	ctx = axoncontext.WithSource(ctx, "isolated")
 
 	return ctx
 }

@@ -40,8 +40,8 @@ func DefaultHeartbeatAction() HeartbeatAction {
 ## Instructions
 
 - Read HEARTBEAT.md to check if anything needs attention.
-- If nothing needs attention, DO NOT CALL any notification function, JUST respond with exactly "HEARTBEAT_OK".
-- If something needs attention, output a concise list of the items that need handling.
+- If nothing needs attention, DO NOT CALL SendMessage tool, JUST respond with exactly "HEARTBEAT_OK".
+- If something needs attention, output a concise list of the items that need handling, then call SendMessage tool to notify the user.
 - Do not include "HEARTBEAT_OK" if you have anything to report.`,
 	}
 }

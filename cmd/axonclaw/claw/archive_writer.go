@@ -20,14 +20,21 @@ func AppendArchiveMessage(ctx context.Context, dir string, msg agent.Message) er
 		threadID = "unknown-thread"
 	}
 
+	source := resolveArchiveSource(ctx)
+
 	archiveDir := filepath.Join(dir, "archives")
 	if err := os.MkdirAll(archiveDir, 0o755); err != nil {
 		return fmt.Errorf("create archives directory: %w", err)
 	}
 
+	suffix := sanitizeArchiveThreadID(threadID)
+	if source != "" {
+		suffix += "_" + sanitizeArchiveThreadID(source)
+	}
+
 	path := filepath.Join(
 		archiveDir,
-		fmt.Sprintf("%s_%s.md", time.Now().Format("2006-01-02"), sanitizeArchiveThreadID(threadID)),
+		fmt.Sprintf("%s_%s.md", time.Now().Format("2006-01-02"), suffix),
 	)
 
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
@@ -49,6 +56,14 @@ func resolveArchiveThreadID(ctx context.Context) string {
 	}
 
 	return strings.TrimSpace(axoncontext.ThreadID(ctx))
+}
+
+func resolveArchiveSource(ctx context.Context) string {
+	if meta, ok := bus.MetadataFromContext(ctx); ok && strings.TrimSpace(meta.Source) != "" {
+		return strings.TrimSpace(meta.Source)
+	}
+
+	return strings.TrimSpace(axoncontext.Source(ctx))
 }
 
 func sanitizeArchiveThreadID(threadID string) string {

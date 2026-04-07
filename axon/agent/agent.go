@@ -14,7 +14,6 @@ import (
 
 	"github.com/looplj/axonhub/axon/bus"
 	axoncontext "github.com/looplj/axonhub/axon/context"
-	clawcontext "github.com/looplj/axonhub/axon/context"
 )
 
 const (
@@ -228,10 +227,17 @@ func (a *Agent) emit(ctx context.Context, event AgentEvent) {
 		event.RunID = a.runIDFromContext(ctx)
 	}
 
+	meta := bus.Metadata{
+		TraceID:  axoncontext.TraceID(ctx),
+		ThreadID: axoncontext.ThreadID(ctx),
+		Source:   axoncontext.Source(ctx),
+	}
+
 	if err := a.bus.Publish(ctx, bus.Event{
-		Topic:   TopicAgentEvent,
-		Type:    string(event.Type),
-		Payload: event,
+		Topic:    TopicAgentEvent,
+		Type:     string(event.Type),
+		Metadata: meta,
+		Payload:  event,
 	}); err != nil {
 		a.logger.Error("agent: failed to publish event", "error", err)
 	}
@@ -492,6 +498,73 @@ func (a *Agent) PublishRequest(ctx context.Context, content Content) error {
 	})
 }
 
+// ForkConfig configures a forked agent.
+type ForkConfig struct {
+	// Model overrides the model for the forked agent. If empty, the parent's model is used.
+	Model string
+	// SystemPrompts overrides the system prompts. If nil, the parent's prompts are used.
+	SystemPrompts []string
+	// MaxIterations overrides the max iterations. If 0, the parent's value is used.
+	MaxIterations int
+	// ExcludeTools is a set of tool names to exclude from the fork.
+	// Use this to prevent nesting (e.g. exclude "ForkAgent", "SpawnAgent").
+	ExcludeTools map[string]struct{}
+}
+
+// Fork creates a new agent that inherits the current conversation history,
+// registered tools, and middlewares, but runs in an isolated context.
+// The forked agent gets a snapshot of all messages at the time of the fork;
+// subsequent messages in either agent do not affect the other.
+func (a *Agent) Fork(cfg ForkConfig, opts ...Option) *Agent {
+	parentCfg := a.Config()
+
+	model := cfg.Model
+	if model == "" {
+		model = parentCfg.Model
+	}
+
+	systemPrompts := cfg.SystemPrompts
+	if systemPrompts == nil {
+		systemPrompts = parentCfg.SystemPrompts
+	}
+
+	maxIter := cfg.MaxIterations
+	if maxIter <= 0 {
+		maxIter = parentCfg.MaxIterations
+	}
+
+	messages := a.Messages()
+
+	forkCfg := Config{
+		Model:         model,
+		MaxIterations: maxIter,
+		SystemPrompts: systemPrompts,
+	}
+
+	allOpts := []Option{
+		WithMessages(messages),
+	}
+
+	if mws := a.Middlewares(); len(mws) > 0 {
+		allOpts = append(allOpts, WithMiddlewares(mws...))
+	}
+
+	allOpts = append(allOpts, opts...)
+
+	forked := New(forkCfg, a.provider, allOpts...)
+
+	for _, tool := range a.RegisteredTools() {
+		name := tool.Definition().Name
+		if _, excluded := cfg.ExcludeTools[name]; excluded {
+			continue
+		}
+
+		forked.RegisterTool(tool)
+	}
+
+	return forked
+}
+
 // buildMessages constructs the message list for an LLM call, prepending
 // the system prompts if configured.
 func (a *Agent) buildMessages(ctx context.Context, cfg Config) []Message {
@@ -750,7 +823,7 @@ func (a *Agent) executeTool(ctx context.Context, tc ToolCall) (result ToolResult
 	)
 
 	req := ToolRequest{
-		ThreadID:   clawcontext.ThreadID(ctx),
+		ThreadID:   axoncontext.ThreadID(ctx),
 		Workspace:  axoncontext.Workspace(ctx),
 		ToolCallID: tc.ID,
 		ToolName:   tc.Name,

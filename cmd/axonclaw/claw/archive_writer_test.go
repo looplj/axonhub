@@ -15,16 +15,16 @@ import (
 
 func TestAppendArchiveMessage_AppendsToDailyThreadFile(t *testing.T) {
 	workspace := t.TempDir()
-	archiveDir := filepath.Join(workspace, "messages", "archives")
-	require.NoError(t, os.MkdirAll(archiveDir, 0o755))
+	messagesDir := filepath.Join(workspace, "messages")
+	archiveDir := filepath.Join(messagesDir, "archives")
 	t.Setenv("HOME", t.TempDir())
 	ctx := bus.ContextWithMetadata(context.Background(), bus.Metadata{ThreadID: "th/test:1"})
 
-	require.NoError(t, AppendArchiveMessage(ctx, archiveDir, agent.Message{
+	require.NoError(t, AppendArchiveMessage(ctx, messagesDir, agent.Message{
 		Role:    agent.RoleUser,
 		Content: &agent.Content{Text: new("hello")},
 	}))
-	require.NoError(t, AppendArchiveMessage(ctx, archiveDir, agent.Message{
+	require.NoError(t, AppendArchiveMessage(ctx, messagesDir, agent.Message{
 		Role:    agent.RoleAssistant,
 		Content: &agent.Content{Text: new("world")},
 	}))
@@ -41,6 +41,54 @@ func TestAppendArchiveMessage_AppendsToDailyThreadFile(t *testing.T) {
 	require.Contains(t, content, "user: hello")
 	require.Contains(t, content, "assistant: world")
 	require.Equal(t, 2, strings.Count(content, "\n"))
+}
+
+func TestAppendArchiveMessage_SeparatesFilesBySource(t *testing.T) {
+	workspace := t.TempDir()
+	messagesDir := filepath.Join(workspace, "messages")
+	archiveDir := filepath.Join(messagesDir, "archives")
+
+	t.Setenv("HOME", t.TempDir())
+
+	// Main agent message (no source).
+	ctxMain := bus.ContextWithMetadata(context.Background(), bus.Metadata{ThreadID: "th-100"})
+	require.NoError(t, AppendArchiveMessage(ctxMain, messagesDir, agent.Message{
+		Role:    agent.RoleUser,
+		Content: &agent.Content{Text: new("main prompt")},
+	}))
+
+	// Subagent message with source.
+	ctxSub := bus.ContextWithMetadata(context.Background(), bus.Metadata{
+		ThreadID: "th-100",
+		Source:   "search-docs",
+	})
+	require.NoError(t, AppendArchiveMessage(ctxSub, messagesDir, agent.Message{
+		Role:    agent.RoleAssistant,
+		Content: &agent.Content{Text: new("subagent result")},
+	}))
+
+	entries, err := os.ReadDir(archiveDir)
+	require.NoError(t, err)
+	require.Len(t, entries, 2, "main and subagent should write to separate files")
+
+	// Verify file names.
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+
+	require.Contains(t, names[0], "th-100")
+
+	// One file should contain the source suffix.
+	foundSource := false
+
+	for _, n := range names {
+		if strings.Contains(n, "search-docs") {
+			foundSource = true
+		}
+	}
+
+	require.True(t, foundSource, "expected a file with source suffix 'search-docs', got: %v", names)
 }
 
 func TestRenderMessage_ToolUse(t *testing.T) {

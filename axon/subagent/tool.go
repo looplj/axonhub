@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/axon/agent"
 	"github.com/looplj/axonhub/axon/bus"
+	axoncontext "github.com/looplj/axonhub/axon/context"
 	"github.com/looplj/axonhub/axon/tools"
 )
 
@@ -57,6 +58,7 @@ func NewTool(opts ToolOptions) *Tool {
 
 type toolInput struct {
 	AgentType string `json:"agent_type"`
+	TaskName  string `json:"task_name"`
 	Task      string `json:"task"`
 }
 
@@ -68,12 +70,16 @@ var toolParameters = jsonschema.Schema{
 			Type:        "string",
 			Description: "The type of agent to spawn. Each type has its own system prompt and tool configuration defined by markdown files in `.agent/subagents/`.",
 		},
+		"task_name": {
+			Type:        "string",
+			Description: "A short, descriptive name for this task (e.g. 'search-auth-module', 'write-unit-tests'). Used to label the subagent's work and separate its message archive from the main agent.",
+		},
 		"task": {
 			Type:        "string",
 			Description: "The task description / prompt for the spawned agent. Be specific about what you need it to do and what output you expect.",
 		},
 	},
-	Required: []string{"agent_type", "task"},
+	Required: []string{"agent_type", "task_name", "task"},
 }
 
 func (t *Tool) Definition() agent.ToolDefinition {
@@ -108,8 +114,13 @@ func (t *Tool) Execute(ctx context.Context, input toolInput) agent.ToolResult {
 
 	allowedTools, deniedTools := BuildToolFiltersFromDefinition(def.Tools)
 
+	// Set the source so downstream consumers (e.g. archive writer) can
+	// distinguish this subagent's events from the main agent's.
+	ctx = axoncontext.WithSource(ctx, input.TaskName)
+
 	t.logger.Info("spawn agent starting",
 		"agent_type", input.AgentType,
+		"task_name", input.TaskName,
 		"model", model,
 		"task_len", len(input.Task),
 		"allowed_tools", allowedTools,
@@ -132,6 +143,7 @@ func (t *Tool) Execute(ctx context.Context, input toolInput) agent.ToolResult {
 
 	t.logger.Info("spawn agent completed",
 		"agent_type", input.AgentType,
+		"task_name", input.TaskName,
 		"model", model,
 		"output_len", len(result.Output),
 		"input_tokens", result.Usage.InputTokens,

@@ -86,9 +86,13 @@ func (t *SendMessageTool) Execute(ctx context.Context, input sendMessageInput) a
 }
 
 func (t *SendMessageTool) sendToUser(ctx context.Context, message string, replyToMessageID *string) agent.ToolResult {
+	if message == HeartbeatOKToken {
+		return tools.TextResult("Heartbeat OK")
+	}
 	if replyToMessageID == nil || *replyToMessageID == "" {
 		replyToMessageID = nil
 	}
+
 	_, err := api.ReplyMessage(ctx, t.client, &api.ReplyMessageInput{
 		Text:             message,
 		ReplyToMessageID: replyToMessageID,

@@ -58,7 +58,7 @@ func registerTools(
 	}
 
 	if len(enabledBuiltin) == 0 {
-		for _, name := range []string{"Read", "Write", "Edit", "Bash", "Grep", "Glob", "Skill", "SpawnAgent"} {
+		for _, name := range []string{"Read", "Write", "Edit", "Bash", "Grep", "Glob", "Skill", "SpawnAgent", "ForkAgent"} {
 			enabledBuiltin[name] = true
 		}
 	}
@@ -133,7 +133,17 @@ func registerTools(
 		})))
 	}
 
+	if enabledBuiltin["ForkAgent"] {
+		a.RegisterTool(tools.NewAgentTool(subagent.NewForkTool(subagent.ForkToolOptions{
+			ParentAgent: a,
+			Model:       boot.Model,
+			Bus:         eventBus,
+			Logger:      logger,
+		})))
+	}
+
 	known[subagent.SpawnAgentToolName] = struct{}{}
+	known[subagent.ForkAgentToolName] = struct{}{}
 
 	mcpMgr.RegisterTools(a, workspace, known)
 }

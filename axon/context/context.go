@@ -8,9 +8,10 @@ import (
 type contextKey string
 
 const (
-	threadIDKey contextKey = "thread_id"
-	traceIDKey  contextKey = "trace_id"
+	threadIDKey  contextKey = "thread_id"
+	traceIDKey   contextKey = "trace_id"
 	workspaceKey contextKey = "workspace"
+	sourceKey    contextKey = "source"
 )
 
 // WithThreadID returns a new context with the given thread ID.
@@ -47,5 +48,17 @@ func WithWorkspace(ctx context.Context, workspace string) context.Context {
 // Workspace returns the workspace path from the context, or empty string if not set.
 func Workspace(ctx context.Context) string {
 	v, _ := ctx.Value(workspaceKey).(string)
+	return v
+}
+
+// WithSource returns a new context with the given source identifier.
+// Source identifies the agent or component producing events (e.g. a subagent task name).
+func WithSource(ctx context.Context, source string) context.Context {
+	return context.WithValue(ctx, sourceKey, source)
+}
+
+// Source returns the source identifier from the context, or empty string if not set.
+func Source(ctx context.Context) string {
+	v, _ := ctx.Value(sourceKey).(string)
 	return v
 }

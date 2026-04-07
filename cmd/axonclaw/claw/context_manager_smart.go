@@ -2,7 +2,6 @@ package claw
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -21,7 +20,7 @@ type ContextManagerConfig struct {
 	Enabled         bool
 	TokenLimit      int
 	SummaryMaxChars int
-	Summarizer      *SmartSummarizer
+	Summarizer      Summarizer
 	Logger          *slog.Logger
 }
 
@@ -51,9 +50,6 @@ func NewSmartContextManager(config ContextManagerConfig, store ContextManagerSto
 
 func NewSmartContextManagerWithNext(next agent.ContextManager, config ContextManagerConfig, store ContextManagerStore) (*SmartContextManager, error) {
 	cfg := mergeDefaultContextManagerConfig(config)
-	if cfg.Summarizer == nil {
-		return nil, fmt.Errorf("context manager summarizer is required")
-	}
 
 	if next == nil {
 		next = agent.NewSimpleContextManager(nil)
@@ -89,6 +85,13 @@ func NewSmartContextManagerWithNext(next agent.ContextManager, config ContextMan
 	}
 
 	return cm, nil
+}
+
+func (m *SmartContextManager) SetSummarizer(summarizer Summarizer) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.config.Summarizer = summarizer
 }
 
 func (m *SmartContextManager) AddMessages(ctx context.Context, msgs ...agent.Message) {

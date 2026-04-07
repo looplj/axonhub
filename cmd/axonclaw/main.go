@@ -221,7 +221,6 @@ func runAgent(cfg claw.Config, wd string, debug bool) error {
 	}
 
 	subagentMgr := subagent.NewManagerFromPath(filepath.Join(wd, "subagents"))
-	subagentMgr.RegisterBundled(claw.SummarizerDefinition())
 
 	if err := subagentMgr.Load(); err != nil {
 		logger.Warn("failed to load subagent definitions", "error", err)
@@ -251,16 +250,6 @@ func runAgent(cfg claw.Config, wd string, debug bool) error {
 	}))
 
 	skillMgr := claw.NewSkillManager(filepath.Join(wd, conf.DefaultDir, "skills"), boot, logger)
-
-	contextCfg.Summarizer = claw.NewSmartSummarizer(claw.SmartSummarizerOptions{
-		Manager:   subagentMgr,
-		Provider:  provider,
-		Model:     boot.Model,
-		SkillMgr:  skillMgr,
-		Workspace: wd,
-		Bus:       eventBus,
-		Logger:    logger,
-	})
 
 	contextStore := claw.NewContextManagerFileStore(filepath.Join(runtimeDir, "messages"))
 
@@ -314,6 +303,14 @@ func runAgent(cfg claw.Config, wd string, debug bool) error {
 		SubagentMgr:    subagentMgr,
 		SkillMgr:       skillMgr,
 	})
+
+	cm.SetSummarizer(claw.NewForkedCompactSummarizer(claw.ForkedCompactSummarizerOptions{
+		Agent:    r.Agent,
+		Provider: provider,
+		Model:    boot.Model,
+		Logger:   logger,
+		Bus:      eventBus,
+	}))
 
 	cm.OnCompaction(func() {
 		r.ReloadSystemPrompts()
