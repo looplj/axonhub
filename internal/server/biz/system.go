@@ -194,6 +194,10 @@ const (
 
 	// LoadBalancerStrategyCircuitBreaker is a dynamic load balancer strategy that monitors the health of channels and fails over to a backup channel when the primary channel is unhealthy.
 	LoadBalancerStrategyCircuitBreaker = "circuit-breaker"
+
+	// LoadBalancerStrategyPerformance is a load balancer strategy that routes requests based on channel performance metrics.
+	// It prioritizes channels with better latency (TTFT) and throughput (tokens per second).
+	LoadBalancerStrategyPerformance = "performance"
 )
 
 // RetryPolicy represents the retry policy configuration.

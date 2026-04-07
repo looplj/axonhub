@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline/stream"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"go.uber.org/zap"
 )
 
 func NewChatCompletionOrchestrator(
@@ -45,7 +46,7 @@ func NewChatCompletionOrchestrator(
 	// Initialize performance-aware strategy with validated weights
 	performanceStrategy, err := NewPerformanceAwareStrategy(channelService, channelProbeService)
 	if err != nil {
-		log.Error(context.Background(), "failed to create performance-aware strategy", "error", err)
+		log.Error(context.Background(), "failed to create performance-aware strategy", zap.Error(err))
 		// Fall back to a basic strategy if validation fails
 		performanceStrategy = &PerformanceAwareStrategy{
 			channelService: channelService,
@@ -67,6 +68,10 @@ func NewChatCompletionOrchestrator(
 
 	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
 		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy)
+
+	// Performance load balancer uses only the performance-aware strategy
+	performanceLoadBalancer := NewLoadBalancer(systemService, channelService,
+		performanceStrategy)
 
 	return &ChatCompletionOrchestrator{
 		Inbound:         inbound,
@@ -90,6 +95,7 @@ func NewChatCompletionOrchestrator(
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
 		failoverLoadBalancer:       failoverLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
+		performanceLoadBalancer:    performanceLoadBalancer,
 		modelCircuitBreaker:        modelCircuitBreaker,
 		proxy:                      nil,
 	}
@@ -184,6 +190,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		loadBalancer = processor.failoverLoadBalancer
 	case biz.LoadBalancerStrategyCircuitBreaker:
 		loadBalancer = processor.circuitBreakerLoadBalancer
+	case biz.LoadBalancerStrategyPerformance:
+		loadBalancer = processor.performanceLoadBalancer
 	default:
 		// Default to adaptive load balancer
 	}

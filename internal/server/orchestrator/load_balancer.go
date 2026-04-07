@@ -340,10 +340,15 @@ func (lb *LoadBalancer) logDecision(ctx context.Context, candidates []*ChannelMo
 		// Create a simplified log entry with strategy breakdown
 		strategySummary := make(map[string]any)
 		for _, s := range info.StrategyScores {
-			strategySummary[s.StrategyName] = map[string]any{
+			strategyData := map[string]any{
 				"score":    s.Score,
 				"duration": s.Duration,
 			}
+			// Include strategy-specific details if available
+			if s.Details != nil && len(s.Details) > 0 {
+				strategyData["details"] = s.Details
+			}
+			strategySummary[s.StrategyName] = strategyData
 		}
 
 		log.Info(ctx, "Channel load balancing details",

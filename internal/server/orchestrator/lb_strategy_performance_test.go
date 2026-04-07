@@ -431,7 +431,7 @@ func TestColdStartDetection(t *testing.T) {
 			wantColdStart: false,
 		},
 		{
-			name: "recently selected within cold start duration",
+			name: "recently selected within cold start duration (not idle, warming up)",
 			metrics: func() *biz.AggregatedMetrics {
 				m := &biz.AggregatedMetrics{}
 				m.RequestCount = 15
@@ -439,10 +439,10 @@ func TestColdStartDetection(t *testing.T) {
 				m.LastSelectedAt = &t
 				return m
 			}(),
-			wantColdStart: true,
+			wantColdStart: false,
 		},
 		{
-			name: "selected just outside cold start duration",
+			name: "selected just outside cold start duration (idle, needs warm up)",
 			metrics: func() *biz.AggregatedMetrics {
 				m := &biz.AggregatedMetrics{}
 				m.RequestCount = 15
@@ -450,7 +450,7 @@ func TestColdStartDetection(t *testing.T) {
 				m.LastSelectedAt = &t
 				return m
 			}(),
-			wantColdStart: false,
+			wantColdStart: true,
 		},
 		{
 			name: "nil LastSelectedAt with sufficient requests - not cold start",
@@ -542,7 +542,7 @@ func TestColdStartEnds(t *testing.T) {
 			wantColdStart: false,
 		},
 		{
-			name: "selected 6 minutes ago exits cold start",
+			name: "selected 6 minutes ago (idle, needs warm up)",
 			metrics: func() *biz.AggregatedMetrics {
 				m := &biz.AggregatedMetrics{}
 				m.RequestCount = 15
@@ -550,7 +550,7 @@ func TestColdStartEnds(t *testing.T) {
 				m.LastSelectedAt = &t
 				return m
 			}(),
-			wantColdStart: false,
+			wantColdStart: true,
 		},
 	}
 

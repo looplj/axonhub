@@ -105,6 +105,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		adaptiveLoadBalancer:       processor.loadBalancer,
 		failoverLoadBalancer:       processor.loadBalancer,
 		circuitBreakerLoadBalancer: processor.loadBalancer,
+		performanceLoadBalancer:    processor.loadBalancer,
 		connectionTracker:          processor.connectionTracking,
 		modelCircuitBreaker:        processor.modelCircuitBreaker,
 	}

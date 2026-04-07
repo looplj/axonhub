@@ -161,15 +161,17 @@ func (s *PerformanceAwareStrategy) Score(ctx context.Context, channel *biz.Chann
 // isColdStart determines if a channel is in cold start state.
 // A channel is in cold start if:
 // 1. It has fewer than ColdStartMinRequests (10) requests, OR
-// 2. LastSelectedAt is within ColdStartDuration (5 minutes) from now
+// 2. LastSelectedAt is MORE than ColdStartDuration (5 minutes) ago (idle channel warming up)
 func (s *PerformanceAwareStrategy) isColdStart(metrics *biz.AggregatedMetrics) bool {
 	if metrics.RequestCount < ColdStartMinRequests {
 		return true
 	}
 
+	// If the channel hasn't been used for more than ColdStartDuration,
+	// treat it as cold start (warming up after being idle)
 	if metrics.LastSelectedAt != nil {
 		sinceLastSelected := time.Since(*metrics.LastSelectedAt)
-		if sinceLastSelected < ColdStartDuration {
+		if sinceLastSelected > ColdStartDuration {
 			return true
 		}
 	}
