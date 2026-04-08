@@ -108,10 +108,8 @@ func (svc *ChannelService) loadChannelPerformances(ctx context.Context, windowDu
 // cleanupIdleModelMetrics removes model metrics that haven't been accessed recently.
 // This prevents memory leaks from accumulating unique model IDs over time.
 // Should be called periodically (e.g., after loading historical data).
+// MUST be called with channelPerfMetricsLock already held.
 func (svc *ChannelService) cleanupIdleModelMetrics() {
-	svc.channelPerfMetricsLock.Lock()
-	defer svc.channelPerfMetricsLock.Unlock()
-
 	if svc.channelPerfMetrics == nil {
 		return
 	}
