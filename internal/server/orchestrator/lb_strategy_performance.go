@@ -239,9 +239,9 @@ func (s *PerformanceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *
 	details["realtime_weight"] = performance.RealtimeWeight
 	details["ttft_score"] = ttftScore
 	details["tps_score"] = tpsScore
-	details["ttft_score_weight"] = 0.5
-	details["tps_score_weight"] = 0.5
-	details["combined_score_unclamped"] = 0.5*ttftScore + 0.5*tpsScore
+	details["ttft_score_weight"] = 0.35
+	details["tps_score_weight"] = 0.65
+	details["combined_score_unclamped"] = 0.35*ttftScore + 0.65*tpsScore
 
 	return combinedScore, StrategyScore{
 		StrategyName: s.Name(),
@@ -309,7 +309,8 @@ func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPe
 
 	ttftScore := s.calculateTTFTScore(performance.AvgTTFTMs)
 	tpsScore := s.calculateTPSScore(performance.AvgTokensPerSecond)
-	combinedScore := 0.5*ttftScore + 0.5*tpsScore
+	// Weight TPS higher than TTFT: 65% TPS, 35% TTFT
+	combinedScore := 0.35*ttftScore + 0.65*tpsScore
 
 	if combinedScore < 0 {
 		combinedScore = 0
@@ -329,19 +330,15 @@ func (s *PerformanceAwareStrategy) getChannelMetrics(ctx context.Context, channe
 		return nil, nil
 	}
 
-	// First try model-specific metrics
+	// Only use model-specific metrics for scoring
+	// If no model-specific data exists, return nil to trigger cold start
 	metrics, err := s.channelService.GetChannelMetrics(ctx, channelID, model)
 	if err == nil && metrics != nil && metrics.RequestCount > 0 {
 		return metrics, nil
 	}
 
-	// Fall back to channel-wide metrics (all models)
-	metrics, err = s.channelService.GetChannelMetrics(ctx, channelID, "")
-	if err != nil || metrics == nil || metrics.RequestCount == 0 {
-		// Fall back to cold start
-		return nil, errors.New("no metrics available")
-	}
-	return metrics, nil
+	// No model-specific metrics available - triggers cold start boost
+	return nil, errors.New("no model-specific metrics available")
 }
 
 func (s *PerformanceAwareStrategy) getChannelProbes(ctx context.Context, channelID int) ([]*biz.ChannelProbePoint, error) {
@@ -431,4 +428,16 @@ func (s *PerformanceAwareStrategy) getChannelPerformance(ctx context.Context, ch
 	}
 
 	return result
+}
+
+// NeedsModelData checks if a channel has no model-specific performance data.
+// This is used by the exploration mechanism to identify channels that need to gather metrics.
+// Returns true if the channel has no model-specific metrics for the given model.
+func (s *PerformanceAwareStrategy) NeedsModelData(ctx context.Context, channelID int, model string) bool {
+	metrics, err := s.getChannelMetrics(ctx, channelID, model)
+	if err != nil || metrics == nil {
+		return true // No data available
+	}
+	// Has model-specific data if request count > 0
+	return metrics.RequestCount == 0
 }

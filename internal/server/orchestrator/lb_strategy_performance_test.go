@@ -111,6 +111,7 @@ func TestCombinedScoring(t *testing.T) {
 	strategy := &PerformanceAwareStrategy{maxScore: 150.0}
 
 	// Test that scoring produces valid results for various inputs
+	// Using new weights: 35% TTFT, 65% TPS
 	tests := []struct {
 		name     string
 		ttftMs   float64
@@ -119,20 +120,20 @@ func TestCombinedScoring(t *testing.T) {
 		maxScore float64 // Expected maximum score
 	}{
 		// TTFT under threshold + moderate TPS
-		{name: "low_ttft_moderate_tps", ttftMs: 500, tps: 50, minScore: 100, maxScore: 150},
+		{name: "low_ttft_moderate_tps", ttftMs: 500, tps: 50, minScore: 80, maxScore: 150},
 		// TTFT at threshold + high TPS
 		{name: "at_ttft_threshold_high_tps", ttftMs: 2000, tps: 100, minScore: 100, maxScore: 150},
 		// TTFT over threshold + high TPS
-		{name: "over_ttft_threshold_high_tps", ttftMs: 2500, tps: 150, minScore: 90, maxScore: 140},
+		{name: "over_ttft_threshold_high_tps", ttftMs: 2500, tps: 150, minScore: 100, maxScore: 150},
 		// TTFT well over threshold
-		{name: "high_ttft_high_tps", ttftMs: 3000, tps: 100, minScore: 80, maxScore: 130},
+		{name: "high_ttft_high_tps", ttftMs: 3000, tps: 100, minScore: 80, maxScore: 140},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ttftScore := strategy.calculateTTFTScore(tt.ttftMs)
 			tpsScore := strategy.calculateTPSScore(tt.tps)
-			combined := 0.5*ttftScore + 0.5*tpsScore
+			combined := 0.35*ttftScore + 0.65*tpsScore
 
 			if combined < tt.minScore || combined > tt.maxScore {
 				t.Fatalf("combined score %v not in expected range [%v, %v] (ttft=%v, tps=%v)",

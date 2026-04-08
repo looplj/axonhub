@@ -446,6 +446,12 @@ type LoadBalancedSelector struct {
 	wrapped      CandidateSelector
 	loadBalancer *LoadBalancer
 	policy       RetryPolicyProvider
+
+	// explorationState tracks round-robin rotation for exploration candidates.
+	explorationState struct {
+		mu     sync.Mutex
+		counts map[string]int // Per-model exploration counts
+	}
 }
 
 // WithLoadBalancedSelector creates a selector that applies load balancing to sort candidates.
@@ -455,6 +461,12 @@ func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalan
 		wrapped:      wrapped,
 		loadBalancer: loadBalancer,
 		policy:       policy,
+		explorationState: struct {
+			mu     sync.Mutex
+			counts map[string]int
+		}{
+			counts: make(map[string]int),
+		},
 	}
 }
 
@@ -513,6 +525,41 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		}
 	}
 
+	// Exploration mechanism: reserve the last retry slot for a cold channel
+	// that has no model-specific data, giving it a chance to gather metrics.
+	if len(result) >= requiredCount && requiredCount >= 2 {
+		// Find candidates that were not selected (lower priority or overflow)
+		selectedSet := make(map[int]bool)
+		for _, c := range result {
+			selectedSet[c.Channel.ID] = true
+		}
+
+		// Find unselected candidates with no model-specific data
+		var explorationCandidates []*ChannelModelsCandidate
+		for _, c := range candidates {
+			if selectedSet[c.Channel.ID] {
+				continue
+			}
+			// Check if this candidate has no model-specific data
+			if s.needsExploration(ctx, c, req.Model) {
+				explorationCandidates = append(explorationCandidates, c)
+			}
+		}
+
+		// If we have exploration candidates, replace the last slot with one
+		if len(explorationCandidates) > 0 {
+			explorationCandidate := s.selectExplorationCandidate(req.Model, explorationCandidates)
+			// Replace the last candidate with the exploration candidate
+			result[len(result)-1] = explorationCandidate
+
+			log.Info(ctx, "Exploration slot assigned to cold channel",
+				log.String("model", req.Model),
+				log.Int("channel_id", explorationCandidate.Channel.ID),
+				log.String("channel_name", explorationCandidate.Channel.Name),
+				log.Int("priority", explorationCandidate.Priority))
+		}
+	}
+
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "Load balanced candidates for model",
 			log.String("model", req.Model),
@@ -522,6 +569,42 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	return result, nil
+}
+
+// needsExploration checks if a candidate has no model-specific performance data.
+// This indicates the channel has never been used for this model.
+func (s *LoadBalancedSelector) needsExploration(ctx context.Context, candidate *ChannelModelsCandidate, model string) bool {
+	// Use the load balancer's strategy to check for model-specific data
+	if s.loadBalancer == nil || len(s.loadBalancer.strategies) == 0 {
+		return false
+	}
+
+	// Check if the performance-aware strategy has metrics for this channel/model
+	for _, strategy := range s.loadBalancer.strategies {
+		if perf, ok := strategy.(*PerformanceAwareStrategy); ok {
+			return perf.NeedsModelData(ctx, candidate.Channel.ID, model)
+		}
+	}
+	return false
+}
+
+// selectExplorationCandidate picks an exploration candidate using round-robin rotation.
+// This ensures fair distribution of exploration traffic across cold channels.
+func (s *LoadBalancedSelector) selectExplorationCandidate(model string, candidates []*ChannelModelsCandidate) *ChannelModelsCandidate {
+	s.explorationState.mu.Lock()
+	defer s.explorationState.mu.Unlock()
+
+	// Get or initialize the count for this model
+	count := s.explorationState.counts[model]
+
+	// Use round-robin rotation based on the count
+	index := count % len(candidates)
+	selected := candidates[index]
+
+	// Increment the rotation counter
+	s.explorationState.counts[model] = count + 1
+
+	return selected
 }
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.
