@@ -157,9 +157,10 @@ This layer records:
 - The actual model sent upstream
 - Execution status
 - First-token latency and total latency
+- Completion token throughput for completed responses
 - Streaming completion state
 
-At the same time, connection counts are tracked and later fed back into connection-aware load balancing.
+At the same time, connection counts are tracked and fed back into rate-limit-aware concurrency protection.
 
 ### 10. Retry, Failover, and Model Circuit Breaking
 

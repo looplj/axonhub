@@ -97,22 +97,18 @@ NewErrorAwareStrategy(channelService)
 - Requires metrics storage similar to ErrorAwareStrategy.
 - Heavily skewed manual weights can still override fairness, so administrators must tune carefully.
 
-### 4. ConnectionAwareStrategy (Priority: 0-50 points)
+### 4. Connection Tracking and Concurrency Fallback
 
-**Purpose**: Load balances based on current connection utilization.
+**Purpose**: Track in-flight requests and provide concurrency saturation signals for `RateLimitAwareStrategy`.
 
 **Algorithm**:
-1. Reads `active` and `max` connection counts from the injected `ConnectionTracker`.
-2. Computes utilization (`active / max`).
-3. Scores as `maxScore * (1 - utilization)` with graceful fallbacks when no tracker (neutral 25 points) or no max limit (full score).
+1. The orchestrator increments and decrements active connections around each upstream request.
+2. `RateLimitAwareStrategy` first respects explicit `MaxConcurrent` configuration.
+3. If `MaxConcurrent` is not set, it falls back to the default `ConnectionTracker` capacity to penalize or exhaust saturated channels.
 
-**Pros**:
-- Protects downstream APIs from saturation by reducing priority when a channel is at capacity.
-- Works even when other strategies still favor a channel, providing a real-time safety valve.
-
-**Cons**:
-- Requires accurate, low-latency connection tracking; otherwise decisions lag reality.
-- Channels without configured limits always get max score, so administrators must set meaningful capacities.
+**Notes**:
+- Connection tracking remains part of the runtime path even though `ConnectionAwareStrategy` is no longer in the default strategy chain.
+- This makes concurrency protection part of rate-limit scoring instead of a standalone production strategy.
 
 ## Default Configuration
 
@@ -123,23 +119,24 @@ loadBalancer := NewLoadBalancer(
     NewTraceAwareStrategy(requestService),                         // Priority 1: Trace consistency
     NewErrorAwareStrategy(channelService),                         // Priority 2: Health
     NewWeightRoundRobinStrategy(channelService),                   // Priority 3: Fairness + admin weight
-    NewConnectionAwareStrategy(channelService, connectionTracker), // Priority 4: Connection utilization
+    NewLatencyAwareStrategy(channelService),                       // Priority 4: Streaming FTTL/TPS or non-streaming latency
+    NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker), // Priority 5: Rate limits + concurrency fallback
 )
 ```
 
-**Total Score Range**: ~10-1450 points per channel (Trace 0-1000 + Error 0-200 + WeightRoundRobin 10-200 + Connection 0-50)
+**Total Score Range**: ~-9790-1530 points per channel (Trace 0-1000 + Error 0-200 + WeightRoundRobin 10-150 + Latency 0-80 + RateLimit -10000-100)
 
 ### Default Strategy Mix Analysis
 
 **Strengths**:
 1. **Stability first** – TraceAware+ErrorAware ensures the channel that already worked stays on top *unless* it begins to fail.
 2. **Fair utilization** – WeightRoundRobin keeps new or idle channels active without ignoring business priorities.
-3. **Real-time protection** – ConnectionAware reacts to live capacity, catching sudden spikes faster than historical metrics.
+3. **Real-time protection** – LatencyAware and RateLimitAware react to live first-token latency, throughput, end-to-end latency, concurrency, and cooldown state before a channel is fully overloaded.
 
 **Trade-offs**:
-1. Requires three different data providers (trace, metrics, connections); missing data downgrades overall accuracy.
+1. Requires multiple runtime signals (trace, metrics, request history, connections); missing data downgrades overall accuracy.
 2. Score magnitudes are very top-heavy (TraceAware dominates). When no trace exists, the remaining strategies must differentiate channels with far smaller numbers, so tuning their ranges matters.
-3. ConnectionAware currently depends on the optional tracker; if it is `nil`, the strategy collapses to neutral scores and cannot prevent saturation.
+3. Concurrency protection depends on accurate connection tracking and sensible `MaxConcurrent` or tracker capacities.
 
 ## Scoring Example
 
@@ -367,7 +364,7 @@ tail -f axonhub.log | grep "WeightStrategy" | jq '{channel: .channel_name, score
 
 ## Future Enhancements
 
-1. **Connection Tracking**: Implement ConnectionTracker for ConnectionAwareStrategy
+1. **Connection Tracking**: Expose richer per-channel concurrency telemetry for observability and tuning
 2. **A/B Testing**: Support for experimental channel routing
 3. **Metrics Integration**: Prometheus metrics for load balancer decisions
 4. **Decision Auditing**: Persistent storage of load balancing decisions for analysis

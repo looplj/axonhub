@@ -48,13 +48,13 @@ func newTestLoadBalancedSelector(
 	client *ent.Client,
 	systemService *biz.SystemService,
 	requestService *biz.RequestService,
-	connectionTracker *DefaultConnectionTracker,
+	_ *DefaultConnectionTracker,
 ) CandidateSelector {
 	strategies := []LoadBalanceStrategy{
 		NewTraceAwareStrategy(requestService),
 		NewErrorAwareStrategy(channelService),
 		NewWeightRoundRobinStrategy(channelService),
-		NewConnectionAwareStrategy(channelService, connectionTracker),
+		NewLatencyAwareStrategy(channelService),
 	}
 	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
 

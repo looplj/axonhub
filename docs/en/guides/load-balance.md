@@ -9,7 +9,8 @@ AxonHub provides an intelligent adaptive load balancing system that automaticall
 - **Session Consistency** - Requests from the same conversation are prioritized to route to previously successful channels
 - **Health Awareness** - Automatically avoids channels with high error rates
 - **Fair Distribution** - Uses Weighted Round Robin to distribute requests proportionally based on channel weights
-- **Real-time Load** - Dynamically adjusts based on current connection count
+- **Latency Awareness** - Uses request-type-specific UX signals: streaming requests prioritize lower first-token latency and higher output throughput, while non-streaming requests prioritize lower end-to-end latency
+- **Rate Limit Awareness** - Respects upstream RPM/TPM/concurrency limits, falls back to the default connection tracker when `MaxConcurrent` is not explicitly configured, and automatically cools down channels on 429 Retry-After
 
 ### Multi-Strategy Scoring System
 Load balancing follows a hierarchical process: first by **Association Priority**, then by **Strategy Scoring** within each priority group.
@@ -20,7 +21,8 @@ Load balancing follows a hierarchical process: first by **Association Priority**
 | **2** | **Trace Aware** | 0-1000 points | Same session priority, ensures conversation continuity |
 | **3** | **Error Aware** | 0-200 points | Based on success rate and error history |
 | **4** | **Weight Round Robin** | 10-150 points | Proportional distribution based on weight and history |
-| **5** | **Connection Load** | 0-50 points | Current connection utilization |
+| **5** | **Latency Aware** | 0-80 points | Streaming requests use FTTL + TPS, non-streaming requests use end-to-end latency |
+| **6** | **Rate Limit Aware** | -10000-100 points | Respects RPM/TPM/concurrency limits and 429 Retry-After |
 
 ## 🚀 Quick Start
 
@@ -91,10 +93,8 @@ response = client.chat.completions.create(
 - **Purpose**: Avoid unhealthy channels
 - **Base Score**: 200 points for healthy channels
 - **Scoring Factors**:
-  - Consecutive failures: -50 points per failure
-  - Recent failure (within 5 min): up to -100 points (time-decaying)
-  - Success rate >90%: +30 points
-  - Success rate <50%: -50 points
+  - Consecutive failures: -30 points per failure, decaying over the cooldown window
+  - Recent failure (within 5 min): up to -40 points (time-decaying)
 - **Recovery**: Failed channels automatically recover priority over time as the time-decay penalty decreases.
 
 ### Weight Round Robin Strategy
@@ -103,10 +103,28 @@ response = client.chat.completions.create(
 - **Scoring**: `150 * exp(-normalized_request_count / 150)`
 - **Range**: 10-150 points
 
-### Connection Strategy
-- **Purpose**: Prevent individual channel overload (saturation protection)
-- **Scoring**: Based on current connection utilization
-- **Mechanism**: `50 * (1 - active_connections / max_connections)`
+### Latency Aware Strategy
+- **Purpose**: Prioritize channels using latency signals that match actual user experience
+- **Mechanism**:
+  - **Streaming requests**: score channels by EWMA first-token latency (FTTL/TTFT) and EWMA output throughput (tokens per second)
+  - **Non-streaming requests**: score channels by EWMA end-to-end latency
+- **Scoring**:
+  - **Streaming**: `80 * (0.7 * first_token_component + 0.3 * throughput_component)`
+  - **Non-streaming**: `80 * (1 - latency_ewma / 3000)`, clamped to [0, 80]
+- **EWMA Alpha**: 0.3 (recent requests have higher influence)
+- **Neutral Score**: Channels without latency data receive a neutral score of 40 points
+- **Range**: 0-80 points
+
+### Rate Limit Aware Strategy
+- **Purpose**: Respect upstream provider rate limits and prevent 429 errors
+- **Mechanism**: Tracks per-channel RPM (Requests Per Minute), TPM (Tokens Per Minute), and concurrent request counts using a 1-minute sliding window
+- **Scoring**:
+  - Full score (100 points) when neither explicit rate limits nor default connection saturation signals apply
+  - Score decreases linearly as usage approaches the limit: `100 * (1 - max_usage_ratio)`
+  - **-10000 points** (ranked last as fallback) when any limit is exhausted
+- **429 Retry-After**: When a channel returns HTTP 429 with a `Retry-After` header, the channel enters a cooldown period and receives -10000 points until the cooldown expires
+- **Configuration**: Set RPM, TPM, and Max Concurrent limits per channel in the management interface under **Rate Limit** settings
+- **Concurrency Fallback**: If `MaxConcurrent` is not configured but the default connection tracker has a per-channel capacity, adaptive balancing still penalizes channels with many in-flight requests and treats fully saturated channels as exhausted fallback candidates
 
 ## 🔧 Advanced Configuration
 
@@ -161,7 +179,6 @@ A: Enable debug mode and view channel scoring and sorting in logs.
 - Regularly analyze load balancing decision logs
 
 ### 3. Performance Optimization
-- Set higher weights for geographically closer channels
 - Adjust channel priorities based on cost considerations
 - Use session consistency to improve user experience
 

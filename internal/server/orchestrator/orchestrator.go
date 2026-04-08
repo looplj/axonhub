@@ -41,7 +41,7 @@ func NewChatCompletionOrchestrator(
 		NewTraceAwareStrategy(requestService),
 		NewErrorAwareStrategy(channelService),
 		NewWeightRoundRobinStrategy(channelService),
-		NewConnectionAwareStrategy(channelService, connectionTracker),
+		NewLatencyAwareStrategy(channelService),
 		rateLimitStrategy,
 	)
 
@@ -101,7 +101,7 @@ type ChatCompletionOrchestrator struct {
 	adaptiveLoadBalancer       *LoadBalancer
 	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
-	// The connection tracker for connection aware load balancing.
+	// The connection tracker used for request lifetime tracking and rate-limit concurrency fallback.
 	connectionTracker ConnectionTracker
 	// The rate limit tracker for rate limit aware load balancing.
 	rateLimitTracker *ChannelRequestTracker

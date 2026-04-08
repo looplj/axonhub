@@ -299,7 +299,8 @@ func TestTraceAwareStrategyPriority(t *testing.T) {
 	t.Log("- TraceAwareStrategy: 1000 points (for last successful channel)")
 	t.Log("- ErrorAwareStrategy: 0-200 points (based on health)")
 	t.Log("- WeightRoundRobinStrategy: 10-150 points (based on weight and load)")
-	t.Log("- ConnectionAwareStrategy: 0-50 points (based on active connections)")
+	t.Log("- LatencyAwareStrategy: 0-80 points (based on EWMA latency)")
+	t.Log("- RateLimitAwareStrategy: -10000 to 100 points (based on RPM/TPM/concurrency and cooldown)")
 	t.Log("Total: TraceAware dominates with 1000 point boost")
 }
 
@@ -342,7 +343,8 @@ func TestLoadBalancingStrategyComposition(t *testing.T) {
 	t.Log("1. TraceAwareStrategy (0 or 1000 points)")
 	t.Log("2. ErrorAwareStrategy (0-200 points)")
 	t.Log("3. WeightRoundRobinStrategy (10-150 points)")
-	t.Log("4. ConnectionAwareStrategy (0-50 points)")
+	t.Log("4. LatencyAwareStrategy (0-80 points)")
+	t.Log("5. RateLimitAwareStrategy (-10000 to 100 points)")
 	t.Log("Total score determines channel priority")
 
 	// Test scenario 1: No trace context (weight-based selection)
