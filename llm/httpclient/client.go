@@ -223,6 +223,7 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 			StatusCode: rawResp.StatusCode,
 			Status:     rawResp.Status,
 			Body:       body,
+			Headers:    rawResp.Header,
 		}
 	}
 
@@ -297,6 +298,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 			StatusCode: rawResp.StatusCode,
 			Status:     rawResp.Status,
 			Body:       body,
+			Headers:    rawResp.Header,
 		}
 	}
 

@@ -183,3 +183,173 @@ func TestChannelRequestTracker_ConcurrentReadWrite(t *testing.T) {
 
 	assert.Equal(t, int64(1000), tracker.GetRequestCount(1))
 }
+
+// ========== Cooldown Tests ==========
+
+func TestChannelRequestTracker_SetCooldown(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	// Set cooldown for 30 seconds from now
+	until := time.Now().Add(30 * time.Second)
+	tracker.SetCooldown(1, until)
+
+	assert.True(t, tracker.IsCoolingDown(1))
+	assert.False(t, tracker.IsCoolingDown(2))
+}
+
+func TestChannelRequestTracker_IsCoolingDown_NotSet(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	// No cooldown set
+	assert.False(t, tracker.IsCoolingDown(1))
+}
+
+func TestChannelRequestTracker_IsCoolingDown_Expired(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	// Set cooldown in the past (expired)
+	tracker.mu.Lock()
+	tracker.cooldowns[1] = time.Now().Add(-10 * time.Second)
+	tracker.mu.Unlock()
+
+	// Should return false and clean up
+	assert.False(t, tracker.IsCoolingDown(1))
+
+	// Verify entry was deleted
+	tracker.mu.RLock()
+	_, exists := tracker.cooldowns[1]
+	tracker.mu.RUnlock()
+	assert.False(t, exists)
+}
+
+func TestChannelRequestTracker_GetCooldownUntil(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	// No cooldown set
+	_, ok := tracker.GetCooldownUntil(1)
+	assert.False(t, ok)
+
+	// Set cooldown
+	until := time.Now().Add(30 * time.Second)
+	tracker.SetCooldown(1, until)
+
+	// Get cooldown time
+	gotUntil, ok := tracker.GetCooldownUntil(1)
+	assert.True(t, ok)
+	assert.Equal(t, until, gotUntil)
+}
+
+func TestChannelRequestTracker_GetCooldownUntil_Expired(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	// Set cooldown in the past (expired)
+	tracker.mu.Lock()
+	tracker.cooldowns[1] = time.Now().Add(-10 * time.Second)
+	tracker.mu.Unlock()
+
+	// Should return false and clean up
+	_, ok := tracker.GetCooldownUntil(1)
+	assert.False(t, ok)
+
+	// Verify entry was deleted
+	tracker.mu.RLock()
+	_, exists := tracker.cooldowns[1]
+	tracker.mu.RUnlock()
+	assert.False(t, exists)
+}
+
+func TestChannelRequestTracker_ClearExpiredCooldown_DoesNotDeleteNewerValue(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	expiredUntil := time.Now().Add(-10 * time.Second)
+	newUntil := time.Now().Add(30 * time.Second)
+	now := time.Now()
+
+	tracker.mu.Lock()
+	tracker.cooldowns[1] = expiredUntil
+	tracker.mu.Unlock()
+
+	tracker.SetCooldown(1, newUntil)
+	tracker.clearExpiredCooldown(1, expiredUntil, now)
+
+	gotUntil, ok := tracker.GetCooldownUntil(1)
+	assert.True(t, ok)
+	assert.Equal(t, newUntil, gotUntil)
+}
+
+func TestChannelRequestTracker_MultipleChannels_Cooldown(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	now := time.Now()
+	tracker.SetCooldown(1, now.Add(10*time.Second))
+	tracker.SetCooldown(2, now.Add(20*time.Second))
+	tracker.SetCooldown(3, now.Add(30*time.Second))
+
+	assert.True(t, tracker.IsCoolingDown(1))
+	assert.True(t, tracker.IsCoolingDown(2))
+	assert.True(t, tracker.IsCoolingDown(3))
+
+	// Channel 4 not in cooldown
+	assert.False(t, tracker.IsCoolingDown(4))
+}
+
+func TestChannelRequestTracker_Cooldown_Concurrent(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	const goroutines = 100
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	now := time.Now()
+
+	// Concurrent SetCooldown
+	for i := range goroutines {
+		go func(channelID int) {
+			defer wg.Done()
+
+			tracker.SetCooldown(channelID, now.Add(30*time.Second))
+		}(i)
+	}
+
+	wg.Wait()
+
+	// All channels should be in cooldown
+	for i := range goroutines {
+		assert.True(t, tracker.IsCoolingDown(i))
+	}
+}
+
+func TestChannelRequestTracker_Cooldown_ConcurrentReadWrite(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	const ops = 1000
+
+	var wg sync.WaitGroup
+	wg.Add(ops * 2)
+
+	now := time.Now()
+
+	// Writer: SetCooldown
+	for range ops {
+		go func() {
+			defer wg.Done()
+
+			tracker.SetCooldown(1, now.Add(30*time.Second))
+		}()
+	}
+
+	// Reader: IsCoolingDown
+	for range ops {
+		go func() {
+			defer wg.Done()
+
+			_ = tracker.IsCoolingDown(1)
+		}()
+	}
+
+	wg.Wait()
+
+	// Should still be in cooldown
+	assert.True(t, tracker.IsCoolingDown(1))
+}

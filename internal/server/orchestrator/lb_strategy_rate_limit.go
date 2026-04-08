@@ -33,6 +33,11 @@ func (s *RateLimitAwareStrategy) Name() string {
 // Score calculates the score based on channel rate limit usage.
 // This is the production path with minimal overhead.
 func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+	// Check if channel is in cooldown (429 Retry-After)
+	if s.requestTracker.IsCoolingDown(channel.ID) {
+		return -1000
+	}
+
 	settings := channel.Settings
 	if settings == nil || settings.RateLimit == nil {
 		return s.maxScore
@@ -93,10 +98,26 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
 	startTime := time.Now()
 
-	settings := channel.Settings
 	details := map[string]any{
 		"channel_id": channel.ID,
 	}
+
+	// Check if channel is in cooldown (429 Retry-After)
+	if until, ok := s.requestTracker.GetCooldownUntil(channel.ID); ok {
+		score := -1000.0
+		details["reason"] = "channel_in_cooldown"
+		details["exhausted"] = true
+		details["cooldown_until"] = until.Format(time.RFC3339)
+
+		return score, StrategyScore{
+			StrategyName: s.Name(),
+			Score:        score,
+			Details:      details,
+			Duration:     time.Since(startTime),
+		}
+	}
+
+	settings := channel.Settings
 
 	if settings == nil || settings.RateLimit == nil {
 		score := s.maxScore
