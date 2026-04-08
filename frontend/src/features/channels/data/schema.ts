@@ -146,6 +146,7 @@ export type ChannelProbeData = z.infer<typeof channelProbeDataSchema>;
 export const channelRateLimitSchema = z.object({
   rpm: z.number().int().positive().optional().nullable(),
   tpm: z.number().int().positive().optional().nullable(),
+  maxConcurrent: z.number().int().positive().optional().nullable(),
 });
 export type ChannelRateLimit = z.infer<typeof channelRateLimitSchema>;
 

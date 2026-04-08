@@ -140,8 +140,9 @@ type ChannelSettings struct {
 }
 
 type ChannelRateLimit struct {
-	RPM *int64 `json:"rpm,omitempty"` // Requests Per Minute, nil = unlimited
-	TPM *int64 `json:"tpm,omitempty"` // Tokens Per Minute, nil = unlimited
+	RPM           *int64 `json:"rpm,omitempty"`           // Requests Per Minute, nil = unlimited
+	TPM           *int64 `json:"tpm,omitempty"`           // Tokens Per Minute, nil = unlimited
+	MaxConcurrent *int64 `json:"maxConcurrent,omitempty"` // Maximum concurrent requests, nil = unlimited
 }
 
 // DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）

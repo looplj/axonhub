@@ -123,11 +123,13 @@ input ChannelSettingsInput {
 input ChannelRateLimitInput {
   rpm: Int
   tpm: Int
+  maxConcurrent: Int
 }
 
 type ChannelRateLimit {
   rpm: Int
   tpm: Int
+  maxConcurrent: Int
 }
 
 type ChannelCredentials {
