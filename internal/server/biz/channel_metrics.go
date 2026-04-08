@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
-	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect"
+
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/ringbuffer"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
@@ -25,7 +27,12 @@ const (
 
 	// metricsBatchSize is the number of records to fetch per batch when loading channel metrics.
 	// This prevents memory issues when loading large datasets (>10k records).
+	// Note: Batch loading is not yet implemented; this constant is reserved for future use.
 	metricsBatchSize = 1000
+
+	// modelMetricsIdleTimeout is the duration after which unused model metrics are cleaned up.
+	// This prevents memory leaks from accumulating unique model IDs over time.
+	modelMetricsIdleTimeout = 24 * time.Hour
 )
 
 // ClampLatency enforces the minimum latency value to prevent extreme TPS calculations.
@@ -41,6 +48,12 @@ func ClampLatency(latencyMs int64) int64 {
 // channelMetrics holds the performance metrics for a channel in memory.
 type channelMetrics struct {
 	channelID int
+
+	// mu protects all fields from concurrent access
+	mu sync.RWMutex
+
+	// lastAccessTime tracks when this metrics was last accessed for cleanup
+	lastAccessTime time.Time
 
 	// sliding window of metrics for the last N minutes using ring buffer for O(1) cleanup
 	window *ringbuffer.RingBuffer[*timeSlotMetrics]
@@ -86,7 +99,48 @@ func (svc *ChannelService) loadChannelPerformances(ctx context.Context, windowDu
 		log.Int("count", len(metrics)),
 	)
 
+	// Clean up any idle model metrics to prevent memory leaks
+	svc.cleanupIdleModelMetrics()
+
 	return nil
+}
+
+// cleanupIdleModelMetrics removes model metrics that haven't been accessed recently.
+// This prevents memory leaks from accumulating unique model IDs over time.
+// Should be called periodically (e.g., after loading historical data).
+func (svc *ChannelService) cleanupIdleModelMetrics() {
+	svc.channelPerfMetricsLock.Lock()
+	defer svc.channelPerfMetricsLock.Unlock()
+
+	if svc.channelPerfMetrics == nil {
+		return
+	}
+
+	cutoff := time.Now().Add(-modelMetricsIdleTimeout)
+	totalRemoved := 0
+
+	for channelID, channelMap := range svc.channelPerfMetrics {
+		for modelID, cm := range channelMap {
+			cm.mu.RLock()
+			idle := cm.lastAccessTime.Before(cutoff)
+			cm.mu.RUnlock()
+
+			if idle {
+				delete(channelMap, modelID)
+
+				totalRemoved++
+			}
+		}
+
+		// Remove channel entry if no models left
+		if len(channelMap) == 0 {
+			delete(svc.channelPerfMetrics, channelID)
+		}
+	}
+
+	if totalRemoved > 0 {
+		log.Info(context.Background(), "cleaned up idle model metrics", log.Int("removed", totalRemoved))
+	}
 }
 
 // getOrCreateModelMetrics initializes the nested map structure for channel-model metrics.
@@ -116,6 +170,11 @@ func (svc *ChannelService) getOrCreateModelMetricsInternal(channelID int, modelI
 	if !exists {
 		cm = newChannelMetrics(channelID)
 		channelMap[modelID] = cm
+	} else {
+		// Update last access time for existing metrics
+		cm.mu.Lock()
+		cm.lastAccessTime = time.Now()
+		cm.mu.Unlock()
 	}
 
 	return cm
@@ -127,6 +186,7 @@ type channelMetricsResult struct {
 	ChannelID            int        `json:"channel_id"`
 	ModelID              string     `json:"model_id"`
 	RequestCount         int64      `json:"request_count"`
+	SuccessCount         int64      `json:"success_count"`
 	LastFailureAt        *time.Time `json:"last_failure_at"`
 	AvgFirstTokenLatency *float64   `json:"avg_first_token_latency"` // Average TTFT in milliseconds
 	AvgThroughput        *float64   `json:"avg_throughput"`          // Average tokens per second
@@ -146,50 +206,111 @@ func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Conte
 
 // loadAllChannelMetricsSingleQuery loads metrics using a single GROUP BY query.
 // Used for small datasets (<= metricsBatchSize records).
+// Uses raw SQL to join request_executions with usage_logs for throughput calculation.
 func (svc *ChannelService) loadAllChannelMetricsSingleQuery(ctx context.Context, client *ent.Client, since time.Time) (map[modelKey]*channelMetricsResult, error) {
 	type queryResult struct {
-		ChannelID            int       `json:"channel_id"`
-		ModelID              string    `json:"model_id"`
-		RequestCount         int64     `json:"request_count"`
-		LastFailureAt        time.Time `json:"last_failure_at"`
-		AvgFirstTokenLatency *float64  `json:"avg_first_token_latency"`
-		AvgThroughput        *float64  `json:"avg_throughput"`
+		ChannelID              int        `json:"channel_id"`
+		ModelID                string     `json:"model_id"`
+		RequestCount           int64      `json:"request_count"`
+		SuccessCount           int64      `json:"success_count"`
+		LastFailureAt          *time.Time `json:"last_failure_at"`
+		TotalFirstTokenLatency int64      `json:"total_first_token_latency"`
+		TotalEffectiveLatency  int64      `json:"total_effective_latency"`
+		TotalTokens            int64      `json:"total_tokens"`
+		StreamingRequestCount  int64      `json:"streaming_request_count"`
 	}
 
-	var results []queryResult
+	// Get the underlying SQL driver from the ent client
+	dbDriver := client.Driver()
 
-	err := client.RequestExecution.Query().
-		Where(
-			requestexecution.CreatedAtGTE(since),
-			requestexecution.ChannelIDNotNil(),
-			requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
-		).
-		Modify(func(s *sql.Selector) {
-			s.Select(
-				s.C(requestexecution.FieldChannelID),
-				sql.As(fmt.Sprintf("COALESCE(%s, '')", s.C(requestexecution.FieldModelID)), "model_id"),
-				sql.As(sql.Count("*"), "request_count"),
-				sql.As(fmt.Sprintf("MAX(CASE WHEN status = '%s' THEN %s END)", requestexecution.StatusFailed, s.C(requestexecution.FieldCreatedAt)), "last_failure_at"),
-				sql.As(fmt.Sprintf("AVG(%s)", s.C(requestexecution.FieldMetricsFirstTokenLatencyMs)), "avg_first_token_latency"),
-			).GroupBy(s.C(requestexecution.FieldChannelID), s.C(requestexecution.FieldModelID))
-		}).
-		Scan(ctx, &results)
+	sqlDB, ok := dbDriver.(*entsql.Driver)
+	if !ok {
+		return nil, fmt.Errorf("failed to get underlying SQL driver")
+	}
+
+	// Detect dialect to use appropriate placeholder syntax
+	dialectName := sqlDB.Dialect()
+	useDollarPlaceholders := dialectName == dialect.Postgres
+
+	// Build placeholder for the since parameter
+	placeholder := "?"
+	if useDollarPlaceholders {
+		placeholder = "$1"
+	}
+
+	// Use raw SQL similar to BuildProbeStatsQuery for proper throughput calculation
+	// This joins request_executions with usage_logs to get token counts
+	query := fmt.Sprintf(`
+SELECT
+    se.channel_id,
+    COALESCE(se.model_id, '') as model_id,
+    COUNT(*) as request_count,
+    SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) as success_count,
+    MAX(CASE WHEN se.status = 'failed' THEN se.created_at END) as last_failure_at,
+    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+        THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
+    SUM(CASE WHEN se.status = 'completed' THEN
+        CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+             THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                  THEN 0
+                  ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
+             ELSE se.metrics_latency_ms END
+        ELSE 0 END) as total_effective_latency,
+    SUM(CASE WHEN se.status = 'completed' THEN ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0) ELSE 0 END) as total_tokens,
+    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
+FROM request_executions se
+LEFT JOIN usage_logs ul ON se.request_id = ul.request_id
+WHERE se.channel_id IS NOT NULL
+    AND se.status NOT IN ('pending', 'processing')
+    AND se.created_at >= %s
+GROUP BY se.channel_id, se.model_id
+`, placeholder)
+
+	rows, err := sqlDB.DB().QueryContext(ctx, query, since)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channel metrics: %w", err)
 	}
 
+	defer func() { _ = rows.Close() }()
+
 	metricsMap := make(map[modelKey]*channelMetricsResult)
 
-	for _, r := range results {
-		m := &channelMetricsResult{
-			ChannelID:            r.ChannelID,
-			ModelID:              r.ModelID,
-			RequestCount:         r.RequestCount,
-			AvgFirstTokenLatency: r.AvgFirstTokenLatency,
-			AvgThroughput:        r.AvgThroughput,
+	for rows.Next() {
+		var r queryResult
+		if err := rows.Scan(
+			&r.ChannelID,
+			&r.ModelID,
+			&r.RequestCount,
+			&r.SuccessCount,
+			&r.LastFailureAt,
+			&r.TotalFirstTokenLatency,
+			&r.TotalEffectiveLatency,
+			&r.TotalTokens,
+			&r.StreamingRequestCount,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan channel metrics: %w", err)
 		}
-		if !r.LastFailureAt.IsZero() {
-			m.LastFailureAt = &r.LastFailureAt
+
+		m := &channelMetricsResult{
+			ChannelID:    r.ChannelID,
+			ModelID:      r.ModelID,
+			RequestCount: r.RequestCount,
+			SuccessCount: r.SuccessCount,
+		}
+		if r.LastFailureAt != nil {
+			m.LastFailureAt = r.LastFailureAt
+		}
+
+		// Calculate average TTFT from streaming requests that have the metric
+		if r.StreamingRequestCount > 0 && r.TotalFirstTokenLatency > 0 {
+			avgTTFT := float64(r.TotalFirstTokenLatency) / float64(r.StreamingRequestCount)
+			m.AvgFirstTokenLatency = &avgTTFT
+		}
+
+		// Calculate average throughput: total_tokens / effective_latency (in seconds)
+		if r.TotalTokens > 0 && r.TotalEffectiveLatency > 0 {
+			tps := float64(r.TotalTokens) / (float64(r.TotalEffectiveLatency) / 1000.0)
+			m.AvgThroughput = &tps
 		}
 
 		key := modelKey{ChannelID: r.ChannelID, ModelID: r.ModelID}
@@ -199,23 +320,33 @@ func (svc *ChannelService) loadAllChannelMetricsSingleQuery(ctx context.Context,
 	return metricsMap, nil
 }
 
-
 // populateChannelMetrics populates channelMetrics from the aggregated result.
 // Only populates fields needed for load balancing.
+// Sets SuccessCount and cumulative totals so historical data integrates with the sliding window logic.
 func (svc *ChannelService) populateChannelMetrics(cm *channelMetrics, m *channelMetricsResult) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
 	// Populate aggregated metrics - only fields needed for load balancing
 	cm.aggregatedMetrics.RequestCount = m.RequestCount
+	cm.aggregatedMetrics.SuccessCount = m.SuccessCount
 
 	if m.LastFailureAt != nil {
 		cm.aggregatedMetrics.LastFailureAt = m.LastFailureAt
 	}
 
-	// Populate performance metrics from historical data
-	if m.AvgFirstTokenLatency != nil {
-		cm.aggregatedMetrics.AvgFirstTokenLatencyMs = m.AvgFirstTokenLatency
+	// Populate cumulative performance totals for sliding window averaging
+	// These integrate with GetChannelMetrics which calculates:
+	// avgFirstTokenLatencyMs = TotalFirstTokenLatencyMs / SuccessCount
+	// avgTokensPerSecond = TotalTokensPerSecond / SuccessCount
+	if m.AvgFirstTokenLatency != nil && m.SuccessCount > 0 {
+		// Convert average back to cumulative total
+		cm.aggregatedMetrics.TotalFirstTokenLatencyMs = int64(*m.AvgFirstTokenLatency * float64(m.SuccessCount))
 	}
-	if m.AvgThroughput != nil {
-		cm.aggregatedMetrics.AvgTokensPerSecond = m.AvgThroughput
+
+	if m.AvgThroughput != nil && m.SuccessCount > 0 {
+		// Convert average back to cumulative total
+		cm.aggregatedMetrics.TotalTokensPerSecond = *m.AvgThroughput * float64(m.SuccessCount)
 	}
 
 	// Note: ConsecutiveFailures is not loaded from historical data.
@@ -289,8 +420,9 @@ func (m *AggregatedMetrics) Clone() *AggregatedMetrics {
 // newChannelMetrics creates a new channelMetrics instance.
 func newChannelMetrics(channelID int) *channelMetrics {
 	cm := &channelMetrics{
-		channelID: channelID,
-		window:    ringbuffer.New[*timeSlotMetrics](defaultPerformanceWindowSize),
+		channelID:      channelID,
+		window:         ringbuffer.New[*timeSlotMetrics](defaultPerformanceWindowSize),
+		lastAccessTime: time.Now(),
 		aggregatedMetrics: &AggregatedMetrics{
 			metricsRecord: metricsRecord{},
 		},
@@ -302,6 +434,7 @@ func newChannelMetrics(channelID int) *channelMetrics {
 const latencyEWMAAlpha = 0.3
 
 // recordSuccess records a successful request to the channel metrics.
+// Must be called with cm.mu already held.
 func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *PerformanceRecord) {
 	slot.SuccessCount++
 	cm.aggregatedMetrics.SuccessCount++
@@ -354,6 +487,7 @@ func (cm *channelMetrics) recordFailure(slot *timeSlotMetrics, perf *Performance
 }
 
 // getOrCreateTimeSlot gets or creates a time slot for the given timestamp.
+// Must be called with cm.mu already held.
 func (cm *channelMetrics) getOrCreateTimeSlot(ts int64, endTime time.Time, windowSize int64) *timeSlotMetrics {
 	if slot, ok := cm.window.Get(ts); ok {
 		return slot
@@ -422,6 +556,10 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 	// Get or create channel-model metrics using model from PerformanceRecord (empty string is valid for default)
 	cm := svc.getOrCreateModelMetrics(perf.ChannelID, perf.Model)
 
+	// Lock the channel metrics for the duration of the updates
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
 	// Determine window size
 	var windowSize int64 = defaultPerformanceWindowSize
 	if svc.perfWindowSeconds > 0 {
@@ -442,7 +580,6 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 	} else {
 		// If canceled, decrement the aggregated request count that was incremented at selection time.
 		// We don't increment slot.RequestCount, so it won't be subtracted later.
-		// Note: getOrCreateModelMetrics already holds the lock, so we access it directly
 		cm.aggregatedMetrics.RequestCount--
 	}
 
@@ -474,6 +611,7 @@ func (svc *ChannelService) AsyncRecordPerformance(ctx context.Context, perr *Per
 
 // cleanupExpiredSlots removes time slots older than the cutoff time.
 // This is now O(k) where k is the number of items to remove, instead of O(n) for the entire map.
+// Must be called with cm.mu already held.
 func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 	cutoffTs := cutoff.Unix()
 
@@ -532,6 +670,9 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int,
 func (svc *ChannelService) IncrementChannelSelection(channelID int, model string) {
 	// Use model directly as the key (empty string is valid for default)
 	cm := svc.getOrCreateModelMetrics(channelID, model)
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 
 	oldCount := cm.aggregatedMetrics.RequestCount
 

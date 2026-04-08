@@ -262,10 +262,8 @@ func validatePerformanceConfig(cfg server.PerformanceConfig) error {
 		return fmt.Errorf("historical_window must be greater than 0, got %v", cfg.HistoricalWindow)
 	}
 
-	// Validate HistoricalRefreshInterval > 0
-	if cfg.HistoricalRefreshInterval <= 0 {
-		return fmt.Errorf("historical_refresh_interval must be greater than 0, got %v", cfg.HistoricalRefreshInterval)
-	}
+	// HistoricalRefreshInterval can be <= 0 to disable periodic refresh
+	// No validation error for non-positive values - they disable the feature
 
 	// Validate HistoricalWeight in [0, 1]
 	if cfg.HistoricalWeight < 0 || cfg.HistoricalWeight > 1 {

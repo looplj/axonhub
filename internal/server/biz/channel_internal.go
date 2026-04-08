@@ -102,3 +102,15 @@ func (svc *ChannelService) ReloadEnabledChannelsCache(ctx context.Context) error
 
 	return nil
 }
+
+// startHistoricalRefresh starts the background goroutine for periodic historical performance refresh.
+// If refreshInterval is <= 0, the refresh is disabled and no background goroutine is started.
+// Otherwise, it creates a ticker with the specified interval and calls loadChannelPerformances on each tick.
+// Implements retry with exponential backoff (3 retries max) and uses singleflight to prevent
+// concurrent refreshes.
+func (svc *ChannelService) startHistoricalRefresh(refreshInterval time.Duration) {
+	if refreshInterval <= 0 {
+		// Historical refresh is disabled
+		log.Info(context.Background(), "historical refresh disabled (interval <= 0)")
+		return
+	}

@@ -31,10 +31,8 @@ func NewChatCompletionOrchestrator(
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
 	liveStreamRegistry *biz.LiveStreamRegistry,
 	channelProbeService *biz.ChannelProbeService,
-=======
 	historicalWeight float64,
 	realtimeWeight float64,
->>>>>>> 0e3d84a9 (feat: implement performance-aware load balancing strategy)
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 	rateLimitTracker := NewChannelRequestTracker()
@@ -43,6 +41,7 @@ func NewChatCompletionOrchestrator(
 	modelCircuitBreaker := biz.NewModelCircuitBreaker()
 
 	performanceStrategy, err := NewPerformanceAwareStrategy(channelService, channelProbeService, WithWeights(historicalWeight, realtimeWeight))
+	if err != nil {
 		log.Error(context.Background(), "failed to create performance-aware strategy", zap.Error(err))
 		// Fall back to a basic strategy if validation fails - use default weights (0.5, 0.5)
 		performanceStrategy = &PerformanceAwareStrategy{

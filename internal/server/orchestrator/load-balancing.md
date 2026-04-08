@@ -116,43 +116,49 @@ NewErrorAwareStrategy(channelService)
 
 **Scoring Algorithm**:
 
-The strategy combines two performance metrics with equal weights:
+The strategy combines two performance metrics with weighted scoring:
 
-1. **TTFT Score (Time To First Token)**: Uses exponential decay to favor lower latency
+1. **TTFT Score (Time To First Token)**: Uses threshold-based scoring to favor lower latency
    ```
-   TTFT Score = maxScore × e^(-TTFT_ms / 1000)
+   TTFT Score:
+     - Under 2 seconds: full score (very good)
+     - 2-5 seconds: linear decay (lose up to 70% of score)
+     - Above 5 seconds: exponential penalty
    ```
    - At 0ms: 150 points (maximum)
-   - At 500ms: ~90 points
-   - At 1000ms: ~55 points
-   - At 2000ms: ~20 points
+   - At 2000ms: 150 points (still full score)
+   - At 3500ms: ~97 points (midpoint of time range)
+   - At 5000ms: ~45 points (end of linear decay)
+   - At 8000ms: ~15 points (exponential penalty)
 
-2. **TPS Score (Tokens Per Second)**: Uses logarithmic scaling to reward higher throughput
+2. **TPS Score (Tokens Per Second)**: Uses exponential scaling to reward higher throughput
    ```
-   TPS Score = maxScore × (1 - e^(-TPS / 30))
+   TPS Score = maxScore × (1 - e^(-TPS / 100))
    ```
    - At 0 tokens/s: 0 points
-   - At 15 tokens/s: ~40 points
-   - At 30 tokens/s: ~95 points
-   - At 60 tokens/s: ~135 points
-   - At 120+ tokens/s: 150 points (maximum)
+   - At 30 tokens/s: ~39 points
+   - At 60 tokens/s: ~67 points
+   - At 100 tokens/s: ~95 points
+   - At 150 tokens/s: ~116 points
+   - At 300+ tokens/s: ~150 points (approaching maximum)
 
-3. **Combined Score**: 50% TTFT Score + 50% TPS Score, clamped to maxScore (150)
+3. **Combined Score**: 35% TTFT Score + 65% TPS Score, clamped to maxScore (150)
 
 **Cold Start Behavior**:
 
-New or recently reset channels receive a competitive boost during their warmup period:
+New or idle channels receive a competitive boost during their warmup period:
 - **Boost Score**: 120 points (80% of maxScore)
-- **Boost Duration**: 5 minutes after last selection
+- **Boost Duration**: 5 minutes of idle time triggers cold start
 - **Minimum Requests**: Channels need at least 10 requests before exiting cold start
 
 A channel is considered in cold start if either condition is true:
-- Request count < 10
-- LastSelectedAt timestamp is within the last 5 minutes
+- Request count < 10 (new channel)
+- LastSelectedAt is nil or more than 5 minutes ago (idle channel warming up)
 
 **Data Sources**:
-- Historical probe data from `ChannelProbeService` (weighted default: 50%)
-- Real-time metrics from `ChannelService.AvgFirstTokenLatencyMs` and `AvgTokensPerSecond` (weighted default: 50%)
+- Historical probe data from `ChannelProbeService` (configurable weight via `historicalWeight`)
+- Real-time metrics from `ChannelService.AvgFirstTokenLatencyMs` and `AvgTokensPerSecond` (configurable weight via `realtimeWeight`)
+- Weights must sum to 1.0; if both are 0.0, only real-time data is used when available
 
 **Configuration Options**:
 
