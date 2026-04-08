@@ -345,7 +345,7 @@ func (lb *LoadBalancer) logDecision(ctx context.Context, candidates []*ChannelMo
 				"duration": s.Duration,
 			}
 			// Include strategy-specific details if available
-			if s.Details != nil && len(s.Details) > 0 {
+			if len(s.Details) > 0 {
 				strategyData["details"] = s.Details
 			}
 			strategySummary[s.StrategyName] = strategyData

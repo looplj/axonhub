@@ -47,12 +47,7 @@ cache:
 	err := os.WriteFile(configPath, []byte(configContent), 0644)
 	require.NoError(t, err)
 
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
+	t.Chdir(tempDir)
 
 	cfg, err := Load()
 	require.NoError(t, err)
@@ -92,12 +87,7 @@ func TestChannelService_E2E_EnvVarConfig(t *testing.T) {
 	}
 
 	tempDir := t.TempDir()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
+	t.Chdir(tempDir)
 
 	cfg, err := Load()
 	require.NoError(t, err)
@@ -120,12 +110,7 @@ func TestChannelService_E2E_EnvVarConfig(t *testing.T) {
 // when values are not explicitly set.
 func TestChannelService_E2E_DefaultsApplied(t *testing.T) {
 	tempDir := t.TempDir()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
+	t.Chdir(tempDir)
 
 	cfg, err := Load()
 	require.NoError(t, err)
@@ -201,12 +186,7 @@ performance:
 			err := os.WriteFile(configPath, []byte(tt.configContent), 0644)
 			require.NoError(t, err)
 
-			originalDir, err := os.Getwd()
-			require.NoError(t, err)
-			defer os.Chdir(originalDir)
-
-			err = os.Chdir(tempDir)
-			require.NoError(t, err)
+			t.Chdir(tempDir)
 
 			for key, value := range tt.envVars {
 				t.Setenv(key, value)
@@ -246,12 +226,7 @@ performance:
 	t.Setenv("AXONHUB_PERFORMANCE_HISTORICAL_WEIGHT", "0.7")
 	t.Setenv("AXONHUB_PERFORMANCE_REALTIME_WEIGHT", "0.3")
 
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
+	t.Chdir(tempDir)
 
 	cfg, err := Load()
 	require.NoError(t, err)

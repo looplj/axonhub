@@ -1052,7 +1052,7 @@ func TestDeviceFlowProvider_refresh_UserAgent(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(b)
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	provider := NewDeviceFlowProvider(DeviceFlowProviderParams{
 		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
@@ -1113,7 +1113,7 @@ func TestDeviceFlowProvider_AutoRefresh_TriggersRefresh(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(b)
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	var refreshedCalled atomic.Int32
 
