@@ -581,6 +581,7 @@ const QUERY_CHANNELS_QUERY = `
             rateLimit {
               rpm
               tpm
+              maxConcurrent
             }
           }
           orderingWeight

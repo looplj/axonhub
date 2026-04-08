@@ -437,8 +437,9 @@ type ComplexityRoot struct {
 	}
 
 	ChannelRateLimit struct {
-		RPM func(childComplexity int) int
-		TPM func(childComplexity int) int
+		MaxConcurrent func(childComplexity int) int
+		RPM           func(childComplexity int) int
+		TPM           func(childComplexity int) int
 	}
 
 	ChannelRegexAssociation struct {
@@ -3344,6 +3345,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelProbeSetting.Frequency(childComplexity), true
 
+	case "ChannelRateLimit.maxConcurrent":
+		if e.complexity.ChannelRateLimit.MaxConcurrent == nil {
+			break
+		}
+
+		return e.complexity.ChannelRateLimit.MaxConcurrent(childComplexity), true
 	case "ChannelRateLimit.rpm":
 		if e.complexity.ChannelRateLimit.RPM == nil {
 			break
@@ -19326,6 +19333,35 @@ func (ec *executionContext) fieldContext_ChannelRateLimit_tpm(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelRateLimit_maxConcurrent(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRateLimit_maxConcurrent,
+		func(ctx context.Context) (any, error) {
+			return obj.MaxConcurrent, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRateLimit_maxConcurrent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRateLimit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelRegexAssociation_channelId(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRegexAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19754,6 +19790,8 @@ func (ec *executionContext) fieldContext_ChannelSettings_rateLimit(_ context.Con
 				return ec.fieldContext_ChannelRateLimit_rpm(ctx, field)
 			case "tpm":
 				return ec.fieldContext_ChannelRateLimit_tpm(ctx, field)
+			case "maxConcurrent":
+				return ec.fieldContext_ChannelRateLimit_maxConcurrent(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelRateLimit", field.Name)
 		},
@@ -54649,7 +54687,7 @@ func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"rpm", "tpm"}
+	fieldsInOrder := [...]string{"rpm", "tpm", "maxConcurrent"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54670,6 +54708,13 @@ func (ec *executionContext) unmarshalInputChannelRateLimitInput(ctx context.Cont
 				return it, err
 			}
 			it.TPM = data
+		case "maxConcurrent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxConcurrent"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxConcurrent = data
 		}
 	}
 
@@ -76832,6 +76877,8 @@ func (ec *executionContext) _ChannelRateLimit(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._ChannelRateLimit_rpm(ctx, field, obj)
 		case "tpm":
 			out.Values[i] = ec._ChannelRateLimit_tpm(ctx, field, obj)
+		case "maxConcurrent":
+			out.Values[i] = ec._ChannelRateLimit_maxConcurrent(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

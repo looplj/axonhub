@@ -24,6 +24,7 @@ interface Props {
 const rateLimitFormSchema = z.object({
   rpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
   tpm: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
+  maxConcurrent: z.union([z.number().int().positive(), z.literal('')]).optional().nullable(),
 });
 
 type RateLimitFormValues = z.infer<typeof rateLimitFormSchema>;
@@ -37,6 +38,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
     defaultValues: {
       rpm: currentRow.settings?.rateLimit?.rpm ?? '',
       tpm: currentRow.settings?.rateLimit?.tpm ?? '',
+      maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
     },
   });
 
@@ -45,6 +47,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
       form.reset({
         rpm: currentRow.settings?.rateLimit?.rpm ?? '',
         tpm: currentRow.settings?.rateLimit?.tpm ?? '',
+        maxConcurrent: currentRow.settings?.rateLimit?.maxConcurrent ?? '',
       });
     }
   }, [open, currentRow, form]);
@@ -54,10 +57,11 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
       const rateLimit = {
         rpm: values.rpm === '' || values.rpm == null ? null : values.rpm,
         tpm: values.tpm === '' || values.tpm == null ? null : values.tpm,
+        maxConcurrent: values.maxConcurrent === '' || values.maxConcurrent == null ? null : values.maxConcurrent,
       };
 
-      // If both are null, set rateLimit to null to clean up
-      const rateLimitValue = rateLimit.rpm == null && rateLimit.tpm == null ? null : rateLimit;
+      // If all are null, set rateLimit to null to clean up
+      const rateLimitValue = rateLimit.rpm == null && rateLimit.tpm == null && rateLimit.maxConcurrent == null ? null : rateLimit;
 
       const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
         rateLimit: rateLimitValue,
@@ -142,6 +146,29 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                           />
                         </FormControl>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.tpm.description')}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='maxConcurrent'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('channels.dialogs.rateLimit.fields.maxConcurrent.label')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            placeholder={t('channels.dialogs.rateLimit.fields.maxConcurrent.placeholder')}
+                            value={field.value === '' || field.value == null ? '' : field.value}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === '' ? '' : parseInt(val, 10));
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>{t('channels.dialogs.rateLimit.fields.maxConcurrent.description')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

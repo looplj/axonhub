@@ -8,18 +8,20 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// RateLimitAwareStrategy adjusts channel scores based on configured RPM/TPM rate limits.
+// RateLimitAwareStrategy adjusts channel scores based on configured RPM/TPM rate limits and concurrency limits.
 // Channels that have exhausted their rate limits receive a heavily negative score to be skipped.
 type RateLimitAwareStrategy struct {
-	tracker  *ChannelRequestTracker
-	maxScore float64
+	requestTracker    *ChannelRequestTracker
+	connectionTracker ConnectionTracker
+	maxScore          float64
 }
 
 // NewRateLimitAwareStrategy creates a new rate limit aware load balancing strategy.
-func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker) *RateLimitAwareStrategy {
+func NewRateLimitAwareStrategy(tracker *ChannelRequestTracker, connectionTracker ConnectionTracker) *RateLimitAwareStrategy {
 	return &RateLimitAwareStrategy{
-		tracker:  tracker,
-		maxScore: 100.0,
+		requestTracker:    tracker,
+		connectionTracker: connectionTracker,
+		maxScore:          100.0,
 	}
 }
 
@@ -40,8 +42,9 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 
 	var maxRatio float64
 
+	// Check RPM (Requests Per Minute)
 	if rl.RPM != nil && *rl.RPM > 0 {
-		rpm := s.tracker.GetRequestCount(channel.ID)
+		rpm := s.requestTracker.GetRequestCount(channel.ID)
 		if rpm >= *rl.RPM {
 			return -1000
 		}
@@ -52,13 +55,27 @@ func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel
 		}
 	}
 
+	// Check TPM (Tokens Per Minute)
 	if rl.TPM != nil && *rl.TPM > 0 {
-		tpm := s.tracker.GetTokenCount(channel.ID)
+		tpm := s.requestTracker.GetTokenCount(channel.ID)
 		if tpm >= *rl.TPM {
 			return -1000
 		}
 
 		ratio := float64(tpm) / float64(*rl.TPM)
+		if ratio > maxRatio {
+			maxRatio = ratio
+		}
+	}
+
+	// Check concurrent requests
+	if rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0 && s.connectionTracker != nil {
+		concurrent := s.connectionTracker.GetActiveConnections(channel.ID)
+		if int64(concurrent) >= *rl.MaxConcurrent {
+			return -1000
+		}
+
+		ratio := float64(concurrent) / float64(*rl.MaxConcurrent)
 		if ratio > maxRatio {
 			maxRatio = ratio
 		}
@@ -99,8 +116,9 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 
 	exhausted := false
 
+	// Check RPM
 	if rl.RPM != nil && *rl.RPM > 0 {
-		rpm := s.tracker.GetRequestCount(channel.ID)
+		rpm := s.requestTracker.GetRequestCount(channel.ID)
 		details["rpm_limit"] = *rl.RPM
 		details["rpm_current"] = rpm
 
@@ -115,8 +133,9 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 		}
 	}
 
+	// Check TPM
 	if rl.TPM != nil && *rl.TPM > 0 {
-		tpm := s.tracker.GetTokenCount(channel.ID)
+		tpm := s.requestTracker.GetTokenCount(channel.ID)
 		details["tpm_limit"] = *rl.TPM
 		details["tpm_current"] = tpm
 
@@ -125,6 +144,23 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 			details["tpm_exhausted"] = true
 		} else {
 			ratio := float64(tpm) / float64(*rl.TPM)
+			if ratio > maxRatio {
+				maxRatio = ratio
+			}
+		}
+	}
+
+	// Check concurrent requests
+	if rl.MaxConcurrent != nil && *rl.MaxConcurrent > 0 && s.connectionTracker != nil {
+		concurrent := s.connectionTracker.GetActiveConnections(channel.ID)
+		details["concurrent_limit"] = *rl.MaxConcurrent
+		details["concurrent_current"] = concurrent
+
+		if int64(concurrent) >= *rl.MaxConcurrent {
+			exhausted = true
+			details["concurrent_exhausted"] = true
+		} else {
+			ratio := float64(concurrent) / float64(*rl.MaxConcurrent)
 			if ratio > maxRatio {
 				maxRatio = ratio
 			}
