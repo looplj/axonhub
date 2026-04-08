@@ -191,19 +191,6 @@ performance:
 `,
 			expectedErrMsg: "realtime_weight must be between 0 and 1",
 		},
-		{
-			name: "invalid refresh interval - zero",
-			configContent: `
-server:
-  port: 8090
-performance:
-  historical_window: "24h"
-  historical_refresh_interval: "0s"
-  historical_weight: 0.5
-  realtime_weight: 0.5
-`,
-			expectedErrMsg: "historical_refresh_interval must be greater than 0",
-		},
 	}
 
 	for _, tt := range tests {

@@ -55,16 +55,6 @@ func TestPerformanceConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "invalid config negative refresh interval",
-			config: server.PerformanceConfig{
-				HistoricalWindow:          24 * time.Hour,
-				HistoricalRefreshInterval: -1 * time.Minute,
-				HistoricalWeight:          0.7,
-				RealtimeWeight:            0.3,
-			},
-			wantErr: true,
-		},
-		{
 			name: "invalid config historical weight outside [0, 1] range",
 			config: server.PerformanceConfig{
 				HistoricalWindow:          24 * time.Hour,

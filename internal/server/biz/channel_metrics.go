@@ -238,8 +238,6 @@ func (svc *ChannelService) loadAllChannelMetricsSingleQuery(ctx context.Context,
 		placeholder = "$1"
 	}
 
-	// Use raw SQL similar to BuildProbeStatsQuery for proper throughput calculation
-	// This joins request_executions with usage_logs to get token counts
 	query := fmt.Sprintf(`
 SELECT
     se.channel_id,
@@ -247,17 +245,17 @@ SELECT
     COUNT(*) as request_count,
     SUM(CASE WHEN se.status = 'completed' THEN 1 ELSE 0 END) as success_count,
     MAX(CASE WHEN se.status = 'failed' THEN se.created_at END) as last_failure_at,
-    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-        THEN se.metrics_first_token_latency_ms ELSE 0 END) as total_first_token_latency,
-    SUM(CASE WHEN se.status = 'completed' THEN
+    COALESCE(SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+        THEN se.metrics_first_token_latency_ms ELSE 0 END), 0) as total_first_token_latency,
+    COALESCE(SUM(CASE WHEN se.status = 'completed' THEN
         CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
              THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
                   THEN 0
                   ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
              ELSE se.metrics_latency_ms END
-        ELSE 0 END) as total_effective_latency,
-    SUM(CASE WHEN se.status = 'completed' THEN ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0) ELSE 0 END) as total_tokens,
-    SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END) as streaming_request_count
+        ELSE 0 END), 0) as total_effective_latency,
+    COALESCE(SUM(CASE WHEN se.status = 'completed' THEN ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0) ELSE 0 END), 0) as total_tokens,
+    COALESCE(SUM(CASE WHEN se.status = 'completed' AND se.stream AND se.metrics_first_token_latency_ms IS NOT NULL THEN 1 ELSE 0 END), 0) as streaming_request_count
 FROM request_executions se
 LEFT JOIN usage_logs ul ON se.request_id = ul.request_id
 WHERE se.channel_id IS NOT NULL
