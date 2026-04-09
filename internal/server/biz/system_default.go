@@ -75,3 +75,12 @@ var defaultPerformanceStrategyConfig = PerformanceStrategyConfig{
 	ColdStartBoostScore:          120,
 	ColdStartMinRequests:         10,
 }
+
+var defaultMetricsSamplingConfig = MetricsSamplingConfig{
+	Enabled:              false,
+	AlwaysSample:         false,
+	RequestRateThreshold: 30,
+	ScoreThreshold:       100,
+	AlternativeCount:     5,
+	SamplingRate:         0.10,
+}

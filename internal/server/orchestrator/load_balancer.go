@@ -316,6 +316,21 @@ func (lb *LoadBalancer) calculateTopK(ctx context.Context, candidates []*Channel
 	return topK
 }
 
+// CalculateScore calculates the total load balancer score for a single channel.
+// This is used for metrics sampling to compare winner's score against thresholds.
+func (lb *LoadBalancer) CalculateScore(ctx context.Context, channel *biz.Channel) float64 {
+	if channel == nil {
+		return 0
+	}
+
+	totalScore := 0.0
+	for _, strategy := range lb.strategies {
+		totalScore += strategy.Score(ctx, channel)
+	}
+
+	return totalScore
+}
+
 // logDecision logs the complete load balancing decision.
 func (lb *LoadBalancer) logDecision(ctx context.Context, candidates []*ChannelModelsCandidate, model string, decisions []ChannelDecision, topK int, totalDuration time.Duration) {
 	// Log summary

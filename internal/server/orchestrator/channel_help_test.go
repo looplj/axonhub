@@ -61,7 +61,7 @@ func newTestLoadBalancedSelector(
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
-	return WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
+	return WithLoadBalancedSelector(baseSelector, loadBalancer, systemService, systemService, nil)
 }
 
 // newTestSystemService creates a minimal system service for testing.

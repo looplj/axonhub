@@ -12,14 +12,16 @@ import (
 type PersistenceState struct {
 	APIKey *ent.APIKey
 
-	RequestService      *biz.RequestService
-	UsageLogService     *biz.UsageLogService
-	ChannelService      *biz.ChannelService
-	PromptProvider      PromptProvider
-	PromptProtecter     PromptProtecter
-	RetryPolicyProvider RetryPolicyProvider
-	CandidateSelector   CandidateSelector
-	LoadBalancer        *LoadBalancer
+	RequestService        *biz.RequestService
+	UsageLogService       *biz.UsageLogService
+	ChannelService        *biz.ChannelService
+	PromptProvider        PromptProvider
+	PromptProtecter       PromptProtecter
+	RetryPolicyProvider   RetryPolicyProvider
+	SystemService         *biz.SystemService
+	CandidateSelector     CandidateSelector
+	LoadBalancer          *LoadBalancer
+	ChannelRequestTracker *ChannelRequestTracker
 
 	// Request state
 	ModelMapper *ModelMapper

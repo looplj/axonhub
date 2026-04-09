@@ -63,7 +63,7 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 		selector = WithStreamPolicySelector(selector)
 
 		if inbound.state.LoadBalancer != nil {
-			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
+			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider, inbound.state.SystemService, inbound.state.ChannelRequestTracker)
 		}
 
 		candidates, err := selector.Select(ctx, llmRequest)

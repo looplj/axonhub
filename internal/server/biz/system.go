@@ -97,6 +97,10 @@ const (
 	// SystemKeyPerformanceStrategy is the key used to store the performance-aware load balancing strategy configuration.
 	// The value is JSON-encoded PerformanceStrategyConfig struct.
 	SystemKeyPerformanceStrategy = "performance_strategy"
+
+	// SystemKeyMetricsSampling is the key used to store the metrics sampling configuration.
+	// The value is JSON-encoded MetricsSamplingConfig struct.
+	SystemKeyMetricsSampling = "metrics_sampling"
 )
 
 // SystemGeneralSettings represents general system configuration settings.
@@ -137,6 +141,28 @@ type PerformanceStrategyConfig struct {
 	ColdStartBoostScore int `json:"cold_start_boost_score"`
 	// ColdStartMinRequests is the minimum requests needed before cold start phase ends.
 	ColdStartMinRequests int `json:"cold_start_min_requests"`
+}
+
+// MetricsSamplingConfig represents configuration for metrics sampling.
+// When enabled, the system may select an alternative channel alongside the winning
+// channel to collect performance comparison data for load balancing optimization.
+type MetricsSamplingConfig struct {
+	// Enabled controls whether metrics sampling is active.
+	Enabled bool `json:"enabled"`
+	// AlwaysSample bypasses all threshold checks and always triggers sampling when enabled.
+	AlwaysSample bool `json:"always_sample"`
+	// RequestRateThreshold is the minimum requests-per-minute required to trigger sampling.
+	// The winner channel's current RPM must exceed this value. Ignored if 0.
+	RequestRateThreshold int `json:"request_rate_threshold"`
+	// ScoreThreshold is the minimum load balancer score required to trigger sampling.
+	// The winner channel's score must exceed this value. Ignored if 0.
+	ScoreThreshold float64 `json:"score_threshold"`
+	// AlternativeCount is the number of runner-up candidates to consider as alternatives.
+	// Must be at least 1 for sampling to occur. Defaults to 5.
+	AlternativeCount int `json:"alternative_count"`
+	// SamplingRate is the probability (0.0 to 1.0) of actually performing sampling
+	// when all other conditions are met. 0.10 means 10% chance of sampling.
+	SamplingRate float64 `json:"sampling_rate"`
 }
 
 // BackupFrequency represents how often automatic backups should run.
@@ -976,6 +1002,63 @@ func (s *SystemService) SetPerformanceStrategy(ctx context.Context, config *Perf
 	}
 
 	return s.setSystemValue(ctx, SystemKeyPerformanceStrategy, string(jsonBytes))
+}
+
+// MetricsSampling retrieves the metrics sampling configuration.
+func (s *SystemService) MetricsSampling(ctx context.Context) (*MetricsSamplingConfig, error) {
+	value, err := authz.RunWithSystemBypass(ctx, "system-metrics-sampling", func(bypassCtx context.Context) (string, error) {
+		return s.getSystemValue(bypassCtx, SystemKeyMetricsSampling)
+	})
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return lo.ToPtr(defaultMetricsSamplingConfig), nil
+		}
+
+		return nil, fmt.Errorf("failed to get metrics sampling: %w", err)
+	}
+
+	var config MetricsSamplingConfig
+	if err := json.Unmarshal([]byte(value), &config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal metrics sampling: %w", err)
+	}
+
+	return &config, nil
+}
+
+// MetricsSamplingOrDefault retrieves the metrics sampling or returns the default if not available.
+func (s *SystemService) MetricsSamplingOrDefault(ctx context.Context) *MetricsSamplingConfig {
+	config, err := s.MetricsSampling(ctx)
+	if err != nil {
+		log.Warn(ctx, "failed to get metrics sampling, using default", log.Cause(err))
+
+		return lo.ToPtr(defaultMetricsSamplingConfig)
+	}
+
+	return config
+}
+
+// SetMetricsSampling sets the metrics sampling configuration.
+func (s *SystemService) SetMetricsSampling(ctx context.Context, config *MetricsSamplingConfig) error {
+	// Validate configuration values
+	if config.SamplingRate < 0 || config.SamplingRate > 1 {
+		return fmt.Errorf("invalid sampling_rate: must be between 0.0 and 1.0, got %f", config.SamplingRate)
+	}
+	if config.RequestRateThreshold < 0 {
+		return fmt.Errorf("invalid request_rate_threshold: must be non-negative, got %d", config.RequestRateThreshold)
+	}
+	if config.ScoreThreshold < 0 {
+		return fmt.Errorf("invalid score_threshold: must be non-negative, got %f", config.ScoreThreshold)
+	}
+	if config.AlternativeCount < 0 {
+		return fmt.Errorf("invalid alternative_count: must be non-negative, got %d", config.AlternativeCount)
+	}
+
+	jsonBytes, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal metrics sampling: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyMetricsSampling, string(jsonBytes))
 }
 
 // ModelSettings retrieves the model settings configuration.

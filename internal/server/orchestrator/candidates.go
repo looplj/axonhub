@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
 	"slices"
 	"sync"
 	"time"
@@ -443,25 +444,42 @@ func (s *SelectedChannelsSelector) Select(ctx context.Context, req *llm.Request)
 
 // LoadBalancedSelector is a decorator that sorts candidates using load balancing strategies.
 type LoadBalancedSelector struct {
-	wrapped      CandidateSelector
-	loadBalancer *LoadBalancer
-	policy       RetryPolicyProvider
+	wrapped               CandidateSelector
+	loadBalancer          *LoadBalancer
+	policy                RetryPolicyProvider
+	systemService         *biz.SystemService
+	channelRequestTracker *ChannelRequestTracker
 
 	// explorationState tracks round-robin rotation for exploration candidates.
 	explorationState struct {
 		mu     sync.Mutex
 		counts map[string]int // Per-model exploration counts
 	}
+
+	// metricsSamplingState tracks round-robin rotation for alternative candidates.
+	metricsSamplingState struct {
+		mu     sync.Mutex
+		counts map[string]int // Per-model alternative selection counts
+	}
 }
 
 // WithLoadBalancedSelector creates a selector that applies load balancing to sort candidates.
 // The policy is used to determine the retry policy for early stopping.
-func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalancer, policy RetryPolicyProvider) *LoadBalancedSelector {
+// The systemService and channelRequestTracker are optional dependencies for advanced load balancing features.
+func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalancer, policy RetryPolicyProvider, systemService *biz.SystemService, channelRequestTracker *ChannelRequestTracker) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
-		wrapped:      wrapped,
-		loadBalancer: loadBalancer,
-		policy:       policy,
+		wrapped:               wrapped,
+		loadBalancer:          loadBalancer,
+		policy:                policy,
+		systemService:         systemService,
+		channelRequestTracker: channelRequestTracker,
 		explorationState: struct {
+			mu     sync.Mutex
+			counts map[string]int
+		}{
+			counts: make(map[string]int),
+		},
+		metricsSamplingState: struct {
 			mu     sync.Mutex
 			counts map[string]int
 		}{
@@ -560,6 +578,50 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		}
 	}
 
+	if len(result) > 0 && s.systemService != nil && s.channelRequestTracker != nil {
+		metricsSamplingConfig := s.systemService.MetricsSamplingOrDefault(ctx)
+
+		if shouldTriggerMetricsSampling(
+			ctx, metricsSamplingConfig, result[0], s.channelRequestTracker, s.loadBalancer,
+		) {
+			winnerID := result[0].Channel.ID
+
+			// Get winner's score from load balancer strategies for threshold comparison
+			winnerScore := s.getCandidateScore(ctx, result[0])
+			winnerRequestRate := int(s.channelRequestTracker.GetRequestCount(winnerID))
+
+			// Check if we should sample based on thresholds
+			triggerReason := getTriggerReason(metricsSamplingConfig, winnerScore, winnerRequestRate)
+
+			if triggerReason != "" {
+				// Apply probabilistic sampling
+				if shouldSampleProbabilistically(metricsSamplingConfig.SamplingRate) {
+					alternative := s.selectAlternativeCandidate(
+						ctx,
+						req.Model,
+						result, // Use sorted result to find actual runner-ups
+						winnerID,
+						metricsSamplingConfig.AlternativeCount,
+						triggerReason,
+						metricsSamplingConfig.SamplingRate,
+						result[0].Channel.Name,
+					)
+
+					if alternative != nil {
+						// Always append alternative - don't replace existing candidates
+						result = append(result, alternative)
+					}
+				} else {
+					if log.DebugEnabled(ctx) {
+						log.Debug(ctx, "Metrics sampling: probabilistic check skipped sampling",
+							log.String("model", req.Model),
+							log.Float64("sampling_rate", metricsSamplingConfig.SamplingRate))
+					}
+				}
+			}
+		}
+	}
+
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "Load balanced candidates for model",
 			log.String("model", req.Model),
@@ -605,6 +667,135 @@ func (s *LoadBalancedSelector) selectExplorationCandidate(model string, candidat
 	s.explorationState.counts[model] = count + 1
 
 	return selected
+}
+
+// selectAlternativeCandidate selects an alternative candidate using round-robin rotation.
+// It selects from the top N runner-up candidates (ranks 2 to N+1), skipping any that are in cooldown.
+// If all alternatives are unavailable, it returns nil to fall back to the original winner.
+func (s *LoadBalancedSelector) selectAlternativeCandidate(
+	ctx context.Context,
+	model string,
+	candidates []*ChannelModelsCandidate,
+	excludedID int,
+	alternativeCount int,
+	triggerReason string,
+	samplingRate float64,
+	originalChannelName string,
+) *ChannelModelsCandidate {
+	if len(candidates) == 0 || alternativeCount <= 0 {
+		return nil
+	}
+
+	// Filter to get runner-up candidates (not the winner, not in cooldown)
+	var alternatives []*ChannelModelsCandidate
+	for _, c := range candidates {
+		if c.Channel.ID == excludedID {
+			continue
+		}
+		if s.channelRequestTracker != nil && s.channelRequestTracker.IsCoolingDown(c.Channel.ID) {
+			continue
+		}
+		alternatives = append(alternatives, c)
+		if len(alternatives) >= alternativeCount {
+			break
+		}
+	}
+
+	if len(alternatives) == 0 {
+		return nil
+	}
+
+	s.metricsSamplingState.mu.Lock()
+	defer s.metricsSamplingState.mu.Unlock()
+
+	// Get or initialize the count for this model
+	count := s.metricsSamplingState.counts[model]
+
+	// Use round-robin rotation based on the count
+	index := count % len(alternatives)
+	selected := alternatives[index]
+
+	// Increment the rotation counter
+	s.metricsSamplingState.counts[model] = count + 1
+
+	log.Info(ctx, "Metrics sampling: alternative channel selected",
+		log.String("model", model),
+		log.Int("original_channel_id", excludedID),
+		log.String("original_channel_name", originalChannelName),
+		log.Int("alternative_channel_id", selected.Channel.ID),
+		log.String("alternative_channel_name", selected.Channel.Name),
+		log.String("trigger_reason", triggerReason),
+		log.Float64("sampling_rate", samplingRate))
+
+	return selected
+}
+
+// shouldTriggerMetricsSampling checks if metrics sampling prerequisites are met.
+// Returns false if required dependencies are missing.
+func shouldTriggerMetricsSampling(
+	ctx context.Context,
+	config *biz.MetricsSamplingConfig,
+	winner *ChannelModelsCandidate,
+	requestTracker *ChannelRequestTracker,
+	loadBalancer *LoadBalancer,
+) bool {
+	if config == nil || !config.Enabled {
+		return false
+	}
+
+	if config.AlwaysSample {
+		return true
+	}
+
+	// Need at least one threshold configured
+	if config.ScoreThreshold <= 0 && config.RequestRateThreshold <= 0 {
+		return false
+	}
+
+	return true
+}
+
+// getTriggerReason determines if metrics sampling should trigger based on actual metrics.
+// Returns empty string if neither threshold is exceeded.
+func getTriggerReason(config *biz.MetricsSamplingConfig, winnerScore float64, winnerRequestRate int) string {
+	if config == nil {
+		return ""
+	}
+
+	// AlwaysSample is handled separately in shouldTriggerMetricsSampling
+	if config.AlwaysSample {
+		return "always_flag"
+	}
+
+	// Check score threshold (if configured)
+	if config.ScoreThreshold > 0 && winnerScore >= config.ScoreThreshold {
+		return "score_threshold"
+	}
+
+	// Check request rate threshold (if configured)
+	if config.RequestRateThreshold > 0 && winnerRequestRate >= config.RequestRateThreshold {
+		return "rate_threshold"
+	}
+
+	// No threshold exceeded
+	return ""
+}
+
+// shouldSampleProbabilistically applies probabilistic sampling based on configured rate.
+// Returns true if random value is below the sampling rate (e.g., 0.10 = 10% chance).
+func shouldSampleProbabilistically(samplingRate float64) bool {
+	return rand.Float64() < samplingRate
+}
+
+// getCandidateScore calculates the load balancer score for a candidate.
+// Returns the sum of all strategy scores.
+func (s *LoadBalancedSelector) getCandidateScore(ctx context.Context, candidate *ChannelModelsCandidate) float64 {
+	if s.loadBalancer == nil || candidate == nil || candidate.Channel == nil {
+		return 0
+	}
+
+	// Use the load balancer's strategies to calculate the score
+	return s.loadBalancer.CalculateScore(ctx, candidate.Channel)
 }
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.

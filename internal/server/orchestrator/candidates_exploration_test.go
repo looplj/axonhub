@@ -222,7 +222,7 @@ func TestExplorationMechanism_Integration(t *testing.T) {
 
 	loadBalancer := NewLoadBalancer(systemService, nil, perfStrategy, NewWeightRoundRobinStrategy(channelService))
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
-	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService, systemService, nil)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -273,7 +273,7 @@ func TestExplorationMechanism_NoExplorationWhenAllWarm(t *testing.T) {
 
 	loadBalancer := NewLoadBalancer(systemService, nil, perfStrategy, NewWeightRoundRobinStrategy(channelService))
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
-	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService, systemService, nil)
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -329,7 +329,7 @@ func TestExplorationMechanism_RequiresMultipleSlots(t *testing.T) {
 
 	loadBalancer := NewLoadBalancer(systemService, nil, perfStrategy, NewWeightRoundRobinStrategy(channelService))
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
-	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService, systemService, nil)
 
 	req := &llm.Request{
 		Model: "gpt-4",
