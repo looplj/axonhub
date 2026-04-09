@@ -27,7 +27,6 @@ type GeminiHandlersParams struct {
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
-	StreamPreviewRegistry *biz.StreamPreviewRegistry
 }
 
 type GeminiHandlers struct {
@@ -50,7 +49,6 @@ func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
 				params.PromptService,
 				params.QuotaService,
 				params.PromptProtectionRuleService,
-				params.StreamPreviewRegistry,
 			),
 		),
 		ChannelService: params.ChannelService,

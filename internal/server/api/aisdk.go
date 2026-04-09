@@ -24,7 +24,6 @@ type AiSdkHandlersParams struct {
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
 	QuotaService                *biz.QuotaService
 	HttpClient                  *httpclient.HttpClient
-	StreamPreviewRegistry       *biz.StreamPreviewRegistry
 }
 
 type AiSDKHandlers struct {
@@ -45,7 +44,6 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.PromptService,
 				params.QuotaService,
 				params.PromptProtectionRuleService,
-				params.StreamPreviewRegistry,
 			),
 			StreamWriter: WriteJSONStream,
 		},

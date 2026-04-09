@@ -33,6 +33,9 @@ func NewStreamPreviewRegistry() *StreamPreviewRegistry {
 	return &StreamPreviewRegistry{}
 }
 
+// DefaultStreamPreviewRegistry is the package-level global registry.
+var DefaultStreamPreviewRegistry = NewStreamPreviewRegistry()
+
 // RequestKey returns the registry key for a request.
 func RequestKey(requestID int) string {
 	return fmt.Sprintf("request:%d", requestID)

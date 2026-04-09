@@ -37,7 +37,6 @@ func setupTestThreadService(t *testing.T) (*ThreadService, *ent.Client) {
 						Client:        client,
 					},
 				),
-				NewStreamPreviewRegistry(),
 			),
 			Ent: client,
 		}),

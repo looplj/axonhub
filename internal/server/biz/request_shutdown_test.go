@@ -38,7 +38,7 @@ func setupTestRequestService(t *testing.T) (*RequestService, *ent.Client, contex
 		Client:        client,
 	})
 
-	requestService := NewRequestService(client, systemService, usageLogService, dataStorageService, NewStreamPreviewRegistry())
+	requestService := NewRequestService(client, systemService, usageLogService, dataStorageService)
 
 	return requestService, client, ctx
 }

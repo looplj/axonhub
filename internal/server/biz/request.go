@@ -31,12 +31,11 @@ type RequestService struct {
 	SystemService      *SystemService
 	UsageLogService    *UsageLogService
 	DataStorageService *DataStorageService
-	PreviewRegistry    *StreamPreviewRegistry
 	channelCache       xcache.Cache[int]
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService, previewRegistry *StreamPreviewRegistry) *RequestService {
+func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService) *RequestService {
 	return &RequestService{
 		AbstractService: &AbstractService{
 			db: ent,
@@ -44,7 +43,6 @@ func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogSe
 		SystemService:      systemService,
 		UsageLogService:    usageLogService,
 		DataStorageService: dataStorageService,
-		PreviewRegistry:    previewRegistry,
 		channelCache: xcache.NewFromConfig[int](xcache.Config{
 			Mode: xcache.ModeMemory,
 			Memory: xcache.MemoryConfig{
@@ -1042,8 +1040,8 @@ func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Reques
 		return nil, fmt.Errorf("request is nil")
 	}
 	// Live preview for active streaming requests
-	if req.Stream && req.Status == request.StatusProcessing && s.PreviewRegistry != nil {
-		chunks := s.PreviewRegistry.GetChunks(RequestKey(req.ID))
+	if req.Stream && req.Status == request.StatusProcessing {
+		chunks := DefaultStreamPreviewRegistry.GetChunks(RequestKey(req.ID))
 		return chunks, nil
 	}
 	// Only load response chunks if request is completed and streaming.
@@ -1163,8 +1161,8 @@ func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context,
 	}
 
 	// Live preview for active streaming executions
-	if exec.Stream && exec.Status == requestexecution.StatusProcessing && s.PreviewRegistry != nil {
-		chunks := s.PreviewRegistry.GetChunks(ExecutionKey(exec.ID))
+	if exec.Stream && exec.Status == requestexecution.StatusProcessing {
+		chunks := DefaultStreamPreviewRegistry.GetChunks(ExecutionKey(exec.ID))
 		return chunks, nil
 	}
 	// Only load response body if execution is completed

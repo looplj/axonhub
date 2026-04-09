@@ -67,9 +67,9 @@ func NewOutboundPersistentStream(
 	}
 
 	// Register with preview registry for live chunk access
-	if state.PreviewRegistry != nil && requestExec != nil {
+	if state.EnablePreview && requestExec != nil {
 		s.previewKey = biz.ExecutionKey(requestExec.ID)
-		state.PreviewRegistry.Register(s.previewKey, &s.responseChunks)
+		biz.DefaultStreamPreviewRegistry.Register(s.previewKey, &s.responseChunks)
 	}
 
 	return s
@@ -83,8 +83,8 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
 		ts.responseChunks = append(ts.responseChunks, event)
-		if ts.previewKey != "" && ts.state.PreviewRegistry != nil {
-			ts.state.PreviewRegistry.NotifyAppend(ts.previewKey)
+		if ts.previewKey != "" {
+			biz.DefaultStreamPreviewRegistry.NotifyAppend(ts.previewKey)
 		}
 		// Check if this is a terminal event, which indicates the stream completed successfully.
 		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
@@ -110,8 +110,8 @@ func (ts *OutboundPersistentStream) Close() error {
 	ctx := ts.ctx
 
 	// Unregister from preview registry on all exit paths
-	if ts.previewKey != "" && ts.state.PreviewRegistry != nil {
-		defer ts.state.PreviewRegistry.Unregister(ts.previewKey)
+	if ts.previewKey != "" {
+		defer biz.DefaultStreamPreviewRegistry.Unregister(ts.previewKey)
 	}
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
