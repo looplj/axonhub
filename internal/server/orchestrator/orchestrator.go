@@ -28,6 +28,7 @@ func NewChatCompletionOrchestrator(
 	promptService *biz.PromptService,
 	quotaService *biz.QuotaService,
 	promptProtectionRuleService *biz.PromptProtectionRuleService,
+	previewRegistry *biz.StreamPreviewRegistry,
 ) *ChatCompletionOrchestrator {
 	connectionTracker := NewDefaultConnectionTracker(256)
 	rateLimitTracker := NewChannelRequestTracker()
@@ -75,6 +76,7 @@ func NewChatCompletionOrchestrator(
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
 		modelCircuitBreaker:        modelCircuitBreaker,
 		proxy:                      nil,
+		PreviewRegistry:            previewRegistry,
 	}
 }
 
@@ -111,6 +113,9 @@ type ChatCompletionOrchestrator struct {
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
 	proxy *httpclient.ProxyConfig
+
+	// PreviewRegistry holds references to active stream chunk slices for real-time preview.
+	PreviewRegistry *biz.StreamPreviewRegistry
 }
 
 func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
@@ -185,6 +190,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
 		CurrentCandidateIndex: 0,
+	}
+
+	// Enable preview registry if StoreChunks is enabled
+	if storeChunks, err := processor.SystemService.StoreChunks(ctx); err == nil && storeChunks {
+		state.PreviewRegistry = processor.PreviewRegistry
 	}
 
 	var pipelineOpts []pipeline.Option

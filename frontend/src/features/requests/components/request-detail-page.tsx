@@ -36,7 +36,6 @@ export default function RequestDetailPage() {
 
   const [showResponseChunks, setShowResponseChunks] = useState(false);
   const [showExecutionChunks, setShowExecutionChunks] = useState(false);
-  const [selectedResponseChunks, setSelectedResponseChunks] = useState<any[]>([]);
   const [selectedExecutionChunks, setSelectedExecutionChunks] = useState<any[]>([]);
   const [showCurlPreview, setShowCurlPreview] = useState(false);
   const [curlCommand, setCurlCommand] = useState('');
@@ -128,11 +127,8 @@ export default function RequestDetailPage() {
   };
 
   const showResponseChunksModal = useCallback(() => {
-    if (request?.responseChunks) {
-      setSelectedResponseChunks(request.responseChunks);
-      setShowResponseChunks(true);
-    }
-  }, [request]);
+    setShowResponseChunks(true);
+  }, []);
 
   const showExecutionChunksModal = useCallback((chunks: any[]) => {
     if (chunks && chunks.length > 0) {
@@ -548,11 +544,16 @@ export default function RequestDetailPage() {
                           variant='outline'
                           size='sm'
                           onClick={showResponseChunksModal}
-                          disabled={!request?.responseChunks || request.responseChunks.length === 0}
+                          disabled={
+                            !(request?.stream && request?.status === 'processing') &&
+                            (!request?.responseChunks || request.responseChunks.length === 0)
+                          }
                           className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
                         >
                           <Layers className='mr-2 h-4 w-4' />
-                          {t('requests.columns.responseChunks')}
+                          {request?.stream && request?.status === 'processing'
+                            ? t('requests.actions.preview')
+                            : t('requests.columns.responseChunks')}
                         </Button>
                         <Button
                           variant='outline'
@@ -876,7 +877,8 @@ export default function RequestDetailPage() {
       <ChunksDialog
         open={showResponseChunks}
         onOpenChange={setShowResponseChunks}
-        chunks={selectedResponseChunks}
+        chunks={request?.responseChunks ?? []}
+        isLive={request?.stream === true && request?.status === 'processing'}
         title={t('requests.dialogs.jsonViewer.responseChunks')}
       />
 

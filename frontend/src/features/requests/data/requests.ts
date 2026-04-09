@@ -289,6 +289,9 @@ export function useRequest(id: string) {
       }
     },
     enabled: !!id,
+    refetchInterval: (query) => {
+      return query.state.data?.status === 'processing' ? 2000 : false;
+    },
   });
 }
 

@@ -50,6 +50,7 @@
   "requests.actions.download": "开始下载",
   "requests.actions.downloadVideo": "下载视频",
   "requests.actions.copyCurl": "cURL",
+  "requests.actions.preview": "预览",
   "requests.filters.filterModelId": "按模型ID筛选...",
   "requests.filters.status": "状态",
   "requests.filters.source": "来源",

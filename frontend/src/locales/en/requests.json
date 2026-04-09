@@ -50,6 +50,7 @@
   "requests.actions.download": "Download",
   "requests.actions.downloadVideo": "Download Video",
   "requests.actions.copyCurl": "cURL",
+  "requests.actions.preview": "Preview",
   "requests.filters.filterModelId": "Filter by Model ID...",
   "requests.filters.status": "Status",
   "requests.filters.source": "Source",

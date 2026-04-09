@@ -15,15 +15,16 @@ import (
 type AiSdkHandlersParams struct {
 	fx.In
 
-	ChannelService  *biz.ChannelService
-	ModelService    *biz.ModelService
-	RequestService  *biz.RequestService
-	SystemService   *biz.SystemService
-	UsageLogService *biz.UsageLogService
-	PromptService   *biz.PromptService
+	ChannelService              *biz.ChannelService
+	ModelService                *biz.ModelService
+	RequestService              *biz.RequestService
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
-	QuotaService    *biz.QuotaService
-	HttpClient      *httpclient.HttpClient
+	QuotaService                *biz.QuotaService
+	HttpClient                  *httpclient.HttpClient
+	StreamPreviewRegistry       *biz.StreamPreviewRegistry
 }
 
 type AiSDKHandlers struct {
@@ -44,6 +45,7 @@ func NewAiSDKHandlers(params AiSdkHandlersParams) *AiSDKHandlers {
 				params.PromptService,
 				params.QuotaService,
 				params.PromptProtectionRuleService,
+				params.StreamPreviewRegistry,
 			),
 			StreamWriter: WriteJSONStream,
 		},

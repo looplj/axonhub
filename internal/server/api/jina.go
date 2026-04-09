@@ -22,6 +22,7 @@ type JinaHandlersParams struct {
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
 	QuotaService    *biz.QuotaService
 	HttpClient      *httpclient.HttpClient
+	StreamPreviewRegistry *biz.StreamPreviewRegistry
 }
 
 func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
@@ -38,6 +39,7 @@ func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
 				params.PromptService,
 				params.QuotaService,
 				params.PromptProtectionRuleService,
+				params.StreamPreviewRegistry,
 			),
 		},
 		EmbeddingHandlers: &ChatCompletionHandlers{
@@ -52,6 +54,7 @@ func NewJinaHandlers(params JinaHandlersParams) *JinaHandlers {
 				params.PromptService,
 				params.QuotaService,
 				params.PromptProtectionRuleService,
+				params.StreamPreviewRegistry,
 			),
 		},
 	}
