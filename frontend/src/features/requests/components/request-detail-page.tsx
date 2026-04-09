@@ -25,6 +25,7 @@ import { ChunksDialog } from './chunks-dialog';
 import { CurlPreviewDialog } from './curl-preview-dialog';
 import { getStatusColor } from './help';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
+import { ResponseFlow } from './response-flow';
 
 export default function RequestDetailPage() {
   const { t, i18n } = useTranslation();
@@ -56,6 +57,9 @@ export default function RequestDetailPage() {
     where: { requestID: requestId },
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   });
+
+  const hasResponseBody = !!(request?.responseBody && Object.keys(request.responseBody).length > 0);
+  const hasResponseChunks = !!(request?.responseChunks && request.responseChunks.length > 0);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -179,6 +183,36 @@ export default function RequestDetailPage() {
     return `${(latencyMs / 1000).toFixed(2)}s`;
   };
 
+  const extractResponseText = useCallback(() => {
+    if (!request) return '';
+    let fullContent = '';
+
+    // 1. Try to parse from body first (final result)
+    if (request.responseBody) {
+      const body = request.responseBody;
+      // Handle AxonHub / AI SDK 'parts' format
+      if (Array.isArray(body.parts)) {
+        body.parts.forEach((part: any) => {
+          if (part.type === 'text') fullContent += part.text || '';
+        });
+      }
+    }
+
+    // 2. Fallback to chunks aggregation (for live streaming or when body is not formatted)
+    if (!fullContent && request.responseChunks && request.responseChunks.length > 0) {
+      request.responseChunks.forEach((chunk: any) => {
+        const data = chunk.data || chunk;
+
+        // Custom AxonHub format: data.type === 'text-delta'
+        if (data.type === 'text-delta' && typeof data.delta === 'string') {
+          fullContent += data.delta;
+        }
+      });
+    }
+
+    return fullContent;
+  }, [request]);
+
   const handleBack = () => {
     // 保持分页状态返回到请求列表页
     navigate({
@@ -202,6 +236,7 @@ export default function RequestDetailPage() {
       </div>
     );
   }
+
 
   if (!request) {
     return (
@@ -545,8 +580,8 @@ export default function RequestDetailPage() {
                           size='sm'
                           onClick={showResponseChunksModal}
                           disabled={
-                            !(request?.stream && request?.status === 'processing') &&
-                            (!request?.responseChunks || request.responseChunks.length === 0)
+                            !(request?.stream && request?.status === 'processing') ||
+                            !hasResponseChunks
                           }
                           className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
                         >
@@ -558,8 +593,18 @@ export default function RequestDetailPage() {
                         <Button
                           variant='outline'
                           size='sm'
+                          onClick={() => copyToClipboard(extractResponseText())}
+                          disabled={!extractResponseText()}
+                          className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
+                        >
+                          <FileText className='mr-2 h-4 w-4' />
+                          {t('requests.actions.copyMarkdown')}
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
                           onClick={() => copyToClipboard(formatJson(request.responseBody))}
-                          disabled={!request.responseBody}
+                          disabled={!hasResponseBody}
                           className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
                         >
                           <Copy className='mr-2 h-4 w-4' />
@@ -569,7 +614,7 @@ export default function RequestDetailPage() {
                           variant='outline'
                           size='sm'
                           onClick={() => downloadFile(formatJson(request.responseBody), `response-body-${request.id}.json`)}
-                          disabled={!request.responseBody}
+                          disabled={!hasResponseBody}
                           className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
                         >
                           <Download className='mr-2 h-4 w-4' />
@@ -577,7 +622,16 @@ export default function RequestDetailPage() {
                         </Button>
                       </div>
                     </div>
-                    {request.responseBody ? (
+
+                    {(hasResponseChunks || request.responseBody) && (
+                      <ResponseFlow
+                        chunks={request.responseChunks}
+                        body={request.responseBody}
+                        isLive={request.status === 'processing' && request.stream || undefined}
+                      />
+                    )}
+
+                    {hasResponseBody ? (
                       <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
                         <JsonViewer
                           data={request.responseBody}
@@ -587,6 +641,13 @@ export default function RequestDetailPage() {
                           hideArrayIndices={true}
                           className='text-sm'
                         />
+                      </div>
+                    ) : request.status === 'processing' ? (
+                      <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
+                        <div className='space-y-4 text-center'>
+                          <div className='border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2'></div>
+                          <p className='text-muted-foreground text-sm'>{t('common.loading')}...</p>
+                        </div>
                       </div>
                     ) : (
                       <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
