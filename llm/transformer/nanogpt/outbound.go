@@ -86,8 +86,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	// Route to embedded OpenAI transformer for embedding responses
-	if httpResp.Request != nil && httpResp.Request.APIFormat == string(llm.APIFormatOpenAIEmbedding) {
+	// Route to embedded OpenAI transformer for embedding and image-related responses
+	if httpResp.Request != nil && (httpResp.Request.APIFormat == string(llm.APIFormatOpenAIEmbedding) ||
+		httpResp.Request.APIFormat == string(llm.APIFormatOpenAIImageGeneration) ||
+		httpResp.Request.APIFormat == string(llm.APIFormatOpenAIImageEdit) ||
+		httpResp.Request.APIFormat == string(llm.APIFormatOpenAIImageVariation)) {
 		return t.Outbound.TransformResponse(ctx, httpResp)
 	}
 
