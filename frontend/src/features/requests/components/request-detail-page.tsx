@@ -582,7 +582,7 @@ export default function RequestDetailPage() {
                           size='sm'
                           onClick={showResponseChunksModal}
                           disabled={
-                            !(request?.stream && request?.status === 'processing') ||
+                            !(request?.stream && request?.status === 'processing') &&
                             !hasResponseChunks
                           }
                           className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
