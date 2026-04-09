@@ -77,6 +77,11 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 			return nil, fmt.Errorf("%w: %q", biz.ErrInvalidModel, req.Model)
 		}
 
+		log.Warn(ctx, "failed to select configured model candidates",
+			log.String("request_model", req.Model),
+			log.Cause(err),
+		)
+
 		return nil, fmt.Errorf("%w: %q", err, req.Model)
 	}
 
@@ -122,6 +127,9 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
 	model, err := s.ModelService.GetModelByModelID(ctx, req.Model, model.StatusEnabled)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
 
