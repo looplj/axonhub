@@ -87,11 +87,14 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Route to embedded OpenAI transformer for embedding and image-related responses
-	if httpResp.Request != nil && (httpResp.Request.APIFormat == string(llm.APIFormatOpenAIEmbedding) ||
-		httpResp.Request.APIFormat == string(llm.APIFormatOpenAIImageGeneration) ||
-		httpResp.Request.APIFormat == string(llm.APIFormatOpenAIImageEdit) ||
-		httpResp.Request.APIFormat == string(llm.APIFormatOpenAIImageVariation)) {
-		return t.Outbound.TransformResponse(ctx, httpResp)
+	if httpResp.Request != nil {
+		switch httpResp.Request.APIFormat {
+		case string(llm.APIFormatOpenAIEmbedding),
+			string(llm.APIFormatOpenAIImageGeneration),
+			string(llm.APIFormatOpenAIImageEdit),
+			string(llm.APIFormatOpenAIImageVariation):
+			return t.Outbound.TransformResponse(ctx, httpResp)
+		}
 	}
 
 	var nanoResp Response
