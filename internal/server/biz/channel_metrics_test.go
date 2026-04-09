@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -25,14 +24,24 @@ func TestAggregatedMetrics_Clone(t *testing.T) {
 			FailureCount:        20,
 			ConsecutiveFailures: 0,
 		},
-		LastSelectedAt: lo.ToPtr(now),
-		LastFailureAt:  lo.ToPtr(now.Add(-1 * time.Hour)),
+		LastSelectedAt:                 new(now),
+		LastFailureAt:                  new(now.Add(-1 * time.Hour)),
+		StreamingFirstTokenLatencyEWMA: 320,
+		StreamingTokensPerSecondEWMA:   42,
+		StreamingSampleCount:           3,
+		NonStreamingLatencyEWMA:        1800,
+		NonStreamingSampleCount:        4,
 	}
 
 	cloned := metrics.Clone()
 	require.Equal(t, metrics.metricsRecord, cloned.metricsRecord)
 	require.Equal(t, metrics.LastSelectedAt, cloned.LastSelectedAt)
 	require.Equal(t, metrics.LastFailureAt, cloned.LastFailureAt)
+	require.Equal(t, metrics.StreamingFirstTokenLatencyEWMA, cloned.StreamingFirstTokenLatencyEWMA)
+	require.Equal(t, metrics.StreamingTokensPerSecondEWMA, cloned.StreamingTokensPerSecondEWMA)
+	require.Equal(t, metrics.StreamingSampleCount, cloned.StreamingSampleCount)
+	require.Equal(t, metrics.NonStreamingLatencyEWMA, cloned.NonStreamingLatencyEWMA)
+	require.Equal(t, metrics.NonStreamingSampleCount, cloned.NonStreamingSampleCount)
 }
 
 func TestChannelMetrics_RecordSuccess(t *testing.T) {
@@ -93,9 +102,9 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 		{
 			name: "record first failure",
 			perf: &PerformanceRecord{
-				ChannelID:       1,
-				EndTime:         now,
-				Success:         false,
+				ChannelID:          1,
+				EndTime:            now,
+				Success:            false,
 				ResponseStatusCode: 500,
 			},
 			validateFunc: func(t *testing.T) {
@@ -108,9 +117,9 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 		{
 			name: "record second consecutive failure",
 			perf: &PerformanceRecord{
-				ChannelID:       1,
-				EndTime:         now,
-				Success:         false,
+				ChannelID:          1,
+				EndTime:            now,
+				Success:            false,
 				ResponseStatusCode: 429,
 			},
 			validateFunc: func(t *testing.T) {
@@ -122,9 +131,9 @@ func TestChannelMetrics_RecordFailure(t *testing.T) {
 		{
 			name: "record third consecutive failure",
 			perf: &PerformanceRecord{
-				ChannelID:       1,
-				EndTime:         now,
-				Success:         false,
+				ChannelID:          1,
+				EndTime:            now,
+				Success:            false,
 				ResponseStatusCode: 500,
 			},
 			validateFunc: func(t *testing.T) {
@@ -158,9 +167,9 @@ func TestChannelMetrics_ConsecutiveFailures(t *testing.T) {
 	// Record 3 consecutive failures
 	for range 3 {
 		perf := &PerformanceRecord{
-			ChannelID:       1,
-			EndTime:         now,
-			Success:         false,
+			ChannelID:          1,
+			EndTime:            now,
+			Success:            false,
 			ResponseStatusCode: 500,
 		}
 		cm.recordFailure(slot, perf)
@@ -179,9 +188,9 @@ func TestChannelMetrics_ConsecutiveFailures(t *testing.T) {
 
 	// Record another failure - should start from 1 again
 	failPerf := &PerformanceRecord{
-		ChannelID:       1,
-		EndTime:         now,
-		Success:         false,
+		ChannelID:          1,
+		EndTime:            now,
+		Success:            false,
 		ResponseStatusCode: 429,
 	}
 	cm.recordFailure(slot, failPerf)
@@ -299,11 +308,11 @@ func TestChannelService_RecordPerformance_UnrecoverableError(t *testing.T) {
 			require.NoError(t, err)
 
 			perf := &PerformanceRecord{
-				ChannelID:        ch.ID,
-				EndTime:          now,
-				Success:          false,
-				RequestCompleted: true,
-				ResponseStatusCode:  tt.errorCode,
+				ChannelID:          ch.ID,
+				EndTime:            now,
+				Success:            false,
+				RequestCompleted:   true,
+				ResponseStatusCode: tt.errorCode,
 			}
 
 			svc.RecordPerformance(ctx, perf)
@@ -374,11 +383,11 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 		{
 			name: "record failed request with error code",
 			perf: &PerformanceRecord{
-				ChannelID:        1,
-				EndTime:          now,
-				Success:          false,
-				RequestCompleted: true,
-				ResponseStatusCode:  500,
+				ChannelID:          1,
+				EndTime:            now,
+				Success:            false,
+				RequestCompleted:   true,
+				ResponseStatusCode: 500,
 			},
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]
@@ -391,11 +400,11 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 		{
 			name: "record multiple errors with different codes",
 			perf: &PerformanceRecord{
-				ChannelID:        1,
-				EndTime:          now,
-				Success:          false,
-				RequestCompleted: true,
-				ResponseStatusCode:  429,
+				ChannelID:          1,
+				EndTime:            now,
+				Success:            false,
+				RequestCompleted:   true,
+				ResponseStatusCode: 429,
 			},
 			validateFunc: func(t *testing.T) {
 				cm := svc.channelPerfMetrics[1]

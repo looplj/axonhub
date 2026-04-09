@@ -92,6 +92,12 @@ func (m *performanceRecording) OnOutboundLlmResponse(ctx context.Context, respon
 		return response, nil
 	}
 
+	if response != nil && response.Usage != nil {
+		if tokenCount := response.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
+			m.outbound.state.Perf.CompletionTokens = *tokenCount
+		}
+	}
+
 	m.outbound.state.Perf.MarkSuccess()
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, m.outbound.state.Perf)
 
@@ -150,6 +156,7 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 	}
 
 	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
+		s.state.Perf.CompletionTokens = *tokenCount
 		s.state.Perf.MarkSuccess()
 		s.state.ChannelService.AsyncRecordPerformance(s.ctx, s.state.Perf)
 	}

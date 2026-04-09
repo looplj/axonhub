@@ -420,7 +420,8 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		group := priorityGroups[p]
 
 		// Apply load balancing to sort candidates within this priority group.
-		sortedCandidates := s.loadBalancer.Sort(ctx, group, req.Model)
+		useStream := req.Stream != nil && *req.Stream
+		sortedCandidates := s.loadBalancer.Sort(ctx, group, req.Model, useStream)
 
 		// Add candidates, but stop if we have enough
 		remaining := requiredCount - len(result)

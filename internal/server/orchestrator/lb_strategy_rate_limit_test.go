@@ -31,6 +31,29 @@ func TestRateLimitAwareStrategy_Score_NoRateLimit(t *testing.T) {
 	assert.Equal(t, 100.0, score)
 }
 
+func TestRateLimitAwareStrategy_Score_NoRateLimit_UsesDefaultConnectionFallback(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	connectionTracker := NewDefaultConnectionTracker(10)
+	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker)
+
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "test-channel",
+	}
+	channel := &biz.Channel{
+		Channel: entChannel,
+	}
+
+	for range 5 {
+		connectionTracker.IncrementConnection(channel.ID)
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+
+	assert.Equal(t, 50.0, score)
+}
+
 func TestRateLimitAwareStrategy_Score_Cooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
@@ -49,8 +72,8 @@ func TestRateLimitAwareStrategy_Score_Cooldown(t *testing.T) {
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
 
-	// Channel in cooldown, should return -1000
-	assert.Equal(t, -1000.0, score)
+	// Channel in cooldown, should return exhausted score
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 }
 
 func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
@@ -79,8 +102,8 @@ func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
 
-	// RPM exhausted, should return -1000
-	assert.Equal(t, -1000.0, score)
+	// RPM exhausted, should return exhausted score
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 }
 
 func TestRateLimitAwareStrategy_Score_TPMExhausted(t *testing.T) {
@@ -107,8 +130,8 @@ func TestRateLimitAwareStrategy_Score_TPMExhausted(t *testing.T) {
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
 
-	// TPM exhausted, should return -1000
-	assert.Equal(t, -1000.0, score)
+	// TPM exhausted, should return exhausted score
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 }
 
 func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
@@ -138,8 +161,8 @@ func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
 	ctx := context.Background()
 	score := strategy.Score(ctx, channel)
 
-	// Cooldown takes priority, should return -1000
-	assert.Equal(t, -1000.0, score)
+	// Cooldown takes priority, should return exhausted score
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 }
 
 func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
@@ -177,6 +200,64 @@ func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
 	assert.Equal(t, 50.0, score)
 }
 
+func TestRateLimitAwareStrategy_Score_UsesDefaultConnectionFallbackWhenMaxConcurrentMissing(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	connectionTracker := NewDefaultConnectionTracker(10)
+	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker)
+
+	rpm := int64(100)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "test-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				RPM: &rpm,
+			},
+		},
+	}
+	channel := &biz.Channel{
+		Channel: entChannel,
+	}
+
+	for range 8 {
+		connectionTracker.IncrementConnection(channel.ID)
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+
+	assert.InDelta(t, 20.0, score, 0.000001)
+}
+
+func TestRateLimitAwareStrategy_Score_ExplicitMaxConcurrentOverridesDefaultConnectionFallback(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	connectionTracker := NewDefaultConnectionTracker(10)
+	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker)
+
+	maxConcurrent := int64(20)
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "test-channel",
+		Settings: &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{
+				MaxConcurrent: &maxConcurrent,
+			},
+		},
+	}
+	channel := &biz.Channel{
+		Channel: entChannel,
+	}
+
+	for range 8 {
+		connectionTracker.IncrementConnection(channel.ID)
+	}
+
+	ctx := context.Background()
+	score := strategy.Score(ctx, channel)
+
+	assert.Equal(t, 60.0, score)
+}
+
 func TestRateLimitAwareStrategy_ScoreWithDebug_Cooldown(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 	strategy := NewRateLimitAwareStrategy(tracker, nil)
@@ -196,8 +277,8 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_Cooldown(t *testing.T) {
 	ctx := context.Background()
 	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
 
-	// Should return -1000
-	assert.Equal(t, -1000.0, score)
+	// Should return exhausted score
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 	assert.Equal(t, "RateLimitAware", strategyScore.StrategyName)
 
 	// Check debug details
@@ -235,8 +316,8 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_RPMExhausted(t *testing.T) {
 	ctx := context.Background()
 	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
 
-	// Should return -1000
-	assert.Equal(t, -1000.0, score)
+	// Should return exhausted score
+	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 
 	// Check debug details
 	assert.Equal(t, true, strategyScore.Details["rpm_exhausted"])
@@ -264,6 +345,33 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit(t *testing.T) {
 
 	// Check debug details
 	assert.Equal(t, "no_rate_limit_configured", strategyScore.Details["reason"])
+}
+
+func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit_UsesDefaultConnectionFallback(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+	connectionTracker := NewDefaultConnectionTracker(10)
+	strategy := NewRateLimitAwareStrategy(tracker, connectionTracker)
+
+	entChannel := &ent.Channel{
+		ID:   1,
+		Name: "test-channel",
+	}
+	channel := &biz.Channel{
+		Channel: entChannel,
+	}
+
+	for range 5 {
+		connectionTracker.IncrementConnection(channel.ID)
+	}
+
+	ctx := context.Background()
+	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
+
+	assert.Equal(t, 50.0, score)
+	assert.Equal(t, "default_connection_limit_fallback", strategyScore.Details["reason"])
+	assert.Equal(t, "connection_tracker_default", strategyScore.Details["concurrency_limit_source"])
+	assert.Equal(t, int64(10), strategyScore.Details["concurrent_limit"])
+	assert.Equal(t, 5, strategyScore.Details["concurrent_current"])
 }
 
 func TestRateLimitAwareStrategy_Score_ExpiredCooldown(t *testing.T) {
@@ -308,7 +416,7 @@ func TestRateLimitAwareStrategy_Score_MultipleChannels(t *testing.T) {
 
 	// Channel 1 should be in cooldown
 	score1 := strategy.Score(ctx, channel1)
-	assert.Equal(t, -1000.0, score1)
+	assert.Equal(t, float64(rateLimitExhaustedScore), score1)
 
 	// Channel 2 should NOT be in cooldown
 	score2 := strategy.Score(ctx, channel2)

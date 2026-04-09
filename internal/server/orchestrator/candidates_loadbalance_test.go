@@ -99,11 +99,8 @@ func TestDefaultChannelSelector_Select_WithConnectionTracking(t *testing.T) {
 	require.Contains(t, channelIDs, channels[1].ID)
 	require.Contains(t, channelIDs, channels[2].ID)
 
-	// Due to connection awareness, the channel with no connections (ch3)
-	// should get a boost from the ConnectionAwareStrategy
-	// However, WeightRoundRobinStrategy has higher priority, so weight still matters significantly
-	// We expect: ch1 (high weight, 2 conn) > ch2 (medium weight, 1 conn) > ch3 (low weight, 0 conn)
-	// But ch3 might get boosted due to no connections
+	// WeightRoundRobinStrategy distributes requests proportionally by weight
+	// We expect: ch1 (high weight) > ch2 (medium weight) > ch3 (low weight)
 
 	// Let's verify the connection counts are correctly tracked
 	require.Equal(t, 2, connectionTracker.GetActiveConnections(channels[0].ID), "Channel 0 should have 2 connections")
@@ -497,13 +494,12 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
-	connectionTracker := NewDefaultConnectionTracker(10)
 
 	strategies := []LoadBalanceStrategy{
 		NewTraceAwareStrategy(requestService),
 		NewErrorAwareStrategy(channelService),
 		NewWeightRoundRobinStrategy(channelService),
-		NewConnectionAwareStrategy(channelService, connectionTracker),
+		NewLatencyAwareStrategy(channelService),
 	}
 	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
 
