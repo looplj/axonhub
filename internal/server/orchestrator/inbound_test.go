@@ -99,7 +99,7 @@ func createTestRequestService(t *testing.T, client *ent.Client) *biz.RequestServ
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
-	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService)
+	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService, biz.NewStreamPreviewRegistry())
 }
 
 // newInboundPersistentStreamHelper creates a configured InboundPersistentStream for testing.
