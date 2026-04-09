@@ -65,7 +65,6 @@
   "requests.detail.tabs.preview": "内容预览",
   "requests.detail.tabs.json": "JSON 原文",
   "requests.detail.noResponse": "暂无响应数据",
-  "requests.detail.messagePreview": "内容预览",
   "requests.dialogs.jsonViewer.responseChunks": "响应块",
   "requests.dialogs.jsonViewer.copy": "复制",
   "requests.dialogs.jsonViewer.copied": "已复制",

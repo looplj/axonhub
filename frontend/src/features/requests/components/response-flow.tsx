@@ -4,6 +4,7 @@ import { Bot } from 'lucide-react';
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning';
 import { Response as UIResponse } from '@/components/ai-elements/response';
 import { Message, MessageContent } from '@/components/ai-elements/message';
+import { Badge } from '@/components/ui/badge';
 
 interface ResponseFlowProps {
   chunks?: any[] | null;
@@ -72,12 +73,14 @@ export function ResponseFlow({ chunks, body, isLive }: ResponseFlowProps) {
 
   return (
     <div className='bg-muted/10 rounded-xl border p-6'>
-      <div className='mb-4 flex items-center gap-2'>
-        <div className='bg-primary/10 flex h-7 w-7 items-center justify-center rounded-lg'>
-          <Bot className='text-primary h-4 w-4' />
+      {isLive && (
+        <div className='mb-4 flex justify-end'>
+          <Badge className='bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 gap-1.5 border-none px-2 py-0.5'>
+            <span className='h-2 w-2 rounded-full bg-green-500 animate-pulse' />
+            Live
+          </Badge>
         </div>
-        <h4 className='text-sm font-semibold'>{t('requests.detail.messagePreview')}</h4>
-      </div>
+      )}
 
       <Message from='assistant'>
         <MessageContent>

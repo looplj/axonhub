@@ -65,7 +65,6 @@
   "requests.detail.tabs.preview": "Preview",
   "requests.detail.tabs.json": "Raw JSON",
   "requests.detail.noResponse": "No response data",
-  "requests.detail.messagePreview": "Message Preview",
   "requests.dialogs.jsonViewer.responseChunks": "Response Chunks",
   "requests.dialogs.jsonViewer.copy": "Copy",
   "requests.dialogs.jsonViewer.copied": "Copied",
