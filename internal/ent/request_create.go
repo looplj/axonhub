@@ -262,6 +262,20 @@ func (_c *RequestCreate) SetNillableMetricsFirstTokenLatencyMs(v *int64) *Reques
 	return _c
 }
 
+// SetMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field.
+func (_c *RequestCreate) SetMetricsReasoningDurationMs(v int64) *RequestCreate {
+	_c.mutation.SetMetricsReasoningDurationMs(v)
+	return _c
+}
+
+// SetNillableMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableMetricsReasoningDurationMs(v *int64) *RequestCreate {
+	if v != nil {
+		_c.SetMetricsReasoningDurationMs(*v)
+	}
+	return _c
+}
+
 // SetContentSaved sets the "content_saved" field.
 func (_c *RequestCreate) SetContentSaved(v bool) *RequestCreate {
 	_c.mutation.SetContentSaved(v)
@@ -579,6 +593,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.MetricsFirstTokenLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsFirstTokenLatencyMs, field.TypeInt64, value)
 		_node.MetricsFirstTokenLatencyMs = &value
+	}
+	if value, ok := _c.mutation.MetricsReasoningDurationMs(); ok {
+		_spec.SetField(request.FieldMetricsReasoningDurationMs, field.TypeInt64, value)
+		_node.MetricsReasoningDurationMs = &value
 	}
 	if value, ok := _c.mutation.ContentSaved(); ok {
 		_spec.SetField(request.FieldContentSaved, field.TypeBool, value)
@@ -927,6 +945,30 @@ func (u *RequestUpsert) ClearMetricsFirstTokenLatencyMs() *RequestUpsert {
 	return u
 }
 
+// SetMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsert) SetMetricsReasoningDurationMs(v int64) *RequestUpsert {
+	u.Set(request.FieldMetricsReasoningDurationMs, v)
+	return u
+}
+
+// UpdateMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateMetricsReasoningDurationMs() *RequestUpsert {
+	u.SetExcluded(request.FieldMetricsReasoningDurationMs)
+	return u
+}
+
+// AddMetricsReasoningDurationMs adds v to the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsert) AddMetricsReasoningDurationMs(v int64) *RequestUpsert {
+	u.Add(request.FieldMetricsReasoningDurationMs, v)
+	return u
+}
+
+// ClearMetricsReasoningDurationMs clears the value of the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsert) ClearMetricsReasoningDurationMs() *RequestUpsert {
+	u.SetNull(request.FieldMetricsReasoningDurationMs)
+	return u
+}
+
 // SetContentSaved sets the "content_saved" field.
 func (u *RequestUpsert) SetContentSaved(v bool) *RequestUpsert {
 	u.Set(request.FieldContentSaved, v)
@@ -1260,6 +1302,34 @@ func (u *RequestUpsertOne) UpdateMetricsFirstTokenLatencyMs() *RequestUpsertOne 
 func (u *RequestUpsertOne) ClearMetricsFirstTokenLatencyMs() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearMetricsFirstTokenLatencyMs()
+	})
+}
+
+// SetMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsertOne) SetMetricsReasoningDurationMs(v int64) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetMetricsReasoningDurationMs(v)
+	})
+}
+
+// AddMetricsReasoningDurationMs adds v to the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsertOne) AddMetricsReasoningDurationMs(v int64) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddMetricsReasoningDurationMs(v)
+	})
+}
+
+// UpdateMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateMetricsReasoningDurationMs() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateMetricsReasoningDurationMs()
+	})
+}
+
+// ClearMetricsReasoningDurationMs clears the value of the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsertOne) ClearMetricsReasoningDurationMs() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearMetricsReasoningDurationMs()
 	})
 }
 
@@ -1774,6 +1844,34 @@ func (u *RequestUpsertBulk) UpdateMetricsFirstTokenLatencyMs() *RequestUpsertBul
 func (u *RequestUpsertBulk) ClearMetricsFirstTokenLatencyMs() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearMetricsFirstTokenLatencyMs()
+	})
+}
+
+// SetMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsertBulk) SetMetricsReasoningDurationMs(v int64) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetMetricsReasoningDurationMs(v)
+	})
+}
+
+// AddMetricsReasoningDurationMs adds v to the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsertBulk) AddMetricsReasoningDurationMs(v int64) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.AddMetricsReasoningDurationMs(v)
+	})
+}
+
+// UpdateMetricsReasoningDurationMs sets the "metrics_reasoning_duration_ms" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateMetricsReasoningDurationMs() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateMetricsReasoningDurationMs()
+	})
+}
+
+// ClearMetricsReasoningDurationMs clears the value of the "metrics_reasoning_duration_ms" field.
+func (u *RequestUpsertBulk) ClearMetricsReasoningDurationMs() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearMetricsReasoningDurationMs()
 	})
 }
 

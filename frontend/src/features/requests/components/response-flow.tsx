@@ -15,9 +15,10 @@ interface ResponseFlowProps {
   chunks?: any[] | null;
   body?: any;
   isLive?: boolean;
+  reasoningDurationMs?: number | null;
 }
 
-export function ResponseFlow({ chunks, body, isLive }: ResponseFlowProps) {
+export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: ResponseFlowProps) {
   const { t } = useTranslation();
 
   const { content, reasoning, toolCalls } = useMemo(
@@ -61,7 +62,7 @@ export function ResponseFlow({ chunks, body, isLive }: ResponseFlowProps) {
       <Message from='assistant'>
         <MessageContent>
           {reasoning && (
-            <Reasoning isStreaming={isLive}>
+            <Reasoning isStreaming={isLive} duration={reasoningDurationMs ? Math.ceil(reasoningDurationMs / 1000) : undefined}>
               <ReasoningTrigger />
               <ReasoningContent>{reasoning}</ReasoningContent>
             </Reasoning>

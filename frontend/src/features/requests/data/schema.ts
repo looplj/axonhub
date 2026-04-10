@@ -36,6 +36,7 @@ export const requestExecutionSchema = z.object({
   format: z.string().optional(),
   metricsLatencyMs: z.number().nullable().optional(),
   metricsFirstTokenLatencyMs: z.number().nullable().optional(),
+  metricsReasoningDurationMs: z.number().nullable().optional(),
 });
 export type RequestExecution = z.infer<typeof requestExecutionSchema>;
 
@@ -62,6 +63,7 @@ export const requestSchema = z.object({
   stream: z.boolean().nullable(),
   metricsLatencyMs: z.number().nullable().optional(),
   metricsFirstTokenLatencyMs: z.number().nullable().optional(),
+  metricsReasoningDurationMs: z.number().nullable().optional(),
   executions: z
     .object({
       edges: z.array(

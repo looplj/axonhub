@@ -5713,6 +5713,18 @@ type RequestWhereInput struct {
 	MetricsFirstTokenLatencyMsIsNil  bool    `json:"metricsFirstTokenLatencyMsIsNil,omitempty"`
 	MetricsFirstTokenLatencyMsNotNil bool    `json:"metricsFirstTokenLatencyMsNotNil,omitempty"`
 
+	// "metrics_reasoning_duration_ms" field predicates.
+	MetricsReasoningDurationMs       *int64  `json:"metricsReasoningDurationMs,omitempty"`
+	MetricsReasoningDurationMsNEQ    *int64  `json:"metricsReasoningDurationMsNEQ,omitempty"`
+	MetricsReasoningDurationMsIn     []int64 `json:"metricsReasoningDurationMsIn,omitempty"`
+	MetricsReasoningDurationMsNotIn  []int64 `json:"metricsReasoningDurationMsNotIn,omitempty"`
+	MetricsReasoningDurationMsGT     *int64  `json:"metricsReasoningDurationMsGT,omitempty"`
+	MetricsReasoningDurationMsGTE    *int64  `json:"metricsReasoningDurationMsGTE,omitempty"`
+	MetricsReasoningDurationMsLT     *int64  `json:"metricsReasoningDurationMsLT,omitempty"`
+	MetricsReasoningDurationMsLTE    *int64  `json:"metricsReasoningDurationMsLTE,omitempty"`
+	MetricsReasoningDurationMsIsNil  bool    `json:"metricsReasoningDurationMsIsNil,omitempty"`
+	MetricsReasoningDurationMsNotNil bool    `json:"metricsReasoningDurationMsNotNil,omitempty"`
+
 	// "content_saved" field predicates.
 	ContentSaved    *bool `json:"contentSaved,omitempty"`
 	ContentSavedNEQ *bool `json:"contentSavedNEQ,omitempty"`
@@ -6266,6 +6278,36 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	if i.MetricsFirstTokenLatencyMsNotNil {
 		predicates = append(predicates, request.MetricsFirstTokenLatencyMsNotNil())
 	}
+	if i.MetricsReasoningDurationMs != nil {
+		predicates = append(predicates, request.MetricsReasoningDurationMsEQ(*i.MetricsReasoningDurationMs))
+	}
+	if i.MetricsReasoningDurationMsNEQ != nil {
+		predicates = append(predicates, request.MetricsReasoningDurationMsNEQ(*i.MetricsReasoningDurationMsNEQ))
+	}
+	if len(i.MetricsReasoningDurationMsIn) > 0 {
+		predicates = append(predicates, request.MetricsReasoningDurationMsIn(i.MetricsReasoningDurationMsIn...))
+	}
+	if len(i.MetricsReasoningDurationMsNotIn) > 0 {
+		predicates = append(predicates, request.MetricsReasoningDurationMsNotIn(i.MetricsReasoningDurationMsNotIn...))
+	}
+	if i.MetricsReasoningDurationMsGT != nil {
+		predicates = append(predicates, request.MetricsReasoningDurationMsGT(*i.MetricsReasoningDurationMsGT))
+	}
+	if i.MetricsReasoningDurationMsGTE != nil {
+		predicates = append(predicates, request.MetricsReasoningDurationMsGTE(*i.MetricsReasoningDurationMsGTE))
+	}
+	if i.MetricsReasoningDurationMsLT != nil {
+		predicates = append(predicates, request.MetricsReasoningDurationMsLT(*i.MetricsReasoningDurationMsLT))
+	}
+	if i.MetricsReasoningDurationMsLTE != nil {
+		predicates = append(predicates, request.MetricsReasoningDurationMsLTE(*i.MetricsReasoningDurationMsLTE))
+	}
+	if i.MetricsReasoningDurationMsIsNil {
+		predicates = append(predicates, request.MetricsReasoningDurationMsIsNil())
+	}
+	if i.MetricsReasoningDurationMsNotNil {
+		predicates = append(predicates, request.MetricsReasoningDurationMsNotNil())
+	}
 	if i.ContentSaved != nil {
 		predicates = append(predicates, request.ContentSavedEQ(*i.ContentSaved))
 	}
@@ -6692,6 +6734,18 @@ type RequestExecutionWhereInput struct {
 	MetricsFirstTokenLatencyMsLTE    *int64  `json:"metricsFirstTokenLatencyMsLTE,omitempty"`
 	MetricsFirstTokenLatencyMsIsNil  bool    `json:"metricsFirstTokenLatencyMsIsNil,omitempty"`
 	MetricsFirstTokenLatencyMsNotNil bool    `json:"metricsFirstTokenLatencyMsNotNil,omitempty"`
+
+	// "metrics_reasoning_duration_ms" field predicates.
+	MetricsReasoningDurationMs       *int64  `json:"metricsReasoningDurationMs,omitempty"`
+	MetricsReasoningDurationMsNEQ    *int64  `json:"metricsReasoningDurationMsNEQ,omitempty"`
+	MetricsReasoningDurationMsIn     []int64 `json:"metricsReasoningDurationMsIn,omitempty"`
+	MetricsReasoningDurationMsNotIn  []int64 `json:"metricsReasoningDurationMsNotIn,omitempty"`
+	MetricsReasoningDurationMsGT     *int64  `json:"metricsReasoningDurationMsGT,omitempty"`
+	MetricsReasoningDurationMsGTE    *int64  `json:"metricsReasoningDurationMsGTE,omitempty"`
+	MetricsReasoningDurationMsLT     *int64  `json:"metricsReasoningDurationMsLT,omitempty"`
+	MetricsReasoningDurationMsLTE    *int64  `json:"metricsReasoningDurationMsLTE,omitempty"`
+	MetricsReasoningDurationMsIsNil  bool    `json:"metricsReasoningDurationMsIsNil,omitempty"`
+	MetricsReasoningDurationMsNotNil bool    `json:"metricsReasoningDurationMsNotNil,omitempty"`
 
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
@@ -7196,6 +7250,36 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.MetricsFirstTokenLatencyMsNotNil {
 		predicates = append(predicates, requestexecution.MetricsFirstTokenLatencyMsNotNil())
+	}
+	if i.MetricsReasoningDurationMs != nil {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsEQ(*i.MetricsReasoningDurationMs))
+	}
+	if i.MetricsReasoningDurationMsNEQ != nil {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsNEQ(*i.MetricsReasoningDurationMsNEQ))
+	}
+	if len(i.MetricsReasoningDurationMsIn) > 0 {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsIn(i.MetricsReasoningDurationMsIn...))
+	}
+	if len(i.MetricsReasoningDurationMsNotIn) > 0 {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsNotIn(i.MetricsReasoningDurationMsNotIn...))
+	}
+	if i.MetricsReasoningDurationMsGT != nil {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsGT(*i.MetricsReasoningDurationMsGT))
+	}
+	if i.MetricsReasoningDurationMsGTE != nil {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsGTE(*i.MetricsReasoningDurationMsGTE))
+	}
+	if i.MetricsReasoningDurationMsLT != nil {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsLT(*i.MetricsReasoningDurationMsLT))
+	}
+	if i.MetricsReasoningDurationMsLTE != nil {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsLTE(*i.MetricsReasoningDurationMsLTE))
+	}
+	if i.MetricsReasoningDurationMsIsNil {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsIsNil())
+	}
+	if i.MetricsReasoningDurationMsNotNil {
+		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsNotNil())
 	}
 
 	if i.HasRequest != nil {

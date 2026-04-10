@@ -231,6 +231,13 @@ func (ts *InboundPersistentStream) _persistResponse(ctx context.Context, respons
 		if ts.perf.Stream && ts.perf.FirstTokenTime != nil {
 			metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
 		}
+
+		if ts.perf.Stream {
+			reasoningDurationMs := ts.perf.CalculateReasoningDurationMs()
+			if reasoningDurationMs > 0 {
+				metrics.ReasoningDurationMs = &reasoningDurationMs
+			}
+		}
 	}
 
 	err := ts.requestService.UpdateRequestCompleted(ctx, ts.request.ID, meta.ID, responseBody, metrics)

@@ -53,6 +53,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             clientIP
             metricsLatencyMs
             metricsFirstTokenLatencyMs
+            metricsReasoningDurationMs
             executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
               edges {
                 node {
@@ -139,6 +140,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           responseChunks
           status
           format
+          metricsReasoningDurationMs
           usageLogs(first: 1) {
             edges {
               node {
@@ -199,6 +201,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 format
                 stream
                 metricsFirstTokenLatencyMs
+                metricsReasoningDurationMs
               }
               cursor
             }

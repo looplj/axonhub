@@ -621,6 +621,7 @@ export default function RequestDetailPage() {
                             chunks={request.responseChunks}
                             body={request.responseBody}
                             isLive={request.status === 'processing' && request.stream || undefined}
+                            reasoningDurationMs={request.metricsReasoningDurationMs}
                           />
                         ) : request.status === 'processing' ? (
                           <div className='bg-muted/20 flex h-[400px] w-full items-center justify-center rounded-lg border'>

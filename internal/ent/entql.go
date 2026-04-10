@@ -345,6 +345,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldClientIP:                   {Type: field.TypeString, Column: request.FieldClientIP},
 			request.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: request.FieldMetricsLatencyMs},
 			request.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: request.FieldMetricsFirstTokenLatencyMs},
+			request.FieldMetricsReasoningDurationMs: {Type: field.TypeInt64, Column: request.FieldMetricsReasoningDurationMs},
 			request.FieldContentSaved:               {Type: field.TypeBool, Column: request.FieldContentSaved},
 			request.FieldContentStorageID:           {Type: field.TypeInt, Column: request.FieldContentStorageID},
 			request.FieldContentStorageKey:          {Type: field.TypeString, Column: request.FieldContentStorageKey},
@@ -380,6 +381,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldStream:                     {Type: field.TypeBool, Column: requestexecution.FieldStream},
 			requestexecution.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: requestexecution.FieldMetricsLatencyMs},
 			requestexecution.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: requestexecution.FieldMetricsFirstTokenLatencyMs},
+			requestexecution.FieldMetricsReasoningDurationMs: {Type: field.TypeInt64, Column: requestexecution.FieldMetricsReasoningDurationMs},
 			requestexecution.FieldRequestHeaders:             {Type: field.TypeJSON, Column: requestexecution.FieldRequestHeaders},
 		},
 	}
@@ -2867,6 +2869,11 @@ func (f *RequestFilter) WhereMetricsFirstTokenLatencyMs(p entql.Int64P) {
 	f.Where(p.Field(request.FieldMetricsFirstTokenLatencyMs))
 }
 
+// WhereMetricsReasoningDurationMs applies the entql int64 predicate on the metrics_reasoning_duration_ms field.
+func (f *RequestFilter) WhereMetricsReasoningDurationMs(p entql.Int64P) {
+	f.Where(p.Field(request.FieldMetricsReasoningDurationMs))
+}
+
 // WhereContentSaved applies the entql bool predicate on the content_saved field.
 func (f *RequestFilter) WhereContentSaved(p entql.BoolP) {
 	f.Where(p.Field(request.FieldContentSaved))
@@ -3113,6 +3120,11 @@ func (f *RequestExecutionFilter) WhereMetricsLatencyMs(p entql.Int64P) {
 // WhereMetricsFirstTokenLatencyMs applies the entql int64 predicate on the metrics_first_token_latency_ms field.
 func (f *RequestExecutionFilter) WhereMetricsFirstTokenLatencyMs(p entql.Int64P) {
 	f.Where(p.Field(requestexecution.FieldMetricsFirstTokenLatencyMs))
+}
+
+// WhereMetricsReasoningDurationMs applies the entql int64 predicate on the metrics_reasoning_duration_ms field.
+func (f *RequestExecutionFilter) WhereMetricsReasoningDurationMs(p entql.Int64P) {
+	f.Where(p.Field(requestexecution.FieldMetricsReasoningDurationMs))
 }
 
 // WhereRequestHeaders applies the entql json.RawMessage predicate on the request_headers field.

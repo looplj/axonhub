@@ -350,6 +350,7 @@ func (s *RequestService) CreateRequestExecution(
 type LatencyMetrics struct {
 	LatencyMs           *int64
 	FirstTokenLatencyMs *int64
+	ReasoningDurationMs *int64
 }
 
 // UpdateRequestCompleted updates request status to completed with response body.
@@ -398,6 +399,10 @@ func (s *RequestService) UpdateRequestCompleted(
 
 		if metrics.FirstTokenLatencyMs != nil {
 			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+
+		if metrics.ReasoningDurationMs != nil {
+			upd = upd.SetMetricsReasoningDurationMs(*metrics.ReasoningDurationMs)
 		}
 	}
 
@@ -482,6 +487,10 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		if metrics.FirstTokenLatencyMs != nil {
 			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
 		}
+
+		if metrics.ReasoningDurationMs != nil {
+			upd = upd.SetMetricsReasoningDurationMs(*metrics.ReasoningDurationMs)
+		}
 	}
 
 	if storeResponseBody {
@@ -562,6 +571,10 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 
 		if metrics.FirstTokenLatencyMs != nil {
 			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+
+		if metrics.ReasoningDurationMs != nil {
+			upd = upd.SetMetricsReasoningDurationMs(*metrics.ReasoningDurationMs)
 		}
 	}
 
