@@ -39,6 +39,12 @@ func TestMatchString(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "wildcard only matches all",
+			pattern:  "*",
+			str:      "gpt-3.5-turbo",
+			expected: true,
+		},
+		{
 			name:     "wildcard no match",
 			pattern:  "gpt-.*",
 			str:      "claude-3",
@@ -91,6 +97,30 @@ func TestMatchString(t *testing.T) {
 			pattern:  "gpt-(4|3.5)",
 			str:      "gpt-3.5",
 			expected: true,
+		},
+		{
+			name:     "alternation without grouping remains full match",
+			pattern:  "gpt-5.2|claude-opus-4-6|gemini-3.1-pro",
+			str:      "claude-opus-4-6",
+			expected: true,
+		},
+		{
+			name:     "alternation with start anchor remains full match",
+			pattern:  "^gpt-5.2|claude-opus-4-6|gemini-3.1-pro",
+			str:      "claude-opus-4-6",
+			expected: true,
+		},
+		{
+			name:     "alternation with start anchor does not prefix match suffix text",
+			pattern:  "^gpt-5.2|claude-opus-4-6|gemini-3.1-pro",
+			str:      "claude-opus-4-6-sonnet",
+			expected: false,
+		},
+		{
+			name:     "alternation with start anchor does not prefix match first branch",
+			pattern:  "^gpt-5.2|claude-opus-4-6|gemini-3.1-pro",
+			str:      "gpt-5.2-mini",
+			expected: false,
 		},
 		{
 			name:     "complex pattern",
@@ -200,6 +230,12 @@ func TestFilter(t *testing.T) {
 			expected: []string{"gpt-4", "gpt-3.5-turbo"},
 		},
 		{
+			name:     "wildcard only returns all",
+			items:    []string{"gpt-4", "gpt-3.5-turbo", "claude-3"},
+			pattern:  "*",
+			expected: []string{"gpt-4", "gpt-3.5-turbo", "claude-3"},
+		},
+		{
 			name:     "no matches",
 			items:    []string{"gpt-4", "gpt-3.5", "claude-3"},
 			pattern:  "gemini-.*",
@@ -240,6 +276,12 @@ func TestFilter(t *testing.T) {
 			items:    []string{"gpt-4", "gpt-3.5", "claude-3", "claude-2"},
 			pattern:  "(gpt-4|claude-3)",
 			expected: []string{"gpt-4", "claude-3"},
+		},
+		{
+			name:     "alternation without grouping is still full match",
+			items:    []string{"gpt-5.2", "gpt-5.2-mini", "claude-opus-4-6", "claude-opus-4-6-sonnet", "gemini-3.1-pro"},
+			pattern:  "^gpt-5.2|claude-opus-4-6|gemini-3.1-pro",
+			expected: []string{"gpt-5.2", "claude-opus-4-6", "gemini-3.1-pro"},
 		},
 	}
 
@@ -348,6 +390,14 @@ func TestPatternCacheTypes(t *testing.T) {
 	assert.False(t, cached.exactMatch)
 	assert.Nil(t, cached.regex)
 	assert.True(t, cached.compileErr)
+
+	matchAllPattern := "*"
+	cached = getOrCreatePattern(matchAllPattern)
+	require.NotNil(t, cached)
+	assert.False(t, cached.exactMatch)
+	assert.Nil(t, cached.regex)
+	assert.False(t, cached.compileErr)
+	assert.True(t, cached.matchAll)
 }
 
 func TestEnsureAnchored(t *testing.T) {
@@ -359,52 +409,57 @@ func TestEnsureAnchored(t *testing.T) {
 		{
 			name:     "no anchors",
 			pattern:  "gpt-.*",
-			expected: "^gpt-.*$",
+			expected: "^(?:gpt-.*)$",
 		},
 		{
 			name:     "start anchor only",
 			pattern:  "^gpt-.*",
-			expected: "^gpt-.*$",
+			expected: "^(?:gpt-.*)$",
 		},
 		{
 			name:     "end anchor only",
 			pattern:  "gpt-.*$",
-			expected: "^gpt-.*$",
+			expected: "^(?:gpt-.*)$",
 		},
 		{
 			name:     "both anchors",
 			pattern:  "^gpt-.*$",
-			expected: "^gpt-.*$",
+			expected: "^(?:gpt-.*)$",
 		},
 		{
 			name:     "case insensitive with start anchor",
 			pattern:  "(?i)^gpt-.*",
-			expected: "(?i)^gpt-.*$",
+			expected: "(?i)^(?:gpt-.*)$",
 		},
 		{
 			name:     "case insensitive with both anchors",
 			pattern:  "(?i)^gpt-.*$",
-			expected: "(?i)^gpt-.*$",
+			expected: "(?i)^(?:gpt-.*)$",
 		},
 		{
 			name:     "complex pattern with anchors",
 			pattern:  "(?i)^(?=.*gpt-5)(?!.*mini)(?!.*nano).*$",
-			expected: "(?i)^(?=.*gpt-5)(?!.*mini)(?!.*nano).*$",
+			expected: "(?i)^(?:(?=.*gpt-5)(?!.*mini)(?!.*nano).*)$",
 		},
 		{
 			name:     "multiline modifier with start anchor",
 			pattern:  "(?m)^gpt-.*",
-			expected: "(?m)^gpt-.*$",
+			expected: "(?m)^(?:gpt-.*)$",
 		},
 		{
 			name:     "singleline modifier with start anchor",
 			pattern:  "(?s)^gpt-.*",
-			expected: "(?s)^gpt-.*$",
+			expected: "(?s)^(?:gpt-.*)$",
 		},
 		{
 			name:     "multiple modifiers with start anchor",
 			pattern:  "(?is)^gpt-.*",
-			expected: "(?is)^gpt-.*$",
+			expected: "(?is)^(?:gpt-.*)$",
+		},
+		{
+			name:     "alternation is wrapped before anchoring",
+			pattern:  "^gpt-5.2|claude-opus-4-6|gemini-3.1-pro",
+			expected: "^(?:gpt-5.2|claude-opus-4-6|gemini-3.1-pro)$",
 		},
 	}
 
