@@ -121,6 +121,7 @@ type ChatCompletionOrchestrator struct {
 	adaptiveLoadBalancer       *LoadBalancer
 	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
+	performanceLoadBalancer    *LoadBalancer
 	// The connection tracker used for request lifetime tracking and rate-limit concurrency fallback.
 	connectionTracker ConnectionTracker
 	rateLimitTracker *ChannelRequestTracker

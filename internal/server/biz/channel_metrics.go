@@ -402,15 +402,6 @@ func (m *AggregatedMetrics) Clone() *AggregatedMetrics {
 		NonStreamingLatencyEWMA:        m.NonStreamingLatencyEWMA,
 		NonStreamingSampleCount:        m.NonStreamingSampleCount,
 	}
-	if m.AvgFirstTokenLatencyMs != nil {
-		clone.AvgFirstTokenLatencyMs = new(float64)
-		*clone.AvgFirstTokenLatencyMs = *m.AvgFirstTokenLatencyMs
-	}
-	if m.AvgTokensPerSecond != nil {
-		clone.AvgTokensPerSecond = new(float64)
-		*clone.AvgTokensPerSecond = *m.AvgTokensPerSecond
-	}
-	return clone
 }
 
 // newChannelMetrics creates a new channelMetrics instance.
@@ -733,8 +724,8 @@ func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLaten
 	}
 
 	// Calculate tokens per second
-	if totalDuration > 0 {
-		tokensPerSecond = float64(m.TotalTokens) / totalDuration.Seconds()
+	if totalDuration > 0 && m.CompletionTokens > 0 {
+		tokensPerSecond = float64(m.CompletionTokens) / totalDuration.Seconds()
 	}
 
 	// Enforce minimum latency to prevent extreme TPS calculations

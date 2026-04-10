@@ -442,7 +442,7 @@ func TestRecordPerformanceStream_TotalTokens(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, state.Perf)
-	assert.Equal(t, int64(15), state.Perf.TotalTokens)
+	assert.Equal(t, int64(5), state.Perf.CompletionTokens)
 	assert.True(t, state.Perf.Success)
 }
 

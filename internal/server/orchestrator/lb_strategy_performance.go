@@ -49,6 +49,29 @@ const (
 	ColdStartMinRequests = 10
 )
 
+// Error rate penalty constants
+const (
+	// ErrorRateLowThreshold is the error rate below which no penalty is applied (5%)
+	// Channels with <5% error rate are considered healthy
+	ErrorRateLowThreshold = 0.05
+
+	// ErrorRateMediumThreshold is the error rate at which moderate penalty is applied (20%)
+	// Channels with 5-20% error rate get gradually increasing penalties
+	ErrorRateMediumThreshold = 0.20
+
+	// ErrorRateHighThreshold is the error rate at which severe penalty is applied (50%)
+	// Channels with >50% error rate are considered failing and heavily penalized
+	ErrorRateHighThreshold = 0.50
+
+	// ErrorRatePenaltyMultiplier controls how aggressively errors are penalized
+	// At medium threshold, score is multiplied by (1 - ErrorRatePenaltyMultiplier)
+	ErrorRatePenaltyMultiplier = 0.5
+
+	// ErrorRateMinRequests is the minimum requests before error rate is considered
+	// This prevents penalizing channels with very few requests
+	ErrorRateMinRequests = 5
+)
+
 // ChannelPerformance represents combined performance metrics for a channel.
 // It contains both historical (probe) and real-time metrics.
 type ChannelPerformance struct {
@@ -56,6 +79,10 @@ type ChannelPerformance struct {
 	AvgTTFTMs float64
 	// AvgTokensPerSecond is the average tokens generated per second
 	AvgTokensPerSecond float64
+	// ErrorRate is the ratio of failures to total requests in the sliding window
+	ErrorRate float64
+	// RequestCount is the total number of requests in the sliding window
+	RequestCount int64
 	// HistoricalWeight is the weight given to historical data (0.0 to 1.0)
 	HistoricalWeight float64
 	// RealtimeWeight is the weight given to real-time data (0.0 to 1.0)
@@ -171,7 +198,7 @@ func (s *PerformanceAwareStrategy) Score(ctx context.Context, channel *biz.Chann
 	}
 
 	// Score only needs the combined score, discard component scores
-	combinedScore, _, _ := s.calculateCombinedScore(performance)
+	combinedScore, _, _, _ := s.calculateCombinedScore(performance)
 	return combinedScore
 }
 
@@ -231,17 +258,19 @@ func (s *PerformanceAwareStrategy) ScoreWithDebug(ctx context.Context, channel *
 		}
 	}
 
-	combinedScore, ttftScore, tpsScore := s.calculateCombinedScore(performance)
+	combinedScore, ttftScore, tpsScore, errorPenalty := s.calculateCombinedScore(performance)
 
 	details["avg_ttft_ms"] = performance.AvgTTFTMs
 	details["avg_tokens_per_second"] = performance.AvgTokensPerSecond
+	details["error_rate"] = performance.ErrorRate
+	details["error_penalty"] = errorPenalty
 	details["historical_weight"] = performance.HistoricalWeight
 	details["realtime_weight"] = performance.RealtimeWeight
 	details["ttft_score"] = ttftScore
 	details["tps_score"] = tpsScore
 	details["ttft_score_weight"] = 0.35
 	details["tps_score_weight"] = 0.65
-	details["combined_score_unclamped"] = 0.35*ttftScore + 0.65*tpsScore
+	details["combined_score_before_penalty"] = 0.35*ttftScore + 0.65*tpsScore
 
 	return combinedScore, StrategyScore{
 		StrategyName: s.Name(),
@@ -302,15 +331,19 @@ func (s *PerformanceAwareStrategy) calculateTPSScore(tps float64) float64 {
 	return score
 }
 
-func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPerformance) (float64, float64, float64) {
+func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPerformance) (float64, float64, float64, float64) {
 	if performance == nil {
-		return 0, 0, 0
+		return 0, 0, 0, 0
 	}
 
 	ttftScore := s.calculateTTFTScore(performance.AvgTTFTMs)
 	tpsScore := s.calculateTPSScore(performance.AvgTokensPerSecond)
 	// Weight TPS higher than TTFT: 65% TPS, 35% TTFT
 	combinedScore := 0.35*ttftScore + 0.65*tpsScore
+
+	// Apply error rate penalty
+	errorPenalty := s.calculateErrorRatePenalty(performance.ErrorRate, performance.RequestCount)
+	combinedScore = combinedScore * errorPenalty
 
 	if combinedScore < 0 {
 		combinedScore = 0
@@ -319,7 +352,54 @@ func (s *PerformanceAwareStrategy) calculateCombinedScore(performance *ChannelPe
 		combinedScore = s.scoreMax()
 	}
 
-	return combinedScore, ttftScore, tpsScore
+	return combinedScore, ttftScore, tpsScore, errorPenalty
+}
+
+// calculateErrorRatePenalty returns a multiplier (0.0 to 1.0) to apply to the score
+// based on the channel's error rate. Higher error rates result in lower multipliers.
+// Returns 1.0 if error rate should not affect scoring (too few requests, cold start).
+//
+// Penalty tiers:
+// - <5% error rate: no penalty (return 1.0)
+// - 5-20% error rate: linear penalty from 1.0 to 0.5
+// - 20-50% error rate: linear penalty from 0.5 to 0.1
+// - >50% error rate: severe penalty (return 0.1 or lower)
+func (s *PerformanceAwareStrategy) calculateErrorRatePenalty(errorRate float64, requestCount int64) float64 {
+	// Don't penalize channels with too few requests
+	if requestCount < ErrorRateMinRequests {
+		return 1.0
+	}
+
+	// Handle invalid error rates (NaN or negative)
+	// NaN comparisons always return false, so this prevents NaN propagation
+	if math.IsNaN(errorRate) || errorRate < 0 {
+		return 1.0
+	}
+
+	// No penalty for healthy error rates
+	if errorRate <= ErrorRateLowThreshold {
+		return 1.0
+	}
+
+	// Linear interpolation for medium error rate zone
+	if errorRate <= ErrorRateMediumThreshold {
+		// Scale from 1.0 at 5% to 0.5 at 20%
+		ratio := (errorRate - ErrorRateLowThreshold) / (ErrorRateMediumThreshold - ErrorRateLowThreshold)
+		return 1.0 - ratio*ErrorRatePenaltyMultiplier
+	}
+
+	// Linear interpolation for high error rate zone
+	if errorRate <= ErrorRateHighThreshold {
+		// Scale from 0.5 at 20% to 0.1 at 50%
+		ratio := (errorRate - ErrorRateMediumThreshold) / (ErrorRateHighThreshold - ErrorRateMediumThreshold)
+		return (1.0 - ErrorRatePenaltyMultiplier) - ratio*0.4
+	}
+
+	// Severe penalty for critical error rates (>50%)
+	// Exponential decay: at 75% error rate, penalty is ~0.025
+	// At 100% error rate, penalty is effectively 0
+	excess := errorRate - ErrorRateHighThreshold
+	return 0.1 * math.Exp(-excess*3.0)
 }
 
 func (s *PerformanceAwareStrategy) getChannelMetrics(ctx context.Context, channelID int, model string) (*biz.AggregatedMetrics, error) {
@@ -359,6 +439,8 @@ func (s *PerformanceAwareStrategy) getChannelProbes(ctx context.Context, channel
 func (s *PerformanceAwareStrategy) getChannelPerformance(ctx context.Context, channelID int, model string) *ChannelPerformance {
 	var historicalTTFT, historicalTPS *float64
 	var realtimeTTFT, realtimeTPS *float64
+	var requestCount int64
+	var failureCount int64
 
 	// Query historical data from ChannelProbeService
 	if probes, err := s.getChannelProbes(ctx, channelID); err == nil && len(probes) > 0 {
@@ -389,12 +471,16 @@ func (s *PerformanceAwareStrategy) getChannelPerformance(ctx context.Context, ch
 
 	// Query real-time metrics from ChannelService
 	if metrics, err := s.getChannelMetrics(ctx, channelID, model); err == nil && metrics != nil {
-		if metrics.AvgFirstTokenLatencyMs != nil && *metrics.AvgFirstTokenLatencyMs > 0 {
-			realtimeTTFT = metrics.AvgFirstTokenLatencyMs
+		// Use EWMA values for real-time metrics
+		if metrics.StreamingFirstTokenLatencyEWMA > 0 {
+			realtimeTTFT = &metrics.StreamingFirstTokenLatencyEWMA
 		}
-		if metrics.AvgTokensPerSecond != nil && *metrics.AvgTokensPerSecond > 0 {
-			realtimeTPS = metrics.AvgTokensPerSecond
+		if metrics.StreamingTokensPerSecondEWMA > 0 {
+			realtimeTPS = &metrics.StreamingTokensPerSecondEWMA
 		}
+		// Get request/failure counts for error rate calculation
+		requestCount = metrics.RequestCount
+		failureCount = metrics.FailureCount
 	}
 
 	// Check if we have any data at all
@@ -407,6 +493,12 @@ func (s *PerformanceAwareStrategy) getChannelPerformance(ctx context.Context, ch
 	result := &ChannelPerformance{
 		HistoricalWeight: s.historicalWeight,
 		RealtimeWeight:   s.realtimeWeight,
+		RequestCount:     requestCount,
+	}
+
+	// Calculate error rate
+	if requestCount > 0 {
+		result.ErrorRate = float64(failureCount) / float64(requestCount)
 	}
 
 	// Calculate weighted average for TTFT

@@ -163,8 +163,8 @@ func TestHybridDataSource(t *testing.T) {
 				{AvgTimeToFirstTokenMs: floatPtr(100), AvgTokensPerSecond: floatPtr(50)},
 			},
 			metrics: &biz.AggregatedMetrics{
-				AvgFirstTokenLatencyMs: floatPtr(200),
-				AvgTokensPerSecond:     floatPtr(80),
+				StreamingFirstTokenLatencyEWMA: 200,
+				StreamingTokensPerSecondEWMA:   80,
 			},
 			historicalWeight: 0.7,
 			realtimeWeight:   0.3,
@@ -185,7 +185,7 @@ func TestHybridDataSource(t *testing.T) {
 		{
 			name:             "only real-time data available",
 			probes:           []*biz.ChannelProbePoint{},
-			metrics:          &biz.AggregatedMetrics{AvgFirstTokenLatencyMs: floatPtr(150), AvgTokensPerSecond: floatPtr(55)},
+			metrics:          &biz.AggregatedMetrics{StreamingFirstTokenLatencyEWMA: 150, StreamingTokensPerSecondEWMA: 55},
 			historicalWeight: 0.5,
 			realtimeWeight:   0.5,
 			wantTTFT:         150,
@@ -280,8 +280,8 @@ func TestChannelProbeQuery(t *testing.T) {
 
 func TestRealtimeMetricsQuery(t *testing.T) {
 	metrics := &biz.AggregatedMetrics{
-		AvgFirstTokenLatencyMs: floatPtr(150),
-		AvgTokensPerSecond:     floatPtr(75),
+		StreamingFirstTokenLatencyEWMA: 150,
+		StreamingTokensPerSecondEWMA:   75,
 	}
 
 	strategy := &PerformanceAwareStrategy{
@@ -346,7 +346,7 @@ func TestHybridDataSourceMissingData(t *testing.T) {
 		{
 			name:    "only TPS from real-time",
 			probes:  []*biz.ChannelProbePoint{},
-			metrics: &biz.AggregatedMetrics{AvgTokensPerSecond: floatPtr(50)},
+			metrics: &biz.AggregatedMetrics{StreamingTokensPerSecondEWMA: 50},
 			wantNil: false,
 		},
 	}
@@ -655,3 +655,110 @@ func TestPerformanceAwareStrategy_WithWeightsOption(t *testing.T) {
 	require.Equal(t, 0.3, strategy.historicalWeight)
 	require.Equal(t, 0.7, strategy.realtimeWeight)
 }
+
+func TestErrorRatePenalty(t *testing.T) {
+	strategy := &PerformanceAwareStrategy{maxScore: 150.0}
+
+	tests := []struct {
+		name         string
+		errorRate    float64
+		requestCount int64
+		wantMin     float64
+		wantMax     float64
+	}{
+		// No penalty for healthy error rates
+		{name: "zero error rate", errorRate: 0.0, requestCount: 100, wantMin: 1.0, wantMax: 1.0},
+		{name: "1% error rate", errorRate: 0.01, requestCount: 100, wantMin: 1.0, wantMax: 1.0},
+		{name: "4% error rate (below threshold)", errorRate: 0.04, requestCount: 100, wantMin: 1.0, wantMax: 1.0},
+		{name: "5% error rate (at threshold)", errorRate: 0.05, requestCount: 100, wantMin: 1.0, wantMax: 1.0},
+
+		// Medium error rate zone (5-20%): penalty scales from 1.0 to 0.5
+		{name: "10% error rate (medium zone)", errorRate: 0.10, requestCount: 100, wantMin: 0.8, wantMax: 0.9},
+		{name: "15% error rate (medium zone)", errorRate: 0.15, requestCount: 100, wantMin: 0.6, wantMax: 0.75},
+		{name: "20% error rate (at medium threshold)", errorRate: 0.20, requestCount: 100, wantMin: 0.45, wantMax: 0.55},
+
+		// High error rate zone (20-50%): penalty scales from 0.5 to 0.1
+		{name: "30% error rate (high zone)", errorRate: 0.30, requestCount: 100, wantMin: 0.2, wantMax: 0.4},
+		{name: "40% error rate (high zone)", errorRate: 0.40, requestCount: 100, wantMin: 0.1, wantMax: 0.3},
+		{name: "50% error rate (at high threshold)", errorRate: 0.50, requestCount: 100, wantMin: 0.05, wantMax: 0.15},
+
+		// Critical error rate (>50%): exponential penalty
+		{name: "60% error rate (critical zone)", errorRate: 0.60, requestCount: 100, wantMin: 0.0, wantMax: 0.1},
+		{name: "75% error rate (critical zone)", errorRate: 0.75, requestCount: 100, wantMin: 0.0, wantMax: 0.05},
+		{name: "90% error rate (critical zone)", errorRate: 0.90, requestCount: 100, wantMin: 0.0, wantMax: 0.05},
+		{name: "100% error rate (all failures)", errorRate: 1.0, requestCount: 100, wantMin: 0.0, wantMax: 0.05},
+
+		// Too few requests: no penalty
+		{name: "few requests, high error rate", errorRate: 0.80, requestCount: 3, wantMin: 1.0, wantMax: 1.0},
+		{name: "few requests, 5 error threshold", errorRate: 0.50, requestCount: 4, wantMin: 1.0, wantMax: 1.0},
+		{name: "at min requests threshold", errorRate: 0.50, requestCount: 5, wantMin: 0.0, wantMax: 0.15},
+
+		// Invalid error rates: no penalty (defensive handling)
+		{name: "negative error rate", errorRate: -0.10, requestCount: 100, wantMin: 1.0, wantMax: 1.0},
+		{name: "NaN error rate", errorRate: math.NaN(), requestCount: 100, wantMin: 1.0, wantMax: 1.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			penalty := strategy.calculateErrorRatePenalty(tt.errorRate, tt.requestCount)
+			if penalty < tt.wantMin || penalty > tt.wantMax {
+				t.Errorf("calculateErrorRatePenalty(%v, %v) = %v, want range [%v, %v]",
+					tt.errorRate, tt.requestCount, penalty, tt.wantMin, tt.wantMax)
+			}
+			if penalty < 0 || penalty > 1.0 {
+				t.Errorf("penalty %v out of valid range [0, 1]", penalty)
+			}
+		})
+	}
+}
+
+func TestErrorRateIntegration(t *testing.T) {
+	strategy := &PerformanceAwareStrategy{maxScore: 150.0}
+
+	// Test that error rate properly reduces the combined score
+	tests := []struct {
+		name           string
+		ttftMs         float64
+		tps            float64
+		errorRate      float64
+		requestCount   int64
+		expectReduced  bool
+	}{
+		{name: "healthy channel no penalty", ttftMs: 1500, tps: 80, errorRate: 0.02, requestCount: 100, expectReduced: false},
+		{name: "moderate errors slight penalty", ttftMs: 1500, tps: 80, errorRate: 0.10, requestCount: 100, expectReduced: true},
+		{name: "high errors significant penalty", ttftMs: 1500, tps: 80, errorRate: 0.40, requestCount: 100, expectReduced: true},
+		{name: "critical errors severe penalty", ttftMs: 1500, tps: 80, errorRate: 0.80, requestCount: 100, expectReduced: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			perf := &ChannelPerformance{
+				AvgTTFTMs:        tt.ttftMs,
+				AvgTokensPerSecond: tt.tps,
+				ErrorRate:         tt.errorRate,
+				RequestCount:      tt.requestCount,
+			}
+
+			combinedScore, ttftScore, tpsScore, errorPenalty := strategy.calculateCombinedScore(perf)
+			baseScore := 0.35*ttftScore + 0.65*tpsScore
+
+			if combinedScore < 0 || combinedScore > 150 {
+				t.Errorf("combined score %v out of range [0, 150]", combinedScore)
+			}
+
+			if tt.expectReduced {
+				if combinedScore >= baseScore {
+					t.Errorf("expected reduced score due to error rate, got combined=%v >= base=%v (penalty=%v)",
+						combinedScore, baseScore, errorPenalty)
+				}
+			} else {
+				// No penalty means combined should equal base
+				if math.Abs(combinedScore-baseScore) > 0.1 {
+					t.Errorf("expected no penalty, got combined=%v != base=%v (penalty=%v)",
+						combinedScore, baseScore, errorPenalty)
+				}
+			}
+		})
+	}
+}
+

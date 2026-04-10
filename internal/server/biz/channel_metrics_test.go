@@ -524,8 +524,6 @@ func TestAggregatedMetricsPerformanceFields(t *testing.T) {
 	// Test 1: Verify performance fields exist and can be set
 	t.Run("PerformanceFieldsExist", func(t *testing.T) {
 		now := time.Now()
-		avgTTFT := 150.5
-		avgTPS := 45.2
 
 		metrics := &AggregatedMetrics{
 			metricsRecord: metricsRecord{
@@ -533,24 +531,19 @@ func TestAggregatedMetricsPerformanceFields(t *testing.T) {
 				SuccessCount: 8,
 				FailureCount: 2,
 			},
-			LastSelectedAt:         &now,
-			LastFailureAt:          &now,
-			AvgFirstTokenLatencyMs: &avgTTFT,
-			AvgTokensPerSecond:     &avgTPS,
+			LastSelectedAt:                 &now,
+			LastFailureAt:                  &now,
+			StreamingFirstTokenLatencyEWMA: 150.5,
+			StreamingTokensPerSecondEWMA:   45.2,
 		}
 
-		require.NotNil(t, metrics.AvgFirstTokenLatencyMs)
-		require.Equal(t, 150.5, *metrics.AvgFirstTokenLatencyMs)
-
-		require.NotNil(t, metrics.AvgTokensPerSecond)
-		require.Equal(t, 45.2, *metrics.AvgTokensPerSecond)
+		require.Equal(t, 150.5, metrics.StreamingFirstTokenLatencyEWMA)
+		require.Equal(t, 45.2, metrics.StreamingTokensPerSecondEWMA)
 	})
 
 	// Test 2: Verify Clone() copies performance fields correctly
 	t.Run("CloneCopiesPerformanceFields", func(t *testing.T) {
 		now := time.Now()
-		avgTTFT := 200.0
-		avgTPS := 50.0
 
 		original := &AggregatedMetrics{
 			metricsRecord: metricsRecord{
@@ -559,10 +552,10 @@ func TestAggregatedMetricsPerformanceFields(t *testing.T) {
 				FailureCount:        5,
 				ConsecutiveFailures: 2,
 			},
-			LastSelectedAt:         &now,
-			LastFailureAt:          &now,
-			AvgFirstTokenLatencyMs: &avgTTFT,
-			AvgTokensPerSecond:     &avgTPS,
+			LastSelectedAt:                 &now,
+			LastFailureAt:                  &now,
+			StreamingFirstTokenLatencyEWMA: 200.0,
+			StreamingTokensPerSecondEWMA:   50.0,
 		}
 
 		cloned := original.Clone()
@@ -576,43 +569,41 @@ func TestAggregatedMetricsPerformanceFields(t *testing.T) {
 		require.Equal(t, original.LastFailureAt, cloned.LastFailureAt)
 
 		// Verify performance fields are copied
-		require.NotNil(t, cloned.AvgFirstTokenLatencyMs)
-		require.Equal(t, *original.AvgFirstTokenLatencyMs, *cloned.AvgFirstTokenLatencyMs)
-
-		require.NotNil(t, cloned.AvgTokensPerSecond)
-		require.Equal(t, *original.AvgTokensPerSecond, *cloned.AvgTokensPerSecond)
+		require.Equal(t, original.StreamingFirstTokenLatencyEWMA, cloned.StreamingFirstTokenLatencyEWMA)
+		require.Equal(t, original.StreamingTokensPerSecondEWMA, cloned.StreamingTokensPerSecondEWMA)
 
 		// Verify clone is independent (not a reference)
-		*cloned.AvgFirstTokenLatencyMs = 999.0
-		require.NotEqual(t, 999.0, *original.AvgFirstTokenLatencyMs, "Clone should be independent")
+		clonedVal := 999.0
+		cloned.StreamingFirstTokenLatencyEWMA = clonedVal
+		require.NotEqual(t, 999.0, original.StreamingFirstTokenLatencyEWMA, "Clone should be independent")
 	})
 
-	// Test 3: Verify nil performance fields are handled correctly in Clone
-	t.Run("CloneWithNilPerformanceFields", func(t *testing.T) {
+	// Test 3: Verify zero value performance fields are handled correctly in Clone
+	t.Run("CloneWithZeroPerformanceFields", func(t *testing.T) {
 		original := &AggregatedMetrics{
 			metricsRecord: metricsRecord{
 				RequestCount: 5,
 				SuccessCount: 5,
 			},
-			AvgFirstTokenLatencyMs: nil,
-			AvgTokensPerSecond:     nil,
+			StreamingFirstTokenLatencyEWMA: 0,
+			StreamingTokensPerSecondEWMA:   0,
 		}
 
 		cloned := original.Clone()
 
-		require.Nil(t, cloned.AvgFirstTokenLatencyMs)
-		require.Nil(t, cloned.AvgTokensPerSecond)
+		require.Equal(t, 0.0, cloned.StreamingFirstTokenLatencyEWMA)
+		require.Equal(t, 0.0, cloned.StreamingTokensPerSecondEWMA)
 	})
 }
 
 func TestPerformanceRecordPerformanceFields(t *testing.T) {
-	t.Run("TotalTokens field exists", func(t *testing.T) {
+	t.Run("CompletionTokens field exists", func(t *testing.T) {
 		perf := &PerformanceRecord{
 			ChannelID:        1,
 			RequestCompleted: true,
-			TotalTokens:      1000,
+			CompletionTokens: 1000,
 		}
-		require.Equal(t, int64(1000), perf.TotalTokens)
+		require.Equal(t, int64(1000), perf.CompletionTokens)
 	})
 
 	t.Run("Calculate computes tokens per second", func(t *testing.T) {
@@ -623,7 +614,7 @@ func TestPerformanceRecordPerformanceFields(t *testing.T) {
 			ChannelID:        1,
 			StartTime:        startTime,
 			EndTime:          endTime,
-			TotalTokens:      100,
+			CompletionTokens: 100,
 			RequestCompleted: true,
 		}
 
@@ -641,7 +632,7 @@ func TestPerformanceRecordPerformanceFields(t *testing.T) {
 			ChannelID:        1,
 			StartTime:        startTime,
 			EndTime:          endTime,
-			TotalTokens:      100,
+			CompletionTokens: 100,
 			RequestCompleted: true,
 		}
 
@@ -658,7 +649,7 @@ func TestPerformanceRecordPerformanceFields(t *testing.T) {
 			ChannelID:        1,
 			StartTime:        startTime,
 			EndTime:          endTime,
-			TotalTokens:      0,
+			CompletionTokens: 0,
 			RequestCompleted: true,
 		}
 

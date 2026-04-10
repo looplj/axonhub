@@ -40,7 +40,8 @@ func (s *LatencyAwareStrategy) Name() string {
 }
 
 func (s *LatencyAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	model := requestedModelFromContext(ctx)
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID, model)
 	if err != nil {
 		return s.maxScore / 2
 	}
@@ -54,7 +55,8 @@ func (s *LatencyAwareStrategy) Score(ctx context.Context, channel *biz.Channel) 
 }
 
 func (s *LatencyAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	model := requestedModelFromContext(ctx)
+	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID, model)
 	if err != nil {
 		neutralScore := s.maxScore / 2
 
