@@ -2,7 +2,6 @@ package codex
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -146,8 +145,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, err
 	}
 
-	hreq.Body = ensureInstructionsField(hreq.Body)
-
 	// Overwrite auth.
 	hreq.Auth = &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: creds.AccessToken}
 	// Compact requests expect JSON response, others expect SSE stream.
@@ -255,20 +252,4 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 
 func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	return e.inner.DoStream(ctx, request)
-}
-
-func ensureInstructionsField(body []byte) []byte {
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal(body, &m); err != nil || m == nil {
-		return body
-	}
-	if _, ok := m["instructions"]; ok {
-		return body
-	}
-	m["instructions"] = json.RawMessage(`""`)
-	patched, err := json.Marshal(m)
-	if err != nil {
-		return body
-	}
-	return patched
 }

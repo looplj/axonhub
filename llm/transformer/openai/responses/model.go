@@ -71,7 +71,7 @@ type Request struct {
 	Model string `json:"model"`
 
 	// A system (or developer) message inserted into the model's context.
-	Instructions string `json:"instructions,omitempty"`
+	Instructions string `json:"instructions"`
 
 	Temperature *float64 `json:"temperature,omitempty"`
 
