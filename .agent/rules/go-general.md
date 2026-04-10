@@ -14,8 +14,9 @@ globs: "**/*.go"
 ## Coding Conventions
 
 1. Prefer `github.com/samber/lo` for collection, slice, map, and pointer helpers.
-2. Use `lo.ToPtr(...)` instead of handwritten pointer helper functions such as `stringPtr`.
-3. Follow the existing FX dependency injection patterns.
-4. Use structured logging with zap.
-5. Propagate `context.Context` correctly through request and service boundaries.
-6. Handle errors with the unified helpers in `internal/pkg/xerrors` and wrap them with useful context.
+2. Do not add handwritten pointer helper functions such as `stringPtr`; use `lo.ToPtr(...)` or `new(T)` when appropriate.
+3. It is acceptable to use `lo.ToPtr(...)` for constants or literals that cannot be addressed directly.
+4. Follow the existing FX dependency injection patterns.
+5. Use structured logging with zap.
+6. Propagate `context.Context` correctly through request and service boundaries.
+7. Handle errors with the unified helpers in `internal/pkg/xerrors` and wrap them with useful context.

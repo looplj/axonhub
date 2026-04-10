@@ -18,6 +18,7 @@ import { ChannelsOverrideDialog } from './channels-override-dialog';
 import { ChannelsProxyDialog } from './channels-proxy-dialog';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChannelsTestDialog } from './channels-test-dialog';
+import { ChannelsTestAPIKeysDialog } from './channels-test-api-keys-dialog';
 import { ChannelsRateLimitDialog } from './channels-rate-limit-dialog';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
 import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog';
@@ -265,6 +266,19 @@ export function ChannelsDialogs() {
           <ChannelsDisabledAPIKeysDialog
             key={`channel-disabled-api-keys-${currentRow.id}`}
             open={open === 'disabledAPIKeys'}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setOpen(null);
+                setTimeout(() => {
+                  setCurrentRow(null);
+                }, 500);
+              }
+            }}
+          />
+
+          <ChannelsTestAPIKeysDialog
+            key={`channel-test-api-keys-${currentRow.id}`}
+            open={open === 'testAPIKeys'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
                 setOpen(null);

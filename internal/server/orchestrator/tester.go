@@ -3,11 +3,14 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -20,6 +23,8 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
+
+const testChannelAPIKeysMaxConcurrency = 8
 
 // TestChannelOrchestrator handles channel testing functionality.
 // It is stateless and can be reused across multiple test requests.
@@ -293,4 +298,261 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 		Message: lo.ToPtr(accumulatedContent),
 		Error:   nil,
 	}, nil
+}
+
+// TestAPIKeyResult represents the result of testing a single API key.
+type TestAPIKeyResult struct {
+	KeyPrefix string
+	Success   bool
+	Latency   float64
+	Error     *string
+	Disabled  bool
+}
+
+// TestChannelAPIKeysResult represents the aggregated result of testing all API keys.
+type TestChannelAPIKeysResult struct {
+	ChannelID    objects.GUID
+	Total        int
+	SuccessCount int
+	FailedCount  int
+	Results      []*TestAPIKeyResult
+}
+
+// TestChannelAPIKeys tests all API keys for a specific channel individually.
+func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
+	ctx context.Context,
+	channelID objects.GUID,
+	modelID *string,
+	proxy *httpclient.ProxyConfig,
+) (*TestChannelAPIKeysResult, error) {
+	ch, err := processor.channelService.GetChannel(ctx, channelID.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	allKeys := ch.Credentials.GetAllAPIKeys()
+	if len(allKeys) == 0 {
+		return nil, fmt.Errorf("no API keys configured for channel")
+	}
+
+	// Build disabled set
+	disabledSet := make(map[string]struct{}, len(ch.DisabledAPIKeys))
+	for _, dk := range ch.DisabledAPIKeys {
+		disabledSet[dk.Key] = struct{}{}
+	}
+
+	testModel := lo.FromPtr(modelID)
+	if testModel == "" {
+		testModel = ch.DefaultTestModel
+	}
+
+	useStream := ch.Policies.Stream == objects.CapabilityPolicyRequire
+
+	results := make([]*TestAPIKeyResult, len(allKeys))
+
+	var (
+		successCount int32
+		failedCount  int32
+	)
+
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.SetLimit(min(testChannelAPIKeysMaxConcurrency, len(allKeys)))
+
+	for i, key := range allKeys {
+		index := i
+		apiKey := key
+
+		group.Go(func() error {
+			select {
+			case <-groupCtx.Done():
+				errMsg := groupCtx.Err().Error()
+				results[index] = &TestAPIKeyResult{
+					KeyPrefix: maskAPIKey(apiKey),
+					Success:   false,
+					Error:     &errMsg,
+				}
+
+				atomic.AddInt32(&failedCount, 1)
+
+				return nil
+			default:
+			}
+
+			result := processor.testSingleKey(groupCtx, channelID, apiKey, testModel, useStream, proxy)
+			_, isDisabled := disabledSet[apiKey]
+			result.Disabled = isDisabled
+			results[index] = result
+
+			if result.Success {
+				atomic.AddInt32(&successCount, 1)
+				return nil
+			}
+
+			atomic.AddInt32(&failedCount, 1)
+
+			return nil
+		})
+	}
+
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+
+	return &TestChannelAPIKeysResult{
+		ChannelID:    channelID,
+		Total:        len(allKeys),
+		SuccessCount: int(successCount),
+		FailedCount:  int(failedCount),
+		Results:      results,
+	}, nil
+}
+
+// testSingleKey tests a single API key by forcing the use of a specific key via an override middleware.
+func (processor *TestChannelOrchestrator) testSingleKey(
+	ctx context.Context,
+	channelID objects.GUID,
+	key string,
+	testModel string,
+	useStream bool,
+	proxy *httpclient.ProxyConfig,
+) *TestAPIKeyResult {
+	keyPrefix := maskAPIKey(key)
+
+	inbound := openai.NewInboundTransformer()
+
+	chatProcessor := &ChatCompletionOrchestrator{
+		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
+		RequestService:  processor.requestService,
+		ChannelService:  processor.channelService,
+		PromptProvider:  &stubPromptProvider{},
+		PromptProtecter: processor.promptProtectionRuleService,
+		PipelineFactory: pipeline.NewFactory(processor.httpClient),
+		Middlewares: []pipeline.Middleware{
+			stream.EnsureUsage(),
+		},
+		Inbound:                    inbound,
+		SystemService:              processor.systemService,
+		UsageLogService:            processor.usageLogService,
+		proxy:                      proxy,
+		ModelMapper:                processor.modelMapper,
+		selectedChannelIds:         []int{},
+		adaptiveLoadBalancer:       processor.loadBalancer,
+		failoverLoadBalancer:       processor.loadBalancer,
+		circuitBreakerLoadBalancer: processor.loadBalancer,
+		connectionTracker:          processor.connectionTracking,
+		modelCircuitBreaker:        processor.modelCircuitBreaker,
+	}
+
+	llmRequest := &llm.Request{
+		Model: testModel,
+		Messages: []llm.Message{
+			{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: new("You are a helpful assistant."),
+				},
+			},
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "text",
+							Text: new("Hello world, I'm AxonHub."),
+						},
+						{
+							Type: "text",
+							Text: new("Please tell me who you are?"),
+						},
+					},
+				},
+			},
+		},
+		MaxCompletionTokens: new(int64(256)),
+		Stream:              new(useStream),
+	}
+
+	body, err := json.Marshal(llmRequest)
+	if err != nil {
+		errMsg := err.Error()
+
+		return &TestAPIKeyResult{
+			KeyPrefix: keyPrefix,
+			Success:   false,
+			Error:     &errMsg,
+		}
+	}
+
+	startTime := time.Now()
+
+	rawResponse, err := chatProcessor.Process(ctx, &httpclient.Request{
+		Headers: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: body,
+	})
+	if err != nil {
+		rawErr := inbound.TransformError(ctx, err)
+		message := gjson.GetBytes(rawErr.Body, "error.message").String()
+
+		return &TestAPIKeyResult{
+			KeyPrefix: keyPrefix,
+			Success:   false,
+			Latency:   time.Since(startTime).Seconds(),
+			Error:     new(message),
+		}
+	}
+
+	// Handle streaming response
+	if rawResponse.ChatCompletionStream != nil {
+		streamResult, _ := processor.handleStreamResponse(ctx, rawResponse.ChatCompletionStream, startTime)
+
+		return &TestAPIKeyResult{
+			KeyPrefix: keyPrefix,
+			Success:   streamResult.Success,
+			Latency:   streamResult.Latency,
+			Error:     streamResult.Error,
+		}
+	}
+
+	latency := time.Since(startTime).Seconds()
+
+	// Handle non-streaming response
+	response, err := xjson.To[llm.Response](rawResponse.ChatCompletion.Body)
+	if err != nil {
+		errMsg := err.Error()
+
+		return &TestAPIKeyResult{
+			KeyPrefix: keyPrefix,
+			Success:   false,
+			Latency:   latency,
+			Error:     &errMsg,
+		}
+	}
+
+	if len(response.Choices) == 0 {
+		errMsg := "No message in response"
+
+		return &TestAPIKeyResult{
+			KeyPrefix: keyPrefix,
+			Success:   false,
+			Latency:   latency,
+			Error:     &errMsg,
+		}
+	}
+
+	return &TestAPIKeyResult{
+		KeyPrefix: keyPrefix,
+		Success:   true,
+		Latency:   latency,
+	}
+}
+
+// maskAPIKey returns a masked version of the API key for display.
+func maskAPIKey(key string) string {
+	if len(key) <= 8 {
+		return "****"
+	}
+
+	return key[:4] + "****" + key[len(key)-4:]
 }

@@ -206,6 +206,22 @@ type TestChannelPayload {
   error: String
 }
 
+type TestAPIKeyResult {
+  keyPrefix: String!
+  success: Boolean!
+  latency: Float!
+  error: String
+  disabled: Boolean!
+}
+
+type TestChannelAPIKeysPayload {
+  channelID: ID!
+  total: Int!
+  successCount: Int!
+  failedCount: Int!
+  results: [TestAPIKeyResult!]!
+}
+
 input BulkImportChannelItem {
   type: String!
   name: String!
@@ -662,6 +678,7 @@ type Mutation {
   bulkRecoverChannels(ids: [ID!]!): Boolean!
   bulkDeleteChannels(ids: [ID!]!): Boolean!
   testChannel(input: TestChannelInput!): TestChannelPayload!
+  testChannelAPIKeys(channelID: ID!, modelID: String): TestChannelAPIKeysPayload!
   bulkImportChannels(input: BulkImportChannelsInput!): BulkImportChannelsResult!
   bulkUpdateChannelOrdering(
     input: BulkUpdateChannelOrderingInput!
