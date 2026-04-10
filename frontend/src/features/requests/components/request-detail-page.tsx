@@ -188,6 +188,7 @@ export default function RequestDetailPage() {
     if (!request) return '';
     let fullContent = '';
     let fullReasoning = '';
+    let collectedToolCalls: any[] = [];
 
     // 1. Try to parse from body first (final result)
     if (request.responseBody) {
@@ -220,11 +221,16 @@ export default function RequestDetailPage() {
         if (message.reasoning_content) {
           fullReasoning = message.reasoning_content;
         }
+
+        if (Array.isArray(message.tool_calls)) {
+          collectedToolCalls = message.tool_calls;
+        }
       }
     }
 
     // 2. Fallback to chunks aggregation
-    if (!fullContent && !fullReasoning && request.responseChunks && request.responseChunks.length > 0) {
+    if (!fullContent && !fullReasoning && collectedToolCalls.length === 0 && request.responseChunks && request.responseChunks.length > 0) {
+      const toolCallMap = new Map<number, any>();
       request.responseChunks.forEach((chunk: any) => {
         const data = chunk.data || chunk;
 
@@ -238,15 +244,44 @@ export default function RequestDetailPage() {
           const delta = data.choices[0].delta;
           if (delta.content) fullContent += delta.content;
           if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
+
+          if (Array.isArray(delta.tool_calls)) {
+            delta.tool_calls.forEach((tc: any) => {
+              const index = tc.index ?? 0;
+              if (!toolCallMap.has(index)) {
+                toolCallMap.set(index, { ...tc, function: tc.function ? { ...tc.function } : { name: '', arguments: '' } });
+              } else {
+                const existing = toolCallMap.get(index);
+                if (tc.id) existing.id = tc.id;
+                if (tc.function?.name) existing.function.name = tc.function.name;
+                if (tc.function?.arguments) {
+                  existing.function.arguments = (existing.function.arguments || '') + tc.function.arguments;
+                }
+              }
+            });
+          }
         }
       });
+      if (toolCallMap.size > 0) {
+        collectedToolCalls = Array.from(toolCallMap.values()).sort((a, b) => (a.index || 0) - (b.index || 0));
+      }
     }
 
-    if (fullReasoning && fullContent) {
-      return `${fullReasoning}\n\n${fullContent}`;
+    let result = '';
+    if (fullReasoning) {
+      result += `${fullReasoning}\n\n`;
+    }
+    if (fullContent) {
+      result += fullContent;
+    }
+    if (collectedToolCalls.length > 0) {
+      if (result) result += '\n\n';
+      result += collectedToolCalls.map(tc => {
+        return `Tool Call: ${tc.function?.name}\nArguments: ${tc.function?.arguments}`;
+      }).join('\n\n');
     }
 
-    return fullContent || fullReasoning;
+    return result.trim();
   }, [request]);
 
   const handleBack = () => {
