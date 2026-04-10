@@ -783,6 +783,9 @@ func getTriggerReason(config *biz.MetricsSamplingConfig, winnerScore float64, wi
 
 // shouldSampleProbabilistically applies probabilistic sampling based on configured rate.
 // Returns true if random value is below the sampling rate (e.g., 0.10 = 10% chance).
+//
+// #nosec G404 -- Use of math/rand is intentional here; cryptographic randomness is not required
+// for load balancing sampling decisions. Predictability is acceptable for this use case.
 func shouldSampleProbabilistically(samplingRate float64) bool {
 	return rand.Float64() < samplingRate
 }
