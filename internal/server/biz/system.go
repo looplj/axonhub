@@ -216,6 +216,12 @@ type SystemModelSettings struct {
 	// When true, the models API will return all models supported by enabled channels.
 	// When false, only models that have explicit Model entity configuration will be returned.
 	QueryAllChannelModels bool `json:"query_all_channel_models"`
+
+	// DefaultModelAPIIncludeAll controls whether GET /v1/models returns extended model
+	// metadata by default when the include query parameter is omitted.
+	// When true, /v1/models behaves like /v1/models?include=all.
+	// When false, /v1/models returns only the basic compatibility fields by default.
+	DefaultModelAPIIncludeAll bool `json:"default_model_api_include_all"`
 }
 
 type SystemChannelSettings struct {
