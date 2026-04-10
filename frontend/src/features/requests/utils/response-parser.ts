@@ -123,6 +123,10 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
     const responsesApiToolMap = new Map<string, { id: string; name: string; arguments: string }>();
     let isResponsesApiFormat = false;
 
+    // Gemini API state
+    const geminiToolMap = new Map<string, any>();
+    let isGeminiFormat = false;
+
     normalizedChunks.forEach((chunk: any) => {
       const data = chunk.data || chunk;
       const eventType = data.type || chunk.event;
@@ -232,6 +236,31 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
             }
           });
         }
+      } else if (Array.isArray(data.candidates) && data.candidates.length > 0) {
+        // --- Gemini streaming format ---
+        isGeminiFormat = true;
+        const contentObj = data.candidates[0].content;
+        if (contentObj && Array.isArray(contentObj.parts)) {
+          contentObj.parts.forEach((part: any, index: number) => {
+            if (part.text) {
+              if (part.thought) fullReasoning += part.text;
+              else fullContent += part.text;
+            } else if (part.functionCall) {
+              const name = part.functionCall.name || 'unknown';
+              const callId = name + '_' + index;
+              geminiToolMap.set(callId, {
+                id: callId,
+                type: 'function',
+                function: {
+                  name: name,
+                  arguments: typeof part.functionCall.args === 'string' 
+                    ? part.functionCall.args 
+                    : JSON.stringify(part.functionCall.args || {}),
+                }
+              });
+            }
+          });
+        }
       } else if (typeof chunk === 'string') {
         fullContent += chunk;
       }
@@ -248,6 +277,13 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
             arguments: tc.arguments,
           },
         });
+      }
+    }
+
+    // Aggregate Gemini tool calls
+    if (isGeminiFormat && geminiToolMap.size > 0) {
+      for (const [, tc] of geminiToolMap) {
+        collectedToolCalls.push(tc);
       }
     }
 
