@@ -22,10 +22,5 @@
   "roles.validation.nameRequired": "Role name is required",
   "roles.validation.scopesRequired": "At least one permission is required",
   "roles.validation.projectIdRequired": "Project ID is required",
-  "roles.errors.loadRolesFailed": "Failed to load roles",
-  "roles.errors.loadRoleDetailFailed": "Failed to load role details",
-  "roles.errors.createRoleFailed": "Failed to create role",
-  "roles.errors.updateRoleFailed": "Failed to update role",
-  "roles.errors.deleteRoleFailed": "Failed to delete role",
   "roles.errors.deleteRolesBulkFailed": "Failed to delete roles"
 }

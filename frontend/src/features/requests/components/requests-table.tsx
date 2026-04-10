@@ -202,6 +202,8 @@ export function RequestsTable({
         showRefresh={showRefresh}
         apiKeyFilter={apiKeyFilter}
         onApiKeyFilterChange={onApiKeyFilterChange}
+        sourceFilter={sourceFilter}
+        onSourceFilterChange={onSourceFilterChange}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
       />

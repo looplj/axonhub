@@ -299,7 +299,7 @@ export function useApiKeys(
         const data = await graphqlRequest<{ apiKeys: ApiKeyConnection }>(query, mergedVariables, headers);
         return apiKeyConnectionSchema.parse(data?.apiKeys);
       } catch (error) {
-        handleError(error, t('apikeys.errors.fetchData'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -322,7 +322,7 @@ export function useApiKey(id: string) {
         const data = await graphqlRequest<{ node: ApiKey }>(query, { id }, headers);
         return apiKeySchema.parse(data.node);
       } catch (error) {
-        handleError(error, t('apikeys.errors.fetchDetails'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -353,7 +353,7 @@ export function useApiKeyQuotaUsages(
         );
         return apiKeyProfileQuotaUsageSchema.array().parse(data.apiKeyQuotaUsages);
       } catch (error) {
-        handleError(error, t('apikeys.errors.fetchDetails'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -388,7 +388,7 @@ export function useApiKeyTokenUsageStats(
         );
         return apiKeyTokenUsageStatsSchema.array().parse(data.apiKeyTokenUsageStats);
       } catch (error) {
-        handleError(error, t('apikeys.errors.fetchUsageStats'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -403,6 +403,7 @@ export function useCreateApiKey() {
   const queryClient = useQueryClient();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: (input: CreateApiKeyInput) => {
@@ -419,8 +420,8 @@ export function useCreateApiKey() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.createSuccess'));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.createError'));
+    onError: (error) => {
+      handleError(error, { context: t('apikeys.dialogs.create.title') });
     },
   });
 }
@@ -430,6 +431,7 @@ export function useUpdateApiKey() {
   const queryClient = useQueryClient();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyInput }) => {
@@ -442,8 +444,8 @@ export function useUpdateApiKey() {
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] });
       toast.success(t('apikeys.messages.updateSuccess'));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.updateError'));
+    onError: (error) => {
+      handleError(error, { context: t('apikeys.dialogs.edit.title') });
     },
   });
 }
@@ -469,8 +471,8 @@ export function useUpdateApiKeyStatus() {
             : t('apikeys.status.archived');
       toast.success(t('apikeys.messages.statusUpdateSuccess', { status: statusText }));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.statusUpdateError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -490,8 +492,8 @@ export function useUpdateApiKeyProfiles() {
       queryClient.invalidateQueries({ queryKey: ['apiKey', variables.id] });
       toast.success(t('apikeys.messages.profilesUpdateSuccess'));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.profilesUpdateError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -511,8 +513,8 @@ export function useBulkDisableApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkDisableSuccess', { count: variables.length }));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.bulkDisableError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -532,8 +534,8 @@ export function useBulkEnableApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkEnableSuccess', { count: variables.length }));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.bulkEnableError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -553,8 +555,8 @@ export function useBulkArchiveApiKeys() {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
       toast.success(t('apikeys.messages.bulkArchiveSuccess', { count: variables.length }));
     },
-    onError: (_error) => {
-      toast.error(t('apikeys.messages.bulkArchiveError'));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }

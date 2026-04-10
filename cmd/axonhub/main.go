@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/andreazorzetto/yh/highlight"
 	"github.com/hokaccha/go-prettyjson"
@@ -20,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
 )
 
@@ -56,12 +58,14 @@ func (l *logger) LogEvent(event fxevent.Event) {
 
 func startServer() {
 	server.Run(
+		fx.StartTimeout(60*time.Second),
+		fx.StopTimeout(30*time.Second),
 		fx.WithLogger(func() fxevent.Logger {
 			return &logger{}
 		}),
 		fx.Provide(conf.Load),
 		fx.Provide(metrics.NewProvider),
-		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client) {
+		fx.Invoke(func(lc fx.Lifecycle, server *server.Server, provider *sdk.MeterProvider, ent *ent.Client, requestSvc *biz.RequestService) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					if provider != nil {
@@ -80,6 +84,16 @@ func startServer() {
 			})
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
+					// Run cleanup asynchronously with timeout to avoid blocking startup
+					go func() {
+						cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second) //nolint:gosec // intentional detached context
+						defer cancel()
+
+						if err := requestSvc.ClearStaleProcessingOnStartup(cleanupCtx); err != nil {
+							log.Warn(context.Background(), "failed to cancel stale processing records on startup", log.Cause(err))
+						}
+					}()
+
 					go func() {
 						err := server.Run()
 						if err != nil {

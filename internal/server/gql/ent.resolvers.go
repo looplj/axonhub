@@ -40,6 +40,12 @@ func (r *aPIKeyResolver) ProjectID(ctx context.Context, obj *ent.APIKey) (*objec
 	}, nil
 }
 
+// User is the resolver for the user field.
+// Returns nil if the user has been soft-deleted.
+func (r *aPIKeyResolver) User(ctx context.Context, obj *ent.APIKey) (*ent.User, error) {
+	return getNilableUser(ctx, r.client, obj.UserID)
+}
+
 // ID is the resolver for the id field.
 func (r *channelResolver) ID(ctx context.Context, obj *ent.Channel) (*objects.GUID, error) {
 	return &objects.GUID{
@@ -153,6 +159,12 @@ func (r *channelOverrideTemplateResolver) BodyOverrideOperations(ctx context.Con
 	}
 
 	return []*objects.OverrideOperation{}, nil
+}
+
+// User is the resolver for the user field.
+// Returns nil if the user has been soft-deleted.
+func (r *channelOverrideTemplateResolver) User(ctx context.Context, obj *ent.ChannelOverrideTemplate) (*ent.User, error) {
+	return getNilableUser(ctx, r.client, obj.UserID)
 }
 
 // ID is the resolver for the id field.

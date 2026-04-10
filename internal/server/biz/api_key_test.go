@@ -42,7 +42,7 @@ func setupTestAPIKeyService(t *testing.T, cacheConfig xcache.Config) (*APIKeySer
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 
 	projectService := &ProjectService{
-		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),
+		ProjectCache: xcache.NewFromConfig[xcache.Entry[ent.Project]](cacheConfig),
 	}
 
 	apiKeyService := NewAPIKeyService(APIKeyServiceParams{
@@ -444,7 +444,7 @@ func TestAPIKeyService_UpdateAPIKeyProfiles(t *testing.T) {
 				{
 					Name:                 "production",
 					ChannelTags:          []string{"official"},
-					ChannelTagsMatchMode: objects.APIKeyMatchMode("invalid"),
+					ChannelTagsMatchMode: objects.ChannelTagsMatchMode("invalid"),
 				},
 			},
 		}
@@ -980,7 +980,7 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 		serviceAccountType := apikey.TypeServiceAccount
 
 		userAPIKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
-			Name:      "User Key",
+			Name:      "User Key for format check",
 			ProjectID: testProject.ID,
 			Type:      &userType,
 		})
@@ -989,7 +989,7 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 		require.Equal(t, "ah-", userAPIKey.Key[:3])
 
 		serviceAPIKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
-			Name:      "Service Key",
+			Name:      "Service Key for format check",
 			ProjectID: testProject.ID,
 			Type:      &serviceAccountType,
 		})

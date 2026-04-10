@@ -230,6 +230,16 @@ func UserIDNotIn(vs ...int) predicate.ChannelOverrideTemplate {
 	return predicate.ChannelOverrideTemplate(sql.FieldNotIn(FieldUserID, vs...))
 }
 
+// UserIDIsNil applies the IsNil predicate on the "user_id" field.
+func UserIDIsNil() predicate.ChannelOverrideTemplate {
+	return predicate.ChannelOverrideTemplate(sql.FieldIsNull(FieldUserID))
+}
+
+// UserIDNotNil applies the NotNil predicate on the "user_id" field.
+func UserIDNotNil() predicate.ChannelOverrideTemplate {
+	return predicate.ChannelOverrideTemplate(sql.FieldNotNull(FieldUserID))
+}
+
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.ChannelOverrideTemplate {
 	return predicate.ChannelOverrideTemplate(sql.FieldEQ(FieldName, v))

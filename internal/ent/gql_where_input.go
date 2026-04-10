@@ -71,10 +71,12 @@ type APIKeyWhereInput struct {
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
 	// "user_id" field predicates.
-	UserID      *int  `json:"userID,omitempty"`
-	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int `json:"userIDIn,omitempty"`
-	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
+	UserID       *int  `json:"userID,omitempty"`
+	UserIDNEQ    *int  `json:"userIDNEQ,omitempty"`
+	UserIDIn     []int `json:"userIDIn,omitempty"`
+	UserIDNotIn  []int `json:"userIDNotIn,omitempty"`
+	UserIDIsNil  bool  `json:"userIDIsNil,omitempty"`
+	UserIDNotNil bool  `json:"userIDNotNil,omitempty"`
 
 	// "project_id" field predicates.
 	ProjectID      *int  `json:"projectID,omitempty"`
@@ -291,6 +293,12 @@ func (i *APIKeyWhereInput) P() (predicate.APIKey, error) {
 	}
 	if len(i.UserIDNotIn) > 0 {
 		predicates = append(predicates, apikey.UserIDNotIn(i.UserIDNotIn...))
+	}
+	if i.UserIDIsNil {
+		predicates = append(predicates, apikey.UserIDIsNil())
+	}
+	if i.UserIDNotNil {
+		predicates = append(predicates, apikey.UserIDNotNil())
 	}
 	if i.ProjectID != nil {
 		predicates = append(predicates, apikey.ProjectIDEQ(*i.ProjectID))
@@ -2099,10 +2107,12 @@ type ChannelOverrideTemplateWhereInput struct {
 	UpdatedAtLTE   *time.Time  `json:"updatedAtLTE,omitempty"`
 
 	// "user_id" field predicates.
-	UserID      *int  `json:"userID,omitempty"`
-	UserIDNEQ   *int  `json:"userIDNEQ,omitempty"`
-	UserIDIn    []int `json:"userIDIn,omitempty"`
-	UserIDNotIn []int `json:"userIDNotIn,omitempty"`
+	UserID       *int  `json:"userID,omitempty"`
+	UserIDNEQ    *int  `json:"userIDNEQ,omitempty"`
+	UserIDIn     []int `json:"userIDIn,omitempty"`
+	UserIDNotIn  []int `json:"userIDNotIn,omitempty"`
+	UserIDIsNil  bool  `json:"userIDIsNil,omitempty"`
+	UserIDNotNil bool  `json:"userIDNotNil,omitempty"`
 
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
@@ -2310,6 +2320,12 @@ func (i *ChannelOverrideTemplateWhereInput) P() (predicate.ChannelOverrideTempla
 	}
 	if len(i.UserIDNotIn) > 0 {
 		predicates = append(predicates, channeloverridetemplate.UserIDNotIn(i.UserIDNotIn...))
+	}
+	if i.UserIDIsNil {
+		predicates = append(predicates, channeloverridetemplate.UserIDIsNil())
+	}
+	if i.UserIDNotNil {
+		predicates = append(predicates, channeloverridetemplate.UserIDNotNil())
 	}
 	if i.Name != nil {
 		predicates = append(predicates, channeloverridetemplate.NameEQ(*i.Name))

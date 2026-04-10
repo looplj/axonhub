@@ -4,6 +4,7 @@ import { Table } from '@tanstack/react-table';
 import { RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
+import { useSelectedProjectId } from '@/stores/projectStore';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,7 @@ import { DateRangePicker } from '@/components/date-range-picker';
 import { DataTableViewOptions } from './data-table-view-options';
 import { useApiKeys } from '@/features/apikeys/data';
 import { useMe } from '@/features/auth/data/auth';
-import { useQueryChannels } from '@/features/channels/data/channels';
+import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { RequestStatus } from '../data/schema';
 import type { DateTimeRangeValue } from '@/utils/date-range';
 
@@ -26,6 +27,8 @@ interface DataTableToolbarProps<TData> {
   showRefresh?: boolean;
   apiKeyFilter?: string[];
   onApiKeyFilterChange?: (filters: string[]) => void;
+  sourceFilter?: string[];
+  onSourceFilterChange?: (filters: string[]) => void;
   autoRefresh?: boolean;
   onAutoRefreshChange?: (enabled: boolean) => void;
 }
@@ -38,6 +41,8 @@ export function DataTableToolbar<TData>({
   showRefresh = false,
   apiKeyFilter,
   onApiKeyFilterChange,
+  sourceFilter,
+  onSourceFilterChange,
   autoRefresh = false,
   onAutoRefreshChange,
 }: DataTableToolbarProps<TData>) {
@@ -96,43 +101,32 @@ export function DataTableToolbar<TData>({
   const user = meData || authUser;
   const userScopes = user?.scopes || [];
   const isOwner = user?.isOwner || false;
+  const selectedProjectId = useSelectedProjectId();
 
   const canViewChannels = isOwner || userScopes.includes('*') || userScopes.includes('read_channels');
   const canViewApiKeys = isOwner || userScopes.includes('*') || userScopes.includes('read_api_keys');
 
-   const { data: channelsData, isFetching: isFetchingChannels } = useQueryChannels(
-     {
-       first: 100,
-       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-       where: showArchivedChannels
-         ? {
-             statusIn: ['enabled', 'disabled', 'archived'],
-           }
-         : {
-             statusIn: ['enabled', 'disabled'],
-           },
-     },
-     {
-       disableAutoFetch: !canViewChannels,
-     }
-   );
+  const { data: channelsData, isFetching: isFetchingChannels } = useAllChannelSummarys(selectedProjectId, {
+    enabled: canViewChannels,
+    includeArchived: showArchivedChannels,
+  });
 
-   const { data: apiKeysData, isFetching: isFetchingApiKeys } = useApiKeys(
-     {
-       first: 100,
-       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-       where: showArchivedApiKeys
-         ? {
-             statusIn: ['enabled', 'disabled', 'archived'],
-           }
-         : {
-             statusIn: ['enabled', 'disabled'],
-           },
-     },
-     {
-       disableAutoFetch: !canViewApiKeys,
-     }
-   );
+  const { data: apiKeysData, isFetching: isFetchingApiKeys } = useApiKeys(
+    {
+      first: 100,
+      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+      where: showArchivedApiKeys
+        ? {
+            statusIn: ['enabled', 'disabled', 'archived'],
+          }
+        : {
+            statusIn: ['enabled', 'disabled'],
+          },
+    },
+    {
+      disableAutoFetch: !canViewApiKeys,
+    }
+  );
 
   const channelOptions = useMemo(() => {
     if (!canViewChannels || !channelsData?.edges) return [];
@@ -198,13 +192,13 @@ export function DataTableToolbar<TData>({
         {table.getColumn('status') && (
           <DataTableFacetedFilter column={table.getColumn('status')} title={t('requests.filters.status')} options={requestStatuses} />
         )}
-        {/* {table.getColumn('source') && (
+        {table.getColumn('source') && (
           <DataTableFacetedFilter
             column={table.getColumn('source')}
             title={t('requests.filters.source')}
             options={requestSources}
           />
-        )} */}
+        )}
          {canViewChannels && table.getColumn('channel') && (channelOptions.length > 0 || isFetchingChannels) && (
           <DataTableFacetedFilter
             column={table.getColumn('channel')}

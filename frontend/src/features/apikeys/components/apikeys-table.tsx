@@ -37,14 +37,14 @@ interface DataTableProps {
   pageInfo?: ApiKeyConnection['pageInfo'];
   pageSize: number;
   totalCount?: number;
-  nameFilter: string;
+  searchFilter: string;
   statusFilter: string[];
   userFilter: string[];
   dateRange?: DateTimeRangeValue;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
-  onNameFilterChange: (value: string) => void;
+  onSearchFilterChange: (value: string) => void;
   onStatusFilterChange: (value: string[]) => void;
   onUserFilterChange: (value: string[]) => void;
   onDateRangeChange: (value: DateTimeRangeValue | undefined) => void;
@@ -59,14 +59,14 @@ export function ApiKeysTable({
   pageInfo,
   pageSize,
   totalCount,
-  nameFilter,
+  searchFilter,
   statusFilter,
   userFilter,
   dateRange,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
-  onNameFilterChange,
+  onSearchFilterChange,
   onStatusFilterChange,
   onUserFilterChange,
   onDateRangeChange,
@@ -89,8 +89,9 @@ export function ApiKeysTable({
 
   React.useEffect(() => {
     const newFilters: ColumnFiltersState = [];
-    if (nameFilter) {
-      newFilters.push({ id: 'name', value: nameFilter });
+    if (searchFilter) {
+      // Use 'name' column for the search filter display
+      newFilters.push({ id: 'name', value: searchFilter });
     }
     if (statusFilter.length > 0) {
       newFilters.push({ id: 'status', value: statusFilter });
@@ -99,7 +100,7 @@ export function ApiKeysTable({
       newFilters.push({ id: 'creator', value: userFilter });
     }
     setColumnFilters(newFilters);
-  }, [nameFilter, statusFilter, userFilter]);
+  }, [searchFilter, statusFilter, userFilter]);
 
   const handleColumnFiltersChange = (updater: ColumnFiltersState | ((prev: ColumnFiltersState) => ColumnFiltersState)) => {
     const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater;
@@ -109,9 +110,10 @@ export function ApiKeysTable({
     const statusFilterValue = newFilters.find((f) => f.id === 'status')?.value;
     const userFilterValue = newFilters.find((f) => f.id === 'creator')?.value;
 
-    const newNameFilter = typeof nameFilterValue === 'string' ? nameFilterValue : '';
-    if (newNameFilter !== nameFilter) {
-      onNameFilterChange(newNameFilter);
+    // The search filter is represented by the 'name' column in the table
+    const newSearchFilter = typeof nameFilterValue === 'string' ? nameFilterValue : '';
+    if (newSearchFilter !== searchFilter) {
+      onSearchFilterChange(newSearchFilter);
     }
 
     const newStatusFilter = Array.isArray(statusFilterValue) ? statusFilterValue : [];

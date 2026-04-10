@@ -380,6 +380,40 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request with zero-arg function tool normalizes empty object schema",
+			chatReq: &llm.Request{
+				Model: "gpt-4o",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Run the tool"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:        "ping",
+							Description: "Ping tool",
+							Parameters:  []byte(`{"type":"object"}`),
+						},
+					},
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Len(t, req.Tools, 1)
+				require.Equal(t, "object", req.Tools[0].Parameters["type"])
+				require.Equal(t, map[string]any{}, req.Tools[0].Parameters["properties"])
+			},
+		},
+		{
 			name: "request with reasoning effort and budget - effort takes priority",
 			chatReq: &llm.Request{
 				Model:           "o3",

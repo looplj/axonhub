@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/userrole"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 type RoleServiceParams struct {
@@ -94,7 +95,7 @@ func (s *RoleService) CreateRole(ctx context.Context, input ent.CreateRoleInput)
 	}
 
 	if exists {
-		return nil, fmt.Errorf("role name '%s' already exists", input.Name)
+		return nil, xerrors.DuplicateNameError("role", input.Name)
 	}
 
 	role, err := client.Role.Create().
@@ -151,7 +152,7 @@ func (s *RoleService) UpdateRole(ctx context.Context, id int, input ent.UpdateRo
 			}
 
 			if exists {
-				return nil, fmt.Errorf("role name '%s' already exists", *input.Name)
+				return nil, xerrors.DuplicateNameError("role", *input.Name)
 			}
 		}
 	}

@@ -28,19 +28,25 @@ function ApiKeysContent() {
   const [activeTab, setActiveTab] = useState<ApiKeyTabKey>('all');
 
   // Filter states - following the same pattern as roles and users
-  const [nameFilter, setNameFilter] = useState<string>('');
+  const [searchFilter, setSearchFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [userFilter, setUserFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
 
-  const debouncedNameFilter = useDebounce(nameFilter, 300);
+  const debouncedSearchFilter = useDebounce(searchFilter, 300);
 
   // Build where clause for API filtering
   const whereClause = (() => {
-    const where: Record<string, string | string[]> = {};
-    if (debouncedNameFilter) {
-      where.nameContainsFold = debouncedNameFilter;
+    const where: Record<string, unknown> = {};
+    
+    // Use OR condition for searching both name and key
+    if (debouncedSearchFilter) {
+      where.or = [
+        { nameContainsFold: debouncedSearchFilter },
+        { keyContainsFold: debouncedSearchFilter },
+      ];
     }
+    
     if (activeTab !== 'all') {
       where.typeIn = [activeTab];
     }
@@ -53,6 +59,19 @@ function ApiKeysContent() {
     if (userFilter.length > 0 && userFilter[0]) {
       where.userID = userFilter[0]; // API expects single userID
     }
+    
+    // Add AND condition to combine OR search with other filters
+    if (where.or && (where.typeIn || where.statusIn || where.userID)) {
+      const orCondition = where.or;
+      delete where.or;
+      return {
+        and: [
+          { or: orCondition },
+          where,
+        ],
+      };
+    }
+    
     return Object.keys(where).length > 0 ? where : undefined;
   })();
 
@@ -71,7 +90,7 @@ function ApiKeysContent() {
   React.useEffect(() => {
     resetCursor();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedNameFilter, activeTab, statusFilter, userFilter, dateRange]);
+  }, [debouncedSearchFilter, activeTab, statusFilter, userFilter, dateRange]);
 
   const handleNextPage = () => {
     if (data?.pageInfo?.hasNextPage && data?.pageInfo?.endCursor) {
@@ -90,7 +109,7 @@ function ApiKeysContent() {
   };
 
   const handleResetFilters = () => {
-    setNameFilter('');
+    setSearchFilter('');
     setStatusFilter([]);
     setUserFilter([]);
     setDateRange(undefined);
@@ -122,14 +141,14 @@ function ApiKeysContent() {
           pageInfo={data?.pageInfo}
           pageSize={pageSize}
           totalCount={data?.totalCount}
-          nameFilter={nameFilter}
+          searchFilter={searchFilter}
           statusFilter={statusFilter}
           userFilter={userFilter}
           dateRange={dateRange}
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           onPageSizeChange={handlePageSizeChange}
-          onNameFilterChange={setNameFilter}
+          onSearchFilterChange={setSearchFilter}
           onStatusFilterChange={setStatusFilter}
           onUserFilterChange={setUserFilter}
           onDateRangeChange={setDateRange}

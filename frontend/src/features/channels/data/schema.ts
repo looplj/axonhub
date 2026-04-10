@@ -142,6 +142,14 @@ export const channelProbeDataSchema = z.object({
 });
 export type ChannelProbeData = z.infer<typeof channelProbeDataSchema>;
 
+// Channel Rate Limit
+export const channelRateLimitSchema = z.object({
+  rpm: z.number().int().positive().optional().nullable(),
+  tpm: z.number().int().positive().optional().nullable(),
+  maxConcurrent: z.number().int().positive().optional().nullable(),
+});
+export type ChannelRateLimit = z.infer<typeof channelRateLimitSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -154,6 +162,7 @@ export const channelSettingsSchema = z.object({
   proxy: proxyConfigSchema.optional().nullable(),
   transformOptions: transformOptionsSchema.optional(),
   passThroughUserAgent: z.boolean().optional().nullable(),
+  rateLimit: channelRateLimitSchema.optional().nullable(),
 });
 
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
@@ -592,6 +601,28 @@ export const channelOrderingConnectionSchema = z.object({
   totalCount: z.number(),
 });
 export type ChannelOrderingConnection = z.infer<typeof channelOrderingConnectionSchema>;
+
+export const channelSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: channelTypeSchema,
+  status: channelStatusSchema,
+  baseURL: z.string(),
+  orderingWeight: z.number(),
+  tags: z.array(z.string()).optional().default([]).nullable(),
+  allModelEntries: z.array(channelModelEntrySchema).optional().default([]),
+});
+export type ChannelSummary = z.infer<typeof channelSummarySchema>;
+
+export const channelSummaryConnectionSchema = z.object({
+  edges: z.array(
+    z.object({
+      node: channelSummarySchema,
+    })
+  ),
+  totalCount: z.number(),
+});
+export type ChannelSummaryConnection = z.infer<typeof channelSummaryConnectionSchema>;
 
 export const bulkUpdateChannelOrderingInputSchema = z.object({
   channels: z

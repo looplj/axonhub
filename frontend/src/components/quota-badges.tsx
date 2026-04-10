@@ -240,7 +240,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
           <QuotaBadgeTrigger channels={channels} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
+      <PopoverContent className={channels.length > 4 ? "w-[640px]" : "w-80"} align="end">
         <div className="space-y-1">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -259,9 +259,11 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
               )}
             </button>
           </div>
-          {channels.map((channel: ProviderQuotaChannel) => (
-            <QuotaRow key={channel.id} channel={channel} />
-          ))}
+          <div className={`max-h-[60vh] overflow-y-auto ${channels.length > 4 ? 'grid grid-cols-2 gap-x-4' : ''}`}>
+            {channels.map((channel: ProviderQuotaChannel) => (
+              <QuotaRow key={channel.id} channel={channel} />
+            ))}
+          </div>
         </div>
       </PopoverContent>
     </Popover>

@@ -38,7 +38,7 @@ func (APIKey) Indexes() []ent.Index {
 
 func (APIKey) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("user_id").Immutable().
+		field.Int("user_id").Optional().Immutable().
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			).Comment("The creator of the API key"),
@@ -81,9 +81,9 @@ func (APIKey) Edges() []ent.Edge {
 		edge.From("user", User.Type).
 			Unique().
 			Immutable().
-			Required().
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entgql.Directives(forceResolver()),
 			).
 			Ref("api_keys").Field("user_id"),
 		edge.From("project", Project.Type).

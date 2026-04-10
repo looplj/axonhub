@@ -131,7 +131,7 @@ export function useUsageLogs(variables?: {
         const data = await graphqlRequest<{ usageLogs: UsageLogConnection }>(query, variables, headers);
         return usageLogConnectionSchema.parse(data?.usageLogs);
       } catch (error) {
-        handleError(error, t('usageLogs.errors.loadUsageLogsFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -157,7 +157,7 @@ export function useUsageLog(id: string) {
         }
         return usageLogSchema.parse(data.node);
       } catch (error) {
-        handleError(error, t('usageLogs.errors.loadUsageLogDetailFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },

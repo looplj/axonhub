@@ -37,11 +37,6 @@ export interface OAuthFlowOptions {
   exchangeFn: (input: OAuthExchangeInput, headers?: Record<string, string>) => Promise<OAuthExchangeResult>;
 
   /**
-   * Optional project ID to include in headers
-   */
-  projectId?: string | null;
-
-  /**
    * Optional proxy configuration for exchange token request
    */
   proxyConfig?: ProxyConfig;
@@ -76,7 +71,6 @@ export interface OAuthFlowActions {
  * const codexOAuth = useOAuthFlow({
  *   startFn: codexOAuthStart,
  *   exchangeFn: codexOAuthExchange,
- *   projectId: selectedProjectId,
  *   onSuccess: (credentials) => form.setValue('credentials.apiKey', credentials),
  * });
  *
@@ -87,7 +81,7 @@ export interface OAuthFlowActions {
  * ```
  */
 export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthFlowActions {
-  const { startFn, exchangeFn, projectId, proxyConfig, onSuccess } = options;
+  const { startFn, exchangeFn, proxyConfig, onSuccess } = options;
   const { t } = useTranslation();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -97,14 +91,9 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
   const [isExchanging, setIsExchanging] = useState(false);
 
   const start = useCallback(async () => {
-    if (!projectId) {
-      toast.error(t('channels.dialogs.oauth.errors.projectRequired'));
-      return;
-    }
-
     setIsStarting(true);
     try {
-      const result = await startFn({ 'X-Project-ID': projectId });
+      const result = await startFn();
       setSessionId(result.session_id);
       setAuthUrl(result.auth_url);
     } catch (error) {
@@ -112,14 +101,9 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
     } finally {
       setIsStarting(false);
     }
-  }, [projectId, startFn, t]);
+  }, [startFn]);
 
   const exchange = useCallback(async () => {
-    if (!projectId) {
-      toast.error(t('channels.dialogs.oauth.errors.projectRequired'));
-      return;
-    }
-
     if (!sessionId) {
       toast.error(t('channels.dialogs.oauth.errors.sessionMissing'));
       return;
@@ -147,7 +131,7 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
         };
       }
 
-      const result = await exchangeFn(exchangeInput, { 'X-Project-ID': projectId });
+      const result = await exchangeFn(exchangeInput);
 
       if (onSuccess) {
         onSuccess(result.credentials);
@@ -159,7 +143,7 @@ export function useOAuthFlow(options: OAuthFlowOptions): OAuthFlowState & OAuthF
     } finally {
       setIsExchanging(false);
     }
-  }, [projectId, sessionId, callbackUrl, exchangeFn, onSuccess, t, proxyConfig]);
+  }, [sessionId, callbackUrl, exchangeFn, onSuccess, t, proxyConfig]);
 
   const reset = useCallback(() => {
     setSessionId(null);

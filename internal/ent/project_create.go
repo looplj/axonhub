@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // ProjectCreate is the builder for creating a Project entity.
@@ -104,6 +105,12 @@ func (_c *ProjectCreate) SetNillableStatus(v *project.Status) *ProjectCreate {
 	if v != nil {
 		_c.SetStatus(*v)
 	}
+	return _c
+}
+
+// SetProfiles sets the "profiles" field.
+func (_c *ProjectCreate) SetProfiles(v *objects.ProjectProfiles) *ProjectCreate {
+	_c.mutation.SetProfiles(v)
 	return _c
 }
 
@@ -305,6 +312,10 @@ func (_c *ProjectCreate) defaults() error {
 		v := project.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.Profiles(); !ok {
+		v := project.DefaultProfiles
+		_c.mutation.SetProfiles(v)
+	}
 	return nil
 }
 
@@ -377,6 +388,10 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(project.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.Profiles(); ok {
+		_spec.SetField(project.FieldProfiles, field.TypeJSON, value)
+		_node.Profiles = value
 	}
 	if nodes := _c.mutation.UsersIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -644,6 +659,24 @@ func (u *ProjectUpsert) UpdateStatus() *ProjectUpsert {
 	return u
 }
 
+// SetProfiles sets the "profiles" field.
+func (u *ProjectUpsert) SetProfiles(v *objects.ProjectProfiles) *ProjectUpsert {
+	u.Set(project.FieldProfiles, v)
+	return u
+}
+
+// UpdateProfiles sets the "profiles" field to the value that was provided on create.
+func (u *ProjectUpsert) UpdateProfiles() *ProjectUpsert {
+	u.SetExcluded(project.FieldProfiles)
+	return u
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (u *ProjectUpsert) ClearProfiles() *ProjectUpsert {
+	u.SetNull(project.FieldProfiles)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -763,6 +796,27 @@ func (u *ProjectUpsertOne) SetStatus(v project.Status) *ProjectUpsertOne {
 func (u *ProjectUpsertOne) UpdateStatus() *ProjectUpsertOne {
 	return u.Update(func(s *ProjectUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetProfiles sets the "profiles" field.
+func (u *ProjectUpsertOne) SetProfiles(v *objects.ProjectProfiles) *ProjectUpsertOne {
+	return u.Update(func(s *ProjectUpsert) {
+		s.SetProfiles(v)
+	})
+}
+
+// UpdateProfiles sets the "profiles" field to the value that was provided on create.
+func (u *ProjectUpsertOne) UpdateProfiles() *ProjectUpsertOne {
+	return u.Update(func(s *ProjectUpsert) {
+		s.UpdateProfiles()
+	})
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (u *ProjectUpsertOne) ClearProfiles() *ProjectUpsertOne {
+	return u.Update(func(s *ProjectUpsert) {
+		s.ClearProfiles()
 	})
 }
 
@@ -1051,6 +1105,27 @@ func (u *ProjectUpsertBulk) SetStatus(v project.Status) *ProjectUpsertBulk {
 func (u *ProjectUpsertBulk) UpdateStatus() *ProjectUpsertBulk {
 	return u.Update(func(s *ProjectUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetProfiles sets the "profiles" field.
+func (u *ProjectUpsertBulk) SetProfiles(v *objects.ProjectProfiles) *ProjectUpsertBulk {
+	return u.Update(func(s *ProjectUpsert) {
+		s.SetProfiles(v)
+	})
+}
+
+// UpdateProfiles sets the "profiles" field to the value that was provided on create.
+func (u *ProjectUpsertBulk) UpdateProfiles() *ProjectUpsertBulk {
+	return u.Update(func(s *ProjectUpsert) {
+		s.UpdateProfiles()
+	})
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (u *ProjectUpsertBulk) ClearProfiles() *ProjectUpsertBulk {
+	return u.Update(func(s *ProjectUpsert) {
+		s.ClearProfiles()
 	})
 }
 

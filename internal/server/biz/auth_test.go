@@ -103,7 +103,7 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 	}
 
 	projectService := &ProjectService{
-		ProjectCache: xcache.NewFromConfig[ent.Project](cacheConfig),
+		ProjectCache: xcache.NewFromConfig[xcache.Entry[ent.Project]](cacheConfig),
 	}
 
 	apiKeyService := NewAPIKeyService(APIKeyServiceParams{

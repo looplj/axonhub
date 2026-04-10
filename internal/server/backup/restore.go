@@ -95,6 +95,20 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 		}
 	}
 
+	if opts.IncludeProjects {
+		for _, projData := range backupData.Projects {
+			if projData == nil {
+				continue
+			}
+
+			remapProjectProfilesChannelIDs(projData.Profiles, channelIDMap)
+		}
+
+		if err := svc.restoreProjects(ctx, db, backupData.Projects, opts); err != nil {
+			return err
+		}
+	}
+
 	if opts.IncludeAPIKeys {
 		if err := svc.restoreAPIKeys(ctx, db, backupData.APIKeys, opts, channelIDMap); err != nil {
 			return err
@@ -214,6 +228,79 @@ func remapAPIKeyProfilesChannelIDs(profiles *objects.APIKeyProfiles, channelIDMa
 			}
 		}
 	}
+}
+
+func remapProjectProfilesChannelIDs(profiles *objects.ProjectProfiles, channelIDMap map[int]int) {
+	if profiles == nil || len(channelIDMap) == 0 {
+		return
+	}
+
+	for i := range profiles.Profiles {
+		profile := &profiles.Profiles[i]
+		if len(profile.ChannelIDs) == 0 {
+			continue
+		}
+
+		for j, oldID := range profile.ChannelIDs {
+			if newID, ok := channelIDMap[oldID]; ok {
+				profile.ChannelIDs[j] = newID
+			}
+		}
+	}
+}
+
+func (svc *BackupService) restoreProjects(ctx context.Context, db *ent.Client, projectsData []*BackupProject, opts RestoreOptions) error {
+	if len(projectsData) == 0 {
+		return nil
+	}
+
+	for _, projData := range projectsData {
+		if projData == nil {
+			continue
+		}
+
+		existing, err := db.Project.Query().
+			Where(project.Name(projData.Name)).
+			First(ctx)
+		if err != nil && !ent.IsNotFound(err) {
+			return err
+		}
+
+		if existing != nil {
+			switch opts.ProjectConflictStrategy {
+			case ConflictStrategySkip:
+				log.Info(ctx, "skipping existing project", log.String("name", projData.Name))
+				continue
+			case ConflictStrategyError:
+				log.Error(ctx, "project already exists", log.String("name", projData.Name))
+				return fmt.Errorf("project %s already exists", projData.Name)
+			case ConflictStrategyOverwrite:
+				_, err = db.Project.UpdateOneID(existing.ID).
+					SetName(projData.Name).
+					SetDescription(projData.Description).
+					SetStatus(projData.Status).
+					SetProfiles(projData.Profiles).
+					Save(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to restore project %s: %w", projData.Name, err)
+				}
+			}
+
+			continue
+		}
+
+		_, err = db.Project.Create().
+			SetName(projData.Name).
+			SetDescription(projData.Description).
+			SetStatus(projData.Status).
+			SetProfiles(projData.Profiles).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create project %s: %w", projData.Name, err)
+		}
+	}
+
+	return nil
 }
 
 func (svc *BackupService) restoreChannelModelPrices(

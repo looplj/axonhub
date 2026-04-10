@@ -97,8 +97,8 @@ export default function ProfileForm() {
 
       toast.success(t('profile.form.messages.updateSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('profile.form.messages.updateError', { error: error.message }));
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 

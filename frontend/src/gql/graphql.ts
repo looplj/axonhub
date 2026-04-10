@@ -5,12 +5,17 @@ import i18n from '@/lib/i18n';
 export class GraphQLRequestError extends Error {
   status?: number;
   isAuthError: boolean;
+  extensions?: Record<string, any>;
 
-  constructor(message: string, options?: { status?: number; isAuthError?: boolean }) {
+  constructor(
+    message: string,
+    options?: { status?: number; isAuthError?: boolean; extensions?: Record<string, any> }
+  ) {
     super(message);
     this.name = 'GraphQLRequestError';
     this.status = options?.status;
     this.isAuthError = Boolean(options?.isAuthError);
+    this.extensions = options?.extensions;
   }
 }
 
@@ -107,6 +112,8 @@ export async function graphqlRequest<T>(
   }
 
   if (result.errors) {
+    const firstError = result.errors[0];
+
     // Check for authentication errors
     const authError = result.errors.find(
       (error: any) =>
@@ -123,7 +130,9 @@ export async function graphqlRequest<T>(
       throw new GraphQLRequestError('Unauthorized', { status: 401, isAuthError: true });
     }
 
-    throw new GraphQLRequestError(result.errors[0]?.message || 'GraphQL Error');
+    throw new GraphQLRequestError(firstError?.message || 'GraphQL Error', {
+      extensions: firstError?.extensions,
+    });
   }
 
   return result.data;

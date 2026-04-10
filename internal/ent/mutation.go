@@ -359,9 +359,22 @@ func (m *APIKeyMutation) OldUserID(ctx context.Context) (v int, err error) {
 	return oldValue.UserID, nil
 }
 
+// ClearUserID clears the value of the "user_id" field.
+func (m *APIKeyMutation) ClearUserID() {
+	m.user = nil
+	m.clearedFields[apikey.FieldUserID] = struct{}{}
+}
+
+// UserIDCleared returns if the "user_id" field was cleared in this mutation.
+func (m *APIKeyMutation) UserIDCleared() bool {
+	_, ok := m.clearedFields[apikey.FieldUserID]
+	return ok
+}
+
 // ResetUserID resets all changes to the "user_id" field.
 func (m *APIKeyMutation) ResetUserID() {
 	m.user = nil
+	delete(m.clearedFields, apikey.FieldUserID)
 }
 
 // SetProjectID sets the "project_id" field.
@@ -666,7 +679,7 @@ func (m *APIKeyMutation) ClearUser() {
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *APIKeyMutation) UserCleared() bool {
-	return m.cleareduser
+	return m.UserIDCleared() || m.cleareduser
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -1026,6 +1039,9 @@ func (m *APIKeyMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *APIKeyMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(apikey.FieldUserID) {
+		fields = append(fields, apikey.FieldUserID)
+	}
 	if m.FieldCleared(apikey.FieldScopes) {
 		fields = append(fields, apikey.FieldScopes)
 	}
@@ -1046,6 +1062,9 @@ func (m *APIKeyMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *APIKeyMutation) ClearField(name string) error {
 	switch name {
+	case apikey.FieldUserID:
+		m.ClearUserID()
+		return nil
 	case apikey.FieldScopes:
 		m.ClearScopes()
 		return nil
@@ -5396,9 +5415,22 @@ func (m *ChannelOverrideTemplateMutation) OldUserID(ctx context.Context) (v int,
 	return oldValue.UserID, nil
 }
 
+// ClearUserID clears the value of the "user_id" field.
+func (m *ChannelOverrideTemplateMutation) ClearUserID() {
+	m.user = nil
+	m.clearedFields[channeloverridetemplate.FieldUserID] = struct{}{}
+}
+
+// UserIDCleared returns if the "user_id" field was cleared in this mutation.
+func (m *ChannelOverrideTemplateMutation) UserIDCleared() bool {
+	_, ok := m.clearedFields[channeloverridetemplate.FieldUserID]
+	return ok
+}
+
 // ResetUserID resets all changes to the "user_id" field.
 func (m *ChannelOverrideTemplateMutation) ResetUserID() {
 	m.user = nil
+	delete(m.clearedFields, channeloverridetemplate.FieldUserID)
 }
 
 // SetName sets the "name" field.
@@ -5711,7 +5743,7 @@ func (m *ChannelOverrideTemplateMutation) ClearUser() {
 
 // UserCleared reports if the "user" edge to the User entity was cleared.
 func (m *ChannelOverrideTemplateMutation) UserCleared() bool {
-	return m.cleareduser
+	return m.UserIDCleared() || m.cleareduser
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
@@ -5976,6 +6008,9 @@ func (m *ChannelOverrideTemplateMutation) AddField(name string, value ent.Value)
 // mutation.
 func (m *ChannelOverrideTemplateMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(channeloverridetemplate.FieldUserID) {
+		fields = append(fields, channeloverridetemplate.FieldUserID)
+	}
 	if m.FieldCleared(channeloverridetemplate.FieldDescription) {
 		fields = append(fields, channeloverridetemplate.FieldDescription)
 	}
@@ -5999,6 +6034,9 @@ func (m *ChannelOverrideTemplateMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ChannelOverrideTemplateMutation) ClearField(name string) error {
 	switch name {
+	case channeloverridetemplate.FieldUserID:
+		m.ClearUserID()
+		return nil
 	case channeloverridetemplate.FieldDescription:
 		m.ClearDescription()
 		return nil
@@ -9908,6 +9946,7 @@ type ProjectMutation struct {
 	name                 *string
 	description          *string
 	status               *project.Status
+	profiles             **objects.ProjectProfiles
 	clearedFields        map[string]struct{}
 	users                map[int]struct{}
 	removedusers         map[int]struct{}
@@ -10273,6 +10312,55 @@ func (m *ProjectMutation) OldStatus(ctx context.Context) (v project.Status, err 
 // ResetStatus resets all changes to the "status" field.
 func (m *ProjectMutation) ResetStatus() {
 	m.status = nil
+}
+
+// SetProfiles sets the "profiles" field.
+func (m *ProjectMutation) SetProfiles(op *objects.ProjectProfiles) {
+	m.profiles = &op
+}
+
+// Profiles returns the value of the "profiles" field in the mutation.
+func (m *ProjectMutation) Profiles() (r *objects.ProjectProfiles, exists bool) {
+	v := m.profiles
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProfiles returns the old "profiles" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldProfiles(ctx context.Context) (v *objects.ProjectProfiles, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProfiles is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProfiles requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProfiles: %w", err)
+	}
+	return oldValue.Profiles, nil
+}
+
+// ClearProfiles clears the value of the "profiles" field.
+func (m *ProjectMutation) ClearProfiles() {
+	m.profiles = nil
+	m.clearedFields[project.FieldProfiles] = struct{}{}
+}
+
+// ProfilesCleared returns if the "profiles" field was cleared in this mutation.
+func (m *ProjectMutation) ProfilesCleared() bool {
+	_, ok := m.clearedFields[project.FieldProfiles]
+	return ok
+}
+
+// ResetProfiles resets all changes to the "profiles" field.
+func (m *ProjectMutation) ResetProfiles() {
+	m.profiles = nil
+	delete(m.clearedFields, project.FieldProfiles)
 }
 
 // AddUserIDs adds the "users" edge to the User entity by ids.
@@ -10795,7 +10883,7 @@ func (m *ProjectMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProjectMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.created_at != nil {
 		fields = append(fields, project.FieldCreatedAt)
 	}
@@ -10813,6 +10901,9 @@ func (m *ProjectMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, project.FieldStatus)
+	}
+	if m.profiles != nil {
+		fields = append(fields, project.FieldProfiles)
 	}
 	return fields
 }
@@ -10834,6 +10925,8 @@ func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
 		return m.Description()
 	case project.FieldStatus:
 		return m.Status()
+	case project.FieldProfiles:
+		return m.Profiles()
 	}
 	return nil, false
 }
@@ -10855,6 +10948,8 @@ func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldDescription(ctx)
 	case project.FieldStatus:
 		return m.OldStatus(ctx)
+	case project.FieldProfiles:
+		return m.OldProfiles(ctx)
 	}
 	return nil, fmt.Errorf("unknown Project field %s", name)
 }
@@ -10906,6 +11001,13 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
+	case project.FieldProfiles:
+		v, ok := value.(*objects.ProjectProfiles)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProfiles(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Project field %s", name)
 }
@@ -10950,7 +11052,11 @@ func (m *ProjectMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ProjectMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(project.FieldProfiles) {
+		fields = append(fields, project.FieldProfiles)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -10963,6 +11069,11 @@ func (m *ProjectMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ProjectMutation) ClearField(name string) error {
+	switch name {
+	case project.FieldProfiles:
+		m.ClearProfiles()
+		return nil
+	}
 	return fmt.Errorf("unknown Project nullable field %s", name)
 }
 
@@ -10987,6 +11098,9 @@ func (m *ProjectMutation) ResetField(name string) error {
 		return nil
 	case project.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case project.FieldProfiles:
+		m.ResetProfiles()
 		return nil
 	}
 	return fmt.Errorf("unknown Project field %s", name)

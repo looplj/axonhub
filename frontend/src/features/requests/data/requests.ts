@@ -258,7 +258,7 @@ export function useRequests(variables?: {
         const data = await graphqlRequest<{ requests: RequestConnection }>(query, finalVariables, headers);
         return requestConnectionSchema.parse(data?.requests);
       } catch (error) {
-        handleError(error, t('requests.errors.loadRequestsFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -284,7 +284,7 @@ export function useRequest(id: string) {
         }
         return requestSchema.parse(data.node);
       } catch (error) {
-        handleError(error, t('requests.errors.loadRequestDetailFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -333,20 +333,27 @@ export function useRequestExecutions(
     where?: Record<string, any>;
   }
 ) {
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
     queryKey: ['request-executions', requestID, variables, permissions, selectedProjectId],
     queryFn: async () => {
-      const query = buildRequestExecutionsQuery(permissions);
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const finalVariables = {
-        requestID,
-        ...variables,
-      };
-      const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(query, finalVariables, headers);
-      return requestExecutionConnectionSchema.parse(data?.node?.executions);
+      try {
+        const query = buildRequestExecutionsQuery(permissions);
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const finalVariables = {
+          requestID,
+          ...variables,
+        };
+        const data = await graphqlRequest<{ node: { executions: RequestExecutionConnection } }>(query, finalVariables, headers);
+        return requestExecutionConnectionSchema.parse(data?.node?.executions);
+      } catch (error) {
+        handleError(error, t('common.errors.internalServerError'));
+        throw error;
+      }
     },
     enabled: !!requestID,
   });

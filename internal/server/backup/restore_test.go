@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/model"
+	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -244,6 +245,68 @@ func TestBackupService_Restore_RemapChannelIDsInModelSettingsAndAPIKeyProfiles(t
 	require.NotNil(t, restoredKey.Profiles)
 	require.Len(t, restoredKey.Profiles.Profiles, 1)
 	require.Equal(t, []int{restoredChannel.ID}, restoredKey.Profiles.Profiles[0].ChannelIDs)
+}
+
+func TestBackupService_Restore_RemapChannelIDsInProjectProfiles(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	oldChannelID := 456
+	backupData := BackupData{
+		Version: BackupVersion,
+		Projects: []*BackupProject{
+			{
+				Project: ent.Project{
+					Name:        "Project With Profiles",
+					Description: "project with channel restrictions",
+					Status:      project.StatusActive,
+					Profiles: &objects.ProjectProfiles{
+						ActiveProfile: "production",
+						Profiles: []objects.ProjectProfile{
+							{
+								Name:        "production",
+								ChannelIDs:  []int{oldChannelID},
+								ChannelTags: []string{"allowed"},
+							},
+						},
+					},
+				},
+			},
+		},
+		Channels: []*BackupChannel{
+			{
+				Channel: ent.Channel{
+					ID:      oldChannelID,
+					Type:    channel.TypeOpenai,
+					Name:    "Project Channel From Backup",
+					BaseURL: "https://api.example.com",
+					Status:  channel.StatusEnabled,
+				},
+				Credentials: objects.ChannelCredentials{APIKey: "backup-api-key"},
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(backupData, "", "  ")
+	require.NoError(t, err)
+
+	err = service.Restore(ctx, data, RestoreOptions{
+		IncludeProjects:         true,
+		IncludeChannels:         true,
+		ProjectConflictStrategy: ConflictStrategyOverwrite,
+		ChannelConflictStrategy: ConflictStrategyOverwrite,
+	})
+	require.NoError(t, err)
+
+	restoredChannel, err := client.Channel.Query().Where(channel.Name("Project Channel From Backup")).First(ctx)
+	require.NoError(t, err)
+	require.NotEqual(t, oldChannelID, restoredChannel.ID)
+
+	restoredProject, err := client.Project.Query().Where(project.Name("Project With Profiles")).First(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, restoredProject.Profiles)
+	require.Len(t, restoredProject.Profiles.Profiles, 1)
+	require.Equal(t, []int{restoredChannel.ID}, restoredProject.Profiles.Profiles[0].ChannelIDs)
 }
 
 func TestBackupService_Restore_NewData(t *testing.T) {

@@ -116,15 +116,6 @@ func (m *mockChannelSelector) Select(ctx context.Context, req *llm.Request) ([]*
 	return []*ChannelModelsCandidate{}, nil
 }
 
-func testProfileWithTags(tags []string, matchMode ...objects.APIKeyMatchMode) *objects.APIKeyProfile {
-	profile := &objects.APIKeyProfile{ChannelTags: tags}
-	if len(matchMode) > 0 {
-		profile.ChannelTagsMatchMode = matchMode[0]
-	}
-
-	return profile
-}
-
 // TestTagsFilterSelector_EmptyAllowedTags 测试当 allowedTags 为空时返回所有渠道.
 func TestTagsFilterSelector_EmptyAllowedTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)
@@ -137,7 +128,7 @@ func TestTagsFilterSelector_EmptyAllowedTags(t *testing.T) {
 	}
 
 	// 创建 TagsFilterSelector with empty allowedTags
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{}))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -159,7 +150,7 @@ func TestTagsFilterSelector_NilAllowedTags(t *testing.T) {
 			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
-	selector := WithTagsFilterSelector(mockSelector, nil)
+	selector := WithChannelTagsFilterSelector(mockSelector, nil, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -181,7 +172,7 @@ func TestTagsFilterSelector_SingleMatchingTag(t *testing.T) {
 			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{"tag1"}))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"tag1"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -205,7 +196,7 @@ func TestTagsFilterSelector_MultipleMatchingTags(t *testing.T) {
 		},
 	}
 	// 允许 tag1 或 tag2
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{"tag1", "tag2"}))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"tag1", "tag2"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -231,7 +222,7 @@ func TestTagsFilterSelector_AllLogic(t *testing.T) {
 			return channelsToCandidates(channels, req.Model), nil
 		},
 	}
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{"tag1", "tag2"}, objects.APIKeyMatchModeAll))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"tag1", "tag2"}, objects.ChannelTagsMatchModeAll)
 
 	req := &llm.Request{Model: "gpt-4"}
 
@@ -251,7 +242,7 @@ func TestTagsFilterSelector_NoMatchingTags(t *testing.T) {
 		},
 	}
 	// 使用不存在的标签
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{"nonexistent-tag"}))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"nonexistent-tag"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -279,7 +270,7 @@ func TestTagsFilterSelector_ChannelsWithoutTags(t *testing.T) {
 			return channelsToCandidates(noTagChannels, req.Model), nil
 		},
 	}
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{"tag1", "tag2", "tag3"}))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"tag1", "tag2", "tag3"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -302,7 +293,7 @@ func TestTagsFilterSelector_ORLogic(t *testing.T) {
 		},
 	}
 	// 允许 tag1 或 tag3
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{"tag1", "tag3"}))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"tag1", "tag3"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -336,9 +327,7 @@ func TestTagsFilterSelector_WithSelectedChannelsSelector(t *testing.T) {
 	channelIDSelector := WithSelectedChannelsSelector(mockSelector, allowedIDs)
 
 	// 最后用 TagsFilterSelector 过滤，只允许 tag2
-	// Channel 1 有 tag2, Channel 2 也有 tag2
-	// 但 SelectedChannelsSelector 已经只允许这两个，所以应该都被选中
-	tagsSelector := WithTagsFilterSelector(channelIDSelector, testProfileWithTags([]string{"tag2"}))
+	tagsSelector := WithChannelTagsFilterSelector(channelIDSelector, []string{"tag2"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -366,7 +355,7 @@ func TestTagsFilterSelector_WithSelectedChannelsSelector_NoIntersection(t *testi
 	channelIDSelector := WithSelectedChannelsSelector(mockSelector, allowedIDs)
 
 	// 但 tags filter 只允许 tag3 (Channel 1 没有 tag3)
-	tagsSelector := WithTagsFilterSelector(channelIDSelector, testProfileWithTags([]string{"tag3"}))
+	tagsSelector := WithChannelTagsFilterSelector(channelIDSelector, []string{"tag3"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -391,7 +380,7 @@ func TestTagsFilterSelector_ErrorPropagation(t *testing.T) {
 		},
 	}
 
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{"tag1"}))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"tag1"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -439,7 +428,7 @@ func TestTagsFilterSelector_CaseSensitive(t *testing.T) {
 	}
 
 	// 用小写的 tag1 来过滤
-	selector := WithTagsFilterSelector(mockSelector, testProfileWithTags([]string{"tag1"}))
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"tag1"}, "")
 
 	req := &llm.Request{
 		Model: "gpt-4",

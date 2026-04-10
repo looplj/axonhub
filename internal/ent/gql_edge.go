@@ -13,7 +13,7 @@ func (_m *APIKey) User(ctx context.Context) (*User, error) {
 	if IsNotLoaded(err) {
 		result, err = _m.QueryUser().Only(ctx)
 	}
-	return result, err
+	return result, MaskNotFound(err)
 }
 
 func (_m *APIKey) Project(ctx context.Context) (*Project, error) {
@@ -173,7 +173,7 @@ func (_m *ChannelOverrideTemplate) User(ctx context.Context) (*User, error) {
 	if IsNotLoaded(err) {
 		result, err = _m.QueryUser().Only(ctx)
 	}
-	return result, err
+	return result, MaskNotFound(err)
 }
 
 func (_m *ChannelProbe) Channel(ctx context.Context) (*Channel, error) {

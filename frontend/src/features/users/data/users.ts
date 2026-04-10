@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
-import { USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION, UPDATE_USER_STATUS_MUTATION } from '@/gql/users';
+import { USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION, UPDATE_USER_STATUS_MUTATION, DELETE_USER_MUTATION } from '@/gql/users';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
@@ -33,7 +33,7 @@ export function useUsers(
         const data = await graphqlRequest<{ users: UserConnection }>(USERS_QUERY, queryVariables);
         return userConnectionSchema.parse(data?.users);
       } catch (error) {
-        handleError(error, t('users.messages.loadUsersError'));
+        handleError(error, t('common.errors.loadFailed'));
         throw error;
       }
     },
@@ -56,7 +56,7 @@ export function useUser(id: string) {
         }
         return userSchema.parse(user);
       } catch (error) {
-        handleError(error, t('users.messages.loadUserError'));
+        handleError(error, t('common.errors.loadFailed'));
         throw error;
       }
     },
@@ -78,8 +78,8 @@ export function useCreateUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.createSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.createError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -97,8 +97,8 @@ export function useUpdateUser() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.updateSuccess'));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.updateError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -109,17 +109,17 @@ export function useUpdateUserStatus() {
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: 'activated' | 'deactivated' }) => {
-      const data = await graphqlRequest<{ updateUserStatus: boolean }>(UPDATE_USER_STATUS_MUTATION, { id, status });
-      return data.updateUserStatus;
+      const response = await graphqlRequest<{ updateUserStatus: boolean }>(UPDATE_USER_STATUS_MUTATION, { id, status });
+      return response.updateUserStatus;
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['user', variables.id] });
       const statusText = variables.status === 'activated' ? t('users.status.activated') : t('users.status.deactivated');
       toast.success(t('users.messages.statusUpdateSuccess', { status: statusText }));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.statusUpdateError') + `: ${error.message}`);
+    onError: () => {
+      toast.error(t('common.errors.internalServerError'));
     },
   });
 }
@@ -130,15 +130,16 @@ export function useDeleteUser() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // This is now deprecated, use useUpdateUserStatus instead
-      throw new Error('Direct deletion is not supported. Use status update instead.');
+      const data = await graphqlRequest<{ deleteUser: boolean }>(DELETE_USER_MUTATION, { id });
+      return data.deleteUser;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.deleteSuccess'));
     },
     onError: (error: any) => {
-      toast.error(t('users.messages.deleteError') + `: ${error.message}`);
+      const message = error?.response?.errors?.[0]?.message || t('common.errors.internalServerError');
+      toast.error(message);
     },
   });
 }

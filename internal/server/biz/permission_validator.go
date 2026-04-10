@@ -225,3 +225,40 @@ func (v *PermissionValidator) CanEditRole(ctx context.Context, roleID int, proje
 
 	return v.CanGrantRole(ctx, role.Scopes, projectID)
 }
+
+// CanDeleteProject checks if the current user can delete a project.
+// Rule: Only system owners can delete a project.
+func (v *PermissionValidator) CanDeleteProject(ctx context.Context, projectID int) error {
+	currentUser, ok := contexts.GetUser(ctx)
+	if !ok || currentUser == nil {
+		return fmt.Errorf("user not found in context")
+	}
+
+	// Only system owners can delete projects
+	if !currentUser.IsOwner {
+		return fmt.Errorf("insufficient permissions: only system owners can delete projects")
+	}
+
+	return nil
+}
+
+// CanDeleteUser checks if the current user can delete a user.
+// Rule: Only system owners can delete users, and cannot delete themselves.
+func (v *PermissionValidator) CanDeleteUser(ctx context.Context, targetUserID int) error {
+	currentUser, ok := contexts.GetUser(ctx)
+	if !ok || currentUser == nil {
+		return fmt.Errorf("user not found in context")
+	}
+
+	// Cannot delete yourself
+	if currentUser.ID == targetUserID {
+		return fmt.Errorf("cannot delete yourself")
+	}
+
+	// Only system owners can delete users
+	if !currentUser.IsOwner {
+		return fmt.Errorf("insufficient permissions: only system owners can delete users")
+	}
+
+	return nil
+}

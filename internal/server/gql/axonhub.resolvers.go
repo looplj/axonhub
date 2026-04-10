@@ -358,6 +358,15 @@ func (r *mutationResolver) UpdateUserStatus(ctx context.Context, id objects.GUID
 	return r.userService.UpdateUserStatus(ctx, id.ID, status)
 }
 
+// DeleteUser is the resolver for the deleteUser field.
+func (r *mutationResolver) DeleteUser(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.userService.DeleteUser(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // CreateRole is the resolver for the createRole field.
 func (r *mutationResolver) CreateRole(ctx context.Context, input ent.CreateRoleInput) (*ent.Role, error) {
 	return r.roleService.CreateRole(ctx, input)
@@ -403,6 +412,20 @@ func (r *mutationResolver) UpdateProject(ctx context.Context, id objects.GUID, i
 // UpdateProjectStatus is the resolver for the updateProjectStatus field.
 func (r *mutationResolver) UpdateProjectStatus(ctx context.Context, id objects.GUID, status project.Status) (*ent.Project, error) {
 	return r.projectService.UpdateProjectStatus(ctx, id.ID, status)
+}
+
+// UpdateProjectProfiles is the resolver for the updateProjectProfiles field.
+func (r *mutationResolver) UpdateProjectProfiles(ctx context.Context, id objects.GUID, input objects.ProjectProfiles) (*ent.Project, error) {
+	return r.projectService.UpdateProjectProfiles(ctx, id.ID, input)
+}
+
+// DeleteProject is the resolver for the deleteProject field.
+func (r *mutationResolver) DeleteProject(ctx context.Context, id objects.GUID) (bool, error) {
+	if err := r.projectService.DeleteProject(ctx, id.ID); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // AddUserToProject is the resolver for the addUserToProject field.
@@ -496,6 +519,36 @@ func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID obje
 	}, nil
 }
 
+// AllChannelSummarys is the resolver for the allChannelSummarys field.
+func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived *bool) ([]*ent.Channel, error) {
+	statusFilter := []channel.Status{channel.StatusEnabled, channel.StatusDisabled}
+	if includeArchived != nil && *includeArchived {
+		statusFilter = append(statusFilter, channel.StatusArchived)
+	}
+
+	channels, err := r.client.Channel.Query().
+		Where(channel.StatusIn(statusFilter...)).
+		Order(ent.Desc(channel.FieldOrderingWeight)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok || projectID == 0 {
+		return channels, nil
+	}
+
+	proj, err := r.client.Project.Get(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project: %w", err)
+	}
+
+	projectProfile := proj.GetActiveProfile()
+
+	return filterChannelsByProjectProfile(channels, projectProfile), nil
+}
+
 // AllChannelTags is the resolver for the allChannelTags field.
 func (r *queryResolver) AllChannelTags(ctx context.Context) ([]string, error) {
 	// Query all channels that are not archived
@@ -506,6 +559,16 @@ func (r *queryResolver) AllChannelTags(ctx context.Context) ([]string, error) {
 		All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if ok && projectID != 0 {
+		proj, err := r.client.Project.Get(ctx, projectID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get project: %w", err)
+		}
+
+		channels = filterChannelsByProjectProfile(channels, proj.GetActiveProfile())
 	}
 
 	tags := lo.Reduce(channels, func(acc []string, ch *ent.Channel, _ int) []string {

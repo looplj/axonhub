@@ -149,7 +149,7 @@ export function useTraces(variables?: {
         const data = await graphqlRequest<{ traces: TraceConnection }>(query, finalVariables, headers);
         return traceConnectionSchema.parse(data?.traces);
       } catch (error) {
-        handleError(error, t('traces.errors.loadTracesFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -174,7 +174,7 @@ export function useTrace(id: string) {
         }
         return traceDetailSchema.parse(data.node);
       } catch (error) {
-        handleError(error, t('traces.errors.loadTraceDetailFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },
@@ -199,7 +199,7 @@ export function useTraceWithSegments(id: string) {
         }
         return traceDetailSchema.parse(data.node);
       } catch (error) {
-        handleError(error, t('traces.errors.loadTraceDetailFailed'));
+        handleError(error, t('common.errors.internalServerError'));
         throw error;
       }
     },

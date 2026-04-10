@@ -18,6 +18,7 @@ import { ChannelsOverrideDialog } from './channels-override-dialog';
 import { ChannelsProxyDialog } from './channels-proxy-dialog';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChannelsTestDialog } from './channels-test-dialog';
+import { ChannelsRateLimitDialog } from './channels-rate-limit-dialog';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
 import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog';
 
@@ -236,6 +237,20 @@ export function ChannelsDialogs() {
           <ChannelsTransformOptionsDialog
             key={`channel-transform-options-${currentRow.id}`}
             open={open === 'transformOptions'}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setOpen(null);
+                setTimeout(() => {
+                  setCurrentRow(null);
+                }, 500);
+              }
+            }}
+            currentRow={currentRow}
+          />
+
+          <ChannelsRateLimitDialog
+            key={`channel-rate-limit-${currentRow.id}`}
+            open={open === 'rateLimit'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
                 setOpen(null);

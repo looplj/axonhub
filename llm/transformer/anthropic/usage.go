@@ -53,9 +53,15 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 	//nolint:exhaustive
 	switch platformType {
 	case PlatformMoonshot:
-		// For Moonshot: InputTokens already includes cached tokens
-		// So we don't add cache tokens again
-		promptTokens = usage.InputTokens
+		// Moonshot may return InputTokens as a net billed amount (can be negative with cache discounts),
+		// or as the standard positive count. We handle both formats.
+		if usage.InputTokens < 0 && usage.CacheReadInputTokens > 0 {
+			promptTokens = usage.InputTokens + 2*usage.CacheReadInputTokens
+		} else if usage.InputTokens >= 0 && usage.CacheReadInputTokens > 0 && usage.InputTokens < usage.CacheReadInputTokens {
+			promptTokens = usage.InputTokens + usage.CacheReadInputTokens
+		} else {
+			promptTokens = usage.InputTokens
+		}
 	default:
 		// For Anthropic official (direct, bedrock, vertex) or other platform: InputTokens does NOT include cached tokens
 		// Total input tokens = input_tokens + cache_creation_input_tokens + cache_read_input_tokens

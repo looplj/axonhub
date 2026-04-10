@@ -172,18 +172,18 @@ export function useUsers(
         return {
           edges: transformedUsers.map((user) => ({ node: user })),
           pageInfo: {
-            hasNextPage: false,
-            hasPreviousPage: false,
-            startCursor: null,
-            endCursor: null,
-          },
-        };
-      } catch (error) {
-        handleError(error, t('users.messages.loadUsersError'));
-        throw error;
-      }
-    },
-    enabled: !options?.disableAutoFetch && !!selectedProjectId,
+hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+      };
+    } catch (error) {
+      handleError(error, t('common.errors.loadFailed'));
+      throw error;
+    }
+  },
+  enabled: !options?.disableAutoFetch && !!selectedProjectId,
   });
 }
 
@@ -204,7 +204,7 @@ export function useUser(id: string) {
         }
         return userSchema.parse(user);
       } catch (error) {
-        handleError(error, t('users.messages.loadUserError'));
+        handleError(error, t('common.errors.loadFailed'));
         throw error;
       }
     },
@@ -217,19 +217,22 @@ export function useCreateUser() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: CreateUserInput) => {
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const data = await graphqlRequest<{ createUser: User }>(CREATE_USER_MUTATION, { input }, headers);
-      return userSchema.parse(data.createUser);
+      try {
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ createUser: User }>(CREATE_USER_MUTATION, { input }, headers);
+        return userSchema.parse(data.createUser);
+      } catch (error) {
+        handleError(error, { context: t('users.dialogs.add.title') });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.createSuccess'));
-    },
-    onError: (error: any) => {
-      toast.error(t('users.messages.createError') + `: ${error.message}`);
     },
   });
 }
@@ -238,19 +241,22 @@ export function useUpdateUser() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateUserInput }) => {
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const data = await graphqlRequest<{ updateUser: User }>(UPDATE_USER_MUTATION, { id, input }, headers);
-      return userSchema.parse(data.updateUser);
+      try {
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ updateUser: User }>(UPDATE_USER_MUTATION, { id, input }, headers);
+        return userSchema.parse(data.updateUser);
+      } catch (error) {
+        handleError(error, { context: t('users.dialogs.edit.title') });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.updateSuccess'));
-    },
-    onError: (error: any) => {
-      toast.error(t('users.messages.updateError') + `: ${error.message}`);
     },
   });
 }
@@ -259,12 +265,18 @@ export function useUpdateUserStatus() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: 'activated' | 'deactivated' }) => {
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const data = await graphqlRequest<{ updateUserStatus: boolean }>(UPDATE_USER_STATUS_MUTATION, { id, status }, headers);
-      return data.updateUserStatus;
+      try {
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ updateUserStatus: boolean }>(UPDATE_USER_STATUS_MUTATION, { id, status }, headers);
+        return data.updateUserStatus;
+      } catch (error) {
+        handleError(error, { context: 'Update User Status' });
+        throw error;
+      }
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -272,27 +284,27 @@ export function useUpdateUserStatus() {
       const statusText = variables.status === 'activated' ? t('users.status.activated') : t('users.status.deactivated');
       toast.success(t('users.messages.statusUpdateSuccess', { status: statusText }));
     },
-    onError: (error: any) => {
-      toast.error(t('users.messages.statusUpdateError') + `: ${error.message}`);
-    },
   });
 }
 
 export function useDeleteUser() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (_id: string) => {
-      // This is now deprecated, use useRemoveUserFromProject instead
-      throw new Error('Direct deletion is not supported. Use removeUserFromProject instead.');
+      try {
+        // This is now deprecated, use useRemoveUserFromProject instead
+        throw new Error('Direct deletion is not supported. Use removeUserFromProject instead.');
+      } catch (error) {
+        handleError(error, { context: 'Delete User' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success(t('users.messages.deleteSuccess'));
-    },
-    onError: (error: any) => {
-      toast.error(t('users.messages.deleteError') + `: ${error.message}`);
     },
   });
 }
@@ -302,34 +314,37 @@ export function useAddUserToProject() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: { userId: string; isOwner?: boolean; scopes?: string[]; roleIDs?: string[] }) => {
-      if (!selectedProjectId) {
-        throw new Error('No project selected');
-      }
-      const headers = { 'X-Project-ID': selectedProjectId };
-      const data = await graphqlRequest<{ addUserToProject: any }>(
-        ADD_USER_TO_PROJECT_MUTATION,
-        {
-          input: {
-            projectId: selectedProjectId,
-            userId: input.userId,
-            isOwner: input.isOwner,
-            scopes: input.scopes,
-            roleIDs: input.roleIDs,
+      try {
+        if (!selectedProjectId) {
+          throw new Error('No project selected');
+        }
+        const headers = { 'X-Project-ID': selectedProjectId };
+        const data = await graphqlRequest<{ addUserToProject: any }>(
+          ADD_USER_TO_PROJECT_MUTATION,
+          {
+            input: {
+              projectId: selectedProjectId,
+              userId: input.userId,
+              isOwner: input.isOwner,
+              scopes: input.scopes,
+              roleIDs: input.roleIDs,
+            },
           },
-        },
-        headers
-      );
-      return data.addUserToProject;
+          headers
+        );
+        return data.addUserToProject;
+      } catch (error) {
+        handleError(error, { context: 'Add User to Project' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-users', selectedProjectId] });
       toast.success(t('users.messages.addToProjectSuccess'));
-    },
-    onError: (error: any) => {
-      toast.error(t('users.messages.addToProjectError') + `: ${error.message}`);
     },
   });
 }
@@ -339,31 +354,34 @@ export function useRemoveUserFromProject() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (userId: string) => {
-      if (!selectedProjectId) {
-        throw new Error('No project selected');
-      }
-      const headers = { 'X-Project-ID': selectedProjectId };
-      const data = await graphqlRequest<{ removeUserFromProject: boolean }>(
-        REMOVE_USER_FROM_PROJECT_MUTATION,
-        {
-          input: {
-            projectId: selectedProjectId,
-            userId: userId,
+      try {
+        if (!selectedProjectId) {
+          throw new Error('No project selected');
+        }
+        const headers = { 'X-Project-ID': selectedProjectId };
+        const data = await graphqlRequest<{ removeUserFromProject: boolean }>(
+          REMOVE_USER_FROM_PROJECT_MUTATION,
+          {
+            input: {
+              projectId: selectedProjectId,
+              userId: userId,
+            },
           },
-        },
-        headers
-      );
-      return data.removeUserFromProject;
+          headers
+        );
+        return data.removeUserFromProject;
+      } catch (error) {
+        handleError(error, { context: 'Remove User from Project' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-users', selectedProjectId] });
       toast.success(t('users.messages.removeFromProjectSuccess'));
-    },
-    onError: (error: any) => {
-      toast.error(t('users.messages.removeFromProjectError') + `: ${error.message}`);
     },
   });
 }
@@ -373,6 +391,7 @@ export function useUpdateProjectUser() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const selectedProjectId = useSelectedProjectId();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: {
@@ -382,32 +401,34 @@ export function useUpdateProjectUser() {
       addRoleIDs?: string[];
       removeRoleIDs?: string[];
     }) => {
-      if (!selectedProjectId) {
-        throw new Error('No project selected');
-      }
-      const headers = { 'X-Project-ID': selectedProjectId };
-      const data = await graphqlRequest<{ updateProjectUser: any }>(
-        UPDATE_PROJECT_USER_MUTATION,
-        {
-          input: {
-            projectId: selectedProjectId,
-            userId: input.userId,
-            isOwner: input.isOwner,
-            scopes: input.scopes,
-            addRoleIDs: input.addRoleIDs,
-            removeRoleIDs: input.removeRoleIDs,
+      try {
+        if (!selectedProjectId) {
+          throw new Error('No project selected');
+        }
+        const headers = { 'X-Project-ID': selectedProjectId };
+        const data = await graphqlRequest<{ updateProjectUser: any }>(
+          UPDATE_PROJECT_USER_MUTATION,
+          {
+            input: {
+              projectId: selectedProjectId,
+              userId: input.userId,
+              isOwner: input.isOwner,
+              scopes: input.scopes,
+              addRoleIDs: input.addRoleIDs,
+              removeRoleIDs: input.removeRoleIDs,
+            },
           },
-        },
-        headers
-      );
-      return data.updateProjectUser;
+          headers
+        );
+        return data.updateProjectUser;
+      } catch (error) {
+        handleError(error, { context: 'Update Project User' });
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-users', selectedProjectId] });
       toast.success(t('users.messages.updateSuccess'));
-    },
-    onError: (error: any) => {
-      toast.error(t('users.messages.updateError') + `: ${error.message}`);
     },
   });
 }
@@ -424,7 +445,7 @@ export function useAllUsers(variables?: { first?: number; after?: string; where?
         const data = await graphqlRequest<{ users: UserConnection }>(ALL_USERS_QUERY, variables);
         return data.users;
       } catch (error) {
-        handleError(error, t('users.messages.loadUsersError'));
+        handleError(error, t('common.errors.loadFailed'));
         throw error;
       }
     },

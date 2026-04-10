@@ -20,6 +20,7 @@ import {
   IconCoin,
   IconLoader2,
   IconKeyOff,
+  IconGauge,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -83,6 +84,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const { setOpen, setCurrentRow } = useChannels();
   const { channelPermissions } = usePermissions();
   const testChannel = useTestChannel();
+  const isArchived = channel.status === 'archived';
   const hasError = !!channel.errorMessage;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
 
@@ -181,6 +183,15 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconTransform size={16} className='mr-2' />
             {t('channels.dialogs.transformOptions.action')}
           </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('rateLimit');
+            }}
+          >
+            <IconGauge size={16} className='mr-2' />
+            {t('channels.dialogs.rateLimit.action')}
+          </DropdownMenuItem>
           {hasDisabledAPIKeys && (
             <DropdownMenuItem
               onClick={() => {
@@ -211,10 +222,10 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               setCurrentRow(channel);
               setOpen('archive');
             }}
-            className='text-orange-500!'
+            className={isArchived ? 'text-green-600!' : 'text-orange-500!'}
           >
-            <IconArchive size={16} className='mr-2' />
-            {t('common.buttons.archive')}
+            {isArchived ? <IconCheck size={16} className='mr-2' /> : <IconArchive size={16} className='mr-2' />}
+            {t(isArchived ? 'common.buttons.restore' : 'common.buttons.archive')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -258,6 +269,19 @@ function getChannelWebsiteURL(baseURL: string): string | null {
     return url.origin;
   } catch {
     return null;
+  }
+}
+
+function getProxyURLSummary(proxyURL: string): { label: string; detail?: string } {
+  try {
+    const url = new URL(proxyURL);
+    const pathname = url.pathname === '/' ? '' : url.pathname;
+    return {
+      label: url.host || proxyURL,
+      detail: `${url.protocol}//${url.host}${pathname}`,
+    };
+  } catch {
+    return { label: proxyURL };
   }
 }
 
@@ -375,6 +399,56 @@ const TagsCell = memo(({ row }: { row: Row<Channel> }) => {
 });
 
 TagsCell.displayName = 'TagsCell';
+
+const ProxyCell = memo(({ row }: { row: Row<Channel> }) => {
+  const { t } = useTranslation();
+  const proxy = row.original.settings?.proxy;
+
+  if (!proxy || proxy.type === 'disabled') {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  if (proxy.type === 'environment') {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>{t('channels.dialogs.proxy.types.environment')}</span>
+      </div>
+    );
+  }
+
+  const proxyURL = proxy.url?.trim();
+  if (!proxyURL) {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  const { label, detail } = getProxyURLSummary(proxyURL);
+  const content = (
+    <div className='flex justify-center'>
+      <span className='max-w-40 truncate font-mono text-xs'>{label}</span>
+    </div>
+  );
+
+  if (detail && detail !== label) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent>{detail}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+});
+
+ProxyCell.displayName = 'ProxyCell';
 
 const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
@@ -636,6 +710,17 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         className: 'max-w-64 text-center',
       },
       enableSorting: false,
+    },
+    {
+      id: 'proxy',
+      accessorFn: (row) => row.settings?.proxy?.url ?? row.settings?.proxy?.type ?? '',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
+      cell: ProxyCell,
+      meta: {
+        className: 'w-32 min-w-32 text-center',
+      },
+      enableSorting: false,
+      enableHiding: true,
     },
     {
       id: 'health',

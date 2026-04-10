@@ -49,7 +49,7 @@ server:
 # Database configuration
 db:
   dialect: "sqlite3"            # Database dialect: sqlite3, postgres, mysql (env: AXONHUB_DB_DIALECT)
-  dsn: "file:axonhub.db?cache=shared&_fk=1"  # Database connection string (env: AXONHUB_DB_DSN)
+  dsn: "file:axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)"  # Database connection string (env: AXONHUB_DB_DSN)
   debug: false                  # Enable database debug logging (env: AXONHUB_DB_DEBUG)
 
 # Cache configuration

@@ -3,18 +3,26 @@ package biz
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
 )
+
+const negativeCacheTTL = 5 * time.Second
 
 type ProjectServiceParams struct {
 	fx.In
@@ -26,7 +34,8 @@ type ProjectServiceParams struct {
 type ProjectService struct {
 	*AbstractService
 
-	ProjectCache xcache.Cache[ent.Project]
+	ProjectCache        xcache.Cache[xcache.Entry[ent.Project]]
+	permissionValidator *PermissionValidator
 }
 
 func NewProjectService(params ProjectServiceParams) *ProjectService {
@@ -34,7 +43,8 @@ func NewProjectService(params ProjectServiceParams) *ProjectService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		ProjectCache: xcache.NewFromConfig[ent.Project](params.CacheConfig),
+		ProjectCache:        xcache.NewFromConfig[xcache.Entry[ent.Project]](params.CacheConfig),
+		permissionValidator: NewPermissionValidator(),
 	}
 }
 
@@ -57,7 +67,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 	}
 
 	if exists {
-		return nil, fmt.Errorf("project name '%s' already exists", input.Name)
+		return nil, xerrors.DuplicateNameError("project", input.Name)
 	}
 
 	// Create the project
@@ -177,8 +187,20 @@ func (s *ProjectService) UpdateProject(ctx context.Context, id int, input ent.Up
 
 func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Project, error) {
 	cacheKey := buildProjectCacheKey(id)
-	if proj, err := s.ProjectCache.Get(ctx, cacheKey); err == nil {
-		return &proj, nil
+
+	// Try to get from cache
+	if entry, err := s.ProjectCache.Get(ctx, cacheKey); err == nil {
+		if !entry.IsExpired() {
+			if entry.IsEmpty {
+				return nil, fmt.Errorf("failed to get project: %w (id: %d)", ErrProjectNotFound, id)
+			}
+
+			// Guard against stale cache entries from older versions
+			// (e.g., cache stored bare ent.Project instead of xcache.Entry[ent.Project]).
+			if entry.Value.ID != 0 {
+				return &entry.Value, nil
+			}
+		}
 	}
 
 	client := s.entFromContext(ctx)
@@ -188,15 +210,89 @@ func (s *ProjectService) GetProjectByID(ctx context.Context, id int) (*ent.Proje
 
 	proj, err := client.Project.Get(ctx, id)
 	if err != nil {
+		// Cache negative result to prevent cache penetration
+		if ent.IsNotFound(err) {
+			emptyEntry := xcache.NewEmptyEntry[ent.Project](negativeCacheTTL)
+			_ = s.ProjectCache.Set(ctx, cacheKey, *emptyEntry)
+
+			return nil, fmt.Errorf("failed to get project: %w (id: %d)", ErrProjectNotFound, id)
+		}
 		return nil, fmt.Errorf("failed to get project: %w", err)
 	}
 
-	err = s.ProjectCache.Set(ctx, cacheKey, *proj)
+	// Cache positive result
+	entry := xcache.NewEntry(*proj, 0) // Use default TTL
+
+	err = s.ProjectCache.Set(ctx, cacheKey, *entry)
 	if err != nil {
 		log.Warn(ctx, "failed to cache project", zap.Error(err))
 	}
 
 	return proj, nil
+}
+
+// UpdateProjectProfiles updates the profiles of a project.
+func (s *ProjectService) UpdateProjectProfiles(ctx context.Context, id int, profiles objects.ProjectProfiles) (*ent.Project, error) {
+	// Validate profiles
+	if err := ValidateProjectProfiles(profiles); err != nil {
+		return nil, err
+	}
+
+	client := s.entFromContext(ctx)
+
+	proj, err := client.Project.UpdateOneID(id).
+		SetProfiles(&profiles).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update project profiles: %w", err)
+	}
+
+	// Invalidate cache
+	s.invalidateProjectCache(ctx, id)
+
+	return proj, nil
+}
+
+// ValidateProjectProfiles validates that profile names are unique and the active profile exists.
+func ValidateProjectProfiles(profiles objects.ProjectProfiles) error {
+	// Validate that profile names are unique (case-insensitive)
+	seen := make(map[string]bool)
+
+	for _, profile := range profiles.Profiles {
+		nameLower := strings.ToLower(strings.TrimSpace(profile.Name))
+		if nameLower == "" {
+			return fmt.Errorf("profile name cannot be empty")
+		}
+
+		if seen[nameLower] {
+			return fmt.Errorf("duplicate profile name: %s", profile.Name)
+		}
+
+		seen[nameLower] = true
+
+		if !profile.ChannelTagsMatchMode.IsValid() {
+			return fmt.Errorf("profile '%s' channelTagsMatchMode is invalid", profile.Name)
+		}
+	}
+
+	// Validate that active profile exists in the profiles list (if set)
+	if profiles.ActiveProfile != "" {
+		found := false
+
+		for _, profile := range profiles.Profiles {
+			if profile.Name == profiles.ActiveProfile {
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("active profile '%s' does not exist in the profiles list", profiles.ActiveProfile)
+		}
+	}
+
+	return nil
 }
 
 // UpdateProjectStatus updates the status of a project.
@@ -224,4 +320,64 @@ func buildProjectCacheKey(id int) string {
 func (s *ProjectService) invalidateProjectCache(ctx context.Context, id int) {
 	cacheKey := buildProjectCacheKey(id)
 	_ = s.ProjectCache.Delete(ctx, cacheKey)
+}
+
+// DeleteProject soft deletes a project and handles all related data.
+// This method performs the following operations:
+// 1. Validates permissions
+// 2. Deletes UserProject relationships
+// 3. Deletes project-level roles
+// 4. Deletes project API keys
+// 5. Soft deletes the project
+// 6. Invalidates project cache.
+func (s *ProjectService) DeleteProject(ctx context.Context, id int) error {
+	// Validate permissions before deleting
+	if err := s.permissionValidator.CanDeleteProject(ctx, id); err != nil {
+		return fmt.Errorf("permission denied: %w", err)
+	}
+
+	return s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
+
+		// Get project to verify it exists
+		proj, err := client.Project.Get(ctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get project: %w", err)
+		}
+
+		// 1. Delete UserProject relationships
+		_, err = client.UserProject.Delete().
+			Where(userproject.ProjectIDEQ(id)).
+			Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete project users: %w", err)
+		}
+
+		// 2. Delete project-level roles
+		_, err = client.Role.Delete().
+			Where(role.ProjectIDEQ(proj.ID)).
+			Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete project roles: %w", err)
+		}
+
+		// 3. Delete project API keys
+		_, err = client.APIKey.Delete().
+			Where(apikey.ProjectIDEQ(proj.ID)).
+			Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete project API keys: %w", err)
+		}
+
+		// 4. Soft delete the project
+		err = client.Project.DeleteOneID(id).Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete project: %w", err)
+		}
+
+		// 5. Invalidate project cache
+		s.invalidateProjectCache(ctx, id)
+
+		return nil
+	})
 }

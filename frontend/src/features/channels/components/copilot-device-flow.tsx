@@ -4,10 +4,8 @@ import { useEffect } from 'react';
 import { Copy, ExternalLink, Loader2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useSelectedProjectId } from '@/stores/projectStore';
 import { Button } from '@/components/ui/button';
 import { FormLabel } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
 import { useDeviceFlow } from '../hooks/use-device-flow';
 
 interface CopilotDeviceFlowProps {
@@ -18,10 +16,8 @@ interface CopilotDeviceFlowProps {
 
 export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: CopilotDeviceFlowProps) {
   const { t } = useTranslation();
-  const projectId = useSelectedProjectId();
   const hasExistingCredentials = existingCredentials && existingCredentials.trim().length > 0;
   const deviceFlow = useDeviceFlow({
-    projectId,
     onSuccess,
   });
   useEffect(() => {
@@ -206,7 +202,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
           type='button'
           variant='secondary'
           onClick={deviceFlow.start}
-          disabled={!projectId || deviceFlow.isPolling}
+          disabled={deviceFlow.isPolling}
         >
           {deviceFlow.isPolling
             ? t('channels.dialogs.oauth.buttons.starting')

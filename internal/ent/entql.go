@@ -266,6 +266,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			project.FieldName:        {Type: field.TypeString, Column: project.FieldName},
 			project.FieldDescription: {Type: field.TypeString, Column: project.FieldDescription},
 			project.FieldStatus:      {Type: field.TypeEnum, Column: project.FieldStatus},
+			project.FieldProfiles:    {Type: field.TypeJSON, Column: project.FieldProfiles},
 		},
 	}
 	graph.Nodes[10] = &sqlgraph.Node{
@@ -2446,6 +2447,11 @@ func (f *ProjectFilter) WhereDescription(p entql.StringP) {
 // WhereStatus applies the entql string predicate on the status field.
 func (f *ProjectFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(project.FieldStatus))
+}
+
+// WhereProfiles applies the entql json.RawMessage predicate on the profiles field.
+func (f *ProjectFilter) WhereProfiles(p entql.BytesP) {
+	f.Where(p.Field(project.FieldProfiles))
 }
 
 // WhereHasUsers applies a predicate to check if query has an edge users.
