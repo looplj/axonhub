@@ -74,7 +74,37 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
       }
     }
 
-    // 1.4 Handle direct content if it's just a string or has a content field
+    // 1.4 Handle OpenAI Responses API format (output[] array)
+    const outputItems = body.output || body.response?.output;
+    if (!fullContent && !fullReasoning && collectedToolCalls.length === 0 && Array.isArray(outputItems)) {
+      outputItems.forEach((item: any) => {
+        if (item.type === 'reasoning') {
+          // Reasoning item with summary text parts
+          if (Array.isArray(item.summary)) {
+            item.summary.forEach((s: any) => {
+              if (s.type === 'summary_text') fullReasoning += s.text || '';
+            });
+          }
+        } else if (item.type === 'message' && Array.isArray(item.content)) {
+          // Message item with output_text content parts
+          item.content.forEach((c: any) => {
+            if (c.type === 'output_text') fullContent += c.text || '';
+          });
+        } else if (item.type === 'function_call') {
+          // Function call item
+          collectedToolCalls.push({
+            id: item.call_id || item.id,
+            type: 'function',
+            function: {
+              name: item.name || 'unknown',
+              arguments: item.arguments || '{}',
+            },
+          });
+        }
+      });
+    }
+
+    // 1.5 Handle direct content if it's just a string or has a content field
     if (!fullContent && typeof body.content === 'string') {
       fullContent = body.content;
     }
@@ -89,8 +119,40 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
     const anthropicBlockMap = new Map<number, { type: string; content: string; id?: string; name?: string }>();
     let isAnthropicFormat = false;
 
+    // OpenAI Responses API state: keyed by item_id
+    const responsesApiToolMap = new Map<string, { id: string; name: string; arguments: string }>();
+    let isResponsesApiFormat = false;
+
     normalizedChunks.forEach((chunk: any) => {
       const data = chunk.data || chunk;
+      const eventType = data.type || chunk.event;
+
+      // --- OpenAI Responses API format ---
+      if (eventType?.startsWith('response.')) {
+        isResponsesApiFormat = true;
+
+        if (eventType === 'response.reasoning_summary_text.delta') {
+          fullReasoning += data.delta || '';
+        } else if (eventType === 'response.output_text.delta') {
+          fullContent += data.delta || '';
+        } else if (eventType === 'response.function_call_arguments.delta') {
+          const itemId = data.item_id || '';
+          if (itemId && responsesApiToolMap.has(itemId)) {
+            responsesApiToolMap.get(itemId)!.arguments += data.delta || '';
+          }
+        } else if (eventType === 'response.output_item.added') {
+          const item = data.item;
+          if (item?.type === 'function_call') {
+            responsesApiToolMap.set(item.id || item.call_id, {
+              id: item.call_id || item.id,
+              name: item.name || 'unknown',
+              arguments: item.arguments || '',
+            });
+          }
+        }
+        // Skip all other response.* events
+        return;
+      }
 
       // --- Anthropic event-driven format ---
       if (data.type === 'message_start' || chunk.event === 'message_start') {
@@ -175,6 +237,20 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
       }
     });
 
+    // Aggregate OpenAI Responses API tool calls
+    if (isResponsesApiFormat && responsesApiToolMap.size > 0) {
+      for (const [, tc] of responsesApiToolMap) {
+        collectedToolCalls.push({
+          id: tc.id,
+          type: 'function',
+          function: {
+            name: tc.name,
+            arguments: tc.arguments,
+          },
+        });
+      }
+    }
+
     // Aggregate Anthropic blocks into final output
     if (isAnthropicFormat && anthropicBlockMap.size > 0) {
       const sortedBlocks = Array.from(anthropicBlockMap.entries()).sort(([a], [b]) => a - b);
@@ -196,7 +272,7 @@ export function parseResponse(body?: any, chunks?: any[] | null): ParsedResponse
       }
     }
 
-    // Aggregate OpenAI tool calls
+    // Aggregate OpenAI Chat Completions tool calls
     if (openaiToolCallMap.size > 0 && collectedToolCalls.length === 0) {
       collectedToolCalls = Array.from(openaiToolCallMap.values()).sort((a, b) => (a.index || 0) - (b.index || 0));
     }
