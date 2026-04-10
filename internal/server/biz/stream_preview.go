@@ -64,7 +64,10 @@ func (r *StreamPreviewRegistry) NotifyAppend(key string) {
 		return
 	}
 
-	entry := v.(*previewEntry)
+	entry, ok := v.(*previewEntry)
+	if !ok {
+		return
+	}
 	entry.mu.Lock()
 	entry.length = len(*entry.chunks)
 	entry.mu.Unlock()
@@ -79,7 +82,10 @@ func (r *StreamPreviewRegistry) GetChunks(key string) []objects.JSONRawMessage {
 		return nil
 	}
 
-	entry := v.(*previewEntry)
+	entry, ok := v.(*previewEntry)
+	if !ok {
+		return nil
+	}
 	entry.mu.RLock()
 	length := entry.length
 	chunks := *entry.chunks
