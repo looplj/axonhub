@@ -187,31 +187,66 @@ export default function RequestDetailPage() {
   const extractResponseText = useCallback(() => {
     if (!request) return '';
     let fullContent = '';
+    let fullReasoning = '';
 
     // 1. Try to parse from body first (final result)
     if (request.responseBody) {
       const body = request.responseBody;
-      // Handle AxonHub / AI SDK 'parts' format
+      // 1.1 Handle AxonHub / AI SDK 'parts' format
       if (Array.isArray(body.parts)) {
         body.parts.forEach((part: any) => {
           if (part.type === 'text') fullContent += part.text || '';
+          if (part.type === 'reasoning') fullReasoning += part.text || '';
         });
+      }
+
+      // 1.2 Handle standard AI Message format (OpenAI/Anthropic)
+      const message = body.choices?.[0]?.message || (body.role && body.content ? body : null);
+      if (message && !fullContent && !fullReasoning) {
+        if (Array.isArray(message.content)) {
+          message.content.forEach((part: any) => {
+            if (part.type === 'text') {
+              fullContent += part.text || '';
+            } else if (part.type === 'thinking') {
+              fullReasoning += part.thinking || '';
+            } else if (part.type === 'reasoning') {
+              fullReasoning += part.text || part.reasoning || '';
+            }
+          });
+        } else if (typeof message.content === 'string') {
+          fullContent = message.content;
+        }
+
+        if (message.reasoning_content) {
+          fullReasoning = message.reasoning_content;
+        }
       }
     }
 
-    // 2. Fallback to chunks aggregation (for live streaming or when body is not formatted)
-    if (!fullContent && request.responseChunks && request.responseChunks.length > 0) {
+    // 2. Fallback to chunks aggregation
+    if (!fullContent && !fullReasoning && request.responseChunks && request.responseChunks.length > 0) {
       request.responseChunks.forEach((chunk: any) => {
         const data = chunk.data || chunk;
 
-        // Custom AxonHub format: data.type === 'text-delta'
+        // Custom AxonHub / AI SDK format
         if (data.type === 'text-delta' && typeof data.delta === 'string') {
           fullContent += data.delta;
+        } else if (data.type === 'reasoning-delta' && typeof data.delta === 'string') {
+          fullReasoning += data.delta;
+        } else if (data.choices?.[0]?.delta) {
+          // Standard OpenAI format
+          const delta = data.choices[0].delta;
+          if (delta.content) fullContent += delta.content;
+          if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
         }
       });
     }
 
-    return fullContent;
+    if (fullReasoning && fullContent) {
+      return `${fullReasoning}\n\n${fullContent}`;
+    }
+
+    return fullContent || fullReasoning;
   }, [request]);
 
   const handleBack = () => {

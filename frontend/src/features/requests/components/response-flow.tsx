@@ -23,7 +23,7 @@ export function ResponseFlow({ chunks, body, isLive }: ResponseFlowProps) {
 
     // 1. Try to parse from body first (final result)
     if (body) {
-      // Handle AxonHub / AI SDK 'parts' format
+      // 1.1 Handle AxonHub / AI SDK 'parts' format
       if (Array.isArray(body.parts)) {
         body.parts.forEach((part: any) => {
           if (part.type === 'text') fullContent += part.text || '';
@@ -31,14 +31,33 @@ export function ResponseFlow({ chunks, body, isLive }: ResponseFlowProps) {
         });
       }
       
-      // Handle standard OpenAI message format
-      const message = body.choices?.[0]?.message || body.message;
+      // 1.2 Handle standard AI Message format (OpenAI/Anthropic)
+      // For Anthropic, the body itself is the message. For OpenAI, it's in choices[0].message.
+      const message = body.choices?.[0]?.message || (body.role && body.content ? body : null);
+      
       if (message) {
-        if (message.content && !fullContent) fullContent = message.content;
-        if (message.reasoning_content && !fullReasoning) fullReasoning = message.reasoning_content;
+        if (Array.isArray(message.content)) {
+          // Handle array of content parts (Anthropic / OpenAI Multi-part)
+          message.content.forEach((part: any) => {
+            if (part.type === 'text') {
+              fullContent += part.text || '';
+            } else if (part.type === 'thinking') {
+              fullReasoning += part.thinking || '';
+            } else if (part.type === 'reasoning') {
+              fullReasoning += part.text || part.reasoning || '';
+            }
+          });
+        } else if (typeof message.content === 'string') {
+          if (!fullContent) fullContent = message.content;
+        }
+
+        // Handle explicit reasoning fields (OpenAI / DeepSeek)
+        if (message.reasoning_content && !fullReasoning) {
+          fullReasoning = message.reasoning_content;
+        }
       }
 
-      // Handle direct content if it's just a string or has a content field
+      // 1.3 Handle direct content if it's just a string or has a content field
       if (!fullContent && typeof body.content === 'string') {
         fullContent = body.content;
       }
@@ -53,11 +72,16 @@ export function ResponseFlow({ chunks, body, isLive }: ResponseFlowProps) {
       // Handle different formats
       const data = chunk.data || chunk;
 
-      // Custom AxonHub format: data.type === 'text-delta'/'reasoning-delta'
+      // Custom AxonHub / AI SDK format
       if (data.type === 'text-delta' && typeof data.delta === 'string') {
         fullContent += data.delta;
       } else if (data.type === 'reasoning-delta' && typeof data.delta === 'string') {
         fullReasoning += data.delta;
+      } else if (data.choices?.[0]?.delta) {
+        // Standard OpenAI format
+        const delta = data.choices[0].delta;
+        if (delta.content) fullContent += delta.content;
+        if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
       } else if (typeof chunk === 'string') {
         // Fallback for raw string chunks
         fullContent += chunk;
