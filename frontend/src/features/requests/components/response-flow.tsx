@@ -1,11 +1,15 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot } from 'lucide-react';
+import { CopyIcon } from 'lucide-react';
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning';
 import { Response as UIResponse } from '@/components/ai-elements/response';
 import { Message, MessageContent } from '@/components/ai-elements/message';
-import { Tool, ToolHeader, ToolInput, ToolContent } from '@/components/ai-elements/tool';
+import { Tool, ToolHeader, ToolContent } from '@/components/ai-elements/tool';
+import { CodeBlock } from '@/components/ai-elements/code-block';
+import { Loader } from '@/components/ai-elements/loader';
 import { Badge } from '@/components/ui/badge';
+
+import { parseResponse } from '../utils/response-parser';
 
 interface ResponseFlowProps {
   chunks?: any[] | null;
@@ -16,109 +20,22 @@ interface ResponseFlowProps {
 export function ResponseFlow({ chunks, body, isLive }: ResponseFlowProps) {
   const { t } = useTranslation();
 
-  const normalizedChunks = chunks ?? [];
-
-  const { content, reasoning, toolCalls } = useMemo(() => {
-    let fullContent = '';
-    let fullReasoning = '';
-    let collectedToolCalls: any[] = [];
-
-    // 1. Try to parse from body first (final result)
-    if (body) {
-      // 1.1 Handle AxonHub / AI SDK 'parts' format
-      if (Array.isArray(body.parts)) {
-        body.parts.forEach((part: any) => {
-          if (part.type === 'text') fullContent += part.text || '';
-          if (part.type === 'reasoning') fullReasoning += part.text || '';
-        });
-      }
-
-      // 1.2 Handle standard AI Message format (OpenAI/Anthropic)
-      const message = body.choices?.[0]?.message || (body.role && body.content ? body : null);
-
-      if (message) {
-        if (Array.isArray(message.content)) {
-          message.content.forEach((part: any) => {
-            if (part.type === 'text') {
-              fullContent += part.text || '';
-            } else if (part.type === 'thinking') {
-              fullReasoning += part.thinking || '';
-            } else if (part.type === 'reasoning') {
-              fullReasoning += part.text || part.reasoning || '';
-            }
-          });
-        } else if (typeof message.content === 'string') {
-          if (!fullContent) fullContent = message.content;
-        }
-
-        if (message.reasoning_content && !fullReasoning) {
-          fullReasoning = message.reasoning_content;
-        }
-
-        // Extract tool calls
-        if (Array.isArray(message.tool_calls)) {
-          collectedToolCalls = message.tool_calls;
-        }
-      }
-
-      // 1.3 Handle direct content if it's just a string or has a content field
-      if (!fullContent && typeof body.content === 'string') {
-        fullContent = body.content;
-      }
-    }
-
-    // 2. Fallback to chunks aggregation (for live streaming)
-    if (normalizedChunks.length > 0) {
-      const toolCallMap = new Map<number, any>();
-
-      normalizedChunks.forEach((chunk) => {
-        const data = chunk.data || chunk;
-
-        // Custom AxonHub / AI SDK format
-        if (data.type === 'text-delta' && typeof data.delta === 'string') {
-          fullContent += data.delta;
-        } else if (data.type === 'reasoning-delta' && typeof data.delta === 'string') {
-          fullReasoning += data.delta;
-        } else if (data.choices?.[0]?.delta) {
-          // Standard OpenAI format
-          const delta = data.choices[0].delta;
-          if (delta.content) fullContent += delta.content;
-          if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
-
-          // Standard OpenAI tool calls delta
-          if (Array.isArray(delta.tool_calls)) {
-            delta.tool_calls.forEach((tc: any) => {
-              const index = tc.index ?? 0;
-              if (!toolCallMap.has(index)) {
-                toolCallMap.set(index, { 
-                  ...tc,
-                  function: tc.function ? { ...tc.function } : { name: '', arguments: '' }
-                });
-              } else {
-                const existing = toolCallMap.get(index);
-                if (tc.id) existing.id = tc.id;
-                if (tc.function?.name) existing.function.name = tc.function.name;
-                if (tc.function?.arguments) {
-                  existing.function.arguments = (existing.function.arguments || '') + tc.function.arguments;
-                }
-              }
-            });
-          }
-        } else if (typeof chunk === 'string') {
-          // Fallback for raw string chunks
-          fullContent += chunk;
-        }
-      });
-
-      if (toolCallMap.size > 0 && collectedToolCalls.length === 0) {
-        collectedToolCalls = Array.from(toolCallMap.values()).sort((a, b) => (a.index || 0) - (b.index || 0));
-      }
-    }
-
-    return { content: fullContent, reasoning: fullReasoning, toolCalls: collectedToolCalls };
-  }, [normalizedChunks, body]);
+  const { content, reasoning, toolCalls } = useMemo(
+    () => parseResponse(body, chunks),
+    [chunks, body]
+  );
 
   if (!content && !reasoning && toolCalls.length === 0) {
+    if (isLive) {
+      return (
+        <div className='flex min-h-[200px] w-full items-center justify-center rounded-xl border border-dashed bg-muted/5'>
+            <div className='space-y-4 text-center'>
+              <div className='border-primary mx-auto h-12 w-12 animate-spin rounded-full border-b-2'></div>
+              <p className='text-muted-foreground text-lg'>{t('common.loading')}</p>
+            </div>
+        </div>
+      );
+    }
     return null;
   }
 
@@ -162,7 +79,32 @@ export function ResponseFlow({ chunks, body, isLive }: ResponseFlowProps) {
                     state={isLive ? 'input-available' : 'output-available'} 
                   />
                   <ToolContent>
-                    <ToolInput input={parseJson(tc.function?.arguments || '{}')} />
+                    {tc.id && (
+                      <div className='px-4 pt-3 pb-1'>
+                        <span className='text-muted-foreground font-mono text-xs'>ID: {tc.id}</span>
+                      </div>
+                    )}
+                    <div className='space-y-2 overflow-hidden p-4'>
+                      <div className='flex items-center justify-between'>
+                        <h4 className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>Parameters</h4>
+                        <button
+                          type='button'
+                          className='text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-colors cursor-pointer'
+                          onClick={() => {
+                            const text = typeof tc.function?.arguments === 'string'
+                              ? tc.function.arguments
+                              : JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2);
+                            navigator.clipboard.writeText(text);
+                          }}
+                        >
+                          <CopyIcon className='size-3' />
+                          Copy
+                        </button>
+                      </div>
+                      <div className='bg-muted/50 rounded-md'>
+                        <CodeBlock code={JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2)} language='json' />
+                      </div>
+                    </div>
                   </ToolContent>
                 </Tool>
               ))}

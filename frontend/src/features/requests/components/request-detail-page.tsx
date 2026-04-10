@@ -27,6 +27,8 @@ import { getStatusColor } from './help';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
 import { ResponseFlow } from './response-flow';
 
+import { parseResponse } from '../utils/response-parser';
+
 export default function RequestDetailPage() {
   const { t, i18n } = useTranslation();
   const { requestId } = useParams({ from: '/_authenticated/project/requests/$requestId' });
@@ -186,97 +188,18 @@ export default function RequestDetailPage() {
 
   const extractResponseText = useCallback(() => {
     if (!request) return '';
-    let fullContent = '';
-    let fullReasoning = '';
-    let collectedToolCalls: any[] = [];
-
-    // 1. Try to parse from body first (final result)
-    if (request.responseBody) {
-      const body = request.responseBody;
-      // 1.1 Handle AxonHub / AI SDK 'parts' format
-      if (Array.isArray(body.parts)) {
-        body.parts.forEach((part: any) => {
-          if (part.type === 'text') fullContent += part.text || '';
-          if (part.type === 'reasoning') fullReasoning += part.text || '';
-        });
-      }
-
-      // 1.2 Handle standard AI Message format (OpenAI/Anthropic)
-      const message = body.choices?.[0]?.message || (body.role && body.content ? body : null);
-      if (message && !fullContent && !fullReasoning) {
-        if (Array.isArray(message.content)) {
-          message.content.forEach((part: any) => {
-            if (part.type === 'text') {
-              fullContent += part.text || '';
-            } else if (part.type === 'thinking') {
-              fullReasoning += part.thinking || '';
-            } else if (part.type === 'reasoning') {
-              fullReasoning += part.text || part.reasoning || '';
-            }
-          });
-        } else if (typeof message.content === 'string') {
-          fullContent = message.content;
-        }
-
-        if (message.reasoning_content) {
-          fullReasoning = message.reasoning_content;
-        }
-
-        if (Array.isArray(message.tool_calls)) {
-          collectedToolCalls = message.tool_calls;
-        }
-      }
-    }
-
-    // 2. Fallback to chunks aggregation
-    if (!fullContent && !fullReasoning && collectedToolCalls.length === 0 && request.responseChunks && request.responseChunks.length > 0) {
-      const toolCallMap = new Map<number, any>();
-      request.responseChunks.forEach((chunk: any) => {
-        const data = chunk.data || chunk;
-
-        // Custom AxonHub / AI SDK format
-        if (data.type === 'text-delta' && typeof data.delta === 'string') {
-          fullContent += data.delta;
-        } else if (data.type === 'reasoning-delta' && typeof data.delta === 'string') {
-          fullReasoning += data.delta;
-        } else if (data.choices?.[0]?.delta) {
-          // Standard OpenAI format
-          const delta = data.choices[0].delta;
-          if (delta.content) fullContent += delta.content;
-          if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
-
-          if (Array.isArray(delta.tool_calls)) {
-            delta.tool_calls.forEach((tc: any) => {
-              const index = tc.index ?? 0;
-              if (!toolCallMap.has(index)) {
-                toolCallMap.set(index, { ...tc, function: tc.function ? { ...tc.function } : { name: '', arguments: '' } });
-              } else {
-                const existing = toolCallMap.get(index);
-                if (tc.id) existing.id = tc.id;
-                if (tc.function?.name) existing.function.name = tc.function.name;
-                if (tc.function?.arguments) {
-                  existing.function.arguments = (existing.function.arguments || '') + tc.function.arguments;
-                }
-              }
-            });
-          }
-        }
-      });
-      if (toolCallMap.size > 0) {
-        collectedToolCalls = Array.from(toolCallMap.values()).sort((a, b) => (a.index || 0) - (b.index || 0));
-      }
-    }
+    const { content, reasoning, toolCalls } = parseResponse(request.responseBody, request.responseChunks);
 
     let result = '';
-    if (fullReasoning) {
-      result += `${fullReasoning}\n\n`;
+    if (reasoning) {
+      result += `${reasoning}\n\n`;
     }
-    if (fullContent) {
-      result += fullContent;
+    if (content) {
+      result += content;
     }
-    if (collectedToolCalls.length > 0) {
+    if (toolCalls.length > 0) {
       if (result) result += '\n\n';
-      result += collectedToolCalls.map(tc => {
+      result += toolCalls.map(tc => {
         return `Tool Call: ${tc.function?.name}\nArguments: ${tc.function?.arguments}`;
       }).join('\n\n');
     }
