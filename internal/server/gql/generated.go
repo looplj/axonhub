@@ -824,6 +824,7 @@ type ComplexityRoot struct {
 		SaveProxyPreset                      func(childComplexity int, input biz.ProxyPreset) int
 		SyncChannelModels                    func(childComplexity int, channelID objects.GUID, pattern *string) int
 		TestChannel                          func(childComplexity int, input TestChannelInput) int
+		TestChannelAPIKeys                   func(childComplexity int, channelID objects.GUID, modelID *string) int
 		TriggerAutoBackup                    func(childComplexity int) int
 		TriggerGcCleanup                     func(childComplexity int) int
 		UpdateAPIKey                         func(childComplexity int, id objects.GUID, input ent.UpdateAPIKeyInput) int
@@ -1432,6 +1433,22 @@ type ComplexityRoot struct {
 		Version   func(childComplexity int) int
 	}
 
+	TestAPIKeyResult struct {
+		Disabled  func(childComplexity int) int
+		Error     func(childComplexity int) int
+		KeyPrefix func(childComplexity int) int
+		Latency   func(childComplexity int) int
+		Success   func(childComplexity int) int
+	}
+
+	TestChannelAPIKeysPayload struct {
+		ChannelID    func(childComplexity int) int
+		FailedCount  func(childComplexity int) int
+		Results      func(childComplexity int) int
+		SuccessCount func(childComplexity int) int
+		Total        func(childComplexity int) int
+	}
+
 	TestChannelPayload struct {
 		Error   func(childComplexity int) int
 		Latency func(childComplexity int) int
@@ -1786,6 +1803,7 @@ type MutationResolver interface {
 	BulkRecoverChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDeleteChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error)
+	TestChannelAPIKeys(ctx context.Context, channelID objects.GUID, modelID *string) (*TestChannelAPIKeysPayload, error)
 	BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*biz.BulkImportChannelsResult, error)
 	BulkUpdateChannelOrdering(ctx context.Context, input BulkUpdateChannelOrderingInput) (*BulkUpdateChannelOrderingResult, error)
 	DisableChannelAPIKey(ctx context.Context, channelID objects.GUID, key string) (bool, error)
@@ -5157,6 +5175,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.TestChannel(childComplexity, args["input"].(TestChannelInput)), true
+	case "Mutation.testChannelAPIKeys":
+		if e.complexity.Mutation.TestChannelAPIKeys == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_testChannelAPIKeys_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.TestChannelAPIKeys(childComplexity, args["channelID"].(objects.GUID), args["modelID"].(*string)), true
 	case "Mutation.triggerAutoBackup":
 		if e.complexity.Mutation.TriggerAutoBackup == nil {
 			break
@@ -8009,6 +8038,66 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SystemVersion.Version(childComplexity), true
 
+	case "TestAPIKeyResult.disabled":
+		if e.complexity.TestAPIKeyResult.Disabled == nil {
+			break
+		}
+
+		return e.complexity.TestAPIKeyResult.Disabled(childComplexity), true
+	case "TestAPIKeyResult.error":
+		if e.complexity.TestAPIKeyResult.Error == nil {
+			break
+		}
+
+		return e.complexity.TestAPIKeyResult.Error(childComplexity), true
+	case "TestAPIKeyResult.keyPrefix":
+		if e.complexity.TestAPIKeyResult.KeyPrefix == nil {
+			break
+		}
+
+		return e.complexity.TestAPIKeyResult.KeyPrefix(childComplexity), true
+	case "TestAPIKeyResult.latency":
+		if e.complexity.TestAPIKeyResult.Latency == nil {
+			break
+		}
+
+		return e.complexity.TestAPIKeyResult.Latency(childComplexity), true
+	case "TestAPIKeyResult.success":
+		if e.complexity.TestAPIKeyResult.Success == nil {
+			break
+		}
+
+		return e.complexity.TestAPIKeyResult.Success(childComplexity), true
+	case "TestChannelAPIKeysPayload.channelID":
+		if e.complexity.TestChannelAPIKeysPayload.ChannelID == nil {
+			break
+		}
+
+		return e.complexity.TestChannelAPIKeysPayload.ChannelID(childComplexity), true
+	case "TestChannelAPIKeysPayload.failedCount":
+		if e.complexity.TestChannelAPIKeysPayload.FailedCount == nil {
+			break
+		}
+
+		return e.complexity.TestChannelAPIKeysPayload.FailedCount(childComplexity), true
+	case "TestChannelAPIKeysPayload.results":
+		if e.complexity.TestChannelAPIKeysPayload.Results == nil {
+			break
+		}
+
+		return e.complexity.TestChannelAPIKeysPayload.Results(childComplexity), true
+	case "TestChannelAPIKeysPayload.successCount":
+		if e.complexity.TestChannelAPIKeysPayload.SuccessCount == nil {
+			break
+		}
+
+		return e.complexity.TestChannelAPIKeysPayload.SuccessCount(childComplexity), true
+	case "TestChannelAPIKeysPayload.total":
+		if e.complexity.TestChannelAPIKeysPayload.Total == nil {
+			break
+		}
+
+		return e.complexity.TestChannelAPIKeysPayload.Total(childComplexity), true
 	case "TestChannelPayload.error":
 		if e.complexity.TestChannelPayload.Error == nil {
 			break
@@ -10404,6 +10493,22 @@ func (ec *executionContext) field_Mutation_testChannel_args(ctx context.Context,
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_testChannelAPIKeys_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "channelID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["channelID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "modelID", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["modelID"] = arg1
 	return args, nil
 }
 
@@ -25756,6 +25861,59 @@ func (ec *executionContext) fieldContext_Mutation_testChannel(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_testChannel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_testChannelAPIKeys(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_testChannelAPIKeys,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().TestChannelAPIKeys(ctx, fc.Args["channelID"].(objects.GUID), fc.Args["modelID"].(*string))
+		},
+		nil,
+		ec.marshalNTestChannelAPIKeysPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestChannelAPIKeysPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_testChannelAPIKeys(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channelID":
+				return ec.fieldContext_TestChannelAPIKeysPayload_channelID(ctx, field)
+			case "total":
+				return ec.fieldContext_TestChannelAPIKeysPayload_total(ctx, field)
+			case "successCount":
+				return ec.fieldContext_TestChannelAPIKeysPayload_successCount(ctx, field)
+			case "failedCount":
+				return ec.fieldContext_TestChannelAPIKeysPayload_failedCount(ctx, field)
+			case "results":
+				return ec.fieldContext_TestChannelAPIKeysPayload_results(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TestChannelAPIKeysPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_testChannelAPIKeys_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -42966,6 +43124,308 @@ func (ec *executionContext) fieldContext_SystemVersion_uptime(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestAPIKeyResult_keyPrefix(ctx context.Context, field graphql.CollectedField, obj *TestAPIKeyResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestAPIKeyResult_keyPrefix,
+		func(ctx context.Context) (any, error) {
+			return obj.KeyPrefix, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestAPIKeyResult_keyPrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestAPIKeyResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestAPIKeyResult_success(ctx context.Context, field graphql.CollectedField, obj *TestAPIKeyResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestAPIKeyResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestAPIKeyResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestAPIKeyResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestAPIKeyResult_latency(ctx context.Context, field graphql.CollectedField, obj *TestAPIKeyResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestAPIKeyResult_latency,
+		func(ctx context.Context) (any, error) {
+			return obj.Latency, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestAPIKeyResult_latency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestAPIKeyResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestAPIKeyResult_error(ctx context.Context, field graphql.CollectedField, obj *TestAPIKeyResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestAPIKeyResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestAPIKeyResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestAPIKeyResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestAPIKeyResult_disabled(ctx context.Context, field graphql.CollectedField, obj *TestAPIKeyResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestAPIKeyResult_disabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Disabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestAPIKeyResult_disabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestAPIKeyResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestChannelAPIKeysPayload_channelID(ctx context.Context, field graphql.CollectedField, obj *TestChannelAPIKeysPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestChannelAPIKeysPayload_channelID,
+		func(ctx context.Context) (any, error) {
+			return obj.ChannelID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestChannelAPIKeysPayload_channelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestChannelAPIKeysPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestChannelAPIKeysPayload_total(ctx context.Context, field graphql.CollectedField, obj *TestChannelAPIKeysPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestChannelAPIKeysPayload_total,
+		func(ctx context.Context) (any, error) {
+			return obj.Total, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestChannelAPIKeysPayload_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestChannelAPIKeysPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestChannelAPIKeysPayload_successCount(ctx context.Context, field graphql.CollectedField, obj *TestChannelAPIKeysPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestChannelAPIKeysPayload_successCount,
+		func(ctx context.Context) (any, error) {
+			return obj.SuccessCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestChannelAPIKeysPayload_successCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestChannelAPIKeysPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestChannelAPIKeysPayload_failedCount(ctx context.Context, field graphql.CollectedField, obj *TestChannelAPIKeysPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestChannelAPIKeysPayload_failedCount,
+		func(ctx context.Context) (any, error) {
+			return obj.FailedCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestChannelAPIKeysPayload_failedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestChannelAPIKeysPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestChannelAPIKeysPayload_results(ctx context.Context, field graphql.CollectedField, obj *TestChannelAPIKeysPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TestChannelAPIKeysPayload_results,
+		func(ctx context.Context) (any, error) {
+			return obj.Results, nil
+		},
+		nil,
+		ec.marshalNTestAPIKeyResult2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestAPIKeyResultᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TestChannelAPIKeysPayload_results(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestChannelAPIKeysPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "keyPrefix":
+				return ec.fieldContext_TestAPIKeyResult_keyPrefix(ctx, field)
+			case "success":
+				return ec.fieldContext_TestAPIKeyResult_success(ctx, field)
+			case "latency":
+				return ec.fieldContext_TestAPIKeyResult_latency(ctx, field)
+			case "error":
+				return ec.fieldContext_TestAPIKeyResult_error(ctx, field)
+			case "disabled":
+				return ec.fieldContext_TestAPIKeyResult_disabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TestAPIKeyResult", field.Name)
 		},
 	}
 	return fc, nil
@@ -79629,6 +80089,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "testChannelAPIKeys":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_testChannelAPIKeys(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "bulkImportChannels":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_bulkImportChannels(ctx, field)
@@ -86700,6 +87167,121 @@ func (ec *executionContext) _SystemVersion(ctx context.Context, sel ast.Selectio
 			}
 		case "uptime":
 			out.Values[i] = ec._SystemVersion_uptime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var testAPIKeyResultImplementors = []string{"TestAPIKeyResult"}
+
+func (ec *executionContext) _TestAPIKeyResult(ctx context.Context, sel ast.SelectionSet, obj *TestAPIKeyResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, testAPIKeyResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TestAPIKeyResult")
+		case "keyPrefix":
+			out.Values[i] = ec._TestAPIKeyResult_keyPrefix(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "success":
+			out.Values[i] = ec._TestAPIKeyResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "latency":
+			out.Values[i] = ec._TestAPIKeyResult_latency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._TestAPIKeyResult_error(ctx, field, obj)
+		case "disabled":
+			out.Values[i] = ec._TestAPIKeyResult_disabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var testChannelAPIKeysPayloadImplementors = []string{"TestChannelAPIKeysPayload"}
+
+func (ec *executionContext) _TestChannelAPIKeysPayload(ctx context.Context, sel ast.SelectionSet, obj *TestChannelAPIKeysPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, testChannelAPIKeysPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TestChannelAPIKeysPayload")
+		case "channelID":
+			out.Values[i] = ec._TestChannelAPIKeysPayload_channelID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "total":
+			out.Values[i] = ec._TestChannelAPIKeysPayload_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "successCount":
+			out.Values[i] = ec._TestChannelAPIKeysPayload_successCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "failedCount":
+			out.Values[i] = ec._TestChannelAPIKeysPayload_failedCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "results":
+			out.Values[i] = ec._TestChannelAPIKeysPayload_results(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -94456,6 +95038,74 @@ func (ec *executionContext) unmarshalNSystemWhereInput2ᚖgithubᚗcomᚋlooplj�
 func (ec *executionContext) unmarshalNTestChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestChannelInput(ctx context.Context, v any) (TestChannelInput, error) {
 	res, err := ec.unmarshalInputTestChannelInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTestAPIKeyResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestAPIKeyResult(ctx context.Context, sel ast.SelectionSet, v *TestAPIKeyResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TestAPIKeyResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTestAPIKeyResult2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestAPIKeyResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*TestAPIKeyResult) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNTestAPIKeyResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestAPIKeyResult(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTestChannelAPIKeysPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestChannelAPIKeysPayload(ctx context.Context, sel ast.SelectionSet, v TestChannelAPIKeysPayload) graphql.Marshaler {
+	return ec._TestChannelAPIKeysPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTestChannelAPIKeysPayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestChannelAPIKeysPayload(ctx context.Context, sel ast.SelectionSet, v *TestChannelAPIKeysPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TestChannelAPIKeysPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTestChannelPayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestChannelPayload(ctx context.Context, sel ast.SelectionSet, v TestChannelPayload) graphql.Marshaler {

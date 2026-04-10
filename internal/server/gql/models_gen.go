@@ -336,6 +336,22 @@ type TestChannelInput struct {
 	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
 }
 
+type TestAPIKeyResult struct {
+	KeyPrefix string  `json:"keyPrefix"`
+	Success   bool    `json:"success"`
+	Latency   float64 `json:"latency"`
+	Error     *string `json:"error,omitempty"`
+	Disabled  bool    `json:"disabled"`
+}
+
+type TestChannelAPIKeysPayload struct {
+	ChannelID    objects.GUID       `json:"channelID"`
+	Total        int                `json:"total"`
+	SuccessCount int                `json:"successCount"`
+	FailedCount  int                `json:"failedCount"`
+	Results      []*TestAPIKeyResult `json:"results"`
+}
+
 type TestChannelPayload struct {
 	Latency float64 `json:"latency"`
 	Success bool    `json:"success"`

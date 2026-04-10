@@ -28,6 +28,7 @@ type ChannelsDialogType =
   | 'price'
   | 'transformOptions'
   | 'rateLimit'
+  | 'testAPIKeys'
   | 'disabledAPIKeys';
 
 interface ChannelsContextType {
