@@ -185,6 +185,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
+	if payload.PromptCacheKey == nil {
+		if sessionID, ok := shared.GetSessionID(ctx); ok {
+			sessionID = strings.TrimSpace(sessionID)
+			if sessionID != "" {
+				payload.PromptCacheKey = lo.ToPtr(sessionID)
+			}
+		}
+	}
+
 	// Clear `parallel_tool_calls` when no tools are sent (Responses API compatibility).
 	if len(payload.Tools) == 0 {
 		payload.ParallelToolCalls = nil
