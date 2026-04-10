@@ -175,6 +175,31 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			},
 		},
 		{
+			name: "image generation request routes to embedded OpenAI transformer",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"created": 1234567890,
+					"data": [{
+						"b64_json": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+						"revised_prompt": "A sunset over mountains"
+					}]
+				}`),
+				Request: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIImageGeneration),
+				},
+			},
+			expectedErr: false,
+
+			validateResp: func(t *testing.T, resp *llm.Response) {
+				require.NotNil(t, resp)
+				require.NotNil(t, resp.Image)
+				require.NotNil(t, resp.Image.Data)
+				require.Len(t, resp.Image.Data, 1)
+				assert.NotEmpty(t, resp.Image.Data[0].B64JSON)
+			},
+		},
+		{
 			name: "chat request uses NanoGPT-specific parsing",
 			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,
