@@ -13,6 +13,7 @@ type patternCache struct {
 	regex      *regexp2.Regexp
 	exactMatch bool
 	compileErr bool
+	matchAll   bool
 }
 
 var globalCache = xmap.New[string, *patternCache]()
@@ -26,6 +27,10 @@ func MatchString(pattern string, str string) bool {
 
 	if cached.exactMatch {
 		return pattern == str
+	}
+
+	if cached.matchAll {
+		return true
 	}
 
 	match, _ := cached.regex.MatchString(str)
@@ -52,6 +57,8 @@ func Filter(items []string, pattern string) []string {
 				matched = append(matched, item)
 			}
 		}
+	} else if cached.matchAll {
+		return append(matched, items...)
 	} else {
 		for _, item := range items {
 			if match, _ := cached.regex.MatchString(item); match {
@@ -69,6 +76,13 @@ func getOrCreatePattern(pattern string) *patternCache {
 	}
 
 	cached := &patternCache{}
+
+	if pattern == "*" {
+		cached.matchAll = true
+		globalCache.Store(pattern, cached)
+
+		return cached
+	}
 
 	if !containsRegexChars(pattern) {
 		cached.exactMatch = true
@@ -90,36 +104,11 @@ func getOrCreatePattern(pattern string) *patternCache {
 }
 
 func ensureAnchored(pattern string) string {
-	// Check if pattern starts with ^ (accounting for inline modifiers)
-	hasStartAnchor := false
-	if strings.HasPrefix(pattern, "^") {
-		hasStartAnchor = true
-	} else if strings.HasPrefix(pattern, "(?i)^") {
-		hasStartAnchor = true
-	} else if strings.HasPrefix(pattern, "(?m)^") {
-		hasStartAnchor = true
-	} else if strings.HasPrefix(pattern, "(?s)^") {
-		hasStartAnchor = true
-	} else if strings.HasPrefix(pattern, "(?is)^") || strings.HasPrefix(pattern, "(?si)^") {
-		hasStartAnchor = true
-	} else if strings.HasPrefix(pattern, "(?im)^") || strings.HasPrefix(pattern, "(?mi)^") {
-		hasStartAnchor = true
-	} else if strings.HasPrefix(pattern, "(?ism)^") || strings.HasPrefix(pattern, "(?sim)^") || strings.HasPrefix(pattern, "(?mis)^") || strings.HasPrefix(pattern, "(?msi)^") || strings.HasPrefix(pattern, "(?smi)^") || strings.HasPrefix(pattern, "(?ims)^") {
-		hasStartAnchor = true
-	}
+	modifier, body := splitInlineModifier(pattern)
+	body = strings.TrimPrefix(body, "^")
+	body = strings.TrimSuffix(body, "$")
 
-	// Check if pattern ends with $ (accounting for inline modifiers)
-	hasEndAnchor := strings.HasSuffix(pattern, "$")
-
-	if !hasStartAnchor {
-		pattern = "^" + pattern
-	}
-
-	if !hasEndAnchor {
-		pattern = pattern + "$"
-	}
-
-	return pattern
+	return modifier + "^(?:" + body + ")$"
 }
 
 func ValidateRegex(pattern string) error {
@@ -137,4 +126,24 @@ func ValidateRegex(pattern string) error {
 
 func containsRegexChars(pattern string) bool {
 	return strings.ContainsAny(pattern, "*?+[]{}()^$.|\\")
+}
+
+func splitInlineModifier(pattern string) (string, string) {
+	if !strings.HasPrefix(pattern, "(?") {
+		return "", pattern
+	}
+
+	end := strings.Index(pattern, ")")
+	if end <= 2 {
+		return "", pattern
+	}
+
+	modifier := pattern[:end+1]
+	body := pattern[end+1:]
+
+	if strings.ContainsAny(modifier[2:end], ":=!<") {
+		return "", pattern
+	}
+
+	return modifier, body
 }
