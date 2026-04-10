@@ -105,11 +105,13 @@ input UpdateRetryPolicyInput {
 type SystemModelSettings {
   fallbackToChannelsOnModelNotFound: Boolean!
   queryAllChannelModels: Boolean!
+  defaultModelAPIIncludeAll: Boolean!
 }
 
 input UpdateSystemModelSettingsInput {
   fallbackToChannelsOnModelNotFound: Boolean
   queryAllChannelModels: Boolean
+  defaultModelAPIIncludeAll: Boolean
 }
 
 input UpdateDefaultDataStorageInput {

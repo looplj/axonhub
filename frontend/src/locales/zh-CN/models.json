@@ -103,6 +103,8 @@
   "models.dialogs.settings.fallbackToChannels.description": "启用后，如果请求的模型在模型关联中找不到，系统将尝试直接查找支持该请求模型的已启用渠道。",
   "models.dialogs.settings.queryAllChannelModels.label": "查询所有渠道模型",
   "models.dialogs.settings.queryAllChannelModels.description": "启用后，模型 API 将返回所有已启用渠道的模型。禁用后，仅返回具有显式模型实体配置的模型。",
+  "models.dialogs.settings.defaultModelAPIIncludeAll.label": "/v1/models 默认返回完整模型信息",
+  "models.dialogs.settings.defaultModelAPIIncludeAll.description": "启用后，GET /v1/models 默认返回与 ?include=all 相同的扩展元数据。禁用后，仅返回基础字段，除非显式指定 include。",
   "models.unassociated.title": "未关联渠道检测",
   "models.unassociated.description": "检测渠道中未与任何模型配置关联的模型",
   "models.unassociated.summary": "发现 {{channelCount}} 个渠道有 {{modelCount}} 个未关联的模型",

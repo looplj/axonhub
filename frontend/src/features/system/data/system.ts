@@ -550,6 +550,7 @@ const MODEL_SETTINGS_QUERY = `
     systemModelSettings {
       fallbackToChannelsOnModelNotFound
       queryAllChannelModels
+      defaultModelAPIIncludeAll
     }
   }
 `;
@@ -615,11 +616,13 @@ const UPDATE_VIDEO_STORAGE_SETTINGS_MUTATION = `
 export interface ModelSettings {
   fallbackToChannelsOnModelNotFound: boolean;
   queryAllChannelModels: boolean;
+  defaultModelAPIIncludeAll: boolean;
 }
 
 export interface UpdateModelSettingsInput {
   fallbackToChannelsOnModelNotFound?: boolean;
   queryAllChannelModels?: boolean;
+  defaultModelAPIIncludeAll?: boolean;
 }
 
 export function useModelSettings() {

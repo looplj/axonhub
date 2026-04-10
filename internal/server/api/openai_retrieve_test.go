@@ -22,7 +22,7 @@ import (
 	openaitypes "github.com/looplj/axonhub/llm/transformer/openai"
 )
 
-func setupOpenAIRetrieveTest(t *testing.T) (*ent.Client, *biz.ChannelService, *gin.Engine, context.Context) {
+func setupOpenAIRetrieveTest(t *testing.T) (*ent.Client, *biz.ChannelService, *biz.SystemService, *gin.Engine, context.Context) {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
@@ -42,8 +42,9 @@ func setupOpenAIRetrieveTest(t *testing.T) (*ent.Client, *biz.ChannelService, *g
 	})
 
 	handlers := &OpenAIHandlers{
-		ModelService: modelSvc,
-		EntClient:    client,
+		ModelService:  modelSvc,
+		SystemService: systemSvc,
+		EntClient:     client,
 	}
 
 	router := gin.New()
@@ -53,16 +54,17 @@ func setupOpenAIRetrieveTest(t *testing.T) (*ent.Client, *biz.ChannelService, *g
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
+	router.GET("/v1/models", handlers.ListModels)
 	router.GET("/v1/models/*model", handlers.RetrieveModel)
 
 	ctx := ent.NewContext(context.Background(), client)
 	ctx = authz.WithTestBypass(ctx)
 
-	return client, channelSvc, router, ctx
+	return client, channelSvc, systemSvc, router, ctx
 }
 
 func TestOpenAIHandlers_RetrieveModel_SupportsSlashModelIDs(t *testing.T) {
-	client, channelSvc, router, ctx := setupOpenAIRetrieveTest(t)
+	client, channelSvc, _, router, ctx := setupOpenAIRetrieveTest(t)
 
 	createdAt := time.Unix(1712345678, 0)
 	ch, err := client.Channel.Create().
@@ -95,7 +97,7 @@ func TestOpenAIHandlers_RetrieveModel_SupportsSlashModelIDs(t *testing.T) {
 }
 
 func TestOpenAIHandlers_RetrieveModel_FallsBackToBasicWhenConfiguredMetadataMissing(t *testing.T) {
-	client, channelSvc, router, ctx := setupOpenAIRetrieveTest(t)
+	client, channelSvc, _, router, ctx := setupOpenAIRetrieveTest(t)
 
 	createdAt := time.Unix(1712345688, 0)
 	ch, err := client.Channel.Create().
@@ -130,7 +132,7 @@ func TestOpenAIHandlers_RetrieveModel_FallsBackToBasicWhenConfiguredMetadataMiss
 }
 
 func TestOpenAIHandlers_RetrieveModel_ReturnsExtendedConfiguredModel(t *testing.T) {
-	client, channelSvc, router, ctx := setupOpenAIRetrieveTest(t)
+	client, channelSvc, _, router, ctx := setupOpenAIRetrieveTest(t)
 
 	channelCreatedAt := time.Unix(1712345698, 0)
 	ch, err := client.Channel.Create().
@@ -209,7 +211,7 @@ func TestOpenAIHandlers_RetrieveModel_ReturnsExtendedConfiguredModel(t *testing.
 }
 
 func TestOpenAIHandlers_RetrieveModel_ReturnsNotFound(t *testing.T) {
-	_, _, router, _ := setupOpenAIRetrieveTest(t)
+	_, _, _, router, _ := setupOpenAIRetrieveTest(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/models/missing-model", nil)
 	w := httptest.NewRecorder()
@@ -223,4 +225,144 @@ func TestOpenAIHandlers_RetrieveModel_ReturnsNotFound(t *testing.T) {
 	require.Equal(t, "invalid_request_error", got.Detail.Type)
 	require.Equal(t, "model", got.Detail.Param)
 	require.Contains(t, got.Detail.Message, "missing-model")
+}
+
+func TestOpenAIHandlers_ListModels_UsesBasicFieldsByDefault(t *testing.T) {
+	client, channelSvc, _, router, ctx := setupOpenAIRetrieveTest(t)
+
+	createdAt := time.Unix(1712345698, 0)
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("OpenAI Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"gpt-4.1"}).
+		SetDefaultTestModel("gpt-4.1").
+		SetStatus(channel.StatusEnabled).
+		SetCreatedAt(createdAt).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelSvc.SetEnabledChannelsForTest([]*biz.Channel{{Channel: ch}})
+
+	remark := "GPT-4.1 reasoning model"
+	_, err = client.Model.Create().
+		SetDeveloper("openai").
+		SetModelID("gpt-4.1").
+		SetName("GPT-4.1").
+		SetType(model.TypeChat).
+		SetGroup("gpt").
+		SetIcon("openai").
+		SetRemark(remark).
+		SetModelCard(&objects.ModelCard{
+			Vision:    true,
+			ToolCall:  true,
+			Reasoning: objects.ModelCardReasoning{Supported: true},
+			Limit:     objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:      objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+		}).
+		SetSettings(&objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "channel_model",
+					ChannelModel: &objects.ChannelModelAssociation{
+						ChannelID: ch.ID,
+						ModelID:   "gpt-4.1",
+					},
+				},
+			},
+		}).
+		SetStatus(model.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var got struct {
+		Data []OpenAIModel `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+	require.Len(t, got.Data, 1)
+	require.Equal(t, "gpt-4.1", got.Data[0].ID)
+	require.Empty(t, got.Data[0].Name)
+	require.Nil(t, got.Data[0].Capabilities)
+	require.Nil(t, got.Data[0].Pricing)
+}
+
+func TestOpenAIHandlers_ListModels_UsesExtendedFieldsWhenConfiguredAsDefault(t *testing.T) {
+	client, channelSvc, systemSvc, router, ctx := setupOpenAIRetrieveTest(t)
+
+	err := systemSvc.SetModelSettings(ctx, biz.SystemModelSettings{
+		FallbackToChannelsOnModelNotFound: true,
+		QueryAllChannelModels:             true,
+		DefaultModelAPIIncludeAll:         true,
+	})
+	require.NoError(t, err)
+
+	createdAt := time.Unix(1712345698, 0)
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("OpenAI Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"gpt-4.1"}).
+		SetDefaultTestModel("gpt-4.1").
+		SetStatus(channel.StatusEnabled).
+		SetCreatedAt(createdAt).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelSvc.SetEnabledChannelsForTest([]*biz.Channel{{Channel: ch}})
+
+	remark := "GPT-4.1 reasoning model"
+	_, err = client.Model.Create().
+		SetDeveloper("openai").
+		SetModelID("gpt-4.1").
+		SetName("GPT-4.1").
+		SetType(model.TypeChat).
+		SetGroup("gpt").
+		SetIcon("openai").
+		SetRemark(remark).
+		SetModelCard(&objects.ModelCard{
+			Vision:    true,
+			ToolCall:  true,
+			Reasoning: objects.ModelCardReasoning{Supported: true},
+			Limit:     objects.ModelCardLimit{Context: 200000, Output: 8192},
+			Cost:      objects.ModelCardCost{Input: 2, Output: 8, CacheRead: 0.5, CacheWrite: 1},
+		}).
+		SetSettings(&objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type: "channel_model",
+					ChannelModel: &objects.ChannelModelAssociation{
+						ChannelID: ch.ID,
+						ModelID:   "gpt-4.1",
+					},
+				},
+			},
+		}).
+		SetStatus(model.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var got struct {
+		Data []OpenAIModel `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+	require.Len(t, got.Data, 1)
+	require.Equal(t, "gpt-4.1", got.Data[0].ID)
+	require.Equal(t, "GPT-4.1", got.Data[0].Name)
+	require.Equal(t, remark, got.Data[0].Description)
+	require.NotNil(t, got.Data[0].Capabilities)
+	require.NotNil(t, got.Data[0].Pricing)
 }

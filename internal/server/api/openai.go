@@ -334,14 +334,14 @@ const (
 	openAIErrorParamModel         = "model"
 )
 
-func parseOpenAIModelInclude(includeParam string) (map[string]bool, bool) {
+func parseOpenAIModelInclude(includeParam string, defaultIncludeAll bool) (map[string]bool, bool) {
 	var (
 		include      map[string]bool
 		needFullData bool
 	)
 
 	if includeParam == "" {
-		return nil, false
+		return nil, defaultIncludeAll
 	}
 
 	if includeParam == "all" {
@@ -488,7 +488,7 @@ func (handlers *OpenAIHandlers) RetrieveModel(c *gin.Context) {
 		return
 	}
 
-	include, needFullData := parseOpenAIModelInclude(c.Query("include"))
+	include, needFullData := parseOpenAIModelInclude(c.Query("include"), false)
 
 	models, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
@@ -536,7 +536,7 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 
 	requestID, _ := contexts.GetRequestID(ctx)
 
-	include, needFullData := parseOpenAIModelInclude(c.Query("include"))
+	include, needFullData := parseOpenAIModelInclude(c.Query("include"), handlers.SystemService.ModelSettingsOrDefault(ctx).DefaultModelAPIIncludeAll)
 
 	var openaiModels []OpenAIModel
 	if needFullData {

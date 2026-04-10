@@ -103,6 +103,8 @@
   "models.dialogs.settings.fallbackToChannels.description": "When enabled, if a requested model is not found in model associations, the system will attempt to find enabled channels that support the requested model directly.",
   "models.dialogs.settings.queryAllChannelModels.label": "Query All Channel Models",
   "models.dialogs.settings.queryAllChannelModels.description": "When enabled, models API returns all models from enabled channels. When disabled, only models with explicit Model entity configuration will be returned.",
+  "models.dialogs.settings.defaultModelAPIIncludeAll.label": "Return full model info from /v1/models",
+  "models.dialogs.settings.defaultModelAPIIncludeAll.description": "When enabled, GET /v1/models returns the same extended metadata as ?include=all by default. When disabled, it returns basic fields unless include is explicitly requested.",
   "models.unassociated.title": "Unassociated Channels Detection",
   "models.unassociated.description": "Detect channels with models that are not associated with any model configuration",
   "models.unassociated.summary": "Found {{channelCount}} channels with {{modelCount}} unassociated models",

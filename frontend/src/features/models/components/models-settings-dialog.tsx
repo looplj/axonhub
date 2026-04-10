@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { Loader2, Settings2, RefreshCcw, Layers } from 'lucide-react';
+import { Loader2, Settings2, RefreshCcw, Layers, ListTree } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,11 +20,13 @@ export function ModelSettingsDialog() {
 
   const [fallbackEnabled, setFallbackEnabled] = React.useState(false);
   const [queryAllChannelModels, setQueryAllChannelModels] = React.useState(false);
+  const [defaultModelAPIIncludeAll, setDefaultModelAPIIncludeAll] = React.useState(false);
 
   React.useEffect(() => {
     if (settings) {
       setFallbackEnabled(settings.fallbackToChannelsOnModelNotFound);
       setQueryAllChannelModels(settings.queryAllChannelModels);
+      setDefaultModelAPIIncludeAll(settings.defaultModelAPIIncludeAll);
     }
   }, [settings]);
 
@@ -32,10 +34,11 @@ export function ModelSettingsDialog() {
     const input: UpdateModelSettingsInput = {
       fallbackToChannelsOnModelNotFound: fallbackEnabled,
       queryAllChannelModels: queryAllChannelModels,
+      defaultModelAPIIncludeAll: defaultModelAPIIncludeAll,
     };
     await updateModelSettings.mutateAsync(input);
     setOpen(null);
-  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, setOpen]);
+  }, [updateModelSettings, fallbackEnabled, queryAllChannelModels, defaultModelAPIIncludeAll, setOpen]);
 
   const handleClose = useCallback(() => {
     setOpen(null);
@@ -92,6 +95,26 @@ export function ModelSettingsDialog() {
                     id='query-all-channel-models'
                     checked={queryAllChannelModels}
                     onCheckedChange={setQueryAllChannelModels}
+                    disabled={updateModelSettings.isPending}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className='pb-0'>
+                <CardTitle className='flex items-center gap-2 text-sm'>
+                  <ListTree className='text-muted-foreground h-4 w-4' />
+                  {t('models.dialogs.settings.defaultModelAPIIncludeAll.label')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className='pt-1'>
+                <div className='flex items-center justify-between'>
+                  <p className='text-muted-foreground pr-4 text-sm'>{t('models.dialogs.settings.defaultModelAPIIncludeAll.description')}</p>
+                  <Switch
+                    id='default-model-api-include-all'
+                    checked={defaultModelAPIIncludeAll}
+                    onCheckedChange={setDefaultModelAPIIncludeAll}
                     disabled={updateModelSettings.isPending}
                   />
                 </div>
