@@ -259,7 +259,7 @@ func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Reques
 
 func ensureInstructionsField(body []byte) []byte {
 	var m map[string]json.RawMessage
-	if err := json.Unmarshal(body, &m); err != nil {
+	if err := json.Unmarshal(body, &m); err != nil || m == nil {
 		return body
 	}
 	if _, ok := m["instructions"]; ok {
