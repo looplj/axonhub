@@ -64,7 +64,6 @@ export const channelTypeSchema = z.enum([
   'antigravity',
   'cerebras',
   'nanogpt',
-  'nanogpt_chat',
   'nanogpt_responses',
   'fireworks',
 ]);

@@ -80,9 +80,7 @@ func (Channel) Fields() []ent.Field {
 				"claudecode",
 				"cerebras",
 				"antigravity",
-				// Deprecated: Use nanogpt_chat or nanogpt_responses instead
 				"nanogpt",
-				"nanogpt_chat",
 				"nanogpt_responses",
 			).
 			Annotations(

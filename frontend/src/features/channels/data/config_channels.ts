@@ -503,14 +503,6 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-gradient-to-br from-[#015a9e] to-[#11e9bb] text-slate-900 border-transparent',
     icon: NanoGPTIcon,
   },
-  nanogpt_chat: {
-    channelType: 'nanogpt_chat',
-    baseURL: 'https://nano-gpt.com/api/v1',
-    defaultModels: ['hidream', 'flux-kontext', 'zai-org/glm-4.7:thinking', 'zai-org/glm-4.7', 'zai-org/glm-4.6'],
-    apiFormat: OPENAI_CHAT_COMPLETIONS,
-    color: 'bg-gradient-to-br from-[#015a9e] to-[#11e9bb] text-slate-900 border-transparent',
-    icon: NanoGPTIcon,
-  },
   nanogpt_responses: {
     channelType: 'nanogpt_responses',
     baseURL: 'https://nano-gpt.com/api/v1',
@@ -631,9 +623,8 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   cerebras: 'cerebras',
   antigravity: 'antigravity',
   nanogpt: 'nanogpt',
-  fireworks: 'fireworks',
-  nanogpt_chat: 'nanogpt',
   nanogpt_responses: 'nanogpt',
+  fireworks: 'fireworks',
 };
 
 /**
