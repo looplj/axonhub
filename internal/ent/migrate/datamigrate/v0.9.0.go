@@ -27,16 +27,16 @@ func (v *V0_9_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
 	ctx = authz.WithSystemBypass(ctx, "database-migrate")
 
 	// Check for existing nanogpt channels to log deprecation warning
-	nanogptChannels, err := client.Channel.Query().
+	nanogptCount, err := client.Channel.Query().
 		Where(channel.TypeEQ(channel.TypeNanogpt)).
-		All(ctx)
+		Count(ctx)
 	if err != nil {
 		return err
 	}
 
-	if len(nanogptChannels) > 0 {
+	if nanogptCount > 0 {
 		log.Warn(ctx, "found channels using deprecated 'nanogpt' type - these will continue to work but new channels should use 'nanogpt_chat' or 'nanogpt_responses'",
-			log.Int("count", len(nanogptChannels)),
+			log.Int("count", nanogptCount),
 			log.String("migration", "v0.9.0"),
 		)
 	}
