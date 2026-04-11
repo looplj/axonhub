@@ -19,9 +19,14 @@ func (v *V0_9_0) Version() string {
 	return "v0.9.0"
 }
 
+// Migrate adds support for new nanogpt channel types (nanogpt_chat, nanogpt_responses).
+// Note: Existing 'nanogpt' channels are NOT migrated to preserve backward compatibility.
+// The 'nanogpt' type is deprecated but remains functional for existing channels.
 func (v *V0_9_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
-	ctx = authz.WithSystemBypass(context.Background(), "database-migrate")
+	// Use the passed context with system bypass for authorization
+	ctx = authz.WithSystemBypass(ctx, "database-migrate")
 
+	// Check for existing nanogpt channels to log deprecation warning
 	nanogptChannels, err := client.Channel.Query().
 		Where(channel.TypeEQ(channel.TypeNanogpt)).
 		All(ctx)
@@ -29,33 +34,12 @@ func (v *V0_9_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
 		return err
 	}
 
-	if len(nanogptChannels) == 0 {
-		log.Info(ctx, "no channels with type 'nanogpt' found, skipping migration")
-		return nil
+	if len(nanogptChannels) > 0 {
+		log.Warn(ctx, "found channels using deprecated 'nanogpt' type - these will continue to work but new channels should use 'nanogpt_chat' or 'nanogpt_responses'",
+			log.Int("count", len(nanogptChannels)),
+			log.String("migration", "v0.9.0"),
+		)
 	}
 
-	log.Info(ctx, "found channels with type 'nanogpt' to migrate", log.Int("count", len(nanogptChannels)))
-
-	ctx, tx, err := client.OpenTx(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
-
-	affected, err := ent.FromContext(ctx).Channel.Update().
-		Where(channel.TypeEQ(channel.TypeNanogpt)).
-		SetType(channel.TypeNanogptChat).
-		Save(ctx)
-	if err != nil {
-		return err
-	}
-
-	log.Info(ctx, "migrated nanogpt channels to nanogpt_chat", log.Int("affected", affected))
-
-	return tx.Commit()
+	return nil
 }

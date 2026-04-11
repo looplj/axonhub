@@ -10,9 +10,37 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm/transformer/nanogpt"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
+
+func TestNanogptChannel_DeprecatedTypeNanogpt(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	entChannel := client.Channel.Create().
+		SetName("NanoGPT Deprecated Channel").
+		SetType(channel.TypeNanogpt).
+		SetBaseURL("https://api.nanogpt.example.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SaveX(ctx)
+
+	channelSvc := NewChannelServiceForTest(client)
+
+	built, err := channelSvc.buildChannelWithTransformer(entChannel)
+	require.NoError(t, err)
+	require.NotNil(t, built)
+	require.NotNil(t, built.Outbound)
+
+	// Deprecated nanogpt type should still work with nanogpt.OutboundTransformer
+	_, ok := built.Outbound.(*nanogpt.OutboundTransformer)
+	require.True(t, ok, "TypeNanogpt (deprecated) should create nanogpt.OutboundTransformer for backward compatibility")
+}
 
 func TestNanogptChannel_CreateOpenAIChatTransformer(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")

@@ -631,7 +631,8 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   cerebras: 'cerebras',
   antigravity: 'antigravity',
   nanogpt: 'nanogpt',
-  fireworks: 'fireworks',
+  nanogpt_chat: 'nanogpt',
+  nanogpt_responses: 'nanogpt',
 };
 
 /**

@@ -1138,7 +1138,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   claudecode
   cerebras
   antigravity
-  nanogpt
+  nanogpt @deprecated(reason: "Use nanogpt_chat or nanogpt_responses instead")
   nanogpt_chat
   nanogpt_responses
 }
