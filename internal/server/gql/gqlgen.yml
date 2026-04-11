@@ -164,6 +164,24 @@ models:
   UpdateRetryPolicyInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.RetryPolicy
+  WebhookNotifierConfig:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.WebhookNotifierConfig
+  WebhookNotifierConfigInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.WebhookNotifierConfig
+  WebhookTarget:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.WebhookTarget
+  WebhookTargetInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.WebhookTarget
+  WebhookSubscription:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.WebhookSubscription
+  WebhookSubscriptionInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.WebhookSubscription
   AutoDisableChannel:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel

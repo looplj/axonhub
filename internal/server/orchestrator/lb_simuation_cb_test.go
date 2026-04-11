@@ -68,7 +68,7 @@ func TestCircuitBreakerStrategy_Simulation(t *testing.T) {
 
 	// Helper to select best channel using LB.Sort
 	selectBest := func() *biz.Channel {
-		sorted := lb.Sort(ctx, candidates, modelID)
+		sorted := lb.Sort(ctx, candidates, modelID, false)
 		if len(sorted) > 0 {
 			return sorted[0].Channel
 		}
@@ -219,7 +219,7 @@ func TestModelAwareCircuitBreakerStrategy_EqualWeightDistribution(t *testing.T) 
 	counts := make(map[int]int)
 
 	for range 1000 {
-		sorted := lb.Sort(ctx, candidates, modelID)
+		sorted := lb.Sort(ctx, candidates, modelID, false)
 		counts[sorted[0].Channel.ID]++
 	}
 

@@ -237,6 +237,24 @@ export const channelSchema = z.object({
 });
 export type Channel = z.infer<typeof channelSchema>;
 
+export const testAPIKeyResultSchema = z.object({
+  keyPrefix: z.string(),
+  success: z.boolean(),
+  latency: z.number(),
+  error: z.string().optional().nullable(),
+  disabled: z.boolean(),
+});
+export type TestAPIKeyResult = z.infer<typeof testAPIKeyResultSchema>;
+
+export const testChannelAPIKeysPayloadSchema = z.object({
+  channelID: z.string(),
+  total: z.number(),
+  successCount: z.number(),
+  failedCount: z.number(),
+  results: z.array(testAPIKeyResultSchema),
+});
+export type TestChannelAPIKeysPayload = z.infer<typeof testChannelAPIKeysPayloadSchema>;
+
 // Pricing Schemas
 export const pricingModeSchema = z.enum(['flat_fee', 'usage_per_unit', 'usage_tiered']);
 export type PricingMode = z.infer<typeof pricingModeSchema>;

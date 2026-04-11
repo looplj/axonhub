@@ -387,7 +387,7 @@ func (p *PersistentOutboundTransformer) GetRequest() *ent.Request {
 
 // GetCurrentChannel returns the current channel.
 func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
-	if p.state.CurrentCandidate == nil {
+	if p.state == nil || p.state.CurrentCandidate == nil {
 		return nil
 	}
 
@@ -453,6 +453,26 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 
 	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
 		return false
+	}
+
+	// 429 Too Many Requests: check if Retry-After header is present
+	if httpclient.HasRetryAfterHeader(err) {
+		// If Retry-After header is present, skip same-channel retry
+		// (the channel is explicitly rate-limited by upstream)
+		log.Debug(context.Background(), "429 with Retry-After, skipping same-channel retry",
+			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
+		)
+
+		return false
+	}
+
+	// 429 without Retry-After header, allow same-channel retry (might be transient rate limit)
+	if httpclient.IsRateLimitErr(err) {
+		log.Debug(context.Background(), "429 without Retry-After, allowing same-channel retry",
+			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
+		)
+
+		return true
 	}
 
 	// if there are more models available in the current candidate, try the next model.

@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -257,3 +259,142 @@ func TestNoopRateLimitTracking(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, stream, wrappedStream)
 }
+
+// ========== OnOutboundRawError Tests (429 Cooldown) ==========
+
+func TestRateLimitTracking_OnOutboundRawError_429(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	entChannel := &ent.Channel{ID: 1, Name: "test-channel"}
+	channel := &biz.Channel{Channel: entChannel}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	middleware := &rateLimitTracking{
+		outbound: outbound,
+		tracker:  tracker,
+	}
+
+	ctx := context.Background()
+
+	// Simulate 429 error with Retry-After header
+	httpErr := &httpclient.Error{
+		StatusCode: http.StatusTooManyRequests,
+		Headers:    http.Header{"Retry-After": []string{"30"}},
+	}
+
+	middleware.OnOutboundRawError(ctx, httpErr)
+
+	// Verify channel is in cooldown
+	assert.True(t, tracker.IsCoolingDown(channel.ID))
+}
+
+func TestRateLimitTracking_OnOutboundRawError_429WithoutRetryAfter(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	entChannel := &ent.Channel{ID: 1, Name: "test-channel"}
+	channel := &biz.Channel{Channel: entChannel}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	middleware := &rateLimitTracking{
+		outbound: outbound,
+		tracker:  tracker,
+	}
+
+	ctx := context.Background()
+
+	httpErr := &httpclient.Error{
+		StatusCode: http.StatusTooManyRequests,
+		Headers:    http.Header{},
+	}
+
+	middleware.OnOutboundRawError(ctx, httpErr)
+
+	assert.False(t, tracker.IsCoolingDown(channel.ID))
+}
+
+func TestRateLimitTracking_OnOutboundRawError_Not429(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	entChannel := &ent.Channel{ID: 1, Name: "test-channel"}
+	channel := &biz.Channel{Channel: entChannel}
+
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	middleware := &rateLimitTracking{
+		outbound: outbound,
+		tracker:  tracker,
+	}
+
+	ctx := context.Background()
+
+	// Simulate 500 error (not 429)
+	httpErr := &httpclient.Error{
+		StatusCode: http.StatusInternalServerError,
+		Headers:    http.Header{"Retry-After": []string{"30"}},
+	}
+
+	middleware.OnOutboundRawError(ctx, httpErr)
+
+	// Verify channel is NOT in cooldown
+	assert.False(t, tracker.IsCoolingDown(channel.ID))
+}
+
+func TestRateLimitTracking_OnOutboundRawError_NoChannel(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	state := &PersistenceState{
+		CurrentCandidate: nil, // No current channel
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	middleware := &rateLimitTracking{
+		outbound: outbound,
+		tracker:  tracker,
+	}
+
+	ctx := context.Background()
+
+	// Simulate 429 error
+	httpErr := &httpclient.Error{
+		StatusCode: http.StatusTooManyRequests,
+		Headers:    http.Header{"Retry-After": []string{"30"}},
+	}
+
+	// Should not panic
+	middleware.OnOutboundRawError(ctx, httpErr)
+}
+
+func TestRateLimitTracking_OnOutboundRawError_NilChannel(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	outbound := &PersistentOutboundTransformer{}
+
+	middleware := &rateLimitTracking{
+		outbound: outbound,
+		tracker:  tracker,
+	}
+
+	ctx := context.Background()
+
+	// Simulate 429 error
+	httpErr := &httpclient.Error{
+		StatusCode: http.StatusTooManyRequests,
+		Headers:    http.Header{"Retry-After": []string{"30"}},
+	}
+
+	// Should not panic
+	middleware.OnOutboundRawError(ctx, httpErr)
+}
+
+// ========== parseRetryAfter tests moved to llm/httpclient/errors_test.go ==========

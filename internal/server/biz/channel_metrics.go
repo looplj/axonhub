@@ -180,13 +180,29 @@ type AggregatedMetrics struct {
 
 	LastSelectedAt *time.Time
 	LastFailureAt  *time.Time
+
+	// StreamingFirstTokenLatencyEWMA is the EWMA of first-token latency for streaming requests.
+	StreamingFirstTokenLatencyEWMA float64
+	// StreamingTokensPerSecondEWMA is the EWMA of completion throughput for streaming requests.
+	StreamingTokensPerSecondEWMA float64
+	// StreamingSampleCount tracks streaming samples recorded for latency-aware scoring.
+	StreamingSampleCount int64
+	// NonStreamingLatencyEWMA is the EWMA of total request latency for non-streaming requests.
+	NonStreamingLatencyEWMA float64
+	// NonStreamingSampleCount tracks non-streaming samples recorded for latency-aware scoring.
+	NonStreamingSampleCount int64
 }
 
 func (m *AggregatedMetrics) Clone() *AggregatedMetrics {
 	return &AggregatedMetrics{
-		metricsRecord:  m.metricsRecord,
-		LastSelectedAt: m.LastSelectedAt,
-		LastFailureAt:  m.LastFailureAt,
+		metricsRecord:                  m.metricsRecord,
+		LastSelectedAt:                 m.LastSelectedAt,
+		LastFailureAt:                  m.LastFailureAt,
+		StreamingFirstTokenLatencyEWMA: m.StreamingFirstTokenLatencyEWMA,
+		StreamingTokensPerSecondEWMA:   m.StreamingTokensPerSecondEWMA,
+		StreamingSampleCount:           m.StreamingSampleCount,
+		NonStreamingLatencyEWMA:        m.NonStreamingLatencyEWMA,
+		NonStreamingSampleCount:        m.NonStreamingSampleCount,
 	}
 }
 
@@ -203,6 +219,8 @@ func newChannelMetrics(channelID int) *channelMetrics {
 	return cm
 }
 
+const latencyEWMAAlpha = 0.3
+
 // recordSuccess records a successful request to the channel metrics.
 func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *PerformanceRecord) {
 	slot.SuccessCount++
@@ -211,6 +229,38 @@ func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *Performance
 
 	// Reset consecutive failures on success
 	cm.aggregatedMetrics.ConsecutiveFailures = 0
+
+	firstTokenLatencyMs, requestLatencyMs, tokensPerSecond := perf.Calculate()
+
+	if perf.Stream && perf.FirstTokenTime != nil {
+		firstTokenLatency := float64(firstTokenLatencyMs)
+		if cm.aggregatedMetrics.StreamingSampleCount == 0 {
+			cm.aggregatedMetrics.StreamingFirstTokenLatencyEWMA = firstTokenLatency
+		} else {
+			cm.aggregatedMetrics.StreamingFirstTokenLatencyEWMA = latencyEWMAAlpha*firstTokenLatency + (1-latencyEWMAAlpha)*cm.aggregatedMetrics.StreamingFirstTokenLatencyEWMA
+		}
+
+		if tokensPerSecond > 0 {
+			if cm.aggregatedMetrics.StreamingSampleCount == 0 {
+				cm.aggregatedMetrics.StreamingTokensPerSecondEWMA = tokensPerSecond
+			} else {
+				cm.aggregatedMetrics.StreamingTokensPerSecondEWMA = latencyEWMAAlpha*tokensPerSecond + (1-latencyEWMAAlpha)*cm.aggregatedMetrics.StreamingTokensPerSecondEWMA
+			}
+		}
+
+		cm.aggregatedMetrics.StreamingSampleCount++
+
+		return
+	}
+
+	latency := float64(requestLatencyMs)
+	if cm.aggregatedMetrics.NonStreamingSampleCount == 0 {
+		cm.aggregatedMetrics.NonStreamingLatencyEWMA = latency
+	} else {
+		cm.aggregatedMetrics.NonStreamingLatencyEWMA = latencyEWMAAlpha*latency + (1-latencyEWMAAlpha)*cm.aggregatedMetrics.NonStreamingLatencyEWMA
+	}
+
+	cm.aggregatedMetrics.NonStreamingSampleCount++
 }
 
 // recordFailure records a failed request to the channel metrics.
@@ -391,12 +441,9 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int)
 		return &AggregatedMetrics{}, nil
 	}
 
-	// Return a copy of the aggregated metrics to avoid concurrent modification
-	return &AggregatedMetrics{
-		metricsRecord:  cm.aggregatedMetrics.metricsRecord,
-		LastSelectedAt: cm.aggregatedMetrics.LastSelectedAt,
-		LastFailureAt:  cm.aggregatedMetrics.LastFailureAt,
-	}, nil
+	// Return a full copy of the aggregated metrics to avoid concurrent modification
+	// while preserving all load-balancing signals, including latency EWMA.
+	return cm.aggregatedMetrics.Clone(), nil
 }
 
 // IncrementChannelSelection increments the request count for a channel at selection time.
@@ -456,6 +503,7 @@ type PerformanceRecord struct {
 
 	// If response status code is 0, it means the request is successful.
 	ResponseStatusCode int
+	CompletionTokens   int64
 }
 
 // Calculate calculates performance metrics from collected data.
@@ -473,6 +521,16 @@ func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLaten
 	// Enforce minimum latency to prevent extreme TPS calculations
 	requestLatencyMs = ClampLatency(requestLatencyMs)
 	firstTokenLatencyMs = ClampLatency(firstTokenLatencyMs)
+
+	if m.CompletionTokens > 0 {
+		effectiveLatencyMs := requestLatencyMs
+		if m.Stream && m.FirstTokenTime != nil {
+			effectiveLatencyMs = requestLatencyMs - firstTokenLatencyMs
+			effectiveLatencyMs = ClampLatency(effectiveLatencyMs)
+		}
+
+		tokensPerSecond = float64(m.CompletionTokens) / (float64(effectiveLatencyMs) / 1000.0)
+	}
 
 	return firstTokenLatencyMs, requestLatencyMs, tokensPerSecond
 }

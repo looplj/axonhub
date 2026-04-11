@@ -29,6 +29,7 @@ var defaultRetryPolicy = RetryPolicy{
 var defaultModelSettings = SystemModelSettings{
 	FallbackToChannelsOnModelNotFound: true,
 	QueryAllChannelModels:             true,
+	DefaultModelAPIIncludeAll:         false,
 }
 
 var defaultChannelSetting = SystemChannelSettings{

@@ -10,9 +10,10 @@ import { RetrySettings } from './retry-settings';
 import { StorageSettings } from './storage-settings';
 import { BackupSettings } from './backup-settings';
 import { ProxyPresetsSettings } from './proxy-presets-settings';
+import { WebhookSettings } from './webhook-settings';
 import { usePermissions } from '@/hooks/usePermissions';
 
-type SystemTabKey = 'general' | 'brand' | 'storage' | 'retry' | 'proxy' | 'backup' | 'about';
+type SystemTabKey = 'general' | 'brand' | 'storage' | 'retry' | 'webhook' | 'proxy' | 'backup' | 'about';
 
 interface SystemSettingsTabsProps {
   initialTab?: SystemTabKey;
@@ -31,7 +32,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SystemTabKey)} className='w-full'>
-      <TabsList className={`shadow-soft border-border bg-background grid w-full rounded-2xl border ${isOwner ? 'grid-cols-7' : 'grid-cols-6'}`}>
+      <TabsList className={`shadow-soft border-border bg-background grid w-full rounded-2xl border ${isOwner ? 'grid-cols-8' : 'grid-cols-7'}`}>
         <TabsTrigger value='general' data-value='general'>
           {t('system.tabs.general')}
         </TabsTrigger>
@@ -40,6 +41,9 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
         </TabsTrigger>
         <TabsTrigger value='retry' data-value='retry'>
           {t('system.tabs.retry')}
+        </TabsTrigger>
+        <TabsTrigger value='webhook' data-value='webhook'>
+          {t('system.tabs.webhook')}
         </TabsTrigger>
         <TabsTrigger value='storage' data-value='storage'>
           {t('system.tabs.storage')}
@@ -68,6 +72,9 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
         </TabsContent>
         <TabsContent value='retry' className='mt-0 p-0'>
           <RetrySettings />
+        </TabsContent>
+        <TabsContent value='webhook' className='mt-0 p-0'>
+          <WebhookSettings />
         </TabsContent>
         <TabsContent value='proxy' className='mt-0 p-0'>
           <ProxyPresetsSettings />

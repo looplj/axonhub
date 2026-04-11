@@ -17,13 +17,12 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
-	connectionTracker := NewDefaultConnectionTracker(10)
 
 	strategies := []LoadBalanceStrategy{
 		NewTraceAwareStrategy(requestService),
 		NewErrorAwareStrategy(channelService),
 		NewWeightRoundRobinStrategy(channelService),
-		NewConnectionAwareStrategy(channelService, connectionTracker),
+		NewLatencyAwareStrategy(channelService),
 	}
 	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
 

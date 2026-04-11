@@ -699,6 +699,34 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKeyFallback(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	ctx := shared.WithSessionID(context.Background(), "shared-session-123")
+
+	req := &llm.Request{
+		Model: "gpt-5.4",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(ctx, req)
+	require.NoError(t, err)
+
+	var payload Request
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+	require.NotNil(t, payload.PromptCacheKey)
+	require.Equal(t, "shared-session-123", *payload.PromptCacheKey)
+}
+
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
 	transformer, _ := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 

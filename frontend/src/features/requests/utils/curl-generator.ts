@@ -26,7 +26,7 @@ const API_FORMAT_PATHS: Record<ApiFormat, string> = {
   'jina/embeddings': '/jina/v1/embeddings',
 };
 
-function getApiPath(apiFormat?: ApiFormat, body?: any): string {
+function getApiPath(apiFormat?: ApiFormat, body?: any, channelType?: ChannelType): string {
   if (!apiFormat) {
     return '/v1/chat/completions';
   }
@@ -34,6 +34,9 @@ function getApiPath(apiFormat?: ApiFormat, body?: any): string {
   let path = API_FORMAT_PATHS[apiFormat] || '/v1/chat/completions';
 
   if (apiFormat === 'gemini/contents' && body?.model) {
+    if (channelType === 'gemini_vertex') {
+      path = '/v1/publishers/google/models/{model}:generateContent';
+    }
     path = path.replace('{model}', body.model);
   }
 
@@ -49,7 +52,7 @@ export function generateCurlCommand(options: CurlGeneratorOptions): string {
   const { headers, body, baseUrl, apiFormat, channelType } = options;
 
   const resolvedApiFormat = apiFormat || getApiFormatFromChannelType(channelType);
-  const apiPath = getApiPath(resolvedApiFormat, body);
+  const apiPath = getApiPath(resolvedApiFormat, body, channelType);
 
   let url: string;
   if (baseUrl) {
