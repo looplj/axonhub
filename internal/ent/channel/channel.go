@@ -237,6 +237,8 @@ const (
 	TypeCerebras          Type = "cerebras"
 	TypeAntigravity       Type = "antigravity"
 	TypeNanogpt           Type = "nanogpt"
+	TypeNanogptChat       Type = "nanogpt_chat"
+	TypeNanogptResponses  Type = "nanogpt_responses"
 )
 
 func (_type Type) String() string {
@@ -246,7 +248,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeOpenai, TypeOpenaiResponses, TypeCodex, TypeVercel, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeGemini, TypeGeminiVertex, TypeDeepseek, TypeDeepseekAnthropic, TypeDeepinfra, TypeFireworks, TypeDoubao, TypeDoubaoAnthropic, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXiaomi, TypeXai, TypePpio, TypeSiliconflow, TypeVolcengine, TypeLongcat, TypeLongcatAnthropic, TypeMinimax, TypeMinimaxAnthropic, TypeAihubmix, TypeBurncloud, TypeModelscope, TypeBailian, TypeJina, TypeGithub, TypeGithubCopilot, TypeClaudecode, TypeCerebras, TypeAntigravity, TypeNanogpt:
+	case TypeOpenai, TypeOpenaiResponses, TypeCodex, TypeVercel, TypeAnthropic, TypeAnthropicAWS, TypeAnthropicGcp, TypeGeminiOpenai, TypeGemini, TypeGeminiVertex, TypeDeepseek, TypeDeepseekAnthropic, TypeDeepinfra, TypeFireworks, TypeDoubao, TypeDoubaoAnthropic, TypeMoonshot, TypeMoonshotAnthropic, TypeZhipu, TypeZai, TypeZhipuAnthropic, TypeZaiAnthropic, TypeAnthropicFake, TypeOpenaiFake, TypeOpenrouter, TypeXiaomi, TypeXai, TypePpio, TypeSiliconflow, TypeVolcengine, TypeLongcat, TypeLongcatAnthropic, TypeMinimax, TypeMinimaxAnthropic, TypeAihubmix, TypeBurncloud, TypeModelscope, TypeBailian, TypeJina, TypeGithub, TypeGithubCopilot, TypeClaudecode, TypeCerebras, TypeAntigravity, TypeNanogpt, TypeNanogptChat, TypeNanogptResponses:
 		return nil
 	default:
 		return fmt.Errorf("channel: invalid enum value for type field: %q", _type)
