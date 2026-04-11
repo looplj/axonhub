@@ -59,7 +59,7 @@ export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: Resp
         </div>
       )}
 
-      <Message from='assistant'>
+      <Message from='assistant' fullWidth={true}>
         <MessageContent>
           {reasoning && (
             <Reasoning isStreaming={isLive} duration={reasoningDurationMs ? Math.ceil(reasoningDurationMs / 1000) : undefined}>
