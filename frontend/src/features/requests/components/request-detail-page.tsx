@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { DashboardIcon } from '@radix-ui/react-icons';
 import { useParams, useNavigate } from '@tanstack/react-router';
@@ -60,6 +60,14 @@ export default function RequestDetailPage() {
     where: { requestID: requestId },
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   });
+
+  const parsedResponse = useMemo(() => {
+    if (!request) return { content: '', reasoning: '', toolCalls: [] };
+    return parseResponse(request.responseBody, request.responseChunks);
+  }, [request?.responseBody, request?.responseChunks]);
+
+  const hasPreviewData = !!(parsedResponse.content || parsedResponse.reasoning || parsedResponse.toolCalls.length > 0);
+  const isLive = !!(request?.status === 'processing' && request?.stream);
 
   const hasResponseBody = !!(request?.responseBody && Object.keys(request.responseBody).length > 0);
   const hasResponseChunks = !!(request?.responseChunks && request.responseChunks.length > 0);
@@ -188,7 +196,7 @@ export default function RequestDetailPage() {
 
   const extractResponseText = useCallback(() => {
     if (!request) return '';
-    const { content, reasoning, toolCalls } = parseResponse(request.responseBody, request.responseChunks);
+    const { content, reasoning, toolCalls } = parsedResponse;
 
     let result = '';
     if (reasoning) {
@@ -205,7 +213,7 @@ export default function RequestDetailPage() {
     }
 
     return result.trim();
-  }, [request]);
+  }, [request, parsedResponse]);
 
   const handleBack = () => {
     // 保持分页状态返回到请求列表页
@@ -616,11 +624,11 @@ export default function RequestDetailPage() {
 
                     <div className='mt-6'>
                       <TabsContent value='preview' className='mt-0 transition-all focus-visible:outline-none'>
-                        {hasResponseChunks || request.responseBody ? (
+                        {hasPreviewData || isLive ? (
                           <ResponseFlow
                             chunks={request.responseChunks}
                             body={request.responseBody}
-                            isLive={request.status === 'processing' && request.stream || undefined}
+                            isLive={isLive}
                             reasoningDurationMs={request.metricsReasoningDurationMs}
                           />
                         ) : request.status === 'processing' ? (
@@ -876,7 +884,7 @@ export default function RequestDetailPage() {
                                 </div>
                               )}
 
-                              {execution.responseBody && (
+                              {execution.responseBody && Object.keys(execution.responseBody).length > 0 && (
                                 <div className='space-y-3'>
                                   <div className='flex items-center justify-between'>
                                     <span className='flex items-center gap-2 text-sm font-semibold'>
