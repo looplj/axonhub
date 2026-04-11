@@ -245,6 +245,47 @@ func TestSystemService_StoragePolicy(t *testing.T) {
 	require.True(t, storeChunks)
 }
 
+func TestSystemService_WebhookNotifierConfig(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+
+	service, client := setupTestSystemService(t, cacheConfig)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	cfg, err := service.WebhookNotifierConfig(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	require.Empty(t, cfg.Targets)
+	require.Empty(t, cfg.Subscriptions)
+
+	customCfg := &WebhookNotifierConfig{
+		Targets: []WebhookTarget{
+			{
+				Name:      "default",
+				Enabled:   true,
+				URL:       "https://example.com/webhook",
+				Method:    "POST",
+				TimeoutMs: 3000,
+				Headers:   []objects.HeaderEntry{{Key: "Content-Type", Value: "application/json"}},
+				Body:      `{"event":"{{.Event}}"}`,
+			},
+		},
+		Subscriptions: []WebhookSubscription{
+			{Event: EventChannelAutoDisabled, TargetNames: []string{"default"}},
+		},
+	}
+
+	err = service.SetWebhookNotifierConfig(ctx, customCfg)
+	require.NoError(t, err)
+
+	retrievedCfg, err := service.WebhookNotifierConfig(ctx)
+	require.NoError(t, err)
+	require.Equal(t, customCfg, retrievedCfg)
+}
+
 func TestSystemService_ChannelSetting_DefaultModelAutoSyncFrequency(t *testing.T) {
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 

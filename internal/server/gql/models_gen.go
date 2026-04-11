@@ -330,12 +330,6 @@ type SystemStatus struct {
 	IsInitialized bool `json:"isInitialized"`
 }
 
-type TestChannelInput struct {
-	ChannelID objects.GUID            `json:"channelID"`
-	ModelID   *string                 `json:"modelID,omitempty"`
-	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
-}
-
 type TestAPIKeyResult struct {
 	KeyPrefix string  `json:"keyPrefix"`
 	Success   bool    `json:"success"`
@@ -345,11 +339,17 @@ type TestAPIKeyResult struct {
 }
 
 type TestChannelAPIKeysPayload struct {
-	ChannelID    objects.GUID       `json:"channelID"`
-	Total        int                `json:"total"`
-	SuccessCount int                `json:"successCount"`
-	FailedCount  int                `json:"failedCount"`
+	ChannelID    objects.GUID        `json:"channelID"`
+	Total        int                 `json:"total"`
+	SuccessCount int                 `json:"successCount"`
+	FailedCount  int                 `json:"failedCount"`
 	Results      []*TestAPIKeyResult `json:"results"`
+}
+
+type TestChannelInput struct {
+	ChannelID objects.GUID            `json:"channelID"`
+	ModelID   *string                 `json:"modelID,omitempty"`
+	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
 }
 
 type TestChannelPayload struct {

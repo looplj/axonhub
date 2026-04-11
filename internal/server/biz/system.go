@@ -57,6 +57,10 @@ const (
 	// The value is JSON-encoded RetryPolicy struct.
 	SystemKeyRetryPolicy = "retry_policy"
 
+	// SystemKeyWebhookNotifierConfig is the key used to store the webhook notifier configuration.
+	// The value is JSON-encoded WebhookNotifierConfig struct.
+	SystemKeyWebhookNotifierConfig = "webhook_notifier_config"
+
 	// SystemKeyDefaultDataStorage is the key used to store the default data storage ID.
 	// If not set, the primary data storage will be used.
 	SystemKeyDefaultDataStorage = "default_data_storage_id"
@@ -200,6 +204,26 @@ type AutoDisableChannelStatus struct {
 
 	// Times is the number of times the status code occurs before auto-disable the channel.
 	Times int `json:"times"`
+}
+
+type WebhookNotifierConfig struct {
+	Targets       []WebhookTarget       `json:"targets"`
+	Subscriptions []WebhookSubscription `json:"subscriptions"`
+}
+
+type WebhookTarget struct {
+	Name      string                `json:"name"`
+	Enabled   bool                  `json:"enabled"`
+	URL       string                `json:"url"`
+	Method    string                `json:"method"`
+	TimeoutMs int                   `json:"timeout_ms"`
+	Headers   []objects.HeaderEntry `json:"headers"`
+	Body      string                `json:"body"`
+}
+
+type WebhookSubscription struct {
+	Event       string   `json:"event"`
+	TargetNames []string `json:"target_names"`
 }
 
 // SystemModelSettings represents model-related configuration settings.
@@ -730,7 +754,10 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 	value, err := s.getSystemValue(ctx, SystemKeyRetryPolicy)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return lo.ToPtr(defaultRetryPolicy), nil
+			policy := defaultRetryPolicy
+			normalizeRetryPolicy(&policy)
+
+			return &policy, nil
 		}
 
 		return nil, fmt.Errorf("failed to get retry policy: %w", err)
@@ -741,13 +768,7 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 		return nil, fmt.Errorf("failed to unmarshal retry policy: %w", err)
 	}
 
-	if policy.LoadBalancerStrategy == "" {
-		policy.LoadBalancerStrategy = defaultRetryPolicy.LoadBalancerStrategy
-	}
-	// The weighted load balancer strategy is deprecated. Use the failover strategy instead.
-	if policy.LoadBalancerStrategy == "weighted" {
-		policy.LoadBalancerStrategy = LoadBalancerStrategyFailover
-	}
+	normalizeRetryPolicy(&policy)
 
 	return &policy, nil
 }
@@ -769,9 +790,7 @@ func (s *SystemService) RetryPolicyOrDefault(ctx context.Context) *RetryPolicy {
 
 // SetRetryPolicy sets the retry policy configuration.
 func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy) error {
-	if policy.LoadBalancerStrategy == "" {
-		policy.LoadBalancerStrategy = defaultRetryPolicy.LoadBalancerStrategy
-	}
+	normalizeRetryPolicy(policy)
 
 	jsonBytes, err := json.Marshal(policy)
 	if err != nil {
@@ -779,6 +798,87 @@ func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy)
 	}
 
 	return s.setSystemValue(ctx, SystemKeyRetryPolicy, string(jsonBytes))
+}
+
+func normalizeRetryPolicy(policy *RetryPolicy) {
+	if policy == nil {
+		return
+	}
+
+	if policy.LoadBalancerStrategy == "" {
+		policy.LoadBalancerStrategy = defaultRetryPolicy.LoadBalancerStrategy
+	}
+
+	// The weighted load balancer strategy is deprecated. Use the failover strategy instead.
+	if policy.LoadBalancerStrategy == "weighted" {
+		policy.LoadBalancerStrategy = LoadBalancerStrategyFailover
+	}
+
+	if policy.AutoDisableChannel.Statuses == nil {
+		policy.AutoDisableChannel.Statuses = []AutoDisableChannelStatus{}
+	}
+}
+
+func normalizeWebhookNotifierConfig(cfg *WebhookNotifierConfig) {
+	if cfg == nil {
+		return
+	}
+
+	if cfg.Targets == nil {
+		cfg.Targets = []WebhookTarget{}
+	}
+
+	if cfg.Subscriptions == nil {
+		cfg.Subscriptions = []WebhookSubscription{}
+	}
+}
+
+func (s *SystemService) WebhookNotifierConfig(ctx context.Context) (*WebhookNotifierConfig, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyWebhookNotifierConfig)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			cfg := WebhookNotifierConfig{}
+			normalizeWebhookNotifierConfig(&cfg)
+
+			return &cfg, nil
+		}
+
+		return nil, fmt.Errorf("failed to get webhook notifier config: %w", err)
+	}
+
+	var cfg WebhookNotifierConfig
+	if err := json.Unmarshal([]byte(value), &cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal webhook notifier config: %w", err)
+	}
+
+	normalizeWebhookNotifierConfig(&cfg)
+
+	return &cfg, nil
+}
+
+func (s *SystemService) WebhookNotifierConfigOrDefault(ctx context.Context) *WebhookNotifierConfig {
+	cfg, err := s.WebhookNotifierConfig(ctx)
+	if err != nil {
+		log.Error(ctx, "failed to get webhook notifier config", log.Cause(err))
+
+		defaultCfg := WebhookNotifierConfig{}
+		normalizeWebhookNotifierConfig(&defaultCfg)
+
+		return &defaultCfg
+	}
+
+	return cfg
+}
+
+func (s *SystemService) SetWebhookNotifierConfig(ctx context.Context, cfg *WebhookNotifierConfig) error {
+	normalizeWebhookNotifierConfig(cfg)
+
+	jsonBytes, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal webhook notifier config: %w", err)
+	}
+
+	return s.setSystemValue(ctx, SystemKeyWebhookNotifierConfig, string(jsonBytes))
 }
 
 // ModelSettings retrieves the model settings configuration.

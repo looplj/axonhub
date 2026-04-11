@@ -91,6 +91,35 @@ const UPDATE_RETRY_POLICY_MUTATION = `
   }
 `;
 
+const WEBHOOK_NOTIFIER_CONFIG_QUERY = `
+  query WebhookNotifierConfig {
+    webhookNotifierConfig {
+      targets {
+        name
+        enabled
+        url
+        method
+        timeoutMs
+        headers {
+          key
+          value
+        }
+        body
+      }
+      subscriptions {
+        event
+        targetNames
+      }
+    }
+  }
+`;
+
+const UPDATE_WEBHOOK_NOTIFIER_CONFIG_MUTATION = `
+  mutation UpdateWebhookNotifierConfig($input: WebhookNotifierConfigInput!) {
+    updateWebhookNotifierConfig(input: $input)
+  }
+`;
+
 const DEFAULT_DATA_STORAGE_QUERY = `
   query DefaultDataStorageID {
     defaultDataStorageID
@@ -208,6 +237,31 @@ export interface CleanupOptionInput {
 export interface AutoDisableChannelStatus {
   status: number;
   times: number;
+}
+
+export interface WebhookHeader {
+  key: string;
+  value: string;
+}
+
+export interface WebhookTarget {
+  name: string;
+  enabled: boolean;
+  url: string;
+  method: string;
+  timeoutMs: number;
+  headers: WebhookHeader[];
+  body: string;
+}
+
+export interface WebhookSubscription {
+  event: string;
+  targetNames: string[];
+}
+
+export interface WebhookNotifierConfig {
+  targets: WebhookTarget[];
+  subscriptions: WebhookSubscription[];
 }
 
 export interface AutoDisableChannel {
@@ -405,6 +459,41 @@ export function useUpdateRetryPolicy() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['retryPolicy'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+export function useWebhookNotifierConfig() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['webhookNotifierConfig'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ webhookNotifierConfig: WebhookNotifierConfig }>(WEBHOOK_NOTIFIER_CONFIG_QUERY);
+        return data.webhookNotifierConfig;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateWebhookNotifierConfig() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: WebhookNotifierConfig) => {
+      const data = await graphqlRequest<{ updateWebhookNotifierConfig: boolean }>(UPDATE_WEBHOOK_NOTIFIER_CONFIG_MUTATION, { input });
+      return data.updateWebhookNotifierConfig;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhookNotifierConfig'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: () => {

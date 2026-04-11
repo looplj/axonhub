@@ -10,11 +10,11 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 )
 
-func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, responseStatusCode int) {
+func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID int, responseStatusCode int, threshold int, actualCount int) {
 	ctx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	_, err := svc.db.Channel.UpdateOneID(channelID).
+	updatedChannel, err := svc.db.Channel.UpdateOneID(channelID).
 		SetStatus(channel.StatusDisabled).
 		SetErrorMessage(deriveErrorMessage(responseStatusCode)).
 		Save(ctx)
@@ -32,6 +32,20 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 		log.Int("channel_id", channelID),
 		log.Int("error_code", responseStatusCode),
 	)
+
+	notifyCtx := context.WithoutCancel(ctx)
+	go svc.WebhookNotifier.NotifyChannelAutoDisabled(notifyCtx, ChannelAutoDisabledEvent{
+		ChannelID:       updatedChannel.ID,
+		ChannelName:     updatedChannel.Name,
+		ChannelProvider: updatedChannel.Type.String(),
+		ChannelBaseURL:  updatedChannel.BaseURL,
+		ChannelStatus:   updatedChannel.Status.String(),
+		StatusCode:      responseStatusCode,
+		Threshold:       threshold,
+		ActualCount:     actualCount,
+		Reason:          deriveErrorMessage(responseStatusCode),
+		OccurredAt:      time.Now(),
+	})
 
 	// Reload channels to reflect the change in load balancer
 	svc.asyncReloadChannels()
@@ -55,7 +69,7 @@ func (svc *ChannelService) checkAndHandleChannelError(ctx context.Context, perf 
 		svc.channelErrorCountsLock.Unlock()
 
 		if count >= statusConfig.Times {
-			svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ResponseStatusCode)
+			svc.markChannelUnavailable(ctx, perf.ChannelID, perf.ResponseStatusCode, statusConfig.Times, count)
 			svc.channelErrorCountsLock.Lock()
 			delete(svc.channelErrorCounts, perf.ChannelID)
 			svc.channelErrorCountsLock.Unlock()

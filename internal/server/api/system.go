@@ -2,8 +2,10 @@ package api
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -63,6 +65,14 @@ type InitializeSystemResponse struct {
 	Message string `json:"message"`
 }
 
+type WebhookDebugResponse struct {
+	Method  string              `json:"method"`
+	Path    string              `json:"path"`
+	Query   map[string][]string `json:"query"`
+	Headers map[string][]string `json:"headers"`
+	Body    json.RawMessage     `json:"body"`
+}
+
 // GetSystemStatus returns the system initialization status.
 func (h *SystemHandlers) GetSystemStatus(c *gin.Context) {
 	isInitialized, err := h.SystemService.IsInitialized(c.Request.Context())
@@ -87,6 +97,35 @@ func (h *SystemHandlers) Health(c *gin.Context) {
 		Build:     buildInfo,
 		Uptime:    buildInfo.Uptime,
 	})
+}
+
+// WebhookEcho echos inbound webhook requests for validation.
+func (h *SystemHandlers) WebhookEcho(c *gin.Context) {
+	bodyBytes, err := io.ReadAll(io.LimitReader(c.Request.Body, 1<<20))
+	if err != nil {
+		JSONError(c, http.StatusBadRequest, errors.New("failed to read request body"))
+		return
+	}
+
+	resp := WebhookDebugResponse{
+		Method:  c.Request.Method,
+		Path:    c.Request.URL.Path,
+		Query:   c.Request.URL.Query(),
+		Headers: c.Request.Header,
+		Body:    json.RawMessage(bodyBytes),
+	}
+
+	log.Info(c.Request.Context(), "received webhook debug request",
+		log.String("method", resp.Method),
+		log.String("path", resp.Path),
+		log.Any("query", resp.Query),
+		log.Any("headers", resp.Headers),
+		log.Any("body", resp.Body),
+	)
+
+	c.Header("Content-Type", "application/json")
+	c.Status(http.StatusOK)
+	_ = json.NewEncoder(c.Writer).Encode(resp)
 }
 
 // InitializeSystem initializes the system with owner credentials.

@@ -8,6 +8,7 @@ import (
 
 var Module = fx.Module("biz",
 	fx.Provide(NewSystemService),
+	fx.Provide(NewWebhookNotifier),
 	fx.Provide(NewAuthService),
 	fx.Provide(NewChannelService),
 	fx.Provide(NewRequestService),

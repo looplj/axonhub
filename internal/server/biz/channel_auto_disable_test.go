@@ -29,6 +29,7 @@ func newTestChannelService(client *ent.Client) *ChannelService {
 			db: client,
 		},
 		SystemService:      mockSysSvc,
+		WebhookNotifier:    NewWebhookNotifier(mockSysSvc),
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
@@ -88,10 +89,10 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 				},
 			},
 			perf: &PerformanceRecord{
-				ChannelID:       ch.ID,
-				APIKey:          "key1",
+				ChannelID:          ch.ID,
+				APIKey:             "key1",
 				ResponseStatusCode: 401,
-				Success:         false,
+				Success:            false,
 			},
 			expectedDisabled: false,
 			setupFunc: func() {
@@ -109,10 +110,10 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 				},
 			},
 			perf: &PerformanceRecord{
-				ChannelID:       ch.ID,
-				APIKey:          "key1",
+				ChannelID:          ch.ID,
+				APIKey:             "key1",
 				ResponseStatusCode: 401,
-				Success:         false,
+				Success:            false,
 			},
 			expectedDisabled: false,
 			setupFunc: func() {
@@ -132,10 +133,10 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 				},
 			},
 			perf: &PerformanceRecord{
-				ChannelID:       ch.ID,
-				APIKey:          "key1",
+				ChannelID:          ch.ID,
+				APIKey:             "key1",
 				ResponseStatusCode: 401,
-				Success:         false,
+				Success:            false,
 			},
 			expectedDisabled: true,
 			setupFunc: func() {
@@ -163,10 +164,10 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 				},
 			},
 			perf: &PerformanceRecord{
-				ChannelID:       ch.ID,
-				APIKey:          "key1",
+				ChannelID:          ch.ID,
+				APIKey:             "key1",
 				ResponseStatusCode: 500,
-				Success:         false,
+				Success:            false,
 			},
 			expectedDisabled: false,
 			setupFunc: func() {
@@ -186,10 +187,10 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 				},
 			},
 			perf: &PerformanceRecord{
-				ChannelID:       ch.ID,
-				APIKey:          "key2",
+				ChannelID:          ch.ID,
+				APIKey:             "key2",
 				ResponseStatusCode: 401,
-				Success:         false,
+				Success:            false,
 			},
 			expectedDisabled: false,
 			setupFunc: func() {
@@ -257,9 +258,9 @@ func TestChannelService_checkAndHandleChannelError(t *testing.T) {
 				},
 			},
 			perf: &PerformanceRecord{
-				ChannelID:       ch.ID,
+				ChannelID:          ch.ID,
 				ResponseStatusCode: 401,
-				Success:         false,
+				Success:            false,
 			},
 			expectedDisabled: false,
 			setupFunc: func() {
@@ -283,9 +284,9 @@ func TestChannelService_checkAndHandleChannelError(t *testing.T) {
 				},
 			},
 			perf: &PerformanceRecord{
-				ChannelID:       ch.ID,
+				ChannelID:          ch.ID,
 				ResponseStatusCode: 401,
-				Success:         false,
+				Success:            false,
 			},
 			expectedDisabled: true,
 			setupFunc: func() {
@@ -440,10 +441,10 @@ func TestChannelService_MultipleStatusCodes(t *testing.T) {
 	}
 
 	perf401 := &PerformanceRecord{
-		ChannelID:       ch.ID,
-		APIKey:          "key1",
+		ChannelID:          ch.ID,
+		APIKey:             "key1",
 		ResponseStatusCode: 401,
-		Success:         false,
+		Success:            false,
 	}
 
 	result := svc.checkAndHandleAPIKeyError(ctx, perf401, policy)
@@ -459,10 +460,10 @@ func TestChannelService_MultipleStatusCodes(t *testing.T) {
 
 	// Test 403 - needs only 1 time
 	perf403 := &PerformanceRecord{
-		ChannelID:       ch.ID,
-		APIKey:          "key2",
+		ChannelID:          ch.ID,
+		APIKey:             "key2",
 		ResponseStatusCode: 403,
-		Success:         false,
+		Success:            false,
 	}
 
 	result = svc.checkAndHandleAPIKeyError(ctx, perf403, policy)
@@ -508,10 +509,10 @@ func TestChannelService_ConcurrentErrorTracking(t *testing.T) {
 			defer wg.Done()
 
 			perf := &PerformanceRecord{
-				ChannelID:       ch.ID,
-				APIKey:          "key1",
+				ChannelID:          ch.ID,
+				APIKey:             "key1",
 				ResponseStatusCode: 401,
-				Success:         false,
+				Success:            false,
 			}
 			svc.checkAndHandleAPIKeyError(ctx, perf, policy)
 		}(i)
