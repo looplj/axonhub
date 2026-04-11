@@ -74,6 +74,46 @@ type AutoDisableAPIKey {
   statuses: [AutoDisableAPIKeyStatus!]!
 }
 
+type WebhookTarget {
+  name: String!
+  enabled: Boolean!
+  url: String!
+  method: String!
+  timeoutMs: Int!
+  headers: [HeaderEntry!]!
+  body: String!
+}
+
+input WebhookTargetInput {
+  name: String!
+  enabled: Boolean!
+  url: String!
+  method: String!
+  timeoutMs: Int!
+  headers: [HeaderEntryInput!]
+  body: String!
+}
+
+type WebhookSubscription {
+  event: String!
+  targetNames: [String!]!
+}
+
+input WebhookSubscriptionInput {
+  event: String!
+  targetNames: [String!]!
+}
+
+type WebhookNotifierConfig {
+  targets: [WebhookTarget!]!
+  subscriptions: [WebhookSubscription!]!
+}
+
+input WebhookNotifierConfigInput {
+  targets: [WebhookTargetInput!]
+  subscriptions: [WebhookSubscriptionInput!]
+}
+
 type RetryPolicy {
   maxChannelRetries: Int!
   maxSingleChannelRetries: Int!
@@ -238,6 +278,7 @@ extend type Mutation {
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
   updateRetryPolicy(input: UpdateRetryPolicyInput!): Boolean!
+  updateWebhookNotifierConfig(input: WebhookNotifierConfigInput!): Boolean!
   updateSystemModelSettings(input: UpdateSystemModelSettingsInput!): Boolean!
   updateDefaultDataStorage(input: UpdateDefaultDataStorageInput!): Boolean!
   completeOnboarding(input: CompleteOnboardingInput!): Boolean!
@@ -274,6 +315,7 @@ extend type Query {
   brandSettings: BrandSettings!
   storagePolicy: StoragePolicy!
   retryPolicy: RetryPolicy!
+  webhookNotifierConfig: WebhookNotifierConfig!
   systemModelSettings: SystemModelSettings!
   defaultDataStorageID: ID
   onboardingInfo: OnboardingInfo
