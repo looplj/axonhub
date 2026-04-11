@@ -411,8 +411,8 @@ func TestChannel_ChooseModel_AutoTrimedModelPrefixes(t *testing.T) {
 				},
 			},
 			inputModel:    "deepseek-ai/DeepSeek-V3.2",
-			expectedModel: "",
-			expectError:   true,
+			expectedModel: "DeepSeek-V3.2",
+			expectError:   false,
 		},
 		{
 			name: "request trimmed, channel supports prefixed",

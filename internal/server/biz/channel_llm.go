@@ -857,14 +857,37 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 			continue
 		}
 
-		prefix += "/"
+		fullPrefix := prefix + "/"
+
+		// Determine if any supported model already carries this prefix.
+		// When true: forward direction (trim prefix from model names).
+		// When false: reverse direction (add prefix to model names).
+		hasPrefix := false
 		for _, model := range ch.SupportedModels {
-			// Only process models that have the prefix
-			if after, ok := strings.CutPrefix(model, prefix); ok {
-				trimmedModel := after
-				if _, exists := entries[trimmedModel]; !exists {
-					entries[trimmedModel] = ChannelModelEntry{
-						RequestModel: trimmedModel,
+			if strings.HasPrefix(model, fullPrefix) {
+				hasPrefix = true
+				break
+			}
+		}
+
+		for _, model := range ch.SupportedModels {
+			if hasPrefix {
+				// Forward: model has the prefix, expose trimmed version
+				if after, ok := strings.CutPrefix(model, fullPrefix); ok {
+					if _, exists := entries[after]; !exists {
+						entries[after] = ChannelModelEntry{
+							RequestModel: after,
+							ActualModel:  model,
+							Source:       "auto_trim",
+						}
+					}
+				}
+			} else {
+				// Reverse: no models carry the prefix, expose prefixed version
+				prefixedModel := fullPrefix + model
+				if _, exists := entries[prefixedModel]; !exists {
+					entries[prefixedModel] = ChannelModelEntry{
+						RequestModel: prefixedModel,
 						ActualModel:  model,
 						Source:       "auto_trim",
 					}
