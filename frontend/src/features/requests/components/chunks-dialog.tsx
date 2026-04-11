@@ -109,7 +109,7 @@ export function ChunksDialog({ open, onOpenChange, chunks, title, isLive }: Chun
         setPageInputValue('1');
       }
     }
-  }, [open, chunks.length]);
+  }, [open, chunks.length, isLive, pageSize, chunksPage, totalChunksPages]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
