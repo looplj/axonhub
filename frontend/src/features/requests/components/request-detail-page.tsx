@@ -582,10 +582,7 @@ export default function RequestDetailPage() {
                           variant='outline'
                           size='sm'
                           onClick={showResponseChunksModal}
-                          disabled={
-                            !(request?.stream && request?.status === 'processing') &&
-                            !hasResponseChunks
-                          }
+                          disabled={!hasResponseChunks}
                           className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
                         >
                           <Layers className='mr-2 h-4 w-4' />
