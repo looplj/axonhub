@@ -14,7 +14,7 @@
   "system.storage.policy.title": "存储策略",
   "system.storage.policy.description": "配置存储策略和数据清理设置以管理数据保留和存储效率",
   "system.storage.policy.storeChunks.label": "存储响应块",
-  "system.storage.policy.storeChunks.description": "启用后，系统将在数据库中存储响应数据块，便于后续分析和处理。这可以启用详细的请求跟踪和调试，但会增加存储使用量。",
+  "system.storage.policy.storeChunks.description": "启用后，系统将在数据库中存储响应数据块（Chunks）。开启此功能后，您可以在请求详情页面实时查看生成过程（实时预览），便于流式请求的调试和分析，但会增加存储使用量。",
   "system.storage.policy.storeRequestBody.label": "存储请求体",
   "system.storage.policy.storeRequestBody.description": "关闭后，将不保存原始请求体。启用此功能可进行完整的请求审计和调试。禁用可减少存储使用量并提高隐私性。",
   "system.storage.policy.storeResponseBody.label": "存储响应体",

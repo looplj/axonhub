@@ -14,7 +14,7 @@
   "system.storage.policy.title": "Storage Policy",
   "system.storage.policy.description": "Configure storage policies and data cleanup settings to manage data retention and storage efficiency",
   "system.storage.policy.storeChunks.label": "Store Response Chunks",
-  "system.storage.policy.storeChunks.description": "When enabled, the system will store response data chunks in the database for subsequent analysis and processing. This enables detailed request tracing and debugging but increases storage usage.",
+  "system.storage.policy.storeChunks.description": "When enabled, the system will store response data chunks (Chunks) in the database. Enabling this allows you to view the generation process in real-time on the request detail page (Real-time Preview), which is essential for debugging and analyzing streaming requests, though it increases storage usage.",
   "system.storage.policy.storeRequestBody.label": "Store Request Body",
   "system.storage.policy.storeRequestBody.description": "If disabled, original request body will not be persisted. Enable this for complete request auditing and debugging. Disabling reduces storage usage and improves privacy.",
   "system.storage.policy.storeResponseBody.label": "Store Response Body",
