@@ -50,12 +50,18 @@ type ModelAssociation struct {
 	Type             string                       `json:"type"`
 	Priority         int                          `json:"priority"` // Lower value = higher priority, default 0
 	Disabled         bool                         `json:"disabled"`
+	When             *ModelAssociationWhen        `json:"when,omitempty"`
 	ChannelModel     *ChannelModelAssociation     `json:"channelModel"`
 	ChannelRegex     *ChannelRegexAssociation     `json:"channelRegex"`
 	Regex            *RegexAssociation            `json:"regex"`
 	ModelID          *ModelIDAssociation          `json:"modelId"`
 	ChannelTagsModel *ChannelTagsModelAssociation `json:"channelTagsModel"`
 	ChannelTagsRegex *ChannelTagsRegexAssociation `json:"channelTagsRegex"`
+}
+
+type ModelAssociationWhen struct {
+	Enabled   bool       `json:"enabled"`
+	Condition *Condition `json:"condition,omitempty"`
 }
 
 type ExcludeAssociation struct {

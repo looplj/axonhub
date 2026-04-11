@@ -606,6 +606,15 @@ type ComplexityRoot struct {
 		Models func(childComplexity int) int
 	}
 
+	FilterCondition struct {
+		Conditions func(childComplexity int) int
+		Field      func(childComplexity int) int
+		Logic      func(childComplexity int) int
+		Operator   func(childComplexity int) int
+		Type       func(childComplexity int) int
+		Value      func(childComplexity int) int
+	}
+
 	GCPCredential struct {
 		JSONData  func(childComplexity int) int
 		ProjectID func(childComplexity int) int
@@ -660,6 +669,12 @@ type ComplexityRoot struct {
 		Priority         func(childComplexity int) int
 		Regex            func(childComplexity int) int
 		Type             func(childComplexity int) int
+		When             func(childComplexity int) int
+	}
+
+	ModelAssociationWhen struct {
+		Condition func(childComplexity int) int
+		Enabled   func(childComplexity int) int
 	}
 
 	ModelCard struct {
@@ -4010,6 +4025,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FetchModelsPayload.Models(childComplexity), true
 
+	case "FilterCondition.conditions":
+		if e.complexity.FilterCondition.Conditions == nil {
+			break
+		}
+
+		return e.complexity.FilterCondition.Conditions(childComplexity), true
+	case "FilterCondition.field":
+		if e.complexity.FilterCondition.Field == nil {
+			break
+		}
+
+		return e.complexity.FilterCondition.Field(childComplexity), true
+	case "FilterCondition.logic":
+		if e.complexity.FilterCondition.Logic == nil {
+			break
+		}
+
+		return e.complexity.FilterCondition.Logic(childComplexity), true
+	case "FilterCondition.operator":
+		if e.complexity.FilterCondition.Operator == nil {
+			break
+		}
+
+		return e.complexity.FilterCondition.Operator(childComplexity), true
+	case "FilterCondition.type":
+		if e.complexity.FilterCondition.Type == nil {
+			break
+		}
+
+		return e.complexity.FilterCondition.Type(childComplexity), true
+	case "FilterCondition.value":
+		if e.complexity.FilterCondition.Value == nil {
+			break
+		}
+
+		return e.complexity.FilterCondition.Value(childComplexity), true
+
 	case "GCPCredential.jsonData":
 		if e.complexity.GCPCredential.JSONData == nil {
 			break
@@ -4226,6 +4278,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelAssociation.Type(childComplexity), true
+	case "ModelAssociation.when":
+		if e.complexity.ModelAssociation.When == nil {
+			break
+		}
+
+		return e.complexity.ModelAssociation.When(childComplexity), true
+
+	case "ModelAssociationWhen.condition":
+		if e.complexity.ModelAssociationWhen.Condition == nil {
+			break
+		}
+
+		return e.complexity.ModelAssociationWhen.Condition(childComplexity), true
+	case "ModelAssociationWhen.enabled":
+		if e.complexity.ModelAssociationWhen.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ModelAssociationWhen.Enabled(childComplexity), true
 
 	case "ModelCard.cost":
 		if e.complexity.ModelCard.Cost == nil {
@@ -9476,12 +9547,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExcludeAssociationInput,
 		ec.unmarshalInputFastestChannelsInput,
 		ec.unmarshalInputFetchModelsInput,
+		ec.unmarshalInputFilterConditionInput,
 		ec.unmarshalInputGCPCredentialInput,
 		ec.unmarshalInputGCSInput,
 		ec.unmarshalInputGetChannelProbeDataInput,
 		ec.unmarshalInputHeaderEntryInput,
 		ec.unmarshalInputInitializeSystemInput,
 		ec.unmarshalInputModelAssociationInput,
+		ec.unmarshalInputModelAssociationWhenInput,
 		ec.unmarshalInputModelCardCostInput,
 		ec.unmarshalInputModelCardInput,
 		ec.unmarshalInputModelCardLimitInput,
@@ -9679,7 +9752,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "axonhub.graphql" "ent.graphql" "dashboard.graphql" "scopes.graphql" "me.graphql" "system.graphql" "model.graphql" "backup.graphql" "channel_probe.graphql" "prompt.graphql" "prompt_protection_rule.graphql" "price.graphql" "cost.graphql"
+//go:embed "axonhub.graphql" "ent.graphql" "dashboard.graphql" "scopes.graphql" "me.graphql" "system.graphql" "filter.graphql" "model.graphql" "backup.graphql" "channel_probe.graphql" "prompt.graphql" "prompt_protection_rule.graphql" "price.graphql" "cost.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -9697,6 +9770,7 @@ var sources = []*ast.Source{
 	{Name: "scopes.graphql", Input: sourceData("scopes.graphql"), BuiltIn: false},
 	{Name: "me.graphql", Input: sourceData("me.graphql"), BuiltIn: false},
 	{Name: "system.graphql", Input: sourceData("system.graphql"), BuiltIn: false},
+	{Name: "filter.graphql", Input: sourceData("filter.graphql"), BuiltIn: false},
 	{Name: "model.graphql", Input: sourceData("model.graphql"), BuiltIn: false},
 	{Name: "backup.graphql", Input: sourceData("backup.graphql"), BuiltIn: false},
 	{Name: "channel_probe.graphql", Input: sourceData("channel_probe.graphql"), BuiltIn: false},
@@ -22555,6 +22629,194 @@ func (ec *executionContext) fieldContext_FetchModelsPayload_error(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _FilterCondition_type(ctx context.Context, field graphql.CollectedField, obj *objects.Condition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FilterCondition_type,
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		ec.marshalNFilterConditionType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐConditionType,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FilterCondition_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FilterCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type FilterConditionType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FilterCondition_logic(ctx context.Context, field graphql.CollectedField, obj *objects.Condition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FilterCondition_logic,
+		func(ctx context.Context) (any, error) {
+			return obj.Logic, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_FilterCondition_logic(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FilterCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FilterCondition_conditions(ctx context.Context, field graphql.CollectedField, obj *objects.Condition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FilterCondition_conditions,
+		func(ctx context.Context) (any, error) {
+			return obj.Conditions, nil
+		},
+		nil,
+		ec.marshalOFilterCondition2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐConditionᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_FilterCondition_conditions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FilterCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "type":
+				return ec.fieldContext_FilterCondition_type(ctx, field)
+			case "logic":
+				return ec.fieldContext_FilterCondition_logic(ctx, field)
+			case "conditions":
+				return ec.fieldContext_FilterCondition_conditions(ctx, field)
+			case "field":
+				return ec.fieldContext_FilterCondition_field(ctx, field)
+			case "operator":
+				return ec.fieldContext_FilterCondition_operator(ctx, field)
+			case "value":
+				return ec.fieldContext_FilterCondition_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FilterCondition", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FilterCondition_field(ctx context.Context, field graphql.CollectedField, obj *objects.Condition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FilterCondition_field,
+		func(ctx context.Context) (any, error) {
+			return obj.Field, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_FilterCondition_field(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FilterCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FilterCondition_operator(ctx context.Context, field graphql.CollectedField, obj *objects.Condition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FilterCondition_operator,
+		func(ctx context.Context) (any, error) {
+			return obj.Operator, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_FilterCondition_operator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FilterCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FilterCondition_value(ctx context.Context, field graphql.CollectedField, obj *objects.Condition) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FilterCondition_value,
+		func(ctx context.Context) (any, error) {
+			return obj.Value, nil
+		},
+		nil,
+		ec.marshalOAny2interface,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_FilterCondition_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FilterCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Any does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GCPCredential_region(ctx context.Context, field graphql.CollectedField, obj *objects.GCPCredential) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23458,6 +23720,41 @@ func (ec *executionContext) fieldContext_ModelAssociation_disabled(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelAssociation_when(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAssociation_when,
+		func(ctx context.Context) (any, error) {
+			return obj.When, nil
+		},
+		nil,
+		ec.marshalOModelAssociationWhen2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAssociationWhen,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAssociation_when(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAssociation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_ModelAssociationWhen_enabled(ctx, field)
+			case "condition":
+				return ec.fieldContext_ModelAssociationWhen_condition(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelAssociationWhen", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelAssociation_channelModel(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23663,6 +23960,78 @@ func (ec *executionContext) fieldContext_ModelAssociation_channelTagsRegex(_ con
 				return ec.fieldContext_ChannelTagsRegexAssociation_pattern(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelTagsRegexAssociation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelAssociationWhen_enabled(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociationWhen) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAssociationWhen_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAssociationWhen_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAssociationWhen",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelAssociationWhen_condition(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociationWhen) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAssociationWhen_condition,
+		func(ctx context.Context) (any, error) {
+			return obj.Condition, nil
+		},
+		nil,
+		ec.marshalOFilterCondition2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCondition,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAssociationWhen_condition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAssociationWhen",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "type":
+				return ec.fieldContext_FilterCondition_type(ctx, field)
+			case "logic":
+				return ec.fieldContext_FilterCondition_logic(ctx, field)
+			case "conditions":
+				return ec.fieldContext_FilterCondition_conditions(ctx, field)
+			case "field":
+				return ec.fieldContext_FilterCondition_field(ctx, field)
+			case "operator":
+				return ec.fieldContext_FilterCondition_operator(ctx, field)
+			case "value":
+				return ec.fieldContext_FilterCondition_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FilterCondition", field.Name)
 		},
 	}
 	return fc, nil
@@ -25144,6 +25513,8 @@ func (ec *executionContext) fieldContext_ModelSettings_associations(_ context.Co
 				return ec.fieldContext_ModelAssociation_priority(ctx, field)
 			case "disabled":
 				return ec.fieldContext_ModelAssociation_disabled(ctx, field)
+			case "when":
+				return ec.fieldContext_ModelAssociation_when(ctx, field)
 			case "channelModel":
 				return ec.fieldContext_ModelAssociation_channelModel(ctx, field)
 			case "channelRegex":
@@ -59177,6 +59548,68 @@ func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputFilterConditionInput(ctx context.Context, obj any) (objects.Condition, error) {
+	var it objects.Condition
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"type", "logic", "conditions", "field", "operator", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNFilterConditionType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐConditionType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "logic":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logic"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Logic = data
+		case "conditions":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("conditions"))
+			data, err := ec.unmarshalOFilterConditionInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐConditionᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Conditions = data
+		case "field":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("field"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Field = data
+		case "operator":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("operator"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Operator = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalOAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGCPCredentialInput(ctx context.Context, obj any) (objects.GCPCredential, error) {
 	var it objects.GCPCredential
 	asMap := map[string]any{}
@@ -59379,7 +59812,7 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "priority", "disabled", "channelModel", "channelRegex", "regex", "modelId", "channelTagsModel", "channelTagsRegex"}
+	fieldsInOrder := [...]string{"type", "priority", "disabled", "when", "channelModel", "channelRegex", "regex", "modelId", "channelTagsModel", "channelTagsRegex"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59407,6 +59840,13 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 				return it, err
 			}
 			it.Disabled = data
+		case "when":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("when"))
+			data, err := ec.unmarshalOModelAssociationWhenInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAssociationWhen(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.When = data
 		case "channelModel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelModel"))
 			data, err := ec.unmarshalOChannelModelAssociationInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelModelAssociation(ctx, v)
@@ -59449,6 +59889,40 @@ func (ec *executionContext) unmarshalInputModelAssociationInput(ctx context.Cont
 				return it, err
 			}
 			it.ChannelTagsRegex = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputModelAssociationWhenInput(ctx context.Context, obj any) (objects.ModelAssociationWhen, error) {
+	var it objects.ModelAssociationWhen
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "condition"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "condition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("condition"))
+			data, err := ec.unmarshalOFilterConditionInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCondition(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Condition = data
 		}
 	}
 
@@ -79443,6 +79917,55 @@ func (ec *executionContext) _FetchModelsPayload(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var filterConditionImplementors = []string{"FilterCondition"}
+
+func (ec *executionContext) _FilterCondition(ctx context.Context, sel ast.SelectionSet, obj *objects.Condition) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, filterConditionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FilterCondition")
+		case "type":
+			out.Values[i] = ec._FilterCondition_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "logic":
+			out.Values[i] = ec._FilterCondition_logic(ctx, field, obj)
+		case "conditions":
+			out.Values[i] = ec._FilterCondition_conditions(ctx, field, obj)
+		case "field":
+			out.Values[i] = ec._FilterCondition_field(ctx, field, obj)
+		case "operator":
+			out.Values[i] = ec._FilterCondition_operator(ctx, field, obj)
+		case "value":
+			out.Values[i] = ec._FilterCondition_value(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var gCPCredentialImplementors = []string{"GCPCredential"}
 
 func (ec *executionContext) _GCPCredential(ctx context.Context, sel ast.SelectionSet, obj *objects.GCPCredential) graphql.Marshaler {
@@ -79856,6 +80379,8 @@ func (ec *executionContext) _ModelAssociation(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "when":
+			out.Values[i] = ec._ModelAssociation_when(ctx, field, obj)
 		case "channelModel":
 			out.Values[i] = ec._ModelAssociation_channelModel(ctx, field, obj)
 		case "channelRegex":
@@ -79868,6 +80393,47 @@ func (ec *executionContext) _ModelAssociation(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._ModelAssociation_channelTagsModel(ctx, field, obj)
 		case "channelTagsRegex":
 			out.Values[i] = ec._ModelAssociation_channelTagsRegex(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelAssociationWhenImplementors = []string{"ModelAssociationWhen"}
+
+func (ec *executionContext) _ModelAssociationWhen(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelAssociationWhen) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelAssociationWhenImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelAssociationWhen")
+		case "enabled":
+			out.Values[i] = ec._ModelAssociationWhen_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "condition":
+			out.Values[i] = ec._ModelAssociationWhen_condition(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -93627,6 +94193,32 @@ func (ec *executionContext) marshalNFetchModelsPayload2ᚖgithubᚗcomᚋlooplj�
 	return ec._FetchModelsPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNFilterCondition2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCondition(ctx context.Context, sel ast.SelectionSet, v objects.Condition) graphql.Marshaler {
+	return ec._FilterCondition(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNFilterConditionInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCondition(ctx context.Context, v any) (objects.Condition, error) {
+	res, err := ec.unmarshalInputFilterConditionInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNFilterConditionType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐConditionType(ctx context.Context, v any) (objects.ConditionType, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.ConditionType(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFilterConditionType2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐConditionType(ctx context.Context, sel ast.SelectionSet, v objects.ConditionType) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -97563,6 +98155,24 @@ func (ec *executionContext) unmarshalOAPIKeyWhereInput2ᚖgithubᚗcomᚋlooplj�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalOAny2interface(ctx context.Context, v any) (any, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalAny(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAny2interface(ctx context.Context, sel ast.SelectionSet, v any) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalAny(v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOAutoDisableChannelInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐAutoDisableChannel(ctx context.Context, v any) (biz.AutoDisableChannel, error) {
 	res, err := ec.unmarshalInputAutoDisableChannelInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -99046,6 +99656,86 @@ func (ec *executionContext) unmarshalOExcludeAssociationInput2ᚕᚖgithubᚗcom
 	return res, nil
 }
 
+func (ec *executionContext) marshalOFilterCondition2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐConditionᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.Condition) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFilterCondition2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCondition(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOFilterCondition2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCondition(ctx context.Context, sel ast.SelectionSet, v *objects.Condition) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FilterCondition(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOFilterConditionInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐConditionᚄ(ctx context.Context, v any) ([]objects.Condition, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.Condition, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNFilterConditionInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCondition(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOFilterConditionInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCondition(ctx context.Context, v any) (*objects.Condition, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputFilterConditionInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -99451,6 +100141,21 @@ func (ec *executionContext) marshalOModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋi
 		return graphql.Null
 	}
 	return ec._Model(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOModelAssociationWhen2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAssociationWhen(ctx context.Context, sel ast.SelectionSet, v *objects.ModelAssociationWhen) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ModelAssociationWhen(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOModelAssociationWhenInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAssociationWhen(ctx context.Context, v any) (*objects.ModelAssociationWhen, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputModelAssociationWhenInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOModelCardCostInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardCost(ctx context.Context, v any) (objects.ModelCardCost, error) {
