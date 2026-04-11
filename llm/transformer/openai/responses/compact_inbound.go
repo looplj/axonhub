@@ -24,10 +24,6 @@ func NewCompactInboundTransformer() *CompactInboundTransformer {
 	return &CompactInboundTransformer{}
 }
 
-func (t *CompactInboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatOpenAIResponseCompact
-}
-
 // TransformRequest transforms HTTP compact request to llm.Request.
 func (t *CompactInboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {

@@ -185,12 +185,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
-	if payload.PromptCacheKey == nil {
+	if lo.FromPtr(payload.PromptCacheKey) == "" {
 		if sessionID, ok := shared.GetSessionID(ctx); ok {
-			sessionID = strings.TrimSpace(sessionID)
-			if sessionID != "" {
-				payload.PromptCacheKey = lo.ToPtr(sessionID)
-			}
+			payload.PromptCacheKey = lo.ToPtr(sessionID)
 		}
 	}
 

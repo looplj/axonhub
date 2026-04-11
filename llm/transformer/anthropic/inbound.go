@@ -22,10 +22,6 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
-func (t *InboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatAnthropicMessage
-}
-
 // TransformRequest transforms Anthropic HTTP request to ChatCompletionRequest.
 //
 //nolint:maintidx

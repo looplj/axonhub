@@ -19,10 +19,6 @@ func NewEmbeddingInboundTransformer() *EmbeddingInboundTransformer {
 	return &EmbeddingInboundTransformer{}
 }
 
-func (t *EmbeddingInboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatJinaEmbedding
-}
-
 func (t *EmbeddingInboundTransformer) TransformRequest(
 	ctx context.Context,
 	httpReq *httpclient.Request,

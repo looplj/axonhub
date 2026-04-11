@@ -25,11 +25,6 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
-// APIFormat returns the API format of the transformer.
-func (t *InboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatGeminiContents
-}
-
 // extractRequestParams extracts the model and stream flag from the request URL.
 func extractRequestParams(httpReq *httpclient.Request) (string, bool, error) {
 	urlParts := strings.Split(httpReq.Path, "/")

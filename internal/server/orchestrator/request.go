@@ -39,7 +39,7 @@ func (m *persistRequestMiddleware) OnInboundLlmRequest(ctx context.Context, llmR
 		ctx,
 		llmRequest,
 		m.inbound.state.RawRequest,
-		m.inbound.APIFormat(),
+		llmRequest.APIFormat,
 	)
 	if err != nil {
 		return nil, err

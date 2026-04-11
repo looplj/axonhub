@@ -562,9 +562,6 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 }
 
 func TestEmbeddingTransformers_APIFormat(t *testing.T) {
-	inbound := NewEmbeddingInboundTransformer()
-	require.Equal(t, llm.APIFormatOpenAIEmbedding, inbound.APIFormat())
-
 	config := &Config{
 		PlatformType:   PlatformOpenAI,
 		BaseURL:        "https://api.openai.com/v1",
