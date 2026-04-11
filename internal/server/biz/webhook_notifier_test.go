@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func newTestSystemServiceWithWebhookConfig(t *testing.T, client *ent.Client, cfg WebhookNotifierConfig) *SystemService {
@@ -62,7 +62,6 @@ func TestWebhookNotifier_NotifyChannelAutoDisabled(t *testing.T) {
 				Name:      "default",
 				Enabled:   true,
 				URL:       server.URL,
-				Method:    http.MethodPost,
 				TimeoutMs: 1000,
 				Headers: []objects.HeaderEntry{
 					{Key: "X-AxonHub-Event", Value: "{{.Event}}"},
@@ -76,7 +75,7 @@ func TestWebhookNotifier_NotifyChannelAutoDisabled(t *testing.T) {
 	}
 
 	systemService := newTestSystemServiceWithWebhookConfig(t, client, cfg)
-	notifier := NewWebhookNotifier(systemService)
+	notifier := NewWebhookNotifier(systemService, httpclient.NewHttpClient())
 
 	notifier.NotifyChannelAutoDisabled(context.Background(), ChannelAutoDisabledEvent{
 		ChannelID:       1,
@@ -127,7 +126,7 @@ func TestWebhookNotifier_SkipWhenTemplateInvalid(t *testing.T) {
 	}
 
 	systemService := newTestSystemServiceWithWebhookConfig(t, client, cfg)
-	notifier := NewWebhookNotifier(systemService)
+	notifier := NewWebhookNotifier(systemService, httpclient.NewHttpClient())
 	notifier.NotifyChannelAutoDisabled(context.Background(), ChannelAutoDisabledEvent{OccurredAt: time.Now()})
 
 	require.False(t, called)
@@ -163,16 +162,4 @@ func TestRenderWebhookTemplate_NoTemplate(t *testing.T) {
 	result, err := renderWebhookTemplate("plain text", WebhookRenderContext{})
 	require.NoError(t, err)
 	require.Equal(t, "plain text", result)
-}
-
-func TestWebhookNotifier_SendRejectsUnsupportedMethod(t *testing.T) {
-	notifier := &WebhookNotifier{httpClient: &http.Client{}}
-	err := notifier.send(context.Background(), WebhookTarget{
-		Name:   "default",
-		URL:    "https://example.com",
-		Method: http.MethodGet,
-	}, "{}", http.Header{})
-
-	require.Error(t, err)
-	require.True(t, strings.Contains(err.Error(), "unsupported webhook method"))
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 const (
@@ -215,7 +216,7 @@ type WebhookTarget struct {
 	Name      string                `json:"name"`
 	Enabled   bool                  `json:"enabled"`
 	URL       string                `json:"url"`
-	Method    string                `json:"method"`
+	Proxy     *httpclient.ProxyConfig `json:"proxy,omitempty"`
 	TimeoutMs int                   `json:"timeout_ms"`
 	Headers   []objects.HeaderEntry `json:"headers"`
 	Body      string                `json:"body"`

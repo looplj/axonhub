@@ -267,7 +267,6 @@ func TestSystemService_WebhookNotifierConfig(t *testing.T) {
 				Name:      "default",
 				Enabled:   true,
 				URL:       "https://example.com/webhook",
-				Method:    "POST",
 				TimeoutMs: 3000,
 				Headers:   []objects.HeaderEntry{{Key: "Content-Type", Value: "application/json"}},
 				Body:      `{"event":"{{.Event}}"}`,

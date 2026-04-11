@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func newTestChannelService(client *ent.Client) *ChannelService {
@@ -29,7 +30,7 @@ func newTestChannelService(client *ent.Client) *ChannelService {
 			db: client,
 		},
 		SystemService:      mockSysSvc,
-		WebhookNotifier:    NewWebhookNotifier(mockSysSvc),
+		WebhookNotifier:    NewWebhookNotifier(mockSysSvc, httpclient.NewHttpClient()),
 		channelPerfMetrics: make(map[int]*channelMetrics),
 		channelErrorCounts: make(map[int]map[int]int),
 		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),

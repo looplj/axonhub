@@ -1750,8 +1750,8 @@ type ComplexityRoot struct {
 		Body      func(childComplexity int) int
 		Enabled   func(childComplexity int) int
 		Headers   func(childComplexity int) int
-		Method    func(childComplexity int) int
 		Name      func(childComplexity int) int
+		Proxy     func(childComplexity int) int
 		TimeoutMs func(childComplexity int) int
 		URL       func(childComplexity int) int
 	}
@@ -9381,18 +9381,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.WebhookTarget.Headers(childComplexity), true
-	case "WebhookTarget.method":
-		if e.complexity.WebhookTarget.Method == nil {
-			break
-		}
-
-		return e.complexity.WebhookTarget.Method(childComplexity), true
 	case "WebhookTarget.name":
 		if e.complexity.WebhookTarget.Name == nil {
 			break
 		}
 
 		return e.complexity.WebhookTarget.Name(childComplexity), true
+	case "WebhookTarget.proxy":
+		if e.complexity.WebhookTarget.Proxy == nil {
+			break
+		}
+
+		return e.complexity.WebhookTarget.Proxy(childComplexity), true
 	case "WebhookTarget.timeoutMs":
 		if e.complexity.WebhookTarget.TimeoutMs == nil {
 			break
@@ -50020,8 +50020,8 @@ func (ec *executionContext) fieldContext_WebhookNotifierConfig_targets(_ context
 				return ec.fieldContext_WebhookTarget_enabled(ctx, field)
 			case "url":
 				return ec.fieldContext_WebhookTarget_url(ctx, field)
-			case "method":
-				return ec.fieldContext_WebhookTarget_method(ctx, field)
+			case "proxy":
+				return ec.fieldContext_WebhookTarget_proxy(ctx, field)
 			case "timeoutMs":
 				return ec.fieldContext_WebhookTarget_timeoutMs(ctx, field)
 			case "headers":
@@ -50215,30 +50215,40 @@ func (ec *executionContext) fieldContext_WebhookTarget_url(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _WebhookTarget_method(ctx context.Context, field graphql.CollectedField, obj *biz.WebhookTarget) (ret graphql.Marshaler) {
+func (ec *executionContext) _WebhookTarget_proxy(ctx context.Context, field graphql.CollectedField, obj *biz.WebhookTarget) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_WebhookTarget_method,
+		ec.fieldContext_WebhookTarget_proxy,
 		func(ctx context.Context) (any, error) {
-			return obj.Method, nil
+			return obj.Proxy, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOProxyConfig2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig,
 		true,
-		true,
+		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_WebhookTarget_method(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_WebhookTarget_proxy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "WebhookTarget",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "type":
+				return ec.fieldContext_ProxyConfig_type(ctx, field)
+			case "url":
+				return ec.fieldContext_ProxyConfig_url(ctx, field)
+			case "username":
+				return ec.fieldContext_ProxyConfig_username(ctx, field)
+			case "password":
+				return ec.fieldContext_ProxyConfig_password(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProxyConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -74466,7 +74476,7 @@ func (ec *executionContext) unmarshalInputWebhookTargetInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "enabled", "url", "method", "timeoutMs", "headers", "body"}
+	fieldsInOrder := [...]string{"name", "enabled", "url", "proxy", "timeoutMs", "headers", "body"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74494,13 +74504,13 @@ func (ec *executionContext) unmarshalInputWebhookTargetInput(ctx context.Context
 				return it, err
 			}
 			it.URL = data
-		case "method":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("method"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+		case "proxy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxy"))
+			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Method = data
+			it.Proxy = data
 		case "timeoutMs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeoutMs"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -91294,11 +91304,8 @@ func (ec *executionContext) _WebhookTarget(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "method":
-			out.Values[i] = ec._WebhookTarget_method(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+		case "proxy":
+			out.Values[i] = ec._WebhookTarget_proxy(ctx, field, obj)
 		case "timeoutMs":
 			out.Values[i] = ec._WebhookTarget_timeoutMs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
