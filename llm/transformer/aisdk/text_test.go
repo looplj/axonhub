@@ -151,6 +151,8 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
+				require.Equal(t, llm.RequestTypeChat, result.RequestType)
+				require.Equal(t, llm.APIFormatAiSDKText, result.APIFormat)
 
 				require.Equal(t, tt.expected.Model, result.Model)
 				require.Equal(t, len(tt.expected.Messages), len(result.Messages))

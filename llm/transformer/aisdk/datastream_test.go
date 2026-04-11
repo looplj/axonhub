@@ -129,6 +129,8 @@ func TestDataStreamTransformer_TransformRequest(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
+				require.Equal(t, llm.RequestTypeChat, result.RequestType)
+				require.Equal(t, llm.APIFormatAiSDKDataStream, result.APIFormat)
 				require.Equal(t, tt.expected.Model, result.Model)
 				require.Equal(t, len(tt.expected.Messages), len(result.Messages))
 
@@ -165,11 +167,6 @@ func TestDataStreamTransformer_TransformResponse(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "data stream protocol only supports streaming responses")
-}
-
-func TestDataStreamTransformer_APIFormat(t *testing.T) {
-	transformer := NewDataStreamTransformer()
-	require.Equal(t, llm.APIFormatAiSDKDataStream, transformer.APIFormat())
 }
 
 func TestSetDataStreamHeaders(t *testing.T) {

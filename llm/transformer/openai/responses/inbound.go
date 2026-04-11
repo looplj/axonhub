@@ -29,10 +29,6 @@ func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
-func (t *InboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatOpenAIResponse
-}
-
 // TransformRequest transforms OpenAI Responses API HTTP request to llm.Request.
 func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
@@ -171,6 +167,7 @@ func convertToLLMRequest(req *Request) (*llm.Request, error) {
 		Temperature:         req.Temperature,
 		Stream:              req.Stream,
 		Metadata:            maps.Clone(req.Metadata),
+		RequestType:         llm.RequestTypeChat,
 		APIFormat:           llm.APIFormatOpenAIResponse,
 		MaxCompletionTokens: req.MaxOutputTokens,
 		User:                req.User,

@@ -51,12 +51,12 @@ func selectCandidates(inbound *PersistentInboundTransformer) pipeline.Middleware
 		}
 
 		// Apply Google native tools filter (only for Gemini native API format)
-		if inbound.APIFormat() == llm.APIFormatGeminiContents {
+		if llmRequest.APIFormat == llm.APIFormatGeminiContents {
 			selector = WithGoogleNativeToolsSelector(selector)
 		}
 
 		// Apply Anthropic native tools filter (only for Anthropic message API format)
-		if inbound.APIFormat() == llm.APIFormatAnthropicMessage {
+		if llmRequest.APIFormat == llm.APIFormatAnthropicMessage {
 			selector = WithAnthropicNativeToolsSelector(selector)
 		}
 

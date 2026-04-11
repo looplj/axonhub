@@ -20,11 +20,6 @@ func TestNewInboundTransformer(t *testing.T) {
 	require.NotNil(t, transformer)
 }
 
-func TestInboundTransformer_APIFormat(t *testing.T) {
-	transformer := NewInboundTransformer()
-	require.Equal(t, llm.APIFormatOpenAIResponse, transformer.APIFormat())
-}
-
 func TestInboundTransformer_TransformRequest(t *testing.T) {
 	trans := NewInboundTransformer()
 
@@ -434,6 +429,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, result)
+				require.Equal(t, llm.RequestTypeChat, result.RequestType)
 				require.Equal(t, llm.APIFormatOpenAIResponse, result.APIFormat)
 
 				if tt.validate != nil {
