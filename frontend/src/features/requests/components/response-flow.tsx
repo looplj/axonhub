@@ -6,7 +6,6 @@ import { Response as UIResponse } from '@/components/ai-elements/response';
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import { Tool, ToolHeader, ToolContent } from '@/components/ai-elements/tool';
 import { CodeBlock } from '@/components/ai-elements/code-block';
-import { Loader } from '@/components/ai-elements/loader';
 import { Badge } from '@/components/ui/badge';
 
 import { parseResponse } from '../utils/response-parser';
