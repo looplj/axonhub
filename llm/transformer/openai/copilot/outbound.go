@@ -165,16 +165,20 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		headers.Set(CopilotVisionRequestHeader, "true")
 	}
 
-	// Forward X-Initiator from inbound request for Copilot billing control.
-	// Default to "agent" if not provided to match OpenCode behavior.
-	initiator := "agent"
+	// Determine X-Initiator for Copilot billing control.
+	// Priority: 1) Explicit header override (validated) 2) Inferred from messages 3) Default to "user"
+	initiator := inferCopilotInitiator(llmReq.Messages)
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
 		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
-			initiator = val
+			// Validate header value (must be "user" or "agent")
+			normalized := strings.ToLower(strings.TrimSpace(val))
+			if normalized == "user" || normalized == "agent" {
+				initiator = normalized
+			}
+			// Invalid values are ignored, inference result is used instead
 		}
 	}
 	headers.Set(InitiatorHeader, initiator)
-
 	// Build authentication config.
 	authConfig := &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
@@ -190,7 +194,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
-
 // setCopilotHeaders sets the LiteLLM-style editor headers required by Copilot.
 func setCopilotHeaders(headers http.Header) {
 	headers.Set(EditorVersionHeader, DefaultEditorVersion)
@@ -200,6 +203,45 @@ func setCopilotHeaders(headers http.Header) {
 	headers.Set(OpenAIIntentHeader, DefaultOpenAIIntent)
 	headers.Set(GitHubAPIVersionHeader, DefaultGitHubAPIVersion)
 	headers.Set(VSCodeUserAgentLibHeader, DefaultVSCodeUserAgentLib)
+}
+
+// inferCopilotInitiator determines the initiator based on the last message.
+// This matches oh-my-pi's logic for proper quota tracking:
+// - If attribution field is set to "user" or "agent", use that value
+// - If the last message role is not "user", return "agent"
+// - If the LAST content block is tool_result, return "agent"
+// - Otherwise return "user"
+func inferCopilotInitiator(messages []llm.Message) string {
+	if len(messages) == 0 {
+		return "user"
+	}
+
+	lastMsg := messages[len(messages)-1]
+
+	// Check attribution field first (oh-my-pi priority)
+	if lastMsg.Attribution != "" {
+		normalized := strings.ToLower(strings.TrimSpace(lastMsg.Attribution))
+		if normalized == "user" || normalized == "agent" {
+			return normalized
+		}
+	}
+
+	// If the last message is not from user, it's an agent turn
+	if lastMsg.Role != "user" {
+		return "agent"
+	}
+
+	// Check if the LAST content block is tool_result (agent turn)
+	// Note: oh-my-pi specifically checks only the last block, not any block
+	if len(lastMsg.Content.MultipleContent) > 0 {
+		lastBlock := lastMsg.Content.MultipleContent[len(lastMsg.Content.MultipleContent)-1]
+		if lastBlock.Type == "tool_result" {
+			return "agent"
+		}
+	}
+
+	// Default: user turn
+	return "user"
 }
 
 // hasVisionContent checks if the request contains image content (vision capabilities).
@@ -593,12 +635,17 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 		responsesReq.Headers.Set(CopilotVisionRequestHeader, "true")
 	}
 
-	// Forward X-Initiator from inbound request for Copilot billing control.
-	// Default to "agent" if not provided to match OpenCode behavior.
-	initiator := "agent"
+	// Determine X-Initiator for Copilot billing control.
+	// Priority: 1) Explicit header override (validated) 2) Inferred from messages 3) Default to "user"
+	initiator := inferCopilotInitiator(llmReq.Messages)
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
 		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
-			initiator = val
+			// Validate header value (must be "user" or "agent")
+			normalized := strings.ToLower(strings.TrimSpace(val))
+			if normalized == "user" || normalized == "agent" {
+				initiator = normalized
+			}
+			// Invalid values are ignored, inference result is used instead
 		}
 	}
 	responsesReq.Headers.Set(InitiatorHeader, initiator)

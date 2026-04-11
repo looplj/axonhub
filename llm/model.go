@@ -356,6 +356,11 @@ type Message struct {
 
 	// Audio contains model-generated audio metadata for assistant messages.
 	Audio *OutputAudio `json:"audio,omitempty"`
+
+	// Attribution indicates whether the message was initiated by "user" or "agent".
+	// This is used by GitHub Copilot for quota tracking (X-Initiator header).
+	// See: oh-my-pi's inferCopilotInitiator for reference.
+	Attribution string `json:"attribution,omitempty"`
 }
 
 // Annotation represents a citation or reference annotation in a message.
