@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"text/template"
@@ -15,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 const EventChannelAutoDisabled = "channel.auto_disabled"
@@ -61,13 +61,13 @@ type WebhookRenderContext struct {
 
 type WebhookNotifier struct {
 	SystemService *SystemService
-	httpClient    *http.Client
+	httpClient    *httpclient.HttpClient
 }
 
-func NewWebhookNotifier(systemService *SystemService) *WebhookNotifier {
+func NewWebhookNotifier(systemService *SystemService, httpClient *httpclient.HttpClient) *WebhookNotifier {
 	return &WebhookNotifier{
 		SystemService: systemService,
-		httpClient:    &http.Client{},
+		httpClient:    httpClient,
 	}
 }
 
@@ -170,15 +170,6 @@ func (n *WebhookNotifier) selectTargets(cfg WebhookNotifierConfig, eventName str
 }
 
 func (n *WebhookNotifier) send(ctx context.Context, target WebhookTarget, body string, headers http.Header) error {
-	method := strings.ToUpper(strings.TrimSpace(target.Method))
-	if method == "" {
-		method = defaultWebhookMethod
-	}
-
-	if method != http.MethodPost {
-		return fmt.Errorf("unsupported webhook method %q", method)
-	}
-
 	timeout := time.Duration(target.TimeoutMs) * time.Millisecond
 	if timeout <= 0 {
 		timeout = defaultWebhookTimeoutMs * time.Millisecond
@@ -187,30 +178,24 @@ func (n *WebhookNotifier) send(ctx context.Context, target WebhookTarget, body s
 	reqCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(reqCtx, method, target.URL, strings.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
+	if headers.Get("Content-Type") == "" {
+		headers.Set("Content-Type", "application/json")
 	}
 
-	for key, values := range headers {
-		for _, value := range values {
-			req.Header.Add(key, value)
-		}
+	client := n.httpClient
+	if target.Proxy != nil {
+		client = client.WithProxy(target.Proxy)
 	}
 
-	if req.Header.Get("Content-Type") == "" {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := n.httpClient.Do(req)
+	_, err := client.Do(reqCtx, &httpclient.Request{
+		Method:      defaultWebhookMethod,
+		URL:         target.URL,
+		Headers:     headers,
+		ContentType: headers.Get("Content-Type"),
+		Body:        []byte(body),
+	})
 	if err != nil {
 		return fmt.Errorf("do request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
 	}
 
 	return nil

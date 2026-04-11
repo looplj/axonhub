@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { getTokenFromStorage } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
 import { useErrorHandler } from '@/hooks/use-error-handler';
+import type { ProxyConfig } from '@/features/channels/data/schema';
 
 // GraphQL queries and mutations
 const SYSTEM_VERSION_QUERY = `
@@ -98,7 +99,12 @@ const WEBHOOK_NOTIFIER_CONFIG_QUERY = `
         name
         enabled
         url
-        method
+        proxy {
+          type
+          url
+          username
+          password
+        }
         timeoutMs
         headers {
           key
@@ -248,7 +254,7 @@ export interface WebhookTarget {
   name: string;
   enabled: boolean;
   url: string;
-  method: string;
+  proxy?: ProxyConfig | null;
   timeoutMs: number;
   headers: WebhookHeader[];
   body: string;

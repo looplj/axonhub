@@ -9,8 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useUpdateWebhookNotifierConfig, useWebhookNotifierConfig, type WebhookNotifierConfig, type WebhookTarget } from '../data/system';
+import { proxyTypeSchema, type ProxyConfig, type ProxyType } from '@/features/channels/data/schema';
+import { useProxyPresets, useUpdateWebhookNotifierConfig, useWebhookNotifierConfig, type WebhookNotifierConfig, type WebhookTarget } from '../data/system';
 
 const AUTO_DISABLED_EVENT = 'channel.auto_disabled';
 
@@ -37,7 +39,7 @@ function createDefaultTarget(index: number): WebhookTarget {
     name: index === 0 ? 'default' : `target-${index + 1}`,
     enabled: false,
     url: '',
-    method: 'POST',
+    proxy: undefined,
     timeoutMs: 3000,
     headers: [{ key: 'Content-Type', value: 'application/json' }],
     body: DEFAULT_WEBHOOK_BODY_TEMPLATE,
@@ -52,6 +54,7 @@ const DEFAULT_WEBHOOK_CONFIG: WebhookNotifierConfig = {
 export function WebhookSettings() {
   const { t } = useTranslation();
   const { data: webhookConfig, isLoading } = useWebhookNotifierConfig();
+  const { data: proxyPresets = [] } = useProxyPresets();
   const updateWebhookNotifierConfig = useUpdateWebhookNotifierConfig();
   const [formData, setFormData] = useState<WebhookNotifierConfig>(DEFAULT_WEBHOOK_CONFIG);
 
@@ -100,10 +103,65 @@ export function WebhookSettings() {
     });
   }, []);
 
-  const handleTargetChange = useCallback((index: number, field: 'name' | 'url' | 'method' | 'timeoutMs' | 'body' | 'enabled', value: string | number | boolean) => {
+  const handleTargetChange = useCallback((index: number, field: 'name' | 'url' | 'timeoutMs' | 'body' | 'enabled', value: string | number | boolean) => {
     setFormData((prev) => ({
       ...prev,
       targets: prev.targets.map((target, i) => (i === index ? { ...target, [field]: value } : target)),
+    }));
+  }, []);
+
+  const handleTargetProxyChange = useCallback((index: number, proxy: ProxyConfig | undefined) => {
+    setFormData((prev) => ({
+      ...prev,
+      targets: prev.targets.map((target, i) => (i === index ? { ...target, proxy } : target)),
+    }));
+  }, []);
+
+  const handleTargetProxyTypeChange = useCallback((index: number, type: ProxyType) => {
+    setFormData((prev) => ({
+      ...prev,
+      targets: prev.targets.map((target, i) => {
+        if (i !== index) {
+          return target;
+        }
+
+        if (type === proxyTypeSchema.enum.disabled) {
+          return { ...target, proxy: undefined };
+        }
+
+        return {
+          ...target,
+          proxy: {
+            type,
+            ...(type === proxyTypeSchema.enum.url ? {
+              url: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.url : '',
+              username: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.username : '',
+              password: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.password : '',
+            } : {}),
+          },
+        };
+      }),
+    }));
+  }, []);
+
+  const handleTargetProxyFieldChange = useCallback((index: number, field: 'url' | 'username' | 'password', value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      targets: prev.targets.map((target, i) => {
+        if (i !== index) {
+          return target;
+        }
+
+        return {
+          ...target,
+          proxy: {
+            type: target.proxy?.type || proxyTypeSchema.enum.url,
+            url: field === 'url' ? value : (target.proxy?.url || ''),
+            username: field === 'username' ? value : (target.proxy?.username || ''),
+            password: field === 'password' ? value : (target.proxy?.password || ''),
+          },
+        };
+      }),
     }));
   }, []);
 
@@ -227,6 +285,21 @@ export function WebhookSettings() {
         ...target,
         name: target.name.trim(),
         url: target.url.trim(),
+        proxy: target.proxy?.type === proxyTypeSchema.enum.url
+          ? (() => {
+              const proxyURL = target.proxy.url?.trim() || '';
+              if (!proxyURL) {
+                return undefined;
+              }
+
+              return {
+                ...target.proxy,
+                url: proxyURL,
+                username: target.proxy.username?.trim() || undefined,
+                password: target.proxy.password?.trim() || undefined,
+              };
+            })()
+          : target.proxy,
       }));
 
       const validTargetNames = new Set(normalizedTargets.map((target) => target.name));
@@ -305,6 +378,7 @@ export function WebhookSettings() {
                 const targetName = target.name.trim();
                 const targetSubscribed = targetName ? isTargetSubscribed(targetName) : false;
                 const hasDuplicateName = !!targetName && normalizedNameCounts[targetName] > 1;
+                const proxyType = target.proxy?.type || proxyTypeSchema.enum.disabled;
 
                 return (
                   <div key={targetIndex} className='space-y-4 rounded-md border p-4'>
@@ -367,7 +441,93 @@ export function WebhookSettings() {
                         aria-invalid={target.enabled && !target.url.trim()}
                       />
                       {target.enabled && !target.url.trim() && <div className='text-destructive text-xs'>{t('system.webhook.validation.urlRequired')}</div>}
-                      <div className='text-muted-foreground text-xs'>{t('system.webhook.debugHint')}</div>
+                    </div>
+
+                    <div className='space-y-4 rounded-md border p-3'>
+                      <div className='space-y-1'>
+                        <div className='text-sm font-medium'>{t('system.webhook.proxy.title')}</div>
+                        <div className='text-muted-foreground text-sm'>{t('system.webhook.proxy.description')}</div>
+                      </div>
+
+                      <div className='space-y-2'>
+                        <Label>{t('system.webhook.proxy.type')}</Label>
+                        <Select value={proxyType} onValueChange={(value) => handleTargetProxyTypeChange(targetIndex, value as ProxyType)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={proxyTypeSchema.enum.disabled}>{t('system.webhook.proxy.types.disabled')}</SelectItem>
+                            <SelectItem value={proxyTypeSchema.enum.environment}>{t('system.webhook.proxy.types.environment')}</SelectItem>
+                            <SelectItem value={proxyTypeSchema.enum.url}>{t('system.webhook.proxy.types.url')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {proxyType === proxyTypeSchema.enum.url && proxyPresets.length > 0 && (
+                        <div className='space-y-2'>
+                          <Label>{t('system.webhook.proxy.presets')}</Label>
+                          <Select
+                            onValueChange={(presetURL) => {
+                              const preset = proxyPresets.find((item) => item.url === presetURL);
+                              if (!preset) {
+                                return;
+                              }
+
+                              handleTargetProxyChange(targetIndex, {
+                                type: proxyTypeSchema.enum.url,
+                                url: preset.url,
+                                username: preset.username || '',
+                                password: preset.password || '',
+                              });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('system.webhook.proxy.presetsPlaceholder')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {proxyPresets.map((preset) => (
+                                <SelectItem key={preset.url} value={preset.url}>
+                                  {preset.name || preset.url}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {proxyType === proxyTypeSchema.enum.environment && (
+                        <div className='text-muted-foreground rounded-md border p-3 text-sm'>{t('system.webhook.proxy.environmentHint')}</div>
+                      )}
+
+                      {proxyType === proxyTypeSchema.enum.url && (
+                        <div className='grid gap-4 md:grid-cols-3'>
+                          <div className='space-y-2 md:col-span-3'>
+                            <Label htmlFor={`webhook-proxy-url-${targetIndex}`}>{t('system.webhook.proxy.url')}</Label>
+                            <Input
+                              id={`webhook-proxy-url-${targetIndex}`}
+                              value={target.proxy?.url || ''}
+                              onChange={(e) => handleTargetProxyFieldChange(targetIndex, 'url', e.target.value)}
+                            />
+                          </div>
+                          <div className='space-y-2'>
+                            <Label htmlFor={`webhook-proxy-username-${targetIndex}`}>{t('system.webhook.proxy.username')}</Label>
+                            <Input
+                              id={`webhook-proxy-username-${targetIndex}`}
+                              value={target.proxy?.username || ''}
+                              onChange={(e) => handleTargetProxyFieldChange(targetIndex, 'username', e.target.value)}
+                            />
+                          </div>
+                          <div className='space-y-2 md:col-span-2'>
+                            <Label htmlFor={`webhook-proxy-password-${targetIndex}`}>{t('system.webhook.proxy.password')}</Label>
+                            <Input
+                              id={`webhook-proxy-password-${targetIndex}`}
+                              type='password'
+                              value={target.proxy?.password || ''}
+                              onChange={(e) => handleTargetProxyFieldChange(targetIndex, 'password', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className='space-y-3 rounded-md border p-3'>
