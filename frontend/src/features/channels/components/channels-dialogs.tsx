@@ -18,6 +18,7 @@ import { ChannelsOverrideDialog } from './channels-override-dialog';
 import { ChannelsProxyDialog } from './channels-proxy-dialog';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChannelsTestDialog } from './channels-test-dialog';
+import { ChannelsTestHistoryDrawer } from './channels-test-history-drawer';
 import { ChannelsTestAPIKeysDialog } from './channels-test-api-keys-dialog';
 import { ChannelsRateLimitDialog } from './channels-rate-limit-dialog';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
@@ -212,6 +213,22 @@ export function ChannelsDialogs() {
             onOpenChange={(isOpen: boolean) => {
               if (isOpen) {
                 setOpen('test');
+              } else {
+                setOpen(null);
+                setTimeout(() => {
+                  setCurrentRow(null);
+                }, 500);
+              }
+            }}
+            channel={currentRow}
+          />
+
+          <ChannelsTestHistoryDrawer
+            key={`channel-test-history-${currentRow.id}`}
+            open={open === 'testHistory'}
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                setOpen('testHistory');
               } else {
                 setOpen(null);
                 setTimeout(() => {
