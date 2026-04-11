@@ -210,7 +210,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                       />
                     </TableHead>
                     <TableHead>{t('channels.dialogs.test.modelNameColumn')}</TableHead>
-                    <TableHead className='w-32'>{t('channels.dialogs.test.statusColumn')}</TableHead>
+                    <TableHead className='w-40'>{t('channels.dialogs.test.statusColumn')}</TableHead>
                     <TableHead className='w-24'></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -218,35 +218,37 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                   {filteredModels.map((model) => {
                     const result = testResults[model];
                     return (
-                      <TableRow key={model}>
+                      <TableRow key={model} className='align-top'>
                         <TableCell>
                           <Checkbox
                             checked={selectedModels.includes(model)}
                             onCheckedChange={(checked) => handleModelSelect(model, !!checked)}
                           />
                         </TableCell>
-                        <TableCell className='font-medium'>
+                        <TableCell className='pr-8 font-medium'>
                           <div>{model}</div>
                           {result?.error && (
-                            <div className='mt-1 max-w-[240px]'>
+                            <div className='mt-2 max-w-[320px]'>
                               <ErrorDisplay error={result.error} messageClassName='text-xs font-medium text-red-600' />
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>
-                          {getStatusBadge(result?.status || 'not_started')}
-                          {result?.latency && <div className='text-muted-foreground mt-1 text-xs'>{result.latency.toFixed(2)}s</div>}
+                        <TableCell className='min-w-[140px] align-top'>
+                          <div className='pt-0.5'>{getStatusBadge(result?.status || 'not_started')}</div>
+                          {result?.latency && <div className='text-muted-foreground mt-2 text-xs'>{result.latency.toFixed(2)}s</div>}
                         </TableCell>
-                        <TableCell>
-                          <Button
-                            size='sm'
-                            variant='outline'
-                            onClick={() => testModel(model)}
-                            disabled={result?.status === 'testing' || testChannel.isPending}
-                          >
-                            <IconPlayerPlay className='mr-1 h-3 w-3' />
-                            {result?.status === 'testing' ? t('channels.dialogs.test.testingModel') : t('channels.dialogs.test.testModel')}
-                          </Button>
+                        <TableCell className='align-top'>
+                          <div className='pt-0.5'>
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              onClick={() => testModel(model)}
+                              disabled={result?.status === 'testing' || testChannel.isPending}
+                            >
+                              <IconPlayerPlay className='mr-1 h-3 w-3' />
+                              {result?.status === 'testing' ? t('channels.dialogs.test.testingModel') : t('channels.dialogs.test.testModel')}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

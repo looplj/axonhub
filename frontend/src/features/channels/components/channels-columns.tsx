@@ -21,6 +21,7 @@ import {
   IconLoader2,
   IconKeyOff,
   IconGauge,
+  IconHistory,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -127,6 +128,15 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
           <DropdownMenuItem onClick={handleOpenTestDialog}>
             <IconPlayerPlay size={16} className='mr-2' />
             {t('channels.actions.test')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('testHistory');
+            }}
+          >
+            <IconHistory size={16} className='mr-2' />
+            {t('channels.actions.testHistory')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
 

@@ -3,35 +3,24 @@ import { useParams, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
-import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
-import { useSelectedProjectId } from '@/stores/projectStore';
 import { useRequest } from '../data';
 import { RequestDetailContent } from './request-detail-content';
 
-export default function RequestDetailPage() {
+export default function RequestDetailGlobalPage() {
   const { t } = useTranslation();
-  const { requestId } = useParams({ from: '/_authenticated/project/requests/$requestId' });
+  const { requestId } = useParams({ from: '/_authenticated/requests/$requestId' });
   const navigate = useNavigate();
-  const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
-  const selectedProjectId = useSelectedProjectId();
-  const { data: request } = useRequest(requestId);
-
-  const handleBack = () => {
-    navigate({
-      to: '/project/requests',
-      search: getSearchParams(),
-    });
-  };
+  const { data: request } = useRequest(requestId, { projectId: null });
 
   return (
     <div className='flex h-screen flex-col'>
       <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'>
         <div className='flex items-center space-x-4'>
-          <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>
+          <Button variant='ghost' size='sm' onClick={() => navigate({ to: '/channels' })} className='hover:bg-accent'>
             <ArrowLeft className='mr-2 h-4 w-4' />
             {t('common.back')}
           </Button>
@@ -58,7 +47,7 @@ export default function RequestDetailPage() {
 
       <Main className='flex-1 overflow-auto'>
         <div className='container mx-auto max-w-7xl p-6'>
-          <RequestDetailContent requestId={requestId} projectId={selectedProjectId} />
+          <RequestDetailContent requestId={requestId} projectId={null} />
         </div>
       </Main>
     </div>

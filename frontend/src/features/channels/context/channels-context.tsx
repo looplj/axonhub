@@ -14,6 +14,7 @@ type ChannelsDialogType =
   | 'proxy'
   | 'status'
   | 'test'
+  | 'testHistory'
   | 'bulkImport'
   | 'archive'
   | 'bulkOrdering'
