@@ -1188,6 +1188,13 @@ func TestInferCopilotInitiator(t *testing.T) {
 			},
 			expected: "user", // falls through to role inference
 		},
+		{
+			name: "invalid attribution falls through to role inference (agent role)",
+			messages: []llm.Message{
+				{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Hi")}, Attribution: "invalid"},
+			},
+			expected: "agent", // invalid attribution ignored, role != "user" -> agent
+		},
 	}
 
 	for _, tt := range tests {

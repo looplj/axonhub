@@ -166,19 +166,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// Determine X-Initiator for Copilot billing control.
-	// Priority: 1) Explicit header override (validated) 2) Inferred from messages 3) Default to "user"
-	initiator := inferCopilotInitiator(llmReq.Messages)
-	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
-			// Validate header value (must be "user" or "agent")
-			normalized := strings.ToLower(strings.TrimSpace(val))
-			if normalized == "user" || normalized == "agent" {
-				initiator = normalized
-			}
-			// Invalid values are ignored, inference result is used instead
-		}
-	}
-	headers.Set(InitiatorHeader, initiator)
+	headers.Set(InitiatorHeader, resolveCopilotInitiator(llmReq))
 	// Build authentication config.
 	authConfig := &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
@@ -194,6 +182,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
+
 // setCopilotHeaders sets the LiteLLM-style editor headers required by Copilot.
 func setCopilotHeaders(headers http.Header) {
 	headers.Set(EditorVersionHeader, DefaultEditorVersion)
@@ -203,6 +192,16 @@ func setCopilotHeaders(headers http.Header) {
 	headers.Set(OpenAIIntentHeader, DefaultOpenAIIntent)
 	headers.Set(GitHubAPIVersionHeader, DefaultGitHubAPIVersion)
 	headers.Set(VSCodeUserAgentLibHeader, DefaultVSCodeUserAgentLib)
+}
+
+// normalizeInitiator validates and normalizes an initiator string.
+// Returns the normalized value ("user" or "agent") if valid, empty string otherwise.
+func normalizeInitiator(val string) string {
+	normalized := strings.ToLower(strings.TrimSpace(val))
+	if normalized == "user" || normalized == "agent" {
+		return normalized
+	}
+	return ""
 }
 
 // inferCopilotInitiator determines the initiator based on the last message.
@@ -219,11 +218,8 @@ func inferCopilotInitiator(messages []llm.Message) string {
 	lastMsg := messages[len(messages)-1]
 
 	// Check attribution field first (oh-my-pi priority)
-	if lastMsg.Attribution != "" {
-		normalized := strings.ToLower(strings.TrimSpace(lastMsg.Attribution))
-		if normalized == "user" || normalized == "agent" {
-			return normalized
-		}
+	if normalized := normalizeInitiator(lastMsg.Attribution); normalized != "" {
+		return normalized
 	}
 
 	// If the last message is not from user, it's an agent turn
@@ -242,6 +238,26 @@ func inferCopilotInitiator(messages []llm.Message) string {
 
 	// Default: user turn
 	return "user"
+}
+
+// resolveCopilotInitiator determines the X-Initiator value for Copilot billing.
+// Priority: 1) Explicit header override (validated) 2) Inferred from messages 3) Default to "user"
+func resolveCopilotInitiator(llmReq *llm.Request) string {
+	// First, infer from messages
+	initiator := inferCopilotInitiator(llmReq.Messages)
+
+	// Check for explicit header override
+	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
+		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
+			// Validate header value (must be "user" or "agent")
+			if normalized := normalizeInitiator(val); normalized != "" {
+				initiator = normalized
+			}
+			// Invalid values are ignored, inference result is used instead
+		}
+	}
+
+	return initiator
 }
 
 // hasVisionContent checks if the request contains image content (vision capabilities).
@@ -636,19 +652,7 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 	}
 
 	// Determine X-Initiator for Copilot billing control.
-	// Priority: 1) Explicit header override (validated) 2) Inferred from messages 3) Default to "user"
-	initiator := inferCopilotInitiator(llmReq.Messages)
-	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
-			// Validate header value (must be "user" or "agent")
-			normalized := strings.ToLower(strings.TrimSpace(val))
-			if normalized == "user" || normalized == "agent" {
-				initiator = normalized
-			}
-			// Invalid values are ignored, inference result is used instead
-		}
-	}
-	responsesReq.Headers.Set(InitiatorHeader, initiator)
+	responsesReq.Headers.Set(InitiatorHeader, resolveCopilotInitiator(llmReq))
 
 	return responsesReq, nil
 }

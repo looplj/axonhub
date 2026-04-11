@@ -358,8 +358,10 @@ type Message struct {
 	Audio *OutputAudio `json:"audio,omitempty"`
 
 	// Attribution indicates whether the message was initiated by "user" or "agent".
-	// This is used by GitHub Copilot for quota tracking (X-Initiator header).
-	// See: oh-my-pi's inferCopilotInitiator for reference.
+	// This is a Copilot-specific field used for quota tracking (X-Initiator header).
+	// NOTE: This field is stripped during transformation to other providers and is only
+	// meaningful for Copilot transformers. Future authors should not map this field to
+	// other provider formats. See: oh-my-pi's inferCopilotInitiator for reference.
 	Attribution string `json:"attribution,omitempty"`
 }
 
