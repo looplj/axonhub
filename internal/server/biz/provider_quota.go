@@ -342,6 +342,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 	now time.Time,
 ) {
 	pt := providerquotastatus.ProviderType(providerType)
+	nextCheck := now.Add(svc.getCheckInterval())
 
 	if ch.Edges.ProviderQuotaStatus != nil {
 		existing := ch.Edges.ProviderQuotaStatus
@@ -357,7 +358,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 
 		err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
 			SetQuotaData(merged).
-			SetNextCheckAt(now).
+			SetNextCheckAt(nextCheck).
 			Exec(ctx)
 		if err != nil {
 			log.Error(ctx, "Failed to save quota error",
@@ -376,7 +377,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		SetQuotaData(map[string]any{
 			"error": quotaErr.Error(),
 		}).
-		SetNextCheckAt(now).
+		SetNextCheckAt(nextCheck).
 		Exec(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to save quota error",
