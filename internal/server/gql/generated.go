@@ -1371,6 +1371,7 @@ type ComplexityRoot struct {
 
 	StoragePolicy struct {
 		CleanupOptions    func(childComplexity int) int
+		LivePreview       func(childComplexity int) int
 		StoreChunks       func(childComplexity int) int
 		StoreRequestBody  func(childComplexity int) int
 		StoreResponseBody func(childComplexity int) int
@@ -7825,6 +7826,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StoragePolicy.CleanupOptions(childComplexity), true
+	case "StoragePolicy.livePreview":
+		if e.complexity.StoragePolicy.LivePreview == nil {
+			break
+		}
+
+		return e.complexity.StoragePolicy.LivePreview(childComplexity), true
 	case "StoragePolicy.storeChunks":
 		if e.complexity.StoragePolicy.StoreChunks == nil {
 			break
@@ -36037,6 +36044,8 @@ func (ec *executionContext) fieldContext_Query_storagePolicy(_ context.Context, 
 			switch field.Name {
 			case "storeChunks":
 				return ec.fieldContext_StoragePolicy_storeChunks(ctx, field)
+			case "livePreview":
+				return ec.fieldContext_StoragePolicy_livePreview(ctx, field)
 			case "storeRequestBody":
 				return ec.fieldContext_StoragePolicy_storeRequestBody(ctx, field)
 			case "storeResponseBody":
@@ -42083,6 +42092,35 @@ func (ec *executionContext) _StoragePolicy_storeChunks(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_StoragePolicy_storeChunks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StoragePolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StoragePolicy_livePreview(ctx context.Context, field graphql.CollectedField, obj *biz.StoragePolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_StoragePolicy_livePreview,
+		func(ctx context.Context) (any, error) {
+			return obj.LivePreview, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_StoragePolicy_livePreview(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StoragePolicy",
 		Field:      field,
@@ -69645,7 +69683,7 @@ func (ec *executionContext) unmarshalInputUpdateStoragePolicyInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"storeChunks", "storeRequestBody", "storeResponseBody", "cleanupOptions"}
+	fieldsInOrder := [...]string{"storeChunks", "livePreview", "storeRequestBody", "storeResponseBody", "cleanupOptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69659,6 +69697,13 @@ func (ec *executionContext) unmarshalInputUpdateStoragePolicyInput(ctx context.C
 				return it, err
 			}
 			it.StoreChunks = data
+		case "livePreview":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("livePreview"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LivePreview = data
 		case "storeRequestBody":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storeRequestBody"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -86383,6 +86428,11 @@ func (ec *executionContext) _StoragePolicy(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("StoragePolicy")
 		case "storeChunks":
 			out.Values[i] = ec._StoragePolicy_storeChunks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "livePreview":
+			out.Values[i] = ec._StoragePolicy_livePreview(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

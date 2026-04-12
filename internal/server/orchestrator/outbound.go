@@ -24,19 +24,20 @@ import (
 type OutboundPersistentStream struct {
 	ctx context.Context
 
-	RequestService   *biz.RequestService
-	UsageLogService  *biz.UsageLogService
+	RequestService  *biz.RequestService
+	UsageLogService *biz.UsageLogService
 
-	stream         streams.Stream[*httpclient.StreamEvent]
-	request        *ent.Request
-	requestExec    *ent.RequestExecution
+	stream      streams.Stream[*httpclient.StreamEvent]
+	request     *ent.Request
+	requestExec *ent.RequestExecution
 
-	transformer  transformer.Outbound
-	perf         *biz.PerformanceRecord
-	chunkBuffer  *biz.ChunkBuffer // single source of truth for chunks
-	closed       bool
-	state        *PersistenceState
-	previewKey   string // registry key for live preview, empty if preview disabled
+	transformer transformer.Outbound
+	perf        *biz.PerformanceRecord
+	chunkBuffer *biz.ChunkBuffer // single source of truth for chunks
+	storeChunks bool
+	closed      bool
+	state       *PersistenceState
+	previewKey  string // registry key for live preview, empty if preview disabled
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
@@ -53,21 +54,25 @@ func NewOutboundPersistentStream(
 	state *PersistenceState,
 ) *OutboundPersistentStream {
 	s := &OutboundPersistentStream{
-		ctx:              ctx,
-		stream:           stream,
-		request:          request,
-		requestExec:      requestExec,
-		RequestService:   requestService,
-		UsageLogService:  usageLogService,
-		transformer:      outboundTransformer,
-		perf:             perf,
-		chunkBuffer:      biz.NewChunkBuffer(nil),
-		closed:           false,
-		state:            state,
+		ctx:             ctx,
+		stream:          stream,
+		request:         request,
+		requestExec:     requestExec,
+		RequestService:  requestService,
+		UsageLogService: usageLogService,
+		transformer:     outboundTransformer,
+		perf:            perf,
+		closed:          false,
+		state:           state,
+		storeChunks:     state.StoreChunks,
+	}
+
+	if s.storeChunks || state.LivePreview {
+		s.chunkBuffer = biz.NewChunkBuffer(nil)
 	}
 
 	// Register with preview registry for live chunk access
-	if state.EnablePreview && requestExec != nil {
+	if state.LivePreview && requestExec != nil && s.chunkBuffer != nil {
 		s.previewKey = biz.ExecutionKey(requestExec.ID)
 		notifyFn := biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
 		s.chunkBuffer.SetNotify(notifyFn)
@@ -83,7 +88,9 @@ func (ts *OutboundPersistentStream) Next() bool {
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		ts.chunkBuffer.Append(event)
+		if ts.chunkBuffer != nil {
+			ts.chunkBuffer.Append(event)
+		}
 		// Check if this is a terminal event, which indicates the stream completed successfully.
 		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
 		// response.completed; for Anthropic Messages API this is message_stop.
@@ -112,10 +119,12 @@ func (ts *OutboundPersistentStream) Close() error {
 		defer biz.DefaultStreamPreviewRegistry.Unregister(ts.previewKey)
 	}
 
-	// Close the buffer to prevent further appends
-	ts.chunkBuffer.Close()
-
-	chunks := ts.chunkBuffer.Slice()
+	var chunks []*httpclient.StreamEvent
+	if ts.chunkBuffer != nil {
+		// Close the buffer to prevent further appends
+		ts.chunkBuffer.Close()
+		chunks = ts.chunkBuffer.Slice()
+	}
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(chunks)), log.Bool("received_done", ts.state.StreamCompleted))
 
 	streamErr := ts.stream.Err()
@@ -128,7 +137,9 @@ func (ts *OutboundPersistentStream) Close() error {
 		ts.logFinalizationDecision(ctx, "terminal_event_completed", streamErr, ctxErr, true, nil, len(chunks))
 		// Stream completed successfully - perform final persistence
 		log.Debug(ctx, "Stream completed successfully (received [DONE]), performing final persistence")
-		ts.persistResponseChunks(ctx)
+		if ts.storeChunks {
+			ts.persistResponseChunks(ctx)
+		}
 
 		return ts.stream.Close()
 	}
@@ -155,7 +166,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	var aggErr error
 	aggregatedCompleted := false
 
-	if len(chunks) > 0 {
+	if ts.storeChunks && len(chunks) > 0 {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), chunks)
 		aggregatedCompleted = aggErr == nil && isCompletedAggregatedOutboundResponse(meta)
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr, len(chunks))
@@ -213,9 +224,9 @@ func (ts *OutboundPersistentStream) Close() error {
 	}
 	ts.logFinalizationDecision(ctx, decision, streamErr, ctxErr, aggregatedCompleted, aggErr, len(chunks))
 
-	if len(responseBody) > 0 {
+	if ts.storeChunks && len(responseBody) > 0 {
 		ts.persistAggregatedResponse(context.WithoutCancel(ctx), responseBody, meta)
-	} else {
+	} else if ts.storeChunks {
 		ts.persistResponseChunks(ctx)
 	}
 

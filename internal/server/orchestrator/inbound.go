@@ -28,6 +28,7 @@ type InboundPersistentStream struct {
 	transformer    transformer.Inbound
 	perf           *biz.PerformanceRecord
 	chunkBuffer    *biz.ChunkBuffer // single source of truth for chunks
+	storeChunks    bool
 	closed         bool
 	state          *PersistenceState
 	previewKey     string // registry key for live preview, empty if preview disabled
@@ -53,13 +54,17 @@ func NewInboundPersistentStream(
 		requestService: requestService,
 		transformer:    transformer,
 		perf:           perf,
-		chunkBuffer:    biz.NewChunkBuffer(nil),
 		closed:         false,
 		state:          state,
+		storeChunks:    state.StoreChunks,
+	}
+
+	if s.storeChunks || state.LivePreview {
+		s.chunkBuffer = biz.NewChunkBuffer(nil)
 	}
 
 	// Register with preview registry for live chunk access
-	if state.EnablePreview && request != nil {
+	if state.LivePreview && request != nil && s.chunkBuffer != nil {
 		s.previewKey = biz.RequestKey(request.ID)
 		notifyFn := biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
 		s.chunkBuffer.SetNotify(notifyFn)
@@ -75,7 +80,9 @@ func (ts *InboundPersistentStream) Next() bool {
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		ts.chunkBuffer.Append(event)
+		if ts.chunkBuffer != nil {
+			ts.chunkBuffer.Append(event)
+		}
 		if isTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
 		}
@@ -112,10 +119,12 @@ func (ts *InboundPersistentStream) Close() error {
 		defer biz.DefaultStreamPreviewRegistry.Unregister(ts.previewKey)
 	}
 
-	// Close the buffer to prevent further appends
-	ts.chunkBuffer.Close()
-
-	chunks := ts.chunkBuffer.Slice()
+	var chunks []*httpclient.StreamEvent
+	if ts.chunkBuffer != nil {
+		// Close the buffer to prevent further appends
+		ts.chunkBuffer.Close()
+		chunks = ts.chunkBuffer.Slice()
+	}
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(chunks)), log.Bool("received_done", ts.state.StreamCompleted))
 
 	streamErr := ts.stream.Err()
@@ -127,7 +136,9 @@ func (ts *InboundPersistentStream) Close() error {
 	if ts.state.StreamCompleted {
 		// Stream completed successfully - perform final persistence
 		log.Debug(ctx, "Stream completed successfully (received terminal event), performing final persistence")
-		ts.persistResponseChunks(ctx)
+		if ts.storeChunks {
+			ts.persistResponseChunks(ctx)
+		}
 
 		return ts.stream.Close()
 	}
@@ -154,7 +165,7 @@ func (ts *InboundPersistentStream) Close() error {
 	var meta llm.ResponseMeta
 	var aggErr error
 
-	if len(chunks) > 0 && !ts.state.StreamCompleted {
+	if ts.storeChunks && len(chunks) > 0 && !ts.state.StreamCompleted {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), chunks)
 		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
@@ -185,9 +196,9 @@ func (ts *InboundPersistentStream) Close() error {
 	log.Debug(ctx, "Stream completed successfully, performing final persistence")
 
 	// We already aggregated the chunks above, so pass them directly to avoid double-aggregation
-	if len(responseBody) > 0 {
+	if ts.storeChunks && len(responseBody) > 0 {
 		ts._persistResponse(context.WithoutCancel(ctx), responseBody, meta)
-	} else {
+	} else if ts.storeChunks {
 		ts.persistResponseChunks(ctx)
 	}
 

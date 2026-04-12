@@ -47,9 +47,12 @@ type PersistenceState struct {
 	// Perf is the performance record for the current request.
 	Perf *biz.PerformanceRecord
 
-	// EnablePreview controls whether live stream preview is enabled for this connection.
+	// LivePreview controls whether live stream preview is enabled for this connection.
 	// When true, active streams register their chunk slices to biz.DefaultStreamPreviewRegistry.
-	EnablePreview bool
+	LivePreview bool
+
+	// StoreChunks controls whether response chunks are persisted at stream close.
+	StoreChunks bool
 
 	// StreamCompleted tracks whether the stream has response successfully completed.
 	// This is used to distinguish between a stream that was canceled mid-way

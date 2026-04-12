@@ -121,7 +121,7 @@ func newInboundPersistentStreamHelper(
 	testRequest := &ent.Request{ID: 1}
 	testRequestExec := &ent.RequestExecution{ID: 1}
 
-	state := &PersistenceState{StreamCompleted: false}
+	state := &PersistenceState{StreamCompleted: false, StoreChunks: true}
 
 	stream := NewInboundPersistentStream(
 		ctx,
