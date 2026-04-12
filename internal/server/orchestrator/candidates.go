@@ -549,25 +549,7 @@ func (s *TagsFilterSelector) Select(ctx context.Context, req *llm.Request) ([]*C
 }
 
 func matchChannelTagsFilter(allowedTags []string, matchMode objects.ChannelTagsMatchMode, channelTags []string) bool {
-	//nolint:exhaustive // Checked.
-	switch matchMode.OrDefault() {
-	case objects.ChannelTagsMatchModeAll:
-		for _, allowedTag := range allowedTags {
-			if !slices.Contains(channelTags, allowedTag) {
-				return false
-			}
-		}
-
-		return true
-	default:
-		for _, tag := range channelTags {
-			if slices.Contains(allowedTags, tag) {
-				return true
-			}
-		}
-
-		return false
-	}
+	return objects.MatchChannelTags(allowedTags, matchMode, channelTags)
 }
 
 // SpecifiedChannelSelector allows selecting specific channels (including disabled ones) for testing.

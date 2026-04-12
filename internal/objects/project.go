@@ -17,5 +17,5 @@ func (p *ProjectProfile) MatchChannelTags(tags []string) bool {
 		return true
 	}
 
-	return matchChannelTags(p.ChannelTags, p.ChannelTagsMatchMode, tags)
+	return MatchChannelTags(p.ChannelTags, p.ChannelTagsMatchMode, tags)
 }

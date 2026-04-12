@@ -148,7 +148,10 @@ export function ProjectProfilesDialog({ open, onOpenChange, onSubmit, loading = 
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6 px-4'>
                   <div className='space-y-4'>
-                    {fields.map((field, profileIndex) => (
+                    {fields.map((field, profileIndex) => {
+                      const isExcludeMode = form.watch(`profiles.${profileIndex}.channelTagsMatchMode`) === 'none';
+
+                      return (
               <Card key={field.id}>
                 <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
                   <CardTitle className='text-base'>
@@ -217,8 +220,12 @@ export function ProjectProfilesDialog({ open, onOpenChange, onSubmit, loading = 
                   <div className='border-t pt-6'>
                     <div className='mb-3 flex items-start justify-between gap-3'>
                       <div>
-                        <h4 className='text-sm font-medium'>{t('projects.profiles.allowedChannelTags')}</h4>
-                        <p className='text-muted-foreground mt-1 text-xs'>{t('projects.profiles.allowedChannelTagsDescription')}</p>
+                        <h4 className='text-sm font-medium'>
+                          {t(isExcludeMode ? 'projects.profiles.excludedChannelTags' : 'projects.profiles.allowedChannelTags')}
+                        </h4>
+                        <p className='text-muted-foreground mt-1 text-xs'>
+                          {t(isExcludeMode ? 'projects.profiles.excludedChannelTagsDescription' : 'projects.profiles.allowedChannelTagsDescription')}
+                        </p>
                       </div>
                       <FormField
                         control={form.control}
@@ -234,6 +241,7 @@ export function ProjectProfilesDialog({ open, onOpenChange, onSubmit, loading = 
                                 <SelectContent>
                                   <SelectItem value='any'>{t('projects.profiles.allowedChannelTagsMatchModeAny')}</SelectItem>
                                   <SelectItem value='all'>{t('projects.profiles.allowedChannelTagsMatchModeAll')}</SelectItem>
+                                  <SelectItem value='none'>{t('projects.profiles.allowedChannelTagsMatchModeNone')}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </FormControl>
@@ -251,7 +259,7 @@ export function ProjectProfilesDialog({ open, onOpenChange, onSubmit, loading = 
                             <TagsAutocompleteInput
                               value={field.value || []}
                               onChange={field.onChange}
-                              placeholder={t('projects.profiles.allowedChannelTags')}
+                              placeholder={t(isExcludeMode ? 'projects.profiles.excludedChannelTags' : 'projects.profiles.allowedChannelTags')}
                               suggestions={allTags}
                               className='h-auto min-h-9 py-1'
                             />
@@ -263,7 +271,8 @@ export function ProjectProfilesDialog({ open, onOpenChange, onSubmit, loading = 
                   </div>
                 </CardContent>
               </Card>
-            ))}
+                      );
+                    })}
                   </div>
                 </form>
               </Form>
