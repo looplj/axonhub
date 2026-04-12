@@ -223,7 +223,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'nanogpt',
     icon: NanoGPTIcon,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
-    channelTypes: ['nanogpt'],
+    channelTypes: ['nanogpt', 'nanogpt_responses'],
   },
   fireworks: {
     provider: 'fireworks',

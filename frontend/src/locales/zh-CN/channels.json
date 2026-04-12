@@ -80,6 +80,7 @@
   "channels.types.antigravity": "Antigravity",
   "channels.types.cerebras": "Cerebras",
   "channels.types.nanogpt": "NanoGPT",
+  "channels.types.nanogpt_responses": "NanoGPT (Responses)",
   "channels.types.fireworks": "Fireworks",
   "channels.providers.openai": "OpenAI",
   "channels.providers.anthropic": "Anthropic",
