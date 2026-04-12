@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useTranslation } from 'react-i18next';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -160,6 +160,47 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
   `;
 }
 
+function buildRequestDetailPollingQuery(permissions: { canViewApiKeys: boolean; canViewChannels: boolean }) {
+  const apiKeyFields = permissions.canViewApiKeys
+    ? `
+          apiKey {
+            id
+            name
+        }`
+    : '';
+
+  const requestChannelFields = permissions.canViewChannels
+    ? `
+          channel {
+            id
+            name
+          }`
+    : '';
+
+  return `
+    query GetRequestDetailPolling($id: ID!) {
+      node(id: $id) {
+        ... on Request {
+          id
+          createdAt
+          updatedAt${apiKeyFields}${requestChannelFields}
+          source
+          modelID
+          stream
+          clientIP
+          projectID
+          dataStorageID
+          contentSaved
+          contentStorageKey
+          status
+          format
+          metricsReasoningDurationMs
+        }
+      }
+    }
+  `;
+}
+
 function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) {
   const channelFields = permissions.canViewChannels
     ? `
@@ -279,18 +320,50 @@ export function useRequest(
   const { t } = useTranslation();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
+  const queryClient = useQueryClient();
+
+  const queryKey = ['request', id, permissions, selectedProjectId] as const;
 
   return useQuery({
-    queryKey: ['request', id, permissions, selectedProjectId],
+    queryKey,
     queryFn: async () => {
       try {
-        const query = buildRequestDetailQuery(permissions);
         const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const previousRequest = queryClient.getQueryData<Request>(queryKey);
+        const shouldUseLightweightPolling = previousRequest?.status === 'processing';
+
+        const query = shouldUseLightweightPolling
+          ? buildRequestDetailPollingQuery(permissions)
+          : buildRequestDetailQuery(permissions);
+
         const data = await graphqlRequest<{ node: Request }>(query, { id }, headers);
         if (!data.node) {
           throw new Error('Request not found');
         }
-        return requestSchema.parse(data.node);
+
+        const parsedRequest = requestSchema.parse(data.node);
+
+        if (!shouldUseLightweightPolling) {
+          return parsedRequest;
+        }
+
+        if (parsedRequest.status !== 'processing') {
+          const fullData = await graphqlRequest<{ node: Request }>(buildRequestDetailQuery(permissions), { id }, headers);
+          if (!fullData.node) {
+            throw new Error('Request not found');
+          }
+          return requestSchema.parse(fullData.node);
+        }
+
+        return requestSchema.parse({
+          ...previousRequest,
+          ...parsedRequest,
+          requestHeaders: previousRequest?.requestHeaders,
+          requestBody: previousRequest?.requestBody,
+          responseBody: previousRequest?.responseBody,
+          responseChunks: previousRequest?.responseChunks,
+          usageLogs: previousRequest?.usageLogs,
+        });
       } catch (error) {
         handleError(error, t('common.errors.internalServerError'));
         throw error;

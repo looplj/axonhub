@@ -2,9 +2,13 @@ package biz
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/looplj/axonhub/internal/log"
 
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -156,4 +160,55 @@ func (r *StreamPreviewRegistry) GetBuffer(key string) *ChunkBuffer {
 	}
 
 	return entry.buffer
+}
+
+// StartSweeper starts a background worker that periodically cleans up stale chunk buffers.
+func (r *StreamPreviewRegistry) StartSweeper(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				r.sweepStaleEntries(ctx)
+			}
+		}
+	}()
+}
+
+// sweepStaleEntries iterates over the registry and removes closed or long-idle buffers.
+func (r *StreamPreviewRegistry) sweepStaleEntries(ctx context.Context) {
+	threshold := 10 * time.Minute
+	now := time.Now()
+	evictedCount := 0
+
+	r.entries.Range(func(key, value any) bool {
+		entry, ok := value.(*previewEntry)
+		if !ok || entry.buffer == nil {
+			r.entries.Delete(key)
+			return true
+		}
+
+		buffer := entry.buffer
+
+		if buffer.IsClosed() {
+			r.entries.Delete(key)
+			evictedCount++
+			return true
+		}
+
+		if now.Sub(buffer.LastAppendedAt()) > threshold {
+			log.Warn(ctx, "Preview registry sweeper force-closing an idle zombie stream buffer", log.Any("key", key), log.Duration("idle_time", now.Sub(buffer.LastAppendedAt())))
+			buffer.Close()        // Detach any dangling subscribers
+			r.entries.Delete(key) // Evict from registry
+			evictedCount++
+		}
+		return true
+	})
+
+	if evictedCount > 0 {
+		log.Debug(ctx, "Preview registry swept stale entries", log.Int("evicted", evictedCount))
+	}
 }

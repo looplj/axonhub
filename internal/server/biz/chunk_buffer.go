@@ -2,6 +2,7 @@ package biz
 
 import (
 	"sync"
+	"time"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -15,20 +16,24 @@ import (
 //   - Slice: reading all chunks for final persistence
 //   - Notify: callback mechanism for append notifications (used by preview registry)
 type ChunkBuffer struct {
-	mu          sync.RWMutex
-	chunks      []*httpclient.StreamEvent
-	notify      func() // called after each append, may be nil
-	closed      bool   // marks buffer as closed (no more appends)
-	subscribers map[chan struct{}]struct{}
+	mu             sync.RWMutex
+	chunks         []*httpclient.StreamEvent
+	notify         func() // called after each append, may be nil
+	closed         bool   // marks buffer as closed (no more appends)
+	subscribers    map[chan struct{}]struct{}
+	lastAppendedAt time.Time
 }
+
+const maxChunkCapacity = 50000
 
 // NewChunkBuffer creates a new ChunkBuffer with optional notification callback.
 // The notify callback is invoked after each successful append.
 func NewChunkBuffer(notify func()) *ChunkBuffer {
 	return &ChunkBuffer{
-		chunks:      make([]*httpclient.StreamEvent, 0),
-		notify:      notify,
-		subscribers: make(map[chan struct{}]struct{}),
+		chunks:         make([]*httpclient.StreamEvent, 0),
+		notify:         notify,
+		subscribers:    make(map[chan struct{}]struct{}),
+		lastAppendedAt: time.Now(),
 	}
 }
 
@@ -47,7 +52,13 @@ func (b *ChunkBuffer) Append(chunk *httpclient.StreamEvent) bool {
 		return false
 	}
 
+	if len(b.chunks) >= maxChunkCapacity {
+		// Reject append to prevent unbounded memory growth and potential OOMs
+		return false
+	}
+
 	b.chunks = append(b.chunks, chunk)
+	b.lastAppendedAt = time.Now()
 
 	// Invoke notification callback while holding the lock to ensure
 	// the length snapshot is consistent with the append.
@@ -76,6 +87,13 @@ func (b *ChunkBuffer) Len() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return len(b.chunks)
+}
+
+// LastAppendedAt returns the timestamp of the last successfully appended chunk.
+func (b *ChunkBuffer) LastAppendedAt() time.Time {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.lastAppendedAt
 }
 
 // Close marks the buffer as closed, preventing further appends.

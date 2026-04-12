@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -14,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -180,6 +182,8 @@ func newRequestPreviewStream(ctx context.Context, buffer *biz.ChunkBuffer) *requ
 	}
 }
 
+const previewIdleTimeout = 3 * time.Minute
+
 func (s *requestPreviewStream) Next() bool {
 	for {
 		if event, ok := s.nextAvailableEvent(); ok {
@@ -187,11 +191,18 @@ func (s *requestPreviewStream) Next() bool {
 			return true
 		}
 
+		idleTimer := time.NewTimer(previewIdleTimeout)
 		select {
 		case <-s.ctx.Done():
+			idleTimer.Stop()
 			s.current = nil
 			return false
 		case <-s.notifyCh:
+			idleTimer.Stop()
+		case <-idleTimer.C:
+			log.Warn(s.ctx, "request preview stream idle timeout", log.Duration("timeout", previewIdleTimeout))
+			s.current = nil
+			return false
 		}
 	}
 }
