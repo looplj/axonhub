@@ -87,6 +87,37 @@ func TestRequestPreviewHandlers_IncrementalDeliveryAfterReplay(t *testing.T) {
 	require.JSONEq(t, `{"status":"completed"}`, completedEvent.Data)
 }
 
+func TestRequestPreviewHandlers_WaitsForFirstChunkWhenProcessing(t *testing.T) {
+	setup := newRequestPreviewTestSetup(t)
+	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))
+
+	server := httptest.NewServer(setup.router)
+	defer server.Close()
+
+	resp, err := server.Client().Get(fmt.Sprintf("%s/admin/requests/%d/preview", server.URL, setup.req.ID))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/event-stream")
+
+	buffer := biz.DefaultStreamPreviewRegistry.GetBuffer(biz.RequestKey(setup.req.ID))
+	require.NotNil(t, buffer)
+
+	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: []byte(`{"index":1}`)})
+	buffer.Append(&httpclient.StreamEvent{Type: "message", Data: llm.DoneStreamEvent.Data})
+	buffer.Close()
+
+	reader := bufio.NewReader(resp.Body)
+	firstEvent := readSSEEvent(t, reader)
+	require.Equal(t, "preview.chunk", firstEvent.Event)
+	require.JSONEq(t, `{"index":1}`, firstEvent.Data)
+
+	completedEvent := readSSEEvent(t, reader)
+	require.Equal(t, "preview.completed", completedEvent.Event)
+	require.JSONEq(t, `{"status":"completed"}`, completedEvent.Data)
+}
+
 func TestRequestPreviewHandlers_CorrectHeaders(t *testing.T) {
 	setup := newRequestPreviewTestSetup(t)
 	defer biz.DefaultStreamPreviewRegistry.Unregister(biz.RequestKey(setup.req.ID))

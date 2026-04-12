@@ -37,7 +37,7 @@ type RequestPreviewFallbackResponse struct {
 	ResponseChunks []objects.JSONRawMessage `json:"responseChunks"`
 }
 
-type Step1RequestDetailPreviewContract struct {
+type RequestDetailPreviewContract struct {
 	SingleInstanceOnly                           bool
 	SupportsDistributedReplay                    bool
 	AllowsDatabaseSchemaChanges                  bool
@@ -58,8 +58,8 @@ type Step1RequestDetailPreviewContract struct {
 	ConnectAfterCompletionFallsBackToStaticFetch bool
 }
 
-func Step1RequestDetailSSEContract() Step1RequestDetailPreviewContract {
-	return Step1RequestDetailPreviewContract{
+func RequestDetailSSEContract() RequestDetailPreviewContract {
+	return RequestDetailPreviewContract{
 		SingleInstanceOnly:                           true,
 		SupportsDistributedReplay:                    false,
 		AllowsDatabaseSchemaChanges:                  false,
@@ -125,8 +125,8 @@ func (h *RequestPreviewHandlers) PreviewRequest(c *gin.Context) {
 
 	buffer := biz.DefaultStreamPreviewRegistry.GetBuffer(biz.RequestKey(req.ID))
 	if buffer == nil {
-		h.writeStaticPreview(c, req)
-		return
+		buffer = biz.NewChunkBuffer(nil)
+		biz.DefaultStreamPreviewRegistry.RegisterBuffer(biz.RequestKey(req.ID), buffer)
 	}
 
 	stream := newRequestPreviewStream(ctx, buffer)

@@ -303,8 +303,12 @@ export default function RequestDetailPage() {
 
   const parsedResponse = useMemo(() => {
     if (!request) return { content: '', reasoning: '', toolCalls: [] };
+    if (previewRequest) {
+      return parseResponse(undefined, previewRequest.responseChunks);
+    }
+
     return parseResponse(request.responseBody, request.responseChunks);
-  }, [request]);
+  }, [previewRequest, request]);
 
   const hasPreviewData = !!(parsedResponse.content || parsedResponse.reasoning || parsedResponse.toolCalls.length > 0);
   const isLive = isPreviewStreaming || !!(request?.status === 'processing' && request?.stream);

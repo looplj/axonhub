@@ -60,12 +60,20 @@ func NewInboundPersistentStream(
 	}
 
 	if s.storeChunks || state.LivePreview {
-		s.chunkBuffer = biz.NewChunkBuffer(nil)
+		if state.LivePreview && request != nil {
+			s.previewKey = biz.RequestKey(request.ID)
+			s.chunkBuffer = biz.DefaultStreamPreviewRegistry.GetBuffer(s.previewKey)
+		}
+		if s.chunkBuffer == nil {
+			s.chunkBuffer = biz.NewChunkBuffer(nil)
+		}
 	}
 
 	// Register with preview registry for live chunk access
 	if state.LivePreview && request != nil && s.chunkBuffer != nil {
-		s.previewKey = biz.RequestKey(request.ID)
+		if s.previewKey == "" {
+			s.previewKey = biz.RequestKey(request.ID)
+		}
 		notifyFn := biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
 		s.chunkBuffer.SetNotify(notifyFn)
 	}

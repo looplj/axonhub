@@ -14,7 +14,7 @@ import (
 // - fallback to normal static fetch when SSE cannot connect
 
 func TestRequestDetailSSEContract_SingleInstanceOnly(t *testing.T) {
-	contract := Step1RequestDetailSSEContract()
+	contract := RequestDetailSSEContract()
 
 	assert.True(t, contract.SingleInstanceOnly)
 	assert.False(t, contract.SupportsDistributedReplay)
@@ -23,7 +23,7 @@ func TestRequestDetailSSEContract_SingleInstanceOnly(t *testing.T) {
 }
 
 func TestRequestDetailSSEContract_ReplayBeforeIncremental(t *testing.T) {
-	contract := Step1RequestDetailSSEContract()
+	contract := RequestDetailSSEContract()
 
 	assert.Equal(t, []string{"replay", "incremental"}, contract.EventOrder)
 	assert.Equal(t, "request", contract.Scope)
@@ -33,7 +33,7 @@ func TestRequestDetailSSEContract_ReplayBeforeIncremental(t *testing.T) {
 }
 
 func TestRequestDetailSSEContract_EndpointSpec(t *testing.T) {
-	contract := Step1RequestDetailSSEContract()
+	contract := RequestDetailSSEContract()
 
 	assert.Equal(t, "/admin/requests/:request_id/preview", contract.EndpointPath)
 	assert.Equal(t, "text/event-stream", contract.ContentType)
@@ -44,7 +44,7 @@ func TestRequestDetailSSEContract_EndpointSpec(t *testing.T) {
 }
 
 func TestRequestDetailSSEContract_FallbackWhenSSEUnavailable(t *testing.T) {
-	contract := Step1RequestDetailSSEContract()
+	contract := RequestDetailSSEContract()
 
 	assert.Equal(t, "static-fetch", contract.FallbackMode)
 	assert.Equal(t, "load persisted request detail once when SSE cannot connect", contract.FallbackBehavior)
