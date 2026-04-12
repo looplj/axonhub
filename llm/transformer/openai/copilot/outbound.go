@@ -22,12 +22,9 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// modelVersionRegex matches GPT model versions (e.g., "gpt-5", "gpt-6")
-// Compiled once at package initialization for efficiency.
 var modelVersionRegex = regexp.MustCompile(`^gpt-(\d+)`)
 
 const (
-	// DefaultCopilotBaseURL is the base URL for GitHub Copilot API.
 	DefaultCopilotBaseURL          = "https://api.githubcopilot.com"
 	CopilotChatCompletionsEndpoint = "/chat/completions"
 	EditorVersionHeader            = "editor-version"
@@ -40,26 +37,20 @@ const (
 	VSCodeUserAgentLibHeader       = "x-vscode-user-agent-library-version"
 	CopilotVisionRequestHeader     = "Copilot-Vision-Request"
 	InitiatorHeader                = "X-Initiator"
-	// Default editor header values (VSCode pattern) - from LiteLLM
+	// LiteLLM-style defaults for Copilot quota tracking
 	DefaultEditorVersion       = "vscode/1.95.0"
 	DefaultEditorPluginVersion = "copilot-chat/0.26.7"
 	DefaultUserAgent           = "GitHubCopilotChat/0.26.7"
-	// DefaultOpenAIIntent is used for proper quota aggregation (matches OpenCode behavior).
-	DefaultOpenAIIntent         = "conversation-edits"
+	DefaultOpenAIIntent        = "conversation-edits"
 	DefaultCopilotIntegrationID = "vscode-chat"
 	DefaultGitHubAPIVersion     = "2025-04-01"
 	DefaultVSCodeUserAgentLib   = "electron-fetch"
 )
 
-// TokenProvider defines the interface for getting Copilot tokens.
-// This is typically implemented by CopilotTokenProvider.
 type TokenProvider interface {
-	// GetToken returns a valid Copilot token for API authentication.
 	GetToken(ctx context.Context) (string, error)
 }
 
-// OutboundTransformer implements transformer.Outbound for GitHub Copilot.
-// It transforms unified LLM requests to GitHub Copilot API format with LiteLLM-style headers.
 type OutboundTransformer struct {
 	tokenProvider     TokenProvider
 	baseURL           string
@@ -67,19 +58,13 @@ type OutboundTransformer struct {
 	openAITransformer transformer.Outbound
 }
 
-// OutboundTransformerParams contains the parameters for creating a new OutboundTransformer.
 type OutboundTransformerParams struct {
-	// TokenProvider provides Copilot tokens for authentication (required).
-	TokenProvider TokenProvider
-
-	// BaseURL is the base URL for the Copilot API (optional, defaults to DefaultCopilotBaseURL).
-	BaseURL string
+	TokenProvider TokenProvider // required
+	BaseURL       string         // optional, defaults to DefaultCopilotBaseURL
 }
 
-// Compile-time interface check.
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
 
-// NewOutboundTransformer creates a new GitHub Copilot outbound transformer.
 func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransformer, error) {
 	if params.TokenProvider == nil {
 		return nil, errors.New("token provider is required")
@@ -90,10 +75,9 @@ func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransfor
 		baseURL = DefaultCopilotBaseURL
 	}
 
-	// Normalize base URL (remove trailing slash)
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
-	// Create responses transformer for Codex models
+	// For GPT-5+ models that use Responses API
 	responsesTransformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 		BaseURL:        baseURL,
 		APIKeyProvider: auth.NewStaticKeyProvider(""),
@@ -109,13 +93,10 @@ func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransfor
 	}, nil
 }
 
-// APIFormat returns the API format for this transformer.
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIChatCompletion
 }
 
-// TransformRequest transforms a unified LLM request to a GitHub Copilot HTTP request.
-// It adds LiteLLM-style editor headers required by the Copilot API.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, errors.New("request is nil")
@@ -129,53 +110,37 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, errors.New("messages are required")
 	}
 
-	// Check if this model requires the Responses API.
 	if usesResponsesAPI(llmReq.Model) {
 		return t.transformResponsesRequest(ctx, llmReq)
 	}
 
-	// Get Copilot token from token provider.
 	token, err := t.tokenProvider.GetToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get copilot token: %w", err)
 	}
 
-	// Convert to OpenAI request format.
 	oaiReq := openai.RequestFromLLM(llmReq)
 
-	// Marshal request body.
 	body, err := json.Marshal(oaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Build URL.
 	url := t.baseURL + CopilotChatCompletionsEndpoint
 
-	// Prepare headers with LiteLLM-style editor headers.
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
-	// Add LiteLLM-style editor headers (required by Copilot).
+	// LiteLLM-style editor headers required by Copilot
 	setCopilotHeaders(headers)
 
-	// Add vision header if request contains image content.
 	if hasVisionContent(llmReq) {
 		headers.Set(CopilotVisionRequestHeader, "true")
 	}
 
-	// Forward X-Initiator from inbound request for Copilot billing control.
-	// Default to "agent" if not provided to match OpenCode behavior.
-	initiator := "agent"
-	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
-			initiator = val
-		}
-	}
-	headers.Set(InitiatorHeader, initiator)
+	headers.Set(InitiatorHeader, resolveCopilotInitiator(llmReq))
 
-	// Build authentication config.
 	authConfig := &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
 		APIKey: token,
@@ -191,7 +156,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}, nil
 }
 
-// setCopilotHeaders sets the LiteLLM-style editor headers required by Copilot.
 func setCopilotHeaders(headers http.Header) {
 	headers.Set(EditorVersionHeader, DefaultEditorVersion)
 	headers.Set(EditorPluginVersionHeader, DefaultEditorPluginVersion)
@@ -202,42 +166,82 @@ func setCopilotHeaders(headers http.Header) {
 	headers.Set(VSCodeUserAgentLibHeader, DefaultVSCodeUserAgentLib)
 }
 
-// hasVisionContent checks if the request contains image content (vision capabilities).
-// hasVisionContent checks if the request contains image content (vision capabilities).
-// It returns true if any message contains image_url content or data URLs.
+func normalizeInitiator(val string) string {
+	normalized := strings.ToLower(strings.TrimSpace(val))
+	if normalized == "user" || normalized == "agent" {
+		return normalized
+	}
+	return ""
+}
+
+// inferCopilotInitiator determines X-Initiator based on the last message (oh-my-pi logic).
+func inferCopilotInitiator(messages []llm.Message) string {
+	if len(messages) == 0 {
+		return "user"
+	}
+
+	lastMsg := messages[len(messages)-1]
+
+	// Attribution field takes priority
+	if normalized := normalizeInitiator(lastMsg.Attribution); normalized != "" {
+		return normalized
+	}
+
+	// Non-user role indicates agent turn
+	if lastMsg.Role != "user" {
+		return "agent"
+	}
+
+	// Check if LAST content block is tool_result (oh-my-pi checks only the last block)
+	if len(lastMsg.Content.MultipleContent) > 0 {
+		lastBlock := lastMsg.Content.MultipleContent[len(lastMsg.Content.MultipleContent)-1]
+		if lastBlock.Type == "tool_result" {
+			return "agent"
+		}
+	}
+
+	return "user"
+}
+
+func resolveCopilotInitiator(llmReq *llm.Request) string {
+	initiator := inferCopilotInitiator(llmReq.Messages)
+
+	// Header override takes priority if valid
+	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
+		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
+			if normalized := normalizeInitiator(val); normalized != "" {
+				initiator = normalized
+			}
+		}
+	}
+
+	return initiator
+}
+
 func hasVisionContent(llmReq *llm.Request) bool {
 	for _, msg := range llmReq.Messages {
-		// Check single content.
 		if msg.Content.Content != nil {
-			content := *msg.Content.Content
-			if isImageDataURL(content) {
+			if isImageDataURL(*msg.Content.Content) {
 				return true
 			}
 		}
 
-		// Check multiple content parts.
 		for _, part := range msg.Content.MultipleContent {
-			// Check for image_url type.
 			if part.Type == "image_url" || part.ImageURL != nil {
 				return true
 			}
-
-			// Check for data URLs in text.
 			if part.Text != nil && isImageDataURL(*part.Text) {
 				return true
 			}
 		}
 	}
-
 	return false
 }
 
-// isImageDataURL checks if the content is an image data URL.
 func isImageDataURL(content string) bool {
 	return strings.HasPrefix(content, "data:image/")
 }
 
-// TransformResponse transforms a GitHub Copilot HTTP response to a unified LLM response.
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, errors.New("http response is nil")
@@ -593,15 +597,8 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 		responsesReq.Headers.Set(CopilotVisionRequestHeader, "true")
 	}
 
-	// Forward X-Initiator from inbound request for Copilot billing control.
-	// Default to "agent" if not provided to match OpenCode behavior.
-	initiator := "agent"
-	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
-		if val := llmReq.RawRequest.Headers.Get(InitiatorHeader); val != "" {
-			initiator = val
-		}
-	}
-	responsesReq.Headers.Set(InitiatorHeader, initiator)
+	// Determine X-Initiator for Copilot billing control.
+	responsesReq.Headers.Set(InitiatorHeader, resolveCopilotInitiator(llmReq))
 
 	return responsesReq, nil
 }
