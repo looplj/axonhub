@@ -37,6 +37,7 @@ export function StoragePolicySettings() {
 
   const [storagePolicyState, setStoragePolicyState] = useState({
     storeChunks: storagePolicy?.storeChunks ?? false,
+    livePreview: storagePolicy?.livePreview ?? false,
     storeRequestBody: storagePolicy?.storeRequestBody ?? true,
     storeResponseBody: storagePolicy?.storeResponseBody ?? true,
     cleanupOptions: storagePolicy?.cleanupOptions ?? [],
@@ -46,6 +47,7 @@ export function StoragePolicySettings() {
     if (storagePolicy) {
       setStoragePolicyState({
         storeChunks: storagePolicy.storeChunks,
+        livePreview: storagePolicy.livePreview,
         storeRequestBody: storagePolicy.storeRequestBody,
         storeResponseBody: storagePolicy.storeResponseBody,
         cleanupOptions: storagePolicy.cleanupOptions,
@@ -58,6 +60,7 @@ export function StoragePolicySettings() {
     try {
       await updateStoragePolicy.mutateAsync({
         storeChunks: storagePolicyState.storeChunks,
+        livePreview: storagePolicyState.livePreview,
         storeRequestBody: storagePolicyState.storeRequestBody,
         storeResponseBody: storagePolicyState.storeResponseBody,
         cleanupOptions: storagePolicyState.cleanupOptions.map((option) => ({
@@ -86,6 +89,7 @@ export function StoragePolicySettings() {
   const hasChanges =
     storagePolicy &&
     (storagePolicy.storeChunks !== storagePolicyState.storeChunks ||
+      storagePolicy.livePreview !== storagePolicyState.livePreview ||
       storagePolicy.storeRequestBody !== storagePolicyState.storeRequestBody ||
       storagePolicy.storeResponseBody !== storagePolicyState.storeResponseBody ||
       JSON.stringify(storagePolicy.cleanupOptions) !== JSON.stringify(storagePolicyState.cleanupOptions));
@@ -151,6 +155,24 @@ export function StoragePolicySettings() {
                 setStoragePolicyState({
                   ...storagePolicyState,
                   storeChunks: checked,
+                })
+              }
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='storage-policy-live-preview'>{t('system.storage.policy.livePreview.label')}</Label>
+              <div className='text-muted-foreground text-sm'>{t('system.storage.policy.livePreview.description')}</div>
+            </div>
+            <Switch
+              id='storage-policy-live-preview'
+              checked={storagePolicyState.livePreview}
+              onCheckedChange={(checked) =>
+                setStoragePolicyState({
+                  ...storagePolicyState,
+                  livePreview: checked,
                 })
               }
               disabled={isLoading}
