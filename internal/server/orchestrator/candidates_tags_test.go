@@ -232,6 +232,29 @@ func TestTagsFilterSelector_AllLogic(t *testing.T) {
 	assert.Equal(t, "Channel with tag1 and tag2", result[0].Channel.Name)
 }
 
+// TestTagsFilterSelector_NoneLogic 明确测试 NONE 逻辑.
+func TestTagsFilterSelector_NoneLogic(t *testing.T) {
+	ctx, _, channels := setupTagsTest(t)
+
+	mockSelector := &mockChannelSelector{
+		selectFunc: func(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
+			return channelsToCandidates(channels, req.Model), nil
+		},
+	}
+	selector := WithChannelTagsFilterSelector(mockSelector, []string{"tag1", "tag2"}, objects.ChannelTagsMatchModeNone)
+
+	req := &llm.Request{Model: "gpt-4"}
+
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+	assert.Len(t, result, 3)
+
+	names := []string{result[0].Channel.Name, result[1].Channel.Name, result[2].Channel.Name}
+	assert.Contains(t, names, "Channel with tag3 only")
+	assert.Contains(t, names, "Channel without tags")
+	assert.Contains(t, names, "Channel with nil tags")
+}
+
 // TestTagsFilterSelector_NoMatchingTags 测试没有匹配的标签.
 func TestTagsFilterSelector_NoMatchingTags(t *testing.T) {
 	ctx, _, channels := setupTagsTest(t)

@@ -1274,6 +1274,82 @@ func TestModelService_ListEnabledModels(t *testing.T) {
 		require.False(t, resultMap["partial-tags-model"], "partial-tags-model should not be in result")
 	})
 
+	t.Run("API key with ChannelTags none-match excludes tagged channels", func(t *testing.T) {
+		modelSettings := SystemModelSettings{
+			QueryAllChannelModels: true,
+		}
+		err = systemSvc.SetModelSettings(ctx, modelSettings)
+		require.NoError(t, err)
+
+		_, err = client.Channel.Create().
+			SetType(channel.TypeOpenai).
+			SetName("None Match Excluded Channel").
+			SetBaseURL("https://api.none-excluded.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: "key-none-excluded"}).
+			SetSupportedModels([]string{"none-excluded-model"}).
+			SetDefaultTestModel("none-excluded-model").
+			SetStatus(channel.StatusEnabled).
+			SetTags([]string{"cc", "internal"}).
+			Save(ctx)
+		require.NoError(t, err)
+
+		_, err = client.Channel.Create().
+			SetType(channel.TypeOpenai).
+			SetName("None Match Allowed Channel").
+			SetBaseURL("https://api.none-allowed.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: "key-none-allowed"}).
+			SetSupportedModels([]string{"none-allowed-model"}).
+			SetDefaultTestModel("none-allowed-model").
+			SetStatus(channel.StatusEnabled).
+			SetTags([]string{"general"}).
+			Save(ctx)
+		require.NoError(t, err)
+
+		enabledEntities, err := client.Channel.Query().
+			Where(channel.StatusEQ(channel.StatusEnabled)).
+			All(ctx)
+		require.NoError(t, err)
+
+		enabledChannels := make([]*Channel, 0, len(enabledEntities))
+		for _, e := range enabledEntities {
+			built, buildErr := channelSvc.buildChannelWithTransformer(e)
+			require.NoError(t, buildErr)
+
+			enabledChannels = append(enabledChannels, built)
+		}
+
+		channelSvc.SetEnabledChannelsForTest(enabledChannels)
+
+		apiKey := &ent.APIKey{
+			ID:   17,
+			Name: "test-api-key-17",
+			Profiles: &objects.APIKeyProfiles{
+				ActiveProfile: "production",
+				Profiles: []objects.APIKeyProfile{
+					{
+						Name:                 "production",
+						ChannelTags:          []string{"cc", "internal"},
+						ChannelTagsMatchMode: objects.ChannelTagsMatchModeNone,
+					},
+				},
+			},
+		}
+
+		ctx := contexts.WithAPIKey(ctx, apiKey)
+
+		result, err := modelSvc.ListEnabledModels(ctx)
+		require.NoError(t, err)
+
+		resultMap := make(map[string]bool)
+		for _, model := range result {
+			resultMap[model.ID] = true
+		}
+
+		require.NotEmpty(t, result, "Should still return models from channels that do not match excluded tags")
+		require.True(t, resultMap["none-allowed-model"], "none-allowed-model should be in result")
+		require.False(t, resultMap["none-excluded-model"], "none-excluded-model should not be in result")
+	})
+
 	t.Run("API key with both ChannelIDs and ChannelTags", func(t *testing.T) {
 		// Get the first channel ID
 		channels := channelSvc.GetEnabledChannels()
