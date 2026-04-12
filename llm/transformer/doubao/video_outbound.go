@@ -238,16 +238,16 @@ func (t *OutboundTransformer) ParseGetVideoTaskResponse(ctx context.Context, htt
 	}
 
 	v := &llm.VideoResponse{
-		ID:         resp.ID,
-		Status:     status,
-		Model:      resp.Model,
-		CreatedAt:  resp.CreatedAt,
+		ID:          resp.ID,
+		Status:      status,
+		Model:       resp.Model,
+		CreatedAt:   resp.CreatedAt,
 		CompletedAt: completedAt,
-		Ratio:      resp.Ratio,
-		Resolution: resp.Resolution,
-		Duration:   resp.Duration,
-		FPS:        resp.FramesPerSecond,
-		Seed:       resp.Seed,
+		Ratio:       resp.Ratio,
+		Resolution:  resp.Resolution,
+		Duration:    resp.Duration,
+		FPS:         resp.FramesPerSecond,
+		Seed:        resp.Seed,
 	}
 
 	if resp.Content != nil {
@@ -291,39 +291,6 @@ func (t *OutboundTransformer) BuildDeleteVideoTaskRequest(ctx context.Context, p
 	}, nil
 }
 
-func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
-	// Delegate to wrapped OpenAI transformer for non-video requests.
-	if httpResp == nil || httpResp.Request == nil || httpResp.Request.RequestType != llm.RequestTypeVideo.String() {
-		return t.Outbound.TransformResponse(ctx, httpResp)
-	}
-
-	// Video create returns {id}.
-	var resp seedanceCreateResponse
-	if err := json.Unmarshal(httpResp.Body, &resp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal seedance create response: %w", err)
-	}
-
-	if strings.TrimSpace(resp.ID) == "" {
-		return nil, fmt.Errorf("%w: missing id in seedance create response", transformer.ErrInvalidResponse)
-	}
-
-	return &llm.Response{
-		ID:          resp.ID, // provider task id for persistence
-		Object:      "video.create",
-		Created:     time.Now().Unix(),
-		Model:       llmReqModelOrFallback(httpResp),
-		RequestType: llm.RequestTypeVideo,
-		APIFormat:   llm.APIFormatSeedanceVideo,
-		Choices:     []llm.Choice{},
-		Video: &llm.VideoResponse{
-			ID:        resp.ID,
-			Status:    "queued",
-			Model:     llmReqModelOrFallback(httpResp),
-			CreatedAt: time.Now().Unix(),
-		},
-	}, nil
-}
-
 func llmReqModelOrFallback(httpResp *httpclient.Response) string {
 	if httpResp != nil && httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
 		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
@@ -335,5 +302,5 @@ func llmReqModelOrFallback(httpResp *httpclient.Response) string {
 }
 
 var (
-	_ transformer.VideoTaskOutbound     = (*OutboundTransformer)(nil)
+	_ transformer.VideoTaskOutbound = (*OutboundTransformer)(nil)
 )
