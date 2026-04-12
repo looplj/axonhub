@@ -1,0 +1,24 @@
+scalar Any
+
+enum FilterConditionType {
+  condition
+  group
+}
+
+type FilterCondition {
+  type: FilterConditionType!
+  logic: String
+  conditions: [FilterCondition!]
+  field: String
+  operator: String
+  value: Any
+}
+
+input FilterConditionInput {
+  type: FilterConditionType!
+  logic: String
+  conditions: [FilterConditionInput!]
+  field: String
+  operator: String
+  value: Any
+}

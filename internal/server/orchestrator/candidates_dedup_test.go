@@ -137,3 +137,75 @@ func TestDefaultSelector_Select_AggregateSameChannelSamePriority(t *testing.T) {
 	actualModels := []string{result[0].Models[0].ActualModel, result[0].Models[1].ActualModel}
 	require.ElementsMatch(t, []string{"gpt-4", "gpt-3.5-turbo"}, actualModels)
 }
+
+func TestDefaultSelector_Select_DeduplicateAcrossConditionalAssociationsByActualModel(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Conditional Dedup Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetSettings(&objects.ChannelSettings{
+			ModelMappings: []objects.ModelMapping{
+				{From: "gpt4", To: "gpt-4"},
+			},
+		}).
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelService := newTestChannelServiceForChannels(client)
+	modelService := newTestModelService(client)
+	systemService := newTestSystemService(client)
+	selector := NewDefaultSelector(channelService, modelService, systemService)
+
+	model, err := client.Model.Create().
+		SetModelID("conditional-dedup-model").
+		SetName("Conditional Dedup Model").
+		SetDeveloper("openai").
+		SetIcon("openai").
+		SetGroup("test").
+		SetModelCard(&objects.ModelCard{}).
+		SetStatus("enabled").
+		SetSettings(&objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type:     "channel_model",
+					Priority: 1,
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+					},
+					ChannelModel: &objects.ChannelModelAssociation{
+						ChannelID: ch.ID,
+						ModelID:   "gpt-4",
+					},
+				},
+				{
+					Type:     "channel_model",
+					Priority: 2,
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+					},
+					ChannelModel: &objects.ChannelModelAssociation{
+						ChannelID: ch.ID,
+						ModelID:   "gpt4",
+					},
+				},
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req := &llm.Request{Model: model.ModelID}
+	result, err := selector.Select(ctx, req)
+	require.NoError(t, err)
+
+	require.Len(t, result, 1, "Should only have one candidate for the same channel actual model")
+	require.Equal(t, ch.ID, result[0].Channel.ID)
+	require.Equal(t, 1, result[0].Priority, "Should keep the first matched association priority")
+	require.Len(t, result[0].Models, 1)
+	require.Equal(t, "gpt-4", result[0].Models[0].ActualModel)
+}

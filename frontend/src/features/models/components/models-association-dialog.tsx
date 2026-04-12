@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { FilterBuilder, type FilterBuilderCondition, type FilterBuilderField, type FilterBuilderGroupListValue } from '@/components/filter-builder';
 import { useAllChannelSummarys, useAllChannelTags } from '@/features/channels/data/channels';
 import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
@@ -25,6 +26,134 @@ import { ModelAssociation } from '../data/schema';
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
 
+const promptTokensOperators = ['lt', 'lte', 'gt', 'gte'] as const;
+type PromptTokensOperator = (typeof promptTokensOperators)[number];
+
+const whenFilterFields: FilterBuilderField[] = [
+  {
+    value: 'prompt_tokens',
+    label: 'Prompt tokens',
+    type: 'number',
+    placeholder: 'Enter token threshold',
+    operators: [
+      { value: 'lt', label: '< Less than' },
+      { value: 'lte', label: '<= Less than or equal' },
+      { value: 'gt', label: '> Greater than' },
+      { value: 'gte', label: '>= Greater than or equal' },
+    ],
+  },
+];
+
+const DEFAULT_WHEN_CONDITION: FilterBuilderGroupListValue = {
+  groups: [],
+};
+const MAX_WHEN_CONDITION_DEPTH = 1;
+const DEFAULT_WHEN_GROUP: FilterBuilderCondition = {
+  type: 'group',
+  logic: 'and',
+  conditions: [],
+};
+
+function hasConditionNodeData(condition?: FilterBuilderCondition): boolean {
+  if (!condition) {
+    return false;
+  }
+
+  if (condition.type === 'group') {
+    return (condition.conditions || []).some((item) => hasConditionNodeData(item));
+  }
+
+  return Boolean(condition.field && condition.operator && condition.value !== '');
+}
+
+function hasGroupListData(value?: FilterBuilderGroupListValue) {
+  return (value?.groups || []).some((group) => hasConditionNodeData(group));
+}
+
+function validateWhenConditionNode(
+  condition: FilterBuilderCondition,
+  ctx: z.RefinementCtx,
+  path: (string | number)[],
+  depth = 1,
+  maxDepth = MAX_WHEN_CONDITION_DEPTH
+) {
+  if (condition.type === 'group') {
+    const conditions = condition.conditions || [];
+    if (conditions.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'At least one condition is required',
+        path,
+      });
+    }
+
+    if (depth > maxDepth) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Condition nesting cannot exceed ${maxDepth} level${maxDepth > 1 ? 's' : ''}`,
+        path,
+      });
+    }
+
+    conditions.forEach((nestedCondition, index) =>
+      validateWhenConditionNode(nestedCondition, ctx, [...path, 'conditions', index], depth + 1, maxDepth)
+    );
+    return;
+  }
+
+  if (!condition.field) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Field is required',
+      path: [...path, 'field'],
+    });
+  }
+  if (!condition.operator) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Operator is required',
+      path: [...path, 'operator'],
+    });
+  }
+  if (condition.value === '') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Value is required',
+      path: [...path, 'value'],
+    });
+  }
+  if (condition.field === 'prompt_tokens' && typeof condition.value !== 'number') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Value must be a number',
+      path: [...path, 'value'],
+    });
+  }
+}
+
+function validateWhenGroupList(value: FilterBuilderGroupListValue, ctx: z.RefinementCtx, path: (string | number)[]) {
+  const groups = value.groups || [];
+
+  if (groups.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'At least one condition group is required',
+      path,
+    });
+    return;
+  }
+
+  if (groups.length > 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Only one condition group is allowed',
+      path,
+    });
+  }
+
+  groups.slice(0, 1).forEach((group, index) => validateWhenConditionNode(group, ctx, [...path, 'groups', index], 1, MAX_WHEN_CONDITION_DEPTH));
+}
+
 const associationFormSchema = z.object({
   associations: z
     .array(
@@ -32,6 +161,8 @@ const associationFormSchema = z.object({
         type: z.enum(['channel_model', 'channel_regex', 'model', 'regex', 'channel_tags_model', 'channel_tags_regex']),
         priority: z.number().min(0, 'Priority must be at least 0').max(10, 'Priority cannot exceed 10'),
         disabled: z.boolean().default(false),
+        whenEnabled: z.boolean().default(false),
+        whenCondition: z.custom<FilterBuilderGroupListValue>().default(DEFAULT_WHEN_CONDITION),
         channelId: z.number().optional(),
         channelTags: z.array(z.string()).optional(),
         modelId: z.string().optional(),
@@ -79,6 +210,9 @@ const associationFormSchema = z.object({
               path: [index, 'pattern'],
             });
           }
+        }
+        if (assoc.whenEnabled) {
+          validateWhenGroupList(assoc.whenCondition || DEFAULT_WHEN_CONDITION, ctx, [index, 'whenCondition']);
         }
       });
     }),
@@ -201,18 +335,19 @@ export function ModelsAssociationDialog() {
               (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0);
             const exclude = hasExclude
               ? [
-                  {
-                    channelNamePattern: assoc.excludeChannelNamePattern || null,
-                    channelIds: assoc.excludeChannelIds || null,
-                    channelTags: assoc.excludeChannelTags || null,
-                  },
-                ]
+                {
+                  channelNamePattern: assoc.excludeChannelNamePattern || null,
+                  channelIds: assoc.excludeChannelIds || null,
+                  channelTags: assoc.excludeChannelTags || null,
+                },
+              ]
               : undefined;
 
             if (assoc.type === 'channel_model') {
               return {
                 type: 'channel_model' as const,
                 disabled: assoc.disabled ?? false,
+                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
                 channelModel: {
                   channelId: assoc.channelId!,
                   modelId: assoc.modelId!,
@@ -222,6 +357,7 @@ export function ModelsAssociationDialog() {
               return {
                 type: 'channel_regex' as const,
                 disabled: assoc.disabled ?? false,
+                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
                 channelRegex: {
                   channelId: assoc.channelId!,
                   pattern: assoc.pattern!,
@@ -231,6 +367,7 @@ export function ModelsAssociationDialog() {
               return {
                 type: 'regex' as const,
                 disabled: assoc.disabled ?? false,
+                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
                 regex: {
                   pattern: assoc.pattern!,
                   exclude,
@@ -240,6 +377,7 @@ export function ModelsAssociationDialog() {
               return {
                 type: 'model' as const,
                 disabled: assoc.disabled ?? false,
+                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
                 modelId: {
                   modelId: assoc.modelId!,
                   exclude,
@@ -249,6 +387,7 @@ export function ModelsAssociationDialog() {
               return {
                 type: 'channel_tags_model' as const,
                 disabled: assoc.disabled ?? false,
+                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
                 channelTagsModel: {
                   channelTags: assoc.channelTags!,
                   modelId: assoc.modelId!,
@@ -258,6 +397,7 @@ export function ModelsAssociationDialog() {
               return {
                 type: 'channel_tags_regex' as const,
                 disabled: assoc.disabled ?? false,
+                when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
                 channelTagsRegex: {
                   channelTags: assoc.channelTags!,
                   pattern: assoc.pattern!,
@@ -289,10 +429,15 @@ export function ModelsAssociationDialog() {
       form.reset({
         associations: associations.map((assoc) => {
           const exclude = assoc.regex?.exclude?.[0] || assoc.modelId?.exclude?.[0];
+          const promptTokensCondition = readPromptTokensCondition(assoc.when);
           return {
             type: assoc.type,
             priority: assoc.priority ?? 0,
             disabled: assoc.disabled ?? false,
+            whenEnabled: promptTokensCondition.enabled,
+            whenCondition: promptTokensCondition.enabled && (promptTokensCondition.condition.groups?.length || 0) === 0
+              ? { groups: [DEFAULT_WHEN_GROUP] }
+              : promptTokensCondition.condition,
             channelId: assoc.channelModel?.channelId || assoc.channelRegex?.channelId,
             channelTags: assoc.channelTagsModel?.channelTags || assoc.channelTagsRegex?.channelTags || [],
             modelId: assoc.channelModel?.modelId || assoc.modelId?.modelId || assoc.channelTagsModel?.modelId,
@@ -317,6 +462,7 @@ export function ModelsAssociationDialog() {
             type: 'channel_model',
             priority: assoc.priority ?? 0,
             disabled: assoc.disabled ?? false,
+            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
             channelModel: {
               channelId: assoc.channelId || 0,
               modelId: assoc.modelId || '',
@@ -332,6 +478,7 @@ export function ModelsAssociationDialog() {
             type: 'channel_regex',
             priority: assoc.priority ?? 0,
             disabled: assoc.disabled ?? false,
+            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
             channelModel: null,
             channelRegex: {
               channelId: assoc.channelId || 0,
@@ -347,6 +494,7 @@ export function ModelsAssociationDialog() {
             type: 'channel_tags_model',
             priority: assoc.priority ?? 0,
             disabled: assoc.disabled ?? false,
+            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
             channelModel: null,
             channelRegex: null,
             regex: null,
@@ -362,6 +510,7 @@ export function ModelsAssociationDialog() {
             type: 'channel_tags_regex',
             priority: assoc.priority ?? 0,
             disabled: assoc.disabled ?? false,
+            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
             channelModel: null,
             channelRegex: null,
             regex: null,
@@ -379,17 +528,18 @@ export function ModelsAssociationDialog() {
             (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0);
           const exclude = hasExclude
             ? [
-                {
-                  channelNamePattern: assoc.excludeChannelNamePattern || null,
-                  channelIds: assoc.excludeChannelIds || null,
-                  channelTags: assoc.excludeChannelTags || null,
-                },
-              ]
+              {
+                channelNamePattern: assoc.excludeChannelNamePattern || null,
+                channelIds: assoc.excludeChannelIds || null,
+                channelTags: assoc.excludeChannelTags || null,
+              },
+            ]
             : null;
           return {
             type: 'regex',
             priority: assoc.priority ?? 0,
             disabled: assoc.disabled ?? false,
+            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
             channelModel: null,
             channelRegex: null,
             regex: {
@@ -407,17 +557,18 @@ export function ModelsAssociationDialog() {
             (assoc.excludeChannelTags && assoc.excludeChannelTags.length > 0);
           const exclude = hasExclude
             ? [
-                {
-                  channelNamePattern: assoc.excludeChannelNamePattern || null,
-                  channelIds: assoc.excludeChannelIds || null,
-                  channelTags: assoc.excludeChannelTags || null,
-                },
-              ]
+              {
+                channelNamePattern: assoc.excludeChannelNamePattern || null,
+                channelIds: assoc.excludeChannelIds || null,
+                channelTags: assoc.excludeChannelTags || null,
+              },
+            ]
             : null;
           return {
             type: 'model',
             priority: assoc.priority ?? 0,
             disabled: assoc.disabled ?? false,
+            when: buildAssociationWhen(assoc.whenEnabled, assoc.whenCondition),
             channelModel: null,
             channelRegex: null,
             regex: null,
@@ -464,6 +615,8 @@ export function ModelsAssociationDialog() {
       type: 'channel_model',
       priority: lastPriority,
       disabled: false,
+      whenEnabled: false,
+      whenCondition: DEFAULT_WHEN_CONDITION,
       channelId: undefined,
       channelTags: [],
       modelId: '',
@@ -580,6 +733,119 @@ export function ModelsAssociationDialog() {
   );
 }
 
+function readPromptTokensCondition(
+  when: ModelAssociation['when']
+): { enabled: boolean; condition: FilterBuilderGroupListValue } {
+  if (!when) {
+    return { enabled: false, condition: DEFAULT_WHEN_CONDITION };
+  }
+
+  const condition = when.condition;
+  if (!when.enabled || !condition) {
+    return { enabled: Boolean(when.enabled), condition: DEFAULT_WHEN_CONDITION };
+  }
+
+  return {
+    enabled: Boolean(when.enabled),
+    condition: {
+      groups: normalizeWhenCondition(condition, 0, MAX_WHEN_CONDITION_DEPTH)?.conditions || [],
+    },
+  };
+}
+
+function normalizeWhenCondition(
+  condition?: FilterBuilderCondition | null,
+  depth = 0,
+  maxDepth = MAX_WHEN_CONDITION_DEPTH
+): FilterBuilderCondition | null {
+  if (!condition) {
+    return null;
+  }
+
+  if (condition.type === 'group') {
+    const normalizedConditions = (condition.conditions || [])
+      .map((nestedCondition) => normalizeWhenCondition(nestedCondition, depth + 1, maxDepth))
+      .filter((item): item is FilterBuilderCondition => item !== null);
+
+    if (depth >= maxDepth) {
+      return {
+        type: 'group',
+        logic: condition.logic === 'or' ? 'or' : 'and',
+        conditions: normalizedConditions.flatMap((item) => (item.type === 'group' ? item.conditions || [] : [item])),
+      };
+    }
+
+    return {
+      type: 'group',
+      logic: condition.logic === 'or' ? 'or' : 'and',
+      conditions: normalizedConditions,
+    };
+  }
+
+  if (!promptTokensOperators.includes(condition.operator as PromptTokensOperator)) {
+    return null;
+  }
+
+  return {
+    type: 'condition',
+    field: condition.field,
+    operator: condition.operator,
+    value: condition.field === 'prompt_tokens' ? Number(condition.value) : condition.value,
+  };
+}
+
+function sanitizeWhenCondition(condition?: FilterBuilderCondition): FilterBuilderCondition | null {
+  if (!condition) {
+    return null;
+  }
+
+  if (condition.type === 'group') {
+    const conditions = (condition.conditions || [])
+      .map((nestedCondition) => sanitizeWhenCondition(nestedCondition))
+      .filter((item): item is FilterBuilderCondition => item !== null);
+
+    if (conditions.length === 0) {
+      return null;
+    }
+
+    return {
+      type: 'group',
+      logic: condition.logic === 'or' ? 'or' : 'and',
+      conditions: conditions.flatMap((item) => (item.type === 'group' ? item.conditions || [] : [item])),
+    };
+  }
+
+  if (!condition.field || !condition.operator || condition.value === '') {
+    return null;
+  }
+
+  return {
+    type: 'condition',
+    field: condition.field,
+    operator: condition.operator,
+    value: condition.value,
+  };
+}
+
+function buildAssociationWhen(enabled?: boolean, value?: FilterBuilderGroupListValue): ModelAssociationInput['when'] | null {
+  const groups = (value?.groups || [])
+    .map((group) => sanitizeWhenCondition(group))
+    .filter((item): item is FilterBuilderCondition => item !== null);
+
+  if (!enabled || groups.length === 0) {
+    return null;
+  }
+
+  return {
+    enabled: true,
+    condition: {
+      type: 'group',
+      logic: 'and',
+      conditions: groups,
+    },
+  };
+}
+
 interface AssociationRowProps {
   index: number;
   form: ReturnType<typeof useForm<AssociationFormData>>;
@@ -602,7 +868,10 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
   const excludeChannelNamePattern = form.watch(`associations.${index}.excludeChannelNamePattern`);
   const excludeChannelTags = form.watch(`associations.${index}.excludeChannelTags`);
   const disabled = form.watch(`associations.${index}.disabled`);
+  const whenEnabled = form.watch(`associations.${index}.whenEnabled`);
+  const whenCondition = form.watch(`associations.${index}.whenCondition`);
   const [modelSearch, setModelSearch] = useState(modelId?.toString() || '');
+  const [whenExpanded, setWhenExpanded] = useState(Boolean(whenEnabled || hasGroupListData(whenCondition)));
   const [excludeExpanded, setExcludeExpanded] = useState(false);
 
   useEffect(() => {
@@ -619,6 +888,7 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
     excludeChannelNamePattern ||
     (excludeChannelIds && excludeChannelIds.length > 0) ||
     (excludeChannelTags && excludeChannelTags.length > 0);
+  const hasWhenData = Boolean(whenEnabled || hasGroupListData(whenCondition));
 
   // Auto-expand if has exclude data
   useEffect(() => {
@@ -626,6 +896,13 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
       setExcludeExpanded(true);
     }
   }, [hasExcludeData]);
+
+  // Auto-expand if has when data
+  useEffect(() => {
+    if (hasWhenData) {
+      setWhenExpanded(true);
+    }
+  }, [hasWhenData]);
 
   // Filter model options based on selected channel's model entries
   const modelOptions = useMemo(() => {
@@ -874,6 +1151,94 @@ function AssociationRow({ index, form, channelOptions, allModelOptions, allTags,
           />
         </div>
       )}
+
+      <div className='ml-[6.25rem] border-t pt-2'>
+        <Button
+          type='button'
+          variant='ghost'
+          size='sm'
+          onClick={() => setWhenExpanded(!whenExpanded)}
+          className='text-muted-foreground hover:text-foreground mb-2 h-7 px-2 text-xs'
+        >
+          {whenExpanded ? <IconChevronUp className='mr-1 h-3 w-3' /> : <IconChevronDown className='mr-1 h-3 w-3' />}
+          {t('models.dialogs.association.conditions.section')}
+          {hasWhenData && !whenExpanded && (
+            <Badge variant='secondary' className='ml-2 h-4 px-1 text-[10px]'>
+              1
+            </Badge>
+          )}
+        </Button>
+        {whenExpanded && (
+          <div className='grid gap-2'>
+            <FormField
+              control={form.control}
+              name={`associations.${index}.whenEnabled`}
+              render={({ field }) => (
+                <div className='flex items-center gap-2'>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (checked && (form.getValues(`associations.${index}.whenCondition`)?.groups?.length || 0) === 0) {
+                        form.setValue(
+                          `associations.${index}.whenCondition`,
+                          { groups: [DEFAULT_WHEN_GROUP] },
+                          { shouldDirty: true, shouldValidate: true }
+                        );
+                      }
+                    }}
+                    className='scale-75'
+                  />
+                  <FormLabel className='text-xs'>{t('models.dialogs.association.conditions.enabled')}</FormLabel>
+                </div>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={`associations.${index}.whenCondition`}
+              render={({ field, fieldState }) => (
+                <FormItem className='space-y-1'>
+                  <FormControl>
+                    <FilterBuilder
+                      logicLabel={t('models.dialogs.association.conditions.logicLabel')}
+                      logicOptions={[
+                        { value: 'and', label: t('models.dialogs.association.conditions.and') },
+                        { value: 'or', label: t('models.dialogs.association.conditions.or') },
+                      ]}
+                      value={field.value || DEFAULT_WHEN_CONDITION}
+                      onChange={field.onChange}
+                      disabled={!whenEnabled}
+                      allowNestedGroups={false}
+                      maxDepth={MAX_WHEN_CONDITION_DEPTH}
+                      singleGroup
+                      fields={whenFilterFields.map((item) => ({
+                        ...item,
+                        label: item.value === 'prompt_tokens' ? t('models.dialogs.association.conditions.fields.prompt_tokens') : item.label,
+                        placeholder: t('models.dialogs.association.conditions.valuePlaceholder'),
+                        operators: item.operators?.map((operator) => ({
+                          value: operator.value,
+                          label: t(`models.dialogs.association.conditions.operators.${operator.value}`),
+                        })),
+                      }))}
+                      fieldLabel={t('models.dialogs.association.conditions.fieldLabel')}
+                      operatorLabel={t('models.dialogs.association.conditions.operatorLabel')}
+                      valueLabel={t('models.dialogs.association.conditions.valueLabel')}
+                      addLabel={t('models.dialogs.association.conditions.add')}
+                      addGroupLabel={t('prompts.conditions.addGroup')}
+                      maxConditionsPerGroup={5}
+                      groupJoinLabel={t('models.dialogs.association.conditions.and')}
+                    />
+                  </FormControl>
+                  {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
+                </FormItem>
+              )}
+            />
+            {hasGroupListData(whenCondition) && (
+              <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.conditions.prompt_tokensHint')}</p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Exclude Section */}
       {showExclude && (
