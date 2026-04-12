@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import { DashboardIcon } from '@radix-ui/react-icons';
 import { useParams, useNavigate } from '@tanstack/react-router';
@@ -20,7 +20,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { getTokenFromStorage } from '@/stores/authStore';
 import { useUsageLogs } from '../data/usage-logs';
-import { useRequest, useRequestExecutions } from '../data';
+import { type Request, useRequest, useRequestExecutions } from '../data';
 import { ChunksDialog } from './chunks-dialog';
 import { CurlPreviewDialog } from './curl-preview-dialog';
 import { getStatusColor } from './help';
@@ -28,6 +28,107 @@ import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-genera
 import { ResponseFlow } from './response-flow';
 
 import { parseResponse } from '../utils/response-parser';
+
+type PreviewFallbackResponse = {
+  mode?: string;
+  responseChunks?: any[];
+};
+
+type PreviewEvent = {
+  event: string;
+  data: string;
+};
+
+function parsePreviewEvent(rawEvent: string): PreviewEvent | null {
+  const normalizedEvent = rawEvent.replace(/\r\n/g, '\n').trim();
+  if (!normalizedEvent) return null;
+
+  let event = 'message';
+  const dataLines: string[] = [];
+
+  normalizedEvent.split('\n').forEach((line) => {
+    if (!line || line.startsWith(':')) {
+      return;
+    }
+
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim();
+      return;
+    }
+
+    if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5).trimStart());
+    }
+  });
+
+  return {
+    event,
+    data: dataLines.join('\n'),
+  };
+}
+
+function parsePreviewChunk(payload: string): any {
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return payload;
+  }
+}
+
+async function readPreviewStream(
+  response: Response,
+  handlers: {
+    onEvent: (event: PreviewEvent) => Promise<void> | void;
+  }
+) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Preview stream body is not readable');
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  const flushBuffer = async (final = false) => {
+    const normalizedBuffer = buffer.replace(/\r\n/g, '\n');
+    const separator = '\n\n';
+    let separatorIndex = normalizedBuffer.indexOf(separator);
+
+    while (separatorIndex !== -1) {
+      const rawEvent = normalizedBuffer.slice(0, separatorIndex);
+      buffer = normalizedBuffer.slice(separatorIndex + separator.length);
+
+      const event = parsePreviewEvent(rawEvent);
+      if (event) {
+        await handlers.onEvent(event);
+      }
+
+      return flushBuffer(final);
+    }
+
+    if (final && normalizedBuffer.trim()) {
+      const event = parsePreviewEvent(normalizedBuffer);
+      if (event) {
+        await handlers.onEvent(event);
+      }
+      buffer = '';
+    } else {
+      buffer = normalizedBuffer;
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      buffer += decoder.decode();
+      await flushBuffer(true);
+      return;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    await flushBuffer();
+  }
+}
 
 export default function RequestDetailPage() {
   const { t, i18n } = useTranslation();
@@ -44,9 +145,17 @@ export default function RequestDetailPage() {
   const [curlCommand, setCurlCommand] = useState('');
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
   const [responseView, setResponseView] = useState<'preview' | 'json'>('preview');
+  const [previewRequest, setPreviewRequest] = useState<Request | null>(null);
+  const [isPreviewStreaming, setIsPreviewStreaming] = useState(false);
+  const [previewFallbackActive, setPreviewFallbackActive] = useState(false);
+  const previewCompletedRef = useRef(false);
 
   const { data: settings } = useGeneralSettings();
-  const { data: request, isLoading } = useRequest(requestId);
+  const {
+    data: requestData,
+    isLoading,
+    refetch: refetchRequest,
+  } = useRequest(requestId, { disableAutoRefresh: isPreviewStreaming });
   const {
     data: executions,
     isLoading: isExecutionsLoading,
@@ -61,13 +170,144 @@ export default function RequestDetailPage() {
     orderBy: { field: 'CREATED_AT', direction: 'DESC' },
   });
 
+  const request = previewRequest ?? requestData;
+
+  useEffect(() => {
+    if (!requestData) {
+      setPreviewRequest(null);
+      setPreviewFallbackActive(false);
+      return;
+    }
+
+    if (requestData.status !== 'processing' || !requestData.stream) {
+      setPreviewRequest(null);
+      setIsPreviewStreaming(false);
+      setPreviewFallbackActive(false);
+      previewCompletedRef.current = false;
+    }
+  }, [requestData]);
+
+  useEffect(() => {
+    if (!requestData || requestData.status !== 'processing' || !requestData.stream) {
+      return;
+    }
+
+    if (previewFallbackActive) {
+      return;
+    }
+
+    if (!selectedProjectId) {
+      return;
+    }
+
+    const token = getTokenFromStorage();
+    if (!token) {
+      return;
+    }
+
+    const requestIdNumber = extractNumberID(requestData.id);
+    if (!requestIdNumber) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isDisposed = false;
+
+    previewCompletedRef.current = false;
+    setIsPreviewStreaming(true);
+    setPreviewFallbackActive(false);
+    setPreviewRequest({
+      ...requestData,
+      responseChunks: [],
+    });
+
+    const connectPreview = async () => {
+      try {
+        const response = await fetch(`/admin/requests/${encodeURIComponent(requestIdNumber)}/preview`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Project-ID': selectedProjectId,
+          },
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('text/event-stream')) {
+          const fallbackResponse = (await response.json()) as PreviewFallbackResponse;
+          if (!isDisposed && fallbackResponse.mode === 'static-fetch') {
+            setPreviewRequest((currentRequest) => currentRequest
+              ? {
+                  ...currentRequest,
+                  responseChunks: fallbackResponse.responseChunks ?? currentRequest.responseChunks,
+                }
+              : currentRequest);
+            setIsPreviewStreaming(false);
+            setPreviewFallbackActive(true);
+          } else if (!isDisposed) {
+            setPreviewRequest(null);
+            setIsPreviewStreaming(false);
+            setPreviewFallbackActive(true);
+          }
+          return;
+        }
+
+        await readPreviewStream(response, {
+          onEvent: async ({ event, data }) => {
+            if (isDisposed) {
+              return;
+            }
+
+            if (event === 'preview.replay' || event === 'preview.chunk') {
+              const nextChunk = parsePreviewChunk(data);
+              setPreviewRequest((currentRequest) => currentRequest
+                ? {
+                  ...currentRequest,
+                  responseChunks: [...(currentRequest.responseChunks ?? []), nextChunk],
+                }
+                : currentRequest);
+              return;
+            }
+
+            if (event === 'preview.completed') {
+              setIsPreviewStreaming(false);
+              setPreviewFallbackActive(false);
+
+              if (!previewCompletedRef.current) {
+                previewCompletedRef.current = true;
+                await refetchRequest();
+              }
+            }
+          },
+        });
+      } catch (error) {
+        if (!controller.signal.aborted && !isDisposed) {
+          setPreviewRequest(null);
+          setIsPreviewStreaming(false);
+          setPreviewFallbackActive(true);
+        }
+      }
+    };
+
+    void connectPreview();
+
+    return () => {
+      isDisposed = true;
+      setIsPreviewStreaming(false);
+      controller.abort();
+    };
+  }, [previewFallbackActive, requestData, refetchRequest, selectedProjectId]);
+
   const parsedResponse = useMemo(() => {
     if (!request) return { content: '', reasoning: '', toolCalls: [] };
     return parseResponse(request.responseBody, request.responseChunks);
-  }, [request?.responseBody, request?.responseChunks]);
+  }, [request]);
 
   const hasPreviewData = !!(parsedResponse.content || parsedResponse.reasoning || parsedResponse.toolCalls.length > 0);
-  const isLive = !!(request?.status === 'processing' && request?.stream);
+  const isLive = isPreviewStreaming || !!(request?.status === 'processing' && request?.stream);
 
   const hasResponseBody = !!(request?.responseBody && Object.keys(request.responseBody).length > 0);
   const hasResponseChunks = !!(request?.responseChunks && request.responseChunks.length > 0);

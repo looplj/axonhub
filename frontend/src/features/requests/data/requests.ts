@@ -269,7 +269,12 @@ export function useRequests(variables?: {
   });
 }
 
-export function useRequest(id: string) {
+export function useRequest(
+  id: string,
+  options?: {
+    disableAutoRefresh?: boolean;
+  }
+) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
   const permissions = useRequestPermissions();
@@ -293,6 +298,10 @@ export function useRequest(id: string) {
     },
     enabled: !!id,
     refetchInterval: (query) => {
+      if (options?.disableAutoRefresh) {
+        return false;
+      }
+
       return query.state.data?.status === 'processing' ? 2000 : false;
     },
   });

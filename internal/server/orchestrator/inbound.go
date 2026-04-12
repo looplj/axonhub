@@ -27,7 +27,7 @@ type InboundPersistentStream struct {
 	requestService *biz.RequestService
 	transformer    transformer.Inbound
 	perf           *biz.PerformanceRecord
-	responseChunks []*httpclient.StreamEvent
+	chunkBuffer    *biz.ChunkBuffer // single source of truth for chunks
 	closed         bool
 	state          *PersistenceState
 	previewKey     string // registry key for live preview, empty if preview disabled
@@ -53,7 +53,7 @@ func NewInboundPersistentStream(
 		requestService: requestService,
 		transformer:    transformer,
 		perf:           perf,
-		responseChunks: make([]*httpclient.StreamEvent, 0),
+		chunkBuffer:    biz.NewChunkBuffer(nil),
 		closed:         false,
 		state:          state,
 	}
@@ -61,7 +61,8 @@ func NewInboundPersistentStream(
 	// Register with preview registry for live chunk access
 	if state.EnablePreview && request != nil {
 		s.previewKey = biz.RequestKey(request.ID)
-		biz.DefaultStreamPreviewRegistry.Register(s.previewKey, &s.responseChunks)
+		notifyFn := biz.DefaultStreamPreviewRegistry.RegisterBuffer(s.previewKey, s.chunkBuffer)
+		s.chunkBuffer.SetNotify(notifyFn)
 	}
 
 	return s
@@ -74,10 +75,7 @@ func (ts *InboundPersistentStream) Next() bool {
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		ts.responseChunks = append(ts.responseChunks, event)
-		if ts.previewKey != "" {
-			biz.DefaultStreamPreviewRegistry.NotifyAppend(ts.previewKey)
-		}
+		ts.chunkBuffer.Append(event)
 		if isTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
 		}
@@ -114,7 +112,11 @@ func (ts *InboundPersistentStream) Close() error {
 		defer biz.DefaultStreamPreviewRegistry.Unregister(ts.previewKey)
 	}
 
-	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
+	// Close the buffer to prevent further appends
+	ts.chunkBuffer.Close()
+
+	chunks := ts.chunkBuffer.Slice()
+	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(chunks)), log.Bool("received_done", ts.state.StreamCompleted))
 
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
@@ -152,8 +154,8 @@ func (ts *InboundPersistentStream) Close() error {
 	var meta llm.ResponseMeta
 	var aggErr error
 
-	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
-		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
+	if len(chunks) > 0 && !ts.state.StreamCompleted {
+		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), chunks)
 		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.state.StreamCompleted = true
@@ -202,11 +204,14 @@ func (ts *InboundPersistentStream) persistResponseChunks(ctx context.Context) {
 	// Use context without cancellation to ensure persistence even if client canceled
 	persistCtx := context.WithoutCancel(ctx)
 
+	// Get chunks from buffer
+	chunks := ts.chunkBuffer.Slice()
+
 	// Aggregate stream chunks first, then delegate to _persistResponse
-	responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, ts.responseChunks)
+	responseBody, meta, err := ts.transformer.AggregateStreamChunks(persistCtx, chunks)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to aggregate chunks for main request", log.Cause(err))
-		dumper.DumpStreamEvents(persistCtx, ts.responseChunks, "response_chunks.json")
+		dumper.DumpStreamEvents(persistCtx, chunks, "response_chunks.json")
 	}
 
 	ts._persistResponse(persistCtx, responseBody, meta)
@@ -246,7 +251,8 @@ func (ts *InboundPersistentStream) _persistResponse(ctx context.Context, respons
 	}
 
 	// Save all response chunks at once
-	if err := ts.requestService.SaveRequestChunks(ctx, ts.request.ID, ts.responseChunks); err != nil {
+	chunks := ts.chunkBuffer.Slice()
+	if err := ts.requestService.SaveRequestChunks(ctx, ts.request.ID, chunks); err != nil {
 		log.Warn(ctx, "Failed to save request chunks", log.Cause(err))
 	}
 }
