@@ -21,10 +21,6 @@ func NewRerankInboundTransformer() *RerankInboundTransformer {
 	return &RerankInboundTransformer{}
 }
 
-func (t *RerankInboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatJinaRerank
-}
-
 // TransformRequest transforms HTTP rerank request to unified llm.Request.
 func (t *RerankInboundTransformer) TransformRequest(
 	ctx context.Context,

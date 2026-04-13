@@ -44,10 +44,6 @@ func NewVideoInboundTransformer() *VideoInboundTransformer {
 	return &VideoInboundTransformer{}
 }
 
-func (t *VideoInboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatOpenAIVideo
-}
-
 func (t *VideoInboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)

@@ -81,6 +81,7 @@ func (Channel) Fields() []ent.Field {
 				"cerebras",
 				"antigravity",
 				"nanogpt",
+				"nanogpt_responses",
 			).
 			Annotations(
 				entgql.OrderField("TYPE"),

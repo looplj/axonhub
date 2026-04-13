@@ -185,8 +185,9 @@ func TestCodexOutbound_DoesNotInjectCLIInstructions(t *testing.T) {
 
 	body := decodeCodexRequestBody(t, hreq)
 
-	_, hasInstructions := body["instructions"]
-	assert.False(t, hasInstructions)
+	instructions, hasInstructions := body["instructions"]
+	assert.True(t, hasInstructions, "instructions field must always be present for Codex")
+	assert.Equal(t, "", instructions)
 	assert.NotContains(t, string(hreq.Body), "You are a coding agent running in the Codex CLI")
 	assert.NotContains(t, string(hreq.Body), "You are Codex")
 	assert.Equal(t, false, body["store"])

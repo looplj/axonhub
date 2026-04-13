@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"time"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm"
@@ -83,6 +84,40 @@ func (m *rateLimitTracking) OnOutboundLlmStream(ctx context.Context, stream stre
 		tracker:  m.tracker,
 		outbound: m.outbound,
 	}, nil
+}
+
+// OnOutboundRawError handles raw HTTP errors, specifically capturing 429 Too Many Requests.
+// When a 429 is received, it parses the Retry-After header and sets a cooldown for the channel.
+func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
+	// Safety check: outbound might be nil in edge cases
+	if m.outbound == nil {
+		return
+	}
+
+	channel := m.outbound.GetCurrentChannel()
+	if channel == nil {
+		return
+	}
+
+	// Only cool down a channel when the upstream explicitly provides a cooldown.
+	if !httpclient.HasRetryAfterHeader(err) {
+		return
+	}
+
+	// Parse Retry-After header from 429 error
+	cooldown, ok := httpclient.ParseRetryAfter(err)
+	if !ok {
+		return
+	}
+
+	// Set cooldown for this channel
+	m.tracker.SetCooldown(channel.ID, time.Now().Add(cooldown))
+
+	log.Warn(ctx, "channel cooling down due to 429",
+		log.Int("channel_id", channel.ID),
+		log.String("channel_name", channel.Name),
+		log.Duration("cooldown", cooldown),
+	)
 }
 
 // rateLimitTrackingStream wraps a stream to track token usage for rate limiting.

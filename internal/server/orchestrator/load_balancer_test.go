@@ -68,7 +68,7 @@ func TestLoadBalancer_Sort_EmptyChannels(t *testing.T) {
 	ctx := context.Background()
 	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3})
 
-	result := lb.Sort(ctx, []*ChannelModelsCandidate{}, "")
+	result := lb.Sort(ctx, []*ChannelModelsCandidate{}, "", false)
 	assert.Empty(t, result)
 }
 
@@ -80,7 +80,7 @@ func TestLoadBalancer_Sort_SingleChannel(t *testing.T) {
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 1)
 	assert.Equal(t, 1, result[0].Channel.ID)
 }
@@ -95,7 +95,7 @@ func TestLoadBalancer_Sort_NoStrategies(t *testing.T) {
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 	// Without strategies, order should remain unchanged (all score 0)
 }
@@ -121,7 +121,7 @@ func TestLoadBalancer_Sort_SingleStrategy(t *testing.T) {
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 
 	// Should be sorted by descending score: ch2(200), ch3(150), ch1(100)
@@ -162,7 +162,7 @@ func TestLoadBalancer_Sort_MultipleStrategies(t *testing.T) {
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 
 	// Total scores: ch1=150, ch2=100, ch3=125
@@ -186,7 +186,7 @@ func TestLoadBalancer_Sort_AdditiveScoring(t *testing.T) {
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 1)
 
 	// With mock strategies returning fixed scores, all channels get same total
@@ -207,7 +207,7 @@ func TestLoadBalancer_Sort_Stability(t *testing.T) {
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 
 	// When scores are equal, original order should be preserved (stable sort)
@@ -235,7 +235,7 @@ func TestLoadBalancer_Sort_NegativeScores(t *testing.T) {
 		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 
 	// Should handle negative scores: ch2(100), ch3(-25), ch1(-50)
@@ -323,7 +323,7 @@ func TestLoadBalancer_ErrorAware_ChannelWithErrorsRankedLower(t *testing.T) {
 		{Channel: &biz.Channel{Channel: ch3}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 
 	// ch2 (failing channel) should be ranked last due to consecutive failures
@@ -396,7 +396,7 @@ func TestLoadBalancer_ErrorAware_ShortTermErrorPenalty(t *testing.T) {
 		{Channel: &biz.Channel{Channel: ch2}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 2)
 
 	// ch2 should be ranked higher due to ch1's recent error
@@ -485,7 +485,7 @@ func TestLoadBalancer_TraceAware_SameChannelPrioritized(t *testing.T) {
 		{Channel: &biz.Channel{Channel: ch3}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 
 	// ch2 should be ranked first because it was the last successful channel in this trace
@@ -589,7 +589,7 @@ func TestLoadBalancer_Combined_ErrorAndTrace(t *testing.T) {
 		{Channel: &biz.Channel{Channel: ch3}},
 	}
 
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 
 	// ch2 should still be ranked first because trace boost (1000) outweighs error penalty
@@ -644,7 +644,7 @@ func TestLoadBalancer_TopK_OnlyOneChannel(t *testing.T) {
 	}
 
 	// With retry disabled, should only return the highest scored channel
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 1)
 	assert.Equal(t, 4, result[0].Channel.ID, "Should return only ch4 with highest score 300")
 }
@@ -678,7 +678,7 @@ func TestLoadBalancer_TopK_TopThreeChannels(t *testing.T) {
 	}
 
 	// With 2 retries, should return top 3 channels
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 	// Scores: ch4=300, ch6=250, ch2=200
 	assert.Equal(t, 4, result[0].Channel.ID, "First should be ch4 with score 300")
@@ -709,7 +709,7 @@ func TestLoadBalancer_TopK_MoreThanAvailable(t *testing.T) {
 	}
 
 	// With 10 retries but only 3 channels, should return all 3
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3)
 	assert.Equal(t, 2, result[0].Channel.ID, "First should be ch2 with score 200")
 	assert.Equal(t, 3, result[1].Channel.ID, "Second should be ch3 with score 150")
@@ -743,7 +743,7 @@ func TestLoadBalancer_TopK_RetryDisabled(t *testing.T) {
 	}
 
 	// With retry disabled, should only get best channel
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 1)
 	assert.Equal(t, 4, result[0].Channel.ID, "With retry disabled, should get only best channel")
 }
@@ -775,7 +775,7 @@ func TestLoadBalancer_TopK_RetryEnabled(t *testing.T) {
 	}
 
 	// With 3 retries, should get top 4 channels
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 4)
 	// Top 4: ch4(300), ch2(200), ch3(150), ch1(100)
 	assert.Equal(t, 4, result[0].Channel.ID)
@@ -807,7 +807,7 @@ func TestLoadBalancer_TopK_FewChannelsManyRetries(t *testing.T) {
 	}
 
 	// With 10 retries but only 3 channels, should return all 3
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 3, "Should return all 3 channels even though retry count is high")
 	assert.Equal(t, 2, result[0].Channel.ID)
 	assert.Equal(t, 3, result[1].Channel.ID)
@@ -837,7 +837,7 @@ func TestLoadBalancer_TopK_DefaultPolicy(t *testing.T) {
 	}
 
 	// With default policy (retry disabled), should return 1 channel
-	result := lb.Sort(ctx, candidates, "")
+	result := lb.Sort(ctx, candidates, "", false)
 	require.Len(t, result, 1)
 	assert.Equal(t, 2, result[0].Channel.ID, "Should return only best channel with default policy")
 }

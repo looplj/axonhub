@@ -10,19 +10,19 @@ import (
 	"github.com/openai/openai-go/v3"
 )
 
-// TestConnectionAwareLoadBalancing verifies that ConnectionAwareStrategy
-// considers active connection counts when selecting channels.
+// TestConnectionAwareLoadBalancing verifies that connection tracking
+// influences concurrency-sensitive channel selection behavior.
 func TestConnectionAwareLoadBalancing(t *testing.T) {
-	t.Log("=== Testing connection-aware load balancing ===")
-	t.Log("ConnectionAwareStrategy should prefer channels with fewer active connections")
-	t.Log("Score formula: maxScore * (1 - min(connections, cap) / cap)")
+	t.Log("=== Testing connection tracking and concurrency-sensitive routing ===")
+	t.Log("Concurrent in-flight requests should contribute to saturation signals during channel selection")
+	t.Log("When concurrency limits are available, saturated channels should be deprioritized")
 
 	// Send multiple concurrent long-running requests
 	concurrentRequests := 10
 	var wg sync.WaitGroup
 	results := make(chan error, concurrentRequests)
 
-	t.Logf("Sending %d concurrent requests to test connection awareness...", concurrentRequests)
+	t.Logf("Sending %d concurrent requests to exercise connection tracking...", concurrentRequests)
 
 	startTime := time.Now()
 	for i := 0; i < concurrentRequests; i++ {
@@ -70,11 +70,10 @@ func TestConnectionAwareLoadBalancing(t *testing.T) {
 		}
 	}
 
-	t.Logf("\n=== Connection-aware test completed in %v ===", duration)
+	t.Logf("\n=== Connection tracking test completed in %v ===", duration)
 	t.Logf("Successful requests: %d/%d", successCount, concurrentRequests)
-	t.Log("ConnectionAwareStrategy should have distributed requests to channels with fewer active connections")
-	t.Log("Expected behavior: Channels with 0 connections get full score (50 points)")
-	t.Log("                   Channels with more connections get proportionally lower scores")
+	t.Log("Expected behavior: connection tracking should help avoid routing all concurrent load to the same saturated channel")
+	t.Log("When concurrency fallback is active, channels with more in-flight requests should lose priority")
 
 	if successCount < concurrentRequests*3/4 {
 		t.Errorf("Too many failures: only %d/%d succeeded", successCount, concurrentRequests)

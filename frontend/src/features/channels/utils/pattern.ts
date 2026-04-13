@@ -19,14 +19,25 @@ function containsRegexChars(pattern: string): boolean {
  * modifier groups like (?i), (?m), (?s) that may precede the anchor).
  */
 function ensureAnchored(pattern: string): string {
-  // Detect leading ^ possibly preceded by inline modifier groups, e.g. (?i)^
-  const hasStartAnchor = pattern.startsWith('^') || /^\(\?[a-z]+\)\^/.test(pattern);
-  const hasEndAnchor = pattern.endsWith('$');
+  const { modifier, body } = splitInlineModifier(pattern);
+  const normalizedBody = body.replace(/^\^/, '').replace(/\$$/, '');
+  return `${modifier}^(?:${normalizedBody})$`;
+}
 
-  if (!hasStartAnchor) pattern = '^' + pattern;
-  if (!hasEndAnchor) pattern = pattern + '$';
+function splitInlineModifier(pattern: string): { modifier: string; body: string } {
+  const match = pattern.match(/^\(\?([a-z]+)\)/);
+  if (!match) {
+    return { modifier: '', body: pattern };
+  }
 
-  return pattern;
+  if (/[ :=!<]/.test(match[1])) {
+    return { modifier: '', body: pattern };
+  }
+
+  return {
+    modifier: match[0],
+    body: pattern.slice(match[0].length),
+  };
 }
 
 /**
@@ -34,6 +45,7 @@ function ensureAnchored(pattern: string): string {
  */
 export function matchesModelPattern(model: string, pattern: string): boolean {
   if (!pattern) return true;
+  if (pattern === '*') return true;
 
   if (!containsRegexChars(pattern)) {
     return model === pattern;
@@ -52,5 +64,6 @@ export function matchesModelPattern(model: string, pattern: string): boolean {
  */
 export function filterModelsByPattern(models: string[], pattern: string): string[] {
   if (!pattern) return [];
+  if (pattern === '*') return models;
   return models.filter((model) => matchesModelPattern(model, pattern));
 }

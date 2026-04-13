@@ -23,10 +23,6 @@ func NewDataStreamTransformer() *DataStreamTransformer {
 	return &DataStreamTransformer{}
 }
 
-func (t *DataStreamTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatAiSDKDataStream
-}
-
 // TransformRequest transforms AI SDK request to LLM request.
 func (t *DataStreamTransformer) TransformRequest(
 	ctx context.Context,
@@ -40,7 +36,7 @@ func (t *DataStreamTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: failed to parse AI SDK request: %w", transformer.ErrInvalidRequest, err)
 	}
 
-	return convertToLLMRequest(&aiSDKReq)
+	return convertToLLMRequestWithAPIFormat(&aiSDKReq, nil, llm.APIFormatAiSDKDataStream)
 }
 
 // TransformResponse transforms LLM response to AI SDK response.

@@ -71,7 +71,7 @@ func TestFailoverStrategy_Simulation(t *testing.T) {
 
 	// Helper to select all sorted candidates
 	selectAll := func() []*ChannelModelsCandidate {
-		return lb.Sort(ctx, candidates, modelID)
+		return lb.Sort(ctx, candidates, modelID, false)
 	}
 
 	// 1. Initial state: all channels are healthy

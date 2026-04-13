@@ -24,10 +24,6 @@ func NewVideoInboundTransformer() *VideoInboundTransformer {
 	return &VideoInboundTransformer{}
 }
 
-func (t *VideoInboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatSeedanceVideo
-}
-
 type seedanceCreateRequest struct {
 	Model   string           `json:"model"`
 	Content []llm.VideoContent `json:"content"`

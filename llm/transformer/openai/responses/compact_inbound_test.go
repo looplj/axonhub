@@ -14,11 +14,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-func TestCompactInboundTransformer_APIFormat(t *testing.T) {
-	transformer := NewCompactInboundTransformer()
-	require.Equal(t, llm.APIFormatOpenAIResponseCompact, transformer.APIFormat())
-}
-
 func TestCompactInboundTransformer_TransformRequest(t *testing.T) {
 	transformer := NewCompactInboundTransformer()
 	ctx := context.Background()

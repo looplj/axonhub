@@ -18,15 +18,22 @@ type ConvertToLLMRequestOptions struct {
 }
 
 func convertToLLMRequest(req *Request) (*llm.Request, error) {
-	return convertToLLMRequestWithOptions(req, nil)
+	return convertToLLMRequestWithAPIFormat(req, nil, "")
 }
 
 //nolint:maintidx
 func convertToLLMRequestWithOptions(req *Request, options *ConvertToLLMRequestOptions) (*llm.Request, error) {
+	return convertToLLMRequestWithAPIFormat(req, options, "")
+}
+
+//nolint:maintidx
+func convertToLLMRequestWithAPIFormat(req *Request, options *ConvertToLLMRequestOptions, apiFormat llm.APIFormat) (*llm.Request, error) {
 	// Base request
 	llmReq := &llm.Request{
 		Model:       req.Model,
 		Messages:    []llm.Message{},
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   apiFormat,
 		Stream:      lo.ToPtr(true),
 		Temperature: req.Temperature,
 		MaxTokens:   req.MaxTokens,

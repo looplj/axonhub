@@ -11,9 +11,6 @@ import (
 // Inbound represents a transformer accpet the request from client and respond to client with the transformed response.
 // e.g: OpenAPI transformer accepts the request from client with OpenAPI format and respond with OpenAI format.
 type Inbound interface {
-	// APIFormat returns the API format of the transformer.
-	APIFormat() llm.APIFormat
-
 	// TransformRequest transforms HTTP request to the unified request format.
 	TransformRequest(ctx context.Context, request *httpclient.Request) (*llm.Request, error)
 

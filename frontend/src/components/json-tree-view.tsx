@@ -193,16 +193,6 @@ function JsonNode({ name, data, isRoot = false, isArrayItem = false, defaultExpa
   );
 }
 
-/** Unescape doubly-escaped JSON sequences (literal \n → newline, etc.). */
-function unescapeJsonString(str: string): string {
-  return str
-    .replace(/\\n/g, '\n')
-    .replace(/\\t/g, '\t')
-    .replace(/\\r/g, '\r')
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, '\\');
-}
-
 /** Try to parse a string as JSON. Returns parsed value or null. */
 function tryParseJson(str: string): any {
   const trimmed = str.trim();
@@ -279,8 +269,7 @@ function JsonValue({ data }: { data: any }) {
 
   switch (dataType) {
     case 'string': {
-      const unescaped = unescapeJsonString(data);
-      const normalized = normalizeMultilineForDisplay(unescaped);
+      const normalized = normalizeMultilineForDisplay(data);
       const parsedJson = tryParseJson(data);
 
       if (parsedJson && showParsed) {

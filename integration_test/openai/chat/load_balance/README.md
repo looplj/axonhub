@@ -31,20 +31,25 @@ AxonHub uses a sophisticated multi-strategy load balancing system to distribute 
    - Higher weight channels can handle more requests before score drops
    - Includes inactivity decay to prevent permanent penalization
 
-4. **ConnectionAwareStrategy** (Priority 4)
-   - Score: 0-50 points
-   - Prefers channels with fewer active connections
-   - Formula: `score = maxScore * (1 - min(connections, cap) / cap)`
-   - Helps distribute concurrent load evenly
+4. **LatencyAwareStrategy** (Priority 4)
+   - Score: 0-80 points
+   - Streaming requests prefer lower EWMA first-token latency and higher EWMA output throughput
+   - Non-streaming requests prefer lower EWMA end-to-end latency
+   - Helps shift traffic away from channels with worse user-perceived latency
+
+5. **RateLimitAwareStrategy** (Priority 5)
+   - Score: -10000 to 100 points
+   - Respects RPM/TPM/concurrency limits and 429 cooldown
+   - Falls back to default connection tracker capacity when `MaxConcurrent` is not configured
 
 ### Total Score Calculation
 
 The final channel score is the sum of all strategy scores:
 
 ```
-Total Score = TraceAware + ErrorAware + WeightRoundRobin + ConnectionAware
-            = (0-1000) + (0-200) + (10-150) + (0-50)
-            = 10-1400 points
+Total Score = TraceAware + ErrorAware + WeightRoundRobin + LatencyAware + RateLimitAware
+            = (0-1000) + (0-200) + (10-150) + (0-80) + (-10000-100)
+            = -9790 to 1530 points
 ```
 
 When TraceAwareStrategy is active (1000 points), it dominates all other strategies, ensuring trace consistency.
@@ -68,7 +73,7 @@ Core load balancing tests covering the main strategies:
 
 Advanced load balancing tests for edge cases and optimizations:
 
-- **TestConnectionAwareLoadBalancing**: Tests connection-aware distribution
+- **TestConnectionAwareLoadBalancing**: Tests connection tracking and concurrency-sensitive distribution behavior
 - **TestErrorAwareLoadBalancing**: Verifies error-based channel penalization
 - **TestLoadBalancingWithChannelFailover**: Tests automatic failover to alternative channels
 - **TestLoadBalancingTopKSelection**: Verifies top-K optimization for efficiency
@@ -281,7 +286,7 @@ channels:
 
 ❌ **Slow performance**: Requests take too long
 - Check if channels are overloaded
-- Verify ConnectionAwareStrategy is distributing load
+- Verify connection tracking and concurrency-sensitive routing behavior
 - Consider increasing channel weights or adding more channels
 
 ## Load Balancing Metrics
@@ -325,7 +330,8 @@ adaptiveLoadBalancer := NewLoadBalancer(systemService,
     NewTraceAwareStrategy(requestService),
     NewErrorAwareStrategy(channelService),
     NewWeightRoundRobinStrategy(channelService),
-    NewConnectionAwareStrategy(channelService, connectionTracker),
+    NewLatencyAwareStrategy(channelService),
+    NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker),
 )
 
 // Custom composite strategy

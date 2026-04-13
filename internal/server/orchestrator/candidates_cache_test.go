@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -258,6 +259,107 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		require.Len(t, selector.associationCache, 2)
 		require.Contains(t, selector.associationCache, modelID)
 		require.Contains(t, selector.associationCache, differentModelID)
+		selector.cacheMu.RUnlock()
+	})
+
+	t.Run("conditional associations reuse cached resolution and apply request filtering", func(t *testing.T) {
+		conditionalModelID := "conditional-model"
+
+		longContextChannel, err := client.Channel.Create().
+			SetName("Long Context Channel").
+			SetType(channel.TypeAnthropic).
+			SetSupportedModels([]string{"claude-3-opus"}).
+			SetDefaultTestModel("claude-3-opus").
+			SetCredentials(objects.ChannelCredentials{APIKey: "test-key-long"}).
+			SetStatus(channel.StatusEnabled).
+			Save(ctx)
+		require.NoError(t, err)
+
+		client.Model.Create().
+			SetDeveloper("test-developer").
+			SetModelID(conditionalModelID).
+			SetType(model.TypeChat).
+			SetName("Conditional Model").
+			SetIcon("test-icon").
+			SetGroup("test-group").
+			SetModelCard(&objects.ModelCard{}).
+			SetStatus(model.StatusEnabled).
+			SetSettings(&objects.ModelSettings{
+				Associations: []*objects.ModelAssociation{
+					{
+						Type: "channel_model",
+						When: &objects.ModelAssociationWhen{
+							Enabled: true,
+							Condition: &objects.Condition{
+								Logic: "and",
+								Conditions: []objects.Condition{{
+									Field:    "prompt_tokens",
+									Operator: "lt",
+									Value:    100,
+								}},
+							},
+						},
+						ChannelModel: &objects.ChannelModelAssociation{
+							ChannelID: channels[0].ID,
+							ModelID:   "gpt-3.5-turbo",
+						},
+					},
+					{
+						Type: "channel_model",
+						When: &objects.ModelAssociationWhen{
+							Enabled: true,
+							Condition: &objects.Condition{
+								Logic: "and",
+								Conditions: []objects.Condition{{
+									Field:    "prompt_tokens",
+									Operator: "gt",
+									Value:    99,
+								}},
+							},
+						},
+						ChannelModel: &objects.ChannelModelAssociation{
+							ChannelID: longContextChannel.ID,
+							ModelID:   "claude-3-opus",
+						},
+					},
+				},
+			}).
+			SaveX(ctx)
+
+		selector.ChannelService = newTestChannelServiceForChannels(client)
+
+		smallReq := &llm.Request{
+			Model: conditionalModelID,
+			Messages: []llm.Message{{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: new("hello"),
+				},
+			}},
+		}
+
+		smallCandidates, err := selector.selectModelCandidates(ctx, smallReq)
+		require.NoError(t, err)
+		require.Len(t, smallCandidates, 1)
+		require.Equal(t, channels[0].ID, smallCandidates[0].Channel.ID)
+
+		largeReq := &llm.Request{
+			Model: conditionalModelID,
+			Messages: []llm.Message{{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: new(strings.Repeat("0123456789", 50)),
+				},
+			}},
+		}
+
+		largeCandidates, err := selector.selectModelCandidates(ctx, largeReq)
+		require.NoError(t, err)
+		require.Len(t, largeCandidates, 1)
+		require.Equal(t, longContextChannel.ID, largeCandidates[0].Channel.ID)
+
+		selector.cacheMu.RLock()
+		require.Contains(t, selector.associationCache, conditionalModelID)
 		selector.cacheMu.RUnlock()
 	})
 

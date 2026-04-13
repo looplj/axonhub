@@ -58,12 +58,12 @@ make test-advanced   # Advanced scenarios
 
 **Tests**: `TestConnectionAware*`
 
-**What it tests**: Channels with fewer active connections are preferred
+**What it tests**: Connection tracking and concurrency-sensitive routing behavior
 
 **Key behavior**:
-- ConnectionAwareStrategy tracks active connections
-- Prefers channels with lower connection counts
-- Score: `maxScore * (1 - min(connections, cap) / cap)`
+- Active connections are tracked for each in-flight upstream request
+- RateLimitAwareStrategy can use connection tracker capacity as a concurrency fallback
+- Saturated channels should be deprioritized when concurrency signals are available
 
 **Expected results**:
 - ✅ Concurrent requests distributed across channels

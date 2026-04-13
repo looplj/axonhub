@@ -233,6 +233,7 @@ func TestValidateProjectProfiles(t *testing.T) {
 				Profiles: []objects.ProjectProfile{
 					{Name: "Profile1", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny},
 					{Name: "Profile2", ChannelTagsMatchMode: objects.ChannelTagsMatchModeAll},
+					{Name: "Profile3", ChannelTagsMatchMode: objects.ChannelTagsMatchModeNone},
 				},
 				ActiveProfile: "Profile1",
 			},

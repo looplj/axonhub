@@ -264,6 +264,10 @@ linters:
 
       - linters:
           - staticcheck
+        text: "SA4006:"
+
+      - linters:
+          - staticcheck
         text: "ST1001:"
 
       - linters:

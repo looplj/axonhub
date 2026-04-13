@@ -277,25 +277,28 @@ export function useRequests(variables?: {
     projectID?: string;
     [key: string]: any;
   };
-}) {
+}, options?: { projectId?: string | null; scopeToSelectedProject?: boolean; enabled?: boolean }) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
+  const scopeToSelectedProject = options?.scopeToSelectedProject ?? true;
+  const projectId = options?.projectId !== undefined ? options.projectId : selectedProjectId;
+  const enabled = options?.enabled ?? true;
 
   return useQuery({
-    queryKey: ['requests', variables, permissions, selectedProjectId],
+    queryKey: ['requests', variables, permissions, projectId, scopeToSelectedProject],
     queryFn: async () => {
       try {
         const query = buildRequestsQuery(permissions);
-        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const headers = projectId ? { 'X-Project-ID': projectId } : undefined;
 
-        // Add project filter if project is selected
+        // Add project filter if project scoping is enabled
         const finalVariables = {
           ...variables,
           where: {
             ...variables?.where,
-            ...(selectedProjectId && { projectID: selectedProjectId }),
+            ...(scopeToSelectedProject && projectId && { projectID: projectId }),
           },
         };
 
@@ -306,13 +309,15 @@ export function useRequests(variables?: {
         throw error;
       }
     },
-    enabled: true, // Requests can be queried without project selection for admin users
+    enabled,
   });
 }
 
 export function useRequest(
   id: string,
   options?: {
+    projectId?: string | null;
+    enabled?: boolean;
     disableAutoRefresh?: boolean;
   }
 ) {
@@ -321,14 +326,16 @@ export function useRequest(
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
   const queryClient = useQueryClient();
+  const projectId = options?.projectId !== undefined ? options.projectId : selectedProjectId;
+  const enabled = options?.enabled ?? true;
 
-  const queryKey = ['request', id, permissions, selectedProjectId] as const;
+  const queryKey = ['request', id, permissions, projectId] as const;
 
   return useQuery({
     queryKey,
     queryFn: async () => {
       try {
-        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const headers = projectId ? { 'X-Project-ID': projectId } : undefined;
         const previousRequest = queryClient.getQueryData<Request>(queryKey);
         const shouldUseLightweightPolling = previousRequest?.status === 'processing';
 
@@ -369,7 +376,7 @@ export function useRequest(
         throw error;
       }
     },
-    enabled: !!id,
+    enabled: enabled && !!id,
     refetchInterval: (query) => {
       if (options?.disableAutoRefresh) {
         return false;
@@ -419,19 +426,21 @@ export function useRequestExecutions(
     after?: string;
     orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
     where?: Record<string, any>;
-  }
+  },
+  options?: { projectId?: string | null }
 ) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
   const permissions = useRequestPermissions();
   const selectedProjectId = useSelectedProjectId();
+  const projectId = options?.projectId !== undefined ? options.projectId : selectedProjectId;
 
   return useQuery({
-    queryKey: ['request-executions', requestID, variables, permissions, selectedProjectId],
+    queryKey: ['request-executions', requestID, variables, permissions, projectId],
     queryFn: async () => {
       try {
         const query = buildRequestExecutionsQuery(permissions);
-        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const headers = projectId ? { 'X-Project-ID': projectId } : undefined;
         const finalVariables = {
           requestID,
           ...variables,

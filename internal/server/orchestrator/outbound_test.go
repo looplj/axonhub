@@ -593,3 +593,236 @@ func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t 
 	// Verify channel was used
 	require.Equal(t, testChannel, processor.state.CurrentCandidate.Channel)
 }
+
+func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
+	baseRequest := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_custom_1",
+						Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{
+							CallID: "call_custom_1",
+							Name:   "apply_patch",
+							Input:  "*** Begin Patch\n*** End Patch\n",
+						},
+					},
+					{
+						ID:   "call_function_1",
+						Type: llm.ToolTypeFunction,
+						Function: llm.FunctionCall{
+							Name:      "get_weather",
+							Arguments: "{}",
+						},
+					},
+				},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: func() *string { v := "call_custom_1"; return &v }(),
+				Content: llm.MessageContent{
+					Content: func() *string { v := "custom"; return &v }(),
+				},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: func() *string { v := "call_function_1"; return &v }(),
+				Content: llm.MessageContent{
+					Content: func() *string { v := "function"; return &v }(),
+				},
+			},
+		},
+	}
+
+	t.Run("filters when inbound is responses and outbound is not", func(t *testing.T) {
+		got := filterResponseCustomToolMessagesForNonResponsesOutbound(baseRequest, llm.APIFormatOpenAIChatCompletion)
+		require.NotSame(t, baseRequest, got)
+		require.Len(t, got.Messages, 2)
+		require.Len(t, got.Messages[0].ToolCalls, 1)
+		require.Equal(t, llm.ToolTypeFunction, got.Messages[0].ToolCalls[0].Type)
+		require.NotNil(t, got.Messages[1].ToolCallID)
+		require.Equal(t, "call_function_1", *got.Messages[1].ToolCallID)
+	})
+
+	t.Run("does not filter when outbound is responses", func(t *testing.T) {
+		got := filterResponseCustomToolMessagesForNonResponsesOutbound(baseRequest, llm.APIFormatOpenAIResponse)
+		require.Same(t, baseRequest, got)
+	})
+
+	t.Run("does not filter when inbound is not responses", func(t *testing.T) {
+		nonResponsesReq := *baseRequest
+		nonResponsesReq.APIFormat = llm.APIFormatOpenAIChatCompletion
+		got := filterResponseCustomToolMessagesForNonResponsesOutbound(&nonResponsesReq, llm.APIFormatOpenAIChatCompletion)
+		require.Same(t, &nonResponsesReq, got)
+	})
+}
+
+// ========== 429 Retry-After Tests ==========
+
+func TestPersistentOutboundTransformer_CanRetry_429_WithRetryAfter(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	t.Run("429 with Retry-After should not retry same channel", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		// 429 error with Retry-After header
+		httpErr := &httpclient.Error{
+			StatusCode: http.StatusTooManyRequests,
+			Headers:    http.Header{"Retry-After": []string{"30"}},
+		}
+
+		require.False(t, outbound.CanRetry(httpErr))
+	})
+
+	t.Run("429 with multiple headers including Retry-After should not retry", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		// 429 error with multiple headers
+		httpErr := &httpclient.Error{
+			StatusCode: http.StatusTooManyRequests,
+			Headers: http.Header{
+				"Retry-After":  []string{"60"},
+				"Content-Type": []string{"application/json"},
+			},
+		}
+
+		require.False(t, outbound.CanRetry(httpErr))
+	})
+}
+
+func TestPersistentOutboundTransformer_CanRetry_429_WithoutRetryAfter(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	t.Run("429 without Retry-After (nil headers) should allow retry", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		// 429 error without headers
+		httpErr := &httpclient.Error{
+			StatusCode: http.StatusTooManyRequests,
+			Headers:    nil,
+		}
+
+		require.True(t, outbound.CanRetry(httpErr))
+	})
+
+	t.Run("429 without Retry-After (empty headers) should allow retry", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		// 429 error with empty headers
+		httpErr := &httpclient.Error{
+			StatusCode: http.StatusTooManyRequests,
+			Headers:    http.Header{},
+		}
+
+		require.True(t, outbound.CanRetry(httpErr))
+	})
+
+	t.Run("429 without Retry-After (headers but no Retry-After key) should allow retry", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		// 429 error with headers but no Retry-After
+		httpErr := &httpclient.Error{
+			StatusCode: http.StatusTooManyRequests,
+			Headers: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+		}
+
+		require.True(t, outbound.CanRetry(httpErr))
+	})
+}
+
+func TestPersistentOutboundTransformer_CanRetry_429_WithMultipleModels(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	t.Run("429 with Retry-After should not retry even with multiple models", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models: []biz.ChannelModelEntry{
+						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+						{RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo"},
+					},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		// 429 error with Retry-After header
+		httpErr := &httpclient.Error{
+			StatusCode: http.StatusTooManyRequests,
+			Headers:    http.Header{"Retry-After": []string{"30"}},
+		}
+
+		// Should skip retry even though there are more models
+		require.False(t, outbound.CanRetry(httpErr))
+	})
+}

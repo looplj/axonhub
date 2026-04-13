@@ -85,6 +85,7 @@ type RetryPolicyProvider interface {
 
 // Save the requested model ID in the context, to let model aware strategy use it, e.g. circuit breaker.
 type modelContextKey struct{}
+type streamContextKey struct{}
 
 // contextWithRequestedModel adds the requested model ID to the context.
 func contextWithRequestedModel(ctx context.Context, modelID string) context.Context {
@@ -100,6 +101,16 @@ func requestedModelFromContext(ctx context.Context) string {
 	return ""
 }
 
+func contextWithRequestStream(ctx context.Context, stream bool) context.Context {
+	return context.WithValue(ctx, streamContextKey{}, stream)
+}
+
+func requestStreamFromContext(ctx context.Context) bool {
+	stream, _ := ctx.Value(streamContextKey{}).(bool)
+
+	return stream
+}
+
 // LoadBalancer applies multiple strategies to sort channels by priority.
 type LoadBalancer struct {
 	strategies       []LoadBalanceStrategy
@@ -109,7 +120,7 @@ type LoadBalancer struct {
 }
 
 // NewLoadBalancer creates a new load balancer with the given strategies.
-// Strategies are applied in order, with earlier strategies having higher weight.
+// All strategy scores are summed with equal weight; registration order does not affect scoring.
 func NewLoadBalancer(systemService RetryPolicyProvider, selectionTracker ChannelSelectionTracker, strategies ...LoadBalanceStrategy) *LoadBalancer {
 	debug := strings.EqualFold(os.Getenv("AXONHUB_DEBUG_LOAD_BALANCER_ENABLED"), "true")
 
@@ -130,13 +141,14 @@ type candidateScore struct {
 // Sort sorts candidates according to the configured strategies.
 // Returns a new slice with top k candidates sorted by descending priority.
 // The top k value is calculated internally based on the retry policy.
-func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCandidate, model string) []*ChannelModelsCandidate {
+func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCandidate, model string, stream bool) []*ChannelModelsCandidate {
 	if len(candidates) <= 1 {
 		return candidates
 	}
 
 	// Add model information to context for circuit-breaker strategy
 	ctx = contextWithRequestedModel(ctx, model)
+	ctx = contextWithRequestStream(ctx, stream)
 
 	// Calculate topK based on retry policy
 	topK := lb.calculateTopK(ctx, candidates)

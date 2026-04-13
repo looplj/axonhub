@@ -21,10 +21,6 @@ func NewEmbeddingInboundTransformer() *EmbeddingInboundTransformer {
 	return &EmbeddingInboundTransformer{}
 }
 
-func (t *EmbeddingInboundTransformer) APIFormat() llm.APIFormat {
-	return llm.APIFormatOpenAIEmbedding
-}
-
 // TransformRequest 将 HTTP embedding 请求转换为统一的 llm.Request 格式。
 // 由于 embedding 不使用 messages，我们将 input 作为 JSON 存储在 ExtraBody 中。
 func (t *EmbeddingInboundTransformer) TransformRequest(

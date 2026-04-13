@@ -21,6 +21,7 @@ import {
   IconLoader2,
   IconKeyOff,
   IconGauge,
+  IconHistory,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -87,6 +88,8 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const isArchived = channel.status === 'archived';
   const hasError = !!channel.errorMessage;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
+  const apiKeysCount = channel.credentials?.apiKeys?.filter((key) => key.trim().length > 0).length ?? 0;
+  const hasMultipleAPIKeys = channelPermissions.canWrite && apiKeysCount > 1;
 
   const handleDefaultTest = async () => {
     try {
@@ -125,6 +128,15 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
           <DropdownMenuItem onClick={handleOpenTestDialog}>
             <IconPlayerPlay size={16} className='mr-2' />
             {t('channels.actions.test')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('testHistory');
+            }}
+          >
+            <IconHistory size={16} className='mr-2' />
+            {t('channels.actions.testHistory')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
 
@@ -192,6 +204,17 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconGauge size={16} className='mr-2' />
             {t('channels.dialogs.rateLimit.action')}
           </DropdownMenuItem>
+          {hasMultipleAPIKeys && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('testAPIKeys');
+              }}
+            >
+              <IconPlayerPlay size={16} className='mr-2' />
+              {t('channels.actions.testAPIKeys', { count: apiKeysCount })}
+            </DropdownMenuItem>
+          )}
           {hasDisabledAPIKeys && (
             <DropdownMenuItem
               onClick={() => {

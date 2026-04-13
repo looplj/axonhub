@@ -207,7 +207,37 @@ func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInp
 	return &TestChannelPayload{
 		Latency: result.Latency,
 		Success: result.Success,
+		Message: result.Message,
 		Error:   result.Error,
+	}, nil
+}
+
+// TestChannelAPIKeys is the resolver for the testChannelAPIKeys field.
+func (r *mutationResolver) TestChannelAPIKeys(ctx context.Context, channelID objects.GUID, modelID *string) (*TestChannelAPIKeysPayload, error) {
+	ctx = contexts.WithSource(ctx, request.SourceTest)
+
+	result, err := r.TestChannelOrchestrator.TestChannelAPIKeys(ctx, channelID, modelID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to test channel API keys: %w", err)
+	}
+
+	apiKeyResults := make([]*TestAPIKeyResult, len(result.Results))
+	for i, r := range result.Results {
+		apiKeyResults[i] = &TestAPIKeyResult{
+			KeyPrefix: r.KeyPrefix,
+			Success:   r.Success,
+			Latency:   r.Latency,
+			Error:     r.Error,
+			Disabled:  r.Disabled,
+		}
+	}
+
+	return &TestChannelAPIKeysPayload{
+		ChannelID:    result.ChannelID,
+		Total:        result.Total,
+		SuccessCount: result.SuccessCount,
+		FailedCount:  result.FailedCount,
+		Results:      apiKeyResults,
 	}, nil
 }
 

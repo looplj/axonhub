@@ -7,9 +7,11 @@ import (
 
 // ChannelRequestTracker tracks per-channel request and token counts
 // within a fixed 1-minute sliding window for rate limiting.
+// It also manages cooldown periods for channels that received 429 errors.
 type ChannelRequestTracker struct {
-	mu       sync.RWMutex
-	counters map[int]*rateLimitWindow // channelID -> window
+	mu        sync.RWMutex
+	counters  map[int]*rateLimitWindow // channelID -> window
+	cooldowns map[int]time.Time        // channelID -> cooldown expiration time
 }
 
 type rateLimitWindow struct {
@@ -21,7 +23,8 @@ type rateLimitWindow struct {
 // NewChannelRequestTracker creates a new rate limit tracker.
 func NewChannelRequestTracker() *ChannelRequestTracker {
 	return &ChannelRequestTracker{
-		counters: make(map[int]*rateLimitWindow),
+		counters:  make(map[int]*rateLimitWindow),
+		cooldowns: make(map[int]time.Time),
 	}
 }
 
@@ -95,4 +98,61 @@ func (t *ChannelRequestTracker) GetTokenCount(channelID int) int64 {
 	}
 
 	return w.tokens
+}
+
+// SetCooldown sets a cooldown period for a channel until the specified time.
+// It only extends the cooldown; a shorter value will not overwrite an existing longer one.
+func (t *ChannelRequestTracker) SetCooldown(channelID int, until time.Time) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if existing, ok := t.cooldowns[channelID]; ok && existing.After(until) {
+		return
+	}
+
+	t.cooldowns[channelID] = until
+}
+
+// IsCoolingDown checks if a channel is currently in a cooldown period.
+// It also performs lazy cleanup by removing expired cooldown entries.
+func (t *ChannelRequestTracker) IsCoolingDown(channelID int) bool {
+	_, ok := t.GetCooldownUntil(channelID)
+	return ok
+}
+
+// GetCooldownUntil returns the cooldown expiration time for a channel.
+// Returns false if the channel is not in cooldown or the cooldown has expired.
+func (t *ChannelRequestTracker) GetCooldownUntil(channelID int) (time.Time, bool) {
+	t.mu.RLock()
+	until, ok := t.cooldowns[channelID]
+	t.mu.RUnlock()
+
+	if !ok {
+		return time.Time{}, false
+	}
+
+	// Check if cooldown has expired
+	now := time.Now()
+	if now.After(until) {
+		t.clearExpiredCooldown(channelID, until, now)
+		return time.Time{}, false
+	}
+
+	return until, true
+}
+
+// clearExpiredCooldown removes an expired cooldown entry only if it still matches
+// the value observed by the caller, preventing races with newer SetCooldown writes.
+func (t *ChannelRequestTracker) clearExpiredCooldown(channelID int, observedUntil, now time.Time) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	currentUntil, ok := t.cooldowns[channelID]
+	if !ok {
+		return
+	}
+
+	if currentUntil.Equal(observedUntil) && now.After(currentUntil) {
+		delete(t.cooldowns, channelID)
+	}
 }

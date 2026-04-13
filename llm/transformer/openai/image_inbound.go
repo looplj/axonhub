@@ -89,10 +89,6 @@ func NewImageVariationInboundTransformer() *ImageInboundTransformer {
 	}
 }
 
-func (t *ImageInboundTransformer) APIFormat() llm.APIFormat {
-	return t.apiFormat
-}
-
 func (t *ImageInboundTransformer) TransformRequest(ctx context.Context, httpReq *httpclient.Request) (*llm.Request, error) {
 	if httpReq == nil {
 		return nil, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)

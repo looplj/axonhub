@@ -243,6 +243,19 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel) (*Channel
 		ch.Outbound = transformer
 
 		return ch, nil
+	case channel.TypeNanogptResponses:
+		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
+			BaseURL:         c.BaseURL,
+			APIKeyProvider:  getAPIKeyProvider(ch),
+			AccountIdentity: accountIdentity,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
 	case channel.TypeZai, channel.TypeZhipu:
 		transformer, err := zai.NewOutboundTransformerWithConfig(&zai.Config{
 			BaseURL:        c.BaseURL,
