@@ -14,7 +14,14 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 	ctx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	updatedChannel, err := svc.db.Channel.UpdateOneID(channelID).
+	// Only disable channels that are currently enabled to avoid repeated disabling
+	// of the same channel under sustained error traffic, which would keep resetting
+	// the cache debounce timer and prevent the cache from ever refreshing.
+	affected, err := svc.db.Channel.Update().
+		Where(
+			channel.ID(channelID),
+			channel.StatusEQ(channel.StatusEnabled),
+		).
 		SetStatus(channel.StatusDisabled).
 		SetErrorMessage(deriveErrorMessage(responseStatusCode)).
 		Save(ctx)
@@ -28,26 +35,63 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 		return
 	}
 
+	if affected == 0 {
+		log.Debug(ctx, "Channel already disabled, skipping",
+			log.Int("channel_id", channelID),
+			log.Int("error_code", responseStatusCode),
+		)
+
+		// Another instance may have already disabled the channel in DB while this
+		// instance still serves it from a stale in-memory cache. Force a local
+		// refresh so candidate selection stops using the channel immediately.
+		if err := svc.enabledChannelsCache.Load(ctx, true); err != nil {
+			log.Warn(ctx, "Failed to refresh local cache for already-disabled channel",
+				log.Int("channel_id", channelID),
+				log.Cause(err),
+			)
+		}
+
+		return
+	}
+
 	log.Warn(ctx, "Channel disabled due to unrecoverable error",
 		log.Int("channel_id", channelID),
 		log.Int("error_code", responseStatusCode),
 	)
 
-	notifyCtx := context.WithoutCancel(ctx)
-	go svc.WebhookNotifier.NotifyChannelAutoDisabled(notifyCtx, ChannelAutoDisabledEvent{
-		ChannelID:       updatedChannel.ID,
-		ChannelName:     updatedChannel.Name,
-		ChannelProvider: updatedChannel.Type.String(),
-		ChannelBaseURL:  updatedChannel.BaseURL,
-		ChannelStatus:   updatedChannel.Status.String(),
-		StatusCode:      responseStatusCode,
-		Threshold:       threshold,
-		ActualCount:     actualCount,
-		Reason:          deriveErrorMessage(responseStatusCode),
-		OccurredAt:      time.Now(),
-	})
+	// Fetch the updated channel for webhook notification
+	updatedChannel, err := svc.db.Channel.Get(ctx, channelID)
+	if err != nil {
+		log.Error(ctx, "Failed to fetch disabled channel for webhook notification",
+			log.Int("channel_id", channelID),
+			log.Cause(err),
+		)
+	} else {
+		notifyCtx := context.WithoutCancel(ctx)
+		go svc.WebhookNotifier.NotifyChannelAutoDisabled(notifyCtx, ChannelAutoDisabledEvent{
+			ChannelID:       updatedChannel.ID,
+			ChannelName:     updatedChannel.Name,
+			ChannelProvider: updatedChannel.Type.String(),
+			ChannelBaseURL:  updatedChannel.BaseURL,
+			ChannelStatus:   updatedChannel.Status.String(),
+			StatusCode:      responseStatusCode,
+			Threshold:       threshold,
+			ActualCount:     actualCount,
+			Reason:          deriveErrorMessage(responseStatusCode),
+			OccurredAt:      time.Now(),
+		})
+	}
 
-	// Reload channels to reflect the change in load balancer
+	// Synchronously reload the local cache to immediately stop selecting this channel.
+	// This avoids the debounce delay that could keep the disabled channel in the candidate pool.
+	if err := svc.enabledChannelsCache.Load(ctx, true); err != nil {
+		log.Warn(ctx, "Failed to synchronously reload channels after auto-disable",
+			log.Int("channel_id", channelID),
+			log.Cause(err),
+		)
+	}
+
+	// Also notify other instances via the watcher for cross-instance cache invalidation.
 	svc.asyncReloadChannels()
 }
 

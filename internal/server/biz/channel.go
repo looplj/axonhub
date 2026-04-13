@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/zhenzou/executors"
@@ -175,6 +176,10 @@ type ChannelService struct {
 
 	lastModelSyncExecutionTime time.Time
 
+	// cacheVersion is incremented each time the enabled channels cache data is swapped.
+	// Used by external caches (e.g., association cache) to detect cache refreshes.
+	cacheVersion atomic.Int64
+
 	// perfCh is the channel for performance records for async processing.
 	perfCh chan *PerformanceRecord
 }
@@ -246,6 +251,8 @@ func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []
 }
 
 func (svc *ChannelService) onEnabledChannelsSwap(old, new []*Channel) {
+	svc.cacheVersion.Add(1)
+
 	for _, ch := range new {
 		if ch != nil && ch.startTokenProvider != nil {
 			ch.startTokenProvider()
@@ -257,6 +264,13 @@ func (svc *ChannelService) onEnabledChannelsSwap(old, new []*Channel) {
 			ch.stopTokenProvider()
 		}
 	}
+}
+
+// GetCacheVersion returns the current cache version counter.
+// This is incremented on every enabled channels cache swap and can be used
+// by external caches to detect when the underlying channel data has changed.
+func (svc *ChannelService) GetCacheVersion() int64 {
+	return svc.cacheVersion.Load()
 }
 
 // GetEnabledChannels returns all enabled channels.

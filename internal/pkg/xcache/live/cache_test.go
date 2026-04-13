@@ -97,6 +97,64 @@ func TestCache_SingleFlight(t *testing.T) {
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount))
 }
 
+func TestCache_ForceLoadNotDeduplicatedWithNonForce(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+
+	var (
+		forceCalls    int32
+		nonForceCalls int32
+	)
+
+	cache := NewCache(Options[string]{
+		Name:            "test_force_sync",
+		RefreshInterval: time.Hour,
+		RefreshFunc: func(ctx context.Context, current string, lastUpdate time.Time) (string, time.Time, bool, error) {
+			if lastUpdate.IsZero() {
+				atomic.AddInt32(&forceCalls, 1)
+				return "forced", time.Now(), true, nil
+			}
+
+			atomic.AddInt32(&nonForceCalls, 1)
+
+			select {
+			case started <- struct{}{}:
+			default:
+			}
+
+			<-release
+
+			return "normal", time.Now(), true, nil
+		},
+	})
+	defer cache.Stop()
+
+	cache.SetLastUpdate(time.Now())
+
+	nonForceDone := make(chan error, 1)
+
+	go func() {
+		nonForceDone <- cache.Load(context.Background(), false)
+	}()
+
+	<-started
+
+	forceDone := make(chan error, 1)
+
+	go func() {
+		forceDone <- cache.Load(context.Background(), true)
+	}()
+
+	close(release)
+
+	require.NoError(t, <-forceDone)
+	require.NoError(t, <-nonForceDone)
+
+	assert.Equal(t, int32(1), atomic.LoadInt32(&forceCalls))
+	assert.Equal(t, int32(1), atomic.LoadInt32(&nonForceCalls))
+	assert.Equal(t, "forced", cache.GetData())
+}
+
 func TestCache_AsyncReload(t *testing.T) {
 	var callCount int32
 
@@ -240,6 +298,89 @@ func TestCache_WatcherReload(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 
 	assert.NotEmpty(t, cache.GetData())
+}
+
+func TestCache_ForceAsyncReload(t *testing.T) {
+	var callCount int32
+
+	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	refreshFunc := func(ctx context.Context, current string, lastUpdate time.Time) (string, time.Time, bool, error) {
+		count := atomic.AddInt32(&callCount, 1)
+		if lastUpdate.IsZero() {
+			// Force refresh path: lastUpdate is zeroed
+			return "forced_" + string('0'+count), fixedTime, true, nil
+		}
+		// Non-forced path: if lastUpdate matches fixedTime, simulate "no changes"
+		return current, lastUpdate, false, nil
+	}
+
+	cache := NewCache(Options[string]{
+		Name:            "test_force_async",
+		RefreshFunc:     refreshFunc,
+		RefreshInterval: time.Hour,
+		DebounceDelay:   10 * time.Millisecond,
+	})
+	defer cache.Stop()
+
+	// Initial force load
+	err := cache.Load(context.Background(), true)
+	require.NoError(t, err)
+	assert.Equal(t, "forced_1", cache.GetData())
+
+	// Normal TriggerAsyncReload should NOT force (lastUpdate == fixedTime, no changes detected)
+	cache.TriggerAsyncReload()
+	require.Never(t, func() bool {
+		return cache.GetData() != "forced_1"
+	}, 100*time.Millisecond, 10*time.Millisecond)
+
+	// TriggerForceAsyncReload should force (lastUpdate zeroed, detects changes)
+	cache.TriggerForceAsyncReload()
+	require.Eventually(t, func() bool {
+		return cache.GetData() != "forced_1"
+	}, time.Second, 10*time.Millisecond)
+
+	// Data should be updated via the forced path
+	assert.Contains(t, cache.GetData(), "forced_")
+}
+
+func TestCache_WatcherForceRefreshEvent(t *testing.T) {
+	var callCount int32
+
+	fixedTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	refreshFunc := func(ctx context.Context, current string, lastUpdate time.Time) (string, time.Time, bool, error) {
+		count := atomic.AddInt32(&callCount, 1)
+		if lastUpdate.IsZero() {
+			return "forced_" + string('0'+count), fixedTime, true, nil
+		}
+
+		return current, lastUpdate, false, nil
+	}
+
+	w := watcher.NewMemoryWatcher[CacheEvent[struct{}]](watcher.MemoryWatcherOptions{Buffer: 1})
+
+	cache := NewCache(Options[string]{
+		Name:            "test_watcher_force",
+		RefreshFunc:     refreshFunc,
+		RefreshInterval: time.Hour,
+		DebounceDelay:   10 * time.Millisecond,
+		Watcher:         w,
+	})
+	defer cache.Stop()
+
+	// Initial load
+	require.NoError(t, cache.Load(context.Background(), true))
+	assert.Equal(t, "forced_1", cache.GetData())
+
+	// Send a ForceRefreshEvent via watcher — should trigger forced reload
+	require.NoError(t, w.Notify(context.Background(), NewForceRefreshEvent[struct{}]()))
+
+	require.Eventually(t, func() bool {
+		return cache.GetData() != "forced_1"
+	}, time.Second, 10*time.Millisecond)
+
+	assert.Contains(t, cache.GetData(), "forced_")
 }
 
 func TestCache_RefreshFuncRequired(t *testing.T) {

@@ -159,3 +159,4 @@ config.schema.json
 *.db-shm
 *.db-wal
 *.agent/summary
+.factory

@@ -44,7 +44,8 @@ type associationCacheEntry struct {
 	candidates              []*resolvedAssociationCandidate
 	channelCount            int
 	latestChannelUpdateTime time.Time
-	latestModelUpdatedAt    time.Time
+	latestModelUpdateTime   time.Time
+	channelCacheVersion     int64
 	cachedAt                time.Time
 }
 
@@ -183,6 +184,10 @@ func (s *DefaultSelector) resolveAssociations(
 	model *ent.Model,
 	associations []*objects.ModelAssociation,
 ) ([]*resolvedAssociationCandidate, error) {
+	// Read version before channels to avoid storing an older channel snapshot with
+	// a newer cache version if the enabled-channels cache swaps between the reads.
+	// The inverse interleaving only causes a conservative cache miss.
+	channelCacheVersion := s.ChannelService.GetCacheVersion()
 	channels := s.ChannelService.GetEnabledChannels()
 	if len(channels) == 0 {
 		return []*resolvedAssociationCandidate{}, nil
@@ -200,20 +205,22 @@ func (s *DefaultSelector) resolveAssociations(
 	modelID := model.ModelID
 	channelCount := len(channels)
 	latestChannelUpdateTime := s.getLatestChannelUpdateTime(channels)
-	latestModelUpdatedAt := model.UpdatedAt
+	latestModelUpdateTime := model.UpdatedAt
 
 	// Try to get from cache
 	s.cacheMu.RLock()
 
 	if entry, ok := s.associationCache[modelID]; ok {
 		// Check if cache is still valid:
-		// 1. Channel count hasn't changed
-		// 2. No channel has been updated
-		// 3. Model hasn't been updated
-		// 4. Cache hasn't expired (5 minutes)
-		if entry.channelCount == channelCount &&
+		// 1. Channel cache version hasn't changed (most reliable: detects any cache swap)
+		// 2. Channel count hasn't changed
+		// 3. No channel has been updated
+		// 4. Model hasn't been updated
+		// 5. Cache hasn't expired (5 minutes)
+		if entry.channelCacheVersion == channelCacheVersion &&
+			entry.channelCount == channelCount &&
 			entry.latestChannelUpdateTime.Equal(latestChannelUpdateTime) &&
-			entry.latestModelUpdatedAt.Equal(latestModelUpdatedAt) &&
+			entry.latestModelUpdateTime.Equal(latestModelUpdateTime) &&
 			time.Since(entry.cachedAt) < associationCacheTTL {
 			s.cacheMu.RUnlock()
 
@@ -303,7 +310,8 @@ func (s *DefaultSelector) resolveAssociations(
 		candidates:              resolvedCandidates,
 		channelCount:            channelCount,
 		latestChannelUpdateTime: latestChannelUpdateTime,
-		latestModelUpdatedAt:    latestModelUpdatedAt,
+		latestModelUpdateTime:   latestModelUpdateTime,
+		channelCacheVersion:     channelCacheVersion,
 		cachedAt:                time.Now(),
 	}
 	s.cacheMu.Unlock()
