@@ -87,11 +87,6 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 			return nil, fmt.Errorf("%w: %q", biz.ErrInvalidModel, req.Model)
 		}
 
-		log.Warn(ctx, "failed to select configured model candidates",
-			log.String("request_model", req.Model),
-			log.Cause(err),
-		)
-
 		return nil, fmt.Errorf("%w: %q", err, req.Model)
 	}
 
